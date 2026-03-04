@@ -151,6 +151,8 @@ public partial class App : System.Windows.Application
         // Services
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IGitHubAuthService, GitHubAuthService>();
+        services.AddSingleton<IGitHubActionsService, GitHubActionsService>();
+        services.AddSingleton<IGitHubService, GitHubService>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
