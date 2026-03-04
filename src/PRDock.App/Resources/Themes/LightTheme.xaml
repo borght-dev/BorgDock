@@ -37,4 +37,13 @@
     <Color x:Key="StatusGrayColor">#9E9E9E</Color>
     <SolidColorBrush x:Key="StatusGrayBrush" Color="{StaticResource StatusGrayColor}" />
 
+    <!-- Accent -->
+    <Color x:Key="AccentColor">#204C9C</Color>
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
+
+    <!-- FilterChip -->
+    <SolidColorBrush x:Key="FilterChipBackgroundBrush" Color="#E8E8E8" />
+    <SolidColorBrush x:Key="FilterChipForegroundBrush" Color="#1A1A1A" />
+
 </ResourceDictionary>
