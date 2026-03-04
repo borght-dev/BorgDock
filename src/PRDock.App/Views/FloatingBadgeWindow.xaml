@@ -1,0 +1,75 @@
+<Window x:Class="PRDock.App.Views.FloatingBadgeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PRDock.App.ViewModels"
+        Title="PRDock Badge"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Window.Resources>
+        <Storyboard x:Key="PulseAnimation">
+            <DoubleAnimation Storyboard.TargetName="BadgeBorder"
+                             Storyboard.TargetProperty="Opacity"
+                             From="1.0" To="0.7" Duration="0:0:0.5"
+                             AutoReverse="True"
+                             RepeatBehavior="3x" />
+        </Storyboard>
+    </Window.Resources>
+
+    <Border x:Name="BadgeBorder"
+            CornerRadius="16"
+            Padding="14,8"
+            Cursor="Hand"
+            AutomationProperties.AutomationId="FloatingBadgeBorder"
+            MouseLeftButtonUp="BadgeBorder_MouseLeftButtonUp">
+
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                        <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                        <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding BackgroundColor}" Value="green">
+                        <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <Border.ContextMenu>
+            <ContextMenu AutomationProperties.AutomationId="BadgeContextMenu">
+                <MenuItem Header="Dock Left"
+                          Command="{Binding DockLeftCommand}"
+                          AutomationProperties.AutomationId="DockLeftMenuItem" />
+                <MenuItem Header="Dock Right"
+                          Command="{Binding DockRightCommand}"
+                          AutomationProperties.AutomationId="DockRightMenuItem" />
+                <Separator />
+                <MenuItem Header="Settings"
+                          Command="{Binding OpenSettingsCommand}"
+                          AutomationProperties.AutomationId="SettingsMenuItem" />
+                <Separator />
+                <MenuItem Header="Quit"
+                          Command="{Binding QuitCommand}"
+                          AutomationProperties.AutomationId="QuitMenuItem" />
+            </ContextMenu>
+        </Border.ContextMenu>
+
+        <TextBlock Text="{Binding BadgeText}"
+                   Foreground="White"
+                   FontSize="13"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"
+                   AutomationProperties.AutomationId="BadgeTextBlock" />
+    </Border>
+</Window>
