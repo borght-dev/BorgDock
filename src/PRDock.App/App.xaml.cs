@@ -153,12 +153,14 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IGitHubAuthService, GitHubAuthService>();
         services.AddSingleton<IGitHubActionsService, GitHubActionsService>();
         services.AddSingleton<IGitHubService, GitHubService>();
+        services.AddSingleton<IPRPollingService, PRPollingService>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
 
         // ViewModels
-        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<MainViewModel>(sp =>
+            new MainViewModel(sp.GetRequiredService<IPRPollingService>()));
     }
 
     private void SetupSystemTray()
