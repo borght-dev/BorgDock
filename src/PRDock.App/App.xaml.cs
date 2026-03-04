@@ -158,6 +158,8 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IGitHubActionsService, GitHubActionsService>();
         services.AddSingleton<IGitHubService, GitHubService>();
         services.AddSingleton<IPRPollingService, PRPollingService>();
+        services.AddSingleton<IGitCommandRunner, GitCommandRunner>();
+        services.AddSingleton<IWorktreeService, WorktreeService>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
