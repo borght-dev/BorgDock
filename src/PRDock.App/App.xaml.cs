@@ -150,6 +150,10 @@ public partial class App : System.Windows.Application
 
         // Services
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IGitHubAuthService, GitHubAuthService>();
+
+        // Infrastructure
+        services.AddSingleton<GitHubHttpClient>();
 
         // ViewModels
         services.AddSingleton<MainViewModel>();
