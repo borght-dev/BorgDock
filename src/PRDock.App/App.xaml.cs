@@ -168,7 +168,8 @@ public partial class App : System.Windows.Application
 
         // ViewModels
         services.AddSingleton<MainViewModel>(sp =>
-            new MainViewModel(sp.GetRequiredService<IPRPollingService>()));
+            new MainViewModel(
+                sp.GetRequiredService<IPRPollingService>()));
     }
 
     private void SetupSystemTray()

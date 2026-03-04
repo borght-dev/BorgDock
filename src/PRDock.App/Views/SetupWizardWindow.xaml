@@ -1,0 +1,270 @@
+<Window x:Class="PRDock.App.Views.SetupWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PRDock.App.ViewModels"
+        xmlns:conv="clr-namespace:PRDock.App.Converters"
+        Title="PRDock Setup"
+        Width="560" Height="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="{DynamicResource BackgroundBrush}">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:StringEqualityConverter x:Key="StringEquals" />
+
+        <Style x:Key="StepTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="StepDescStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Step 0: Auth -->
+        <StackPanel Grid.Row="0">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+
+            <TextBlock Text="GitHub Authentication" Style="{StaticResource StepTitleStyle}" />
+            <TextBlock Text="PRDock needs a GitHub token to monitor your PRs. We'll try to detect your gh CLI authentication first."
+                       Style="{StaticResource StepDescStyle}" />
+
+            <TextBlock Text="{Binding AuthStatusMessage}"
+                       FontSize="13" Margin="0,0,0,12"
+                       Foreground="{DynamicResource TextPrimaryBrush}" />
+
+            <StackPanel Margin="0,8,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAuthValid}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <TextBlock Text="Personal Access Token:" FontSize="12" Margin="0,0,0,4"
+                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBox Text="{Binding PersonalAccessToken, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="13" Padding="6,4" MaxWidth="400" ExampletalAlignment="Left" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Step 1: Repo Discovery -->
+        <StackPanel Grid.Row="0">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+
+            <TextBlock Text="Discover Repositories" Style="{StaticResource StepTitleStyle}" />
+            <TextBlock Text="Select the GitHub repositories you want to monitor."
+                       Style="{StaticResource StepDescStyle}" />
+
+            <TextBlock Text="Scanning for repositories..."
+                       FontSize="12" Margin="0,0,0,8"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}" />
+
+            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding DiscoveredRepos}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsSelected}" Margin="0,3">
+                                <StackPanel Orientation="Exampletal">
+                                    <TextBlock Text="{Binding FullName}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding LocalPath, StringFormat=' ({0})'}" FontSize="11"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </CheckBox>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+
+        <!-- Step 2: Worktree Paths -->
+        <StackPanel Grid.Row="0">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+
+            <TextBlock Text="Worktree Paths" Style="{StaticResource StepTitleStyle}" />
+            <TextBlock Text="Configure where git worktrees will be created for each repo. Defaults are auto-filled."
+                       Style="{StaticResource StepDescStyle}" />
+
+            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding DiscoveredRepos}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <TextBlock Text="{Binding FullName}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <Grid Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Subfolder:" FontSize="12"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Grid.Column="1" Text="{Binding WorktreeSubfolder}"
+                                             FontSize="12" Padding="4,2" />
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+
+        <!-- Step 3: Sidebar Preferences -->
+        <StackPanel Grid.Row="0">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+
+            <TextBlock Text="Sidebar Preferences" Style="{StaticResource StepTitleStyle}" />
+            <TextBlock Text="Choose where the sidebar appears and how it behaves."
+                       Style="{StaticResource StepDescStyle}" />
+
+            <TextBlock Text="Screen Edge:" FontSize="13" Margin="0,0,0,4"
+                       Foreground="{DynamicResource TextPrimaryBrush}" />
+            <StackPanel Orientation="Exampletal" Margin="0,0,0,16">
+                <RadioButton Content="Right" IsChecked="{Binding SidebarEdge, Converter={StaticResource StringEquals}, ConverterParameter=right}"
+                             GroupName="Edge" Margin="0,0,16,0" />
+                <RadioButton Content="Left" IsChecked="{Binding SidebarEdge, Converter={StaticResource StringEquals}, ConverterParameter=left}"
+                             GroupName="Edge" />
+            </StackPanel>
+
+            <TextBlock Text="Mode:" FontSize="13" Margin="0,0,0,4"
+                       Foreground="{DynamicResource TextPrimaryBrush}" />
+            <StackPanel Orientation="Exampletal">
+                <RadioButton Content="Pinned" IsChecked="{Binding SidebarMode, Converter={StaticResource StringEquals}, ConverterParameter=pinned}"
+                             GroupName="Mode" Margin="0,0,16,0" />
+                <RadioButton Content="Auto-hide" IsChecked="{Binding SidebarMode, Converter={StaticResource StringEquals}, ConverterParameter=autohide}"
+                             GroupName="Mode" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Step 4: Done -->
+        <StackPanel Grid.Row="0" VerticalAlignment="Center" ExampletalAlignment="Center">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+
+            <TextBlock Text="All Set!" Style="{StaticResource StepTitleStyle}" ExampletalAlignment="Center" />
+            <TextBlock Text="PRDock is configured and ready to monitor your PRs."
+                       Style="{StaticResource StepDescStyle}" ExampletalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Navigation buttons -->
+        <StackPanel Grid.Row="1" Orientation="Exampletal" ExampletalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Back" Command="{Binding GoBackCommand}"
+                    Width="80" Height="32" Margin="0,0,8,0">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CanGoBack}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <Button Content="{Binding NextButtonText}" Command="{Binding GoNextCommand}"
+                    Width="80" Height="32"
+                    IsEnabled="{Binding CanGoNext}">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <Button Content="Close" Width="80" Height="32" Click="CloseButton_Click">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>
