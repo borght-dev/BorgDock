@@ -160,9 +160,11 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IPRPollingService, PRPollingService>();
         services.AddSingleton<IGitCommandRunner, GitCommandRunner>();
         services.AddSingleton<IWorktreeService, WorktreeService>();
+        services.AddSingleton<IClaudeCodeLauncher, ClaudeCodeLauncher>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
+        services.AddSingleton<ProcessTracker>();
 
         // ViewModels
         services.AddSingleton<MainViewModel>(sp =>
