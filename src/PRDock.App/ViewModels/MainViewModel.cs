@@ -146,6 +146,7 @@ public partial class MainViewModel : ObservableObject
             HtmlUrl = pr.HtmlUrl,
             RepoOwner = pr.RepoOwner,
             RepoName = pr.RepoName,
+            UpdatedAt = pr.UpdatedAt,
             HasMergeConflict = pr.Mergeable == false,
             CheckSummary = FormatCheckSummary(prWithChecks),
             ReviewBadgeText = pr.ReviewStatus.ToString()

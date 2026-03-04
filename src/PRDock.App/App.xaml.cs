@@ -71,6 +71,10 @@ public partial class App : System.Windows.Application
         // Initialize work area manager (handles crash recovery)
         _workAreaManager = new WorkAreaManager();
 
+        // Start polling
+        var pollingService = _serviceProvider.GetRequiredService<IPRPollingService>();
+        pollingService.StartPolling();
+
         // Create main view model and sidebar window
         _mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         _sidebarWindow = new SidebarWindow(_mainViewModel);
@@ -229,6 +233,10 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Stop polling before disposing services
+        if (_serviceProvider?.GetService<IPRPollingService>() is { } pollingService)
+            pollingService.StopPolling();
+
         _hotKeyManager?.Dispose();
         _workAreaManager?.Dispose();
         _themeManager?.Dispose();
