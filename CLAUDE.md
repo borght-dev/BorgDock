@@ -45,11 +45,11 @@ tests/PRDock.IntegrationTests/ # Integration/smoke tests
 
 - **Phase 1 COMPLETE**: Core skeleton (sidebar, DI, settings, tray, hotkey, themes, work area, 70 tests)
 - **Phase 2 COMPLETE**: GitHub integration (auth, HTTP client, PR fetching, check suites/runs, PR card UI, polling loop, grouping/sorting/filtering, 171 tests)
-- **Phase 3 TODO**: Failure details (log parsing, check detail panel)
-- **Phase 4 TODO**: Claude Code integration (worktrees, prompt generation, session tracking)
-- **Phase 5 TODO**: Claude review panel
-- **Phase 6 TODO**: Polish (notifications, floating badge, auto-hide animation, settings UI, setup wizard)
-- **Phase 7 TODO**: Hardening (rate limits, error handling, graceful degradation)
+- **Phase 3 COMPLETE**: Failure details (LogParserService, GitHub Actions extensions, CheckDetailPanel, 505 tests)
+- **Phase 4 COMPLETE**: Claude Code integration (WorktreeService, ClaudeCodeLauncher, ProcessTracker, prompt generation)
+- **Phase 5 COMPLETE**: Claude review panel (ClaudeReviewComment, MarkdownRenderer, severity grouping)
+- **Phase 6 COMPLETE**: Polish (NotificationService, FloatingBadge, auto-hide animation, SettingsFlyout, SetupWizard, keyboard nav, WorktreePruneDialog, recently closed PRs, merge conflict indicators)
+- **Phase 7 COMPLETE**: Hardening (RetryHandler, rate limit display, adaptive polling, graceful degradation)
 
 Full spec: `PRDock-Implementation-Plan.md`
 

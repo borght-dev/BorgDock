@@ -123,22 +123,14 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
             sb.AppendLine();
             foreach (var error in errors)
             {
-                var tag = error.IsIntroducedByPR ? "[Introduced]" : "[Pre-existing]";
+                var tag = error.IsIntroducedByPr ? "[Introduced]" : "[Pre-existing]";
                 var location = !string.IsNullOrEmpty(error.FilePath)
-                    ? $"{error.FilePath}:{error.Line}:{error.Column}"
+                    ? $"{error.FilePath}:{error.LineNumber}:{error.ColumnNumber}"
                     : "unknown location";
 
                 sb.AppendLine($"### {tag} {error.Category} {error.ErrorCode}");
                 sb.AppendLine($"**Location:** {location}");
                 sb.AppendLine($"**Message:** {error.Message}");
-
-                if (error.ContextLines.Count > 0)
-                {
-                    sb.AppendLine("```");
-                    foreach (var line in error.ContextLines)
-                        sb.AppendLine(line);
-                    sb.AppendLine("```");
-                }
                 sb.AppendLine();
             }
         }

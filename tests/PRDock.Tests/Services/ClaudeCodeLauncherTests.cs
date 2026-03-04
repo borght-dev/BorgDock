@@ -57,23 +57,22 @@ public class ClaudeCodeLauncherTests
             new()
             {
                 FilePath = "src/Service.cs",
-                Line = 42,
-                Column = 12,
+                LineNumber = 42,
+                ColumnNumber = 12,
                 ErrorCode = "CS0103",
                 Message = "The name 'x' does not exist",
                 Category = "error",
-                IsIntroducedByPR = true,
-                ContextLines = ["    var y = x + 1;"]
+                IsIntroducedByPr = true
             },
             new()
             {
                 FilePath = "src/Other.cs",
-                Line = 10,
-                Column = 1,
+                LineNumber = 10,
+                ColumnNumber = 1,
                 ErrorCode = "CS0168",
                 Message = "Variable declared but never used",
                 Category = "warning",
-                IsIntroducedByPR = false
+                IsIntroducedByPr = false
             }
         };
 
@@ -84,7 +83,6 @@ public class ClaudeCodeLauncherTests
         result.Should().Contain("src/Service.cs:42:12");
         result.Should().Contain("CS0103");
         result.Should().Contain("The name 'x' does not exist");
-        result.Should().Contain("var y = x + 1;");
         result.Should().Contain("src/Other.cs:10:1");
     }
 

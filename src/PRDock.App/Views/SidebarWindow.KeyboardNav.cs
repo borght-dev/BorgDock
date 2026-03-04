@@ -1,4 +1,3 @@
-using PRDock.App.ViewModels;
 using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Key = System.Windows.Input.Key;
 
@@ -6,8 +5,6 @@ namespace PRDock.App.Views;
 
 public partial class SidebarWindow
 {
-    private MainViewModel ViewModel => (MainViewModel)DataContext;
-
     protected override void OnPreviewKeyDown(WpfKeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);

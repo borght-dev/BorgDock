@@ -161,10 +161,14 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IGitCommandRunner, GitCommandRunner>();
         services.AddSingleton<IWorktreeService, WorktreeService>();
         services.AddSingleton<IClaudeCodeLauncher, ClaudeCodeLauncher>();
+        services.AddSingleton<ILogParserService, LogParserService>();
+        services.AddSingleton<INotificationService, NotificationService>();
+        services.AddSingleton<IRepoDiscoveryService, RepoDiscoveryService>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
         services.AddSingleton<ProcessTracker>();
+        services.AddSingleton<IRetryHandler, RetryHandler>();
 
         // ViewModels
         services.AddSingleton<MainViewModel>(sp =>
