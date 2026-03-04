@@ -14,6 +14,19 @@ public class GitHubHttpClientTests
 {
     private readonly IGitHubAuthService _authService = Substitute.For<IGitHubAuthService>();
     private readonly ILogger<GitHubHttpClient> _logger = Substitute.For<ILogger<GitHubHttpClient>>();
+    private readonly IRetryHandler _retryHandler;
+
+    public GitHubHttpClientTests()
+    {
+        _retryHandler = Substitute.For<IRetryHandler>();
+        _retryHandler.ExecuteAsync(Arg.Any<Func<CancellationToken, Task<HttpResponseMessage>>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var action = callInfo.Arg<Func<CancellationToken, Task<HttpResponseMessage>>>();
+                var ct = callInfo.Arg<CancellationToken>();
+                return action(ct);
+            });
+    }
 
     private record TestPayload(int Id, string NodeId, string FullName);
 
@@ -22,7 +35,7 @@ public class GitHubHttpClientTests
         var factory = Substitute.For<IHttpClientFactory>();
         var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") };
         factory.CreateClient("GitHub").Returns(client);
-        return new GitHubHttpClient(factory, _authService, _logger);
+        return new GitHubHttpClient(factory, _authService, _retryHandler, _logger);
     }
 
     [Fact]
@@ -141,6 +154,7 @@ public class GitHubHttpClientTests
                 Content = new StringContent("{}")
             };
             response.Headers.Add("X-RateLimit-Remaining", "4999");
+            response.Headers.Add("X-RateLimit-Limit", "5000");
             response.Headers.Add("X-RateLimit-Reset", "1700000000");
             return Task.FromResult(response);
         });
@@ -149,6 +163,7 @@ public class GitHubHttpClientTests
         await sut.GetRawAsync("rate_limit");
 
         sut.RateLimitRemaining.Should().Be(4999);
+        sut.RateLimitTotal.Should().Be(5000);
         sut.RateLimitReset.Should().Be(DateTimeOffset.FromUnixTimeSeconds(1700000000));
     }
 
@@ -170,6 +185,55 @@ public class GitHubHttpClientTests
         // After request with no rate limit headers, values remain default
         await sut.GetRawAsync("test");
         sut.RateLimitRemaining.Should().Be(-1);
+    }
+
+
+    [Fact]
+    public void IsRateLimitLow_DefaultMinusOne_ReturnsFalse()
+    {
+        var handler = new DelegatingHandlerStub((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}")
+            }));
+        var sut = CreateSut(handler);
+        sut.IsRateLimitLow.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetAsync_On401_RaisesAuthenticationFailed()
+    {
+        _authService.GetTokenAsync(Arg.Any<CancellationToken>()).Returns("token");
+
+        var handler = new DelegatingHandlerStub((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)));
+
+        var sut = CreateSut(handler);
+        bool authFailed = false;
+        sut.AuthenticationFailed += () => authFailed = true;
+
+        var act = () => sut.GetAsync<TestPayload>("repos/test/repo");
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        authFailed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetAsync_On403_RaisesAuthenticationFailed()
+    {
+        _authService.GetTokenAsync(Arg.Any<CancellationToken>()).Returns("token");
+
+        var handler = new DelegatingHandlerStub((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden)));
+
+        var sut = CreateSut(handler);
+        bool authFailed = false;
+        sut.AuthenticationFailed += () => authFailed = true;
+
+        var act = () => sut.GetAsync<TestPayload>("repos/test/repo");
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        authFailed.Should().BeTrue();
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using PRDock.App.Infrastructure;
 using PRDock.App.Models;
 using PRDock.App.Services;
 
@@ -14,6 +15,7 @@ public class PRPollingServiceTests : IDisposable
     private readonly IGitHubActionsService _actionsService = Substitute.For<IGitHubActionsService>();
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
     private readonly ILogger<PRPollingService> _logger = Substitute.For<ILogger<PRPollingService>>();
+    private readonly GitHubHttpClient _httpClient;
     private readonly PRPollingService _sut;
 
     public PRPollingServiceTests()
@@ -29,7 +31,13 @@ public class PRPollingServiceTests : IDisposable
         };
         _settingsService.CurrentSettings.Returns(settings);
 
-        _sut = new PRPollingService(_gitHubService, _actionsService, _settingsService, _logger);
+        var httpFactory = Substitute.For<IHttpClientFactory>();
+        var authService = Substitute.For<IGitHubAuthService>();
+        var retryHandler = Substitute.For<IRetryHandler>();
+        var httpLogger = Substitute.For<ILogger<GitHubHttpClient>>();
+        _httpClient = new GitHubHttpClient(httpFactory, authService, retryHandler, httpLogger);
+
+        _sut = new PRPollingService(_gitHubService, _actionsService, _settingsService, _httpClient, _logger);
     }
 
     public void Dispose()
