@@ -197,6 +197,10 @@
                                                                 <Setter Property="BorderThickness" Value="3,0,0,0" />
                                                                 <Setter Property="BorderBrush" Value="{DynamicResource CardBorderMyPRBrush}" />
                                                             </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                                                                <Setter Property="BorderThickness" Value="2" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                            </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
