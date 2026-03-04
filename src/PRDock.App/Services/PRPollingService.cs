@@ -1,4 +1,6 @@
+using System.Net.Http;
 using Microsoft.Extensions.Logging;
+using PRDock.App.Infrastructure;
 using PRDock.App.Models;
 
 namespace PRDock.App.Services;
@@ -8,21 +10,26 @@ public sealed class PRPollingService : IPRPollingService
     private readonly IGitHubService _gitHubService;
     private readonly IGitHubActionsService _actionsService;
     private readonly ISettingsService _settingsService;
+    private readonly GitHubHttpClient _httpClient;
     private readonly ILogger<PRPollingService> _logger;
 
     private CancellationTokenSource? _cts;
     private PeriodicTimer? _timer;
     private bool _disposed;
 
+    private static readonly TimeSpan RepoStaggerDelay = TimeSpan.FromMilliseconds(500);
+
     public PRPollingService(
         IGitHubService gitHubService,
         IGitHubActionsService actionsService,
         ISettingsService settingsService,
+        GitHubHttpClient httpClient,
         ILogger<PRPollingService> logger)
     {
         _gitHubService = gitHubService;
         _actionsService = actionsService;
         _settingsService = settingsService;
+        _httpClient = httpClient;
         _logger = logger;
     }
 
@@ -35,11 +42,12 @@ public sealed class PRPollingService : IPRPollingService
     {
         if (IsPolling) return;
 
-        var intervalSeconds = _settingsService.CurrentSettings.GitHub.PollIntervalSeconds;
+        var interval = GetEffectivePollInterval();
         _cts = new CancellationTokenSource();
-        _timer = new PeriodicTimer(TimeSpan.FromSeconds(intervalSeconds));
+        _timer = new PeriodicTimer(interval);
         IsPolling = true;
 
+        _logger.LogInformation("Polling started with interval {Interval}s", interval.TotalSeconds);
         _ = PollLoopAsync(_cts.Token);
     }
 
@@ -53,6 +61,8 @@ public sealed class PRPollingService : IPRPollingService
         _cts?.Dispose();
         _cts = null;
         IsPolling = false;
+
+        _logger.LogInformation("Polling stopped");
     }
 
     public async Task PollNowAsync(CancellationToken ct = default)
@@ -64,7 +74,11 @@ public sealed class PRPollingService : IPRPollingService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Cancellation requested, do not raise PollFailed
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network/API error during poll cycle: {Message}", ex.Message);
+            PollFailed?.Invoke(ex);
         }
         catch (Exception ex)
         {
@@ -75,7 +89,6 @@ public sealed class PRPollingService : IPRPollingService
 
     private async Task PollLoopAsync(CancellationToken ct)
     {
-        // Execute an immediate poll on start
         await PollNowAsync(ct);
 
         try
@@ -87,40 +100,67 @@ public sealed class PRPollingService : IPRPollingService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Expected on stop
         }
     }
 
     private async Task<IReadOnlyList<PullRequestWithChecks>> ExecutePollCycleAsync(CancellationToken ct)
     {
         var results = new List<PullRequestWithChecks>();
-        var enabledRepos = _settingsService.CurrentSettings.Repos.Where(r => r.Enabled);
+        var enabledRepos = _settingsService.CurrentSettings.Repos.Where(r => r.Enabled).ToList();
 
-        foreach (var repo in enabledRepos)
+        for (int i = 0; i < enabledRepos.Count; i++)
         {
-            var prs = await _gitHubService.GetOpenPullRequestsAsync(repo.Owner, repo.Name, ct);
+            var repo = enabledRepos[i];
 
-            foreach (var pr in prs)
+            if (i > 0)
             {
-                var suites = await _actionsService.GetCheckSuitesAsync(repo.Owner, repo.Name, pr.HeadRef, ct);
-                var allChecks = new List<CheckRun>();
+                await Task.Delay(RepoStaggerDelay, ct);
+            }
 
-                foreach (var suite in suites)
+            try
+            {
+                var prs = await _gitHubService.GetOpenPullRequestsAsync(repo.Owner, repo.Name, ct);
+
+                foreach (var pr in prs)
                 {
-                    var runs = await _actionsService.GetCheckRunsAsync(repo.Owner, repo.Name, suite.Id, ct);
-                    allChecks.AddRange(runs);
+                    var suites = await _actionsService.GetCheckSuitesAsync(repo.Owner, repo.Name, pr.HeadRef, ct);
+                    var allChecks = new List<CheckRun>();
+
+                    foreach (var suite in suites)
+                    {
+                        var runs = await _actionsService.GetCheckRunsAsync(repo.Owner, repo.Name, suite.Id, ct);
+                        allChecks.AddRange(runs);
+                    }
+
+                    results.Add(new PullRequestWithChecks
+                    {
+                        PullRequest = pr,
+                        Checks = allChecks
+                    });
                 }
-
-                results.Add(new PullRequestWithChecks
-                {
-                    PullRequest = pr,
-                    Checks = allChecks
-                });
+            }
+            catch (HttpRequestException ex) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Failed to fetch PRs for {Owner}/{Repo}, skipping", repo.Owner, repo.Name);
             }
         }
 
-        _logger.LogInformation("Poll cycle completed: {Count} PRs across enabled repos", results.Count);
+        _logger.LogInformation("Poll cycle completed: {Count} PRs across {RepoCount} enabled repos", results.Count, enabledRepos.Count);
         return results;
+    }
+
+    private TimeSpan GetEffectivePollInterval()
+    {
+        var baseSeconds = _settingsService.CurrentSettings.GitHub.PollIntervalSeconds;
+
+        if (_httpClient.IsRateLimitLow)
+        {
+            _logger.LogWarning("Rate limit low ({Remaining}), doubling poll interval to {Interval}s",
+                _httpClient.RateLimitRemaining, baseSeconds * 2);
+            return TimeSpan.FromSeconds(baseSeconds * 2);
+        }
+
+        return TimeSpan.FromSeconds(baseSeconds);
     }
 
     public void Dispose()

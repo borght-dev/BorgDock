@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PRDock.App.Infrastructure;
 using PRDock.App.Models;
 using PRDock.App.Services;
 
@@ -9,16 +11,23 @@ namespace PRDock.App.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly IPRPollingService? _pollingService;
+    private readonly GitHubHttpClient? _httpClient;
 
     public MainViewModel()
     {
     }
 
-    public MainViewModel(IPRPollingService pollingService)
+    public MainViewModel(IPRPollingService pollingService, GitHubHttpClient? httpClient = null)
     {
         _pollingService = pollingService;
+        _httpClient = httpClient;
         _pollingService.PollCompleted += OnPollCompleted;
         _pollingService.PollFailed += OnPollFailed;
+
+        if (_httpClient is not null)
+        {
+            _httpClient.AuthenticationFailed += OnAuthenticationFailed;
+        }
     }
 
     [RelayCommand]
@@ -55,6 +64,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _activeFilter = "All";
 
+    [ObservableProperty]
+    private string _rateLimitText = "";
+
+    [ObservableProperty]
+    private bool _isRateLimitWarning;
+
+    [ObservableProperty]
+    private bool _isAuthError;
+
     public ObservableCollection<PullRequestCardViewModel> PullRequests { get; } = [];
 
     public ObservableCollection<RepoGroupViewModel> RepoGroups { get; } = [];
@@ -83,7 +101,6 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        // Placeholder — settings UI not yet implemented.
     }
 
     [RelayCommand]
@@ -116,6 +133,8 @@ public partial class MainViewModel : ObservableObject
             var count = results.Count;
             StatusText = $"PRDock \u2014 {count} open PR{(count == 1 ? "" : "s")}";
             IsLoading = false;
+            IsAuthError = false;
+            UpdateRateLimitDisplay();
         }
 
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
@@ -128,14 +147,52 @@ public partial class MainViewModel : ObservableObject
     {
         void UpdateUi()
         {
-            StatusText = $"Poll failed: {ex.Message}";
+            StatusText = ex switch
+            {
+                HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden }
+                    => "Authentication failed. Please re-authenticate.",
+                HttpRequestException
+                    => $"Network error: {ex.Message}",
+                _
+                    => $"Poll failed: {ex.Message}"
+            };
             IsLoading = false;
+            UpdateRateLimitDisplay();
         }
 
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
             dispatcher.InvokeAsync(UpdateUi);
         else
             UpdateUi();
+    }
+
+    private void OnAuthenticationFailed()
+    {
+        void UpdateUi()
+        {
+            IsAuthError = true;
+            StatusText = "Authentication failed. Please re-authenticate.";
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+            dispatcher.InvokeAsync(UpdateUi);
+        else
+            UpdateUi();
+    }
+
+    private void UpdateRateLimitDisplay()
+    {
+        if (_httpClient is null || _httpClient.RateLimitRemaining < 0)
+        {
+            RateLimitText = "";
+            IsRateLimitWarning = false;
+            return;
+        }
+
+        var remaining = _httpClient.RateLimitRemaining;
+        var total = _httpClient.RateLimitTotal;
+        RateLimitText = total > 0 ? $"API: {remaining}/{total}" : $"API: {remaining} left";
+        IsRateLimitWarning = _httpClient.IsRateLimitLow;
     }
 
     private static PullRequestCardViewModel MapToCard(PullRequestWithChecks prWithChecks)
