@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PRDock.App/PRDock.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PRDock.IntegrationTests/PRDock.IntegrationTests.csproj" />
+    <Project Path="tests/PRDock.Tests/PRDock.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Background -->
+    <Color x:Key="BackgroundColor">#FAFAFA</Color>
+    <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}" />
+
+    <!-- CardBackground -->
+    <Color x:Key="CardBackgroundColor">#FFFFFF</Color>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" />
+
+    <!-- CardBorderMyPR -->
+    <Color x:Key="CardBorderMyPRColor">#204C9C</Color>
+    <SolidColorBrush x:Key="CardBorderMyPRBrush" Color="{StaticResource CardBorderMyPRColor}" />
+
+    <!-- TextPrimary -->
+    <Color x:Key="TextPrimaryColor">#1A1A1A</Color>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+
+    <!-- TextSecondary -->
+    <Color x:Key="TextSecondaryColor">#666666</Color>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+
+    <!-- StatusGreen -->
+    <Color x:Key="StatusGreenColor">#1EAF12</Color>
+    <SolidColorBrush x:Key="StatusGreenBrush" Color="{StaticResource StatusGreenColor}" />
+
+    <!-- StatusRed -->
+    <Color x:Key="StatusRedColor">#D32F2F</Color>
+    <SolidColorBrush x:Key="StatusRedBrush" Color="{StaticResource StatusRedColor}" />
+
+    <!-- StatusYellow -->
+    <Color x:Key="StatusYellowColor">#F9A825</Color>
+    <SolidColorBrush x:Key="StatusYellowBrush" Color="{StaticResource StatusYellowColor}" />
+
+    <!-- StatusGray -->
+    <Color x:Key="StatusGrayColor">#9E9E9E</Color>
+    <SolidColorBrush x:Key="StatusGrayBrush" Color="{StaticResource StatusGrayColor}" />
+
+</ResourceDictionary>
