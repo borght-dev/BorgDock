@@ -107,6 +107,13 @@ public sealed class PRPollingService : IPRPollingService
     {
         var results = new List<PullRequestWithChecks>();
         var enabledRepos = _settingsService.CurrentSettings.Repos.Where(r => r.Enabled).ToList();
+
+        if (enabledRepos.Count == 0)
+        {
+            _logger.LogDebug("No enabled repos configured, skipping poll cycle");
+            return results;
+        }
+
         var errors = new List<Exception>();
 
         for (int i = 0; i < enabledRepos.Count; i++)
