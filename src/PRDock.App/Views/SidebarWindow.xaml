@@ -229,6 +229,57 @@
                                                             <Run Text=" · " />
                                                             <Run Text="{Binding Age, Mode=OneWay}" />
                                                         </TextBlock>
+
+                                                        <!-- Merge conflict badge -->
+                                                        <Border Background="#FFF3CD"
+                                                                CornerRadius="3"
+                                                                Padding="6,2"
+                                                                Margin="0,4,0,0"
+                                                                Visibility="{Binding HasMergeConflict, Converter={StaticResource BoolToVis}}"
+                                                                AutomationProperties.AutomationId="MergeConflictBadge">
+                                                            <TextBlock Text="⚠️ Merge conflict"
+                                                                       FontSize="11"
+                                                                       Foreground="#856404" />
+                                                        </Border>
+
+                                                        <!-- Closure badge -->
+                                                        <Border CornerRadius="3"
+                                                                Padding="6,2"
+                                                                Margin="0,4,0,0"
+                                                                Visibility="{Binding IsClosed, Converter={StaticResource BoolToVis}}"
+                                                                AutomationProperties.AutomationId="ClosureBadge">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#F8D7DA" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ClosureState}" Value="Merged">
+                                                                            <Setter Property="Background" Value="#D4EDDA" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding ClosureBadgeText}"
+                                                                       FontSize="11"
+                                                                       Foreground="#333333" />
+                                                        </Border>
+
+                                                        <!-- Re-run failed checks button -->
+                                                        <Button Content="Re-run failed checks"
+                                                                FontSize="11"
+                                                                Margin="0,4,0,0"
+                                                                Padding="8,2"
+                                                                AutomationProperties.AutomationId="RerunFailedChecksButton">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                        </Button>
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>

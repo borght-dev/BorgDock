@@ -204,7 +204,7 @@ public class RepoGroupViewModelTests
     }
 
     [Fact]
-    public void UpdatePullRequests_EmptyList_ClearsGroups()
+    public void UpdatePullRequests_EmptyList_ClearsOpenGroups()
     {
         var mainVm = new MainViewModel();
         mainVm.UpdatePullRequests(new[] { CreatePr("owner", "repo", 1) });
@@ -212,7 +212,8 @@ public class RepoGroupViewModelTests
 
         mainVm.UpdatePullRequests([]);
 
-        mainVm.RepoGroups.Should().BeEmpty();
+        // Only "Recently Closed" group should remain (the PR moved there)
+        mainVm.RepoGroups.Should().AllSatisfy(g => g.IsRecentlyClosed.Should().BeTrue());
     }
 
     private static PullRequestCardViewModel CreatePr(

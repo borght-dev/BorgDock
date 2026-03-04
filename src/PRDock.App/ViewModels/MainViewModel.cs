@@ -95,7 +95,14 @@ public partial class MainViewModel : ObservableObject
 
     public void UpdatePullRequests(IEnumerable<PullRequestCardViewModel> prs)
     {
-        _allPullRequests = prs.ToList();
+        var newPrs = prs.ToList();
+        DetectClosedPrs(newPrs);
+
+        _previouslyKnownPrs.Clear();
+        foreach (var pr in newPrs)
+            _previouslyKnownPrs[PrKey(pr)] = pr;
+
+        _allPullRequests = newPrs;
         ApplyGroupingAndFiltering();
     }
 
@@ -206,6 +213,22 @@ public partial class MainViewModel : ObservableObject
                 return group;
             })
             .ToList();
+
+        // Add "Recently Closed" group at the bottom when filter is "All"
+        if (ActiveFilter == "All" && _recentlyClosedPrs.Count > 0)
+        {
+            var closedGroup = new RepoGroupViewModel
+            {
+                RepoFullName = "Recently Closed",
+                PrCount = _recentlyClosedPrs.Count,
+                IsRecentlyClosed = true
+            };
+
+            foreach (var pr in _recentlyClosedPrs.OrderByDescending(p => p.ClosedAt))
+                closedGroup.PullRequests.Add(pr);
+
+            groups.Add(closedGroup);
+        }
 
         RepoGroups.Clear();
         foreach (var group in groups)
