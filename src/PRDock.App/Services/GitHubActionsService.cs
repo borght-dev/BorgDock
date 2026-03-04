@@ -78,6 +78,77 @@ public sealed class GitHubActionsService : IGitHubActionsService
         }).ToList().AsReadOnly() ?? new List<CheckRun>().AsReadOnly();
     }
 
+    public async Task<IReadOnlyList<WorkflowJob>> GetWorkflowJobsAsync(
+        string owner, string repo, long runId, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/actions/runs/{runId}/jobs";
+
+        _logger.LogDebug("Fetching workflow jobs from {Url}", url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var wrapper = JsonSerializer.Deserialize<WorkflowJobsResponse>(json, GitHubJsonOptions);
+
+        return wrapper?.Jobs?.Select(dto => new WorkflowJob
+        {
+            Id = dto.Id,
+            Name = dto.Name ?? "",
+            Status = dto.Status ?? "",
+            Conclusion = dto.Conclusion,
+            StartedAt = dto.StartedAt,
+            CompletedAt = dto.CompletedAt,
+            RunId = runId,
+            HtmlUrl = dto.HtmlUrl ?? ""
+        }).ToList().AsReadOnly() ?? new List<WorkflowJob>().AsReadOnly();
+    }
+
+    public async Task<string> GetJobLogAsync(
+        string owner, string repo, long jobId, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/actions/jobs/{jobId}/logs";
+
+        _logger.LogDebug("Fetching job log from {Url}", url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadAsStringAsync(ct);
+    }
+
+    public async Task ReRunWorkflowAsync(
+        string owner, string repo, long runId, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/actions/runs/{runId}/rerun";
+
+        _logger.LogDebug("Re-running workflow at {Url}", url);
+
+        var response = await client.PostAsync(url, null, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<string>> GetPullRequestFilesAsync(
+        string owner, string repo, int prNumber, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/pulls/{prNumber}/files";
+
+        _logger.LogDebug("Fetching PR files from {Url}", url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var files = JsonSerializer.Deserialize<List<PrFileDto>>(json, GitHubJsonOptions);
+
+        return files?.Select(f => f.Filename ?? "").Where(f => f.Length > 0).ToList().AsReadOnly()
+            ?? new List<string>().AsReadOnly();
+    }
+
     private async Task<HttpClient> CreateAuthenticatedClientAsync(CancellationToken ct)
     {
         var client = _httpClientFactory.CreateClient("GitHub");
@@ -120,5 +191,27 @@ public sealed class GitHubActionsService : IGitHubActionsService
         public DateTime? StartedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
         public string? HtmlUrl { get; set; }
+    }
+
+    private sealed class WorkflowJobsResponse
+    {
+        public int TotalCount { get; set; }
+        public List<WorkflowJobDto>? Jobs { get; set; }
+    }
+
+    private sealed class WorkflowJobDto
+    {
+        public long Id { get; set; }
+        public string? Name { get; set; }
+        public string? Status { get; set; }
+        public string? Conclusion { get; set; }
+        public DateTimeOffset? StartedAt { get; set; }
+        public DateTimeOffset? CompletedAt { get; set; }
+        public string? HtmlUrl { get; set; }
+    }
+
+    private sealed class PrFileDto
+    {
+        public string? Filename { get; set; }
     }
 }
