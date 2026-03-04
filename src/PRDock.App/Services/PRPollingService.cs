@@ -107,6 +107,7 @@ public sealed class PRPollingService : IPRPollingService
     {
         var results = new List<PullRequestWithChecks>();
         var enabledRepos = _settingsService.CurrentSettings.Repos.Where(r => r.Enabled).ToList();
+        var errors = new List<Exception>();
 
         for (int i = 0; i < enabledRepos.Count; i++)
         {
@@ -142,7 +143,14 @@ public sealed class PRPollingService : IPRPollingService
             catch (HttpRequestException ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "Failed to fetch PRs for {Owner}/{Repo}, skipping", repo.Owner, repo.Name);
+                errors.Add(ex);
             }
+        }
+
+        // If all enabled repos failed, re-throw so PollFailed fires
+        if (errors.Count > 0 && errors.Count == enabledRepos.Count)
+        {
+            throw errors.Count == 1 ? errors[0] : new AggregateException(errors);
         }
 
         _logger.LogInformation("Poll cycle completed: {Count} PRs across {RepoCount} enabled repos", results.Count, enabledRepos.Count);
