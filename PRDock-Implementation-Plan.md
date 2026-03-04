@@ -659,13 +659,16 @@ No Octokit, no Electron, no WebView. Pure WPF.
 
 ## Implementation Order (Phases)
 
-### Phase 1 — Core Skeleton
-1. WPF app shell with sidebar window (docking, positioning, hide/show).
-2. Settings service (JSON read/write).
-3. System tray icon with basic context menu.
-4. Global hotkey registration.
-5. DI container setup in App.xaml.cs.
-6. Named mutex + lock file for crash recovery.
+### Phase 1 — Core Skeleton ✅ COMPLETE
+1. ✅ WPF app shell with sidebar window (docking, positioning, hide/show).
+2. ✅ Settings service (JSON read/write).
+3. ✅ System tray icon with basic context menu.
+4. ✅ Global hotkey registration.
+5. ✅ DI container setup in App.xaml.cs.
+6. ✅ Named mutex + lock file for crash recovery.
+7. ✅ Theme system (light/dark/system with auto-detection).
+8. ✅ Work area reservation for pinned mode (save/restore + crash recovery).
+9. ✅ 70 tests (56 unit + 14 integration) — all passing.
 
 ### Phase 2 — GitHub Integration
 7. GitHub auth (gh CLI token extraction + PAT fallback).
