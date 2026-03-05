@@ -60,9 +60,6 @@ public partial class SetupWizardViewModel : ObservableObject
     private string _sidebarEdge = "right";
 
     [ObservableProperty]
-    private string _sidebarMode = "pinned";
-
-    [ObservableProperty]
     private bool _isCompleted;
 
     public ObservableCollection<DiscoveredRepoItem> DiscoveredRepos { get; } = [];
@@ -143,13 +140,19 @@ public partial class SetupWizardViewModel : ObservableObject
 
             foreach (var repo in repos)
             {
-                DiscoveredRepos.Add(new DiscoveredRepoItem
+                var item = new DiscoveredRepoItem
                 {
                     Owner = repo.Owner,
                     Name = repo.Name,
                     LocalPath = repo.LocalPath,
                     IsSelected = true
-                });
+                };
+                item.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(DiscoveredRepoItem.IsSelected))
+                        OnPropertyChanged(nameof(CanGoNext));
+                };
+                DiscoveredRepos.Add(item);
             }
         }
         finally
@@ -157,6 +160,22 @@ public partial class SetupWizardViewModel : ObservableObject
             IsScanning = false;
             OnPropertyChanged(nameof(CanGoNext));
         }
+    }
+
+    [RelayCommand]
+    private void SelectAllRepos()
+    {
+        foreach (var repo in DiscoveredRepos)
+            repo.IsSelected = true;
+        OnPropertyChanged(nameof(CanGoNext));
+    }
+
+    [RelayCommand]
+    private void DeselectAllRepos()
+    {
+        foreach (var repo in DiscoveredRepos)
+            repo.IsSelected = false;
+        OnPropertyChanged(nameof(CanGoNext));
     }
 
     [RelayCommand]
@@ -200,22 +219,14 @@ public partial class SetupWizardViewModel : ObservableObject
         Serilog.Log.Information("Wizard finishing: {Count} repos selected out of {Total} discovered",
             selectedRepos.Count, DiscoveredRepos.Count);
 
-        var settings = new AppSettings
-        {
-            SetupComplete = true,
-            GitHub = new GitHubSettings
-            {
-                AuthMethod = UseGhCli ? "ghCli" : "pat",
-                PersonalAccessToken = UseGhCli ? null : PersonalAccessToken,
-                Username = DetectedUsername
-            },
-            Repos = selectedRepos,
-            UI = new UiSettings
-            {
-                SidebarEdge = SidebarEdge,
-                SidebarMode = SidebarMode
-            }
-        };
+        // Merge with existing settings to preserve defaults and any prior configuration
+        var settings = _settingsService.CurrentSettings;
+        settings.SetupComplete = true;
+        settings.GitHub.AuthMethod = UseGhCli ? "ghCli" : "pat";
+        settings.GitHub.PersonalAccessToken = UseGhCli ? null : PersonalAccessToken;
+        settings.GitHub.Username = DetectedUsername;
+        settings.Repos = selectedRepos;
+        settings.UI.SidebarEdge = SidebarEdge;
 
         await _settingsService.SaveAsync(settings);
 

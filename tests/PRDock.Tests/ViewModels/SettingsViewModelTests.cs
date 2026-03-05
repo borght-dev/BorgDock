@@ -25,7 +25,6 @@ public class SettingsViewModelTests
         vm.Username.Should().Be("");
         vm.PollIntervalSeconds.Should().Be(60);
         vm.SidebarEdge.Should().Be("right");
-        vm.SidebarMode.Should().Be("pinned");
         vm.SidebarWidthPx.Should().Be(420);
         vm.Theme.Should().Be("system");
         vm.EditorCommand.Should().Be("code");
@@ -55,7 +54,6 @@ public class SettingsViewModelTests
             UI = new UiSettings
             {
                 SidebarEdge = "left",
-                SidebarMode = "autohide",
                 SidebarWidthPx = 500,
                 Theme = "dark",
                 EditorCommand = "vim"
@@ -85,7 +83,6 @@ public class SettingsViewModelTests
         vm.Repositories[0].Name.Should().Be("hello-world");
         vm.Repositories[0].WorktreeBasePath.Should().Be(@"C:\repos");
         vm.SidebarEdge.Should().Be("left");
-        vm.SidebarMode.Should().Be("autohide");
         vm.SidebarWidthPx.Should().Be(500);
         vm.Theme.Should().Be("dark");
         vm.EditorCommand.Should().Be("vim");
@@ -306,7 +303,6 @@ public class SettingsViewModelTests
         vm.Username = "user1";
         vm.PollIntervalSeconds = 90;
         vm.SidebarEdge = "left";
-        vm.SidebarMode = "autohide";
         vm.SidebarWidthPx = 350;
         vm.Theme = "dark";
         vm.EditorCommand = "nvim";
@@ -323,7 +319,6 @@ public class SettingsViewModelTests
         result.GitHub.Username.Should().Be("user1");
         result.GitHub.PollIntervalSeconds.Should().Be(90);
         result.UI.SidebarEdge.Should().Be("left");
-        result.UI.SidebarMode.Should().Be("autohide");
         result.UI.SidebarWidthPx.Should().Be(350);
         result.UI.Theme.Should().Be("dark");
         result.UI.EditorCommand.Should().Be("nvim");
@@ -424,7 +419,6 @@ public class SettingsViewModelTests
     {
         SettingsViewModel.AuthMethodOptions.Should().Contain("ghCli").And.Contain("pat");
         SettingsViewModel.SidebarEdgeOptions.Should().Contain("left").And.Contain("right");
-        SettingsViewModel.SidebarModeOptions.Should().Contain("pinned").And.Contain("autohide");
         SettingsViewModel.ThemeOptions.Should().Contain("system").And.Contain("light").And.Contain("dark");
         SettingsViewModel.PostFixActionOptions.Should().Contain("commitAndNotify").And.Contain("none");
     }

@@ -59,9 +59,6 @@ public partial class SettingsViewModel : ObservableObject
     private string _sidebarEdge = "right";
 
     [ObservableProperty]
-    private string _sidebarMode = "pinned";
-
-    [ObservableProperty]
     private int _sidebarWidthPx = 420;
 
     [ObservableProperty]
@@ -100,8 +97,7 @@ public partial class SettingsViewModel : ObservableObject
 
     public static IReadOnlyList<string> AuthMethodOptions { get; } = ["ghCli", "pat"];
     public static IReadOnlyList<string> SidebarEdgeOptions { get; } = ["left", "right"];
-    public static IReadOnlyList<string> SidebarModeOptions { get; } = ["pinned", "autohide"];
-    public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", "dark"];
+public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", "dark"];
     public static IReadOnlyList<string> PostFixActionOptions { get; } = ["commitAndNotify", "commitOnly", "notifyOnly", "none"];
 
     // --- Commands ---
@@ -157,7 +153,6 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         SidebarEdge = settings.UI.SidebarEdge;
-        SidebarMode = settings.UI.SidebarMode;
         SidebarWidthPx = settings.UI.SidebarWidthPx;
         Theme = settings.UI.Theme;
         EditorCommand = settings.UI.EditorCommand;
@@ -173,9 +168,11 @@ public partial class SettingsViewModel : ObservableObject
     internal AppSettings ToAppSettings()
     {
         var current = _settingsService.CurrentSettings;
+        var isConfigured = Repositories.Count > 0
+            && (AuthMethod == "ghCli" || !string.IsNullOrWhiteSpace(PersonalAccessToken));
         return new AppSettings
         {
-            SetupComplete = current.SetupComplete,
+            SetupComplete = current.SetupComplete || isConfigured,
             GitHub = new GitHubSettings
             {
                 AuthMethod = AuthMethod,
@@ -195,7 +192,6 @@ public partial class SettingsViewModel : ObservableObject
             UI = new UiSettings
             {
                 SidebarEdge = SidebarEdge,
-                SidebarMode = SidebarMode,
                 SidebarWidthPx = SidebarWidthPx,
                 Theme = Theme,
                 GlobalHotkey = current.UI.GlobalHotkey,

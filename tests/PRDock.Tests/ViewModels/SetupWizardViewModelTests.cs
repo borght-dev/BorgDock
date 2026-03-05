@@ -12,6 +12,11 @@ public class SetupWizardViewModelTests
     private readonly IRepoDiscoveryService _repoDiscoveryService = Substitute.For<IRepoDiscoveryService>();
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
 
+    public SetupWizardViewModelTests()
+    {
+        _settingsService.CurrentSettings.Returns(new AppSettings());
+    }
+
     private SetupWizardViewModel CreateSut() => new(_authService, _repoDiscoveryService, _settingsService);
 
     [Fact]
@@ -183,6 +188,10 @@ public class SetupWizardViewModelTests
     [Fact]
     public async Task Finish_SavesSettingsWithSelectedRepos()
     {
+        // Provide existing settings with custom theme to verify merge
+        var existingSettings = new AppSettings { UI = { Theme = "dark", SidebarWidthPx = 500 } };
+        _settingsService.CurrentSettings.Returns(existingSettings);
+
         AppSettings? savedSettings = null;
         _settingsService.SaveAsync(Arg.Do<AppSettings>(s => savedSettings = s)).Returns(Task.CompletedTask);
 
@@ -190,7 +199,6 @@ public class SetupWizardViewModelTests
         sut.IsAuthValid = true;
         sut.UseGhCli = true;
         sut.SidebarEdge = "left";
-        sut.SidebarMode = "autohide";
         sut.CurrentStep = SetupWizardViewModel.StepSidebar;
         sut.DiscoveredRepos.Add(new DiscoveredRepoItem
         {
@@ -204,14 +212,17 @@ public class SetupWizardViewModelTests
         await sut.GoNextCommand.ExecuteAsync(null);
 
         savedSettings.Should().NotBeNull();
-        savedSettings!.GitHub.AuthMethod.Should().Be("ghCli");
+        savedSettings!.SetupComplete.Should().BeTrue();
+        savedSettings.GitHub.AuthMethod.Should().Be("ghCli");
         savedSettings.Repos.Should().HaveCount(1);
         savedSettings.Repos[0].Owner.Should().Be("org");
         savedSettings.Repos[0].Name.Should().Be("repo1");
         savedSettings.Repos[0].WorktreeBasePath.Should().Be(@"C:\Dev\repo1");
         savedSettings.Repos[0].WorktreeSubfolder.Should().Be(".wt");
         savedSettings.UI.SidebarEdge.Should().Be("left");
-        savedSettings.UI.SidebarMode.Should().Be("autohide");
+        // Verify existing settings are preserved (merged, not replaced)
+        savedSettings.UI.Theme.Should().Be("dark");
+        savedSettings.UI.SidebarWidthPx.Should().Be(500);
         sut.IsCompleted.Should().BeTrue();
         sut.CurrentStep.Should().Be(SetupWizardViewModel.StepDone);
     }
@@ -219,6 +230,9 @@ public class SetupWizardViewModelTests
     [Fact]
     public async Task Finish_WithPat_SavesPatSettings()
     {
+        var existingSettings = new AppSettings();
+        _settingsService.CurrentSettings.Returns(existingSettings);
+
         AppSettings? savedSettings = null;
         _settingsService.SaveAsync(Arg.Do<AppSettings>(s => savedSettings = s)).Returns(Task.CompletedTask);
 
@@ -243,13 +257,6 @@ public class SetupWizardViewModelTests
     {
         var sut = CreateSut();
         sut.SidebarEdge.Should().Be("right");
-    }
-
-    [Fact]
-    public void SidebarMode_DefaultsToPinned()
-    {
-        var sut = CreateSut();
-        sut.SidebarMode.Should().Be("pinned");
     }
 
     [Fact]

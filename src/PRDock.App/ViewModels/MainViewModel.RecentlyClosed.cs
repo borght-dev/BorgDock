@@ -9,6 +9,12 @@ public partial class MainViewModel
 
     internal IReadOnlyList<PullRequestCardViewModel> RecentlyClosedPrs => _recentlyClosedPrs;
 
+    /// <summary>
+    /// Fired when a PR disappears from the open list (merged or closed).
+    /// Args: (title, author, prNumber, repoFullName)
+    /// </summary>
+    public event Action<string, string, int, string>? PrClosedOrMerged;
+
     internal void InitTimeProvider(TimeProvider timeProvider)
     {
         _timeProvider = timeProvider;
@@ -31,7 +37,16 @@ public partial class MainViewModel
                 closedCard.ClosedAt = now;
 
                 if (!_recentlyClosedPrs.Any(p => PrKey(p) == kvp.Key))
+                {
                     _recentlyClosedPrs.Add(closedCard);
+
+                    // Fire celebration event
+                    PrClosedOrMerged?.Invoke(
+                        closedCard.Title,
+                        closedCard.AuthorLogin,
+                        closedCard.Number,
+                        $"{closedCard.RepoOwner}/{closedCard.RepoName}");
+                }
             }
         }
 

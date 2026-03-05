@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PRDock.App.Models;
 
 namespace PRDock.App.ViewModels;
 
@@ -37,10 +38,22 @@ public partial class PullRequestCardViewModel : ObservableObject
     private string _reviewBadgeText = "";
 
     [ObservableProperty]
+    private string _reviewBadgeColor = "gray";
+
+    [ObservableProperty]
+    private bool _isDraft;
+
+    [ObservableProperty]
+    private int _commentCount;
+
+    [ObservableProperty]
     private bool _hasMergeConflict;
 
     [ObservableProperty]
     private string _htmlUrl = "";
+
+    [ObservableProperty]
+    private string _body = "";
 
     [ObservableProperty]
     private DateTime _updatedAt;
@@ -60,6 +73,33 @@ public partial class PullRequestCardViewModel : ObservableObject
     [ObservableProperty]
     private bool _canBypassMerge;
 
+    [ObservableProperty]
+    private bool _isCheckDetailLoading;
+
+    [ObservableProperty]
+    private bool _hasCheckDetailLoaded;
+
+    [ObservableProperty]
+    private string _checkDetailError = "";
+
+    [ObservableProperty]
+    private bool _isReviewLoading;
+
+    [ObservableProperty]
+    private bool _hasReviewLoaded;
+
+    /// <summary>
+    /// The failed check runs with their IDs, for log fetching.
+    /// </summary>
+    public List<CheckRun> FailedCheckRuns { get; set; } = [];
+
+    public ObservableCollection<ParsedError> ParsedErrors { get; } = [];
+
+    public ObservableCollection<ClaudeReviewComment> ReviewComments { get; } = [];
+
+    [ObservableProperty]
+    private string _reviewSummaryText = "";
+
     public ObservableCollection<string> FailedChecks { get; } = [];
 
     public ObservableCollection<string> PendingChecks { get; } = [];
@@ -67,6 +107,8 @@ public partial class PullRequestCardViewModel : ObservableObject
     public Action<PullRequestCardViewModel>? RerunRequested { get; set; }
     public Action<PullRequestCardViewModel>? FixWithClaudeRequested { get; set; }
     public Action<PullRequestCardViewModel>? BypassMergeRequested { get; set; }
+    public Action<PullRequestCardViewModel>? DetailExpandRequested { get; set; }
+    public Action<PullRequestCardViewModel>? OpenDetailViewRequested { get; set; }
 
     [RelayCommand]
     private void RerunFailedChecks()
@@ -78,6 +120,12 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void FixWithClaude()
     {
         FixWithClaudeRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void OpenDetailView()
+    {
+        OpenDetailViewRequested?.Invoke(this);
     }
 
     [RelayCommand]

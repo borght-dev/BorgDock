@@ -45,7 +45,10 @@ public partial class MainViewModel
     {
         var cards = GetVisibleCards();
         if (FocusedIndex >= 0 && FocusedIndex < cards.Count)
-            cards[FocusedIndex].IsDetailExpanded = !cards[FocusedIndex].IsDetailExpanded;
+        {
+            var card = cards[FocusedIndex];
+            OpenPRDetailRequested?.Invoke(card);
+        }
     }
 
     [RelayCommand]

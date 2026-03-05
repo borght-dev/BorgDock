@@ -21,6 +21,9 @@ public class PullRequestCardViewModelTests
         vm.IsMyPr.Should().BeFalse();
         vm.CheckSummary.Should().Be("");
         vm.ReviewBadgeText.Should().Be("");
+        vm.ReviewBadgeColor.Should().Be("gray");
+        vm.IsDraft.Should().BeFalse();
+        vm.CommentCount.Should().Be(0);
         vm.HasMergeConflict.Should().BeFalse();
         vm.HasAllChecksPassed.Should().BeFalse();
         vm.CanBypassMerge.Should().BeFalse();
@@ -159,6 +162,9 @@ public class PullRequestCardViewModelTests
             IsMyPr = true,
             CheckSummary = "6 passed",
             ReviewBadgeText = "Approved",
+            ReviewBadgeColor = "green",
+            IsDraft = false,
+            CommentCount = 5,
             HasMergeConflict = false,
             HasAllChecksPassed = true,
             CanBypassMerge = true,
@@ -177,6 +183,9 @@ public class PullRequestCardViewModelTests
         vm.IsMyPr.Should().BeTrue();
         vm.CheckSummary.Should().Be("6 passed");
         vm.ReviewBadgeText.Should().Be("Approved");
+        vm.ReviewBadgeColor.Should().Be("green");
+        vm.IsDraft.Should().BeFalse();
+        vm.CommentCount.Should().Be(5);
         vm.HasMergeConflict.Should().BeFalse();
         vm.HasAllChecksPassed.Should().BeTrue();
         vm.CanBypassMerge.Should().BeTrue();

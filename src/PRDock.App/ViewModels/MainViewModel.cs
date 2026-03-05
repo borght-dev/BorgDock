@@ -15,6 +15,13 @@ public partial class MainViewModel : ObservableObject
     private readonly GitHubHttpClient? _httpClient;
     private readonly ISettingsService? _settingsService;
     private readonly IGitHubActionsService? _actionsService;
+    private readonly ILogParserService? _logParserService;
+    private readonly INotificationService? _notificationService;
+    private readonly IClaudeCodeLauncher? _claudeCodeLauncher;
+    private readonly IWorktreeService? _worktreeService;
+    private readonly IGitHubService? _gitHubService;
+
+    private IReadOnlyList<PullRequestWithChecks> _previousPollResults = [];
 
     public MainViewModel()
     {
@@ -24,12 +31,22 @@ public partial class MainViewModel : ObservableObject
         IPRPollingService pollingService,
         GitHubHttpClient? httpClient = null,
         ISettingsService? settingsService = null,
-        IGitHubActionsService? actionsService = null)
+        IGitHubActionsService? actionsService = null,
+        ILogParserService? logParserService = null,
+        INotificationService? notificationService = null,
+        IClaudeCodeLauncher? claudeCodeLauncher = null,
+        IWorktreeService? worktreeService = null,
+        IGitHubService? gitHubService = null)
     {
         _pollingService = pollingService;
         _httpClient = httpClient;
         _settingsService = settingsService;
         _actionsService = actionsService;
+        _logParserService = logParserService;
+        _notificationService = notificationService;
+        _claudeCodeLauncher = claudeCodeLauncher;
+        _worktreeService = worktreeService;
+        _gitHubService = gitHubService;
         _pollingService.PollCompleted += OnPollCompleted;
         _pollingService.PollFailed += OnPollFailed;
 
@@ -37,6 +54,9 @@ public partial class MainViewModel : ObservableObject
         {
             _httpClient.AuthenticationFailed += OnAuthenticationFailed;
         }
+
+        // Cleanup old prompt files on startup
+        _claudeCodeLauncher?.CleanupOldPromptFiles();
     }
 
     [RelayCommand]
@@ -59,13 +79,7 @@ public partial class MainViewModel : ObservableObject
     private bool _isSidebarVisible = true;
 
     [ObservableProperty]
-    private bool _isPinned = true;
-
-    [ObservableProperty]
     private string _statusText = "PRDock \u2014 0 open PRs";
-
-    [ObservableProperty]
-    private string _sidebarMode = "pinned";
 
     [ObservableProperty]
     private bool _isLoading;
@@ -98,13 +112,6 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void TogglePin()
-    {
-        IsPinned = !IsPinned;
-        SidebarMode = IsPinned ? "pinned" : "autohide";
-    }
-
-    [RelayCommand]
     private void MinimizeToBadge()
     {
         IsSidebarVisible = false;
@@ -123,6 +130,10 @@ public partial class MainViewModel : ObservableObject
         ApplyGroupingAndFiltering();
     }
 
+    public void ApplySidebarPreferences(UiSettings settings)
+    {
+    }
+
     public void UpdatePullRequests(IEnumerable<PullRequestCardViewModel> prs)
     {
         var newPrs = prs.ToList();
@@ -136,7 +147,10 @@ public partial class MainViewModel : ObservableObject
         ApplyGroupingAndFiltering();
     }
 
-    private void OnPollCompleted(IReadOnlyList<PullRequestWithChecks> results)
+    /// <summary>
+    /// Processes poll results into the UI. Used both for live polls and cached data on startup.
+    /// </summary>
+    public void ProcessPollResults(IReadOnlyList<PullRequestWithChecks> results)
     {
         void UpdateUi()
         {
@@ -154,6 +168,22 @@ public partial class MainViewModel : ObservableObject
             dispatcher.InvokeAsync(UpdateUi);
         else
             UpdateUi();
+    }
+
+    private void OnPollCompleted(IReadOnlyList<PullRequestWithChecks> results)
+    {
+        // Fire notifications for state transitions (before UI update)
+        try
+        {
+            _notificationService?.ProcessStateTransitions(_previousPollResults, results);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to process notification state transitions");
+        }
+        _previousPollResults = results;
+
+        ProcessPollResults(results);
     }
 
     private void OnPollFailed(Exception ex)
@@ -221,6 +251,7 @@ public partial class MainViewModel : ObservableObject
             && hasAllChecksPassed
             && pr.Mergeable != false
             && reviewMissing;
+        var (reviewText, reviewColor) = FormatReviewBadge(pr.ReviewStatus, pr.IsDraft);
         var card = new PullRequestCardViewModel
         {
             Number = pr.Number,
@@ -229,22 +260,29 @@ public partial class MainViewModel : ObservableObject
             BaseRef = pr.BaseRef,
             AuthorLogin = pr.AuthorLogin,
             Age = PullRequestCardViewModel.FormatAge(pr.UpdatedAt),
-            StatusDotColor = prWithChecks.OverallStatus,
+            StatusDotColor = pr.IsDraft ? "gray" : prWithChecks.OverallStatus,
             HtmlUrl = pr.HtmlUrl,
+            Body = pr.Body,
             RepoOwner = pr.RepoOwner,
             RepoName = pr.RepoName,
             UpdatedAt = pr.UpdatedAt,
             HasMergeConflict = pr.Mergeable == false,
+            IsDraft = pr.IsDraft,
+            CommentCount = pr.CommentCount,
             IsMyPr = !string.IsNullOrEmpty(username)
                 && pr.AuthorLogin.Equals(username, StringComparison.OrdinalIgnoreCase),
             CheckSummary = FormatCheckSummary(prWithChecks),
-            ReviewBadgeText = pr.ReviewStatus.ToString(),
+            ReviewBadgeText = reviewText,
+            ReviewBadgeColor = reviewColor,
             FirstFailedRunId = firstFailedCheck?.CheckSuiteId ?? 0,
             HasAllChecksPassed = hasAllChecksPassed,
             CanBypassMerge = canBypassMerge,
+            FailedCheckRuns = prWithChecks.Checks.Where(c => c.IsFailed).ToList(),
             RerunRequested = OnRerunRequested,
             FixWithClaudeRequested = OnFixWithClaudeRequested,
-            BypassMergeRequested = OnBypassMergeRequested
+            BypassMergeRequested = OnBypassMergeRequested,
+            DetailExpandRequested = OnDetailExpandRequested,
+            OpenDetailViewRequested = OnOpenDetailViewRequested
         };
 
         foreach (var name in prWithChecks.FailedCheckNames)
@@ -274,11 +312,210 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private void OnFixWithClaudeRequested(PullRequestCardViewModel card)
+    private async void OnFixWithClaudeRequested(PullRequestCardViewModel card)
     {
-        Serilog.Log.Information("Fix with Claude requested for {Owner}/{Repo} PR #{Number}",
-            card.RepoOwner, card.RepoName, card.Number);
-        StatusText = $"Fix with Claude requested for PR #{card.Number} (coming soon)";
+        if (_claudeCodeLauncher is null || _actionsService is null || _worktreeService is null)
+        {
+            StatusText = $"Fix with Claude not available — missing services";
+            return;
+        }
+
+        var repo = _settingsService?.CurrentSettings.Repos
+            .FirstOrDefault(r => r.Owner == card.RepoOwner && r.Name == card.RepoName);
+        if (repo is null || string.IsNullOrWhiteSpace(repo.WorktreeBasePath))
+        {
+            StatusText = $"Configure worktree base path for {card.RepoOwner}/{card.RepoName} in settings first";
+            return;
+        }
+
+        try
+        {
+            StatusText = $"Preparing Claude fix for PR #{card.Number}...";
+
+            // Ensure check details are loaded
+            if (!card.HasCheckDetailLoaded)
+                await LoadCheckDetailsAsync(card);
+
+            // Find or create worktree
+            var worktreePath = await _worktreeService.FindOrCreateWorktreeAsync(
+                repo.WorktreeBasePath, repo.WorktreeSubfolder, card.HeadRef);
+
+            // Get changed files
+            var changedFiles = await _actionsService.GetPullRequestFilesAsync(
+                card.RepoOwner, card.RepoName, card.Number);
+
+            // Get raw log from first failed run
+            var rawLog = "";
+            var firstFailedRun = card.FailedCheckRuns.FirstOrDefault();
+            if (firstFailedRun is not null)
+            {
+                try
+                {
+                    var jobs = await _actionsService.GetWorkflowJobsAsync(
+                        card.RepoOwner, card.RepoName, firstFailedRun.CheckSuiteId);
+                    var failedJob = jobs.FirstOrDefault(j => j.Conclusion == "failure");
+                    if (failedJob is not null)
+                        rawLog = await _actionsService.GetJobLogAsync(
+                            card.RepoOwner, card.RepoName, failedJob.Id);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Failed to fetch raw log for Claude fix");
+                }
+            }
+
+            var pr = new PullRequest
+            {
+                Number = card.Number,
+                Title = card.Title,
+                HeadRef = card.HeadRef,
+                BaseRef = card.BaseRef,
+                AuthorLogin = card.AuthorLogin,
+                HtmlUrl = card.HtmlUrl,
+                RepoOwner = card.RepoOwner,
+                RepoName = card.RepoName
+            };
+
+            var checkName = card.FailedChecks.FirstOrDefault() ?? "unknown";
+            await _claudeCodeLauncher.LaunchFixAsync(
+                pr, checkName, card.ParsedErrors.ToList(), changedFiles.ToList(),
+                rawLog, worktreePath, repo);
+
+            StatusText = $"Claude Code launched for PR #{card.Number}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to launch Claude fix for PR #{Number}", card.Number);
+            StatusText = $"Failed to launch Claude fix: {ex.Message}";
+        }
+    }
+
+    private async void OnDetailExpandRequested(PullRequestCardViewModel card)
+    {
+        // Load check details (log parsing) if there are failed checks
+        if (!card.HasCheckDetailLoaded && !card.IsCheckDetailLoading && card.FailedCheckRuns.Count > 0)
+            await LoadCheckDetailsAsync(card);
+
+        // Load Claude review comments
+        if (!card.HasReviewLoaded && !card.IsReviewLoading)
+            await LoadReviewCommentsAsync(card);
+    }
+
+    private async Task LoadCheckDetailsAsync(PullRequestCardViewModel card)
+    {
+        if (_actionsService is null || _logParserService is null)
+            return;
+
+        card.IsCheckDetailLoading = true;
+        card.CheckDetailError = "";
+
+        try
+        {
+            var changedFiles = await _actionsService.GetPullRequestFilesAsync(
+                card.RepoOwner, card.RepoName, card.Number);
+
+            foreach (var failedCheck in card.FailedCheckRuns)
+            {
+                try
+                {
+                    var jobs = await _actionsService.GetWorkflowJobsAsync(
+                        card.RepoOwner, card.RepoName, failedCheck.CheckSuiteId);
+                    var failedJob = jobs.FirstOrDefault(j => j.Conclusion == "failure");
+                    if (failedJob is null) continue;
+
+                    var log = await _actionsService.GetJobLogAsync(
+                        card.RepoOwner, card.RepoName, failedJob.Id);
+                    var errors = _logParserService.Parse(log, changedFiles.ToList());
+
+                    void AddErrors()
+                    {
+                        foreach (var error in errors)
+                            card.ParsedErrors.Add(error);
+                    }
+
+                    if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+                        await dispatcher.InvokeAsync(AddErrors);
+                    else
+                        AddErrors();
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Failed to fetch log for check {Check}", failedCheck.Name);
+                }
+            }
+
+            card.HasCheckDetailLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to load check details for PR #{Number}", card.Number);
+            card.CheckDetailError = ex.Message;
+        }
+        finally
+        {
+            card.IsCheckDetailLoading = false;
+        }
+    }
+
+    private async Task LoadReviewCommentsAsync(PullRequestCardViewModel card)
+    {
+        if (_gitHubService is null)
+            return;
+
+        card.IsReviewLoading = true;
+
+        try
+        {
+            var botUsername = _settingsService?.CurrentSettings.ClaudeReview.BotUsername ?? "claude[bot]";
+            var comments = await _gitHubService.GetPullRequestReviewCommentsAsync(
+                card.RepoOwner, card.RepoName, card.Number, botUsername);
+
+            if (comments.Count > 0)
+            {
+                void AddComments()
+                {
+                    card.ReviewComments.Clear();
+                    foreach (var comment in comments)
+                        card.ReviewComments.Add(comment);
+
+                    // Build summary text
+                    var critical = comments.Count(c => c.Severity == CommentSeverity.Critical);
+                    var suggestions = comments.Count(c => c.Severity == CommentSeverity.Suggestion);
+                    var praise = comments.Count(c => c.Severity == CommentSeverity.Praise);
+                    var other = comments.Count - critical - suggestions - praise;
+
+                    var parts = new List<string>();
+                    if (critical > 0) parts.Add($"{critical} critical");
+                    if (suggestions > 0) parts.Add($"{suggestions} suggestion{(suggestions == 1 ? "" : "s")}");
+                    if (praise > 0) parts.Add($"{praise} praise");
+                    if (other > 0) parts.Add($"{other} other");
+
+                    card.ReviewSummaryText = parts.Count > 0
+                        ? "\U0001F916 " + string.Join(" \u00B7 ", parts)
+                        : "";
+                }
+
+                if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+                    await dispatcher.InvokeAsync(AddComments);
+                else
+                    AddComments();
+            }
+
+            card.HasReviewLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to load review comments for PR #{Number}", card.Number);
+        }
+        finally
+        {
+            card.IsReviewLoading = false;
+        }
+    }
+
+    private void OnOpenDetailViewRequested(PullRequestCardViewModel card)
+    {
+        OpenPRDetailRequested?.Invoke(card);
     }
 
     private void OnBypassMergeRequested(PullRequestCardViewModel card)
@@ -339,6 +576,21 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    internal static (string Text, string Color) FormatReviewBadge(ReviewStatus status, bool isDraft)
+    {
+        if (isDraft)
+            return ("", "gray");
+
+        return status switch
+        {
+            ReviewStatus.Approved => ("\u2713 Approved", "green"),
+            ReviewStatus.ChangesRequested => ("\u2717 Changes requested", "red"),
+            ReviewStatus.Commented => ("Commented", "gray"),
+            ReviewStatus.Pending or ReviewStatus.None => ("Review required", "yellow"),
+            _ => ("", "gray"),
+        };
+    }
+
     private static string FormatCheckSummary(PullRequestWithChecks prWithChecks)
     {
         if (prWithChecks.Checks.Count == 0) return "No checks";
@@ -352,6 +604,21 @@ public partial class MainViewModel : ObservableObject
         if (pending > 0) return $"{pending}/{total} pending";
         return $"{passed}/{total} passed";
     }
+
+    [RelayCommand]
+    private void ManageWorktrees()
+    {
+        if (_worktreeService is null || _settingsService is null)
+        {
+            StatusText = "Worktree management not available";
+            return;
+        }
+
+        ManageWorktreesRequested?.Invoke();
+    }
+
+    public event Action? ManageWorktreesRequested;
+    public event Action<PullRequestCardViewModel>? OpenPRDetailRequested;
 
     internal void ApplyGroupingAndFiltering()
     {
@@ -405,4 +672,5 @@ public partial class MainViewModel : ObservableObject
         foreach (var group in groups)
             RepoGroups.Add(group);
     }
+
 }

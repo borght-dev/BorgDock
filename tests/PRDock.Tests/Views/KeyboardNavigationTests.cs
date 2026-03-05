@@ -131,26 +131,33 @@ public class KeyboardNavigationTests
     }
 
     [Fact]
-    public void ToggleFocusedDetail_ExpandsDetailOnFocusedCard()
+    public void ToggleFocusedDetail_RaisesOpenPRDetailRequested()
     {
         var vm = CreateViewModelWithCards(3);
         vm.MoveFocusDownCommand.Execute(null); // focus index 0
 
+        PullRequestCardViewModel? requestedCard = null;
+        vm.OpenPRDetailRequested += card => requestedCard = card;
+
         vm.ToggleFocusedDetailCommand.Execute(null);
 
-        vm.GetVisibleCards()[0].IsDetailExpanded.Should().BeTrue();
+        requestedCard.Should().NotBeNull();
+        requestedCard!.Number.Should().Be(vm.GetVisibleCards()[0].Number);
     }
 
     [Fact]
-    public void ToggleFocusedDetail_CollapsesWhenAlreadyExpanded()
+    public void ToggleFocusedDetail_RaisesEventEachTime()
     {
         var vm = CreateViewModelWithCards(3);
         vm.MoveFocusDownCommand.Execute(null);
-        vm.ToggleFocusedDetailCommand.Execute(null); // expand
 
-        vm.ToggleFocusedDetailCommand.Execute(null); // collapse
+        var count = 0;
+        vm.OpenPRDetailRequested += _ => count++;
 
-        vm.GetVisibleCards()[0].IsDetailExpanded.Should().BeFalse();
+        vm.ToggleFocusedDetailCommand.Execute(null);
+        vm.ToggleFocusedDetailCommand.Execute(null);
+
+        count.Should().Be(2);
     }
 
     [Fact]

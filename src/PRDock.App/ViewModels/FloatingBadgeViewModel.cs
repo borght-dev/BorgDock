@@ -20,6 +20,12 @@ public partial class FloatingBadgeViewModel : ObservableObject
     [ObservableProperty]
     private string _backgroundColor = "green";
 
+    [ObservableProperty]
+    private string _toastText = "";
+
+    [ObservableProperty]
+    private bool _isToastVisible;
+
     public event Action? ExpandSidebarRequested;
 
     public event Action? QuitRequested;
@@ -35,6 +41,18 @@ public partial class FloatingBadgeViewModel : ObservableObject
         PendingCount = pendingCount;
         BadgeText = FormatBadgeText(totalPrCount, failingCount, pendingCount);
         BackgroundColor = DetermineBackgroundColor(failingCount, pendingCount);
+    }
+
+    public async void ShowToast(string message, int durationMs = 4000)
+    {
+        ToastText = message;
+        IsToastVisible = true;
+        await System.Threading.Tasks.Task.Delay(durationMs);
+        if (ToastText == message)
+        {
+            IsToastVisible = false;
+            ToastText = "";
+        }
     }
 
     internal static string FormatBadgeText(int total, int failing, int pending)
