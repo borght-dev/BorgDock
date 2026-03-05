@@ -1,49 +1,124 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Background -->
-    <Color x:Key="BackgroundColor">#1E1E1E</Color>
+    <!-- Background — deeper than GitHub dark, almost OLED -->
+    <Color x:Key="BackgroundColor">#0A0E14</Color>
     <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}" />
 
-    <!-- CardBackground -->
-    <Color x:Key="CardBackgroundColor">#2D2D2D</Color>
+    <!-- CardBackground — lifted surface with slight warmth -->
+    <Color x:Key="CardBackgroundColor">#131820</Color>
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" />
 
-    <!-- CardBorderMyPR -->
-    <Color x:Key="CardBorderMyPRColor">#4A8AE6</Color>
+    <!-- CardBorderMyPR — electric blue accent -->
+    <Color x:Key="CardBorderMyPRColor">#4C9EFF</Color>
     <SolidColorBrush x:Key="CardBorderMyPRBrush" Color="{StaticResource CardBorderMyPRColor}" />
 
-    <!-- TextPrimary -->
-    <Color x:Key="TextPrimaryColor">#E0E0E0</Color>
+    <!-- TextPrimary — slightly warm white for readability -->
+    <Color x:Key="TextPrimaryColor">#E8ECF0</Color>
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
 
     <!-- TextSecondary -->
-    <Color x:Key="TextSecondaryColor">#999999</Color>
+    <Color x:Key="TextSecondaryColor">#7D8590</Color>
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
 
-    <!-- StatusGreen -->
-    <Color x:Key="StatusGreenColor">#2ED61E</Color>
+    <!-- TextTertiary -->
+    <Color x:Key="TextTertiaryColor">#545D68</Color>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
+
+    <!-- StatusGreen — vivid, slightly teal-shifted -->
+    <Color x:Key="StatusGreenColor">#2DD4A8</Color>
     <SolidColorBrush x:Key="StatusGreenBrush" Color="{StaticResource StatusGreenColor}" />
 
-    <!-- StatusRed -->
-    <Color x:Key="StatusRedColor">#F44336</Color>
+    <!-- StatusRed — warm red, easier on eyes -->
+    <Color x:Key="StatusRedColor">#F47067</Color>
     <SolidColorBrush x:Key="StatusRedBrush" Color="{StaticResource StatusRedColor}" />
 
-    <!-- StatusYellow -->
-    <Color x:Key="StatusYellowColor">#FFD54F</Color>
+    <!-- StatusYellow — amber -->
+    <Color x:Key="StatusYellowColor">#E3B341</Color>
     <SolidColorBrush x:Key="StatusYellowBrush" Color="{StaticResource StatusYellowColor}" />
 
     <!-- StatusGray -->
-    <Color x:Key="StatusGrayColor">#757575</Color>
+    <Color x:Key="StatusGrayColor">#545D68</Color>
     <SolidColorBrush x:Key="StatusGrayBrush" Color="{StaticResource StatusGrayColor}" />
 
-    <!-- Accent -->
-    <Color x:Key="AccentColor">#4A8AE6</Color>
+    <!-- Accent — bright blue, used sparingly -->
+    <Color x:Key="AccentColor">#4C9EFF</Color>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
-    <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#0A0E14" />
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#141D2B" />
 
     <!-- FilterChip -->
-    <SolidColorBrush x:Key="FilterChipBackgroundBrush" Color="#3D3D3D" />
-    <SolidColorBrush x:Key="FilterChipForegroundBrush" Color="#E0E0E0" />
+    <SolidColorBrush x:Key="FilterChipBackgroundBrush" Color="#1A2030" />
+    <SolidColorBrush x:Key="FilterChipForegroundBrush" Color="#9DA5AE" />
+
+    <!-- Surfaces and chrome -->
+    <SolidColorBrush x:Key="SidebarGradientTopBrush" Color="#0A0E14" />
+    <SolidColorBrush x:Key="SidebarGradientBottomBrush" Color="#0F1319" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#111820" />
+    <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#161D27" />
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#1C2535" />
+    <SolidColorBrush x:Key="SubtleBorderBrush" Color="#1E2736" />
+    <SolidColorBrush x:Key="StrongBorderBrush" Color="#2D3848" />
+
+    <!-- Controls -->
+    <SolidColorBrush x:Key="IconButtonBackgroundBrush" Color="#151C26" />
+    <SolidColorBrush x:Key="IconButtonHoverBrush" Color="#1E2736" />
+    <SolidColorBrush x:Key="IconButtonPressedBrush" Color="#283345" />
+    <SolidColorBrush x:Key="IconButtonForegroundBrush" Color="#9DA5AE" />
+    <SolidColorBrush x:Key="ActionSecondaryBackgroundBrush" Color="#151C26" />
+    <SolidColorBrush x:Key="ActionSecondaryForegroundBrush" Color="#4C9EFF" />
+    <SolidColorBrush x:Key="ActionDangerBackgroundBrush" Color="#2A1519" />
+    <SolidColorBrush x:Key="ActionDangerForegroundBrush" Color="#F47067" />
+
+    <!-- Badges -->
+    <SolidColorBrush x:Key="SuccessBadgeBackgroundBrush" Color="#0D2818" />
+    <SolidColorBrush x:Key="SuccessBadgeForegroundBrush" Color="#2DD4A8" />
+    <SolidColorBrush x:Key="WarningBadgeBackgroundBrush" Color="#261E0A" />
+    <SolidColorBrush x:Key="WarningBadgeForegroundBrush" Color="#E3B341" />
+    <SolidColorBrush x:Key="ErrorBadgeBackgroundBrush" Color="#2A1519" />
+    <SolidColorBrush x:Key="ErrorBadgeForegroundBrush" Color="#F47067" />
+    <SolidColorBrush x:Key="NeutralBadgeBackgroundBrush" Color="#1A1530" />
+    <SolidColorBrush x:Key="NeutralBadgeForegroundBrush" Color="#A78BFA" />
+
+    <!-- Scrollbar -->
+    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#1E2736" />
+    <SolidColorBrush x:Key="ScrollbarThumbHoverBrush" Color="#2D3848" />
+
+    <!-- PR Number Badge -->
+    <SolidColorBrush x:Key="PrNumberBadgeBackgroundBrush" Color="#1A2030" />
+    <SolidColorBrush x:Key="PrNumberBadgeForegroundBrush" Color="#7D8590" />
+    <SolidColorBrush x:Key="PrNumberMyBadgeBackgroundBrush" Color="#141D2B" />
+    <SolidColorBrush x:Key="PrNumberMyBadgeForegroundBrush" Color="#4C9EFF" />
+
+    <!-- Draft badge -->
+    <SolidColorBrush x:Key="DraftBadgeBackgroundBrush" Color="#1A2030" />
+    <SolidColorBrush x:Key="DraftBadgeForegroundBrush" Color="#7D8590" />
+
+    <!-- Review status -->
+    <SolidColorBrush x:Key="ReviewApprovedBrush" Color="#2DD4A8" />
+    <SolidColorBrush x:Key="ReviewChangesRequestedBrush" Color="#F47067" />
+    <SolidColorBrush x:Key="ReviewRequiredBrush" Color="#E3B341" />
+    <SolidColorBrush x:Key="ReviewCommentedBrush" Color="#7D8590" />
+
+    <!-- Comment count -->
+    <SolidColorBrush x:Key="CommentCountForegroundBrush" Color="#7D8590" />
+
+    <!-- Separator -->
+    <SolidColorBrush x:Key="SeparatorBrush" Color="#1A2030" />
+
+    <!-- Diff / Code -->
+    <SolidColorBrush x:Key="DiffAddedBgBrush" Color="#1A2D1A" />
+    <SolidColorBrush x:Key="DiffDeletedBgBrush" Color="#2D1A1A" />
+    <SolidColorBrush x:Key="DiffHunkHeaderBrush" Color="#1A1A2D" />
+    <SolidColorBrush x:Key="TabActiveBrush" Color="#4C9EFF" />
+    <SolidColorBrush x:Key="TabInactiveBrush" Color="#7D8590" />
+    <SolidColorBrush x:Key="CodeBlockBgBrush" Color="#0D1117" />
+    <FontFamily x:Key="CodeFontFamily">Consolas, Courier New</FontFamily>
+
+    <!-- Wizard-specific -->
+    <SolidColorBrush x:Key="WizardStepActiveBrush" Color="#4C9EFF" />
+    <SolidColorBrush x:Key="WizardStepCompleteBrush" Color="#2DD4A8" />
+    <SolidColorBrush x:Key="WizardStepInactiveBrush" Color="#2D3848" />
+    <SolidColorBrush x:Key="WizardStepTrackBrush" Color="#1A2030" />
 
 </ResourceDictionary>
