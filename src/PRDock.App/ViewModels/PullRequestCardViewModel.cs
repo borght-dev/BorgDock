@@ -54,12 +54,19 @@ public partial class PullRequestCardViewModel : ObservableObject
     [ObservableProperty]
     private long _firstFailedRunId;
 
+    [ObservableProperty]
+    private bool _hasAllChecksPassed;
+
+    [ObservableProperty]
+    private bool _canBypassMerge;
+
     public ObservableCollection<string> FailedChecks { get; } = [];
 
     public ObservableCollection<string> PendingChecks { get; } = [];
 
     public Action<PullRequestCardViewModel>? RerunRequested { get; set; }
     public Action<PullRequestCardViewModel>? FixWithClaudeRequested { get; set; }
+    public Action<PullRequestCardViewModel>? BypassMergeRequested { get; set; }
 
     [RelayCommand]
     private void RerunFailedChecks()
@@ -71,6 +78,12 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void FixWithClaude()
     {
         FixWithClaudeRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void BypassMerge()
+    {
+        BypassMergeRequested?.Invoke(this);
     }
 
     public static string FormatAge(DateTime updatedAt)

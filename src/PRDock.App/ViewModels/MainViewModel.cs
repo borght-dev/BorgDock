@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -212,6 +213,14 @@ public partial class MainViewModel : ObservableObject
         var pr = prWithChecks.PullRequest;
         var username = _settingsService?.CurrentSettings.GitHub.Username ?? "";
         var firstFailedCheck = prWithChecks.Checks.FirstOrDefault(c => c.IsFailed);
+        var hasAllChecksPassed = prWithChecks.OverallStatus == "green";
+        var reviewMissing = pr.ReviewStatus is ReviewStatus.None or ReviewStatus.Pending or ReviewStatus.Commented;
+        var isOpen = string.Equals(pr.State, "open", StringComparison.OrdinalIgnoreCase);
+        var canBypassMerge = isOpen
+            && !pr.IsDraft
+            && hasAllChecksPassed
+            && pr.Mergeable != false
+            && reviewMissing;
         var card = new PullRequestCardViewModel
         {
             Number = pr.Number,
@@ -231,8 +240,11 @@ public partial class MainViewModel : ObservableObject
             CheckSummary = FormatCheckSummary(prWithChecks),
             ReviewBadgeText = pr.ReviewStatus.ToString(),
             FirstFailedRunId = firstFailedCheck?.CheckSuiteId ?? 0,
+            HasAllChecksPassed = hasAllChecksPassed,
+            CanBypassMerge = canBypassMerge,
             RerunRequested = OnRerunRequested,
-            FixWithClaudeRequested = OnFixWithClaudeRequested
+            FixWithClaudeRequested = OnFixWithClaudeRequested,
+            BypassMergeRequested = OnBypassMergeRequested
         };
 
         foreach (var name in prWithChecks.FailedCheckNames)
@@ -267,6 +279,64 @@ public partial class MainViewModel : ObservableObject
         Serilog.Log.Information("Fix with Claude requested for {Owner}/{Repo} PR #{Number}",
             card.RepoOwner, card.RepoName, card.Number);
         StatusText = $"Fix with Claude requested for PR #{card.Number} (coming soon)";
+    }
+
+    private void OnBypassMergeRequested(PullRequestCardViewModel card)
+    {
+        if (card.Number <= 0 || string.IsNullOrWhiteSpace(card.RepoOwner) || string.IsNullOrWhiteSpace(card.RepoName))
+            return;
+
+        try
+        {
+            StatusText = $"Running admin bypass merge for PR #{card.Number}...";
+
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "gh",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.StartInfo.ArgumentList.Add("pr");
+            process.StartInfo.ArgumentList.Add("merge");
+            process.StartInfo.ArgumentList.Add(card.Number.ToString());
+            process.StartInfo.ArgumentList.Add("--repo");
+            process.StartInfo.ArgumentList.Add($"{card.RepoOwner}/{card.RepoName}");
+            process.StartInfo.ArgumentList.Add("--admin");
+            process.StartInfo.ArgumentList.Add("--merge");
+
+            process.Start();
+            var stdOutTask = process.StandardOutput.ReadToEndAsync();
+            var stdErrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            var stdOut = stdOutTask.GetAwaiter().GetResult().Trim();
+            var stdErr = stdErrTask.GetAwaiter().GetResult().Trim();
+
+            if (process.ExitCode == 0)
+            {
+                StatusText = $"Merged PR #{card.Number} with admin bypass";
+                return;
+            }
+
+            var details = !string.IsNullOrWhiteSpace(stdErr) ? stdErr : stdOut;
+            if (details.Length > 140)
+                details = details[..140] + "...";
+
+            StatusText = string.IsNullOrWhiteSpace(details)
+                ? $"Bypass merge failed for PR #{card.Number}"
+                : $"Bypass merge failed for PR #{card.Number}: {details}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to bypass merge for PR #{Number}", card.Number);
+            StatusText = $"Bypass merge failed for PR #{card.Number}: {ex.Message}";
+        }
     }
 
     private static string FormatCheckSummary(PullRequestWithChecks prWithChecks)

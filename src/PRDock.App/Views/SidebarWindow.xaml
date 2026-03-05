@@ -249,6 +249,18 @@
                                                                            Foreground="#856404" />
                                                             </Border>
 
+                                                            <!-- All checks passed badge -->
+                                                            <Border Background="#D4EDDA"
+                                                                    CornerRadius="3"
+                                                                    Padding="6,2"
+                                                                    Margin="0,4,0,0"
+                                                                    Visibility="{Binding HasAllChecksPassed, Converter={StaticResource BoolToVis}}"
+                                                                    AutomationProperties.AutomationId="AllChecksPassedBadge">
+                                                                <TextBlock Text="✓ All checks passed"
+                                                                           FontSize="11"
+                                                                           Foreground="#155724" />
+                                                            </Border>
+
                                                             <!-- Closure badge -->
                                                             <Border CornerRadius="3"
                                                                     Padding="6,2"
@@ -279,6 +291,9 @@
                                                                             <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
                                                                                 <Setter Property="Visibility" Value="Visible" />
                                                                             </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding CanBypassMerge}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Visible" />
+                                                                            </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </StackPanel.Style>
@@ -288,13 +303,43 @@
                                                                         FontSize="11"
                                                                         Padding="8,2"
                                                                         Margin="0,0,6,0"
-                                                                        AutomationProperties.AutomationId="RerunFailedChecksButton" />
+                                                                        AutomationProperties.AutomationId="RerunFailedChecksButton">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                </Button>
 
                                                                 <Button Content="Fix with Claude"
                                                                         Command="{Binding FixWithClaudeCommand}"
                                                                         FontSize="11"
                                                                         Padding="8,2"
-                                                                        AutomationProperties.AutomationId="FixWithClaudeButton" />
+                                                                        Margin="0,0,6,0"
+                                                                        AutomationProperties.AutomationId="FixWithClaudeButton">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                </Button>
+
+                                                                <Button Content="Bypass merge (gh)"
+                                                                        Command="{Binding BypassMergeCommand}"
+                                                                        FontSize="11"
+                                                                        Padding="8,2"
+                                                                        Visibility="{Binding CanBypassMerge, Converter={StaticResource BoolToVis}}"
+                                                                        AutomationProperties.AutomationId="BypassMergeButton" />
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </Grid>

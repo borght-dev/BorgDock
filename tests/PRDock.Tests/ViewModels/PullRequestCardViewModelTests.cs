@@ -22,6 +22,8 @@ public class PullRequestCardViewModelTests
         vm.CheckSummary.Should().Be("");
         vm.ReviewBadgeText.Should().Be("");
         vm.HasMergeConflict.Should().BeFalse();
+        vm.HasAllChecksPassed.Should().BeFalse();
+        vm.CanBypassMerge.Should().BeFalse();
         vm.HtmlUrl.Should().Be("");
         vm.RepoOwner.Should().Be("");
         vm.RepoName.Should().Be("");
@@ -158,6 +160,8 @@ public class PullRequestCardViewModelTests
             CheckSummary = "6 passed",
             ReviewBadgeText = "Approved",
             HasMergeConflict = false,
+            HasAllChecksPassed = true,
+            CanBypassMerge = true,
             HtmlUrl = "https://github.com/owner/repo/pull/123",
             RepoOwner = "owner",
             RepoName = "repo"
@@ -174,6 +178,8 @@ public class PullRequestCardViewModelTests
         vm.CheckSummary.Should().Be("6 passed");
         vm.ReviewBadgeText.Should().Be("Approved");
         vm.HasMergeConflict.Should().BeFalse();
+        vm.HasAllChecksPassed.Should().BeTrue();
+        vm.CanBypassMerge.Should().BeTrue();
         vm.HtmlUrl.Should().Be("https://github.com/owner/repo/pull/123");
         vm.RepoOwner.Should().Be("owner");
         vm.RepoName.Should().Be("repo");
@@ -204,5 +210,17 @@ public class PullRequestCardViewModelTests
 
         vm.PendingChecks.Should().HaveCount(1);
         vm.PendingChecks.Should().Contain("deploy");
+    }
+
+    [Fact]
+    public void BypassMergeCommand_InvokesBypassMergeRequestedCallback()
+    {
+        var vm = new PullRequestCardViewModel();
+        PullRequestCardViewModel? callbackArg = null;
+        vm.BypassMergeRequested = card => callbackArg = card;
+
+        vm.BypassMergeCommand.Execute(null);
+
+        callbackArg.Should().BeSameAs(vm);
     }
 }
