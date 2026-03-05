@@ -12,15 +12,23 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IPRPollingService? _pollingService;
     private readonly GitHubHttpClient? _httpClient;
+    private readonly ISettingsService? _settingsService;
+    private readonly IGitHubActionsService? _actionsService;
 
     public MainViewModel()
     {
     }
 
-    public MainViewModel(IPRPollingService pollingService, GitHubHttpClient? httpClient = null)
+    public MainViewModel(
+        IPRPollingService pollingService,
+        GitHubHttpClient? httpClient = null,
+        ISettingsService? settingsService = null,
+        IGitHubActionsService? actionsService = null)
     {
         _pollingService = pollingService;
         _httpClient = httpClient;
+        _settingsService = settingsService;
+        _actionsService = actionsService;
         _pollingService.PollCompleted += OnPollCompleted;
         _pollingService.PollFailed += OnPollFailed;
 
@@ -73,6 +81,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isAuthError;
 
+    [ObservableProperty]
+    private bool _isSettingsOpen;
+
     public ObservableCollection<PullRequestCardViewModel> PullRequests { get; } = [];
 
     public ObservableCollection<RepoGroupViewModel> RepoGroups { get; } = [];
@@ -101,6 +112,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
+        IsSettingsOpen = !IsSettingsOpen;
     }
 
     [RelayCommand]
@@ -195,9 +207,11 @@ public partial class MainViewModel : ObservableObject
         IsRateLimitWarning = _httpClient.IsRateLimitLow;
     }
 
-    private static PullRequestCardViewModel MapToCard(PullRequestWithChecks prWithChecks)
+    private PullRequestCardViewModel MapToCard(PullRequestWithChecks prWithChecks)
     {
         var pr = prWithChecks.PullRequest;
+        var username = _settingsService?.CurrentSettings.GitHub.Username ?? "";
+        var firstFailedCheck = prWithChecks.Checks.FirstOrDefault(c => c.IsFailed);
         var card = new PullRequestCardViewModel
         {
             Number = pr.Number,
@@ -212,8 +226,13 @@ public partial class MainViewModel : ObservableObject
             RepoName = pr.RepoName,
             UpdatedAt = pr.UpdatedAt,
             HasMergeConflict = pr.Mergeable == false,
+            IsMyPr = !string.IsNullOrEmpty(username)
+                && pr.AuthorLogin.Equals(username, StringComparison.OrdinalIgnoreCase),
             CheckSummary = FormatCheckSummary(prWithChecks),
-            ReviewBadgeText = pr.ReviewStatus.ToString()
+            ReviewBadgeText = pr.ReviewStatus.ToString(),
+            FirstFailedRunId = firstFailedCheck?.CheckSuiteId ?? 0,
+            RerunRequested = OnRerunRequested,
+            FixWithClaudeRequested = OnFixWithClaudeRequested
         };
 
         foreach (var name in prWithChecks.FailedCheckNames)
@@ -223,6 +242,31 @@ public partial class MainViewModel : ObservableObject
             card.PendingChecks.Add(name);
 
         return card;
+    }
+
+    private async void OnRerunRequested(PullRequestCardViewModel card)
+    {
+        if (_actionsService is null || card.FirstFailedRunId == 0) return;
+
+        try
+        {
+            Serilog.Log.Information("Re-running checks for {Owner}/{Repo} PR #{Number}, runId={RunId}",
+                card.RepoOwner, card.RepoName, card.Number, card.FirstFailedRunId);
+            await _actionsService.ReRunWorkflowAsync(card.RepoOwner, card.RepoName, card.FirstFailedRunId);
+            StatusText = $"Re-run triggered for PR #{card.Number}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to re-run checks for PR #{Number}", card.Number);
+            StatusText = $"Failed to re-run: {ex.Message}";
+        }
+    }
+
+    private void OnFixWithClaudeRequested(PullRequestCardViewModel card)
+    {
+        Serilog.Log.Information("Fix with Claude requested for {Owner}/{Repo} PR #{Number}",
+            card.RepoOwner, card.RepoName, card.Number);
+        StatusText = $"Fix with Claude requested for PR #{card.Number} (coming soon)";
     }
 
     private static string FormatCheckSummary(PullRequestWithChecks prWithChecks)

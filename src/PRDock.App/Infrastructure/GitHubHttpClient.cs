@@ -75,6 +75,8 @@ public sealed class GitHubHttpClient
 
     public async Task<HttpResponseMessage> GetRawAsync(string url, CancellationToken ct = default)
     {
+        _logger.LogDebug("HTTP GET {Url}", url);
+
         var response = await _retryHandler.ExecuteAsync(async innerCt =>
         {
             var client = _httpClientFactory.CreateClient("GitHub");
@@ -94,6 +96,7 @@ public sealed class GitHubHttpClient
             return await client.SendAsync(request, innerCt);
         }, ct);
 
+        _logger.LogDebug("HTTP {StatusCode} for {Url}", (int)response.StatusCode, url);
         ParseRateLimitHeaders(response);
 
         if (IsRateLimitLow)

@@ -22,12 +22,16 @@ public partial class App : System.Windows.Application
 
     private Mutex? _singleInstanceMutex;
     private ServiceProvider? _serviceProvider;
+
+    public ServiceProvider? ServiceProvider => _serviceProvider;
     private System.Windows.Forms.NotifyIcon? _notifyIcon;
     private ThemeManager? _themeManager;
     private HotKeyManager? _hotKeyManager;
     private WorkAreaManager? _workAreaManager;
     private SidebarWindow? _sidebarWindow;
     private MainViewModel? _mainViewModel;
+    private FloatingBadgeWindow? _floatingBadgeWindow;
+    private FloatingBadgeViewModel? _floatingBadgeVm;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -48,7 +52,7 @@ public partial class App : System.Windows.Application
 
         // Configure Serilog
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
+            .MinimumLevel.Debug()
             .WriteTo.File(
                 Path.Combine(AppDataDir, "logs", "prdock-.log"),
                 rollingInterval: RollingInterval.Day,
@@ -64,6 +68,27 @@ public partial class App : System.Windows.Application
         var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
         await settingsService.LoadAsync();
 
+        // Show setup wizard on first run
+        Log.Information("Settings loaded: SetupComplete={SetupComplete}, RepoCount={RepoCount}",
+            settingsService.CurrentSettings.SetupComplete, settingsService.CurrentSettings.Repos.Count);
+        if (!settingsService.CurrentSettings.SetupComplete)
+        {
+            var wizardVm = new SetupWizardViewModel(
+                _serviceProvider.GetRequiredService<IGitHubAuthService>(),
+                _serviceProvider.GetRequiredService<IRepoDiscoveryService>(),
+                settingsService);
+            var wizard = new SetupWizardWindow(wizardVm);
+            var result = wizard.ShowDialog();
+            if (result != true)
+            {
+                Shutdown();
+                return;
+            }
+
+            // Reload settings after wizard saved them
+            await settingsService.LoadAsync();
+        }
+
         // Initialize theme
         _themeManager = new ThemeManager(this);
         _themeManager.ApplyTheme(settingsService.CurrentSettings.UI.Theme);
@@ -75,9 +100,29 @@ public partial class App : System.Windows.Application
         var pollingService = _serviceProvider.GetRequiredService<IPRPollingService>();
         pollingService.StartPolling();
 
+        pollingService.PollCompleted += results =>
+        {
+            var total = results.Count;
+            var failing = results.Count(r => r.OverallStatus == "red");
+            var pending = results.Count(r => r.OverallStatus == "yellow");
+            System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
+                _floatingBadgeVm?.Update(total, failing, pending));
+        };
+
         // Create main view model and sidebar window
         _mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         _sidebarWindow = new SidebarWindow(_mainViewModel);
+
+        // Create floating badge window
+        _floatingBadgeVm = new FloatingBadgeViewModel();
+        _floatingBadgeWindow = new FloatingBadgeWindow(_floatingBadgeVm);
+
+        _floatingBadgeVm.ExpandSidebarRequested += () =>
+        {
+            _mainViewModel!.IsSidebarVisible = true;
+        };
+        _floatingBadgeVm.QuitRequested += () => Shutdown();
+        _floatingBadgeVm.SettingsRequested += () => _mainViewModel?.OpenSettingsCommand.Execute(null);
 
         // Wire up pin/unpin to work area reservation
         _mainViewModel.PropertyChanged += (_, args) =>
@@ -99,9 +144,15 @@ public partial class App : System.Windows.Application
             if (args.PropertyName == nameof(MainViewModel.IsSidebarVisible))
             {
                 if (_mainViewModel.IsSidebarVisible)
+                {
                     _sidebarWindow.Show();
+                    _floatingBadgeWindow?.Hide();
+                }
                 else
+                {
                     _sidebarWindow.Hide();
+                    _floatingBadgeWindow?.Show();
+                }
             }
         };
 
@@ -173,7 +224,10 @@ public partial class App : System.Windows.Application
         // ViewModels
         services.AddSingleton<MainViewModel>(sp =>
             new MainViewModel(
-                sp.GetRequiredService<IPRPollingService>()));
+                sp.GetRequiredService<IPRPollingService>(),
+                sp.GetRequiredService<GitHubHttpClient>(),
+                sp.GetRequiredService<ISettingsService>(),
+                sp.GetRequiredService<IGitHubActionsService>()));
     }
 
     private void SetupSystemTray()
@@ -250,6 +304,7 @@ public partial class App : System.Windows.Application
         _workAreaManager?.Dispose();
         _themeManager?.Dispose();
 
+        _floatingBadgeWindow?.Close();
         _notifyIcon?.Dispose();
         _serviceProvider?.Dispose();
 

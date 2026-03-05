@@ -34,6 +34,31 @@ public partial class SidebarWindow : Window
         PositionAtScreenEdge();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateAutoHideMode(ViewModel.SidebarMode);
+
+        // Wire settings flyout when it opens
+        ViewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainViewModel.IsSettingsOpen) && ViewModel.IsSettingsOpen)
+            {
+                WireSettingsFlyout();
+            }
+        };
+    }
+
+    private SettingsViewModel? _settingsVm;
+
+    private void WireSettingsFlyout()
+    {
+        if (SettingsFlyoutPanel.DataContext is SettingsViewModel) return;
+
+        var settingsService = ((App)System.Windows.Application.Current)
+            .ServiceProvider?.GetService(typeof(Services.ISettingsService)) as Services.ISettingsService;
+        if (settingsService is null) return;
+
+        _settingsVm = new SettingsViewModel(settingsService);
+        _settingsVm.SaveCompleted += () => ViewModel.IsSettingsOpen = false;
+        _settingsVm.CancelCompleted += () => ViewModel.IsSettingsOpen = false;
+        SettingsFlyoutPanel.DataContext = _settingsVm;
     }
 
     private void PositionAtScreenEdge()
@@ -197,6 +222,16 @@ public partial class SidebarWindow : Window
                 StartSlideOut(animated: true);
             }
         }
+    }
+
+    private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = e.Uri.AbsoluteUri,
+            UseShellExecute = true
+        });
+        e.Handled = true;
     }
 
     internal AnimationState CurrentAnimationState => _animationState;

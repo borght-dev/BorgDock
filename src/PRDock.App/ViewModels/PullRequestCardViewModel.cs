@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace PRDock.App.ViewModels;
 
@@ -50,9 +51,27 @@ public partial class PullRequestCardViewModel : ObservableObject
     [ObservableProperty]
     private string _repoName = "";
 
+    [ObservableProperty]
+    private long _firstFailedRunId;
+
     public ObservableCollection<string> FailedChecks { get; } = [];
 
     public ObservableCollection<string> PendingChecks { get; } = [];
+
+    public Action<PullRequestCardViewModel>? RerunRequested { get; set; }
+    public Action<PullRequestCardViewModel>? FixWithClaudeRequested { get; set; }
+
+    [RelayCommand]
+    private void RerunFailedChecks()
+    {
+        RerunRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void FixWithClaude()
+    {
+        FixWithClaudeRequested?.Invoke(this);
+    }
 
     public static string FormatAge(DateTime updatedAt)
     {

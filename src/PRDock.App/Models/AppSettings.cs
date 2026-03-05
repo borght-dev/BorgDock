@@ -4,6 +4,7 @@ namespace PRDock.App.Models;
 
 public sealed class AppSettings
 {
+    public bool SetupComplete { get; set; }
     public GitHubSettings GitHub { get; set; } = new();
     public List<RepoSettings> Repos { get; set; } = [];
     public UiSettings UI { get; set; } = new();

@@ -118,6 +118,12 @@
                          Style="{StaticResource FilterChipStyle}" Margin="4,0,0,0" />
         </StackPanel>
 
+        <!-- Settings flyout (overlays PR list) -->
+        <views:SettingsFlyout Grid.Row="3"
+                              x:Name="SettingsFlyoutPanel"
+                              Panel.ZIndex="10"
+                              Visibility="{Binding IsSettingsOpen, Converter={StaticResource BoolToVis}}" />
+
         <!-- Main content area -->
         <Grid Grid.Row="3">
             <!-- Empty state message -->
@@ -204,84 +210,125 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding Number, StringFormat='#{0}'}"
-                                                               FontSize="12"
-                                                               Foreground="{DynamicResource TextSecondaryBrush}"
-                                                               Margin="0,0,8,0"
-                                                               VerticalAlignment="Top" />
-
-                                                    <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="{Binding Title}"
-                                                                   FontSize="13"
-                                                                   TextWrapping="Wrap"
-                                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                        <TextBlock FontSize="11"
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding Number, StringFormat='#{0}'}"
+                                                                   FontSize="12"
                                                                    Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                   Margin="0,2,0,0">
-                                                            <Run Text="{Binding AuthorLogin, Mode=OneWay}" />
-                                                            <Run Text=" · " />
-                                                            <Run Text="{Binding Age, Mode=OneWay}" />
+                                                                   Margin="0,0,8,0"
+                                                                   VerticalAlignment="Top" />
+
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Title}"
+                                                                       FontSize="13"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                            <TextBlock FontSize="11"
+                                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                       Margin="0,2,0,0">
+                                                                <Run Text="{Binding AuthorLogin, Mode=OneWay}" />
+                                                                <Run Text=" · " />
+                                                                <Run Text="{Binding Age, Mode=OneWay}" />
+                                                            </TextBlock>
+
+                                                            <!-- Merge conflict badge -->
+                                                            <Border Background="#FFF3CD"
+                                                                    CornerRadius="3"
+                                                                    Padding="6,2"
+                                                                    Margin="0,4,0,0"
+                                                                    Visibility="{Binding HasMergeConflict, Converter={StaticResource BoolToVis}}"
+                                                                    AutomationProperties.AutomationId="MergeConflictBadge">
+                                                                <TextBlock Text="⚠️ Merge conflict"
+                                                                           FontSize="11"
+                                                                           Foreground="#856404" />
+                                                            </Border>
+
+                                                            <!-- Closure badge -->
+                                                            <Border CornerRadius="3"
+                                                                    Padding="6,2"
+                                                                    Margin="0,4,0,0"
+                                                                    Visibility="{Binding IsClosed, Converter={StaticResource BoolToVis}}"
+                                                                    AutomationProperties.AutomationId="ClosureBadge">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#F8D7DA" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding ClosureState}" Value="Merged">
+                                                                                <Setter Property="Background" Value="#D4EDDA" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="{Binding ClosureBadgeText}"
+                                                                           FontSize="11"
+                                                                           Foreground="#333333" />
+                                                            </Border>
+
+                                                            <!-- Action buttons for failed checks -->
+                                                            <StackPanel Orientation="Exampletal" Margin="0,4,0,0">
+                                                                <StackPanel.Style>
+                                                                    <Style TargetType="StackPanel">
+                                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                                                                <Setter Property="Visibility" Value="Visible" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </StackPanel.Style>
+
+                                                                <Button Content="Re-run failed checks"
+                                                                        Command="{Binding RerunFailedChecksCommand}"
+                                                                        FontSize="11"
+                                                                        Padding="8,2"
+                                                                        Margin="0,0,6,0"
+                                                                        AutomationProperties.AutomationId="RerunFailedChecksButton" />
+
+                                                                <Button Content="Fix with Claude"
+                                                                        Command="{Binding FixWithClaudeCommand}"
+                                                                        FontSize="11"
+                                                                        Padding="8,2"
+                                                                        AutomationProperties.AutomationId="FixWithClaudeButton" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <!-- Expandable detail section -->
+                                                    <StackPanel Margin="28,6,0,0"
+                                                                Visibility="{Binding IsDetailExpanded, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                            <Run Text="{Binding HeadRef, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                            <Run Text=" &#x2192; "/>
+                                                            <Run Text="{Binding BaseRef, Mode=OneWay}"/>
                                                         </TextBlock>
-
-                                                        <!-- Merge conflict badge -->
-                                                        <Border Background="#FFF3CD"
-                                                                CornerRadius="3"
-                                                                Padding="6,2"
-                                                                Margin="0,4,0,0"
-                                                                Visibility="{Binding HasMergeConflict, Converter={StaticResource BoolToVis}}"
-                                                                AutomationProperties.AutomationId="MergeConflictBadge">
-                                                            <TextBlock Text="⚠️ Merge conflict"
-                                                                       FontSize="11"
-                                                                       Foreground="#856404" />
-                                                        </Border>
-
-                                                        <!-- Closure badge -->
-                                                        <Border CornerRadius="3"
-                                                                Padding="6,2"
-                                                                Margin="0,4,0,0"
-                                                                Visibility="{Binding IsClosed, Converter={StaticResource BoolToVis}}"
-                                                                AutomationProperties.AutomationId="ClosureBadge">
-                                                            <Border.Style>
-                                                                <Style TargetType="Border">
-                                                                    <Setter Property="Background" Value="#F8D7DA" />
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding ClosureState}" Value="Merged">
-                                                                            <Setter Property="Background" Value="#D4EDDA" />
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Border.Style>
-                                                            <TextBlock Text="{Binding ClosureBadgeText}"
-                                                                       FontSize="11"
-                                                                       Foreground="#333333" />
-                                                        </Border>
-
-                                                        <!-- Re-run failed checks button -->
-                                                        <Button Content="Re-run failed checks"
-                                                                FontSize="11"
-                                                                Margin="0,4,0,0"
-                                                                Padding="8,2"
-                                                                AutomationProperties.AutomationId="RerunFailedChecksButton">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button">
-                                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
-                                                                            <Setter Property="Visibility" Value="Visible" />
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
-                                                        </Button>
+                                                        <TextBlock Text="{Binding CheckSummary}"
+                                                                   FontSize="11"
+                                                                   Margin="0,2,0,0"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                        <!-- Failed check names -->
+                                                        <ItemsControl ItemsSource="{Binding FailedChecks}" Margin="0,2,0,0">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding}" FontSize="10" Foreground="#EF4444" Margin="0,1,0,0"/>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <!-- Open in browser link -->
+                                                        <TextBlock Margin="0,4,0,0">
+                                                            <Hyperlink NavigateUri="{Binding HtmlUrl}"
+                                                                       RequestNavigate="Hyperlink_RequestNavigate"
+                                                                       Foreground="{DynamicResource AccentBrush}">
+                                                                <Run Text="Open in GitHub &#x2197;"/>
+                                                            </Hyperlink>
+                                                        </TextBlock>
                                                     </StackPanel>
-                                                </Grid>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

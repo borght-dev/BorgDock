@@ -175,6 +175,7 @@ public partial class SettingsViewModel : ObservableObject
         var current = _settingsService.CurrentSettings;
         return new AppSettings
         {
+            SetupComplete = current.SetupComplete,
             GitHub = new GitHubSettings
             {
                 AuthMethod = AuthMethod,

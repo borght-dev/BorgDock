@@ -13,6 +13,7 @@ namespace PRDock.Tests.Services;
 public class GitHubServiceTests
 {
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
+    private readonly IGitHubAuthService _authService = Substitute.For<IGitHubAuthService>();
     private readonly ILogger<GitHubService> _logger = Substitute.For<ILogger<GitHubService>>();
 
     public GitHubServiceTests()
@@ -25,6 +26,7 @@ public class GitHubServiceTests
             }
         };
         _settingsService.CurrentSettings.Returns(settings);
+        _authService.GetTokenAsync(Arg.Any<CancellationToken>()).Returns("ghp_test123");
     }
 
     private GitHubService CreateService(HttpMessageHandler handler)
@@ -36,7 +38,7 @@ public class GitHubServiceTests
         };
         factory.CreateClient("GitHub").Returns(client);
 
-        return new GitHubService(factory, _settingsService, _logger);
+        return new GitHubService(factory, _authService, _settingsService, _logger);
     }
 
     private static MockHttpMessageHandler CreateMockHandler(

@@ -16,15 +16,18 @@ public sealed class GitHubService : IGitHubService
     };
 
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IGitHubAuthService _authService;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<GitHubService> _logger;
 
     public GitHubService(
         IHttpClientFactory httpClientFactory,
+        IGitHubAuthService authService,
         ISettingsService settingsService,
         ILogger<GitHubService> logger)
     {
         _httpClientFactory = httpClientFactory;
+        _authService = authService;
         _settingsService = settingsService;
         _logger = logger;
     }
@@ -32,11 +35,12 @@ public sealed class GitHubService : IGitHubService
     public async Task<IReadOnlyList<PullRequest>> GetOpenPullRequestsAsync(
         string owner, string repo, CancellationToken ct = default)
     {
-        var client = CreateAuthenticatedClient();
+        var client = await CreateAuthenticatedClientAsync(ct);
 
-        _logger.LogInformation("Fetching open PRs for {Owner}/{Repo}", owner, repo);
+        var url = $"repos/{owner}/{repo}/pulls?state=open";
+        _logger.LogInformation("Fetching open PRs for {Owner}/{Repo} — GET {Url}", owner, repo, url);
 
-        var response = await client.GetAsync($"repos/{owner}/{repo}/pulls?state=open", ct);
+        var response = await client.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
 
         var dtos = await response.Content.ReadFromJsonAsync<List<GitHubPullRequestDto>>(GitHubJsonOptions, ct)
@@ -58,14 +62,19 @@ public sealed class GitHubService : IGitHubService
         return pullRequests;
     }
 
-    private HttpClient CreateAuthenticatedClient()
+    private async Task<HttpClient> CreateAuthenticatedClientAsync(CancellationToken ct = default)
     {
         var client = _httpClientFactory.CreateClient("GitHub");
-        var pat = _settingsService.CurrentSettings.GitHub.PersonalAccessToken;
 
-        if (!string.IsNullOrEmpty(pat))
+        var token = await _authService.GetTokenAsync(ct);
+        if (!string.IsNullOrEmpty(token))
         {
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", pat);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _logger.LogDebug("Auth token set ({Length} chars)", token.Length);
+        }
+        else
+        {
+            _logger.LogWarning("No auth token available — API calls will be unauthenticated");
         }
 
         return client;

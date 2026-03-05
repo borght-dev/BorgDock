@@ -51,6 +51,9 @@ public partial class SetupWizardViewModel : ObservableObject
     private bool _useGhCli = true;
 
     [ObservableProperty]
+    private string _detectedUsername = "";
+
+    [ObservableProperty]
     private bool _isScanning;
 
     [ObservableProperty]
@@ -91,6 +94,33 @@ public partial class SetupWizardViewModel : ObservableObject
             IsAuthValid = true;
             UseGhCli = true;
             AuthStatusMessage = "Authenticated via gh CLI";
+
+            // Try to detect GitHub username
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("gh", "api user --jq .login")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var proc = System.Diagnostics.Process.Start(psi);
+                if (proc is not null)
+                {
+                    var username = (await proc.StandardOutput.ReadToEndAsync()).Trim();
+                    await proc.WaitForExitAsync();
+                    if (proc.ExitCode == 0 && !string.IsNullOrEmpty(username))
+                    {
+                        DetectedUsername = username;
+                        AuthStatusMessage = $"Authenticated via gh CLI as {username}";
+                    }
+                }
+            }
+            catch
+            {
+                // Best-effort username detection
+            }
         }
         else
         {
@@ -155,24 +185,31 @@ public partial class SetupWizardViewModel : ObservableObject
 
     private async Task FinishWizardAsync()
     {
+        var selectedRepos = DiscoveredRepos
+            .Where(r => r.IsSelected)
+            .Select(r => new RepoSettings
+            {
+                Owner = r.Owner,
+                Name = r.Name,
+                Enabled = true,
+                WorktreeBasePath = r.LocalPath,
+                WorktreeSubfolder = r.WorktreeSubfolder
+            })
+            .ToList();
+
+        Serilog.Log.Information("Wizard finishing: {Count} repos selected out of {Total} discovered",
+            selectedRepos.Count, DiscoveredRepos.Count);
+
         var settings = new AppSettings
         {
+            SetupComplete = true,
             GitHub = new GitHubSettings
             {
                 AuthMethod = UseGhCli ? "ghCli" : "pat",
-                PersonalAccessToken = UseGhCli ? null : PersonalAccessToken
+                PersonalAccessToken = UseGhCli ? null : PersonalAccessToken,
+                Username = DetectedUsername
             },
-            Repos = DiscoveredRepos
-                .Where(r => r.IsSelected)
-                .Select(r => new RepoSettings
-                {
-                    Owner = r.Owner,
-                    Name = r.Name,
-                    Enabled = true,
-                    WorktreeBasePath = r.LocalPath,
-                    WorktreeSubfolder = r.WorktreeSubfolder
-                })
-                .ToList(),
+            Repos = selectedRepos,
             UI = new UiSettings
             {
                 SidebarEdge = SidebarEdge,
@@ -181,6 +218,10 @@ public partial class SetupWizardViewModel : ObservableObject
         };
 
         await _settingsService.SaveAsync(settings);
+
+        Serilog.Log.Information("Wizard saved settings with {Count} repos, SetupComplete={Complete}",
+            settings.Repos.Count, settings.SetupComplete);
+
         CurrentStep = StepDone;
         IsCompleted = true;
     }
