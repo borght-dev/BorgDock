@@ -10,6 +10,7 @@ public sealed class PRPollingService : IPRPollingService
     private readonly IGitHubService _gitHubService;
     private readonly IGitHubActionsService _actionsService;
     private readonly ISettingsService _settingsService;
+    private readonly IPRCacheService _cacheService;
     private readonly GitHubHttpClient _httpClient;
     private readonly ILogger<PRPollingService> _logger;
 
@@ -23,12 +24,14 @@ public sealed class PRPollingService : IPRPollingService
         IGitHubService gitHubService,
         IGitHubActionsService actionsService,
         ISettingsService settingsService,
+        IPRCacheService cacheService,
         GitHubHttpClient httpClient,
         ILogger<PRPollingService> logger)
     {
         _gitHubService = gitHubService;
         _actionsService = actionsService;
         _settingsService = settingsService;
+        _cacheService = cacheService;
         _httpClient = httpClient;
         _logger = logger;
     }
@@ -71,6 +74,9 @@ public sealed class PRPollingService : IPRPollingService
         {
             var results = await ExecutePollCycleAsync(ct);
             PollCompleted?.Invoke(results);
+
+            // Persist to SQLite cache (fire-and-forget, non-blocking)
+            _ = _cacheService.SaveAsync(results);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
