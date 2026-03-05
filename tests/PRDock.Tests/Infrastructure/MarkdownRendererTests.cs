@@ -19,13 +19,14 @@ public class MarkdownRendererTests
     }
 
     [Fact]
-    public void RenderInlines_MarkdownBold_StripsHtmlTags()
+    public void RenderInlines_MarkdownBold_ReturnsBoldSpan()
     {
         var inlines = _renderer.RenderInlines("**bold text**").ToList();
 
         inlines.Should().HaveCount(1);
-        inlines[0].Should().BeOfType<Run>();
-        ((Run)inlines[0]).Text.Should().Contain("bold text");
+        inlines[0].Should().BeOfType<Span>();
+        var span = (Span)inlines[0];
+        span.FontWeight.Should().Be(System.Windows.FontWeights.Bold);
     }
 
     [Fact]
@@ -60,8 +61,9 @@ public class MarkdownRendererTests
     {
         var inlines = _renderer.RenderInlines("a &amp; b").ToList();
 
-        inlines.Should().HaveCount(1);
-        ((Run)inlines[0]).Text.Should().Contain("a & b");
+        // Markdig parses "a &amp; b" as multiple literal inlines
+        var allText = string.Concat(inlines.OfType<Run>().Select(r => r.Text));
+        allText.Should().Contain("a & b");
     }
 
     [Fact]
