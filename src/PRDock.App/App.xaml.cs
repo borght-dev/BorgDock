@@ -1,15 +1,18 @@
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PRDock.App.Infrastructure;
 using PRDock.App.Services;
+using PRDock.App.Models;
 using PRDock.App.ViewModels;
 using PRDock.App.Views;
 using Serilog;
 using WinFormsApp = System.Windows.Forms.Application;
+using WinFormsScreen = System.Windows.Forms.Screen;
 
 namespace PRDock.App;
 
@@ -24,10 +27,10 @@ public partial class App : System.Windows.Application
     private ServiceProvider? _serviceProvider;
 
     public ServiceProvider? ServiceProvider => _serviceProvider;
+    internal ThemeManager? ThemeManager => _themeManager;
     private System.Windows.Forms.NotifyIcon? _notifyIcon;
     private ThemeManager? _themeManager;
     private HotKeyManager? _hotKeyManager;
-    private WorkAreaManager? _workAreaManager;
     private SidebarWindow? _sidebarWindow;
     private MainViewModel? _mainViewModel;
     private FloatingBadgeWindow? _floatingBadgeWindow;
@@ -71,7 +74,11 @@ public partial class App : System.Windows.Application
         // Show setup wizard on first run
         Log.Information("Settings loaded: SetupComplete={SetupComplete}, RepoCount={RepoCount}",
             settingsService.CurrentSettings.SetupComplete, settingsService.CurrentSettings.Repos.Count);
-        if (!settingsService.CurrentSettings.SetupComplete)
+        var hasAnyRepo = settingsService.CurrentSettings.Repos.Any();
+        var hasAuthConfigured = settingsService.CurrentSettings.GitHub.AuthMethod == "ghCli"
+            || !string.IsNullOrWhiteSpace(settingsService.CurrentSettings.GitHub.PersonalAccessToken);
+        var needsSetup = !settingsService.CurrentSettings.SetupComplete && (!hasAnyRepo || !hasAuthConfigured);
+        if (needsSetup)
         {
             var wizardVm = new SetupWizardViewModel(
                 _serviceProvider.GetRequiredService<IGitHubAuthService>(),
@@ -88,18 +95,51 @@ public partial class App : System.Windows.Application
             // Reload settings after wizard saved them
             await settingsService.LoadAsync();
         }
+        else if (!settingsService.CurrentSettings.SetupComplete)
+        {
+            // Recover from older builds where SetupComplete was not persisted correctly.
+            settingsService.CurrentSettings.SetupComplete = true;
+            await settingsService.SaveAsync(settingsService.CurrentSettings);
+        }
 
         // Initialize theme
         _themeManager = new ThemeManager(this);
         _themeManager.ApplyTheme(settingsService.CurrentSettings.UI.Theme);
 
-        // Initialize work area manager (handles crash recovery)
-        _workAreaManager = new WorkAreaManager();
-
-        // Start polling
+        // Create main view model and sidebar window (before polling so event handlers are wired up)
         var pollingService = _serviceProvider.GetRequiredService<IPRPollingService>();
-        pollingService.StartPolling();
+        _mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+        _sidebarWindow = new SidebarWindow(_mainViewModel);
+        _mainViewModel.ApplySidebarPreferences(settingsService.CurrentSettings.UI);
+        _sidebarWindow.ApplyUiSettings(settingsService.CurrentSettings.UI);
 
+        // Load cached PR data for instant display while fresh data loads
+        var cacheService = _serviceProvider.GetRequiredService<IPRCacheService>();
+        var cached = await cacheService.LoadCachedAsync();
+        if (cached.Count > 0)
+        {
+            _mainViewModel.ProcessPollResults(cached);
+            Log.Information("Displayed {Count} cached PRs while fetching fresh data", cached.Count);
+        }
+
+        // Create floating badge window
+        _floatingBadgeVm = new FloatingBadgeViewModel();
+        _floatingBadgeWindow = new FloatingBadgeWindow(_floatingBadgeVm);
+
+        _floatingBadgeVm.ExpandSidebarRequested += () =>
+        {
+            if (_sidebarWindow is not null)
+            {
+                var badgeScreen = GetWindowScreen(_floatingBadgeWindow);
+                _sidebarWindow.RevealOnScreen(badgeScreen);
+            }
+
+            _mainViewModel!.IsSidebarVisible = true;
+        };
+        _floatingBadgeVm.QuitRequested += () => Shutdown();
+        _floatingBadgeVm.SettingsRequested += () => _mainViewModel?.OpenSettingsCommand.Execute(null);
+
+        // Wire up badge updates and start polling (after all event handlers are registered)
         pollingService.PollCompleted += results =>
         {
             var total = results.Count;
@@ -108,39 +148,32 @@ public partial class App : System.Windows.Application
             System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
                 _floatingBadgeVm?.Update(total, failing, pending));
         };
+        pollingService.StartPolling();
 
-        // Create main view model and sidebar window
-        _mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
-        _sidebarWindow = new SidebarWindow(_mainViewModel);
-
-        // Create floating badge window
-        _floatingBadgeVm = new FloatingBadgeViewModel();
-        _floatingBadgeWindow = new FloatingBadgeWindow(_floatingBadgeVm);
-
-        _floatingBadgeVm.ExpandSidebarRequested += () =>
+        // Wire up merge/close celebration notifications
+        _mainViewModel.PrClosedOrMerged += (title, author, prNumber, repoFullName) =>
         {
-            _mainViewModel!.IsSidebarVisible = true;
+            var message = $"\ud83c\udf89 PR #{prNumber} merged! {title}";
+            Dispatcher.InvokeAsync(() =>
+            {
+                _floatingBadgeVm?.ShowToast(message);
+                if (_mainViewModel is not null)
+                    _mainViewModel.StatusText = message;
+            });
         };
-        _floatingBadgeVm.QuitRequested += () => Shutdown();
-        _floatingBadgeVm.SettingsRequested += () => _mainViewModel?.OpenSettingsCommand.Execute(null);
 
-        // Wire up pin/unpin to work area reservation
+        settingsService.SettingsChanged += settings =>
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                _themeManager?.ApplyTheme(settings.UI.Theme);
+                _mainViewModel?.ApplySidebarPreferences(settings.UI);
+                _sidebarWindow?.ApplyUiSettings(settings.UI);
+            });
+        };
+
         _mainViewModel.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(MainViewModel.IsPinned))
-            {
-                if (_mainViewModel.IsPinned)
-                {
-                    _workAreaManager.ReserveSpace(
-                        settingsService.CurrentSettings.UI.SidebarWidthPx,
-                        settingsService.CurrentSettings.UI.SidebarEdge);
-                }
-                else
-                {
-                    _workAreaManager.RestoreWorkArea();
-                }
-            }
-
             if (args.PropertyName == nameof(MainViewModel.IsSidebarVisible))
             {
                 if (_mainViewModel.IsSidebarVisible)
@@ -158,14 +191,6 @@ public partial class App : System.Windows.Application
 
         // Show sidebar
         _sidebarWindow.Show();
-
-        // Reserve work area if starting pinned
-        if (_mainViewModel.IsPinned)
-        {
-            _workAreaManager.ReserveSpace(
-                settingsService.CurrentSettings.UI.SidebarWidthPx,
-                settingsService.CurrentSettings.UI.SidebarEdge);
-        }
 
         // Register global hotkey
         _hotKeyManager = new HotKeyManager();
@@ -215,6 +240,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ILogParserService, LogParserService>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IRepoDiscoveryService, RepoDiscoveryService>();
+        services.AddSingleton<IPRCacheService, PRCacheService>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
@@ -222,12 +248,22 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IRetryHandler, RetryHandler>();
 
         // ViewModels
+        services.AddTransient<PRDetailViewModel>(sp =>
+            new PRDetailViewModel(
+                sp.GetRequiredService<IGitHubService>(),
+                sp.GetRequiredService<IGitCommandRunner>(),
+                sp.GetRequiredService<ISettingsService>()));
         services.AddSingleton<MainViewModel>(sp =>
             new MainViewModel(
                 sp.GetRequiredService<IPRPollingService>(),
                 sp.GetRequiredService<GitHubHttpClient>(),
                 sp.GetRequiredService<ISettingsService>(),
-                sp.GetRequiredService<IGitHubActionsService>()));
+                sp.GetRequiredService<IGitHubActionsService>(),
+                sp.GetRequiredService<ILogParserService>(),
+                sp.GetRequiredService<INotificationService>(),
+                sp.GetRequiredService<IClaudeCodeLauncher>(),
+                sp.GetRequiredService<IWorktreeService>(),
+                sp.GetRequiredService<IGitHubService>()));
     }
 
     private void SetupSystemTray()
@@ -269,6 +305,15 @@ public partial class App : System.Windows.Application
         return System.Drawing.SystemIcons.Application;
     }
 
+    private static WinFormsScreen? GetWindowScreen(Window? window)
+    {
+        if (window is null)
+            return null;
+
+        var handle = new WindowInteropHelper(window).Handle;
+        return handle == IntPtr.Zero ? null : WinFormsScreen.FromHandle(handle);
+    }
+
     private static void WriteLockFile()
     {
         try
@@ -301,7 +346,6 @@ public partial class App : System.Windows.Application
             pollingService.StopPolling();
 
         _hotKeyManager?.Dispose();
-        _workAreaManager?.Dispose();
         _themeManager?.Dispose();
 
         _floatingBadgeWindow?.Close();
