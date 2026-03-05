@@ -22,54 +22,82 @@
         </Storyboard>
     </Window.Resources>
 
-    <Border x:Name="BadgeBorder"
-            CornerRadius="16"
-            Padding="14,8"
-            Cursor="Hand"
-            AutomationProperties.AutomationId="FloatingBadgeBorder"
-            MouseLeftButtonUp="BadgeBorder_MouseLeftButtonUp">
+    <StackPanel>
+        <!-- Toast bubble (appears above the badge) -->
+        <Border CornerRadius="10" Padding="12,8" Margin="0,0,0,6"
+                ExampletalAlignment="Center"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.25" Color="Black" />
+            </Border.Effect>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsToastVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding ToastText}"
+                       FontSize="12" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       TextWrapping="Wrap" MaxWidth="260" />
+        </Border>
 
-        <Border.Style>
-            <Style TargetType="Border">
-                <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
-                        <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
-                        <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding BackgroundColor}" Value="green">
-                        <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </Border.Style>
+        <!-- Badge pill -->
+        <Border x:Name="BadgeBorder"
+                CornerRadius="16"
+                Padding="14,8"
+                Cursor="Hand"
+                AutomationProperties.AutomationId="FloatingBadgeBorder"
+                MouseLeftButtonUp="BadgeBorder_MouseLeftButtonUp">
 
-        <Border.ContextMenu>
-            <ContextMenu AutomationProperties.AutomationId="BadgeContextMenu">
-                <MenuItem Header="Dock Left"
-                          Command="{Binding DockLeftCommand}"
-                          AutomationProperties.AutomationId="DockLeftMenuItem" />
-                <MenuItem Header="Dock Right"
-                          Command="{Binding DockRightCommand}"
-                          AutomationProperties.AutomationId="DockRightMenuItem" />
-                <Separator />
-                <MenuItem Header="Settings"
-                          Command="{Binding OpenSettingsCommand}"
-                          AutomationProperties.AutomationId="SettingsMenuItem" />
-                <Separator />
-                <MenuItem Header="Quit"
-                          Command="{Binding QuitCommand}"
-                          AutomationProperties.AutomationId="QuitMenuItem" />
-            </ContextMenu>
-        </Border.ContextMenu>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                            <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                            <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding BackgroundColor}" Value="green">
+                            <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
 
-        <TextBlock Text="{Binding BadgeText}"
-                   Foreground="White"
-                   FontSize="13"
-                   FontWeight="SemiBold"
-                   VerticalAlignment="Center"
-                   AutomationProperties.AutomationId="BadgeTextBlock" />
-    </Border>
+            <Border.ContextMenu>
+                <ContextMenu AutomationProperties.AutomationId="BadgeContextMenu">
+                    <MenuItem Header="Dock Left"
+                              Command="{Binding DockLeftCommand}"
+                              AutomationProperties.AutomationId="DockLeftMenuItem" />
+                    <MenuItem Header="Dock Right"
+                              Command="{Binding DockRightCommand}"
+                              AutomationProperties.AutomationId="DockRightMenuItem" />
+                    <Separator />
+                    <MenuItem Header="Settings"
+                              Command="{Binding OpenSettingsCommand}"
+                              AutomationProperties.AutomationId="SettingsMenuItem" />
+                    <Separator />
+                    <MenuItem Header="Quit"
+                              Command="{Binding QuitCommand}"
+                              AutomationProperties.AutomationId="QuitMenuItem" />
+                </ContextMenu>
+            </Border.ContextMenu>
+
+            <TextBlock Text="{Binding BadgeText}"
+                       Foreground="White"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       AutomationProperties.AutomationId="BadgeTextBlock" />
+        </Border>
+    </StackPanel>
 </Window>

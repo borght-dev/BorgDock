@@ -43,12 +43,27 @@ public partial class FloatingBadgeWindow : Window
     {
         if (e.ChangedButton == MouseButton.Left)
         {
+            var startLeft = Left;
+            var startTop = Top;
             DragMove();
+
+            // DragMove() is blocking — after it returns, check if the window
+            // actually moved. If it didn't, treat it as a click.
+            if (Math.Abs(Left - startLeft) < 4 && Math.Abs(Top - startTop) < 4)
+            {
+                if (DataContext is FloatingBadgeViewModel vm)
+                {
+                    vm.ExpandSidebarCommand.Execute(null);
+                }
+            }
         }
     }
 
     private void BadgeBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        // Click is now handled in Window_MouseLeftButtonDown after DragMove returns.
+        // This handler is kept for backwards compatibility but DragMove() consumes
+        // the mouse-up event, so it rarely fires in practice.
         if (DataContext is FloatingBadgeViewModel vm)
         {
             vm.ExpandSidebarCommand.Execute(null);

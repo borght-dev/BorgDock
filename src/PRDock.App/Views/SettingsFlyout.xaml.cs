@@ -10,6 +10,7 @@ public partial class SettingsFlyout : WpfUserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        PatPasswordBox.PasswordChanged += PatPasswordBox_PasswordChanged;
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -39,6 +40,26 @@ public partial class SettingsFlyout : WpfUserControl
         if (PatPasswordBox.Password != vm.PersonalAccessToken)
         {
             PatPasswordBox.Password = vm.PersonalAccessToken;
+        }
+    }
+
+    private void PatPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel vm)
+            return;
+
+        if (vm.PersonalAccessToken != PatPasswordBox.Password)
+        {
+            vm.PersonalAccessToken = PatPasswordBox.Password;
+        }
+    }
+
+    private void ManageWorktrees_Click(object sender, RoutedEventArgs e)
+    {
+        var window = Window.GetWindow(this);
+        if (window?.DataContext is MainViewModel mainVm)
+        {
+            mainVm.ManageWorktreesCommand.Execute(null);
         }
     }
 

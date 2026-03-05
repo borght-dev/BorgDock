@@ -4,267 +4,564 @@
         xmlns:vm="clr-namespace:PRDock.App.ViewModels"
         xmlns:conv="clr-namespace:PRDock.App.Converters"
         Title="PRDock Setup"
-        Width="560" Height="480"
+        Width="580" Height="520"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="{DynamicResource BackgroundBrush}">
+        Background="{DynamicResource BackgroundBrush}"
+        FontFamily="Segoe UI">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:StringEqualityConverter x:Key="StringEquals" />
 
         <Style x:Key="StepTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
 
         <Style x:Key="StepDescStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="Margin" Value="0,0,0,20" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+
+        <Style x:Key="InputTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Padding" Value="12,9" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="Cascadia Code, Consolas, Segoe UI" />
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource ActionSecondaryBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActionSecondaryForegroundBrush}" />
+            <Setter Property="Padding" Value="18,9" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                CornerRadius="8"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+
+        <!-- Step dot style -->
+        <Style x:Key="StepDotStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Fill" Value="{DynamicResource WizardStepInactiveBrush}" />
+            <Setter Property="Margin" Value="3,0" />
+        </Style>
+
+        <!-- Checkbox style for repo list -->
+        <Style x:Key="RepoCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="8,0,0,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
     </Window.Resources>
 
-    <Grid Margin="32,24">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Step 0: Auth -->
-        <StackPanel Grid.Row="0">
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CurrentStep}" Value="0">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
+        <!-- Main card -->
+        <Border Margin="24"
+                Padding="28,24"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="40" ShadowDepth="0" Opacity="0.15" Color="Black" />
+            </Border.Effect>
 
-            <TextBlock Text="GitHub Authentication" Style="{StaticResource StepTitleStyle}" />
-            <TextBlock Text="PRDock needs a GitHub token to monitor your PRs. We'll try to detect your gh CLI authentication first."
-                       Style="{StaticResource StepDescStyle}" />
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <TextBlock Text="{Binding AuthStatusMessage}"
-                       FontSize="13" Margin="0,0,0,12"
-                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                <!-- Step indicator dots -->
+                <StackPanel Grid.Row="0" Orientation="Exampletal" ExampletalAlignment="Center" Margin="0,0,0,24">
+                    <!-- Step 0 dot -->
+                    <Ellipse>
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse" BasedOn="{StaticResource StepDotStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepActiveBrush}" />
+                                        <Setter Property="Width" Value="20" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <!-- Step 1 dot -->
+                    <Ellipse>
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse" BasedOn="{StaticResource StepDotStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepActiveBrush}" />
+                                        <Setter Property="Width" Value="20" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <!-- Step 2 dot -->
+                    <Ellipse>
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse" BasedOn="{StaticResource StepDotStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepActiveBrush}" />
+                                        <Setter Property="Width" Value="20" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <!-- Step 3 dot -->
+                    <Ellipse>
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse" BasedOn="{StaticResource StepDotStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepActiveBrush}" />
+                                        <Setter Property="Width" Value="20" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Fill" Value="{DynamicResource WizardStepCompleteBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                </StackPanel>
 
-            <StackPanel Margin="0,8,0,0">
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsAuthValid}" Value="False">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Style>
+                <!-- Step 0: Auth -->
+                <StackPanel Grid.Row="1">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
 
-                <TextBlock Text="Personal Access Token:" FontSize="12" Margin="0,0,0,4"
-                           Foreground="{DynamicResource TextPrimaryBrush}" />
-                <TextBox Text="{Binding PersonalAccessToken, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="13" Padding="6,4" MaxWidth="400" ExampletalAlignment="Left" />
-            </StackPanel>
-        </StackPanel>
+                    <TextBlock Text="Connect to GitHub" Style="{StaticResource StepTitleStyle}" />
+                    <TextBlock Text="PRDock needs access to your GitHub account to monitor pull requests. We'll detect your gh CLI auth automatically."
+                               Style="{StaticResource StepDescStyle}" />
 
-        <!-- Step 1: Repo Discovery -->
-        <StackPanel Grid.Row="0">
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CurrentStep}" Value="1">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
-
-            <TextBlock Text="Discover Repositories" Style="{StaticResource StepTitleStyle}" />
-            <TextBlock Text="Select the GitHub repositories you want to monitor."
-                       Style="{StaticResource StepDescStyle}" />
-
-            <TextBlock Text="Scanning for repositories..."
-                       FontSize="12" Margin="0,0,0,8"
-                       Foreground="{DynamicResource TextSecondaryBrush}"
-                       Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}" />
-
-            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding DiscoveredRepos}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsSelected}" Margin="0,3">
-                                <StackPanel Orientation="Exampletal">
-                                    <TextBlock Text="{Binding FullName}" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextPrimaryBrush}" />
-                                    <TextBlock Text="{Binding LocalPath, StringFormat=' ({0})'}" FontSize="11"
-                                               Foreground="{DynamicResource TextSecondaryBrush}"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </CheckBox>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </StackPanel>
-
-        <!-- Step 2: Worktree Paths -->
-        <StackPanel Grid.Row="0">
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CurrentStep}" Value="2">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
-
-            <TextBlock Text="Worktree Paths" Style="{StaticResource StepTitleStyle}" />
-            <TextBlock Text="Configure where git worktrees will be created for each repo. Defaults are auto-filled."
-                       Style="{StaticResource StepDescStyle}" />
-
-            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding DiscoveredRepos}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,4">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Visible" />
+                    <!-- Auth status indicator -->
+                    <Border CornerRadius="8"
+                            Padding="14,10"
+                            Margin="0,0,0,16"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource SubtleBorderBrush}"
+                            BorderThickness="1">
+                        <StackPanel Orientation="Exampletal">
+                            <!-- Status indicator dot -->
+                            <Ellipse Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource StatusYellowBrush}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="False">
-                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            <DataTrigger Binding="{Binding IsAuthValid}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource StatusGreenBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </StackPanel.Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding AuthStatusMessage}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </StackPanel>
+                    </Border>
 
-                                <TextBlock Text="{Binding FullName}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <Grid Margin="0,2,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Subfolder:" FontSize="12"
-                                               VerticalAlignment="Center" Margin="0,0,8,0"
-                                               Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    <TextBox Grid.Column="1" Text="{Binding WorktreeSubfolder}"
-                                             FontSize="12" Padding="4,2" />
-                                </Grid>
+                    <!-- PAT input (when gh CLI not available) -->
+                    <StackPanel Margin="0,4,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAuthValid}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <TextBlock Text="PERSONAL ACCESS TOKEN" FontSize="10" FontWeight="Bold"
+                                   Margin="0,0,0,6"
+                                   Foreground="{DynamicResource TextTertiaryBrush}" />
+                        <TextBox Text="{Binding PersonalAccessToken, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}"
+                                 MaxWidth="440" ExampletalAlignment="Left" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Step 1: Repo Discovery -->
+                <Grid Grid.Row="1">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Select Repositories" Style="{StaticResource StepTitleStyle}" />
+                    <TextBlock Grid.Row="1" Text="Choose which GitHub repositories to monitor for pull requests."
+                               Style="{StaticResource StepDescStyle}" />
+
+                    <StackPanel Grid.Row="2" Orientation="Exampletal" Margin="0,0,0,8">
+                        <Button Content="Select All" Command="{Binding SelectAllReposCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Padding="12,5" FontSize="11" MinWidth="0" Margin="0,0,6,0" />
+                        <Button Content="Deselect All" Command="{Binding DeselectAllReposCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Padding="12,5" FontSize="11" MinWidth="0" />
+                    </StackPanel>
+
+                    <Border Grid.Row="3" CornerRadius="6" Padding="10,6" Margin="0,0,0,10"
+                            Background="{DynamicResource SurfaceBrush}"
+                            Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Exampletal">
+                            <TextBlock Text="&#x23F3;" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="Scanning for repositories..."
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding DiscoveredRepos}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,8" Margin="0,0,0,4" CornerRadius="8"
+                                            Background="{DynamicResource SurfaceBrush}"
+                                            BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                            BorderThickness="1">
+                                        <CheckBox IsChecked="{Binding IsSelected}" Style="{StaticResource RepoCheckBoxStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FullName}" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock Text="{Binding LocalPath}" FontSize="11"
+                                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                                           FontFamily="Cascadia Code, Consolas, Segoe UI"
+                                                           Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Step 2: Worktree Paths -->
+                <Grid Grid.Row="1">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Worktree Paths" Style="{StaticResource StepTitleStyle}" />
+                    <TextBlock Grid.Row="1" Text="Configure where git worktrees will be created for each repository."
+                               Style="{StaticResource StepDescStyle}" />
+
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding DiscoveredRepos}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12,10" Margin="0,0,0,6" CornerRadius="8"
+                                            Background="{DynamicResource SurfaceBrush}"
+                                            BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                            BorderThickness="1">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FullName}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <Grid Margin="0,6,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="Subfolder" FontSize="11" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" Margin="0,0,10,0"
+                                                           Foreground="{DynamicResource TextTertiaryBrush}" />
+                                                <TextBox Grid.Column="1" Text="{Binding WorktreeSubfolder}"
+                                                         Style="{StaticResource InputTextBoxStyle}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Step 3: Sidebar Preferences -->
+                <StackPanel Grid.Row="1">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Sidebar Position" Style="{StaticResource StepTitleStyle}" />
+                    <TextBlock Text="Choose which edge of the screen the sidebar docks to."
+                               Style="{StaticResource StepDescStyle}" />
+
+                    <StackPanel Orientation="Exampletal" Margin="0,8,0,0">
+                        <!-- Right edge card -->
+                        <Border CornerRadius="10" Padding="20,16" Margin="0,0,12,0" Cursor="Hand"
+                                MinWidth="160">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SidebarEdge}" Value="right">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="BorderThickness" Value="2" />
+                                            <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel ExampletalAlignment="Center">
+                                <RadioButton Content="Right Edge"
+                                             IsChecked="{Binding SidebarEdge, Converter={StaticResource StringEquals}, ConverterParameter=right}"
+                                             GroupName="Edge"
+                                             FontSize="13" FontWeight="SemiBold"
+                                             Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="Default position" FontSize="11" Margin="0,4,0,0"
+                                           Foreground="{DynamicResource TextTertiaryBrush}" />
                             </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </StackPanel>
+                        </Border>
+                        <!-- Left edge card -->
+                        <Border CornerRadius="10" Padding="20,16" Cursor="Hand"
+                                MinWidth="160">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SidebarEdge}" Value="left">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="BorderThickness" Value="2" />
+                                            <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel ExampletalAlignment="Center">
+                                <RadioButton Content="Left Edge"
+                                             IsChecked="{Binding SidebarEdge, Converter={StaticResource StringEquals}, ConverterParameter=left}"
+                                             GroupName="Edge"
+                                             FontSize="13" FontWeight="SemiBold"
+                                             Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="Alternative" FontSize="11" Margin="0,4,0,0"
+                                           Foreground="{DynamicResource TextTertiaryBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
 
-        <!-- Step 3: Sidebar Preferences -->
-        <StackPanel Grid.Row="0">
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CurrentStep}" Value="3">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
+                <!-- Step 4: Done -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" ExampletalAlignment="Center">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
 
-            <TextBlock Text="Sidebar Preferences" Style="{StaticResource StepTitleStyle}" />
-            <TextBlock Text="Choose where the sidebar appears and how it behaves."
-                       Style="{StaticResource StepDescStyle}" />
+                    <!-- Success checkmark -->
+                    <Border Width="56" Height="56" CornerRadius="28"
+                            Background="{DynamicResource SuccessBadgeBackgroundBrush}"
+                            ExampletalAlignment="Center" Margin="0,0,0,20">
+                        <TextBlock Text="&#x2713;" FontSize="24" FontWeight="Bold"
+                                   Foreground="{DynamicResource SuccessBadgeForegroundBrush}"
+                                   ExampletalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="You're all set" FontSize="22" FontWeight="Bold"
+                               ExampletalAlignment="Center" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock Text="PRDock will start monitoring your pull requests right away."
+                               FontSize="13" ExampletalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                </StackPanel>
 
-            <TextBlock Text="Screen Edge:" FontSize="13" Margin="0,0,0,4"
-                       Foreground="{DynamicResource TextPrimaryBrush}" />
-            <StackPanel Orientation="Exampletal" Margin="0,0,0,16">
-                <RadioButton Content="Right" IsChecked="{Binding SidebarEdge, Converter={StaticResource StringEquals}, ConverterParameter=right}"
-                             GroupName="Edge" Margin="0,0,16,0" />
-                <RadioButton Content="Left" IsChecked="{Binding SidebarEdge, Converter={StaticResource StringEquals}, ConverterParameter=left}"
-                             GroupName="Edge" />
-            </StackPanel>
+                <!-- Navigation buttons -->
+                <Grid Grid.Row="2" Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Mode:" FontSize="13" Margin="0,0,0,4"
-                       Foreground="{DynamicResource TextPrimaryBrush}" />
-            <StackPanel Orientation="Exampletal">
-                <RadioButton Content="Pinned" IsChecked="{Binding SidebarMode, Converter={StaticResource StringEquals}, ConverterParameter=pinned}"
-                             GroupName="Mode" Margin="0,0,16,0" />
-                <RadioButton Content="Auto-hide" IsChecked="{Binding SidebarMode, Converter={StaticResource StringEquals}, ConverterParameter=autohide}"
-                             GroupName="Mode" />
-            </StackPanel>
-        </StackPanel>
-
-        <!-- Step 4: Done -->
-        <StackPanel Grid.Row="0" VerticalAlignment="Center" ExampletalAlignment="Center">
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CurrentStep}" Value="4">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
-
-            <TextBlock Text="All Set!" Style="{StaticResource StepTitleStyle}" ExampletalAlignment="Center" />
-            <TextBlock Text="PRDock is configured and ready to monitor your PRs."
-                       Style="{StaticResource StepDescStyle}" ExampletalAlignment="Center" />
-        </StackPanel>
-
-        <!-- Navigation buttons -->
-        <StackPanel Grid.Row="1" Orientation="Exampletal" ExampletalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="Back" Command="{Binding GoBackCommand}"
-                    Width="80" Height="32" Margin="0,0,8,0">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding CanGoBack}" Value="False">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
-
-            <Button Content="{Binding NextButtonText}" Command="{Binding GoNextCommand}"
-                    Width="80" Height="32"
-                    IsEnabled="{Binding CanGoNext}">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding CurrentStep}" Value="4">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
-
-            <Button Content="Close" Width="80" Height="32" Click="CloseButton_Click">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                    <!-- Back button (left) -->
+                    <Button Grid.Column="0" Content="Back" Command="{Binding GoBackCommand}"
+                            MinWidth="88">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
                                 <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
-        </StackPanel>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CanGoBack}" Value="False">
+                                        <Setter Property="Visibility" Value="Hidden" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <!-- Next/Finish button (right) -->
+                    <Button Grid.Column="2" Content="{Binding NextButtonText}" Command="{Binding GoNextCommand}"
+                            MinWidth="110"
+                            IsEnabled="{Binding CanGoNext}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <!-- Close button (right, on done step) -->
+                    <Button Grid.Column="2" Content="Launch PRDock"
+                            MinWidth="130"
+                            Click="CloseButton_Click">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

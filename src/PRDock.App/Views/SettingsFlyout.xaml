@@ -2,25 +2,501 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:PRDock.App.ViewModels"
-             Background="{DynamicResource BackgroundBrush}">
+             Background="Transparent"
+             FontFamily="Segoe UI"
+             TextOptions.TextFormattingMode="Display">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
+        <!-- Thin scrollbar (duplicated from SidebarWindow for UserControl scope) -->
+        <Style x:Key="ThinScrollBarThumbStyle" TargetType="Thumb">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbBorder"
+                                CornerRadius="3"
+                                Background="{DynamicResource ScrollbarThumbBrush}"
+                                Margin="1,2"
+                                Opacity="0.6" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollbarThumbHoverBrush}" />
+                                <Setter TargetName="ThumbBorder" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ThinScrollBarStyle" TargetType="{x:Type ScrollBar}">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="MinWidth" Value="6" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <Grid>
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ThinScrollBarThumbStyle}" />
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-            <Setter Property="Margin" Value="0,12,0,6" />
+            <Setter Property="Margin" Value="0,0,0,10" />
         </Style>
 
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-            <Setter Property="Margin" Value="0,6,0,2" />
+            <Setter Property="Margin" Value="0,6,0,4" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style x:Key="SectionCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+
+        <Style x:Key="InputTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="InputBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InputPasswordBoxStyle" TargetType="PasswordBox">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="InputBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InputComboToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="ComboButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <Grid>
+                                <ContentPresenter />
+                                <TextBlock Text="&#xE70D;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                           VerticalAlignment="Center"
+                                           ExampletalAlignment="Right"
+                                           Margin="0,0,10,0" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ComboButtonBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ComboButtonBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ComboButtonBorder" Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InputComboItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Margin="3,1">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InputComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource InputComboItemStyle}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="DropDownToggle"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          ClickMode="Press"
+                                          MinHeight="34"
+                                          Style="{StaticResource InputComboToggleButtonStyle}" />
+
+                            <ContentPresenter x:Name="ContentSite"
+                                              Margin="12,0,30,0"
+                                              VerticalAlignment="Center"
+                                              ExampletalAlignment="Left"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
+
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Margin="12,0,30,0"
+                                     Style="{x:Null}"
+                                     ExampletalAlignment="Left"
+                                     VerticalAlignment="Center"
+                                     Background="Transparent"
+                                     Focusable="True"
+                                     Visibility="Hidden"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}" />
+
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   Focusable="False"
+                                   AllowsTransparency="True"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PopupAnimation="Fade">
+                                <Border BorderBrush="{DynamicResource StrongBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Background="{DynamicResource SurfaceRaisedBrush}"
+                                        Margin="0,4,0,0"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer Margin="2"
+                                                  SnapsToDevicePixels="True"
+                                                  CanContentScroll="True">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="Popup" Property="MinHeight" Value="36" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="DropDownToggle" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="DropDownToggle" Property="Opacity" Value="0.55" />
+                            </Trigger>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern checkbox -->
+        <Style x:Key="ModernCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Exampletal">
+                            <Border x:Name="CheckBorder"
+                                    Width="18" Height="18"
+                                    CornerRadius="5"
+                                    BorderThickness="1.5"
+                                    BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                    Background="{DynamicResource SurfaceBrush}">
+                                <TextBlock x:Name="CheckMark"
+                                           Text="&#xE73E;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AccentForegroundBrush}"
+                                           ExampletalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource StrongBorderBrush}" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsChecked" Value="True" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="CheckBorder" Property="Opacity" Value="0.9" />
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern slider -->
+        <Style x:Key="SliderTrackRepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Rectangle Fill="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SliderFilledRepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{DynamicResource AccentBrush}"
+                                CornerRadius="2"
+                                Height="4"
+                                VerticalAlignment="Center" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernSliderThumbStyle" TargetType="Thumb">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid>
+                            <Ellipse x:Name="ThumbOuter"
+                                     Width="18" Height="18"
+                                     Fill="{DynamicResource AccentBrush}">
+                            </Ellipse>
+                            <Ellipse Width="6" Height="6"
+                                     Fill="{DynamicResource AccentForegroundBrush}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbOuter" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernSliderStyle" TargetType="Slider">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Border Height="4" CornerRadius="2"
+                                    Background="{DynamicResource SubtleBorderBrush}"
+                                    VerticalAlignment="Center"
+                                    Margin="9,0" />
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource SliderFilledRepeatButtonStyle}"
+                                                  Command="Slider.DecreaseLarge" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource SliderTrackRepeatButtonStyle}"
+                                                  Command="Slider.IncreaseLarge" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ModernSliderThumbStyle}" />
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource ActionSecondaryBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActionSecondaryForegroundBrush}" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                CornerRadius="7"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+
+        <!-- Modern ListBox style -->
+        <Style x:Key="ModernListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+                                <ScrollViewer.Resources>
+                                    <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ThinScrollBarStyle}" />
+                                </ScrollViewer.Resources>
+                                <ItemsPresenter />
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernListBoxItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="Transparent"
+                                CornerRadius="5"
+                                Margin="0,1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
+    <Border Background="{DynamicResource SurfaceRaisedBrush}"
+            BorderBrush="{DynamicResource SubtleBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Margin="10,0,10,10">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -29,210 +505,287 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <TextBlock Grid.Row="0"
-                   Text="Settings"
-                   FontSize="18"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource TextPrimaryBrush}"
-                   Margin="16,12,16,6" />
+        <StackPanel Grid.Row="0" Margin="16,14,16,6">
+            <TextBlock Text="Settings"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimaryBrush}" />
+            <Border Height="1" Background="{DynamicResource SeparatorBrush}" Margin="0,10,0,0" />
+        </StackPanel>
 
         <!-- Scrollable content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16,0,16,0">
-            <StackPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="12,4,6,0">
+            <ScrollViewer.Resources>
+                <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ThinScrollBarStyle}" />
+            </ScrollViewer.Resources>
+            <StackPanel Margin="4,0,6,0">
 
                 <!-- ==================== GitHub ==================== -->
-                <TextBlock Text="GitHub" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="GitHub" Style="{StaticResource SectionHeaderStyle}" />
 
-                <TextBlock Text="Auth method" Style="{StaticResource FieldLabelStyle}" />
-                <ComboBox AutomationProperties.AutomationId="AuthMethodComboBox"
-                          ItemsSource="{Binding AuthMethodOptions}"
-                          SelectedItem="{Binding AuthMethod, Mode=TwoWay}"
-                          Margin="0,0,0,4" />
+                        <TextBlock Text="Auth method" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                        <ComboBox AutomationProperties.AutomationId="AuthMethodComboBox"
+                                  ItemsSource="{Binding AuthMethodOptions}"
+                                  SelectedItem="{Binding AuthMethod, Mode=TwoWay}"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  Margin="0,0,0,2" />
 
-                <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox AutomationProperties.AutomationId="UsernameTextBox"
-                         Text="{Binding Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,4" />
+                        <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox AutomationProperties.AutomationId="UsernameTextBox"
+                                 Text="{Binding Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}"
+                                 Margin="0,0,0,2" />
 
-                <TextBlock Text="Personal access token" Style="{StaticResource FieldLabelStyle}" />
-                <PasswordBox AutomationProperties.AutomationId="PatPasswordBox"
-                             x:Name="PatPasswordBox"
-                             Margin="0,0,0,4" />
+                        <TextBlock Text="Personal access token" Style="{StaticResource FieldLabelStyle}" />
+                        <PasswordBox AutomationProperties.AutomationId="PatPasswordBox"
+                                     x:Name="PatPasswordBox"
+                                     Style="{StaticResource InputPasswordBoxStyle}"
+                                     Margin="0,0,0,2" />
 
-                <TextBlock Style="{StaticResource FieldLabelStyle}">
-                    <Run Text="Poll interval: " />
-                    <Run Text="{Binding PollIntervalSeconds, Mode=OneWay}" />
-                    <Run Text="s" />
-                </TextBlock>
-                <Slider AutomationProperties.AutomationId="PollIntervalSlider"
-                        Minimum="15" Maximum="300"
-                        Value="{Binding PollIntervalSeconds, Mode=TwoWay}"
-                        TickFrequency="15"
-                        IsSnapToTickEnabled="True"
-                        Margin="0,0,0,4" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}">
+                            <Run Text="Poll interval: " />
+                            <Run Text="{Binding PollIntervalSeconds, Mode=OneWay}" FontWeight="Bold" />
+                            <Run Text="s" />
+                        </TextBlock>
+                        <Slider AutomationProperties.AutomationId="PollIntervalSlider"
+                                Minimum="15" Maximum="300"
+                                Value="{Binding PollIntervalSeconds, Mode=TwoWay}"
+                                TickFrequency="15"
+                                IsSnapToTickEnabled="True"
+                                Style="{StaticResource ModernSliderStyle}"
+                                Margin="0,0,0,2" />
+                    </StackPanel>
+                </Border>
 
                 <!-- ==================== Repositories ==================== -->
-                <TextBlock Text="Repositories" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Repositories" Style="{StaticResource SectionHeaderStyle}" />
 
-                <StackPanel Orientation="Exampletal" Margin="0,0,0,4">
-                    <Button AutomationProperties.AutomationId="AddRepoButton"
-                            Content="Add"
-                            Command="{Binding AddRepositoryCommand}"
-                            Padding="8,2" Margin="0,0,4,0" />
-                    <Button AutomationProperties.AutomationId="RemoveRepoButton"
-                            Content="Remove"
-                            Command="{Binding RemoveRepositoryCommand}"
-                            Padding="8,2" />
-                </StackPanel>
+                        <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
+                            <Button AutomationProperties.AutomationId="AddRepoButton"
+                                    Content="+ Add"
+                                    Command="{Binding AddRepositoryCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Margin="0,0,6,0"
+                                    Padding="10,5"
+                                    FontSize="11" />
+                            <Button AutomationProperties.AutomationId="RemoveRepoButton"
+                                    Content="Remove"
+                                    Command="{Binding RemoveRepositoryCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="10,5"
+                                    FontSize="11" />
+                        </StackPanel>
 
-                <ListBox AutomationProperties.AutomationId="RepoListBox"
-                         ItemsSource="{Binding Repositories}"
-                         SelectedItem="{Binding SelectedRepository, Mode=TwoWay}"
-                         MinHeight="60"
-                         MaxHeight="120"
-                         Margin="0,0,0,4">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock>
-                                <Run Text="{Binding Owner, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Name, Mode=OneWay}" />
-                            </TextBlock>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                        <ListBox AutomationProperties.AutomationId="RepoListBox"
+                                 ItemsSource="{Binding Repositories}"
+                                 SelectedItem="{Binding SelectedRepository, Mode=TwoWay}"
+                                 MinHeight="48"
+                                 MaxHeight="110"
+                                 Style="{StaticResource ModernListBoxStyle}"
+                                 ItemContainerStyle="{StaticResource ModernListBoxItemStyle}"
+                                 Margin="0,0,0,2">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock FontSize="12">
+                                        <Run Text="{Binding Owner, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Name, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
 
-                <!-- Selected repo detail -->
-                <StackPanel Visibility="{Binding SelectedRepository, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Owner" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox AutomationProperties.AutomationId="RepoOwnerTextBox"
-                             Text="{Binding SelectedRepository.Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,4" />
+                        <!-- Selected repo detail -->
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedRepository}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
 
-                    <TextBlock Text="Name" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox AutomationProperties.AutomationId="RepoNameTextBox"
-                             Text="{Binding SelectedRepository.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,4" />
+                            <Border Height="1" Background="{DynamicResource SeparatorBrush}" Margin="0,8,0,4" />
 
-                    <TextBlock Text="Worktree base path" Style="{StaticResource FieldLabelStyle}" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox AutomationProperties.AutomationId="WorktreeBasePathTextBox"
-                                 Text="{Binding SelectedRepository.WorktreeBasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Column="0" />
-                        <Button AutomationProperties.AutomationId="BrowseWorktreeButton"
-                                Content="..."
-                                Click="BrowseWorktreePath_Click"
-                                Grid.Column="1"
-                                Width="28" Margin="4,0,0,0" />
-                    </Grid>
+                            <TextBlock Text="Owner" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox AutomationProperties.AutomationId="RepoOwnerTextBox"
+                                     Text="{Binding SelectedRepository.Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource InputTextBoxStyle}"
+                                     Margin="0,0,0,2" />
 
-                    <TextBlock Text="Worktree subfolder" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox AutomationProperties.AutomationId="WorktreeSubfolderTextBox"
-                             Text="{Binding SelectedRepository.WorktreeSubfolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,4" />
+                            <TextBlock Text="Name" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox AutomationProperties.AutomationId="RepoNameTextBox"
+                                     Text="{Binding SelectedRepository.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource InputTextBoxStyle}"
+                                     Margin="0,0,0,2" />
 
-                    <TextBlock Text="Fix prompt template" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox AutomationProperties.AutomationId="FixPromptTemplateTextBox"
-                             Text="{Binding SelectedRepository.FixPromptTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             TextWrapping="Wrap"
-                             AcceptsReturn="True"
-                             MinHeight="48"
-                             Margin="0,0,0,4" />
-                </StackPanel>
+                            <TextBlock Text="Worktree base path" Style="{StaticResource FieldLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox AutomationProperties.AutomationId="WorktreeBasePathTextBox"
+                                         Text="{Binding SelectedRepository.WorktreeBasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource InputTextBoxStyle}"
+                                         Grid.Column="0" />
+                                <Button AutomationProperties.AutomationId="BrowseWorktreeButton"
+                                        Content="..."
+                                        Click="BrowseWorktreePath_Click"
+                                        Grid.Column="1"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Width="28" Padding="0,5" Margin="4,0,0,0" FontSize="11" />
+                            </Grid>
+
+                            <TextBlock Text="Worktree subfolder" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox AutomationProperties.AutomationId="WorktreeSubfolderTextBox"
+                                     Text="{Binding SelectedRepository.WorktreeSubfolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource InputTextBoxStyle}"
+                                     Margin="0,0,0,2" />
+
+                            <TextBlock Text="Fix prompt template" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox AutomationProperties.AutomationId="FixPromptTemplateTextBox"
+                                     Text="{Binding SelectedRepository.FixPromptTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource InputTextBoxStyle}"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     MinHeight="44"
+                                     Margin="0,0,0,2" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- ==================== Appearance ==================== -->
-                <TextBlock Text="Appearance" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Appearance" Style="{StaticResource SectionHeaderStyle}" />
 
-                <TextBlock Text="Sidebar edge" Style="{StaticResource FieldLabelStyle}" />
-                <ComboBox AutomationProperties.AutomationId="SidebarEdgeComboBox"
-                          ItemsSource="{Binding SidebarEdgeOptions}"
-                          SelectedItem="{Binding SidebarEdge, Mode=TwoWay}"
-                          Margin="0,0,0,4" />
+                        <TextBlock Text="Sidebar edge" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                        <ComboBox AutomationProperties.AutomationId="SidebarEdgeComboBox"
+                                  ItemsSource="{Binding SidebarEdgeOptions}"
+                                  SelectedItem="{Binding SidebarEdge, Mode=TwoWay}"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  Margin="0,0,0,2" />
 
-                <TextBlock Text="Mode" Style="{StaticResource FieldLabelStyle}" />
-                <ComboBox AutomationProperties.AutomationId="SidebarModeComboBox"
-                          ItemsSource="{Binding SidebarModeOptions}"
-                          SelectedItem="{Binding SidebarMode, Mode=TwoWay}"
-                          Margin="0,0,0,4" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}">
+                            <Run Text="Width: " />
+                            <Run Text="{Binding SidebarWidthPx, Mode=OneWay}" FontWeight="Bold" />
+                            <Run Text="px" />
+                        </TextBlock>
+                        <Slider AutomationProperties.AutomationId="SidebarWidthSlider"
+                                Minimum="200" Maximum="800"
+                                Value="{Binding SidebarWidthPx, Mode=TwoWay}"
+                                TickFrequency="10"
+                                IsSnapToTickEnabled="True"
+                                Style="{StaticResource ModernSliderStyle}"
+                                Margin="0,0,0,2" />
 
-                <TextBlock Style="{StaticResource FieldLabelStyle}">
-                    <Run Text="Width: " />
-                    <Run Text="{Binding SidebarWidthPx, Mode=OneWay}" />
-                    <Run Text="px" />
-                </TextBlock>
-                <Slider AutomationProperties.AutomationId="SidebarWidthSlider"
-                        Minimum="200" Maximum="800"
-                        Value="{Binding SidebarWidthPx, Mode=TwoWay}"
-                        TickFrequency="10"
-                        IsSnapToTickEnabled="True"
-                        Margin="0,0,0,4" />
+                        <TextBlock Text="Theme" Style="{StaticResource FieldLabelStyle}" />
+                        <ComboBox AutomationProperties.AutomationId="ThemeComboBox"
+                                  ItemsSource="{Binding ThemeOptions}"
+                                  SelectedItem="{Binding Theme, Mode=TwoWay}"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  Margin="0,0,0,2" />
 
-                <TextBlock Text="Theme" Style="{StaticResource FieldLabelStyle}" />
-                <ComboBox AutomationProperties.AutomationId="ThemeComboBox"
-                          ItemsSource="{Binding ThemeOptions}"
-                          SelectedItem="{Binding Theme, Mode=TwoWay}"
-                          Margin="0,0,0,4" />
-
-                <TextBlock Text="Editor command" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox AutomationProperties.AutomationId="EditorCommandTextBox"
-                         Text="{Binding EditorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,4" />
+                        <TextBlock Text="Editor command" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox AutomationProperties.AutomationId="EditorCommandTextBox"
+                                 Text="{Binding EditorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}"
+                                 Margin="0,0,0,2" />
+                    </StackPanel>
+                </Border>
 
                 <!-- ==================== Notifications ==================== -->
-                <TextBlock Text="Notifications" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Notifications" Style="{StaticResource SectionHeaderStyle}" />
 
-                <CheckBox AutomationProperties.AutomationId="ToastOnCheckStatusChangeCheckBox"
-                          Content="Check status changes"
-                          IsChecked="{Binding ToastOnCheckStatusChange, Mode=TwoWay}"
-                          Margin="0,4,0,2" />
-                <CheckBox AutomationProperties.AutomationId="ToastOnNewPRCheckBox"
-                          Content="New pull requests"
-                          IsChecked="{Binding ToastOnNewPR, Mode=TwoWay}"
-                          Margin="0,2,0,2" />
-                <CheckBox AutomationProperties.AutomationId="ToastOnReviewUpdateCheckBox"
-                          Content="Review updates"
-                          IsChecked="{Binding ToastOnReviewUpdate, Mode=TwoWay}"
-                          Margin="0,2,0,4" />
+                        <CheckBox AutomationProperties.AutomationId="ToastOnCheckStatusChangeCheckBox"
+                                  Content="Check status changes"
+                                  IsChecked="{Binding ToastOnCheckStatusChange, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheckBoxStyle}"
+                                  Margin="0,2,0,6" />
+                        <CheckBox AutomationProperties.AutomationId="ToastOnNewPRCheckBox"
+                                  Content="New pull requests"
+                                  IsChecked="{Binding ToastOnNewPR, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheckBoxStyle}"
+                                  Margin="0,0,0,6" />
+                        <CheckBox AutomationProperties.AutomationId="ToastOnReviewUpdateCheckBox"
+                                  Content="Review updates"
+                                  IsChecked="{Binding ToastOnReviewUpdate, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheckBoxStyle}"
+                                  Margin="0,0,0,2" />
+                    </StackPanel>
+                </Border>
 
                 <!-- ==================== Claude Code ==================== -->
-                <TextBlock Text="Claude Code" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Claude Code" Style="{StaticResource SectionHeaderStyle}" />
 
-                <TextBlock Text="Post-fix action" Style="{StaticResource FieldLabelStyle}" />
-                <ComboBox AutomationProperties.AutomationId="PostFixActionComboBox"
-                          ItemsSource="{Binding PostFixActionOptions}"
-                          SelectedItem="{Binding DefaultPostFixAction, Mode=TwoWay}"
-                          Margin="0,0,0,4" />
+                        <TextBlock Text="Post-fix action" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                        <ComboBox AutomationProperties.AutomationId="PostFixActionComboBox"
+                                  ItemsSource="{Binding PostFixActionOptions}"
+                                  SelectedItem="{Binding DefaultPostFixAction, Mode=TwoWay}"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  Margin="0,0,0,2" />
 
-                <TextBlock Text="Claude Code path override" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox AutomationProperties.AutomationId="ClaudeCodePathTextBox"
-                         Text="{Binding ClaudeCodePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,12" />
+                        <TextBlock Text="Claude Code path override" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox AutomationProperties.AutomationId="ClaudeCodePathTextBox"
+                                 Text="{Binding ClaudeCodePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}"
+                                 Margin="0,0,0,2" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================== Worktrees ==================== -->
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Worktrees" Style="{StaticResource SectionHeaderStyle}" />
+                        <Button AutomationProperties.AutomationId="ManageWorktreesButton"
+                                Content="Manage Worktrees"
+                                Click="ManageWorktrees_Click"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                ExampletalAlignment="Left"
+                                Padding="12,6"
+                                FontSize="11" />
+                    </StackPanel>
+                </Border>
 
             </StackPanel>
         </ScrollViewer>
 
         <!-- Validation error + Save/Cancel -->
-        <StackPanel Grid.Row="2" Margin="16,8,16,12">
-            <TextBlock Text="{Binding ValidationError}"
-                       Foreground="{DynamicResource StatusRedBrush}"
-                       FontSize="12"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,6"
-                       Visibility="{Binding HasValidationError, Converter={StaticResource BoolToVis}}" />
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource SeparatorBrush}"
+                BorderThickness="0,1,0,0"
+                Margin="0,0,0,0">
+            <StackPanel Margin="16,10,16,14">
+                <TextBlock Text="{Binding ValidationError}"
+                           Foreground="{DynamicResource StatusRedBrush}"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,6"
+                           Visibility="{Binding HasValidationError, Converter={StaticResource BoolToVis}}" />
 
-            <StackPanel Orientation="Exampletal" ExampletalAlignment="Right">
-                <Button AutomationProperties.AutomationId="CancelButton"
-                        Content="Cancel"
-                        Command="{Binding CancelCommand}"
-                        Padding="16,6"
-                        Margin="0,0,8,0" />
-                <Button AutomationProperties.AutomationId="SaveButton"
-                        Content="Save"
-                        Command="{Binding SaveCommand}"
-                        Padding="16,6" />
+                <StackPanel Orientation="Exampletal" ExampletalAlignment="Right">
+                    <Button AutomationProperties.AutomationId="CancelButton"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="0,0,8,0" />
+                    <Button AutomationProperties.AutomationId="SaveButton"
+                            Content="Save"
+                            Command="{Binding SaveCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}" />
+                </StackPanel>
             </StackPanel>
-        </StackPanel>
+        </Border>
     </Grid>
+    </Border>
 </UserControl>

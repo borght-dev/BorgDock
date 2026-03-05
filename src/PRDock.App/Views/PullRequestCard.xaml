@@ -6,169 +6,497 @@
     <UserControl.Resources>
         <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Action button styles (need to be accessible within this UserControl) -->
+        <Style x:Key="ActionButtonBaseStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ActionButtonBorder"
+                                CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ExampletalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ActionButtonBorder" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ActionButtonBorder" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonBaseStyle}">
+            <Setter Property="Background" Value="{DynamicResource ActionSecondaryBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActionSecondaryForegroundBrush}" />
+        </Style>
+
+        <Style x:Key="PrimaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonBaseStyle}">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+
+        <Style x:Key="DangerActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonBaseStyle}">
+            <Setter Property="Background" Value="{DynamicResource ActionDangerBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActionDangerForegroundBrush}" />
+        </Style>
     </UserControl.Resources>
 
-    <Border Background="{DynamicResource CardBackgroundBrush}"
-            CornerRadius="6"
-            Margin="0,0,0,8"
-            Padding="12">
+    <Border Margin="0,0,0,6"
+            CornerRadius="10"
+            ClipToBounds="True"
+            Cursor="Hand"
+            MouseLeftButtonUp="CardBorder_MouseLeftButtonUp">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource StrongBorderBrush}" />
+                    </Trigger>
+                    <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                        <Setter Property="BorderThickness" Value="1.5" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
         <Grid>
-            <!-- My PR left border indicator -->
-            <Rectangle Width="3"
-                       ExampletalAlignment="Left"
-                       Margin="-12,0,0,0"
-                       RadiusX="1.5" RadiusY="1.5"
-                       Fill="{DynamicResource CardBorderMyPRBrush}"
-                       Visibility="{Binding IsMyPr, Converter={StaticResource BoolToVis}}" />
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            <!-- Status accent strip -->
+            <Border Grid.Column="0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource StatusGrayBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding StatusDotColor}" Value="green">
+                                <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding StatusDotColor}" Value="yellow">
+                                <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+            </Border>
 
-                <!-- Row 0: Status dot + Title + PR number -->
-                <StackPanel Grid.Row="0" Orientation="Exampletal">
-                    <Ellipse Width="12" Height="12"
-                             VerticalAlignment="Center"
-                             Margin="0,0,8,0"
-                             Fill="{Binding StatusDotColor, Converter={StaticResource StatusToColorConverter}}" />
-                    <TextBlock Text="{Binding Title}"
-                               FontWeight="SemiBold"
-                               FontSize="13"
-                               TextTrimming="CharacterEllipsis"
-                               MaxWidth="280"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextPrimaryBrush}" />
-                    <TextBlock VerticalAlignment="Center"
-                               Margin="6,0,0,0"
-                               FontSize="12"
-                               Foreground="{DynamicResource TextSecondaryBrush}">
-                        <Run Text="#" /><Run Text="{Binding Number, Mode=OneWay}" />
+            <!-- Card content -->
+            <StackPanel Grid.Column="1" Margin="12,10,12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- PR number badge -->
+                    <Border Grid.Column="0"
+                            CornerRadius="5"
+                            Padding="6,2"
+                            Margin="0,2,10,0"
+                            VerticalAlignment="Top">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource PrNumberBadgeBackgroundBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMyPr}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource PrNumberMyBadgeBackgroundBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding Number, StringFormat='#{0}'}"
+                                   FontSize="11"
+                                   FontWeight="Bold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource PrNumberBadgeForegroundBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsMyPr}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource PrNumberMyBadgeForegroundBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Title}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   LineHeight="18"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <StackPanel Orientation="Exampletal" Margin="0,4,0,0">
+                            <TextBlock FontSize="11"
+                                       Foreground="{DynamicResource TextTertiaryBrush}">
+                                <Run Text="{Binding AuthorLogin, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Text=" · "
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                            <TextBlock FontSize="11"
+                                       Foreground="{DynamicResource TextTertiaryBrush}">
+                                <Run Text="{Binding Age, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Merge conflict badge -->
+                        <Border Background="{DynamicResource WarningBadgeBackgroundBrush}"
+                                CornerRadius="5"
+                                Padding="8,3"
+                                Margin="0,6,0,0"
+                                ExampletalAlignment="Left"
+                                Visibility="{Binding HasMergeConflict, Converter={StaticResource BoolToVis}}"
+                                AutomationProperties.AutomationId="MergeConflictBadge">
+                            <TextBlock Text="Merge conflict"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource WarningBadgeForegroundBrush}" />
+                        </Border>
+
+                        <!-- All checks passed badge -->
+                        <Border Background="{DynamicResource SuccessBadgeBackgroundBrush}"
+                                CornerRadius="5"
+                                Padding="8,3"
+                                Margin="0,6,0,0"
+                                ExampletalAlignment="Left"
+                                Visibility="{Binding HasAllChecksPassed, Converter={StaticResource BoolToVis}}"
+                                AutomationProperties.AutomationId="AllChecksPassedBadge">
+                            <TextBlock Text="All checks passed"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SuccessBadgeForegroundBrush}" />
+                        </Border>
+
+                        <!-- Closure badge -->
+                        <Border CornerRadius="5"
+                                Padding="8,3"
+                                Margin="0,6,0,0"
+                                ExampletalAlignment="Left"
+                                Visibility="{Binding IsClosed, Converter={StaticResource BoolToVis}}"
+                                AutomationProperties.AutomationId="ClosureBadge">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource ErrorBadgeBackgroundBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ClosureState}" Value="Merged">
+                                            <Setter Property="Background" Value="{DynamicResource SuccessBadgeBackgroundBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ClosureState}" Value="Closed">
+                                            <Setter Property="Background" Value="{DynamicResource NeutralBadgeBackgroundBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding ClosureBadgeText}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource ErrorBadgeForegroundBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ClosureState}" Value="Merged">
+                                                <Setter Property="Foreground" Value="{DynamicResource SuccessBadgeForegroundBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ClosureState}" Value="Closed">
+                                                <Setter Property="Foreground" Value="{DynamicResource NeutralBadgeForegroundBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+
+                        <!-- Action buttons for failed checks -->
+                        <StackPanel Orientation="Exampletal" Margin="0,8,0,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CanBypassMerge}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <Button Content="Re-run failed checks"
+                                    Command="{Binding RerunFailedChecksCommand}"
+                                    AutomationProperties.AutomationId="RerunFailedChecksButton">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryActionButtonStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <Button Content="Fix with Claude"
+                                    Command="{Binding FixWithClaudeCommand}"
+                                    AutomationProperties.AutomationId="FixWithClaudeButton">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryActionButtonStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <Button Content="Bypass merge"
+                                    Command="{Binding BypassMergeCommand}"
+                                    Style="{StaticResource DangerActionButtonStyle}"
+                                    Visibility="{Binding CanBypassMerge, Converter={StaticResource BoolToVis}}"
+                                    AutomationProperties.AutomationId="BypassMergeButton" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Expandable detail section -->
+                <StackPanel Margin="0,8,0,0"
+                            Visibility="{Binding IsDetailExpanded, Converter={StaticResource BoolToVis}}">
+                    <Border Height="1" Background="{DynamicResource SeparatorBrush}" Margin="0,0,0,8" />
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}">
+                        <Run Text="{Binding HeadRef, Mode=OneWay}" FontWeight="SemiBold"/>
+                        <Run Text=" &#x2192; "/>
+                        <Run Text="{Binding BaseRef, Mode=OneWay}"/>
                     </TextBlock>
-                </StackPanel>
-
-                <!-- Row 1: branch -> target -->
-                <TextBlock Grid.Row="1"
-                           FontSize="11"
-                           Margin="20,2,0,0"
-                           Foreground="{DynamicResource TextSecondaryBrush}">
-                    <Run Text="{Binding HeadRef, Mode=OneWay}" />
-                    <Run Text=" &#x2192; " />
-                    <Run Text="{Binding BaseRef, Mode=OneWay}" />
-                </TextBlock>
-
-                <!-- Row 2: author + age -->
-                <TextBlock Grid.Row="2"
-                           FontSize="11"
-                           Margin="20,2,0,0"
-                           Foreground="{DynamicResource TextSecondaryBrush}">
-                    <Run Text="by " /><Run Text="{Binding AuthorLogin, Mode=OneWay}" />
-                    <Run Text=" &#x00B7; " />
-                    <Run Text="{Binding Age, Mode=OneWay}" />
-                </TextBlock>
-
-                <!-- Row 3: Check chips -->
-                <WrapPanel Grid.Row="3" Margin="20,4,0,0" Orientation="Exampletal">
-                    <!-- Failed checks -->
-                    <ItemsControl ItemsSource="{Binding FailedChecks}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Exampletal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                    <TextBlock Text="{Binding CheckSummary}"
+                               FontSize="11"
+                               Margin="0,3,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <!-- Failed check names -->
+                    <ItemsControl ItemsSource="{Binding FailedChecks}" Margin="0,2,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#33EF4444"
-                                        CornerRadius="3"
-                                        Padding="5,2"
-                                        Margin="0,0,4,4">
-                                    <TextBlock FontSize="10" Foreground="#EF4444">
-                                        <Run Text="&#x2717; " /><Run Text="{Binding Mode=OneWay}" />
-                                    </TextBlock>
+                                <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource ErrorBadgeForegroundBrush}" Margin="0,1,0,0"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Check detail loading indicator -->
+                    <TextBlock Text="Loading failure details..."
+                               FontSize="10"
+                               FontStyle="Italic"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
+                               Margin="0,4,0,0"
+                               Visibility="{Binding IsCheckDetailLoading, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- Parsed errors from log analysis -->
+                    <ItemsControl ItemsSource="{Binding ParsedErrors}" Margin="0,4,0,0"
+                                  AutomationProperties.AutomationId="ParsedErrorsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="6,4"
+                                        Margin="0,0,0,3"
+                                        CornerRadius="4">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#11EF4444" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsIntroducedByPr}" Value="True">
+                                                    <Setter Property="Background" Value="#33EF4444" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <Run Text="{Binding FilePath, Mode=OneWay}" />
+                                            <Run Text=":" /><Run Text="{Binding LineNumber, Mode=OneWay}" />
+                                            <Run Text=" " />
+                                            <Run Text="{Binding ErrorCode, Mode=OneWay}" Foreground="{DynamicResource ErrorBadgeForegroundBrush}" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Message}"
+                                                   FontSize="10"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   Margin="0,1,0,0" />
+                                    </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- Pending checks -->
-                    <ItemsControl ItemsSource="{Binding PendingChecks}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Exampletal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#33F59E0B"
-                                        CornerRadius="3"
-                                        Padding="5,2"
-                                        Margin="0,0,4,4">
-                                    <TextBlock FontSize="10" Foreground="#F59E0B">
-                                        <Run Text="&#x23F3; " /><Run Text="{Binding Mode=OneWay}" />
-                                    </TextBlock>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Passed summary chip -->
-                    <Border Background="#3322C55E"
-                            CornerRadius="3"
-                            Padding="5,2"
-                            Margin="0,0,4,4">
-                        <Border.Style>
-                            <Style TargetType="Border">
+                    <!-- Check detail error message -->
+                    <TextBlock FontSize="10"
+                               Foreground="{DynamicResource ErrorBadgeForegroundBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Visible" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding CheckSummary}" Value="">
+                                    <DataTrigger Binding="{Binding CheckDetailError}" Value="">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Border.Style>
-                        <TextBlock FontSize="10" Foreground="#22C55E">
-                            <Run Text="&#x2713; " /><Run Text="{Binding CheckSummary, Mode=OneWay}" />
-                        </TextBlock>
-                    </Border>
-                </WrapPanel>
+                        </TextBlock.Style>
+                        <Run Text="{Binding CheckDetailError, Mode=OneWay}" />
+                    </TextBlock>
 
-                <!-- Row 4: Review badge + merge conflict -->
-                <StackPanel Grid.Row="4" Orientation="Exampletal" Margin="20,2,0,0">
-                    <!-- Review badge -->
-                    <Border CornerRadius="3"
-                            Padding="5,2"
-                            Margin="0,0,4,0"
-                            Background="{DynamicResource BackgroundBrush}">
-                        <Border.Style>
-                            <Style TargetType="Border">
+                    <!-- Review loading indicator -->
+                    <TextBlock Text="Loading review comments..."
+                               FontSize="10"
+                               FontStyle="Italic"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
+                               Margin="0,4,0,0"
+                               Visibility="{Binding IsReviewLoading, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- Claude review comments section -->
+                    <StackPanel Margin="0,4,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Visible" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ReviewBadgeText}" Value="">
+                                    <DataTrigger Binding="{Binding ReviewSummaryText}" Value="">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Border.Style>
-                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
-                            <Run Text="&#x1F441; " /><Run Text="{Binding ReviewBadgeText, Mode=OneWay}" />
-                        </TextBlock>
-                    </Border>
+                        </StackPanel.Style>
 
-                    <!-- Merge conflict -->
-                    <Border CornerRadius="3"
-                            Padding="5,2"
-                            Background="#33EF4444"
-                            Visibility="{Binding HasMergeConflict, Converter={StaticResource BoolToVis}}">
-                        <TextBlock FontSize="10" Foreground="#EF4444">
-                            <Run Text="&#x26A0; Merge conflict" />
+                        <!-- Review summary header -->
+                        <TextBlock Text="{Binding ReviewSummaryText}"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,4" />
+
+                        <!-- Review comment cards -->
+                        <ItemsControl ItemsSource="{Binding ReviewComments}"
+                                      AutomationProperties.AutomationId="ReviewCommentsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="6,4"
+                                            Margin="0,0,0,3"
+                                            CornerRadius="4">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                        <Setter Property="Background" Value="#33EF4444" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Severity}" Value="Suggestion">
+                                                        <Setter Property="Background" Value="#33F59E0B" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Severity}" Value="Praise">
+                                                        <Setter Property="Background" Value="#3322C55E" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Exampletal">
+                                                <!-- Severity label -->
+                                                <TextBlock FontSize="9" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="Comment" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                    <Setter Property="Text" Value="CRITICAL" />
+                                                                    <Setter Property="Foreground" Value="#EF4444" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Severity}" Value="Suggestion">
+                                                                    <Setter Property="Text" Value="SUGGESTION" />
+                                                                    <Setter Property="Foreground" Value="#F59E0B" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Severity}" Value="Praise">
+                                                                    <Setter Property="Text" Value="PRAISE" />
+                                                                    <Setter Property="Foreground" Value="#22C55E" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <!-- File path -->
+                                                <TextBlock FontSize="9"
+                                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding FilePath}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                    <Run Text="{Binding FilePath, Mode=OneWay}" />
+                                                    <Run Text=":" /><Run Text="{Binding LineNumber, Mode=OneWay}" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <!-- Comment body (truncated) -->
+                                            <TextBlock Text="{Binding Body}"
+                                                       FontSize="10"
+                                                       TextWrapping="Wrap"
+                                                       MaxHeight="60"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- Detail view + Open in browser -->
+                    <StackPanel Orientation="Exampletal" Margin="0,6,0,0">
+                        <Button Content="Details &#x2192;"
+                                Command="{Binding OpenDetailViewCommand}"
+                                AutomationProperties.AutomationId="OpenDetailViewButton"
+                                Style="{StaticResource SecondaryActionButtonStyle}" />
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0">
+                            <Hyperlink NavigateUri="{Binding HtmlUrl}"
+                                       RequestNavigate="Hyperlink_RequestNavigate"
+                                       Foreground="{DynamicResource AccentBrush}">
+                                <Run Text="Open in GitHub &#x2192;"/>
+                            </Hyperlink>
                         </TextBlock>
-                    </Border>
+                    </StackPanel>
                 </StackPanel>
-            </Grid>
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>
