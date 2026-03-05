@@ -1,0 +1,369 @@
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using PRDock.App.Models;
+using PRDock.App.Services;
+
+namespace PRDock.App.ViewModels;
+
+public partial class PRDetailViewModel : ObservableObject
+{
+    private readonly IGitHubService _gitHubService;
+    private readonly IGitCommandRunner _gitCommandRunner;
+    private readonly ISettingsService _settingsService;
+
+    private bool _commitsLoaded;
+    private bool _filesLoaded;
+    private bool _checksLoaded;
+    private bool _commentsLoaded;
+
+    public PRDetailViewModel(
+        IGitHubService gitHubService,
+        IGitCommandRunner gitCommandRunner,
+        ISettingsService settingsService)
+    {
+        _gitHubService = gitHubService;
+        _gitCommandRunner = gitCommandRunner;
+        _settingsService = settingsService;
+    }
+
+    // Header properties
+    [ObservableProperty] private int _number;
+    [ObservableProperty] private string _title = "";
+    [ObservableProperty] private string _headRef = "";
+    [ObservableProperty] private string _baseRef = "";
+    [ObservableProperty] private string _authorLogin = "";
+    [ObservableProperty] private string _authorAvatarUrl = "";
+    [ObservableProperty] private string _htmlUrl = "";
+    [ObservableProperty] private string _body = "";
+    [ObservableProperty] private bool _isDraft;
+    [ObservableProperty] private bool _hasMergeConflict;
+    [ObservableProperty] private string _statusDotColor = "gray";
+    [ObservableProperty] private DateTime _createdAt;
+    [ObservableProperty] private string _reviewStatusText = "";
+    [ObservableProperty] private string _repoOwner = "";
+    [ObservableProperty] private string _repoName = "";
+    [ObservableProperty] private string _age = "";
+
+    public ObservableCollection<string> Labels { get; } = [];
+
+    // Tab state
+    [ObservableProperty] private string _activeTab = "Description";
+
+    // Per-tab loading
+    [ObservableProperty] private bool _isCommitsLoading;
+    [ObservableProperty] private bool _isFilesLoading;
+    [ObservableProperty] private bool _isChecksLoading;
+    [ObservableProperty] private bool _isCommentsLoading;
+
+    // Per-tab errors
+    [ObservableProperty] private string _commitsError = "";
+    [ObservableProperty] private string _filesError = "";
+    [ObservableProperty] private string _checksError = "";
+    [ObservableProperty] private string _commentsError = "";
+
+    // Collections
+    public ObservableCollection<PullRequestCommit> Commits { get; } = [];
+    public ObservableCollection<PullRequestFileChange> FileChanges { get; } = [];
+    public ObservableCollection<CheckRun> CheckRuns { get; } = [];
+    public ObservableCollection<ClaudeReviewComment> AllComments { get; } = [];
+
+    // Computed
+    [ObservableProperty] private int _totalAdditions;
+    [ObservableProperty] private int _totalDeletions;
+    [ObservableProperty] private int _filesChangedCount;
+    [ObservableProperty] private int _commitCount;
+
+    // Comment input
+    [ObservableProperty] private string _newCommentText = "";
+    [ObservableProperty] private string _reviewBody = "";
+
+    // Toast feedback
+    [ObservableProperty] private string _toastMessage = "";
+
+    // Status
+    [ObservableProperty] private bool _isPostingComment;
+    [ObservableProperty] private bool _isSubmittingReview;
+
+    public event Action? CloseRequested;
+    public event Action? RefreshRequested;
+
+    public void Initialize(PullRequestCardViewModel card)
+    {
+        Number = card.Number;
+        Title = card.Title;
+        HeadRef = card.HeadRef;
+        BaseRef = card.BaseRef;
+        AuthorLogin = card.AuthorLogin;
+        HtmlUrl = card.HtmlUrl;
+        Body = card.Body;
+        IsDraft = card.IsDraft;
+        HasMergeConflict = card.HasMergeConflict;
+        StatusDotColor = card.StatusDotColor;
+        ReviewStatusText = card.ReviewBadgeText;
+        RepoOwner = card.RepoOwner;
+        RepoName = card.RepoName;
+        Age = card.Age;
+
+        Labels.Clear();
+
+        // Populate checks from card data
+        CheckRuns.Clear();
+        foreach (var check in card.FailedCheckRuns)
+            CheckRuns.Add(check);
+        _checksLoaded = card.FailedCheckRuns.Count > 0;
+
+        // Reset tab state
+        _commitsLoaded = false;
+        _filesLoaded = false;
+        _commentsLoaded = false;
+        ActiveTab = "Description";
+
+        // Eagerly load all tab data in parallel
+        _ = LoadAllDataAsync();
+    }
+
+    private async Task LoadAllDataAsync()
+    {
+        await Task.WhenAll(
+            LoadCommitsAsync(),
+            LoadFilesAsync(),
+            LoadChecksAsync(),
+            LoadCommentsAsync());
+    }
+
+    [RelayCommand]
+    private async Task SetTabAsync(string tabName)
+    {
+        ActiveTab = tabName;
+        await LoadTabDataAsync(tabName);
+    }
+
+    private async Task LoadTabDataAsync(string tabName)
+    {
+        switch (tabName)
+        {
+            case "Commits" when !_commitsLoaded:
+                await LoadCommitsAsync();
+                break;
+            case "Files" when !_filesLoaded:
+                await LoadFilesAsync();
+                break;
+            case "Checks" when !_checksLoaded:
+                await LoadChecksAsync();
+                break;
+            case "Comments" when !_commentsLoaded:
+                await LoadCommentsAsync();
+                break;
+        }
+    }
+
+    private async Task LoadCommitsAsync()
+    {
+        IsCommitsLoading = true;
+        CommitsError = "";
+        try
+        {
+            var commits = await _gitHubService.GetPullRequestCommitsAsync(RepoOwner, RepoName, Number);
+            Commits.Clear();
+            foreach (var c in commits)
+                Commits.Add(c);
+            CommitCount = commits.Count;
+            _commitsLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            CommitsError = ex.Message;
+        }
+        finally
+        {
+            IsCommitsLoading = false;
+        }
+    }
+
+    private async Task LoadFilesAsync()
+    {
+        IsFilesLoading = true;
+        FilesError = "";
+        try
+        {
+            var files = await _gitHubService.GetPullRequestFilesAsync(RepoOwner, RepoName, Number);
+            FileChanges.Clear();
+            var additions = 0;
+            var deletions = 0;
+            foreach (var f in files)
+            {
+                FileChanges.Add(f);
+                additions += f.Additions;
+                deletions += f.Deletions;
+            }
+            TotalAdditions = additions;
+            TotalDeletions = deletions;
+            FilesChangedCount = files.Count;
+            _filesLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            FilesError = ex.Message;
+        }
+        finally
+        {
+            IsFilesLoading = false;
+        }
+    }
+
+    private async Task LoadChecksAsync()
+    {
+        IsChecksLoading = true;
+        ChecksError = "";
+        try
+        {
+            // Checks are already populated from card data for failed runs
+            // Mark as loaded
+            _checksLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            ChecksError = ex.Message;
+        }
+        finally
+        {
+            IsChecksLoading = false;
+        }
+    }
+
+    private async Task LoadCommentsAsync()
+    {
+        IsCommentsLoading = true;
+        CommentsError = "";
+        try
+        {
+            var comments = await _gitHubService.GetAllPullRequestCommentsAsync(RepoOwner, RepoName, Number);
+            AllComments.Clear();
+            foreach (var c in comments)
+                AllComments.Add(c);
+            _commentsLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            CommentsError = ex.Message;
+        }
+        finally
+        {
+            IsCommentsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CopyBranchName()
+    {
+        System.Windows.Clipboard.SetText(HeadRef);
+        ShowToast("Branch name copied");
+    }
+
+    [RelayCommand]
+    private void CopyPrUrl()
+    {
+        System.Windows.Clipboard.SetText(HtmlUrl);
+        ShowToast("URL copied");
+    }
+
+    [RelayCommand]
+    private void OpenInBrowser()
+    {
+        if (!string.IsNullOrEmpty(HtmlUrl))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = HtmlUrl,
+                UseShellExecute = true
+            });
+        }
+    }
+
+    [RelayCommand]
+    private void Close()
+    {
+        CloseRequested?.Invoke();
+    }
+
+    [RelayCommand]
+    private async Task CheckoutBranchAsync()
+    {
+        var repos = _settingsService.CurrentSettings.Repos;
+        var repo = repos.FirstOrDefault(r => r.Owner == RepoOwner && r.Name == RepoName);
+        var workDir = repo?.WorktreeBasePath;
+        if (string.IsNullOrWhiteSpace(workDir))
+        {
+            ShowToast("No worktree path configured");
+            return;
+        }
+
+        try
+        {
+            var result = await _gitCommandRunner.RunAsync(workDir, $"checkout {HeadRef}");
+            ShowToast(result.ExitCode == 0 ? $"Checked out {HeadRef}" : $"Checkout failed: {result.StdErr.Trim()}");
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Checkout failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task SubmitReviewAsync(string reviewEvent)
+    {
+        IsSubmittingReview = true;
+        try
+        {
+            await _gitHubService.SubmitReviewAsync(RepoOwner, RepoName, Number, reviewEvent, ReviewBody.Length > 0 ? ReviewBody : null);
+            ReviewBody = "";
+            ShowToast(reviewEvent == "APPROVE" ? "PR approved" : "Changes requested");
+            RefreshRequested?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Review failed: {ex.Message}");
+        }
+        finally
+        {
+            IsSubmittingReview = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task PostCommentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewCommentText)) return;
+
+        IsPostingComment = true;
+        try
+        {
+            await _gitHubService.PostCommentAsync(RepoOwner, RepoName, Number, NewCommentText);
+            NewCommentText = "";
+            ShowToast("Comment posted");
+            RefreshRequested?.Invoke();
+
+            // Refresh comments
+            _commentsLoaded = false;
+            await LoadCommentsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Comment failed: {ex.Message}");
+        }
+        finally
+        {
+            IsPostingComment = false;
+        }
+    }
+
+    private async void ShowToast(string message)
+    {
+        ToastMessage = message;
+        await Task.Delay(2500);
+        if (ToastMessage == message)
+            ToastMessage = "";
+    }
+}

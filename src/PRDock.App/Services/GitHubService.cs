@@ -98,6 +98,219 @@ public sealed class GitHubService : IGitHubService
         }
     }
 
+    public async Task<IReadOnlyList<ClaudeReviewComment>> GetPullRequestReviewCommentsAsync(
+        string owner, string repo, int prNumber, string botUsername, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+
+        // Fetch both review comments (inline on diffs) and issue comments (top-level)
+        var comments = new List<ClaudeReviewComment>();
+
+        // 1. PR review comments (inline code comments)
+        try
+        {
+            var url = $"repos/{owner}/{repo}/pulls/{prNumber}/comments";
+            _logger.LogDebug("Fetching PR review comments from {Url}", url);
+
+            var response = await client.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
+
+            var dtos = await response.Content.ReadFromJsonAsync<List<GitHubPrReviewCommentDto>>(GitHubJsonOptions, ct) ?? [];
+
+            foreach (var dto in dtos)
+            {
+                var login = dto.User?.Login ?? "";
+                if (!login.Contains(botUsername, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var comment = new ClaudeReviewComment
+                {
+                    Id = dto.Id.ToString(),
+                    Author = login,
+                    Body = dto.Body ?? "",
+                    FilePath = dto.Path,
+                    LineNumber = dto.Line ?? dto.OriginalLine,
+                    CreatedAt = dto.CreatedAt,
+                    HtmlUrl = dto.HtmlUrl ?? ""
+                };
+                comment.Severity = ClaudeReviewComment.DetectSeverity(comment.Body);
+                comments.Add(comment);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch PR review comments for {Owner}/{Repo}#{Number}", owner, repo, prNumber);
+        }
+
+        // 2. Issue comments (top-level PR comments)
+        try
+        {
+            var url = $"repos/{owner}/{repo}/issues/{prNumber}/comments";
+            _logger.LogDebug("Fetching issue comments from {Url}", url);
+
+            var response = await client.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
+
+            var dtos = await response.Content.ReadFromJsonAsync<List<GitHubIssueCommentDto>>(GitHubJsonOptions, ct) ?? [];
+
+            foreach (var dto in dtos)
+            {
+                var login = dto.User?.Login ?? "";
+                if (!login.Contains(botUsername, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var comment = new ClaudeReviewComment
+                {
+                    Id = dto.Id.ToString(),
+                    Author = login,
+                    Body = dto.Body ?? "",
+                    CreatedAt = dto.CreatedAt,
+                    HtmlUrl = dto.HtmlUrl ?? ""
+                };
+                comment.Severity = ClaudeReviewComment.DetectSeverity(comment.Body);
+                comments.Add(comment);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch issue comments for {Owner}/{Repo}#{Number}", owner, repo, prNumber);
+        }
+
+        _logger.LogDebug("Found {Count} Claude review comments for PR #{Number}", comments.Count, prNumber);
+        return comments;
+    }
+
+    public async Task<IReadOnlyList<PullRequestCommit>> GetPullRequestCommitsAsync(
+        string owner, string repo, int prNumber, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/pulls/{prNumber}/commits";
+        _logger.LogDebug("Fetching commits for PR #{Number} from {Url}", prNumber, url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var dtos = await response.Content.ReadFromJsonAsync<List<GitHubCommitDto>>(GitHubJsonOptions, ct) ?? [];
+        return dtos.Select(d => new PullRequestCommit
+        {
+            Sha = d.Sha ?? "",
+            Message = d.Commit?.Message ?? "",
+            AuthorLogin = d.Author?.Login ?? d.Commit?.Author?.Name ?? "",
+            AuthorAvatarUrl = d.Author?.AvatarUrl ?? "",
+            Date = d.Commit?.Author?.Date ?? DateTimeOffset.MinValue
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<PullRequestFileChange>> GetPullRequestFilesAsync(
+        string owner, string repo, int prNumber, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/pulls/{prNumber}/files";
+        _logger.LogDebug("Fetching files for PR #{Number} from {Url}", prNumber, url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var dtos = await response.Content.ReadFromJsonAsync<List<GitHubFileChangeDto>>(GitHubJsonOptions, ct) ?? [];
+        return dtos.Select(d => new PullRequestFileChange
+        {
+            Filename = d.Filename ?? "",
+            Status = d.Status ?? "",
+            Additions = d.Additions,
+            Deletions = d.Deletions,
+            Patch = d.Patch,
+            PreviousFilename = d.PreviousFilename
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<ClaudeReviewComment>> GetAllPullRequestCommentsAsync(
+        string owner, string repo, int prNumber, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var comments = new List<ClaudeReviewComment>();
+
+        // PR review comments (inline on diffs)
+        try
+        {
+            var response = await client.GetAsync($"repos/{owner}/{repo}/pulls/{prNumber}/comments", ct);
+            response.EnsureSuccessStatusCode();
+            var dtos = await response.Content.ReadFromJsonAsync<List<GitHubPrReviewCommentDto>>(GitHubJsonOptions, ct) ?? [];
+
+            foreach (var dto in dtos)
+            {
+                comments.Add(new ClaudeReviewComment
+                {
+                    Id = dto.Id.ToString(),
+                    Author = dto.User?.Login ?? "",
+                    Body = dto.Body ?? "",
+                    FilePath = dto.Path,
+                    LineNumber = dto.Line ?? dto.OriginalLine,
+                    CreatedAt = dto.CreatedAt,
+                    HtmlUrl = dto.HtmlUrl ?? "",
+                    Severity = ClaudeReviewComment.DetectSeverity(dto.Body ?? "")
+                });
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch PR review comments for {Owner}/{Repo}#{Number}", owner, repo, prNumber);
+        }
+
+        // Issue comments (top-level)
+        try
+        {
+            var response = await client.GetAsync($"repos/{owner}/{repo}/issues/{prNumber}/comments", ct);
+            response.EnsureSuccessStatusCode();
+            var dtos = await response.Content.ReadFromJsonAsync<List<GitHubIssueCommentDto>>(GitHubJsonOptions, ct) ?? [];
+
+            foreach (var dto in dtos)
+            {
+                comments.Add(new ClaudeReviewComment
+                {
+                    Id = dto.Id.ToString(),
+                    Author = dto.User?.Login ?? "",
+                    Body = dto.Body ?? "",
+                    CreatedAt = dto.CreatedAt,
+                    HtmlUrl = dto.HtmlUrl ?? "",
+                    Severity = ClaudeReviewComment.DetectSeverity(dto.Body ?? "")
+                });
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch issue comments for {Owner}/{Repo}#{Number}", owner, repo, prNumber);
+        }
+
+        return comments.OrderBy(c => c.CreatedAt).ToList();
+    }
+
+    public async Task SubmitReviewAsync(
+        string owner, string repo, int prNumber, string reviewEvent, string? body = null, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/pulls/{prNumber}/reviews";
+        _logger.LogInformation("Submitting review ({Event}) for {Owner}/{Repo} PR #{Number}", reviewEvent, owner, repo, prNumber);
+
+        var payload = new Dictionary<string, string> { ["event"] = reviewEvent };
+        if (!string.IsNullOrWhiteSpace(body))
+            payload["body"] = body;
+
+        var response = await client.PostAsJsonAsync(url, payload, GitHubJsonOptions, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task PostCommentAsync(
+        string owner, string repo, int prNumber, string body, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/issues/{prNumber}/comments";
+        _logger.LogInformation("Posting comment on {Owner}/{Repo} PR #{Number}", owner, repo, prNumber);
+
+        var payload = new { body };
+        var response = await client.PostAsJsonAsync(url, payload, GitHubJsonOptions, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
     internal static ReviewStatus AggregateReviewStatus(List<GitHubReviewDto> reviews)
     {
         if (reviews.Count == 0)
@@ -152,6 +365,7 @@ public sealed class GitHubService : IGitHubService
             IsDraft = dto.Draft,
             Mergeable = dto.Mergeable,
             HtmlUrl = dto.HtmlUrl ?? "",
+            Body = dto.Body ?? "",
             RepoOwner = owner,
             RepoName = repo,
             CommentCount = dto.Comments,
@@ -165,6 +379,7 @@ public sealed class GitHubService : IGitHubService
     {
         public int Number { get; set; }
         public string? Title { get; set; }
+        public string? Body { get; set; }
         public string? State { get; set; }
         [JsonPropertyName("html_url")]
         public string? HtmlUrl { get; set; }
@@ -202,5 +417,61 @@ public sealed class GitHubService : IGitHubService
     {
         public string? State { get; set; }
         public GitHubUserDto? User { get; set; }
+    }
+
+    internal sealed class GitHubPrReviewCommentDto
+    {
+        public long Id { get; set; }
+        public string? Body { get; set; }
+        public string? Path { get; set; }
+        public int? Line { get; set; }
+        [JsonPropertyName("original_line")]
+        public int? OriginalLine { get; set; }
+        [JsonPropertyName("html_url")]
+        public string? HtmlUrl { get; set; }
+        [JsonPropertyName("created_at")]
+        public DateTimeOffset CreatedAt { get; set; }
+        public GitHubUserDto? User { get; set; }
+    }
+
+    internal sealed class GitHubIssueCommentDto
+    {
+        public long Id { get; set; }
+        public string? Body { get; set; }
+        [JsonPropertyName("html_url")]
+        public string? HtmlUrl { get; set; }
+        [JsonPropertyName("created_at")]
+        public DateTimeOffset CreatedAt { get; set; }
+        public GitHubUserDto? User { get; set; }
+    }
+
+    internal sealed class GitHubCommitDto
+    {
+        public string? Sha { get; set; }
+        public GitHubCommitDetailDto? Commit { get; set; }
+        public GitHubUserDto? Author { get; set; }
+    }
+
+    internal sealed class GitHubCommitDetailDto
+    {
+        public string? Message { get; set; }
+        public GitHubCommitAuthorDto? Author { get; set; }
+    }
+
+    internal sealed class GitHubCommitAuthorDto
+    {
+        public string? Name { get; set; }
+        public DateTimeOffset? Date { get; set; }
+    }
+
+    internal sealed class GitHubFileChangeDto
+    {
+        public string? Filename { get; set; }
+        public string? Status { get; set; }
+        public int Additions { get; set; }
+        public int Deletions { get; set; }
+        public string? Patch { get; set; }
+        [JsonPropertyName("previous_filename")]
+        public string? PreviousFilename { get; set; }
     }
 }

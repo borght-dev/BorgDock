@@ -14,6 +14,7 @@ public sealed class PullRequest
     public bool IsDraft { get; set; }
     public bool? Mergeable { get; set; }
     public string HtmlUrl { get; set; } = "";
+    public string Body { get; set; } = "";
     public string RepoOwner { get; set; } = "";
     public string RepoName { get; set; } = "";
     public ReviewStatus ReviewStatus { get; set; } = ReviewStatus.None;
