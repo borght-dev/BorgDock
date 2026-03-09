@@ -78,6 +78,59 @@ public sealed class PRCacheService : IPRCacheService, IDisposable
         }
     }
 
+    public async Task<IReadOnlyList<PullRequest>> LoadClosedCachedAsync()
+    {
+        try
+        {
+            await EnsureInitializedAsync();
+
+            using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = "SELECT data FROM pr_cache WHERE id = 2;";
+            var result = await cmd.ExecuteScalarAsync();
+
+            if (result is string json && json.Length > 0)
+            {
+                var cached = JsonSerializer.Deserialize<List<PullRequest>>(json, JsonOptions);
+                if (cached is not null)
+                {
+                    _logger.LogInformation("Loaded {Count} cached closed PRs from SQLite", cached.Count);
+                    return cached;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load closed PR cache, starting fresh");
+        }
+
+        return [];
+    }
+
+    public async Task SaveClosedAsync(IReadOnlyList<PullRequest> closedPrs)
+    {
+        try
+        {
+            await EnsureInitializedAsync();
+
+            var json = JsonSerializer.Serialize(closedPrs, JsonOptions);
+
+            using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = """
+                INSERT OR REPLACE INTO pr_cache (id, data, updated_at)
+                VALUES (2, @data, @updated_at);
+                """;
+            cmd.Parameters.AddWithValue("@data", json);
+            cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("O"));
+            await cmd.ExecuteNonQueryAsync();
+
+            _logger.LogDebug("Cached {Count} closed PRs to SQLite", closedPrs.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save closed PR cache");
+        }
+    }
+
     private async Task EnsureInitializedAsync()
     {
         if (_connection is not null)

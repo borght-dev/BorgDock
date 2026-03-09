@@ -62,6 +62,26 @@ public sealed class GitHubService : IGitHubService
         return pullRequests;
     }
 
+    public async Task<IReadOnlyList<PullRequest>> GetClosedPullRequestsAsync(
+        string owner, string repo, int perPage = 30, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+
+        var url = $"repos/{owner}/{repo}/pulls?state=closed&sort=updated&direction=desc&per_page={perPage}";
+        _logger.LogInformation("Fetching closed PRs for {Owner}/{Repo} — GET {Url}", owner, repo, url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var dtos = await response.Content.ReadFromJsonAsync<List<GitHubPullRequestDto>>(GitHubJsonOptions, ct)
+            ?? [];
+
+        var pullRequests = dtos.Select(dto => MapToPullRequest(dto, owner, repo)).ToList();
+
+        _logger.LogInformation("Fetched {Count} closed PRs for {Owner}/{Repo}", pullRequests.Count, owner, repo);
+        return pullRequests;
+    }
+
     public async Task<PullRequest> GetPullRequestAsync(
         string owner, string repo, int prNumber, CancellationToken ct = default)
     {
@@ -397,7 +417,9 @@ public sealed class GitHubService : IGitHubService
             Deletions = dto.Deletions,
             ChangedFiles = dto.ChangedFiles,
             CommitCount = dto.Commits,
-            Labels = dto.Labels?.Select(l => l.Name ?? "").Where(n => n.Length > 0).ToList() ?? []
+            Labels = dto.Labels?.Select(l => l.Name ?? "").Where(n => n.Length > 0).ToList() ?? [],
+            MergedAt = dto.MergedAt,
+            ClosedAt = dto.ClosedAt
         };
     }
 
@@ -415,6 +437,10 @@ public sealed class GitHubService : IGitHubService
         public DateTime CreatedAt { get; set; }
         [JsonPropertyName("updated_at")]
         public DateTime UpdatedAt { get; set; }
+        [JsonPropertyName("closed_at")]
+        public DateTime? ClosedAt { get; set; }
+        [JsonPropertyName("merged_at")]
+        public DateTime? MergedAt { get; set; }
         public bool Draft { get; set; }
         public bool? Mergeable { get; set; }
         public int Comments { get; set; }

@@ -14,6 +14,29 @@
     </UserControl.Resources>
 
     <StackPanel>
+        <!-- Section header (e.g., "Recently Closed") -->
+        <Border Padding="18,10,18,6"
+                BorderBrush="{DynamicResource SeparatorBrush}"
+                BorderThickness="0,1,0,0">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SectionHeader}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding SectionHeader}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding SectionHeader}"
+                       FontSize="11" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       FontFamily="{DynamicResource CodeFontFamily}" />
+        </Border>
+
         <!-- Main clickable row -->
         <Border x:Name="RowBorder"
                 Cursor="Hand"
@@ -26,6 +49,9 @@
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Opacity" Value="1.0" />
                     <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsMyPr}" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter Property="Background" Value="{DynamicResource SelectedRowBgBrush}" />
@@ -585,6 +611,48 @@
                         <StackPanel Orientation="Exampletal">
                             <TextBlock Text="&#x2726; " FontSize="10" />
                             <TextBlock Text="Fix with Claude" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Copy for Claude (shown when failing) -->
+                    <Button Command="{Binding CopyErrorsForClaudeCommand}"
+                            Margin="0,0,8,0" Cursor="Hand"
+                            Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                            AutomationProperties.AutomationId="CopyForClaudeButton">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="BtnBorder" Background="Transparent"
+                                                    BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter ExampletalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.85" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.72" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Exampletal">
+                            <TextBlock Text="&#x1F4CB; " FontSize="10" />
+                            <TextBlock Text="Copy for Claude" />
                         </StackPanel>
                     </Button>
 

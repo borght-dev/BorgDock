@@ -24,4 +24,7 @@ public sealed class PullRequest
     public int Deletions { get; set; }
     public int ChangedFiles { get; set; }
     public int CommitCount { get; set; }
+    public DateTime? MergedAt { get; set; }
+    public DateTime? ClosedAt { get; set; }
+    public bool IsMerged => MergedAt.HasValue;
 }

@@ -6,4 +6,6 @@ public interface IPRCacheService
 {
     Task<IReadOnlyList<PullRequestWithChecks>> LoadCachedAsync();
     Task SaveAsync(IReadOnlyList<PullRequestWithChecks> results);
+    Task<IReadOnlyList<PullRequest>> LoadClosedCachedAsync();
+    Task SaveClosedAsync(IReadOnlyList<PullRequest> closedPrs);
 }

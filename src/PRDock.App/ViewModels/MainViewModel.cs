@@ -21,6 +21,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IWorktreeService? _worktreeService;
     private readonly IGitHubService? _gitHubService;
     private readonly IGitCommandRunner? _gitCommandRunner;
+    private readonly IPRCacheService? _cacheService;
 
     private IReadOnlyList<PullRequestWithChecks> _previousPollResults = [];
 
@@ -38,7 +39,8 @@ public partial class MainViewModel : ObservableObject
         IClaudeCodeLauncher? claudeCodeLauncher = null,
         IWorktreeService? worktreeService = null,
         IGitHubService? gitHubService = null,
-        IGitCommandRunner? gitCommandRunner = null)
+        IGitCommandRunner? gitCommandRunner = null,
+        IPRCacheService? cacheService = null)
     {
         _pollingService = pollingService;
         _httpClient = httpClient;
@@ -50,6 +52,7 @@ public partial class MainViewModel : ObservableObject
         _worktreeService = worktreeService;
         _gitHubService = gitHubService;
         _gitCommandRunner = gitCommandRunner;
+        _cacheService = cacheService;
         _pollingService.PollCompleted += OnPollCompleted;
         _pollingService.PollFailed += OnPollFailed;
 
@@ -148,9 +151,16 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SetFilter(string filter)
+    private async Task SetFilterAsync(string filter)
     {
         ActiveFilter = filter;
+
+        if (filter == "Closed" && !_closedPrsLoaded)
+        {
+            await LoadClosedPrsAsync();
+            return; // LoadClosedPrsAsync calls ApplyGroupingAndFiltering
+        }
+
         ApplyGroupingAndFiltering();
     }
 
@@ -725,6 +735,7 @@ public partial class MainViewModel : ObservableObject
             "Failing" => _allPullRequests.Where(pr => pr.StatusDotColor == "red"),
             "Ready" => _allPullRequests.Where(pr => pr.StatusDotColor == "green" && !pr.IsDraft && !pr.HasMergeConflict && pr.HasAllChecksPassed),
             "Reviewing" => _allPullRequests.Where(pr => !string.IsNullOrEmpty(pr.ReviewBadgeColor) && pr.ReviewBadgeColor != "gray"),
+            "Closed" => _closedPullRequests.AsEnumerable(),
             _ => _allPullRequests.AsEnumerable()
         };
 
@@ -755,6 +766,7 @@ public partial class MainViewModel : ObservableObject
 
                 var sorted = g
                     .OrderByDescending(pr => pr.IsMyPr)
+                    .ThenBy(pr => pr.IsDraft)
                     .ThenByDescending(pr => pr.UpdatedAt);
 
                 foreach (var pr in sorted)
@@ -788,8 +800,11 @@ public partial class MainViewModel : ObservableObject
         FilteredPullRequests.Clear();
         foreach (var group in RepoGroups)
         {
+            bool first = true;
             foreach (var pr in group.PullRequests)
             {
+                pr.SectionHeader = first && group.IsRecentlyClosed ? "Recently Closed" : "";
+                first = false;
                 FilteredPullRequests.Add(pr);
             }
         }

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PRDock.App.Models;
@@ -116,6 +117,10 @@ public partial class PullRequestCardViewModel : ObservableObject
     // Labels
     public ObservableCollection<string> Labels { get; } = [];
 
+    // Section header displayed above this card (e.g., "Recently Closed")
+    [ObservableProperty]
+    private string _sectionHeader = "";
+
     // Expansion state for inline row expansion
     [ObservableProperty]
     private bool _isExpanded;
@@ -185,6 +190,87 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void CopyPrUrl()
     {
         System.Windows.Clipboard.SetText(HtmlUrl);
+    }
+
+    [RelayCommand]
+    private void CopyErrorsForClaude()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"## CI Failures for PR #{Number}: {Title}");
+        sb.AppendLine($"Branch: {HeadRef} -> {BaseRef}");
+        sb.AppendLine();
+
+        // Always include failed check names
+        if (FailedChecks.Count > 0)
+        {
+            sb.AppendLine("### Failed Checks");
+            foreach (var check in FailedChecks)
+                sb.AppendLine($"- {check}");
+            sb.AppendLine();
+        }
+
+        // Include parsed errors if available
+        if (ParsedErrors.Count > 0)
+        {
+            var groups = ParsedErrors
+                .GroupBy(e => e.Category)
+                .OrderBy(g => g.Key switch
+                {
+                    "PlaywrightSummary" => 0,
+                    "Playwright" => 1,
+                    "MSBuild" => 2,
+                    "TypeScript" => 3,
+                    "ESLint" => 4,
+                    "DotnetTest" => 5,
+                    _ => 10
+                });
+
+            foreach (var group in groups)
+            {
+                var label = group.Key switch
+                {
+                    "PlaywrightSummary" => "Test Results",
+                    "Playwright" => "Failed/Flaky Tests",
+                    "MSBuild" => "Build Errors",
+                    "TypeScript" => "TypeScript Errors",
+                    "ESLint" => "ESLint Errors",
+                    "DotnetTest" => "Test Failures",
+                    _ => group.Key
+                };
+
+                sb.AppendLine($"### {label}");
+                sb.AppendLine();
+
+                foreach (var error in group)
+                {
+                    if (group.Key == "PlaywrightSummary")
+                    {
+                        sb.AppendLine(error.Message);
+                        sb.AppendLine();
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(error.FilePath))
+                        {
+                            sb.Append($"**{error.FilePath}");
+                            if (error.LineNumber.HasValue)
+                                sb.Append($":{error.LineNumber}");
+                            sb.AppendLine("**");
+                        }
+                        if (!string.IsNullOrEmpty(error.ErrorCode))
+                            sb.AppendLine($"_{error.ErrorCode}_");
+                        sb.AppendLine($"```\n{error.Message}\n```");
+                        sb.AppendLine();
+                    }
+                }
+            }
+        }
+        else if (FailedChecks.Count == 0)
+        {
+            sb.AppendLine("_No failure details available yet. Expand the PR card first to load check details._");
+        }
+
+        System.Windows.Clipboard.SetText(sb.ToString().TrimEnd());
     }
 
     [RelayCommand]

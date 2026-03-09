@@ -415,6 +415,23 @@
                                          Command="{Binding SetFilterCommand}" CommandParameter="Reviewing">
                                 <TextBlock Text="Reviewing" FontSize="11.5" />
                             </RadioButton>
+
+                            <!-- Closed -->
+                            <RadioButton Style="{StaticResource FilterChipStyle}"
+                                         GroupName="Filters"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource StringEqualityConverter}, ConverterParameter=Closed}"
+                                         Command="{Binding SetFilterCommand}" CommandParameter="Closed">
+                                <StackPanel Orientation="Exampletal">
+                                    <TextBlock Text="Closed" FontSize="11.5" />
+                                    <Border Background="{DynamicResource SurfaceRaisedBrush}"
+                                            CornerRadius="3" Padding="5,1" Margin="5,0,0,0">
+                                        <TextBlock Text="{Binding ClosedCount}"
+                                                   FontSize="10" FontWeight="SemiBold"
+                                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                                   Foreground="{DynamicResource TextGhostBrush}" />
+                                    </Border>
+                                </StackPanel>
+                            </RadioButton>
                         </StackPanel>
                     </StackPanel>
                 </Border>

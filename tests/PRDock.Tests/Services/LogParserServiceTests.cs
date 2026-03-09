@@ -397,4 +397,197 @@ public class LogParserServiceTests
     }
 
     #endregion
+
+    #region Playwright Parsing
+
+    [Fact]
+    public void Parse_PlaywrightFailure_ExtractsTestDetails()
+    {
+        var log = """
+            Running 47 tests using 1 worker
+
+              1) [chromium] › tests/planboard/planboard-order-context-menu.spec.ts:204:9 › Planboard Order Context Menu › Safe Actions › Copy Order sends POST and menu closes
+
+                TimeoutError: page.waitForResponse: Timeout 15000ms exceeded while waiting for event "response"
+
+                  209 |
+                  210 |       // Set up network interception for the copy API call
+                > 211 |       const copyResponse = page.waitForResponse(
+                      |                                 ^
+                  212 |         (res) => res.url().includes('/copy') && res.request().method() === 'POST',
+
+                    at tests/planboard/planboard-order-context-menu.spec.ts:211:33
+
+                Retry #1 ───────────────────────────────────────────────────────────
+
+                TimeoutError: page.waitForResponse: Timeout 15000ms exceeded
+
+              1 failed
+                [chromium] › tests/planboard/planboard-order-context-menu.spec.ts:204:9 › Planboard Order Context Menu › Safe Actions › Copy Order sends POST and menu closes
+              38 passed (11.0m)
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        // Should have a summary entry and a failure entry
+        result.Should().Contain(e => e.Category == "PlaywrightSummary");
+        result.Should().Contain(e => e.Category == "Playwright");
+
+        var failure = result.First(e => e.Category == "Playwright");
+        failure.FilePath.Should().Be("tests/planboard/planboard-order-context-menu.spec.ts");
+        failure.LineNumber.Should().Be(204);
+        failure.ErrorCode.Should().Contain("Copy Order sends POST and menu closes");
+        failure.Message.Should().Contain("TimeoutError");
+    }
+
+    [Fact]
+    public void Parse_PlaywrightMultipleFailures_ExtractsAll()
+    {
+        var log = """
+              1) [chromium] › tests/foo.spec.ts:10:5 › Suite › test one
+
+                Error: expect(locator).toBeVisible() failed
+
+              2) [chromium] › tests/bar.spec.ts:20:3 › Suite › test two
+
+                TimeoutError: locator.click: Timeout 15000ms exceeded
+
+              2 failed
+                [chromium] › tests/foo.spec.ts:10:5 › Suite › test one
+                [chromium] › tests/bar.spec.ts:20:3 › Suite › test two
+              10 passed (5.0m)
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        var failures = result.Where(e => e.Category == "Playwright").ToList();
+        failures.Should().HaveCount(2);
+        failures[0].FilePath.Should().Be("tests/foo.spec.ts");
+        failures[0].Message.Should().Contain("toBeVisible");
+        failures[1].FilePath.Should().Be("tests/bar.spec.ts");
+        failures[1].Message.Should().Contain("Timeout");
+    }
+
+    [Fact]
+    public void Parse_PlaywrightSummary_ExtractsCounts()
+    {
+        var log = """
+              1) [chromium] › tests/a.spec.ts:1:1 › Test › fails
+
+                Error: test failure
+
+              1 failed
+                [chromium] › tests/a.spec.ts:1:1 › Test › fails
+              1 flaky
+                [chromium] › tests/b.spec.ts:5:1 › Test › flaky one
+              4 skipped
+              3 did not run
+              38 passed (11.0m)
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        var summary = result.First(e => e.Category == "PlaywrightSummary");
+        summary.Message.Should().Contain("1 failed");
+        summary.Message.Should().Contain("1 flaky");
+        summary.Message.Should().Contain("38 passed");
+        summary.Message.Should().Contain("4 skipped");
+        summary.Message.Should().Contain("3 did not run");
+    }
+
+    [Fact]
+    public void Parse_PlaywrightRetries_DoesNotDuplicateEntries()
+    {
+        var log = """
+              1) [chromium] › tests/a.spec.ts:10:5 › Test › retry test
+
+                Error: first attempt failure
+
+                Retry #1 ─────────────────────────
+
+                Error: second attempt failure
+
+                Retry #2 ─────────────────────────
+
+                Error: third attempt failure
+
+              1 failed
+                [chromium] › tests/a.spec.ts:10:5 › Test › retry test
+              5 passed (2.0m)
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        var failures = result.Where(e => e.Category == "Playwright").ToList();
+        failures.Should().HaveCount(1);
+        failures[0].Message.Should().Contain("first attempt failure");
+    }
+
+    [Fact]
+    public void Parse_PlaywrightWithDiffAwareness_TagsIntroducedErrors()
+    {
+        var log = """
+              1) [chromium] › tests/planboard/order-menu.spec.ts:10:1 › Test › fails
+
+                Error: test failure
+
+              1 failed
+                [chromium] › tests/planboard/order-menu.spec.ts:10:1 › Test › fails
+              5 passed (1.0m)
+            """;
+
+        var changedFiles = new[] { "tests/planboard/order-menu.spec.ts" };
+
+        var result = _sut.Parse(log, changedFiles);
+
+        var failure = result.First(e => e.Category == "Playwright");
+        failure.IsIntroducedByPr.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_NonPlaywrightLog_DoesNotMatchPlaywright()
+    {
+        // A log with "failed" and "passed" but no browser tags should NOT trigger Playwright parser
+        var log = """
+            1 test failed
+            5 tests passed
+            error: something went wrong
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().NotContain(e => e.Category == "Playwright");
+        result.Should().NotContain(e => e.Category == "PlaywrightSummary");
+    }
+
+    [Fact]
+    public void Parse_PlaywrightErrorContext_StopsAtRetry()
+    {
+        var log = """
+              1) [chromium] › tests/x.spec.ts:5:1 › Suite › test name
+
+                TimeoutError: page.waitForResponse: Timeout 15000ms exceeded while waiting for event "response"
+
+                  209 |
+                > 211 |       const copyResponse = page.waitForResponse(
+                      |                                 ^
+                    at tests/x.spec.ts:211:33
+
+                Retry #1 ─────────────────────────
+
+                TimeoutError: retry error
+
+              1 failed
+                [chromium] › tests/x.spec.ts:5:1 › Suite › test name
+              5 passed (1.0m)
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        var failure = result.First(e => e.Category == "Playwright");
+        failure.Message.Should().Contain("Timeout 15000ms exceeded");
+        failure.Message.Should().NotContain("retry error");
+    }
+
+    #endregion
 }

@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using PRDock.App.Models;
@@ -22,6 +23,14 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
     [GeneratedRegex(@"^(.+?):(\d+):(\d+)\s+-\s+error\s+(.+)$", RegexOptions.Multiline)]
     private static partial Regex EsLintRegex();
 
+    // Playwright: numbered failure header "1) [chromium] › file:line:col › Test Name"
+    [GeneratedRegex(@"\d+\)\s*\[(\w+)\]\s*›\s*(.+?):(\d+):\d+\s*›\s*(.+?)\s*$", RegexOptions.Multiline)]
+    private static partial Regex PlaywrightFailureHeaderRegex();
+
+    // Playwright summary line: "1 failed", "38 passed (11.0m)", etc.
+    [GeneratedRegex(@"^\s*(\d+)\s+(failed|flaky|skipped|did not run|passed)", RegexOptions.Multiline)]
+    private static partial Regex PlaywrightSummaryLineRegex();
+
     // Generic fallback: lines containing error/FAILED/fatal/exception
     // No word boundary on "exception" to match compound names like NullReferenceException
     [GeneratedRegex(@"\b(error|FAILED|fatal)\b|exception", RegexOptions.IgnoreCase)]
@@ -41,6 +50,7 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
         errors.AddRange(ParseMsBuild(logText));
         errors.AddRange(ParseDotnetTest(logText));
         errors.AddRange(ParseTypeScriptEsLint(logText));
+        errors.AddRange(ParsePlaywright(logText));
 
         if (errors.Count == 0)
         {
@@ -168,6 +178,128 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
             i = contextEnd;
         }
         return errors;
+    }
+
+    private static List<ParsedError> ParsePlaywright(string logText)
+    {
+        var errors = new List<ParsedError>();
+
+        // Must have a Playwright summary section and browser tags to qualify
+        if (!PlaywrightSummaryLineRegex().IsMatch(logText))
+            return errors;
+
+        if (!logText.Contains("[chromium]") && !logText.Contains("[firefox]") && !logText.Contains("[webkit]"))
+            return errors;
+
+        var lines = logText.Split('\n');
+
+        // Extract individual test failures with error context
+        foreach (Match match in PlaywrightFailureHeaderRegex().Matches(logText))
+        {
+            var browser = match.Groups[1].Value;
+            var filePath = match.Groups[2].Value.Trim();
+            var lineNumber = int.Parse(match.Groups[3].Value);
+            var testName = match.Groups[4].Value.Trim();
+            var errorCode = $"[{browser}] {testName}";
+
+            // Skip duplicate entries (same test appears in retries)
+            if (errors.Any(e => e.Category == "Playwright" && e.ErrorCode == errorCode))
+                continue;
+
+            var matchLineIndex = GetLineIndex(lines, match.Index, logText);
+            var errorMessage = CollectPlaywrightErrorContext(lines, matchLineIndex);
+
+            errors.Add(new ParsedError
+            {
+                FilePath = filePath,
+                LineNumber = lineNumber,
+                Category = "Playwright",
+                ErrorCode = errorCode,
+                Message = errorMessage,
+            });
+        }
+
+        // Extract the summary section (the counts block at the bottom)
+        var summary = CollectPlaywrightSummary(lines);
+        if (!string.IsNullOrEmpty(summary))
+        {
+            errors.Insert(0, new ParsedError
+            {
+                Category = "PlaywrightSummary",
+                ErrorCode = "Test Results",
+                Message = summary,
+            });
+        }
+
+        return errors;
+    }
+
+    private static string CollectPlaywrightErrorContext(string[] lines, int startIndex)
+    {
+        var contextLines = new List<string>();
+
+        for (int i = startIndex + 1; i < lines.Length && contextLines.Count < 30; i++)
+        {
+            var line = lines[i].TrimEnd('\r');
+            var trimmed = line.Trim();
+
+            // Stop at next failure block, retry, attachment, or error context marker
+            if (i > startIndex + 1 && PlaywrightFailureHeaderRegex().IsMatch(line)) break;
+            if (trimmed.StartsWith("Retry #")) break;
+            if (trimmed.StartsWith("attachment #")) break;
+            if (trimmed.StartsWith("Error Context:")) break;
+
+            if (!string.IsNullOrWhiteSpace(trimmed))
+                contextLines.Add(trimmed);
+        }
+
+        return string.Join("\n", contextLines);
+    }
+
+    private static string CollectPlaywrightSummary(string[] lines)
+    {
+        // Find the summary block at the end of the log by scanning from the bottom
+        int summaryStart = -1;
+        int summaryEnd = -1;
+
+        for (int i = lines.Length - 1; i >= 0; i--)
+        {
+            var trimmed = lines[i].TrimEnd('\r').Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                if (summaryStart != -1) break;
+                continue;
+            }
+
+            if (PlaywrightSummaryLineRegex().IsMatch(trimmed))
+            {
+                summaryStart = i;
+                if (summaryEnd == -1) summaryEnd = i;
+            }
+            else if (summaryStart != -1)
+            {
+                // Test reference lines under a count (e.g. "[chromium] › tests/...")
+                if (trimmed.Contains("] ›") && (trimmed.Contains("[chromium]") || trimmed.Contains("[firefox]") || trimmed.Contains("[webkit]")))
+                {
+                    summaryStart = i;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        if (summaryStart == -1) return "";
+
+        var sb = new StringBuilder();
+        for (int i = summaryStart; i <= summaryEnd; i++)
+        {
+            sb.AppendLine(lines[i].TrimEnd('\r'));
+        }
+
+        return sb.ToString().TrimEnd();
     }
 
     private static int GetLineIndex(string[] lines, int charIndex, string fullText)
