@@ -16,11 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
       - name: Extract version from tag
         id: version
         shell: pwsh
@@ -43,7 +38,7 @@ jobs:
           -o publish
 
       - name: Install Velopack CLI
-        run: dotnet tool install -g vpk
+        run: dotnet tool update -g vpk
 
       - name: Download previous release (for delta generation)
         run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
