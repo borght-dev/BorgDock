@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.7 — 2026-03-09
+
+### New Features
+
+- **Monitor PR with Claude** — Launch a Claude Code session that watches your PR's CI pipeline, automatically fixes any failures, commits, pushes, and keeps checking until all checks pass. No more babysitting flaky builds.
+- **Closed PRs filter tab** — A dedicated "Closed" filter lets you browse recently closed and merged PRs without cluttering your active PR list.
+- **Playwright test failure parsing** — CI logs from Playwright test runs are now parsed and displayed with individual test names, browser info, error context, and a summary of passed/failed/flaky counts.
+
+### Improvements
+
+- **Smarter PR list ordering** — Your PRs always appear at the top, open PRs sort above drafts, and closed PRs are grouped at the bottom with a clear separator. At a glance, you can tell what's yours and what needs attention.
+- **Visual "my PR" indicator** — Your own PRs now have an accent-colored left border so they stand out immediately in the list.
+- **Redesigned PR detail window** — The detail view has been refreshed with improved layout and better AI review classification.
+- **Copy for Claude auto-loads details** — The "Copy for Claude" button now automatically loads check details before copying, so you always get the full error context.
+
+### Bug Fixes
+
+- **Setup wizard no longer reappears after updates** — Previously, the first-run wizard would show again after Velopack auto-updates. This is now fixed.
+
 ## 0.0.6 — 2026-03-09
 
 ### Bug Fixes
