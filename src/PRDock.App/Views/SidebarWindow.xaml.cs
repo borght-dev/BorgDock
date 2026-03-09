@@ -88,6 +88,8 @@ public partial class SidebarWindow : Window
             if (pollingService is not null)
                 _ = pollingService.PollNowAsync();
         };
+        vm.RerunChecksRequested += () => card.RerunRequested?.Invoke(card);
+        vm.FixWithClaudeRequested += () => card.FixWithClaudeRequested?.Invoke(card);
         _detailWindow.Closed += (_, _) => _detailWindow = null;
 
         PositionDetailWindow(_detailWindow);

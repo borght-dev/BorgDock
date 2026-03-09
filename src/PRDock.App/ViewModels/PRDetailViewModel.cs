@@ -75,6 +75,28 @@ public partial class PRDetailViewModel : ObservableObject
     [ObservableProperty] private int _filesChangedCount;
     [ObservableProperty] private int _commitCount;
 
+    // Merge readiness
+    [ObservableProperty] private int _mergeScore;
+    [ObservableProperty] private int _passedChecks;
+    [ObservableProperty] private int _totalChecks;
+    [ObservableProperty] private int _approvalCount;
+
+    // Readiness display booleans
+    [ObservableProperty] private bool _isChecksPassing;
+    [ObservableProperty] private bool _hasApproval;
+    [ObservableProperty] private bool _isConflictFree;
+    [ObservableProperty] private bool _isNotDraft;
+    [ObservableProperty] private string _checksReadinessDetail = "";
+    [ObservableProperty] private string _approvalsReadinessDetail = "";
+    [ObservableProperty] private string _conflictsReadinessDetail = "";
+    [ObservableProperty] private string _draftReadinessDetail = "";
+
+    // AI review summary
+    [ObservableProperty] private int _suggestionCount;
+    [ObservableProperty] private int _praiseCount;
+    [ObservableProperty] private int _otherReviewCount;
+    [ObservableProperty] private bool _hasAiReview;
+
     // Comment input
     [ObservableProperty] private string _newCommentText = "";
     [ObservableProperty] private string _reviewBody = "";
@@ -88,6 +110,8 @@ public partial class PRDetailViewModel : ObservableObject
 
     public event Action? CloseRequested;
     public event Action? RefreshRequested;
+    public event Action? RerunChecksRequested;
+    public event Action? FixWithClaudeRequested;
 
     public void Initialize(PullRequestCardViewModel card)
     {
@@ -107,6 +131,39 @@ public partial class PRDetailViewModel : ObservableObject
         Age = card.Age;
 
         Labels.Clear();
+        foreach (var label in card.Labels)
+            Labels.Add(label);
+
+        // Stats from card
+        TotalAdditions = card.Additions;
+        TotalDeletions = card.Deletions;
+        FilesChangedCount = card.FilesChanged;
+        CommitCount = card.CommitCount;
+
+        // Merge readiness
+        MergeScore = card.MergeScore;
+        PassedChecks = card.PassedChecks;
+        TotalChecks = card.TotalChecks;
+        ApprovalCount = card.ApprovalCount;
+
+        IsChecksPassing = card.StatusDotColor == "green";
+        HasApproval = card.ApprovalCount >= 1;
+        IsConflictFree = !card.HasMergeConflict;
+        IsNotDraft = !card.IsDraft;
+
+        ChecksReadinessDetail = $"{card.PassedChecks}/{card.TotalChecks} passing";
+        ApprovalsReadinessDetail = $"{card.ApprovalCount} approval{(card.ApprovalCount != 1 ? "s" : "")}";
+        ConflictsReadinessDetail = card.HasMergeConflict ? "Has merge conflicts" : "Clean merge";
+        DraftReadinessDetail = card.IsDraft ? "Still in draft" : "Ready for review";
+
+        // AI review summary
+        SuggestionCount = card.ReviewComments.Count(c => c.Severity == CommentSeverity.Suggestion);
+        PraiseCount = card.ReviewComments.Count(c => c.Severity == CommentSeverity.Praise);
+        OtherReviewCount = card.ReviewComments.Count(c =>
+            c.Severity != CommentSeverity.Suggestion &&
+            c.Severity != CommentSeverity.Praise &&
+            c.Severity != CommentSeverity.Critical);
+        HasAiReview = SuggestionCount > 0 || PraiseCount > 0 || OtherReviewCount > 0;
 
         // Populate checks from card data
         CheckRuns.Clear();
@@ -118,7 +175,7 @@ public partial class PRDetailViewModel : ObservableObject
         _commitsLoaded = false;
         _filesLoaded = false;
         _commentsLoaded = false;
-        ActiveTab = "Description";
+        ActiveTab = "Overview";
 
         // Eagerly load all tab data in parallel
         _ = LoadAllDataAsync();
@@ -286,6 +343,18 @@ public partial class PRDetailViewModel : ObservableObject
     private void Close()
     {
         CloseRequested?.Invoke();
+    }
+
+    [RelayCommand]
+    private void RerunChecks()
+    {
+        RerunChecksRequested?.Invoke();
+    }
+
+    [RelayCommand]
+    private void FixWithClaude()
+    {
+        FixWithClaudeRequested?.Invoke();
     }
 
     [RelayCommand]

@@ -82,7 +82,10 @@ public partial class MainViewModel : ObservableObject
     private bool _isSidebarVisible = true;
 
     [ObservableProperty]
-    private string _statusText = "PRDock \u2014 0 open PRs";
+    private string _statusText = "Starting\u2026";
+
+    [ObservableProperty]
+    private string _repoSummaryText = "";
 
     [ObservableProperty]
     private bool _isLoading;
@@ -102,9 +105,27 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSettingsOpen;
 
+    [ObservableProperty]
+    private string _searchQuery = "";
+
+    // Filter counts
+    [ObservableProperty]
+    private int _totalCount;
+
+    [ObservableProperty]
+    private int _myPRsCount;
+
+    [ObservableProperty]
+    private int _failingCount;
+
+    [ObservableProperty]
+    private int _readyCount;
+
     public ObservableCollection<PullRequestCardViewModel> PullRequests { get; } = [];
 
     public ObservableCollection<RepoGroupViewModel> RepoGroups { get; } = [];
+
+    public ObservableCollection<PullRequestCardViewModel> FilteredPullRequests { get; } = [];
 
     private List<PullRequestCardViewModel> _allPullRequests = [];
 
@@ -130,6 +151,11 @@ public partial class MainViewModel : ObservableObject
     private void SetFilter(string filter)
     {
         ActiveFilter = filter;
+        ApplyGroupingAndFiltering();
+    }
+
+    partial void OnSearchQueryChanged(string value)
+    {
         ApplyGroupingAndFiltering();
     }
 
@@ -161,10 +187,11 @@ public partial class MainViewModel : ObservableObject
             UpdatePullRequests(cards);
 
             var count = results.Count;
-            StatusText = $"PRDock \u2014 {count} open PR{(count == 1 ? "" : "s")}";
+            StatusText = $"Updated {DateTime.Now:h:mm tt}";
             IsLoading = false;
             IsAuthError = false;
             UpdateRateLimitDisplay();
+            UpdateRepoSummary();
         }
 
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
@@ -241,6 +268,26 @@ public partial class MainViewModel : ObservableObject
         IsRateLimitWarning = _httpClient.IsRateLimitLow;
     }
 
+    private void UpdateRepoSummary()
+    {
+        var repos = _settingsService?.CurrentSettings.Repos;
+        if (repos is null || repos.Count == 0)
+        {
+            RepoSummaryText = "";
+            return;
+        }
+
+        if (repos.Count == 1)
+        {
+            var r = repos[0];
+            RepoSummaryText = $"{r.Owner}/{r.Name}";
+        }
+        else
+        {
+            RepoSummaryText = $"{repos.Count} repos";
+        }
+    }
+
     private PullRequestCardViewModel MapToCard(PullRequestWithChecks prWithChecks)
     {
         var pr = prWithChecks.PullRequest;
@@ -294,6 +341,24 @@ public partial class MainViewModel : ObservableObject
 
         foreach (var name in prWithChecks.PendingCheckNames)
             card.PendingChecks.Add(name);
+
+        card.Additions = prWithChecks.PullRequest.Additions;
+        card.Deletions = prWithChecks.PullRequest.Deletions;
+        card.FilesChanged = prWithChecks.PullRequest.ChangedFiles;
+        card.CommitCount = prWithChecks.PullRequest.CommitCount;
+        card.PassedChecks = prWithChecks.PassedCount;
+        card.TotalChecks = prWithChecks.Checks.Count;
+        card.AuthorInitials = PullRequestCardViewModel.ComputeInitials(prWithChecks.PullRequest.AuthorLogin);
+
+        // Labels
+        card.Labels.Clear();
+        foreach (var label in prWithChecks.PullRequest.Labels)
+            card.Labels.Add(label);
+
+        // Approval count - derive from review status
+        card.ApprovalCount = prWithChecks.PullRequest.ReviewStatus == PRDock.App.Models.ReviewStatus.Approved ? 1 : 0;
+
+        card.ComputeMergeScore();
 
         return card;
     }
@@ -658,10 +723,25 @@ public partial class MainViewModel : ObservableObject
         {
             "My PRs" => _allPullRequests.Where(pr => pr.IsMyPr),
             "Failing" => _allPullRequests.Where(pr => pr.StatusDotColor == "red"),
+            "Ready" => _allPullRequests.Where(pr => pr.StatusDotColor == "green" && !pr.IsDraft && !pr.HasMergeConflict && pr.HasAllChecksPassed),
+            "Reviewing" => _allPullRequests.Where(pr => !string.IsNullOrEmpty(pr.ReviewBadgeColor) && pr.ReviewBadgeColor != "gray"),
             _ => _allPullRequests.AsEnumerable()
         };
 
-        var groups = filtered
+        // Apply search filter
+        var filteredList = filtered.ToList();
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var q = SearchQuery.ToLowerInvariant();
+            filteredList = filteredList.Where(p =>
+                p.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.Number.ToString().Contains(q) ||
+                p.AuthorLogin.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.Labels.Any(l => l.Contains(q, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+
+        var groups = filteredList.AsEnumerable()
             .GroupBy(pr => $"{pr.RepoOwner}/{pr.RepoName}")
             .OrderByDescending(g => g.Any(pr => pr.IsMyPr))
             .ThenBy(g => g.Key)
@@ -703,6 +783,22 @@ public partial class MainViewModel : ObservableObject
         RepoGroups.Clear();
         foreach (var group in groups)
             RepoGroups.Add(group);
+
+        // Populate flat filtered list for the new row-based UI
+        FilteredPullRequests.Clear();
+        foreach (var group in RepoGroups)
+        {
+            foreach (var pr in group.PullRequests)
+            {
+                FilteredPullRequests.Add(pr);
+            }
+        }
+
+        // Update filter counts
+        TotalCount = _allPullRequests.Count;
+        MyPRsCount = _allPullRequests.Count(p => p.IsMyPr);
+        FailingCount = _allPullRequests.Count(p => p.StatusDotColor == "red");
+        ReadyCount = _allPullRequests.Count(p => p.StatusDotColor == "green" && !p.IsDraft && !p.HasMergeConflict && p.HasAllChecksPassed);
     }
 
 }

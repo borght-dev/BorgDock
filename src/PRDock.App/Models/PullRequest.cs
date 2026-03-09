@@ -20,4 +20,8 @@ public sealed class PullRequest
     public ReviewStatus ReviewStatus { get; set; } = ReviewStatus.None;
     public int CommentCount { get; set; }
     public List<string> Labels { get; set; } = [];
+    public int Additions { get; set; }
+    public int Deletions { get; set; }
+    public int ChangedFiles { get; set; }
+    public int CommitCount { get; set; }
 }

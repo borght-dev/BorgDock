@@ -26,16 +26,14 @@ public partial class PRDetailWindow : Window
             return;
         }
 
-        // Ctrl+1-5 to switch tabs
+        // Ctrl+1-3 to switch tabs
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
             var tabName = e.Key switch
             {
-                Key.D1 => "Description",
-                Key.D2 => "Commits",
-                Key.D3 => "Files",
-                Key.D4 => "Checks",
-                Key.D5 => "Comments",
+                Key.D1 => "Overview",
+                Key.D2 => "Checks",
+                Key.D3 => "Reviews",
                 _ => null
             };
 

@@ -62,6 +62,20 @@ public sealed class GitHubService : IGitHubService
         return pullRequests;
     }
 
+    public async Task<PullRequest> GetPullRequestAsync(
+        string owner, string repo, int prNumber, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/pulls/{prNumber}";
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var dto = await response.Content.ReadFromJsonAsync<GitHubPullRequestDto>(GitHubJsonOptions, ct)
+            ?? throw new InvalidOperationException("Failed to deserialize PR");
+
+        return MapToPullRequest(dto, owner, repo);
+    }
+
     private async Task<HttpClient> CreateAuthenticatedClientAsync(CancellationToken ct = default)
     {
         var client = _httpClientFactory.CreateClient("GitHub");
@@ -167,8 +181,18 @@ public sealed class GitHubService : IGitHubService
                     CreatedAt = dto.CreatedAt,
                     HtmlUrl = dto.HtmlUrl ?? ""
                 };
-                comment.Severity = ClaudeReviewComment.DetectSeverity(comment.Body);
-                comments.Add(comment);
+
+                // Split structured reviews (with Issues/Positives sections) into individual items
+                var splitItems = ClaudeReviewComment.SplitStructuredReview(comment);
+                if (splitItems.Count > 1)
+                {
+                    comments.AddRange(splitItems);
+                }
+                else
+                {
+                    comment.Severity = ClaudeReviewComment.DetectSeverity(comment.Body);
+                    comments.Add(comment);
+                }
             }
         }
         catch (HttpRequestException ex)
@@ -369,6 +393,10 @@ public sealed class GitHubService : IGitHubService
             RepoOwner = owner,
             RepoName = repo,
             CommentCount = dto.Comments,
+            Additions = dto.Additions,
+            Deletions = dto.Deletions,
+            ChangedFiles = dto.ChangedFiles,
+            CommitCount = dto.Commits,
             Labels = dto.Labels?.Select(l => l.Name ?? "").Where(n => n.Length > 0).ToList() ?? []
         };
     }
@@ -390,6 +418,11 @@ public sealed class GitHubService : IGitHubService
         public bool Draft { get; set; }
         public bool? Mergeable { get; set; }
         public int Comments { get; set; }
+        public int Additions { get; set; }
+        public int Deletions { get; set; }
+        [JsonPropertyName("changed_files")]
+        public int ChangedFiles { get; set; }
+        public int Commits { get; set; }
         public GitHubUserDto? User { get; set; }
         public GitHubRefDto? Head { get; set; }
         public GitHubRefDto? Base { get; set; }

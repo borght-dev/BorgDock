@@ -104,7 +104,7 @@
         <!-- Main card -->
         <Border Margin="24"
                 Padding="28,24"
-                Background="{DynamicResource SurfaceRaisedBrush}"
+                Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource SubtleBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="14">

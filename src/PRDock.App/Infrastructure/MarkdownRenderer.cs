@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Markdig;
+using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using WpfInline = System.Windows.Documents.Inline;
@@ -237,6 +238,9 @@ public class MarkdownRenderer : IMarkdownRenderer
 
             case HtmlEntityInline entity:
                 return new Run(entity.Transcoded.ToString());
+
+            case TaskList task:
+                return new Run(task.Checked ? "\u2611 " : "\u2610 ");
 
             case HtmlInline html:
                 return new Run(html.Tag ?? "");

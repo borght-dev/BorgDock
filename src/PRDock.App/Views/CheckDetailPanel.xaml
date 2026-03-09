@@ -117,6 +117,7 @@
                                         <!-- File path + line -->
                                         <TextBlock Grid.Column="1" Grid.Row="0"
                                                    FontSize="12"
+                                                   FontFamily="{DynamicResource CodeFontFamily}"
                                                    Foreground="{DynamicResource TextPrimaryBrush}">
                                             <Run Text="{Binding FilePath, Mode=OneWay}" />
                                             <Run Text=":" /><Run Text="{Binding LineNumber, Mode=OneWay}" />
@@ -163,7 +164,7 @@
                                           MaxHeight="400"
                                           AutomationProperties.AutomationId="CheckDetailRawLogScroller">
                                 <TextBlock Text="{Binding RawLogContent}"
-                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontFamily="{DynamicResource CodeFontFamily}"
                                            FontSize="11"
                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                            TextWrapping="Wrap"

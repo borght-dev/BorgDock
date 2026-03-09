@@ -11,13 +11,16 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize"
         Width="750"
-        Background="{DynamicResource BackgroundBrush}"
+        Background="Transparent"
         FontFamily="Segoe UI"
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:StatusToColorConverter x:Key="StatusToColorConverter" />
+        <conv:ScoreToArcGeometryConverter x:Key="ScoreToArc" />
+        <conv:MergeScoreToColorConverter x:Key="MergeScoreToColor" />
+        <conv:LabelToVariantConverter x:Key="LabelToVariant" />
 
         <!-- Tab button style -->
         <Style x:Key="TabButtonStyle" TargetType="RadioButton">
@@ -28,7 +31,7 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="TabBorder"
                                 Background="Transparent"
-                                Padding="12,8"
+                                Padding="14,10"
                                 BorderThickness="0,0,0,2"
                                 BorderBrush="Transparent">
                             <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
@@ -46,7 +49,62 @@
             </Setter>
         </Style>
 
-        <!-- Action button base -->
+        <!-- Outlined action button -->
+        <Style x:Key="OutlinedButton" TargetType="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Icon button -->
+        <Style x:Key="DetailIconButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Detail action button (for review actions) -->
         <Style x:Key="DetailActionButton" TargetType="Button">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -72,33 +130,7 @@
             </Setter>
         </Style>
 
-        <!-- Icon button -->
-        <Style x:Key="DetailIconButton" TargetType="Button">
-            <Setter Property="Background" Value="{DynamicResource IconButtonBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource IconButtonForegroundBrush}" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Width" Value="28" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Margin" Value="4,0,0,0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" CornerRadius="6"
-                                Background="{TemplateBinding Background}">
-                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource IconButtonHoverBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Thin scrollbar (same as sidebar) -->
+        <!-- Thin scrollbar -->
         <Style x:Key="DetailScrollThumb" TargetType="Thumb">
             <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="IsTabStop" Value="False" />
@@ -132,7 +164,18 @@
         </Style>
     </Window.Resources>
 
-    <Border BorderBrush="{DynamicResource StrongBorderBrush}" BorderThickness="1" CornerRadius="0">
+    <Border BorderBrush="{DynamicResource StrongBorderBrush}" BorderThickness="1" CornerRadius="12"
+            Background="{DynamicResource BackgroundBrush}">
+        <Border.Clip>
+            <RectangleGeometry RadiusX="12" RadiusY="12">
+                <RectangleGeometry.Rect>
+                    <MultiBinding Converter="{x:Static conv:SizeToRectConverter.Instance}">
+                        <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Border}" />
+                        <Binding Path="ActualHeight" RelativeSource="{RelativeSource AncestorType=Border}" />
+                    </MultiBinding>
+                </RectangleGeometry.Rect>
+            </RectangleGeometry>
+        </Border.Clip>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /> <!-- Header -->
@@ -142,37 +185,40 @@
             </Grid.RowDefinitions>
 
             <!-- ===== HEADER ===== -->
-            <Grid Grid.Row="0" Margin="20,16,20,12" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+            <Grid Grid.Row="0" Margin="24,20,24,16" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Row 1: PR number + Title + Close button -->
+                <!-- Row 0: Status dot + PR number + Draft badge + Close button -->
                 <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" CornerRadius="5" Padding="6,2" Margin="0,2,10,0"
-                            VerticalAlignment="Top"
-                            Background="{DynamicResource PrNumberBadgeBackgroundBrush}">
-                        <TextBlock Text="{Binding Number, StringFormat='#{0}'}"
-                                   FontSize="12" FontWeight="Bold"
-                                   Foreground="{DynamicResource PrNumberBadgeForegroundBrush}" />
-                    </Border>
+                    <StackPanel Orientation="Exampletal" VerticalAlignment="Center">
+                        <Ellipse Width="10" Height="10" VerticalAlignment="Center"
+                                 Fill="{Binding StatusDotColor, Converter={StaticResource StatusToColorConverter}}" />
+                        <TextBlock Margin="8,0,0,0" FontSize="13" FontWeight="Medium"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Text="{Binding Number, StringFormat='#{0}'}"
+                                   VerticalAlignment="Center" />
+                        <Border Background="{DynamicResource DraftBadgeBackgroundBrush}"
+                                CornerRadius="4" Padding="8,2" Margin="10,0,0,0"
+                                Visibility="{Binding IsDraft, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="draft" FontSize="11" FontWeight="Medium"
+                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                       Foreground="{DynamicResource DraftBadgeForegroundBrush}" />
+                        </Border>
+                    </StackPanel>
 
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding Title}"
-                               FontSize="16" FontWeight="Bold"
-                               TextWrapping="Wrap" LineHeight="22"
-                               Foreground="{DynamicResource TextPrimaryBrush}" />
-
-                    <Button Grid.Column="2"
+                    <Button Grid.Column="1"
                             Content="&#xE711;"
                             FontFamily="Segoe MDL2 Assets" FontSize="12"
                             Command="{Binding CloseCommand}"
@@ -180,119 +226,122 @@
                             ToolTip="Close (Esc)" />
                 </Grid>
 
-                <!-- Row 2: Author + age + status dot -->
-                <StackPanel Grid.Row="1" Orientation="Exampletal" Margin="0,6,0,0">
-                    <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}">
-                        <Run Text="{Binding AuthorLogin, Mode=OneWay}" />
-                        <Run Text=" opened " />
-                        <Run Text="{Binding Age, Mode=OneWay}" />
-                    </TextBlock>
-                    <Ellipse Width="8" Height="8" Margin="8,0,0,0" VerticalAlignment="Center"
-                             Fill="{Binding StatusDotColor, Converter={StaticResource StatusToColorConverter}}" />
+                <!-- Row 1: Title -->
+                <TextBlock Grid.Row="1" Margin="0,8,0,0"
+                           Text="{Binding Title}"
+                           FontSize="18" FontWeight="Bold"
+                           TextWrapping="Wrap" LineHeight="25"
+                           Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                <!-- Row 2: Branch pills -->
+                <StackPanel Grid.Row="2" Orientation="Exampletal" Margin="0,12,0,0">
+                    <Border Background="{DynamicResource BranchBadgeBgBrush}"
+                            BorderBrush="{DynamicResource BranchBadgeBorderBrush}"
+                            BorderThickness="1" CornerRadius="4" Padding="8,3">
+                        <TextBlock Text="{Binding HeadRef}" FontSize="12"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   Foreground="{DynamicResource AccentBrush}" />
+                    </Border>
+                    <TextBlock Text=" &#x2192; " FontSize="12" Margin="8,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextGhostBrush}" />
+                    <Border Background="{DynamicResource TargetBadgeBgBrush}"
+                            BorderBrush="{DynamicResource TargetBadgeBorderBrush}"
+                            BorderThickness="1" CornerRadius="4" Padding="8,3">
+                        <TextBlock Text="{Binding BaseRef}" FontSize="12"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   Foreground="{DynamicResource TextTertiaryBrush}" />
+                    </Border>
                 </StackPanel>
 
-                <!-- Row 3: Branch refs + copy buttons -->
-                <StackPanel Grid.Row="2" Orientation="Exampletal" Margin="0,6,0,0">
-                    <TextBlock FontSize="11" FontFamily="{DynamicResource CodeFontFamily}"
-                               Foreground="{DynamicResource TextSecondaryBrush}">
-                        <Run Text="{Binding HeadRef, Mode=OneWay}" FontWeight="SemiBold" />
-                        <Run Text=" &#x2192; " />
-                        <Run Text="{Binding BaseRef, Mode=OneWay}" />
-                    </TextBlock>
-                    <Button Content="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                            Command="{Binding CopyBranchNameCommand}"
-                            Style="{StaticResource DetailIconButton}" ToolTip="Copy branch name"
-                            Width="24" Height="24" Margin="6,0,0,0" />
-                    <Button Content="&#xE71B;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                            Command="{Binding CopyPrUrlCommand}"
-                            Style="{StaticResource DetailIconButton}" ToolTip="Copy PR URL"
-                            Width="24" Height="24" Margin="2,0,0,0" />
-                    <Button Content="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                            Command="{Binding OpenInBrowserCommand}"
-                            Style="{StaticResource DetailIconButton}" ToolTip="Open in browser"
-                            Width="24" Height="24" Margin="2,0,0,0" />
-                    <Button Content="&#xE8AB;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                            Command="{Binding CheckoutBranchCommand}"
-                            Style="{StaticResource DetailIconButton}" ToolTip="Checkout branch"
-                            Width="24" Height="24" Margin="2,0,0,0" />
+                <!-- Row 3: Stats row -->
+                <StackPanel Grid.Row="3" Orientation="Exampletal" Margin="0,12,0,0">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextFaintBrush}"
+                               VerticalAlignment="Center" Text="Files" Margin="0,0,5,0" />
+                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                               FontFamily="{DynamicResource CodeFontFamily}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="{Binding FilesChangedCount}" Margin="0,0,16,0" />
+
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextFaintBrush}"
+                               VerticalAlignment="Center" Text="Commits" Margin="0,0,5,0" />
+                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                               FontFamily="{DynamicResource CodeFontFamily}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="{Binding CommitCount}" Margin="0,0,16,0" />
+
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextFaintBrush}"
+                               VerticalAlignment="Center" Text="Added" Margin="0,0,5,0" />
+                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                               FontFamily="{DynamicResource CodeFontFamily}"
+                               Foreground="{DynamicResource StatusGreenBrush}"
+                               Text="{Binding TotalAdditions, StringFormat='+{0}'}" Margin="0,0,16,0" />
+
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextFaintBrush}"
+                               VerticalAlignment="Center" Text="Removed" Margin="0,0,5,0" />
+                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                               FontFamily="{DynamicResource CodeFontFamily}"
+                               Foreground="{DynamicResource StatusRedBrush}"
+                               Text="{Binding TotalDeletions, StringFormat='-{0}'}" />
                 </StackPanel>
 
-                <!-- Row 4: Badges -->
-                <StackPanel Grid.Row="3" Orientation="Exampletal" Margin="0,8,0,0">
-                    <Border Background="{DynamicResource DraftBadgeBackgroundBrush}"
-                            CornerRadius="5" Padding="8,3" Margin="0,0,6,0"
-                            Visibility="{Binding IsDraft, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="Draft" FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource DraftBadgeForegroundBrush}" />
-                    </Border>
-                    <Border Background="{DynamicResource WarningBadgeBackgroundBrush}"
-                            CornerRadius="5" Padding="8,3" Margin="0,0,6,0"
-                            Visibility="{Binding HasMergeConflict, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="Merge conflict" FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource WarningBadgeForegroundBrush}" />
-                    </Border>
-                    <Border CornerRadius="5" Padding="8,3" Margin="0,0,6,0"
-                            Background="{DynamicResource FilterChipBackgroundBrush}">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ReviewStatusText}" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <TextBlock Text="{Binding ReviewStatusText}" FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" />
-                    </Border>
+                <!-- Row 4: Action buttons -->
+                <StackPanel Grid.Row="4" Orientation="Exampletal" Margin="0,14,0,0">
+                    <Button Command="{Binding RerunChecksCommand}"
+                            Background="Transparent"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            Style="{StaticResource OutlinedButton}">
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}">
+                            <Run Text="&#x21BB; " /><Run Text="Re-run Checks" />
+                        </TextBlock>
+                    </Button>
+                    <Button Command="{Binding FixWithClaudeCommand}"
+                            Background="{DynamicResource PurpleSoftBrush}"
+                            BorderBrush="{DynamicResource PurpleBorderBrush}"
+                            Style="{StaticResource OutlinedButton}">
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PurpleBrush}">
+                            <Run Text="&#x2726; " /><Run Text="Fix with Claude" />
+                        </TextBlock>
+                    </Button>
+                    <Button Command="{Binding OpenInBrowserCommand}"
+                            Background="Transparent"
+                            BorderBrush="{DynamicResource SubtleBorderBrush}"
+                            Style="{StaticResource OutlinedButton}">
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextMutedBrush}">
+                            <Run Text="&#x2197; " /><Run Text="Open in GitHub" />
+                        </TextBlock>
+                    </Button>
                 </StackPanel>
             </Grid>
 
             <!-- ===== TAB BAR ===== -->
-            <Border Grid.Row="1" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SeparatorBrush}">
-                <StackPanel Orientation="Exampletal" Margin="16,0">
+            <Border Grid.Row="1" BorderThickness="0,1,0,1" BorderBrush="{DynamicResource SeparatorBrush}">
+                <StackPanel Orientation="Exampletal" Margin="24,0">
                     <RadioButton GroupName="DetailTab" IsChecked="True"
-                                 Command="{Binding SetTabCommand}" CommandParameter="Description"
+                                 Command="{Binding SetTabCommand}" CommandParameter="Overview"
                                  Style="{StaticResource TabButtonStyle}">
-                        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}">
-                            <Run Text="Description" />
-                        </TextBlock>
-                    </RadioButton>
-                    <RadioButton GroupName="DetailTab"
-                                 Command="{Binding SetTabCommand}" CommandParameter="Commits"
-                                 Style="{StaticResource TabButtonStyle}">
-                        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}">
-                            <Run Text="Commits" />
-                            <Run Text="{Binding CommitCount, Mode=OneWay, StringFormat=' ({0})'}"
-                                 Foreground="{DynamicResource TextTertiaryBrush}" />
-                        </TextBlock>
-                    </RadioButton>
-                    <RadioButton GroupName="DetailTab"
-                                 Command="{Binding SetTabCommand}" CommandParameter="Files"
-                                 Style="{StaticResource TabButtonStyle}">
-                        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}">
-                            <Run Text="Files" />
-                            <Run Text="{Binding FilesChangedCount, Mode=OneWay, StringFormat=' ({0})'}"
-                                 Foreground="{DynamicResource TextTertiaryBrush}" />
-                        </TextBlock>
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Text="Overview" />
                     </RadioButton>
                     <RadioButton GroupName="DetailTab"
                                  Command="{Binding SetTabCommand}" CommandParameter="Checks"
                                  Style="{StaticResource TabButtonStyle}">
-                        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}">
-                            <Run Text="Checks" />
-                            <Run Text="{Binding CheckRuns.Count, Mode=OneWay, StringFormat=' ({0})'}"
-                                 Foreground="{DynamicResource TextTertiaryBrush}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextMutedBrush}">
+                            <Run Text="Checks " />
+                            <Run Text="{Binding PassedChecks, Mode=OneWay, StringFormat='({0}'}" />
+                            <Run Text="{Binding TotalChecks, Mode=OneWay, StringFormat='/{0})'}" />
                         </TextBlock>
                     </RadioButton>
                     <RadioButton GroupName="DetailTab"
-                                 Command="{Binding SetTabCommand}" CommandParameter="Comments"
+                                 Command="{Binding SetTabCommand}" CommandParameter="Reviews"
                                  Style="{StaticResource TabButtonStyle}">
-                        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}">
-                            <Run Text="Comments" />
-                            <Run Text="{Binding AllComments.Count, Mode=OneWay, StringFormat=' ({0})'}"
-                                 Foreground="{DynamicResource TextTertiaryBrush}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextMutedBrush}">
+                            <Run Text="Reviews" />
+                            <Run Text="{Binding AllComments.Count, Mode=OneWay, StringFormat=' ({0})'}" />
                         </TextBlock>
                     </RadioButton>
                 </StackPanel>
@@ -300,59 +349,9 @@
 
             <!-- ===== TAB CONTENT ===== -->
             <Grid Grid.Row="2">
-                <!-- DESCRIPTION TAB -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20,12,14,12">
-                    <ScrollViewer.Resources>
-                        <Style TargetType="ScrollBar" BasedOn="{StaticResource DetailScrollBar}" />
-                    </ScrollViewer.Resources>
-                    <ScrollViewer.Style>
-                        <Style TargetType="ScrollViewer">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTab}" Value="Description">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ScrollViewer.Style>
-                    <StackPanel>
-                        <!-- Empty placeholder -->
-                        <TextBlock Text="No description provided."
-                                   FontSize="13" FontStyle="Italic"
-                                   Foreground="{DynamicResource TextTertiaryBrush}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Body}" Value="">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <!-- Rendered markdown body -->
-                        <RichTextBox IsReadOnly="True" BorderThickness="0"
-                                     Background="Transparent"
-                                     Foreground="{DynamicResource TextPrimaryBrush}"
-                                     FontSize="13"
-                                     infra:MarkdownTextBlock.Markdown="{Binding Body}">
-                            <RichTextBox.Style>
-                                <Style TargetType="RichTextBox">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Body}" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </RichTextBox.Style>
-                        </RichTextBox>
-                    </StackPanel>
-                </ScrollViewer>
 
-                <!-- COMMITS TAB -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20,12,14,12">
+                <!-- OVERVIEW TAB -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="24,18,18,24">
                     <ScrollViewer.Resources>
                         <Style TargetType="ScrollBar" BasedOn="{StaticResource DetailScrollBar}" />
                     </ScrollViewer.Resources>
@@ -360,184 +359,314 @@
                         <Style TargetType="ScrollViewer">
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTab}" Value="Commits">
+                                <DataTrigger Binding="{Binding ActiveTab}" Value="Overview">
                                     <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </ScrollViewer.Style>
                     <StackPanel>
-                        <TextBlock Text="Loading commits..."
-                                   FontSize="11" FontStyle="Italic"
-                                   Foreground="{DynamicResource TextTertiaryBrush}"
-                                   Visibility="{Binding IsCommitsLoading, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Text="{Binding CommitsError}" FontSize="11"
-                                   Foreground="{DynamicResource StatusRedBrush}" TextWrapping="Wrap">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding CommitsError}" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <ItemsControl ItemsSource="{Binding Commits}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Padding="8,6" Margin="0,0,0,4" CornerRadius="6"
-                                            Background="{DynamicResource SurfaceRaisedBrush}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0"
-                                                       Text="{Binding ShortSha}"
-                                                       FontSize="11"
+
+                        <!-- MERGE READINESS section card -->
+                        <Border Padding="14,14,16,14" Margin="0,0,0,16" CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="MERGE READINESS" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="0,0,0,12">
+                                    <TextBlock.TextDecorations>
+                                        <TextDecorationCollection />
+                                    </TextBlock.TextDecorations>
+                                </TextBlock>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Merge score ring -->
+                                    <Grid Grid.Column="0" Width="48" Height="48" Margin="0,0,16,0"
+                                          VerticalAlignment="Center">
+                                        <!-- Canvas for absolute-coordinate ring rendering -->
+                                        <Canvas Width="38" Height="38"
+                                                ExampletalAlignment="Center" VerticalAlignment="Center">
+                                            <Ellipse Canvas.Left="5" Canvas.Top="5"
+                                                     Width="28" Height="28"
+                                                     Stroke="{DynamicResource SubtleBorderBrush}"
+                                                     StrokeThickness="3" Fill="Transparent" />
+                                            <Path Data="{Binding MergeScore, Converter={StaticResource ScoreToArc}}"
+                                                  Stroke="{Binding MergeScore, Converter={StaticResource MergeScoreToColor}}"
+                                                  StrokeThickness="3"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round" />
+                                        </Canvas>
+                                        <TextBlock Text="{Binding MergeScore}"
+                                                   ExampletalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="12" FontWeight="Bold"
+                                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                                   Foreground="{Binding MergeScore, Converter={StaticResource MergeScoreToColor}}" />
+                                    </Grid>
+
+                                    <!-- Readiness checklist -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <!-- CI Checks -->
+                                        <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
+                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="&#x2717;" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsChecksPassing}" Value="True">
+                                                                <Setter Property="Text" Value="&#x2713;" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="CI Checks" FontSize="12" FontWeight="Medium"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding ChecksReadinessDetail}" FontSize="11"
                                                        FontFamily="{DynamicResource CodeFontFamily}"
-                                                       Foreground="{DynamicResource AccentBrush}"
-                                                       VerticalAlignment="Top"
-                                                       Margin="0,0,10,0" />
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{Binding FirstLineMessage}"
-                                                           FontSize="12" TextWrapping="Wrap"
-                                                           Foreground="{DynamicResource TextPrimaryBrush}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxHeight="40" />
-                                                <TextBlock FontSize="10" Margin="0,2,0,0"
-                                                           Foreground="{DynamicResource TextTertiaryBrush}">
-                                                    <Run Text="{Binding AuthorLogin, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </ScrollViewer>
+                                                       Foreground="{DynamicResource TextFaintBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
 
-                <!-- FILES TAB -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20,12,14,12">
-                    <ScrollViewer.Resources>
-                        <Style TargetType="ScrollBar" BasedOn="{StaticResource DetailScrollBar}" />
-                    </ScrollViewer.Resources>
-                    <ScrollViewer.Style>
-                        <Style TargetType="ScrollViewer">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTab}" Value="Files">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ScrollViewer.Style>
-                    <StackPanel>
-                        <TextBlock Text="Loading files..."
-                                   FontSize="11" FontStyle="Italic"
-                                   Foreground="{DynamicResource TextTertiaryBrush}"
-                                   Visibility="{Binding IsFilesLoading, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Text="{Binding FilesError}" FontSize="11"
-                                   Foreground="{DynamicResource StatusRedBrush}" TextWrapping="Wrap">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
+                                        <!-- Approvals -->
+                                        <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
+                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="&#x2717;" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasApproval}" Value="True">
+                                                                <Setter Property="Text" Value="&#x2713;" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="Approvals" FontSize="12" FontWeight="Medium"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding ApprovalsReadinessDetail}" FontSize="11"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource TextFaintBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <!-- No Conflicts -->
+                                        <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
+                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="&#x2717;" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsConflictFree}" Value="True">
+                                                                <Setter Property="Text" Value="&#x2713;" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="No Conflicts" FontSize="12" FontWeight="Medium"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding ConflictsReadinessDetail}" FontSize="11"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource TextFaintBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <!-- Not Draft -->
+                                        <StackPanel Orientation="Exampletal">
+                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="&#x2717;" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsNotDraft}" Value="True">
+                                                                <Setter Property="Text" Value="&#x2713;" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="Not Draft" FontSize="12" FontWeight="Medium"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding DraftReadinessDetail}" FontSize="11"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource TextFaintBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- DESCRIPTION section card -->
+                        <Border Padding="14,14,16,14" Margin="0,0,0,16" CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="DESCRIPTION" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="0,0,0,12" />
+                                <!-- Empty placeholder -->
+                                <TextBlock Text="No description provided."
+                                           FontSize="13" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextTertiaryBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Body}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <!-- Rendered markdown body -->
+                                <RichTextBox IsReadOnly="True" BorderThickness="0"
+                                             Background="Transparent"
+                                             Foreground="{DynamicResource TextTertiaryBrush}"
+                                             FontSize="13"
+                                             Padding="0"
+                                             infra:MarkdownTextBlock.Markdown="{Binding Body}">
+                                    <RichTextBox.Style>
+                                        <Style TargetType="RichTextBox">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Body}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </RichTextBox.Style>
+                                </RichTextBox>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- AI REVIEW SUMMARY section card -->
+                        <Border Padding="14,14,16,14" Margin="0,0,0,16" CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                BorderThickness="1"
+                                Visibility="{Binding HasAiReview, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="AI REVIEW SUMMARY" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="0,0,0,12" />
+                                <UniformGrid Columns="3" Margin="0">
+                                    <!-- Suggestions -->
+                                    <Border CornerRadius="6" Padding="8,8,12,8" Margin="0,0,8,0"
+                                            Background="{DynamicResource WarningBadgeBackgroundBrush}"
+                                            BorderBrush="{DynamicResource WarningBadgeBorderBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding SuggestionCount}" FontSize="18" FontWeight="Bold"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource StatusYellowBrush}" />
+                                            <TextBlock Text="Suggestions" FontSize="11"
+                                                       Foreground="{DynamicResource TextTertiaryBrush}"
+                                                       Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Praise -->
+                                    <Border CornerRadius="6" Padding="8,8,12,8" Margin="0,0,8,0"
+                                            Background="{DynamicResource SuccessBadgeBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SuccessBadgeBorderBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding PraiseCount}" FontSize="18" FontWeight="Bold"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource StatusGreenBrush}" />
+                                            <TextBlock Text="Praise" FontSize="11"
+                                                       Foreground="{DynamicResource TextTertiaryBrush}"
+                                                       Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Other -->
+                                    <Border CornerRadius="6" Padding="8,8,12,8"
+                                            Background="{DynamicResource SurfaceHoverBrush}"
+                                            BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding OtherReviewCount}" FontSize="18" FontWeight="Bold"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                                            <TextBlock Text="Other" FontSize="11"
+                                                       Foreground="{DynamicResource TextTertiaryBrush}"
+                                                       Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- LABELS section card -->
+                        <Border Padding="14,14,16,14" Margin="0,0,0,16" CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                BorderThickness="1">
+                            <Border.Style>
+                                <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding FilesError}" Value="">
+                                        <DataTrigger Binding="{Binding Labels.Count}" Value="0">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <!-- Summary bar -->
-                        <Border Padding="8,6" Margin="0,0,0,8" CornerRadius="6"
-                                Background="{DynamicResource SurfaceBrush}">
-                            <TextBlock FontSize="12">
-                                <Run Text="{Binding FilesChangedCount, Mode=OneWay}" FontWeight="SemiBold"
-                                     Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <Run Text=" files changed  " Foreground="{DynamicResource TextSecondaryBrush}" />
-                                <Run Text="{Binding TotalAdditions, Mode=OneWay, StringFormat='+{0}'}"
-                                     Foreground="{DynamicResource StatusGreenBrush}" FontWeight="SemiBold" />
-                                <Run Text="  " />
-                                <Run Text="{Binding TotalDeletions, Mode=OneWay, StringFormat='-{0}'}"
-                                     Foreground="{DynamicResource StatusRedBrush}" FontWeight="SemiBold" />
-                            </TextBlock>
-                        </Border>
-                        <!-- File list -->
-                        <ItemsControl ItemsSource="{Binding FileChanges}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Expander Margin="0,0,0,2">
-                                        <Expander.Header>
-                                            <Grid Width="680">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" FontSize="11" FontWeight="Bold"
-                                                           Margin="0,0,8,0" VerticalAlignment="Center"
-                                                           Width="16" TextAlignment="Center">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="~" />
-                                                            <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Status}" Value="added">
-                                                                    <Setter Property="Text" Value="+" />
-                                                                    <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Status}" Value="removed">
-                                                                    <Setter Property="Text" Value="-" />
-                                                                    <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Status}" Value="renamed">
-                                                                    <Setter Property="Text" Value="R" />
-                                                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                                <TextBlock Grid.Column="1" Text="{Binding Filename}"
-                                                           FontSize="12" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                <TextBlock Grid.Column="2" FontSize="11"
-                                                           VerticalAlignment="Center" Margin="8,0,0,0">
-                                                    <Run Text="{Binding Additions, Mode=OneWay, StringFormat='+{0}'}"
-                                                         Foreground="{DynamicResource StatusGreenBrush}" />
-                                                    <Run Text=" " />
-                                                    <Run Text="{Binding Deletions, Mode=OneWay, StringFormat='-{0}'}"
-                                                         Foreground="{DynamicResource StatusRedBrush}" />
-                                                </TextBlock>
-                                            </Grid>
-                                        </Expander.Header>
-                                        <Expander.Content>
-                                            <!-- Diff view -->
-                                            <Border Background="{DynamicResource CodeBlockBgBrush}"
-                                                    CornerRadius="4" Padding="8,6" Margin="0,4,0,4">
-                                                <TextBlock Text="{Binding Patch}"
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="LABELS" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="0,0,0,12" />
+                                <ItemsControl ItemsSource="{Binding Labels}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Exampletal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="4" Padding="10,3" Margin="0,0,6,4"
+                                                    Background="{Binding Converter={StaticResource LabelToVariant}, ConverterParameter=bg}"
+                                                    BorderBrush="{Binding Converter={StaticResource LabelToVariant}, ConverterParameter=border}"
+                                                    BorderThickness="1">
+                                                <TextBlock Text="{Binding}" FontSize="12" FontWeight="Medium"
                                                            FontFamily="{DynamicResource CodeFontFamily}"
-                                                           FontSize="11"
-                                                           TextWrapping="Wrap"
-                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                           Foreground="{Binding Converter={StaticResource LabelToVariant}, ConverterParameter=fg}" />
                                             </Border>
-                                        </Expander.Content>
-                                    </Expander>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
                 </ScrollViewer>
 
                 <!-- CHECKS TAB -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20,12,14,12">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="24,18,18,24">
                     <ScrollViewer.Resources>
                         <Style TargetType="ScrollBar" BasedOn="{StaticResource DetailScrollBar}" />
                     </ScrollViewer.Resources>
@@ -559,70 +688,80 @@
                         <ItemsControl ItemsSource="{Binding CheckRuns}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="8,6" Margin="0,0,0,4" CornerRadius="6"
-                                            Background="{DynamicResource SurfaceRaisedBrush}">
+                                    <Border Padding="10,10,14,10" Margin="0,0,0,6" CornerRadius="6"
+                                            BorderThickness="1">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource CheckPassedBgBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource CheckPassedBorderBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource CheckFailedBgBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource CheckFailedBorderBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <!-- Status icon -->
-                                            <TextBlock Grid.Column="0" FontSize="12" Margin="0,0,8,0"
-                                                       VerticalAlignment="Center">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="&#x23F3;" />
-                                                        <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                            <Ellipse Grid.Column="0" Width="8" Height="8"
+                                                     Margin="0,0,10,0" VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="{DynamicResource StatusYellowBrush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsSuccess}" Value="True">
-                                                                <Setter Property="Text" Value="&#x2713;" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                                                <Setter Property="Fill" Value="{DynamicResource StatusGreenBrush}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsFailed}" Value="True">
-                                                                <Setter Property="Text" Value="&#x2717;" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                                <Setter Property="Fill" Value="{DynamicResource StatusRedBrush}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                                </Ellipse.Style>
+                                            </Ellipse>
                                             <TextBlock Grid.Column="1" Text="{Binding Name}"
-                                                       FontSize="12" VerticalAlignment="Center"
-                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                       FontSize="13" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <!-- Empty state -->
-                        <TextBlock FontSize="12" FontStyle="Italic"
-                                   Foreground="{DynamicResource TextTertiaryBrush}">
+                        <TextBlock FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"
+                                   ExampletalAlignment="Center" Margin="0,20,0,0">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="No checks." />
-                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding CheckRuns.Count}" Value="0">
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding CheckRuns.Count}" Value="0" />
+                                                <Condition Binding="{Binding IsChecksLoading}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
                                             <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsChecksLoading}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
+                            <Run Text="&#x2713; " Foreground="{DynamicResource StatusGreenBrush}" />
+                            <Run Text="All checks passing" />
                         </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
 
-                <!-- COMMENTS TAB -->
+                <!-- REVIEWS TAB -->
                 <Grid>
                     <Grid.Style>
                         <Style TargetType="Grid">
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTab}" Value="Comments">
+                                <DataTrigger Binding="{Binding ActiveTab}" Value="Reviews">
                                     <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -634,58 +773,81 @@
                     </Grid.RowDefinitions>
 
                     <!-- Comment list -->
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="20,12,14,4">
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="24,18,18,4">
                         <ScrollViewer.Resources>
                             <Style TargetType="ScrollBar" BasedOn="{StaticResource DetailScrollBar}" />
                         </ScrollViewer.Resources>
                         <StackPanel>
-                            <TextBlock Text="Loading comments..."
+                            <TextBlock Text="Loading reviews..."
                                        FontSize="11" FontStyle="Italic"
                                        Foreground="{DynamicResource TextTertiaryBrush}"
                                        Visibility="{Binding IsCommentsLoading, Converter={StaticResource BoolToVis}}" />
                             <ItemsControl ItemsSource="{Binding AllComments}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Padding="10,8" Margin="0,0,0,6" CornerRadius="6"
-                                                Background="{DynamicResource SurfaceRaisedBrush}">
+                                        <Border Padding="14,12" Margin="0,0,0,8" CornerRadius="8"
+                                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                                BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                                BorderThickness="1">
                                             <StackPanel>
                                                 <StackPanel Orientation="Exampletal">
-                                                    <TextBlock Text="{Binding Author}" FontSize="12"
+                                                    <TextBlock Text="{Binding Author}" FontSize="13"
                                                                FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                    <TextBlock FontSize="10" Margin="8,0,0,0"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                    <TextBlock FontSize="10" Margin="10,0,0,0"
                                                                VerticalAlignment="Center"
                                                                Foreground="{DynamicResource TextTertiaryBrush}"
                                                                Text="{Binding CreatedAt, StringFormat='{}{0:MMM d, yyyy HH:mm}'}" />
-                                                    <!-- Severity badge for Claude comments -->
-                                                    <TextBlock FontSize="9" FontWeight="Bold" Margin="8,0,0,0"
-                                                               VerticalAlignment="Center">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
+                                                    <!-- Severity badge -->
+                                                    <Border CornerRadius="4" Padding="6,2" Margin="8,0,0,0"
+                                                            VerticalAlignment="Center">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding Severity}" Value="Critical">
                                                                         <Setter Property="Visibility" Value="Visible" />
-                                                                        <Setter Property="Text" Value="CRITICAL" />
-                                                                        <Setter Property="Foreground" Value="#EF4444" />
+                                                                        <Setter Property="Background" Value="{DynamicResource ErrorBadgeBackgroundBrush}" />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding Severity}" Value="Suggestion">
                                                                         <Setter Property="Visibility" Value="Visible" />
-                                                                        <Setter Property="Text" Value="SUGGESTION" />
-                                                                        <Setter Property="Foreground" Value="#F59E0B" />
+                                                                        <Setter Property="Background" Value="{DynamicResource WarningBadgeBackgroundBrush}" />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding Severity}" Value="Praise">
                                                                         <Setter Property="Visibility" Value="Visible" />
-                                                                        <Setter Property="Text" Value="PRAISE" />
-                                                                        <Setter Property="Foreground" Value="#22C55E" />
+                                                                        <Setter Property="Background" Value="{DynamicResource SuccessBadgeBackgroundBrush}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
+                                                        </Border.Style>
+                                                        <TextBlock FontSize="10" FontWeight="Bold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                            <Setter Property="Text" Value="CRITICAL" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource ErrorBadgeForegroundBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="Suggestion">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                            <Setter Property="Text" Value="SUGGESTION" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource WarningBadgeForegroundBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="Praise">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                            <Setter Property="Text" Value="PRAISE" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource SuccessBadgeForegroundBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
                                                 </StackPanel>
                                                 <!-- File reference for review comments -->
-                                                <TextBlock FontSize="10" Margin="0,2,0,0"
+                                                <TextBlock FontSize="10" Margin="0,4,0,0"
                                                            FontFamily="{DynamicResource CodeFontFamily}"
                                                            Foreground="{DynamicResource TextTertiaryBrush}">
                                                     <TextBlock.Style>
@@ -705,7 +867,7 @@
                                                 <RichTextBox IsReadOnly="True" BorderThickness="0"
                                                              Background="Transparent"
                                                              Foreground="{DynamicResource TextPrimaryBrush}"
-                                                             FontSize="12" Margin="0,4,0,0"
+                                                             FontSize="12.5" Margin="0,6,0,0"
                                                              Padding="0"
                                                              infra:MarkdownTextBlock.Markdown="{Binding Body}" />
                                             </StackPanel>
@@ -713,11 +875,30 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <!-- Empty state -->
+                            <TextBlock Text="No reviews yet" FontSize="13"
+                                       Foreground="{DynamicResource TextGhostBrush}"
+                                       ExampletalAlignment="Center" Margin="0,24,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding AllComments.Count}" Value="0" />
+                                                    <Condition Binding="{Binding IsCommentsLoading}" Value="False" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </ScrollViewer>
 
                     <!-- Comment input + review actions -->
-                    <Border Grid.Row="1" Padding="20,8,20,12"
+                    <Border Grid.Row="1" Padding="24,8,24,12"
                             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SeparatorBrush}">
                         <StackPanel>
                             <!-- Comment input -->

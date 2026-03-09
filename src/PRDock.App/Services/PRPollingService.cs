@@ -137,6 +137,20 @@ public sealed class PRPollingService : IPRPollingService
 
                 foreach (var pr in prs)
                 {
+                    // Enrich with detail stats (additions, deletions, changed_files, commits)
+                    try
+                    {
+                        var detail = await _gitHubService.GetPullRequestAsync(repo.Owner, repo.Name, pr.Number, ct);
+                        pr.Additions = detail.Additions;
+                        pr.Deletions = detail.Deletions;
+                        pr.ChangedFiles = detail.ChangedFiles;
+                        pr.CommitCount = detail.CommitCount;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to fetch PR detail for #{Number}, stats will be 0", pr.Number);
+                    }
+
                     var suites = await _actionsService.GetCheckSuitesAsync(repo.Owner, repo.Name, pr.HeadRef, ct);
                     var allChecks = new List<CheckRun>();
 

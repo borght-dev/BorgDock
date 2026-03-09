@@ -11,11 +11,8 @@ public partial class PullRequestCard : System.Windows.Controls.UserControl
         InitializeComponent();
     }
 
-    private void CardBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void Row_Click(object sender, MouseButtonEventArgs e)
     {
-        if (DataContext is not PullRequestCardViewModel card)
-            return;
-
         // Don't toggle if the click was on a Button or Hyperlink inside the card
         if (e.OriginalSource is DependencyObject dep)
         {
@@ -28,18 +25,9 @@ public partial class PullRequestCard : System.Windows.Controls.UserControl
             }
         }
 
-        card.IsDetailExpanded = !card.IsDetailExpanded;
-        if (card.IsDetailExpanded)
-            card.DetailExpandRequested?.Invoke(card);
-    }
-
-    private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
-    {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        if (DataContext is PullRequestCardViewModel vm)
         {
-            FileName = e.Uri.AbsoluteUri,
-            UseShellExecute = true
-        });
-        e.Handled = true;
+            vm.ToggleExpandedCommand.Execute(null);
+        }
     }
 }

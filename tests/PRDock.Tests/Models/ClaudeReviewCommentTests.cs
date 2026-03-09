@@ -80,4 +80,96 @@ public class ClaudeReviewCommentTests
         ClaudeReviewComment.DetectSeverity("SUGGEST a change").Should().Be(CommentSeverity.Suggestion);
         ClaudeReviewComment.DetectSeverity("EXCELLENT work").Should().Be(CommentSeverity.Praise);
     }
+
+    [Fact]
+    public void SplitStructuredReview_NoSections_ReturnsSingleComment()
+    {
+        var comment = new ClaudeReviewComment { Id = "1", Body = "Just a simple comment" };
+        var result = ClaudeReviewComment.SplitStructuredReview(comment);
+        result.Should().HaveCount(1);
+        result[0].Body.Should().Be("Just a simple comment");
+    }
+
+    [Fact]
+    public void SplitStructuredReview_IssuesAndPositives_SplitsCorrectly()
+    {
+        var body = """
+            ## Code Review
+            Good set of targeted fixes.
+
+            ## Issues
+            1. Magic number for cancelled status (medium)
+            2. Layer violation: shared component depends on workspace (medium)
+            3. cursor-pointer class remains after switching to double-click (low)
+
+            ## Positives
+            • float? fix for OperationalHours is correct
+            • PrefillRulesTable tests are thorough
+            • Contract test updated with new color fields
+            """;
+        var comment = new ClaudeReviewComment { Id = "42", Body = body, Author = "claude[bot]" };
+        var result = ClaudeReviewComment.SplitStructuredReview(comment);
+
+        var suggestions = result.Where(c => c.Severity == CommentSeverity.Suggestion).ToList();
+        var praise = result.Where(c => c.Severity == CommentSeverity.Praise).ToList();
+
+        suggestions.Should().HaveCount(3);
+        praise.Should().HaveCount(3);
+        result.Should().OnlyContain(c => c.Author == "claude[bot]");
+        result.Should().OnlyContain(c => c.Id.StartsWith("42_"));
+    }
+
+    [Fact]
+    public void SplitStructuredReview_BoldHeaders_SplitsCorrectly()
+    {
+        var body = """
+            **Issues**
+            1. First issue here
+            2. Second issue here
+
+            **Positive notes**
+            - Good work on the refactor
+            - Clean separation of concerns
+            """;
+        var comment = new ClaudeReviewComment { Id = "10", Body = body };
+        var result = ClaudeReviewComment.SplitStructuredReview(comment);
+
+        var suggestions = result.Where(c => c.Severity == CommentSeverity.Suggestion).ToList();
+        var praise = result.Where(c => c.Severity == CommentSeverity.Praise).ToList();
+
+        suggestions.Should().HaveCount(2);
+        praise.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void SplitStructuredReview_EmptyBody_ReturnsSingleComment()
+    {
+        var comment = new ClaudeReviewComment { Id = "1", Body = "" };
+        var result = ClaudeReviewComment.SplitStructuredReview(comment);
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void SplitStructuredReview_PreservesMetadata()
+    {
+        var body = """
+            ## Issues
+            1. A problem
+
+            ## Positives
+            - A good thing
+            """;
+        var created = DateTimeOffset.UtcNow;
+        var comment = new ClaudeReviewComment
+        {
+            Id = "99", Author = "bot", Body = body,
+            CreatedAt = created, HtmlUrl = "https://example.com"
+        };
+        var result = ClaudeReviewComment.SplitStructuredReview(comment);
+
+        result.Should().HaveCount(2);
+        result.Should().OnlyContain(c => c.Author == "bot");
+        result.Should().OnlyContain(c => c.CreatedAt == created);
+        result.Should().OnlyContain(c => c.HtmlUrl == "https://example.com");
+    }
 }

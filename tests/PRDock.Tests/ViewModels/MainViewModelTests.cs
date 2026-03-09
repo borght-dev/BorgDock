@@ -13,7 +13,8 @@ public class MainViewModelTests
         var vm = new MainViewModel();
 
         vm.IsSidebarVisible.Should().BeTrue();
-        vm.StatusText.Should().Be("PRDock \u2014 0 open PRs");
+        vm.StatusText.Should().Be("Starting\u2026");
+        vm.RepoSummaryText.Should().Be("");
     }
 
     [Fact]

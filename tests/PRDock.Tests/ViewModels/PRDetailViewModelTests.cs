@@ -83,7 +83,7 @@ public class PRDetailViewModelTests
         var vm = CreateVm();
         vm.Initialize(CreateCard());
 
-        vm.ActiveTab.Should().Be("Description");
+        vm.ActiveTab.Should().Be("Overview");
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class PRDetailViewModelTests
         var vm = await CreateInitializedVmAsync();
 
         await vm.SetTabCommand.ExecuteAsync("Commits");
-        await vm.SetTabCommand.ExecuteAsync("Description");
+        await vm.SetTabCommand.ExecuteAsync("Overview");
         await vm.SetTabCommand.ExecuteAsync("Commits");
 
         // Only 1 call from eager load, no extra from tab switches
@@ -370,7 +370,7 @@ public class PRDetailViewModelTests
         vm.Commits.Should().BeEmpty();
         vm.FileChanges.Should().BeEmpty();
         vm.AllComments.Should().BeEmpty();
-        vm.ActiveTab.Should().Be("Description");
+        vm.ActiveTab.Should().Be("Overview");
         vm.NewCommentText.Should().BeEmpty();
     }
 
@@ -394,13 +394,13 @@ public class PRDetailViewModelTests
     }
 
     [Fact]
-    public async Task SetTab_Description_DoesNotFetchExtraData()
+    public async Task SetTab_Overview_DoesNotFetchExtraData()
     {
         SetupDefaultMocks();
         var vm = await CreateInitializedVmAsync();
 
-        // Switching to Description tab after eager load does not trigger additional fetches
-        await vm.SetTabCommand.ExecuteAsync("Description");
+        // Switching to Overview tab after eager load does not trigger additional fetches
+        await vm.SetTabCommand.ExecuteAsync("Overview");
 
         // Eager load called each once; tab switch shouldn't add more
         await _gitHubService.Received(1)

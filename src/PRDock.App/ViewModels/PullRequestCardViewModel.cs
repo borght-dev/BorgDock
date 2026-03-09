@@ -89,6 +89,45 @@ public partial class PullRequestCardViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasReviewLoaded;
 
+    // Stats from PR model
+    [ObservableProperty]
+    private int _additions;
+
+    [ObservableProperty]
+    private int _deletions;
+
+    [ObservableProperty]
+    private int _filesChanged;
+
+    [ObservableProperty]
+    private int _commitCount;
+
+    // Check stats
+    [ObservableProperty]
+    private int _passedChecks;
+
+    [ObservableProperty]
+    private int _totalChecks;
+
+    // Merge score (computed)
+    [ObservableProperty]
+    private int _mergeScore;
+
+    // Labels
+    public ObservableCollection<string> Labels { get; } = [];
+
+    // Expansion state for inline row expansion
+    [ObservableProperty]
+    private bool _isExpanded;
+
+    // Author initials (2-letter abbreviation for avatar)
+    [ObservableProperty]
+    private string _authorInitials = "";
+
+    // Approval count
+    [ObservableProperty]
+    private int _approvalCount;
+
     /// <summary>
     /// The failed check runs with their IDs, for log fetching.
     /// </summary>
@@ -165,6 +204,49 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void CheckoutBranch()
     {
         CheckoutRequested?.Invoke(this);
+    }
+
+    public void ComputeMergeScore()
+    {
+        int score = 0;
+        if (StatusDotColor == "green") score += 40;          // All checks passing
+        if (ApprovalCount >= 1) score += 25;                  // At least 1 approval
+        if (ApprovalCount >= 2) score += 10;                  // 2+ approvals
+        if (!HasMergeConflict) score += 15;                   // No conflicts
+        if (!IsDraft) score += 10;                            // Not draft
+        MergeScore = Math.Min(score, 100);
+    }
+
+    public static string ComputeInitials(string login)
+    {
+        if (string.IsNullOrEmpty(login)) return "??";
+        // Split on underscores and take first letter of first two parts
+        // e.g. "borght-dev" -> "KV" (first char + first upper after lowercase)
+        var name = login.Split('_')[0]; // Take part before underscore
+        if (name.Length <= 2) return name.ToUpperInvariant();
+
+        // Find first char and first uppercase after it
+        var result = name[0].ToString().ToUpperInvariant();
+        for (int i = 1; i < name.Length; i++)
+        {
+            if (char.IsUpper(name[i]))
+            {
+                result += name[i];
+                break;
+            }
+        }
+        if (result.Length == 1) result += name[1].ToString().ToUpperInvariant();
+        return result;
+    }
+
+    [RelayCommand]
+    private void ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+        if (IsExpanded)
+        {
+            DetailExpandRequested?.Invoke(this);
+        }
     }
 
     public static string FormatAge(DateTime updatedAt)
