@@ -100,6 +100,10 @@ public partial class PRDetailViewModel : ObservableObject
     [ObservableProperty] private int _otherReviewCount;
     [ObservableProperty] private bool _hasAiReview;
 
+    // Review sorting
+    [ObservableProperty] private string _reviewSortMode = "Newest";
+    private IReadOnlyList<ClaudeReviewComment> _unsortedComments = [];
+
     // Comment input
     [ObservableProperty] private string _newCommentText = "";
     [ObservableProperty] private string _reviewBody = "";
@@ -322,9 +326,8 @@ public partial class PRDetailViewModel : ObservableObject
         try
         {
             var comments = await _gitHubService.GetAllPullRequestCommentsAsync(RepoOwner, RepoName, Number);
-            AllComments.Clear();
-            foreach (var c in comments)
-                AllComments.Add(c);
+            _unsortedComments = comments;
+            ApplyReviewSort();
             _commentsLoaded = true;
         }
         catch (Exception ex)
@@ -453,6 +456,38 @@ public partial class PRDetailViewModel : ObservableObject
         {
             IsPostingComment = false;
         }
+    }
+
+    [RelayCommand]
+    private void SetReviewSort(string mode)
+    {
+        ReviewSortMode = mode;
+        ApplyReviewSort();
+    }
+
+    private void ApplyReviewSort()
+    {
+        IEnumerable<ClaudeReviewComment> sorted = ReviewSortMode switch
+        {
+            "Oldest" => _unsortedComments.OrderBy(c => c.CreatedAt),
+            "Severity" => _unsortedComments.OrderBy(c => c.Severity switch
+            {
+                CommentSeverity.Critical => 0,
+                CommentSeverity.Suggestion => 1,
+                CommentSeverity.Unknown => 2,
+                CommentSeverity.Praise => 3,
+                _ => 4
+            }).ThenByDescending(c => c.CreatedAt),
+            "File" => _unsortedComments
+                .OrderBy(c => c.FilePath ?? "\uffff")
+                .ThenBy(c => c.LineNumber ?? int.MaxValue)
+                .ThenByDescending(c => c.CreatedAt),
+            _ => _unsortedComments.OrderByDescending(c => c.CreatedAt), // "Newest"
+        };
+
+        AllComments.Clear();
+        foreach (var c in sorted)
+            AllComments.Add(c);
     }
 
     private async void ShowToast(string message)

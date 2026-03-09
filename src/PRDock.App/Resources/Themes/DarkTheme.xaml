@@ -225,6 +225,15 @@
     <Color x:Key="GreenGlowColor">#4D34D399</Color>
     <Color x:Key="RedGlowColor">#80F87171</Color>
 
+    <!-- Floating badge -->
+    <SolidColorBrush x:Key="BadgeGlassBrush" Color="#CC111827" />
+    <SolidColorBrush x:Key="BadgeSurfaceBrush" Color="#E6111827" />
+    <SolidColorBrush x:Key="BadgeBorderBrush" Color="#25FFFFFF" />
+    <SolidColorBrush x:Key="BadgeGlowGreenBrush" Color="#4034D399" />
+    <SolidColorBrush x:Key="BadgeGlowRedBrush" Color="#40F87171" />
+    <SolidColorBrush x:Key="BadgeGlowYellowBrush" Color="#40FBBF24" />
+    <SolidColorBrush x:Key="BadgeProgressTrackBrush" Color="#15FFFFFF" />
+
     <!-- Diff / Code -->
     <Color x:Key="DiffAddedBgColor">#1A34D399</Color>
     <SolidColorBrush x:Key="DiffAddedBgBrush" Color="{StaticResource DiffAddedBgColor}" />

@@ -1,5 +1,9 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using WpfColor = System.Windows.Media.Color;
+using WpfColorConverter = System.Windows.Media.ColorConverter;
+using System.Windows.Media;
 
 namespace PRDock.App.ViewModels;
 
@@ -15,6 +19,9 @@ public partial class FloatingBadgeViewModel : ObservableObject
     private int _pendingCount;
 
     [ObservableProperty]
+    private int _passingCount;
+
+    [ObservableProperty]
     private string _badgeText = "0 PRs";
 
     [ObservableProperty]
@@ -26,6 +33,25 @@ public partial class FloatingBadgeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isToastVisible;
 
+    [ObservableProperty]
+    private string _badgeStyle = "GlassCapsule";
+
+    [ObservableProperty]
+    private string _statusText = "all clear";
+
+    [ObservableProperty]
+    private string _actionTag = "OK";
+
+    [ObservableProperty]
+    private bool _hasFailures;
+
+    [ObservableProperty]
+    private double _healthFraction = 1.0;
+
+    public ObservableCollection<string> PrStatuses { get; } = [];
+
+    public ObservableCollection<BadgeAuthorInfo> AuthorInitials { get; } = [];
+
     public event Action? ExpandSidebarRequested;
 
     public event Action? QuitRequested;
@@ -34,13 +60,34 @@ public partial class FloatingBadgeViewModel : ObservableObject
 
     public event Action? SettingsRequested;
 
-    public void Update(int totalPrCount, int failingCount, int pendingCount)
+    public void Update(int totalPrCount, int failingCount, int pendingCount,
+        IReadOnlyList<string>? prStatuses = null,
+        IReadOnlyList<BadgeAuthorInfo>? authors = null)
     {
         TotalPrCount = totalPrCount;
         FailingCount = failingCount;
         PendingCount = pendingCount;
+        PassingCount = totalPrCount - failingCount - pendingCount;
         BadgeText = FormatBadgeText(totalPrCount, failingCount, pendingCount);
         BackgroundColor = DetermineBackgroundColor(failingCount, pendingCount);
+        HasFailures = failingCount > 0;
+        ActionTag = failingCount > 0 ? "FIX" : "OK";
+        StatusText = DetermineStatusText(failingCount, pendingCount);
+        HealthFraction = totalPrCount > 0
+            ? (double)(totalPrCount - failingCount) / totalPrCount
+            : 1.0;
+
+        if (prStatuses is not null)
+        {
+            PrStatuses.Clear();
+            foreach (var s in prStatuses) PrStatuses.Add(s);
+        }
+
+        if (authors is not null)
+        {
+            AuthorInitials.Clear();
+            foreach (var a in authors.Take(3)) AuthorInitials.Add(a);
+        }
     }
 
     public async void ShowToast(string message, int durationMs = 4000)
@@ -75,6 +122,31 @@ public partial class FloatingBadgeViewModel : ObservableObject
         return "green";
     }
 
+    internal static string DetermineStatusText(int failing, int pending)
+    {
+        if (failing > 0) return $"{failing} failing";
+        if (pending > 0) return $"{pending} pending";
+        return "all clear";
+    }
+
+    private static readonly string[] AvatarPalette =
+        ["#E74C3C", "#3498DB", "#2ECC71", "#F39C12", "#9B59B6", "#1ABC9C", "#E67E22", "#16A085"];
+
+    internal static SolidColorBrush GetAuthorBrush(string login)
+    {
+        int hash = 0;
+        foreach (var c in login) hash = hash * 31 + c;
+        var index = Math.Abs(hash) % AvatarPalette.Length;
+        var color = (WpfColor)WpfColorConverter.ConvertFromString(AvatarPalette[index]);
+        return new SolidColorBrush(color);
+    }
+
+    internal static string GetInitials(string login)
+    {
+        if (string.IsNullOrEmpty(login)) return "?";
+        return login.Length >= 2 ? login[..2].ToUpperInvariant() : login.ToUpperInvariant();
+    }
+
     [RelayCommand]
     private void ExpandSidebar()
     {
@@ -104,4 +176,10 @@ public partial class FloatingBadgeViewModel : ObservableObject
     {
         SettingsRequested?.Invoke();
     }
+}
+
+public sealed class BadgeAuthorInfo
+{
+    public string Initials { get; set; } = "";
+    public SolidColorBrush BackgroundBrush { get; set; } = new(Colors.Gray);
 }

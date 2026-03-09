@@ -70,6 +70,9 @@ public partial class SettingsViewModel : ObservableObject
     private string _theme = "system";
 
     [ObservableProperty]
+    private string _badgeStyle = "GlassCapsule";
+
+    [ObservableProperty]
     private string _editorCommand = "code";
 
     [ObservableProperty]
@@ -191,7 +194,9 @@ public partial class SettingsViewModel : ObservableObject
 
     public static IReadOnlyList<string> AuthMethodOptions { get; } = ["ghCli", "pat"];
     public static IReadOnlyList<string> SidebarEdgeOptions { get; } = ["left", "right"];
-public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", "dark"];
+    public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", "dark"];
+    public static IReadOnlyList<string> BadgeStyleOptions { get; } =
+        ["GlassCapsule", "MinimalNotch", "FloatingIsland", "LiquidMorph", "SpectralBar"];
     public static IReadOnlyList<string> PostFixActionOptions { get; } = ["commitAndNotify", "commitOnly", "notifyOnly", "none"];
 
     // --- Commands ---
@@ -250,6 +255,7 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
         SidebarEdge = settings.UI.SidebarEdge;
         SidebarWidthPx = settings.UI.SidebarWidthPx;
         Theme = settings.UI.Theme;
+        BadgeStyle = settings.UI.BadgeStyle;
         EditorCommand = settings.UI.EditorCommand;
         RunAtStartup = settings.UI.RunAtStartup;
 
@@ -295,6 +301,7 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
                 SidebarEdge = SidebarEdge,
                 SidebarWidthPx = SidebarWidthPx,
                 Theme = Theme,
+                BadgeStyle = BadgeStyle,
                 GlobalHotkey = GlobalHotkey,
                 EditorCommand = EditorCommand,
                 RunAtStartup = RunAtStartup

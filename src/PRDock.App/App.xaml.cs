@@ -124,6 +124,7 @@ public partial class App : System.Windows.Application
 
         // Create floating badge window
         _floatingBadgeVm = new FloatingBadgeViewModel();
+        _floatingBadgeVm.BadgeStyle = settingsService.CurrentSettings.UI.BadgeStyle;
         _floatingBadgeWindow = new FloatingBadgeWindow(_floatingBadgeVm);
 
         _floatingBadgeVm.ExpandSidebarRequested += () =>
@@ -155,8 +156,20 @@ public partial class App : System.Windows.Application
             var total = results.Count;
             var failing = results.Count(r => r.OverallStatus == "red");
             var pending = results.Count(r => r.OverallStatus == "yellow");
+            var prStatuses = results.Select(r => r.OverallStatus).ToList();
+            var authors = results
+                .Select(r => r.PullRequest.AuthorLogin)
+                .Where(l => !string.IsNullOrEmpty(l))
+                .Distinct()
+                .Take(3)
+                .Select(login => new BadgeAuthorInfo
+                {
+                    Initials = FloatingBadgeViewModel.GetInitials(login),
+                    BackgroundBrush = FloatingBadgeViewModel.GetAuthorBrush(login)
+                })
+                .ToList();
             System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
-                _floatingBadgeVm?.Update(total, failing, pending));
+                _floatingBadgeVm?.Update(total, failing, pending, prStatuses, authors));
         };
         pollingService.StartPolling();
 
@@ -179,6 +192,8 @@ public partial class App : System.Windows.Application
                 _themeManager?.ApplyTheme(settings.UI.Theme);
                 _mainViewModel?.ApplySidebarPreferences(settings.UI);
                 _sidebarWindow?.ApplyUiSettings(settings.UI);
+                if (_floatingBadgeVm is not null)
+                    _floatingBadgeVm.BadgeStyle = settings.UI.BadgeStyle;
 
                 // Re-register global hotkey if changed
                 if (_hotKeyManager is not null && _sidebarWindow is not null)

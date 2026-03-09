@@ -41,6 +41,7 @@ public sealed class UiSettings
     public string GlobalHotkey { get; set; } = "Ctrl+Win+Shift+G";
     public string EditorCommand { get; set; } = "code";
     public bool RunAtStartup { get; set; }
+    public string BadgeStyle { get; set; } = "GlassCapsule";
 }
 
 public sealed class NotificationSettings

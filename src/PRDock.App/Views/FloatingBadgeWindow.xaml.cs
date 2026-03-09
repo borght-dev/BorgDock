@@ -1,7 +1,10 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
+using WpfColor = System.Windows.Media.Color;
 using PRDock.App.ViewModels;
 
 namespace PRDock.App.Views;
@@ -26,16 +29,60 @@ public partial class FloatingBadgeWindow : Window
             if (vm.BackgroundColor != _lastBackgroundColor)
             {
                 _lastBackgroundColor = vm.BackgroundColor;
-                PlayPulseAnimation();
+                UpdateGlowColors(vm);
+                PlayPulseAnimation(vm);
             }
         }
     }
 
-    private void PlayPulseAnimation()
+    private void UpdateGlowColors(FloatingBadgeViewModel vm)
     {
-        if (TryFindResource("PulseAnimation") is Storyboard storyboard)
+        var glowColor = vm.BackgroundColor switch
         {
-            storyboard.Begin();
+            "red" => WpfColor.FromRgb(0xF8, 0x71, 0x71),
+            "yellow" => WpfColor.FromRgb(0xFB, 0xBF, 0x24),
+            _ => WpfColor.FromRgb(0x34, 0xD3, 0x99),
+        };
+
+        if (GlassCapsuleBorder?.Effect is DropShadowEffect glassGlow)
+            glassGlow.Color = glowColor;
+
+        if (FloatingIslandBorder?.Effect is DropShadowEffect islandGlow)
+            islandGlow.Color = glowColor;
+    }
+
+    private void PlayPulseAnimation(FloatingBadgeViewModel vm)
+    {
+        var target = vm.BadgeStyle switch
+        {
+            "GlassCapsule" => GlassCapsuleBorder,
+            "MinimalNotch" => MinimalNotchBorder,
+            "FloatingIsland" => FloatingIslandBorder,
+            "LiquidMorph" => LiquidMorphBorder,
+            "SpectralBar" => SpectralBarBorder,
+            _ => GlassCapsuleBorder,
+        };
+
+        if (target is null) return;
+
+        // Opacity pulse for most styles
+        var opacityAnim = new DoubleAnimation(1.0, 0.7, TimeSpan.FromSeconds(0.5))
+        {
+            AutoReverse = true,
+            RepeatBehavior = new RepeatBehavior(3)
+        };
+        target.BeginAnimation(OpacityProperty, opacityAnim);
+
+        // Scale pulse for Liquid Morph ring
+        if (vm.BadgeStyle == "LiquidMorph" && MorphRing?.RenderTransform is ScaleTransform scale)
+        {
+            var scaleAnim = new DoubleAnimation(1.0, 1.08, TimeSpan.FromSeconds(0.4))
+            {
+                AutoReverse = true,
+                RepeatBehavior = new RepeatBehavior(3)
+            };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
         }
     }
 
@@ -56,17 +103,6 @@ public partial class FloatingBadgeWindow : Window
                     vm.ExpandSidebarCommand.Execute(null);
                 }
             }
-        }
-    }
-
-    private void BadgeBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        // Click is now handled in Window_MouseLeftButtonDown after DragMove returns.
-        // This handler is kept for backwards compatibility but DragMove() consumes
-        // the mouse-up event, so it rarely fires in practice.
-        if (DataContext is FloatingBadgeViewModel vm)
-        {
-            vm.ExpandSidebarCommand.Execute(null);
         }
     }
 }

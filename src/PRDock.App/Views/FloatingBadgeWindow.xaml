@@ -12,16 +12,6 @@
         Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
-    <Window.Resources>
-        <Storyboard x:Key="PulseAnimation">
-            <DoubleAnimation Storyboard.TargetName="BadgeBorder"
-                             Storyboard.TargetProperty="Opacity"
-                             From="1.0" To="0.7" Duration="0:0:0.5"
-                             AutoReverse="True"
-                             RepeatBehavior="3x" />
-        </Storyboard>
-    </Window.Resources>
-
     <StackPanel>
         <!-- Toast bubble (appears above the badge) -->
         <Border CornerRadius="10" Padding="12,8" Margin="0,0,0,6"
@@ -48,32 +38,9 @@
                        TextWrapping="Wrap" MaxWidth="260" />
         </Border>
 
-        <!-- Badge pill -->
-        <Border x:Name="BadgeBorder"
-                CornerRadius="16"
-                Padding="14,8"
-                Cursor="Hand"
-                AutomationProperties.AutomationId="FloatingBadgeBorder"
-                MouseLeftButtonUp="BadgeBorder_MouseLeftButtonUp">
-
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
-                            <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
-                            <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding BackgroundColor}" Value="green">
-                            <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-
-            <Border.ContextMenu>
+        <!-- Badge styles container -->
+        <Grid Background="Transparent" Cursor="Hand">
+            <Grid.ContextMenu>
                 <ContextMenu AutomationProperties.AutomationId="BadgeContextMenu">
                     <MenuItem Header="Dock Left"
                               Command="{Binding DockLeftCommand}"
@@ -90,14 +57,631 @@
                               Command="{Binding QuitCommand}"
                               AutomationProperties.AutomationId="QuitMenuItem" />
                 </ContextMenu>
-            </Border.ContextMenu>
+            </Grid.ContextMenu>
 
-            <TextBlock Text="{Binding BadgeText}"
-                       Foreground="White"
-                       FontSize="13"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center"
-                       AutomationProperties.AutomationId="BadgeTextBlock" />
-        </Border>
+            <!-- ==================== A — Glass Capsule ==================== -->
+            <Border x:Name="GlassCapsuleBorder" CornerRadius="20" Padding="5,5,14,5"
+                    AutomationProperties.AutomationId="FloatingBadgeBorder">
+                <Border.Effect>
+                    <DropShadowEffect x:Name="GlassGlow" BlurRadius="14" ShadowDepth="0" Opacity="0.45" Color="#34D399" />
+                </Border.Effect>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="Background" Value="{DynamicResource BadgeGlassBrush}" />
+                        <Setter Property="BorderThickness" Value="1.5" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BadgeGlowGreenBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BadgeStyle}" Value="GlassCapsule">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                <Setter Property="BorderBrush" Value="{DynamicResource BadgeGlowRedBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                <Setter Property="BorderBrush" Value="{DynamicResource BadgeGlowYellowBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Status icon circle -->
+                    <Border Grid.Column="0" Width="30" Height="30" CornerRadius="15" Margin="0,0,10,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                        <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                        <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock FontSize="14" FontWeight="Bold" Foreground="White"
+                                   ExampletalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="&#x2713;" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasFailures}" Value="True">
+                                            <Setter Property="Text" Value="&#x2715;" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+
+                    <!-- PR count -->
+                    <StackPanel Grid.Column="1" Orientation="Exampletal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TotalPrCount}" FontSize="16" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock Text=" PRs" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                                   VerticalAlignment="Center" Margin="2,0,0,0" />
+                    </StackPanel>
+
+                    <!-- Separator -->
+                    <Border Grid.Column="2" Width="1" Height="18" Margin="12,0"
+                            Background="{DynamicResource BadgeBorderBrush}" VerticalAlignment="Center" />
+
+                    <!-- Status text with dot -->
+                    <StackPanel Grid.Column="3" Orientation="Exampletal" VerticalAlignment="Center">
+                        <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="{DynamicResource StatusGreenBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                            <Setter Property="Fill" Value="{DynamicResource StatusRedBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                            <Setter Property="Fill" Value="{DynamicResource StatusYellowBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        <TextBlock Text="{Binding StatusText}" FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ==================== B — Minimal Notch ==================== -->
+            <Border x:Name="MinimalNotchBorder" CornerRadius="10" Padding="0"
+                    ClipToBounds="True">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="Black" />
+                </Border.Effect>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="Background" Value="{DynamicResource BadgeSurfaceBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BadgeBorderBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BadgeStyle}" Value="MinimalNotch">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <!-- Left accent bar -->
+                    <Border Width="3" ExampletalAlignment="Left" CornerRadius="0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                        <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                        <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Content -->
+                    <StackPanel Orientation="Exampletal" Margin="14,9,14,9" VerticalAlignment="Center">
+                        <!-- PR count -->
+                        <TextBlock FontSize="15" FontWeight="Bold" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}">
+                            <Run Text="{Binding TotalPrCount, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Text=" PRS" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   VerticalAlignment="Center" Margin="3,0,0,1" />
+
+                        <!-- Dot separator -->
+                        <TextBlock Text=" &#x00b7; " FontSize="13" Foreground="{DynamicResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="6,0" />
+
+                        <!-- Status icon -->
+                        <TextBlock FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,5,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="&#x2713;" />
+                                    <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                            <Setter Property="Text" Value="&#x2715;" />
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                            <Setter Property="Text" Value="&#x25CF;" />
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- Status text -->
+                        <TextBlock Text="{Binding StatusText}" FontSize="12" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- Per-PR pips (thin bars) -->
+                        <ItemsControl ItemsSource="{Binding PrStatuses}" Margin="10,0,0,0"
+                                      VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Exampletal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="4" Height="14" CornerRadius="2" Margin="1,0">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource StatusGrayBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding}" Value="green">
+                                                        <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding}" Value="red">
+                                                        <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding}" Value="yellow">
+                                                        <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ==================== C — Floating Island ==================== -->
+            <Border x:Name="FloatingIslandBorder" CornerRadius="18" Padding="14,10,14,10">
+                <Border.Effect>
+                    <DropShadowEffect x:Name="IslandGlow" BlurRadius="16" ShadowDepth="0" Opacity="0.3" Color="#34D399" />
+                </Border.Effect>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="Background" Value="{DynamicResource BadgeSurfaceBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BadgeBorderBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BadgeStyle}" Value="FloatingIsland">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Author avatar stack (overlapping circles) -->
+                    <ItemsControl Grid.Column="0" ItemsSource="{Binding AuthorInitials}"
+                                  VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Exampletal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Margin" Value="0,0,-10,0" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="28" Height="28" CornerRadius="14"
+                                        Background="{Binding BackgroundBrush}"
+                                        BorderThickness="2" BorderBrush="{DynamicResource BadgeSurfaceBrush}">
+                                    <TextBlock Text="{Binding Initials}"
+                                               Foreground="White" FontSize="9" FontWeight="Bold"
+                                               ExampletalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Text content (two lines) -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,0,0">
+                        <StackPanel Orientation="Exampletal">
+                            <TextBlock Text="{Binding TotalPrCount}" FontSize="15" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text=" open PRs" FontSize="12"
+                                       Foreground="{DynamicResource TextTertiaryBrush}"
+                                       VerticalAlignment="Center" Margin="3,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Exampletal" Margin="0,2,0,0">
+                            <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource StatusGreenBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                                <Setter Property="Fill" Value="{DynamicResource StatusRedBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                                <Setter Property="Fill" Value="{DynamicResource StatusYellowBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock FontSize="11">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                                <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                                <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <TextBlock.Text>
+                                    <Binding Path="StatusText" StringFormat="{}{0} checks" />
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Mini bar chart -->
+                    <ItemsControl Grid.Column="2" ItemsSource="{Binding PrStatuses}"
+                                  VerticalAlignment="Center" Margin="14,0,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Exampletal" VerticalAlignment="Bottom" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="5" CornerRadius="1" Margin="1.5,0" VerticalAlignment="Bottom">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource StatusGrayBrush}" />
+                                            <Setter Property="Height" Value="8" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding}" Value="green">
+                                                    <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                                                    <Setter Property="Height" Value="20" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding}" Value="red">
+                                                    <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                                                    <Setter Property="Height" Value="8" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding}" Value="yellow">
+                                                    <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                                                    <Setter Property="Height" Value="14" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+
+            <!-- ==================== D — Liquid Morph ==================== -->
+            <Border x:Name="LiquidMorphBorder" CornerRadius="16" Padding="10,8,12,8">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="Black" />
+                </Border.Effect>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="Background" Value="{DynamicResource BadgeSurfaceBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BadgeBorderBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BadgeStyle}" Value="LiquidMorph">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Count circle with ring -->
+                    <Border x:Name="MorphRing" Grid.Column="0" Width="42" Height="42"
+                            CornerRadius="21" Margin="0,0,10,0"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform ScaleX="1" ScaleY="1" />
+                        </Border.RenderTransform>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderThickness" Value="2.5" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource StatusGreenBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource StatusRedBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource StatusYellowBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding TotalPrCount}" FontSize="16" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   ExampletalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Text content -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="Open PRs" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock FontSize="11" Margin="0,1,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <TextBlock.Text>
+                                <Binding Path="StatusText" StringFormat="{}{0} checks" />
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Action tag pill -->
+                    <Border Grid.Column="2" CornerRadius="8" Padding="10,4" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource SuccessBadgeBackgroundBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasFailures}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource ErrorBadgeBackgroundBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding ActionTag}" FontSize="11" FontWeight="Bold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasFailures}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ==================== E — Spectral Bar ==================== -->
+            <Border x:Name="SpectralBarBorder" CornerRadius="12" Padding="0"
+                    ClipToBounds="True">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="Black" />
+                </Border.Effect>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="Background" Value="{DynamicResource BadgeSurfaceBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BadgeBorderBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BadgeStyle}" Value="SpectralBar">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Main content row -->
+                    <Grid Grid.Row="0" Margin="12,10,12,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: PR icon + count -->
+                        <StackPanel Grid.Column="0" Orientation="Exampletal" VerticalAlignment="Center">
+                            <!-- Git merge icon -->
+                            <Border Width="22" Height="22" CornerRadius="5" Margin="0,0,8,0">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource SuccessBadgeBackgroundBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                                <Setter Property="Background" Value="{DynamicResource ErrorBadgeBackgroundBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                                <Setter Property="Background" Value="{DynamicResource WarningBadgeBackgroundBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Path Width="12" Height="14" Stretch="Uniform" StrokeThickness="1.4" Fill="Transparent"
+                                      ExampletalAlignment="Center" VerticalAlignment="Center"
+                                      Data="M4,1 A3,3 0 1 1 4,7 A3,3 0 1 1 4,1 M4,7 L4,15 M4,11 C6,11 8,9 10,7 M10,1 A3,3 0 1 1 10,7 A3,3 0 1 1 10,1">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Stroke" Value="{DynamicResource StatusGreenBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                                    <Setter Property="Stroke" Value="{DynamicResource StatusRedBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                                    <Setter Property="Stroke" Value="{DynamicResource StatusYellowBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Border>
+                            <TextBlock FontSize="15" FontWeight="Bold" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}">
+                                <Run Text="{Binding TotalPrCount, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Text=" PRs" FontSize="11" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" Margin="3,0,0,1" />
+                        </StackPanel>
+
+                        <!-- Separator -->
+                        <Border Grid.Column="1" Width="1" Height="20" Margin="12,0"
+                                Background="{DynamicResource BadgeBorderBrush}" VerticalAlignment="Center" />
+
+                        <!-- Right: pips + status text -->
+                        <StackPanel Grid.Column="2" Orientation="Exampletal" VerticalAlignment="Center">
+                            <!-- Per-PR circle pips -->
+                            <ItemsControl ItemsSource="{Binding PrStatuses}" Margin="0,0,8,0"
+                                          VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Exampletal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Ellipse Width="8" Height="8" Margin="1.5,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="{DynamicResource StatusGrayBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding}" Value="green">
+                                                            <Setter Property="Fill" Value="{DynamicResource StatusGreenBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding}" Value="red">
+                                                            <Setter Property="Fill" Value="{DynamicResource StatusRedBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding}" Value="yellow">
+                                                            <Setter Property="Fill" Value="{DynamicResource StatusYellowBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Status text -->
+                            <TextBlock Text="{Binding StatusText}" FontSize="12" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                                <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                                <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Bottom progress bar -->
+                    <Border Grid.Row="1" CornerRadius="0,0,11,11" ClipToBounds="True" Height="3"
+                            Background="{DynamicResource BadgeProgressTrackBrush}">
+                        <Border ExampletalAlignment="Stretch" RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding HealthFraction}" />
+                            </Border.RenderTransform>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="red">
+                                            <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding BackgroundColor}" Value="yellow">
+                                            <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
     </StackPanel>
 </Window>

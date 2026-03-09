@@ -10,7 +10,15 @@ A lightweight Windows desktop application that monitors GitHub pull requests as 
 - **Claude Code Integration** — One-click launch of a Claude Code terminal session to automatically fix CI failures. PRDock finds or creates a git worktree for the PR branch and generates a targeted fix prompt.
 - **Claude Review Panel** — Surfaces review comments left by Claude Code's bot, grouped by severity, with full Markdown rendering.
 - **Notifications** — Windows toast notifications for check status changes, new PRs, and review updates.
-- **Floating Badge** — A minimal always-on-top badge showing failing PR count when the sidebar is hidden.
+- **Floating Badge** — A minimal always-on-top badge showing failing PR count when the sidebar is hidden. Five selectable styles:
+
+  | Style | Preview | Description |
+  |-------|---------|-------------|
+  | **Glass Capsule** | ![Glass Capsule](docs/GlassCapsule.png) | Frosted glass with pulsing status ring. Subtle, elegant. |
+  | **Minimal Notch** | ![Minimal Notch](docs/MinimalNotch.png) | Thin colored accent bar + per-PR status pips. Most compact. |
+  | **Floating Island** | ![Floating Island](docs/FloatingIsland.png) | Author avatars, mini bar chart, ambient glow. Most info-dense. |
+  | **Liquid Morph** | ![Liquid Morph](docs/LiquidMorph.png) | Animated morphing ring with FIX/OK action tag. Playful. |
+  | **Spectral Bar** | ![Spectral Bar](docs/SpectralBar.png) | Two-panel layout with health progress bar. Dashboard-like. |
 - **Theme Support** — Light, dark, and system-following themes.
 - **Setup Wizard** — First-run wizard that auto-detects `gh` CLI auth, scans for local GitHub repos, and configures worktree paths.
 - **Adaptive Polling** — Rate-limit-aware polling with ETag-based conditional requests to minimize GitHub API quota usage.

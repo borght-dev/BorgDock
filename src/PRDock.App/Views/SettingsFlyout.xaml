@@ -692,6 +692,13 @@
                                   Style="{StaticResource InputComboBoxStyle}"
                                   Margin="0,0,0,2" />
 
+                        <TextBlock Text="Badge style" Style="{StaticResource FieldLabelStyle}" />
+                        <ComboBox AutomationProperties.AutomationId="BadgeStyleComboBox"
+                                  ItemsSource="{Binding BadgeStyleOptions}"
+                                  SelectedItem="{Binding BadgeStyle, Mode=TwoWay}"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  Margin="0,0,0,2" />
+
                         <TextBlock Text="Editor command" Style="{StaticResource FieldLabelStyle}" />
                         <TextBox AutomationProperties.AutomationId="EditorCommandTextBox"
                                  Text="{Binding EditorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

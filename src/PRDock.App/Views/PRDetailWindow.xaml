@@ -775,12 +775,95 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Comment list -->
+                    <!-- Sort bar + Comment list -->
                     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="24,18,18,4">
                         <ScrollViewer.Resources>
                             <Style TargetType="ScrollBar" BasedOn="{StaticResource DetailScrollBar}" />
                         </ScrollViewer.Resources>
                         <StackPanel>
+                            <!-- Sort bar -->
+                            <StackPanel Orientation="Exampletal" Margin="0,0,0,10">
+                                <TextBlock Text="Sort:" FontSize="11" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,8,0" />
+                                <StackPanel Orientation="Exampletal">
+                                    <StackPanel.Resources>
+                                        <Style x:Key="SortChip" TargetType="Button">
+                                            <Setter Property="FontSize" Value="11" />
+                                            <Setter Property="Padding" Value="8,3" />
+                                            <Setter Property="Margin" Value="0,0,4,0" />
+                                            <Setter Property="Cursor" Value="Hand" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </StackPanel.Resources>
+                                    <Button Content="Newest" Command="{Binding SetReviewSortCommand}" CommandParameter="Newest">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SortChip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ReviewSortMode}" Value="Newest">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="Oldest" Command="{Binding SetReviewSortCommand}" CommandParameter="Oldest">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SortChip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ReviewSortMode}" Value="Oldest">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="Severity" Command="{Binding SetReviewSortCommand}" CommandParameter="Severity">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SortChip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ReviewSortMode}" Value="Severity">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="File" Command="{Binding SetReviewSortCommand}" CommandParameter="File">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SortChip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ReviewSortMode}" Value="File">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
                             <TextBlock Text="Loading reviews..."
                                        FontSize="11" FontStyle="Italic"
                                        Foreground="{DynamicResource TextTertiaryBrush}"
