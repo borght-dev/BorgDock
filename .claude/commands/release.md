@@ -1,6 +1,6 @@
 # Release PRDock
 
-Create a new release with Setup.exe and push a tag to trigger the GitHub Actions workflow.
+Create a new release: build locally to verify, bump version, tag, and push. The GitHub Actions workflow handles packaging, uploading, changelog generation, and publishing.
 
 ## Arguments
 
@@ -12,7 +12,7 @@ Create a new release with Setup.exe and push a tag to trigger the GitHub Actions
 
 2. **Update the version** in `src/PRDock.App/PRDock.App.csproj` to the provided version.
 
-3. **Build and publish** the app:
+3. **Build and publish** the app (local verification only):
    ```
    dotnet publish src/PRDock.App -c Release -r win-x64 --self-contained -o publish
    ```
@@ -23,12 +23,12 @@ Create a new release with Setup.exe and push a tag to trigger the GitHub Actions
    ```
    (ignore errors if already installed)
 
-5. **Pack with Velopack** to generate Setup.exe:
+5. **Pack with Velopack** to verify Setup.exe generation:
    ```
    vpk pack --packId PRDock --packVersion <VERSION> --packDir publish --mainExe PRDock.App.exe --icon src/PRDock.App/Assets/tray-icon.ico
    ```
 
-6. **Verify** that `Releases/PRDock-Setup.exe` (or similar) was created. List the `Releases/` directory and confirm the Setup.exe exists. Abort if not found.
+6. **Verify** that `Releases/PRDock-Setup.exe` was created. List the `Releases/` directory and confirm. Abort if not found.
 
 7. **Commit** the version bump:
    ```
@@ -42,22 +42,12 @@ Create a new release with Setup.exe and push a tag to trigger the GitHub Actions
    git push && git push origin v<VERSION>
    ```
 
-9. **Wait for the GitHub Release** to be created by the Actions workflow. Poll with `gh release view v<VERSION>` every 30 seconds, up to 10 minutes. Show progress while waiting.
+9. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow will automatically build, upload assets, generate a changelog, and publish the release. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
 
-10. **Upload Setup.exe** to the GitHub Release:
-    ```
-    gh release upload v<VERSION> Releases/PRDock-Setup.exe --clobber
-    ```
-
-11. **Print the release URL** so the user can verify:
-    ```
-    gh release view v<VERSION> --web
-    ```
-
-12. **Clean up** the `publish/` and `Releases/` directories.
+10. **Clean up** the `publish/` and `Releases/` directories.
 
 ## Important
 
 - This command must be run on a Windows machine (Setup.exe generation requires Windows).
 - If any step fails, stop and report the error — do not continue with partial state.
-- The GitHub Actions workflow will separately upload the update nupkgs (full + delta) to the same release.
+- The GitHub Actions workflow handles everything after the tag push: building, packing (with delta generation), uploading to GitHub Releases, generating the changelog from commits, and publishing the release (not draft).
