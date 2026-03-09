@@ -8,6 +8,7 @@ namespace PRDock.Tests.Services;
 
 public class UpdateServiceTests
 {
+    private readonly IGitHubAuthService _authService = Substitute.For<IGitHubAuthService>();
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
     private readonly ILogger<UpdateService> _logger = Substitute.For<ILogger<UpdateService>>();
 
@@ -25,7 +26,7 @@ public class UpdateServiceTests
         // Pass no UpdateManager — the lazy factory will try to create one but
         // will fail gracefully (no VelopackApp.Build() in tests), returning null.
         // All operations will be no-ops since IsInstalled == false.
-        return new UpdateService(_settingsService, _logger);
+        return new UpdateService(_authService, _settingsService, _logger);
     }
 
     [Fact]

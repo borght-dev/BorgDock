@@ -12,54 +12,86 @@ public sealed class UpdateService : IUpdateService
     private const string GitHubRepoUrl = "https://github.com/borght-dev/PRDock";
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(4);
 
-    private readonly Lazy<UpdateManager?> _updateManagerLazy;
+    private readonly IGitHubAuthService _authService;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<UpdateService> _logger;
+    private readonly UpdateManager? _injectedManager;
 
     private CancellationTokenSource? _periodicCts;
     private VelopackUpdateInfo? _pendingUpdate;
+    private UpdateManager? _lastManager;
     private bool _isUpdateReady;
     private bool _disposed;
 
     public UpdateService(
+        IGitHubAuthService authService,
         ISettingsService settingsService,
         ILogger<UpdateService> logger,
         UpdateManager? updateManager = null)
     {
+        _authService = authService;
         _settingsService = settingsService;
         _logger = logger;
+        _injectedManager = updateManager;
+    }
 
-        if (updateManager is not null)
+    /// <summary>
+    /// Creates an UpdateManager with the current GitHub token for private repo access.
+    /// </summary>
+    private async Task<UpdateManager?> GetManagerAsync(CancellationToken ct = default)
+    {
+        if (_injectedManager is not null)
+            return _injectedManager;
+
+        try
         {
-            _updateManagerLazy = new Lazy<UpdateManager?>(() => updateManager);
+            var token = await _authService.GetTokenAsync(ct);
+            var source = new GithubSource(GitHubRepoUrl, token, false);
+            _lastManager = new UpdateManager(source);
+            return _lastManager;
         }
-        else
+        catch (Exception ex)
         {
-            _updateManagerLazy = new Lazy<UpdateManager?>(() =>
-            {
-                try
-                {
-                    var source = new GithubSource(GitHubRepoUrl, null, false);
-                    return new UpdateManager(source);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Could not initialize UpdateManager (dev mode)");
-                    return null;
-                }
-            });
+            _logger.LogDebug(ex, "Could not initialize UpdateManager (dev mode)");
+            return null;
         }
     }
 
-    private UpdateManager? Manager => _updateManagerLazy.Value;
+    /// <summary>
+    /// Synchronous manager access for properties that can't be async (IsInstalled, CurrentVersion).
+    /// Uses the last created manager or creates one without a token as fallback.
+    /// </summary>
+    private UpdateManager? SyncManager
+    {
+        get
+        {
+            if (_injectedManager is not null)
+                return _injectedManager;
 
-    public bool IsInstalled => Manager?.IsInstalled == true;
+            if (_lastManager is not null)
+                return _lastManager;
+
+            try
+            {
+                var source = new GithubSource(GitHubRepoUrl, null, false);
+                _lastManager = new UpdateManager(source);
+                return _lastManager;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not initialize UpdateManager (dev mode)");
+                return null;
+            }
+        }
+    }
+
+    public bool IsInstalled => SyncManager?.IsInstalled == true;
 
     public string CurrentVersion
     {
         get
         {
-            if (IsInstalled && Manager!.CurrentVersion is { } ver)
+            if (IsInstalled && SyncManager!.CurrentVersion is { } ver)
                 return ver.ToString();
 
             // Fall back to assembly version for dev mode
@@ -76,7 +108,8 @@ public sealed class UpdateService : IUpdateService
 
     public async Task<Models.UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)
     {
-        if (!IsInstalled)
+        var manager = await GetManagerAsync(ct);
+        if (manager is null || !manager.IsInstalled)
         {
             _logger.LogDebug("Not installed via Velopack — skipping update check");
             return null;
@@ -84,7 +117,7 @@ public sealed class UpdateService : IUpdateService
 
         try
         {
-            var update = await Manager!.CheckForUpdatesAsync();
+            var update = await manager.CheckForUpdatesAsync();
             if (update is null)
             {
                 _logger.LogDebug("No updates available");
@@ -117,12 +150,13 @@ public sealed class UpdateService : IUpdateService
 
     public async Task DownloadUpdateAsync(CancellationToken ct = default)
     {
-        if (!IsInstalled || _pendingUpdate is null)
+        var manager = await GetManagerAsync(ct);
+        if (manager is null || !manager.IsInstalled || _pendingUpdate is null)
             return;
 
         try
         {
-            await Manager!.DownloadUpdatesAsync(
+            await manager.DownloadUpdatesAsync(
                 _pendingUpdate,
                 progress => DownloadProgress?.Invoke(progress),
                 ct);
@@ -143,7 +177,7 @@ public sealed class UpdateService : IUpdateService
             return;
 
         _logger.LogInformation("Applying update and restarting...");
-        Manager!.ApplyUpdatesAndRestart(_pendingUpdate.TargetFullRelease);
+        SyncManager!.ApplyUpdatesAndRestart(_pendingUpdate.TargetFullRelease);
     }
 
     public void StartPeriodicChecks()
