@@ -7,6 +7,32 @@
         <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
+        <!-- Small icon button for shortcuts -->
+        <Style x:Key="CardIconButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource IconButtonBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource IconButtonForegroundBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="5"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource IconButtonHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Action button styles (need to be accessible within this UserControl) -->
         <Style x:Key="ActionButtonBaseStyle" TargetType="Button">
             <Setter Property="FontSize" Value="11" />
@@ -291,11 +317,45 @@
                 <StackPanel Margin="0,8,0,0"
                             Visibility="{Binding IsDetailExpanded, Converter={StaticResource BoolToVis}}">
                     <Border Height="1" Background="{DynamicResource SeparatorBrush}" Margin="0,0,0,8" />
-                    <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}">
-                        <Run Text="{Binding HeadRef, Mode=OneWay}" FontWeight="SemiBold"/>
-                        <Run Text=" &#x2192; "/>
-                        <Run Text="{Binding BaseRef, Mode=OneWay}"/>
-                    </TextBlock>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding HeadRef, Mode=OneWay}" FontWeight="SemiBold"/>
+                            <Run Text=" &#x2192; "/>
+                            <Run Text="{Binding BaseRef, Mode=OneWay}"/>
+                        </TextBlock>
+                        <StackPanel Grid.Column="1" Orientation="Exampletal" VerticalAlignment="Center">
+                            <Button Command="{Binding CopyBranchNameCommand}"
+                                    ToolTip="Copy branch name"
+                                    Style="{StaticResource CardIconButtonStyle}"
+                                    AutomationProperties.AutomationId="CardCopyBranchButton">
+                                <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                            </Button>
+                            <Button Command="{Binding CopyPrUrlCommand}"
+                                    ToolTip="Copy PR URL"
+                                    Style="{StaticResource CardIconButtonStyle}"
+                                    AutomationProperties.AutomationId="CardCopyUrlButton">
+                                <TextBlock Text="&#xE71B;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                            </Button>
+                            <Button Command="{Binding OpenInBrowserCommand}"
+                                    ToolTip="Open in browser"
+                                    Style="{StaticResource CardIconButtonStyle}"
+                                    AutomationProperties.AutomationId="CardOpenBrowserButton">
+                                <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                            </Button>
+                            <Button Command="{Binding CheckoutBranchCommand}"
+                                    ToolTip="Checkout branch"
+                                    Style="{StaticResource CardIconButtonStyle}"
+                                    Margin="0"
+                                    AutomationProperties.AutomationId="CardCheckoutButton">
+                                <TextBlock Text="&#xE8AB;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
                     <TextBlock Text="{Binding CheckSummary}"
                                FontSize="11"
                                Margin="0,3,0,0"

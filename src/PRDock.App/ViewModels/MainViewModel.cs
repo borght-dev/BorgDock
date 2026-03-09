@@ -20,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IClaudeCodeLauncher? _claudeCodeLauncher;
     private readonly IWorktreeService? _worktreeService;
     private readonly IGitHubService? _gitHubService;
+    private readonly IGitCommandRunner? _gitCommandRunner;
 
     private IReadOnlyList<PullRequestWithChecks> _previousPollResults = [];
 
@@ -36,7 +37,8 @@ public partial class MainViewModel : ObservableObject
         INotificationService? notificationService = null,
         IClaudeCodeLauncher? claudeCodeLauncher = null,
         IWorktreeService? worktreeService = null,
-        IGitHubService? gitHubService = null)
+        IGitHubService? gitHubService = null,
+        IGitCommandRunner? gitCommandRunner = null)
     {
         _pollingService = pollingService;
         _httpClient = httpClient;
@@ -47,6 +49,7 @@ public partial class MainViewModel : ObservableObject
         _claudeCodeLauncher = claudeCodeLauncher;
         _worktreeService = worktreeService;
         _gitHubService = gitHubService;
+        _gitCommandRunner = gitCommandRunner;
         _pollingService.PollCompleted += OnPollCompleted;
         _pollingService.PollFailed += OnPollFailed;
 
@@ -282,7 +285,8 @@ public partial class MainViewModel : ObservableObject
             FixWithClaudeRequested = OnFixWithClaudeRequested,
             BypassMergeRequested = OnBypassMergeRequested,
             DetailExpandRequested = OnDetailExpandRequested,
-            OpenDetailViewRequested = OnOpenDetailViewRequested
+            OpenDetailViewRequested = OnOpenDetailViewRequested,
+            CheckoutRequested = OnCheckoutRequested
         };
 
         foreach (var name in prWithChecks.FailedCheckNames)
@@ -516,6 +520,34 @@ public partial class MainViewModel : ObservableObject
     private void OnOpenDetailViewRequested(PullRequestCardViewModel card)
     {
         OpenPRDetailRequested?.Invoke(card);
+    }
+
+    private async void OnCheckoutRequested(PullRequestCardViewModel card)
+    {
+        if (_gitCommandRunner is null || _settingsService is null) return;
+
+        var repo = _settingsService.CurrentSettings.Repos
+            .FirstOrDefault(r => r.Owner == card.RepoOwner && r.Name == card.RepoName);
+        var workDir = repo?.WorktreeBasePath;
+        if (string.IsNullOrWhiteSpace(workDir))
+        {
+            StatusText = "No worktree path configured for this repo";
+            return;
+        }
+
+        try
+        {
+            StatusText = $"Checking out {card.HeadRef}...";
+            await _gitCommandRunner.RunAsync(workDir, $"fetch origin {card.HeadRef}");
+            var result = await _gitCommandRunner.RunAsync(workDir, $"checkout {card.HeadRef}");
+            StatusText = result.ExitCode == 0
+                ? $"Checked out {card.HeadRef}"
+                : $"Checkout failed: {result.StdErr.Trim()}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Checkout failed: {ex.Message}";
+        }
     }
 
     private void OnBypassMergeRequested(PullRequestCardViewModel card)

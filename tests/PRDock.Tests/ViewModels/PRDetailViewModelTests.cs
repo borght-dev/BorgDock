@@ -321,7 +321,7 @@ public class PRDetailViewModelTests
     }
 
     [Fact]
-    public async Task CheckoutBranch_Success_ShowsToast()
+    public async Task CheckoutBranch_Success_FetchesThenChecksOut()
     {
         var vm = CreateVm();
         var settings = new AppSettings();
@@ -329,11 +329,15 @@ public class PRDetailViewModelTests
         _settingsService.CurrentSettings.Returns(settings);
         vm.Initialize(CreateCard());
 
+        _gitCommandRunner.RunAsync("/code/repo", "fetch origin feature/fix", Arg.Any<CancellationToken>())
+            .Returns(("", "", 0));
         _gitCommandRunner.RunAsync("/code/repo", "checkout feature/fix", Arg.Any<CancellationToken>())
             .Returns(("", "", 0));
 
         await vm.CheckoutBranchCommand.ExecuteAsync(null);
 
+        await _gitCommandRunner.Received(1).RunAsync("/code/repo", "fetch origin feature/fix", Arg.Any<CancellationToken>());
+        await _gitCommandRunner.Received(1).RunAsync("/code/repo", "checkout feature/fix", Arg.Any<CancellationToken>());
         vm.ToastMessage.Should().Contain("Checked out feature/fix");
     }
 
@@ -346,6 +350,8 @@ public class PRDetailViewModelTests
         _settingsService.CurrentSettings.Returns(settings);
         vm.Initialize(CreateCard());
 
+        _gitCommandRunner.RunAsync("/code/repo", "fetch origin feature/fix", Arg.Any<CancellationToken>())
+            .Returns(("", "", 0));
         _gitCommandRunner.RunAsync("/code/repo", "checkout feature/fix", Arg.Any<CancellationToken>())
             .Returns(("", "error: pathspec 'feature/fix' did not match any file(s)", 1));
 

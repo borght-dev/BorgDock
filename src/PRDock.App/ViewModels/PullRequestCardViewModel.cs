@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PRDock.App.Models;
@@ -109,6 +110,7 @@ public partial class PullRequestCardViewModel : ObservableObject
     public Action<PullRequestCardViewModel>? BypassMergeRequested { get; set; }
     public Action<PullRequestCardViewModel>? DetailExpandRequested { get; set; }
     public Action<PullRequestCardViewModel>? OpenDetailViewRequested { get; set; }
+    public Action<PullRequestCardViewModel>? CheckoutRequested { get; set; }
 
     [RelayCommand]
     private void RerunFailedChecks()
@@ -132,6 +134,37 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void BypassMerge()
     {
         BypassMergeRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void CopyBranchName()
+    {
+        System.Windows.Clipboard.SetText(HeadRef);
+    }
+
+    [RelayCommand]
+    private void CopyPrUrl()
+    {
+        System.Windows.Clipboard.SetText(HtmlUrl);
+    }
+
+    [RelayCommand]
+    private void OpenInBrowser()
+    {
+        if (!string.IsNullOrEmpty(HtmlUrl))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = HtmlUrl,
+                UseShellExecute = true
+            });
+        }
+    }
+
+    [RelayCommand]
+    private void CheckoutBranch()
+    {
+        CheckoutRequested?.Invoke(this);
     }
 
     public static string FormatAge(DateTime updatedAt)

@@ -279,7 +279,8 @@ public partial class App : System.Windows.Application
                 sp.GetRequiredService<INotificationService>(),
                 sp.GetRequiredService<IClaudeCodeLauncher>(),
                 sp.GetRequiredService<IWorktreeService>(),
-                sp.GetRequiredService<IGitHubService>()));
+                sp.GetRequiredService<IGitHubService>(),
+                sp.GetRequiredService<IGitCommandRunner>()));
     }
 
     private void SetupSystemTray()

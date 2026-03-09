@@ -302,6 +302,8 @@ public partial class PRDetailViewModel : ObservableObject
 
         try
         {
+            // Fetch the branch from remote first so git knows about it
+            await _gitCommandRunner.RunAsync(workDir, $"fetch origin {HeadRef}");
             var result = await _gitCommandRunner.RunAsync(workDir, $"checkout {HeadRef}");
             ShowToast(result.ExitCode == 0 ? $"Checked out {HeadRef}" : $"Checkout failed: {result.StdErr.Trim()}");
         }
