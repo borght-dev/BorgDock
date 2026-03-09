@@ -614,6 +614,42 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Monitor with Claude (always visible) -->
+                    <Button Command="{Binding MonitorWithClaudeCommand}"
+                            Margin="0,0,8,0" Cursor="Hand"
+                            Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                            AutomationProperties.AutomationId="MonitorWithClaudeButton">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="BtnBorder" Background="Transparent"
+                                                    BorderBrush="{DynamicResource PurpleBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter ExampletalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.85" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.72" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Foreground" Value="{DynamicResource PurpleBrush}" />
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Exampletal">
+                            <TextBlock Text="&#x25B6; " FontSize="10" />
+                            <TextBlock Text="Monitor" />
+                        </StackPanel>
+                    </Button>
+
                     <!-- Copy for Claude (shown when failing) -->
                     <Button Command="{Binding CopyErrorsForClaudeCommand}"
                             Margin="0,0,8,0" Cursor="Hand"
@@ -644,7 +680,7 @@
                                 </Setter>
                                 <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding StatusDotColor}" Value="red">
+                                    <DataTrigger Binding="{Binding HasFailingChecks}" Value="True">
                                         <Setter Property="Visibility" Value="Visible" />
                                     </DataTrigger>
                                 </Style.Triggers>

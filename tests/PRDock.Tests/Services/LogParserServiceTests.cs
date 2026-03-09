@@ -590,4 +590,132 @@ public class LogParserServiceTests
     }
 
     #endregion
+
+    #region GitHub Actions Preprocessing
+
+    [Fact]
+    public void Parse_WithTimestampPrefixes_StillExtractsMsBuildErrors()
+    {
+        var log = """
+            2026-03-09T15:55:27.5170395Z ##[error]/home/runner/work/example-repo/example-repo/FSP/FSP.Core.Api/Features/Projects/DivideProjectEndpoints.cs(12,21): error ASPDEPR002: 'WithOpenApi' is obsolete
+            2026-03-09T15:55:27.5529305Z ##[error]Process completed with exit code 1.
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().Contain(e => e.Category == "MSBuild");
+        var error = result.First(e => e.Category == "MSBuild");
+        error.FilePath.Should().Contain("DivideProjectEndpoints.cs");
+        error.LineNumber.Should().Be(12);
+        error.ColumnNumber.Should().Be(21);
+        error.ErrorCode.Should().Be("ASPDEPR002");
+        error.Message.Should().Contain("WithOpenApi");
+    }
+
+    [Fact]
+    public void Parse_GitHubActionsAnnotation_CoverageDecrease()
+    {
+        var log = """
+            2026-03-04T19:55:25.8505818Z ##[error]PR cannot be merged: coverage decreased from 80.900% to 80.870%
+            2026-03-04T19:55:25.8512888Z ##[error]Process completed with exit code 1.
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().ContainSingle();
+        result[0].Category.Should().Be("GitHubActions");
+        result[0].Message.Should().Contain("coverage decreased");
+        result[0].Message.Should().NotContain("Process completed");
+    }
+
+    [Fact]
+    public void Parse_GitHubActionsAnnotation_DeploymentMismatch()
+    {
+        var log = """
+            2026-03-09T07:12:04.5071592Z ##[error]Deployment staging-4-fsp-auth-web is running ghcr.io/example-fsp/fsp/auth-web:pr-507-25040cf, expected one image with tag pr-513-daeda54
+            2026-03-09T07:12:04.5081579Z ##[error]Process completed with exit code 1.
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().ContainSingle();
+        result[0].Category.Should().Be("GitHubActions");
+        result[0].Message.Should().Contain("Deployment staging-4-fsp-auth-web");
+        result[0].Message.Should().Contain("expected one image with tag");
+    }
+
+    [Fact]
+    public void Parse_GitHubActionsAnnotation_DoesNotDuplicateMsBuildErrors()
+    {
+        // When ##[error] wraps an MSBuild error, only MSBuild parser should catch it
+        var log = """
+            2026-03-09T15:55:27.5170395Z ##[error]/home/runner/work/proj/Foo.cs(10,1): error CS0001: Bad code
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().ContainSingle();
+        result[0].Category.Should().Be("MSBuild");
+    }
+
+    [Fact]
+    public void Parse_GitHubActionsAnnotation_SkipsProcessExitCode()
+    {
+        var log = """
+            2026-03-09T07:12:04.5081579Z ##[error]Process completed with exit code 1.
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Parse_NonCsErrorCode_ExtractsCorrectly()
+    {
+        // NETSDK1100, ASPDEPR002, CA1234 should all be caught by MSBuild parser
+        var log = """
+            src/Foo.csproj(1,1): error NETSDK1100: To build a project targeting Windows set EnableWindowsTargeting
+            src/Bar.cs(5,3): error CA1234: Avoid dead code
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Should().HaveCount(2);
+        result[0].ErrorCode.Should().Be("NETSDK1100");
+        result[1].ErrorCode.Should().Be("CA1234");
+        result.Should().OnlyContain(e => e.Category == "MSBuild");
+    }
+
+    [Fact]
+    public void PreprocessLog_StripsTimestamps()
+    {
+        var log = "2026-03-04T19:55:25.8505818Z Hello world\n2026-03-04T19:55:25.9Z Next line";
+        var result = LogParserService.PreprocessLog(log);
+        result.Should().Be("Hello world\nNext line");
+    }
+
+    [Fact]
+    public void PreprocessLog_StripsAnsiCodes()
+    {
+        var log = "\x1b[36;1mecho something\x1b[0m";
+        var result = LogParserService.PreprocessLog(log);
+        result.Should().Be("echo something");
+    }
+
+    [Fact]
+    public void Parse_MsBuildDuplicateErrors_Deduplicates()
+    {
+        // Same error repeated (common in verbose MSBuild output)
+        var log = """
+            ##[error]/home/runner/Foo.cs(12,21): error ASPDEPR002: 'WithOpenApi' is obsolete
+            ##[error]/home/runner/Foo.cs(12,21): error ASPDEPR002: 'WithOpenApi' is obsolete
+            """;
+
+        var result = _sut.Parse(log, []);
+
+        result.Where(e => e.Category == "MSBuild").Should().HaveCount(1);
+    }
+
+    #endregion
 }

@@ -336,14 +336,17 @@ public partial class MainViewModel : ObservableObject
             ReviewBadgeColor = reviewColor,
             FirstFailedRunId = firstFailedCheck?.CheckSuiteId ?? 0,
             HasAllChecksPassed = hasAllChecksPassed,
+            HasFailingChecks = prWithChecks.OverallStatus == "red",
             CanBypassMerge = canBypassMerge,
             FailedCheckRuns = prWithChecks.Checks.Where(c => c.IsFailed).ToList(),
             RerunRequested = OnRerunRequested,
             FixWithClaudeRequested = OnFixWithClaudeRequested,
+            MonitorRequested = OnMonitorRequested,
             BypassMergeRequested = OnBypassMergeRequested,
             DetailExpandRequested = OnDetailExpandRequested,
             OpenDetailViewRequested = OnOpenDetailViewRequested,
-            CheckoutRequested = OnCheckoutRequested
+            CheckoutRequested = OnCheckoutRequested,
+            CopyForClaudeRequested = OnCopyForClaudeRequested
         };
 
         foreach (var name in prWithChecks.FailedCheckNames)
@@ -467,6 +470,63 @@ public partial class MainViewModel : ObservableObject
             Serilog.Log.Warning(ex, "Failed to launch Claude fix for PR #{Number}", card.Number);
             StatusText = $"Failed to launch Claude fix: {ex.Message}";
         }
+    }
+
+    private async void OnMonitorRequested(PullRequestCardViewModel card)
+    {
+        if (_claudeCodeLauncher is null || _worktreeService is null)
+        {
+            StatusText = "Monitor not available — missing services";
+            return;
+        }
+
+        var repo = _settingsService?.CurrentSettings.Repos
+            .FirstOrDefault(r => r.Owner == card.RepoOwner && r.Name == card.RepoName);
+        if (repo is null || string.IsNullOrWhiteSpace(repo.WorktreeBasePath))
+        {
+            StatusText = $"Configure worktree base path for {card.RepoOwner}/{card.RepoName} in settings first";
+            return;
+        }
+
+        try
+        {
+            StatusText = $"Launching monitor for PR #{card.Number}...";
+
+            var worktreePath = await _worktreeService.FindOrCreateWorktreeAsync(
+                repo.WorktreeBasePath, repo.WorktreeSubfolder, card.HeadRef);
+
+            var pr = new PullRequest
+            {
+                Number = card.Number,
+                Title = card.Title,
+                HeadRef = card.HeadRef,
+                BaseRef = card.BaseRef,
+                AuthorLogin = card.AuthorLogin,
+                HtmlUrl = card.HtmlUrl,
+                RepoOwner = card.RepoOwner,
+                RepoName = card.RepoName
+            };
+
+            await _claudeCodeLauncher.LaunchMonitorAsync(pr, worktreePath, repo);
+
+            StatusText = $"Claude monitor launched for PR #{card.Number}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to launch Claude monitor for PR #{Number}", card.Number);
+            StatusText = $"Failed to launch monitor: {ex.Message}";
+        }
+    }
+
+    private async void OnCopyForClaudeRequested(PullRequestCardViewModel card)
+    {
+        // Load check details if not yet loaded
+        if (!card.HasCheckDetailLoaded && !card.IsCheckDetailLoading && card.FailedCheckRuns.Count > 0)
+            await LoadCheckDetailsAsync(card);
+
+        var text = PullRequestCardViewModel.BuildClaudeClipboardText(card);
+        System.Windows.Clipboard.SetText(text);
+        StatusText = $"Copied CI failures for PR #{card.Number} to clipboard";
     }
 
     private async void OnDetailExpandRequested(PullRequestCardViewModel card)

@@ -7,8 +7,9 @@ namespace PRDock.App.Services;
 
 public sealed partial class LogParserService(ILogger<LogParserService> logger) : ILogParserService
 {
-    // MSBuild: path(line,col): error CS1234: message
-    [GeneratedRegex(@"^(.+?)\((\d+),(\d+)\):\s*error\s+(CS\d{4}):\s*(.+)$", RegexOptions.Multiline)]
+    // MSBuild: path(line,col): error CODE: message
+    // Handles any LETTERS+DIGITS error code (CS0001, ASPDEPR002, NETSDK1100, CA1234, etc.)
+    [GeneratedRegex(@"^(.+?)\((\d+),(\d+)\):\s*error\s+([A-Z]+\d+):\s*(.+)$", RegexOptions.Multiline)]
     private static partial Regex MsBuildRegex();
 
     // dotnet test: "Failed <TestName>" followed by assertion/error lines
@@ -31,6 +32,22 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
     [GeneratedRegex(@"^\s*(\d+)\s+(failed|flaky|skipped|did not run|passed)", RegexOptions.Multiline)]
     private static partial Regex PlaywrightSummaryLineRegex();
 
+    // GitHub Actions error annotation: ##[error]message
+    [GeneratedRegex(@"^##\[error\](.+)$", RegexOptions.Multiline)]
+    private static partial Regex GitHubActionsErrorRegex();
+
+    // MSBuild-style error pattern within a message (for dedup with ##[error] parser)
+    [GeneratedRegex(@"\(\d+,\d+\):\s*error\s+[A-Z]+\d+:")]
+    private static partial Regex MsBuildPatternRegex();
+
+    // GitHub Actions timestamp prefix: "2024-01-15T10:30:45.1234567Z "
+    [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s*", RegexOptions.Multiline)]
+    private static partial Regex TimestampRegex();
+
+    // ANSI escape codes: ESC[31;1m, ESC[0m, etc.
+    [GeneratedRegex(@"\x1b\[\d*(?:;\d+)*m")]
+    private static partial Regex AnsiEscapeRegex();
+
     // Generic fallback: lines containing error/FAILED/fatal/exception
     // No word boundary on "exception" to match compound names like NullReferenceException
     [GeneratedRegex(@"\b(error|FAILED|fatal)\b|exception", RegexOptions.IgnoreCase)]
@@ -45,16 +62,20 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
         if (string.IsNullOrWhiteSpace(logText))
             return [];
 
+        // Preprocess: strip timestamps, ANSI codes, and ##[error]/##[warning] markers
+        var cleanLog = PreprocessLog(logText);
+
         var errors = new List<ParsedError>();
 
-        errors.AddRange(ParseMsBuild(logText));
-        errors.AddRange(ParseDotnetTest(logText));
-        errors.AddRange(ParseTypeScriptEsLint(logText));
-        errors.AddRange(ParsePlaywright(logText));
+        errors.AddRange(ParseMsBuild(cleanLog));
+        errors.AddRange(ParseDotnetTest(cleanLog));
+        errors.AddRange(ParseTypeScriptEsLint(cleanLog));
+        errors.AddRange(ParsePlaywright(cleanLog));
+        errors.AddRange(ParseGitHubActionsAnnotations(cleanLog));
 
         if (errors.Count == 0)
         {
-            errors.AddRange(ParseGenericFallback(logText));
+            errors.AddRange(ParseGenericFallback(cleanLog));
         }
 
         // Mark errors as introduced by PR based on changed files
@@ -79,14 +100,40 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
         return errors;
     }
 
+    /// <summary>
+    /// Strip GitHub Actions timestamps, ANSI escape codes, and annotation markers from raw log text.
+    /// </summary>
+    internal static string PreprocessLog(string logText)
+    {
+        // Strip timestamps: "2024-01-15T10:30:45.1234567Z "
+        logText = TimestampRegex().Replace(logText, "");
+
+        // Strip ANSI escape codes
+        logText = AnsiEscapeRegex().Replace(logText, "");
+
+        return logText;
+    }
+
     private static List<ParsedError> ParseMsBuild(string logText)
     {
         var errors = new List<ParsedError>();
         foreach (Match match in MsBuildRegex().Matches(logText))
         {
+            var errorCode = match.Groups[4].Value;
+
+            // Skip TypeScript error codes (handled by TypeScript parser)
+            if (errorCode.StartsWith("TS") && errorCode.Length >= 5)
+                continue;
+
+            var filePath = match.Groups[1].Value.Trim();
+
+            // Strip ##[error] prefix from file path if present
+            if (filePath.StartsWith("##[error]"))
+                filePath = filePath["##[error]".Length..];
+
             errors.Add(new ParsedError
             {
-                FilePath = match.Groups[1].Value.Trim(),
+                FilePath = filePath,
                 LineNumber = int.Parse(match.Groups[2].Value),
                 ColumnNumber = int.Parse(match.Groups[3].Value),
                 ErrorCode = match.Groups[4].Value,
@@ -94,7 +141,12 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
                 Category = "MSBuild"
             });
         }
-        return errors;
+
+        // Deduplicate (same file+line+code can appear multiple times in verbose logs)
+        return errors
+            .GroupBy(e => $"{e.FilePath}:{e.LineNumber}:{e.ErrorCode}")
+            .Select(g => g.First())
+            .ToList();
     }
 
     private static List<ParsedError> ParseDotnetTest(string logText)
@@ -164,6 +216,10 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
             if (SummaryLineRegex().IsMatch(lines[i]))
                 continue;
 
+            // Skip GitHub Actions annotation markers (handled by GitHubActions parser)
+            if (lines[i].TrimStart().StartsWith("##["))
+                continue;
+
             var contextEnd = Math.Min(lines.Length - 1, i + 3);
 
             errors.Add(new ParsedError
@@ -231,6 +287,35 @@ public sealed partial class LogParserService(ILogger<LogParserService> logger) :
             });
         }
 
+        return errors;
+    }
+
+    /// <summary>
+    /// Extract errors from GitHub Actions ##[error] annotations.
+    /// Catches coverage failures, deployment mismatches, and other CI errors
+    /// that don't match specific parsers.
+    /// </summary>
+    private static List<ParsedError> ParseGitHubActionsAnnotations(string logText)
+    {
+        var errors = new List<ParsedError>();
+        foreach (Match match in GitHubActionsErrorRegex().Matches(logText))
+        {
+            var message = match.Groups[1].Value.Trim();
+
+            // Skip generic process exit messages (noise)
+            if (message.StartsWith("Process completed with exit code"))
+                continue;
+
+            // Skip MSBuild-style errors (already caught by MSBuild parser)
+            if (MsBuildPatternRegex().IsMatch(message))
+                continue;
+
+            errors.Add(new ParsedError
+            {
+                Message = message,
+                Category = "GitHubActions",
+            });
+        }
         return errors;
     }
 

@@ -20,5 +20,11 @@ public interface IClaudeCodeLauncher
         RepoSettings repoSettings,
         CancellationToken ct = default);
 
+    Task<int> LaunchMonitorAsync(
+        PullRequest pr,
+        string worktreePath,
+        RepoSettings repoSettings,
+        CancellationToken ct = default);
+
     void CleanupOldPromptFiles(int maxAgeDays = 7);
 }

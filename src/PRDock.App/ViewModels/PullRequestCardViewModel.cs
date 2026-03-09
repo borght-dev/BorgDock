@@ -76,6 +76,9 @@ public partial class PullRequestCardViewModel : ObservableObject
     private bool _canBypassMerge;
 
     [ObservableProperty]
+    private bool _hasFailingChecks;
+
+    [ObservableProperty]
     private bool _isCheckDetailLoading;
 
     [ObservableProperty]
@@ -151,10 +154,12 @@ public partial class PullRequestCardViewModel : ObservableObject
 
     public Action<PullRequestCardViewModel>? RerunRequested { get; set; }
     public Action<PullRequestCardViewModel>? FixWithClaudeRequested { get; set; }
+    public Action<PullRequestCardViewModel>? MonitorRequested { get; set; }
     public Action<PullRequestCardViewModel>? BypassMergeRequested { get; set; }
     public Action<PullRequestCardViewModel>? DetailExpandRequested { get; set; }
     public Action<PullRequestCardViewModel>? OpenDetailViewRequested { get; set; }
     public Action<PullRequestCardViewModel>? CheckoutRequested { get; set; }
+    public Action<PullRequestCardViewModel>? CopyForClaudeRequested { get; set; }
 
     [RelayCommand]
     private void RerunFailedChecks()
@@ -166,6 +171,12 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void FixWithClaude()
     {
         FixWithClaudeRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void MonitorWithClaude()
+    {
+        MonitorRequested?.Invoke(this);
     }
 
     [RelayCommand]
@@ -195,24 +206,29 @@ public partial class PullRequestCardViewModel : ObservableObject
     [RelayCommand]
     private void CopyErrorsForClaude()
     {
+        CopyForClaudeRequested?.Invoke(this);
+    }
+
+    public static string BuildClaudeClipboardText(PullRequestCardViewModel card)
+    {
         var sb = new StringBuilder();
-        sb.AppendLine($"## CI Failures for PR #{Number}: {Title}");
-        sb.AppendLine($"Branch: {HeadRef} -> {BaseRef}");
+        sb.AppendLine($"## CI Failures for PR #{card.Number}: {card.Title}");
+        sb.AppendLine($"Branch: {card.HeadRef} -> {card.BaseRef}");
         sb.AppendLine();
 
         // Always include failed check names
-        if (FailedChecks.Count > 0)
+        if (card.FailedChecks.Count > 0)
         {
             sb.AppendLine("### Failed Checks");
-            foreach (var check in FailedChecks)
+            foreach (var check in card.FailedChecks)
                 sb.AppendLine($"- {check}");
             sb.AppendLine();
         }
 
         // Include parsed errors if available
-        if (ParsedErrors.Count > 0)
+        if (card.ParsedErrors.Count > 0)
         {
-            var groups = ParsedErrors
+            var groups = card.ParsedErrors
                 .GroupBy(e => e.Category)
                 .OrderBy(g => g.Key switch
                 {
@@ -265,12 +281,12 @@ public partial class PullRequestCardViewModel : ObservableObject
                 }
             }
         }
-        else if (FailedChecks.Count == 0)
+        else if (card.FailedChecks.Count == 0)
         {
-            sb.AppendLine("_No failure details available yet. Expand the PR card first to load check details._");
+            sb.AppendLine("_No failure details available yet._");
         }
 
-        System.Windows.Clipboard.SetText(sb.ToString().TrimEnd());
+        return sb.ToString().TrimEnd();
     }
 
     [RelayCommand]

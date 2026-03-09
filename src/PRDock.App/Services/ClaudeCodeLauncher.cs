@@ -68,6 +68,25 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
         return pid;
     }
 
+    public async Task<int> LaunchMonitorAsync(
+        PullRequest pr,
+        string worktreePath,
+        RepoSettings repoSettings,
+        CancellationToken ct = default)
+    {
+        var promptContent = BuildMonitorPrompt(pr, repoSettings);
+        var promptPath = WritePromptFile(pr.Number, "monitor", promptContent);
+
+        _logger.LogInformation("Generated monitor prompt at {Path} for PR #{Number}",
+            promptPath, pr.Number);
+
+        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath, ct);
+
+        _processTracker.Track(pid, pr.Number, $"Monitor: PR #{pr.Number}");
+
+        return pid;
+    }
+
     public void CleanupOldPromptFiles(int maxAgeDays = 7)
     {
         if (!Directory.Exists(PromptsDir))
@@ -193,6 +212,52 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
         sb.AppendLine($"Merge `origin/{pr.BaseRef}` into this branch, resolve all merge conflicts " +
                        "preserving the PR's intent, run tests to verify, then commit the merge and " +
                        $"push to `origin/{pr.HeadRef}`.");
+
+        return sb.ToString();
+    }
+
+    internal static string BuildMonitorPrompt(PullRequest pr, RepoSettings repoSettings)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"# Monitor PR #{pr.Number} Until CI Passes");
+        sb.AppendLine();
+        sb.AppendLine($"**PR:** {pr.Title} (#{pr.Number})");
+        sb.AppendLine($"**URL:** {pr.HtmlUrl}");
+        sb.AppendLine($"**Branch:** {pr.HeadRef} -> {pr.BaseRef}");
+        sb.AppendLine($"**Author:** {pr.AuthorLogin}");
+        sb.AppendLine($"**Repo:** {pr.RepoOwner}/{pr.RepoName}");
+        sb.AppendLine();
+
+        if (!string.IsNullOrEmpty(repoSettings.FixPromptTemplate))
+        {
+            sb.AppendLine("## Repo Context");
+            sb.AppendLine();
+            sb.AppendLine(repoSettings.FixPromptTemplate);
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("## Instructions");
+        sb.AppendLine();
+        sb.AppendLine("You are monitoring this PR until all CI checks pass. Follow this loop:");
+        sb.AppendLine();
+        sb.AppendLine("1. **Check CI status** — run: `gh pr checks " + pr.Number + " --repo " + pr.RepoOwner + "/" + pr.RepoName + "`");
+        sb.AppendLine("2. **If all checks pass** — report success and stop.");
+        sb.AppendLine("3. **If checks are still running** — wait 60 seconds, then go to step 1.");
+        sb.AppendLine("4. **If any check failed:**");
+        sb.AppendLine("   a. Identify the failed check(s) and download the logs using `gh run view <run-id> --repo " + pr.RepoOwner + "/" + pr.RepoName + " --log-failed`");
+        sb.AppendLine("   b. Analyze the failure — understand what went wrong.");
+        sb.AppendLine("   c. Fix the issue in the code.");
+        sb.AppendLine("   d. Run the relevant checks/tests locally if possible to verify your fix.");
+        sb.AppendLine("   e. Commit and push: `git add -A && git commit -m \"fix: <description>\" && git push`");
+        sb.AppendLine("   f. Wait 30 seconds for CI to pick up the new commit, then go to step 1.");
+        sb.AppendLine();
+        sb.AppendLine("**Important rules:**");
+        sb.AppendLine("- Keep iterating until ALL checks pass or you've attempted 5 fix cycles.");
+        sb.AppendLine("- After 5 failed fix attempts, stop and summarize what you tried and what's still failing.");
+        sb.AppendLine("- Each fix should be a separate, focused commit with a clear message.");
+        sb.AppendLine("- Do not revert other people's changes — only fix the issues.");
+        sb.AppendLine("- If you're unsure about a fix, prefer the minimal/safe change.");
 
         return sb.ToString();
     }
