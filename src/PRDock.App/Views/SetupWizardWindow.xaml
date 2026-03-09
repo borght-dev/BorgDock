@@ -7,7 +7,9 @@
         Width="580" Height="520"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="{DynamicResource BackgroundBrush}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
         FontFamily="Segoe UI">
 
     <Window.Resources>
@@ -116,6 +118,26 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+
+                <!-- Close button (top-right) -->
+                <Button Grid.Row="0" ExampletalAlignment="Right" VerticalAlignment="Top"
+                        Margin="0,-12,-16,0" Width="28" Height="28"
+                        Click="CloseWindowButton_Click" Cursor="Hand" ToolTip="Close">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="CloseBorder" Background="Transparent" CornerRadius="14">
+                                <TextBlock Text="&#x2715;" FontSize="12" FontWeight="SemiBold"
+                                           ExampletalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextTertiaryBrush}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="CloseBorder" Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
 
                 <!-- Step indicator dots -->
                 <StackPanel Grid.Row="0" Orientation="Exampletal" ExampletalAlignment="Center" Margin="0,0,0,24">
