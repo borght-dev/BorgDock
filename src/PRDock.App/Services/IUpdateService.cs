@@ -6,6 +6,7 @@ public interface IUpdateService : IDisposable
 {
     string CurrentVersion { get; }
     bool IsUpdateReady { get; }
+    bool IsInstalled { get; }
     void StartPeriodicChecks();
     void StopPeriodicChecks();
     Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default);

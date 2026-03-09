@@ -10,21 +10,53 @@ permissions:
 
 jobs:
   release:
-    runs-on: self-hosted
+    runs-on: windows-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
       - name: Extract version from tag
         id: version
         shell: bash
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
+      - name: Set version in project
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sed -i'' -e "s/<Version>.*<\/Version>/<Version>${{ steps.version.outputs.VERSION }}<\/Version>/" src/PRDock.App/PRDock.App.csproj
+
+      - name: Publish
         run: >
-          gh release create ${{ github.ref_name }}
-          --repo ${{ github.repository }}
-          --title "PRDock v${{ steps.version.outputs.VERSION }}"
-          --generate-notes
-          --draft=false
+          dotnet publish src/PRDock.App
+          -c Release
+          -r win-x64
+          --self-contained
+          -o publish
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Download previous release (for delta generation)
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Pack with Velopack
+        run: >
+          vpk pack
+          --packId PRDock
+          --packVersion ${{ steps.version.outputs.VERSION }}
+          --packDir publish
+          --mainExe PRDock.App.exe
+
+      - name: Upload to GitHub Releases
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --tag ${{ github.ref_name }}

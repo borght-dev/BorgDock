@@ -130,9 +130,13 @@ public partial class SettingsViewModel : ObservableObject
                 IsUpdateAvailable = true;
                 UpdateStatusText = $"Version {info.Version} available!";
             }
-            else
+            else if (_updateService.IsInstalled)
             {
                 UpdateStatusText = "You're on the latest version.";
+            }
+            else
+            {
+                UpdateStatusText = "Auto-update unavailable (not installed via setup).";
             }
         }
         catch

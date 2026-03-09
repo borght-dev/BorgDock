@@ -53,7 +53,7 @@ public sealed class UpdateService : IUpdateService
 
     private UpdateManager? Manager => _updateManagerLazy.Value;
 
-    private bool IsInstalled => Manager?.IsInstalled == true;
+    public bool IsInstalled => Manager?.IsInstalled == true;
 
     public string CurrentVersion
     {
