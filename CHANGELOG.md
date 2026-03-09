@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.9 — 2026-03-09
+
+### New Features
+
+- **Customizable floating badge styles** — Choose from 5 different floating badge designs (minimal, detailed, dot, icon-only, and compact) to match your desktop aesthetic.
+
+### Improvements
+
+- **Markdown tables in review comments** — AI review comments containing tables now render as proper formatted tables instead of raw Markdown syntax.
+- **Sortable review comments** — Review comments can now be sorted by severity, file, or line number, making it easier to triage code review feedback.
+
 ## 0.0.8 — 2026-03-09
 
 ### New Features
