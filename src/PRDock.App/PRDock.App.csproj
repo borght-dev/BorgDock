@@ -9,7 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <ApplicationIcon>Assets\tray-icon.ico</ApplicationIcon>
-    <Version>0.0.3</Version>
+    <Version>0.0.5</Version>
     <StartupObject>PRDock.App.Program</StartupObject>
   </PropertyGroup>
 
