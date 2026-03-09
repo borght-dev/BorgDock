@@ -60,12 +60,17 @@ jobs:
           --tag ${{ github.ref_name }}
           --publish
 
-      - name: Generate changelog and update release
+      - name: Extract changelog for this version and update release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $notes = gh api repos/${{ github.repository }}/releases/generate-notes `
-            -f tag_name=${{ github.ref_name }} `
-            --jq '.body'
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $changelog = Get-Content CHANGELOG.md -Raw
+          # Extract the section for this version (from ## <version> to the next ## or end of file)
+          if ($changelog -match "(?ms)^## $([regex]::Escape($version)).*?\n(.*?)(?=^## |\z)") {
+            $notes = $Matches[1].Trim()
+          } else {
+            $notes = "Release $version"
+          }
           gh release edit ${{ github.ref_name }} --notes "$notes"
