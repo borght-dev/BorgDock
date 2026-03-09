@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
@@ -29,7 +29,7 @@ jobs:
       - name: Set version in project
         shell: bash
         run: |
-          sed -i "s/<Version>.*<\/Version>/<Version>${{ steps.version.outputs.VERSION }}<\/Version>/" src/PRDock.App/PRDock.App.csproj
+          sed -i'' -e "s/<Version>.*<\/Version>/<Version>${{ steps.version.outputs.VERSION }}<\/Version>/" src/PRDock.App/PRDock.App.csproj
 
       - name: Publish
         run: >
@@ -46,7 +46,7 @@ jobs:
         run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      - name: Pack with Velopack
+      - name: Pack with Velopack (skip installer — generated manually on Windows)
         run: >
           vpk pack
           --packId PRDock
@@ -54,6 +54,8 @@ jobs:
           --packDir publish
           --mainExe PRDock.App.exe
           --icon src/PRDock.App/Assets/tray-icon.ico
+          --skipVeloAppCheck
+          --noInst
 
       - name: Upload to GitHub Releases
         run: >
