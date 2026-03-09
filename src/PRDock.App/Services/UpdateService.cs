@@ -9,7 +9,7 @@ namespace PRDock.App.Services;
 
 public sealed class UpdateService : IUpdateService
 {
-    private const string GitHubRepoUrl = "https://github.com/KoenvanderBorgwormo/PRDock";
+    private const string GitHubRepoUrl = "https://github.com/borght-dev/PRDock";
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(4);
 
     private readonly Lazy<UpdateManager?> _updateManagerLazy;
