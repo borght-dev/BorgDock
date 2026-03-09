@@ -9,8 +9,10 @@
         AllowsTransparency="True"
         Topmost="True"
         ShowInTaskbar="False"
-        ResizeMode="NoResize"
-        Width="750"
+        ResizeMode="CanResizeWithGrip"
+        Width="800"
+        MinWidth="600"
+        MaxWidth="1200"
         Background="Transparent"
         FontFamily="Segoe UI"
         TextOptions.TextFormattingMode="Display">

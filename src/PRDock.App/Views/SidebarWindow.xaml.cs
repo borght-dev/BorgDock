@@ -98,7 +98,7 @@ public partial class SidebarWindow : Window
 
     private void PositionDetailWindow(PRDetailWindow detailWindow)
     {
-        var detailWidth = 750.0;
+        var detailWidth = 800.0;
         detailWindow.Width = detailWidth;
         detailWindow.Top = Top;
         detailWindow.Height = Height;
