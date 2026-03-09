@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Markdig;
+using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -27,6 +28,7 @@ public class MarkdownRenderer : IMarkdownRenderer
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseEmphasisExtras()
         .UseTaskLists()
+        .UsePipeTables()
         .Build();
 
     public IEnumerable<WpfInline> RenderInlines(string markdown)
@@ -144,6 +146,9 @@ public class MarkdownRenderer : IMarkdownRenderer
                 foreach (var child in quote)
                     section.Blocks.Add(ConvertBlock(child));
                 return section;
+
+            case Table mdTable:
+                return ConvertTable(mdTable);
 
             default:
                 // Fallback: render as plain text paragraph

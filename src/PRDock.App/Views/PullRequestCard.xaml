@@ -1,7 +1,8 @@
 <UserControl x:Class="PRDock.App.Views.PullRequestCard"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:conv="clr-namespace:PRDock.App.Converters">
+             xmlns:conv="clr-namespace:PRDock.App.Converters"
+             xmlns:infra="clr-namespace:PRDock.App.Infrastructure">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -427,22 +428,25 @@
                     </TextBlock>
                 </WrapPanel>
 
-                <!-- Description (truncated to ~3 lines) -->
-                <TextBlock Text="{Binding Body}" TextWrapping="Wrap"
-                           FontSize="12.5" Foreground="{DynamicResource TextTertiaryBrush}"
-                           LineHeight="19" MaxWidth="700" ExampletalAlignment="Left"
-                           MaxHeight="57" TextTrimming="CharacterEllipsis"
-                           Margin="0,0,0,14">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
+                <!-- Description (rendered markdown, full height) -->
+                <RichTextBox IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent"
+                             Foreground="{DynamicResource TextTertiaryBrush}"
+                             FontSize="12.5" MaxWidth="700" ExampletalAlignment="Left"
+                             Padding="0"
+                             Margin="0,0,0,14"
+                             VerticalScrollBarVisibility="Auto"
+                             infra:MarkdownTextBlock.Markdown="{Binding Body}">
+                    <RichTextBox.Style>
+                        <Style TargetType="RichTextBox">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Body}" Value="">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                    </RichTextBox.Style>
+                </RichTextBox>
 
                 <!-- Checks section with failed check names -->
                 <StackPanel Margin="0,0,0,14">

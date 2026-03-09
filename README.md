@@ -2,6 +2,32 @@
 
 A lightweight Windows desktop application that monitors GitHub pull requests as a docked sidebar overlay. PRDock surfaces CI check status, review state, and Claude Code review findings at a glance — and lets you launch automated fixes with one click.
 
+## Screenshots
+
+### PR Sidebar
+
+All your open PRs in one glance. The sidebar shows every PR grouped by repository with color-coded CI status (green = passing, red = failing, yellow = pending), lines changed, review state, and author avatars. Filter by status tabs — My PRs, Failing, Ready, Reviewing, or Closed — and search across all repos instantly.
+
+![PR Sidebar](docs/PRDockSideBar.png)
+
+### Expanded PR Card
+
+Click any PR to expand it inline. See the full summary, root cause, fix details, and a test plan — all without leaving the sidebar. Quick-action buttons let you re-run checks, launch a Claude Code fix session, or jump to GitHub. Branch info, file count, and diff stats are shown at a glance.
+
+![Expanded PR Card](docs/SideBarPRExpanded.png)
+
+### CI Check Status
+
+Open the detail view to see every CI check for a PR — Analyze, Build & Unit Tests, CodeQL, claude-review — with live pass/fail/pending indicators. One click on "Re-run Checks" or "Fix with Claude" to take action directly. The Overview, Checks, and Reviews tabs let you drill into exactly what you need.
+
+![CI Check Status](docs/PR%20Details%20Status.png)
+
+### Claude Code Review
+
+The Reviews tab renders full Claude Code review comments with Markdown formatting. See the overall assessment, categorized issues (bugs, correctness, missing contract alignment), and actionable suggestions — all inline. Approve or request changes directly from PRDock.
+
+![Claude Code Review](docs/PR%20Details%20Review.png)
+
 ## Features
 
 - **PR Monitoring** — Polls GitHub for open pull requests across configurable repositories, displaying status, reviews, and CI checks in a compact sidebar.
