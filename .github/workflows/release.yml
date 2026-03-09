@@ -49,15 +49,13 @@ jobs:
         run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      - name: Pack with Velopack (skip installer — generated manually on Windows)
+      - name: Pack with Velopack (nupkg only — Setup.exe generated locally on Windows)
         run: >
           vpk pack
           --packId PRDock
           --packVersion ${{ steps.version.outputs.VERSION }}
           --packDir publish
           --mainExe PRDock.App.exe
-          --icon src/PRDock.App/Assets/tray-icon.ico
-          --skipVeloAppCheck
           --noInst
 
       - name: Upload to GitHub Releases
