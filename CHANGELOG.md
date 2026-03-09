@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.6 — 2026-03-09
+
+### Bug Fixes
+
+- **Auto-updates now work correctly** — Fixed an issue where the update checker was pointing to the wrong GitHub repository, preventing automatic updates from being detected and installed.
+
 ## 0.0.5 — 2026-03-09
 
 ### New Features
