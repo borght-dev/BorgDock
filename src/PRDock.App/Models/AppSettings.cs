@@ -36,7 +36,7 @@ public sealed class UiSettings
 {
     public string SidebarEdge { get; set; } = "right";
     public string SidebarMode { get; set; } = "pinned";
-    public int SidebarWidthPx { get; set; } = 420;
+    public int SidebarWidthPx { get; set; } = 800;
     public string Theme { get; set; } = "system";
     public string GlobalHotkey { get; set; } = "Ctrl+Win+Shift+G";
     public string EditorCommand { get; set; } = "code";

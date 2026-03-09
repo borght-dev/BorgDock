@@ -678,7 +678,7 @@
                             <Run Text="px" />
                         </TextBlock>
                         <Slider AutomationProperties.AutomationId="SidebarWidthSlider"
-                                Minimum="200" Maximum="800"
+                                Minimum="200" Maximum="1200"
                                 Value="{Binding SidebarWidthPx, Mode=TwoWay}"
                                 TickFrequency="10"
                                 IsSnapToTickEnabled="True"

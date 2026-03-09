@@ -64,7 +64,7 @@ public partial class SettingsViewModel : ObservableObject
     private string _sidebarEdge = "right";
 
     [ObservableProperty]
-    private int _sidebarWidthPx = 420;
+    private int _sidebarWidthPx = 800;
 
     [ObservableProperty]
     private string _theme = "system";
@@ -324,8 +324,8 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
         if (PollIntervalSeconds < 15 || PollIntervalSeconds > 300)
             return "Poll interval must be between 15 and 300 seconds.";
 
-        if (SidebarWidthPx < 200 || SidebarWidthPx > 800)
-            return "Sidebar width must be between 200 and 800 pixels.";
+        if (SidebarWidthPx < 200 || SidebarWidthPx > 1200)
+            return "Sidebar width must be between 200 and 1200 pixels.";
 
         if (AuthMethod == "pat" && string.IsNullOrWhiteSpace(PersonalAccessToken))
             return "Personal access token is required when using PAT auth.";
