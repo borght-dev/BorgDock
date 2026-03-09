@@ -117,13 +117,15 @@ public partial class SidebarWindow : Window
 
     private void WireSettingsFlyout()
     {
-        var settingsService = ((App)System.Windows.Application.Current)
-            .ServiceProvider?.GetService(typeof(Services.ISettingsService)) as Services.ISettingsService;
+        var sp = ((App)System.Windows.Application.Current).ServiceProvider;
+        var settingsService = sp?.GetService(typeof(Services.ISettingsService)) as Services.ISettingsService;
         if (settingsService is null) return;
 
         if (_settingsVm is null)
         {
-            _settingsVm = new SettingsViewModel(settingsService);
+            var startupManager = sp?.GetService(typeof(Services.IStartupManager)) as Services.IStartupManager;
+            var updateService = sp?.GetService(typeof(Services.IUpdateService)) as Services.IUpdateService;
+            _settingsVm = new SettingsViewModel(settingsService, startupManager, updateService);
             _settingsVm.SaveCompleted += () => ViewModel.IsSettingsOpen = false;
             _settingsVm.CancelCompleted += OnSettingsCancelled;
             _settingsVm.PropertyChanged += SettingsVm_PropertyChanged;

@@ -32,7 +32,9 @@ tests/PRDock.IntegrationTests/ # Integration/smoke tests
 ## Critical Conventions
 
 - **WinForms ambiguity**: Both `UseWPF` and `UseWindowsForms` are enabled (NotifyIcon needs WinForms). Always qualify or alias `Application` — use `System.Windows.Application` or `using WpfApplication = System.Windows.Application;` to avoid CS0104.
-- **AppSettings property names**: `GitHub`, `UI` (uppercase), `Repos`, `Notifications`, `ClaudeCode`, `ClaudeReview`. The JSON uses camelCase via `JsonNamingPolicy.CamelCase`, but C# properties are PascalCase.
+- **AppSettings property names**: `GitHub`, `UI` (uppercase), `Repos`, `Notifications`, `ClaudeCode`, `ClaudeReview`, `Updates`. The JSON uses camelCase via `JsonNamingPolicy.CamelCase`, but C# properties are PascalCase.
+- **Entry point**: Explicit `Program.Main()` in `Program.cs` — required by Velopack (`VelopackApp.Build().Run()` must run before WPF). `App.xaml` is a `Page`, not `ApplicationDefinition`.
+- **Velopack UpdateManager**: Uses lazy initialization to avoid requiring `VelopackApp.Build()` in tests. `UpdateManager?` is nullable — when null (dev/test mode), all update operations are no-ops.
 - **App shutdown mode**: `ShutdownMode="OnExplicitShutdown"` — the tray icon keeps the app alive when the sidebar is hidden.
 - **Single instance**: Named mutex `PRDock_SingleInstance` prevents duplicate launches.
 - **File paths**:
@@ -50,6 +52,7 @@ tests/PRDock.IntegrationTests/ # Integration/smoke tests
 - **Phase 5 COMPLETE**: Claude review panel (ClaudeReviewComment, MarkdownRenderer, severity grouping)
 - **Phase 6 COMPLETE**: Polish (NotificationService, FloatingBadge, auto-hide animation, SettingsFlyout, SetupWizard, keyboard nav, WorktreePruneDialog, recently closed PRs, merge conflict indicators)
 - **Phase 7 COMPLETE**: Hardening (RetryHandler, rate limit display, adaptive polling, graceful degradation)
+- **Auto-update COMPLETE**: Velopack integration (UpdateService, Settings UI, GitHub Actions release workflow)
 
 Full spec: `PRDock-Implementation-Plan.md`
 

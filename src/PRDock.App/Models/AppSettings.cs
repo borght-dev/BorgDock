@@ -11,6 +11,7 @@ public sealed class AppSettings
     public NotificationSettings Notifications { get; set; } = new();
     public ClaudeCodeSettings ClaudeCode { get; set; } = new();
     public ClaudeReviewSettings ClaudeReview { get; set; } = new();
+    public UpdateSettings Updates { get; set; } = new();
 }
 
 public sealed class GitHubSettings
@@ -39,6 +40,7 @@ public sealed class UiSettings
     public string Theme { get; set; } = "system";
     public string GlobalHotkey { get; set; } = "Ctrl+Win+Shift+G";
     public string EditorCommand { get; set; } = "code";
+    public bool RunAtStartup { get; set; }
 }
 
 public sealed class NotificationSettings
@@ -57,4 +59,10 @@ public sealed class ClaudeCodeSettings
 public sealed class ClaudeReviewSettings
 {
     public string BotUsername { get; set; } = "claude[bot]";
+}
+
+public sealed class UpdateSettings
+{
+    public bool AutoCheckEnabled { get; set; } = true;
+    public bool AutoDownload { get; set; } = true;
 }

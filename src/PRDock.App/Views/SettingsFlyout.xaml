@@ -697,6 +697,12 @@
                                  Text="{Binding EditorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource InputTextBoxStyle}"
                                  Margin="0,0,0,2" />
+
+                        <CheckBox AutomationProperties.AutomationId="RunAtStartupCheckBox"
+                                  Content="Run on Windows startup"
+                                  IsChecked="{Binding RunAtStartup, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheckBoxStyle}"
+                                  Margin="0,6,0,2" />
                     </StackPanel>
                 </Border>
 
@@ -754,6 +760,51 @@
                                 ExampletalAlignment="Left"
                                 Padding="12,6"
                                 FontSize="11" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================== Updates ==================== -->
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Updates" Style="{StaticResource SectionHeaderStyle}" />
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6">
+                            <Run Text="Current version: " />
+                            <Run Text="{Binding CurrentVersion, Mode=OneWay}" FontWeight="Bold" />
+                        </TextBlock>
+
+                        <CheckBox AutomationProperties.AutomationId="AutoCheckUpdatesCheckBox"
+                                  Content="Check for updates automatically"
+                                  IsChecked="{Binding AutoCheckForUpdates, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheckBoxStyle}"
+                                  Margin="0,0,0,6" />
+                        <CheckBox AutomationProperties.AutomationId="AutoDownloadUpdatesCheckBox"
+                                  Content="Download updates automatically"
+                                  IsChecked="{Binding AutoDownloadUpdates, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheckBoxStyle}"
+                                  Margin="0,0,0,8" />
+
+                        <StackPanel Orientation="Exampletal" Margin="0,0,0,4">
+                            <Button AutomationProperties.AutomationId="CheckForUpdatesButton"
+                                    Content="Check Now"
+                                    Command="{Binding CheckForUpdatesCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="12,6"
+                                    FontSize="11"
+                                    Margin="0,0,8,0" />
+                            <Button AutomationProperties.AutomationId="InstallUpdateButton"
+                                    Content="Install Update"
+                                    Command="{Binding ApplyUpdateCommand}"
+                                    Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Padding="12,6"
+                                    FontSize="11" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding UpdateStatusText}"
+                                   Style="{StaticResource FieldLabelStyle}"
+                                   FontSize="11"
+                                   Margin="0,2,0,0" />
                     </StackPanel>
                 </Border>
 

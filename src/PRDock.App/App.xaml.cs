@@ -102,6 +102,10 @@ public partial class App : System.Windows.Application
             await settingsService.SaveAsync(settingsService.CurrentSettings);
         }
 
+        // Sync startup shortcut with settings
+        var startupManager = _serviceProvider.GetRequiredService<IStartupManager>();
+        startupManager.SyncWithSettings(settingsService.CurrentSettings.UI.RunAtStartup);
+
         // Initialize theme
         _themeManager = new ThemeManager(this);
         _themeManager.ApplyTheme(settingsService.CurrentSettings.UI.Theme);
@@ -138,6 +142,16 @@ public partial class App : System.Windows.Application
         };
         _floatingBadgeVm.QuitRequested += () => Shutdown();
         _floatingBadgeVm.SettingsRequested += () => _mainViewModel?.OpenSettingsCommand.Execute(null);
+
+        // Wire up auto-update checks
+        var updateService = _serviceProvider.GetRequiredService<IUpdateService>();
+        updateService.UpdateAvailable += info =>
+        {
+            Dispatcher.InvokeAsync(() =>
+                _floatingBadgeVm?.ShowToast($"PRDock {info.Version} available \u2014 open Settings to update."));
+        };
+        if (settingsService.CurrentSettings.Updates.AutoCheckEnabled)
+            updateService.StartPeriodicChecks();
 
         // Wire up badge updates and start polling (after all event handlers are registered)
         pollingService.PollCompleted += results =>
@@ -229,6 +243,7 @@ public partial class App : System.Windows.Application
         });
 
         // Services
+        services.AddSingleton<IUpdateService, UpdateService>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IGitHubAuthService, GitHubAuthService>();
         services.AddSingleton<IGitHubActionsService, GitHubActionsService>();
@@ -241,6 +256,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IRepoDiscoveryService, RepoDiscoveryService>();
         services.AddSingleton<IPRCacheService, PRCacheService>();
+        services.AddSingleton<IStartupManager, StartupManager>();
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
@@ -341,6 +357,10 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Stop periodic update checks
+        if (_serviceProvider?.GetService<IUpdateService>() is { } updateService)
+            updateService.StopPeriodicChecks();
+
         // Stop polling before disposing services
         if (_serviceProvider?.GetService<IPRPollingService>() is { } pollingService)
             pollingService.StopPolling();

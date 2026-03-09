@@ -9,10 +9,15 @@ namespace PRDock.App.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
+    private readonly IStartupManager? _startupManager;
+    private readonly IUpdateService? _updateService;
 
-    public SettingsViewModel(ISettingsService settingsService)
+    public SettingsViewModel(ISettingsService settingsService, IStartupManager? startupManager = null, IUpdateService? updateService = null)
     {
         _settingsService = settingsService;
+        _startupManager = startupManager;
+        _updateService = updateService;
+        CurrentVersion = updateService?.CurrentVersion ?? "dev";
         LoadFromSettings(_settingsService.CurrentSettings);
     }
 
@@ -67,6 +72,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _editorCommand = "code";
 
+    [ObservableProperty]
+    private bool _runAtStartup;
+
     // --- Notifications section ---
 
     [ObservableProperty]
@@ -85,6 +93,63 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _claudeCodePath = "";
+
+    // --- Updates section ---
+
+    [ObservableProperty]
+    private bool _autoCheckForUpdates = true;
+
+    [ObservableProperty]
+    private bool _autoDownloadUpdates = true;
+
+    [ObservableProperty]
+    private string _currentVersion = "";
+
+    [ObservableProperty]
+    private string _updateStatusText = "";
+
+    [ObservableProperty]
+    private bool _isCheckingForUpdates;
+
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_updateService is null) return;
+
+        IsCheckingForUpdates = true;
+        UpdateStatusText = "Checking...";
+
+        try
+        {
+            var info = await _updateService.CheckForUpdateAsync();
+            if (info is not null)
+            {
+                IsUpdateAvailable = true;
+                UpdateStatusText = $"Version {info.Version} available!";
+            }
+            else
+            {
+                UpdateStatusText = "You're on the latest version.";
+            }
+        }
+        catch
+        {
+            UpdateStatusText = "Failed to check for updates.";
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ApplyUpdate()
+    {
+        _updateService?.ApplyUpdateAndRestart();
+    }
 
     // --- Validation ---
 
@@ -115,6 +180,7 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
         ValidationError = null;
         var settings = ToAppSettings();
         await _settingsService.SaveAsync(settings);
+        _startupManager?.SyncWithSettings(RunAtStartup);
         SaveCompleted?.Invoke();
     }
 
@@ -156,6 +222,7 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
         SidebarWidthPx = settings.UI.SidebarWidthPx;
         Theme = settings.UI.Theme;
         EditorCommand = settings.UI.EditorCommand;
+        RunAtStartup = settings.UI.RunAtStartup;
 
         ToastOnCheckStatusChange = settings.Notifications.ToastOnCheckStatusChange;
         ToastOnNewPR = settings.Notifications.ToastOnNewPR;
@@ -163,6 +230,9 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
 
         DefaultPostFixAction = settings.ClaudeCode.DefaultPostFixAction;
         ClaudeCodePath = settings.ClaudeCode.ClaudeCodePath ?? "";
+
+        AutoCheckForUpdates = settings.Updates.AutoCheckEnabled;
+        AutoDownloadUpdates = settings.Updates.AutoDownload;
     }
 
     internal AppSettings ToAppSettings()
@@ -195,7 +265,8 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
                 SidebarWidthPx = SidebarWidthPx,
                 Theme = Theme,
                 GlobalHotkey = current.UI.GlobalHotkey,
-                EditorCommand = EditorCommand
+                EditorCommand = EditorCommand,
+                RunAtStartup = RunAtStartup
             },
             Notifications = new NotificationSettings
             {
@@ -208,7 +279,12 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
                 DefaultPostFixAction = DefaultPostFixAction,
                 ClaudeCodePath = string.IsNullOrWhiteSpace(ClaudeCodePath) ? null : ClaudeCodePath
             },
-            ClaudeReview = current.ClaudeReview
+            ClaudeReview = current.ClaudeReview,
+            Updates = new UpdateSettings
+            {
+                AutoCheckEnabled = AutoCheckForUpdates,
+                AutoDownload = AutoDownloadUpdates
+            }
         };
     }
 

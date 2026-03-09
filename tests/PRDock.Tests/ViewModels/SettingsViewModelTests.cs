@@ -28,6 +28,7 @@ public class SettingsViewModelTests
         vm.SidebarWidthPx.Should().Be(420);
         vm.Theme.Should().Be("system");
         vm.EditorCommand.Should().Be("code");
+        vm.RunAtStartup.Should().BeFalse();
         vm.ToastOnCheckStatusChange.Should().BeTrue();
         vm.ToastOnNewPR.Should().BeFalse();
         vm.ToastOnReviewUpdate.Should().BeTrue();
@@ -56,7 +57,8 @@ public class SettingsViewModelTests
                 SidebarEdge = "left",
                 SidebarWidthPx = 500,
                 Theme = "dark",
-                EditorCommand = "vim"
+                EditorCommand = "vim",
+                RunAtStartup = true
             },
             Notifications = new NotificationSettings
             {
@@ -86,6 +88,7 @@ public class SettingsViewModelTests
         vm.SidebarWidthPx.Should().Be(500);
         vm.Theme.Should().Be("dark");
         vm.EditorCommand.Should().Be("vim");
+        vm.RunAtStartup.Should().BeTrue();
         vm.ToastOnCheckStatusChange.Should().BeFalse();
         vm.ToastOnNewPR.Should().BeTrue();
         vm.ToastOnReviewUpdate.Should().BeFalse();
@@ -306,6 +309,7 @@ public class SettingsViewModelTests
         vm.SidebarWidthPx = 350;
         vm.Theme = "dark";
         vm.EditorCommand = "nvim";
+        vm.RunAtStartup = true;
         vm.ToastOnCheckStatusChange = false;
         vm.ToastOnNewPR = true;
         vm.ToastOnReviewUpdate = false;
@@ -322,6 +326,7 @@ public class SettingsViewModelTests
         result.UI.SidebarWidthPx.Should().Be(350);
         result.UI.Theme.Should().Be("dark");
         result.UI.EditorCommand.Should().Be("nvim");
+        result.UI.RunAtStartup.Should().BeTrue();
         result.Notifications.ToastOnCheckStatusChange.Should().BeFalse();
         result.Notifications.ToastOnNewPR.Should().BeTrue();
         result.Notifications.ToastOnReviewUpdate.Should().BeFalse();
@@ -448,6 +453,32 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task SaveCommand_CallsSyncWithSettings()
+    {
+        var service = CreateMockSettingsService();
+        var startupManager = Substitute.For<IStartupManager>();
+        var vm = new SettingsViewModel(service, startupManager);
+        vm.RunAtStartup = true;
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        startupManager.Received(1).SyncWithSettings(true);
+    }
+
+    [Fact]
+    public async Task SaveCommand_RunAtStartupFalse_CallsSyncWithFalse()
+    {
+        var service = CreateMockSettingsService();
+        var startupManager = Substitute.For<IStartupManager>();
+        var vm = new SettingsViewModel(service, startupManager);
+        vm.RunAtStartup = false;
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        startupManager.Received(1).SyncWithSettings(false);
+    }
+
+    [Fact]
     public void RepoSettingsItemViewModel_DefaultValues()
     {
         var item = new RepoSettingsItemViewModel();
@@ -491,5 +522,52 @@ public class SettingsViewModelTests
 
         vm.SelectedRepository.Should().NotBeNull();
         vm.SelectedRepository!.Owner.Should().Be("third");
+    }
+
+    [Fact]
+    public void LoadFromSettings_LoadsUpdateSettings()
+    {
+        var settings = new AppSettings
+        {
+            Updates = new UpdateSettings
+            {
+                AutoCheckEnabled = false,
+                AutoDownload = false
+            }
+        };
+        var vm = new SettingsViewModel(CreateMockSettingsService(settings));
+
+        vm.AutoCheckForUpdates.Should().BeFalse();
+        vm.AutoDownloadUpdates.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoadFromSettings_DefaultUpdateSettings()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+
+        vm.AutoCheckForUpdates.Should().BeTrue();
+        vm.AutoDownloadUpdates.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToAppSettings_IncludesUpdateSettings()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+        vm.AutoCheckForUpdates = false;
+        vm.AutoDownloadUpdates = false;
+
+        var result = vm.ToAppSettings();
+
+        result.Updates.AutoCheckEnabled.Should().BeFalse();
+        result.Updates.AutoDownload.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CurrentVersion_WhenNoUpdateService_ShowsDev()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+
+        vm.CurrentVersion.Should().Be("dev");
     }
 }
