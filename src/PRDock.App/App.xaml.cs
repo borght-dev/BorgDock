@@ -183,6 +183,16 @@ public partial class App : System.Windows.Application
                 _themeManager?.ApplyTheme(settings.UI.Theme);
                 _mainViewModel?.ApplySidebarPreferences(settings.UI);
                 _sidebarWindow?.ApplyUiSettings(settings.UI);
+
+                // Re-register global hotkey if changed
+                if (_hotKeyManager is not null && _sidebarWindow is not null)
+                {
+                    var hwndSource = PresentationSource.FromVisual(_sidebarWindow) as HwndSource;
+                    if (hwndSource is not null)
+                    {
+                        _hotKeyManager.RegisterHotKey(hwndSource.Handle, settings.UI.GlobalHotkey);
+                    }
+                }
             });
         };
 

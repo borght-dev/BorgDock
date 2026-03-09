@@ -702,7 +702,43 @@
                                   Content="Run on Windows startup"
                                   IsChecked="{Binding RunAtStartup, Mode=TwoWay}"
                                   Style="{StaticResource ModernCheckBoxStyle}"
-                                  Margin="0,6,0,2" />
+                                  Margin="0,6,0,8" />
+
+                        <TextBlock Text="Global hotkey" Style="{StaticResource FieldLabelStyle}" />
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="HotkeyTextBox"
+                                     AutomationProperties.AutomationId="HotkeyTextBox"
+                                     Text="{Binding GlobalHotkey, Mode=TwoWay}"
+                                     Style="{StaticResource InputTextBoxStyle}"
+                                     IsReadOnly="True"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                                     GotFocus="HotkeyTextBox_GotFocus"
+                                     LostFocus="HotkeyTextBox_LostFocus"
+                                     Grid.Column="0" />
+                            <Button AutomationProperties.AutomationId="RecordHotkeyButton"
+                                    Command="{Binding ToggleHotkeyRecordingCommand}"
+                                    Grid.Column="1"
+                                    Width="60" Padding="0,5" Margin="4,0,0,0" FontSize="11">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                        <Setter Property="Content" Value="Record" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRecordingHotkey}" Value="True">
+                                                <Setter Property="Content" Value="Cancel" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
+                        <TextBlock Text="Click the field and press your desired key combination"
+                                   FontSize="10" Opacity="0.5"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   Margin="0,0,0,2" />
                     </StackPanel>
                 </Border>
 

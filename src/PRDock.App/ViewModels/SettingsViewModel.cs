@@ -94,6 +94,31 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _claudeCodePath = "";
 
+    // --- Hotkey section ---
+
+    [ObservableProperty]
+    private string _globalHotkey = "Ctrl+Win+Shift+G";
+
+    [ObservableProperty]
+    private bool _isRecordingHotkey;
+
+    [RelayCommand]
+    private void ToggleHotkeyRecording()
+    {
+        IsRecordingHotkey = !IsRecordingHotkey;
+    }
+
+    public void ApplyRecordedHotkey(string hotkey)
+    {
+        GlobalHotkey = hotkey;
+        IsRecordingHotkey = false;
+    }
+
+    public void CancelHotkeyRecording()
+    {
+        IsRecordingHotkey = false;
+    }
+
     // --- Updates section ---
 
     [ObservableProperty]
@@ -235,6 +260,8 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
         DefaultPostFixAction = settings.ClaudeCode.DefaultPostFixAction;
         ClaudeCodePath = settings.ClaudeCode.ClaudeCodePath ?? "";
 
+        GlobalHotkey = settings.UI.GlobalHotkey;
+
         AutoCheckForUpdates = settings.Updates.AutoCheckEnabled;
         AutoDownloadUpdates = settings.Updates.AutoDownload;
     }
@@ -268,7 +295,7 @@ public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", 
                 SidebarEdge = SidebarEdge,
                 SidebarWidthPx = SidebarWidthPx,
                 Theme = Theme,
-                GlobalHotkey = current.UI.GlobalHotkey,
+                GlobalHotkey = GlobalHotkey,
                 EditorCommand = EditorCommand,
                 RunAtStartup = RunAtStartup
             },

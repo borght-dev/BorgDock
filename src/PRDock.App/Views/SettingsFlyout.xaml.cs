@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using PRDock.App.ViewModels;
 using WpfUserControl = System.Windows.Controls.UserControl;
 
@@ -61,6 +62,57 @@ public partial class SettingsFlyout : WpfUserControl
         {
             mainVm.ManageWorktreesCommand.Execute(null);
         }
+    }
+
+    private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+            vm.IsRecordingHotkey = true;
+    }
+
+    private void HotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+            vm.IsRecordingHotkey = false;
+    }
+
+    private void HotkeyTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        e.Handled = true;
+
+        if (DataContext is not SettingsViewModel vm || !vm.IsRecordingHotkey)
+            return;
+
+        // Resolve the actual key (handle system keys like Alt+X)
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        // Ignore lone modifier presses
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
+            return;
+
+        // Escape cancels recording
+        if (key == Key.Escape)
+        {
+            vm.CancelHotkeyRecording();
+            return;
+        }
+
+        // Build the hotkey string from current modifiers + key
+        var modifiers = Keyboard.Modifiers;
+        var parts = new System.Collections.Generic.List<string>();
+
+        if (modifiers.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
+        if (modifiers.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
+        if (modifiers.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
+        if (modifiers.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
+
+        // Require at least one modifier
+        if (parts.Count == 0)
+            return;
+
+        parts.Add(key.ToString());
+        vm.ApplyRecordedHotkey(string.Join("+", parts));
     }
 
     private void BrowseWorktreePath_Click(object sender, RoutedEventArgs e)

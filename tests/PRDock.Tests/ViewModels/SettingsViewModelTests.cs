@@ -371,6 +371,57 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public void LoadFromSettings_LoadsGlobalHotkey()
+    {
+        var settings = new AppSettings
+        {
+            UI = new UiSettings { GlobalHotkey = "Alt+Shift+F12" }
+        };
+        var vm = new SettingsViewModel(CreateMockSettingsService(settings));
+
+        vm.GlobalHotkey.Should().Be("Alt+Shift+F12");
+    }
+
+    [Fact]
+    public void ToAppSettings_MapsModifiedGlobalHotkey()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+        vm.GlobalHotkey = "Ctrl+Alt+P";
+
+        var result = vm.ToAppSettings();
+
+        result.UI.GlobalHotkey.Should().Be("Ctrl+Alt+P");
+    }
+
+    [Fact]
+    public void ApplyRecordedHotkey_SetsHotkeyAndStopsRecording()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+        vm.IsRecordingHotkey = true;
+
+        vm.ApplyRecordedHotkey("Ctrl+Shift+K");
+
+        vm.GlobalHotkey.Should().Be("Ctrl+Shift+K");
+        vm.IsRecordingHotkey.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CancelHotkeyRecording_StopsRecordingWithoutChangingHotkey()
+    {
+        var settings = new AppSettings
+        {
+            UI = new UiSettings { GlobalHotkey = "Ctrl+Win+Shift+G" }
+        };
+        var vm = new SettingsViewModel(CreateMockSettingsService(settings));
+        vm.IsRecordingHotkey = true;
+
+        vm.CancelHotkeyRecording();
+
+        vm.GlobalHotkey.Should().Be("Ctrl+Win+Shift+G");
+        vm.IsRecordingHotkey.Should().BeFalse();
+    }
+
+    [Fact]
     public void ToAppSettings_PreservesClaudeReview()
     {
         var settings = new AppSettings
