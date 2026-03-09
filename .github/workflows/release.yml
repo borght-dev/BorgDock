@@ -51,11 +51,13 @@ jobs:
 
       - name: Pack with Velopack (nupkg only — Setup.exe generated locally on Windows)
         run: >
-          vpk pack windows
+          vpk pack
           --packId PRDock
           --packVersion ${{ steps.version.outputs.VERSION }}
           --packDir publish
           --mainExe PRDock.App.exe
+          --runtime win-x64
+          --channel win
           --noInst
 
       - name: Upload to GitHub Releases
