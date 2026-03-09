@@ -140,10 +140,23 @@ public sealed class WorktreeService : IWorktreeService
         var sanitized = SanitizeBranchName(branchName);
         var worktreePath = Path.Combine(worktreeDir, sanitized);
 
-        _logger.LogInformation("Creating worktree at {Path} for origin/{Branch}", worktreePath, branchName);
+        // If the directory already exists (e.g. from a previous run), pull latest and reuse
+        if (Directory.Exists(worktreePath))
+        {
+            _logger.LogInformation("Worktree directory already exists at {Path}, pulling latest", worktreePath);
+            // Ensure we're on the local branch (not detached), then pull
+            await _git.RunAsync(worktreePath, $"checkout -B {branchName} origin/{branchName}", ct);
+            var (_, pullErr, pullExit) = await _git.RunAsync(worktreePath, "pull --ff-only", ct);
+            if (pullExit != 0)
+                _logger.LogWarning("git pull in existing worktree failed: {StdErr}", pullErr);
+            return worktreePath;
+        }
+
+        // Create worktree with a local tracking branch (avoids detached HEAD)
+        _logger.LogInformation("Creating worktree at {Path} for branch {Branch}", worktreePath, branchName);
         var (_, addErr, addExit) = await _git.RunAsync(
             basePath,
-            $"worktree add \"{worktreePath}\" \"origin/{branchName}\"",
+            $"worktree add -B {branchName} \"{worktreePath}\" \"origin/{branchName}\"",
             ct);
 
         if (addExit != 0)

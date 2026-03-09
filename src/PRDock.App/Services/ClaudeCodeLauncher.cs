@@ -42,7 +42,8 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
         _logger.LogInformation("Generated prompt file at {Path} for PR #{Number} check {Check}",
             promptPath, pr.Number, checkName);
 
-        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath, ct);
+        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath,
+            $"Fix the failing {checkName} CI check for PR #{pr.Number}. See system prompt for full details.", ct);
 
         _processTracker.Track(pid, pr.Number, $"Fix: {checkName}");
 
@@ -61,7 +62,8 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
         _logger.LogInformation("Generated conflict resolution prompt at {Path} for PR #{Number}",
             promptPath, pr.Number);
 
-        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath, ct);
+        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath,
+            $"Resolve the merge conflict for PR #{pr.Number}. See system prompt for full details.", ct);
 
         _processTracker.Track(pid, pr.Number, "Conflict resolution");
 
@@ -80,7 +82,8 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
         _logger.LogInformation("Generated monitor prompt at {Path} for PR #{Number}",
             promptPath, pr.Number);
 
-        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath, ct);
+        var pid = await LaunchWindowsTerminalAsync(pr.Number, worktreePath, promptPath,
+            $"Monitor PR #{pr.Number} until all CI checks pass. See system prompt for the monitoring loop instructions.", ct);
 
         _processTracker.Track(pid, pr.Number, $"Monitor: PR #{pr.Number}");
 
@@ -275,12 +278,12 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
     }
 
     private async Task<int> LaunchWindowsTerminalAsync(
-        int prNumber, string worktreePath, string promptPath, CancellationToken ct)
+        int prNumber, string worktreePath, string promptPath, string initialMessage, CancellationToken ct)
     {
         var claudePath = _settingsService.CurrentSettings.ClaudeCode.ClaudeCodePath ?? "claude";
 
         var arguments = $"-w 0 new-tab --title \"CC: PR #{prNumber}\" -d \"{worktreePath}\" -- " +
-                        $"{claudePath} --prompt-file \"{promptPath}\"";
+                        $"{claudePath} --append-system-prompt-file \"{promptPath}\" \"{initialMessage}\"";
 
         _logger.LogInformation("Launching: wt.exe {Arguments}", arguments);
 

@@ -414,37 +414,23 @@ public partial class MainViewModel : ObservableObject
         {
             StatusText = $"Preparing Claude fix for PR #{card.Number}...";
 
-            // Ensure check details are loaded
-            if (!card.HasCheckDetailLoaded)
-                await LoadCheckDetailsAsync(card);
-
-            // Find or create worktree
-            var worktreePath = await _worktreeService.FindOrCreateWorktreeAsync(
+            // Run all independent work in parallel
+            var worktreeTask = _worktreeService.FindOrCreateWorktreeAsync(
                 repo.WorktreeBasePath, repo.WorktreeSubfolder, card.HeadRef);
 
-            // Get changed files
-            var changedFiles = await _actionsService.GetPullRequestFilesAsync(
+            var changedFilesTask = _actionsService.GetPullRequestFilesAsync(
                 card.RepoOwner, card.RepoName, card.Number);
 
-            // Get raw log from first failed run
-            var rawLog = "";
-            var firstFailedRun = card.FailedCheckRuns.FirstOrDefault();
-            if (firstFailedRun is not null)
-            {
-                try
-                {
-                    var jobs = await _actionsService.GetWorkflowJobsAsync(
-                        card.RepoOwner, card.RepoName, firstFailedRun.CheckSuiteId);
-                    var failedJob = jobs.FirstOrDefault(j => j.Conclusion == "failure");
-                    if (failedJob is not null)
-                        rawLog = await _actionsService.GetJobLogAsync(
-                            card.RepoOwner, card.RepoName, failedJob.Id);
-                }
-                catch (Exception ex)
-                {
-                    Serilog.Log.Warning(ex, "Failed to fetch raw log for Claude fix");
-                }
-            }
+            if (!card.HasCheckDetailLoaded)
+                _ = LoadCheckDetailsAsync(card);
+
+            var rawLogTask = FetchRawLogAsync(card);
+
+            await Task.WhenAll(worktreeTask, changedFilesTask, rawLogTask);
+
+            var worktreePath = worktreeTask.Result;
+            var changedFiles = changedFilesTask.Result;
+            var rawLog = rawLogTask.Result;
 
             var pr = new PullRequest
             {
@@ -538,6 +524,28 @@ public partial class MainViewModel : ObservableObject
         // Load Claude review comments
         if (!card.HasReviewLoaded && !card.IsReviewLoading)
             await LoadReviewCommentsAsync(card);
+    }
+
+    private async Task<string> FetchRawLogAsync(PullRequestCardViewModel card)
+    {
+        var firstFailedRun = card.FailedCheckRuns.FirstOrDefault();
+        if (firstFailedRun is null || _actionsService is null) return "";
+
+        try
+        {
+            var jobs = await _actionsService.GetWorkflowJobsAsync(
+                card.RepoOwner, card.RepoName, firstFailedRun.CheckSuiteId);
+            var failedJob = jobs.FirstOrDefault(j => j.Conclusion == "failure");
+            if (failedJob is not null)
+                return await _actionsService.GetJobLogAsync(
+                    card.RepoOwner, card.RepoName, failedJob.Id);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to fetch raw log for Claude fix");
+        }
+
+        return "";
     }
 
     private async Task LoadCheckDetailsAsync(PullRequestCardViewModel card)
