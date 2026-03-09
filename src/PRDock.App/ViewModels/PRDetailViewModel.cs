@@ -10,6 +10,7 @@ namespace PRDock.App.ViewModels;
 public partial class PRDetailViewModel : ObservableObject
 {
     private readonly IGitHubService _gitHubService;
+    private readonly IGitHubActionsService _actionsService;
     private readonly IGitCommandRunner _gitCommandRunner;
     private readonly ISettingsService _settingsService;
 
@@ -20,10 +21,12 @@ public partial class PRDetailViewModel : ObservableObject
 
     public PRDetailViewModel(
         IGitHubService gitHubService,
+        IGitHubActionsService actionsService,
         IGitCommandRunner gitCommandRunner,
         ISettingsService settingsService)
     {
         _gitHubService = gitHubService;
+        _actionsService = actionsService;
         _gitCommandRunner = gitCommandRunner;
         _settingsService = settingsService;
     }
@@ -165,11 +168,11 @@ public partial class PRDetailViewModel : ObservableObject
             c.Severity != CommentSeverity.Critical);
         HasAiReview = SuggestionCount > 0 || PraiseCount > 0 || OtherReviewCount > 0;
 
-        // Populate checks from card data
+        // Seed with failed checks from card; full list loaded by LoadChecksAsync
         CheckRuns.Clear();
         foreach (var check in card.FailedCheckRuns)
             CheckRuns.Add(check);
-        _checksLoaded = card.FailedCheckRuns.Count > 0;
+        _checksLoaded = false;
 
         // Reset tab state
         _commitsLoaded = false;
@@ -276,8 +279,30 @@ public partial class PRDetailViewModel : ObservableObject
         ChecksError = "";
         try
         {
-            // Checks are already populated from card data for failed runs
-            // Mark as loaded
+            var suites = await _actionsService.GetCheckSuitesAsync(RepoOwner, RepoName, HeadRef);
+            var allRuns = new List<CheckRun>();
+            foreach (var suite in suites)
+            {
+                var runs = await _actionsService.GetCheckRunsAsync(RepoOwner, RepoName, suite.Id);
+                allRuns.AddRange(runs);
+            }
+
+            // Deduplicate by name (keep latest), then sort: failed first, then pending, then passed
+            var deduped = allRuns
+                .GroupBy(r => r.Name)
+                .Select(g => g.OrderByDescending(r => r.Id).First())
+                .OrderBy(r => r.IsFailed ? 0 : r.Status != "completed" ? 1 : 2)
+                .ThenBy(r => r.Name)
+                .ToList();
+
+            CheckRuns.Clear();
+            foreach (var run in deduped)
+                CheckRuns.Add(run);
+
+            PassedChecks = deduped.Count(r => r.Conclusion == "success");
+            TotalChecks = deduped.Count;
+            ChecksReadinessDetail = $"{PassedChecks}/{TotalChecks} passing";
+
             _checksLoaded = true;
         }
         catch (Exception ex)

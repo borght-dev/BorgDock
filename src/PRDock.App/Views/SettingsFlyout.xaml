@@ -241,7 +241,7 @@
                                 <Border BorderBrush="{DynamicResource StrongBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8"
-                                        Background="{DynamicResource SurfaceRaisedBrush}"
+                                        Background="{DynamicResource SurfaceBrush}"
                                         Margin="0,4,0,0"
                                         MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ScrollViewer Margin="2"

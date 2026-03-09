@@ -11,13 +11,14 @@ namespace PRDock.Tests.ViewModels;
 public class PRDetailViewModelTests
 {
     private readonly IGitHubService _gitHubService = Substitute.For<IGitHubService>();
+    private readonly IGitHubActionsService _actionsService = Substitute.For<IGitHubActionsService>();
     private readonly IGitCommandRunner _gitCommandRunner = Substitute.For<IGitCommandRunner>();
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
 
     private PRDetailViewModel CreateVm()
     {
         _settingsService.CurrentSettings.Returns(new AppSettings());
-        return new PRDetailViewModel(_gitHubService, _gitCommandRunner, _settingsService);
+        return new PRDetailViewModel(_gitHubService, _actionsService, _gitCommandRunner, _settingsService);
     }
 
     private void SetupDefaultMocks()

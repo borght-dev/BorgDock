@@ -279,8 +279,8 @@ public sealed class ClaudeCodeLauncher : IClaudeCodeLauncher
     {
         var claudePath = _settingsService.CurrentSettings.ClaudeCode.ClaudeCodePath ?? "claude";
 
-        var arguments = $"-w 0 new-tab --title \"CC: PR #{prNumber}\" -- " +
-                        $"{claudePath} --cwd \"{worktreePath}\" --prompt-file \"{promptPath}\"";
+        var arguments = $"-w 0 new-tab --title \"CC: PR #{prNumber}\" -d \"{worktreePath}\" -- " +
+                        $"{claudePath} --prompt-file \"{promptPath}\"";
 
         _logger.LogInformation("Launching: wt.exe {Arguments}", arguments);
 

@@ -412,7 +412,7 @@ public sealed class GitHubService : IGitHubService
             Body = dto.Body ?? "",
             RepoOwner = owner,
             RepoName = repo,
-            CommentCount = dto.Comments,
+            CommentCount = dto.Comments + dto.ReviewComments,
             Additions = dto.Additions,
             Deletions = dto.Deletions,
             ChangedFiles = dto.ChangedFiles,
@@ -444,6 +444,8 @@ public sealed class GitHubService : IGitHubService
         public bool Draft { get; set; }
         public bool? Mergeable { get; set; }
         public int Comments { get; set; }
+        [JsonPropertyName("review_comments")]
+        public int ReviewComments { get; set; }
         public int Additions { get; set; }
         public int Deletions { get; set; }
         [JsonPropertyName("changed_files")]

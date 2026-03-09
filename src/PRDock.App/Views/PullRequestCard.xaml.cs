@@ -21,7 +21,10 @@ public partial class PullRequestCard : System.Windows.Controls.UserControl
             {
                 if (parent is System.Windows.Controls.Button or System.Windows.Documents.Hyperlink)
                     return;
-                parent = System.Windows.Media.VisualTreeHelper.GetParent(parent);
+                // Use visual tree for Visuals, logical tree for ContentElements (e.g. Run, Span)
+                parent = parent is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+                    ? System.Windows.Media.VisualTreeHelper.GetParent(parent)
+                    : LogicalTreeHelper.GetParent(parent);
             }
         }
 

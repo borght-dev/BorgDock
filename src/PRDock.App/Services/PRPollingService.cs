@@ -145,6 +145,7 @@ public sealed class PRPollingService : IPRPollingService
                         pr.Deletions = detail.Deletions;
                         pr.ChangedFiles = detail.ChangedFiles;
                         pr.CommitCount = detail.CommitCount;
+                        pr.CommentCount = detail.CommentCount;
                     }
                     catch (Exception ex)
                     {

@@ -261,6 +261,7 @@
                             <Run Text=" / " Foreground="{DynamicResource TextGhostBrush}" />
                             <Run Text="-" Foreground="{DynamicResource StatusRedBrush}" /><Run Text="{Binding Deletions, Mode=OneWay}" Foreground="{DynamicResource StatusRedBrush}" />
                         </TextBlock>
+
                     </StackPanel>
                 </StackPanel>
 
@@ -360,7 +361,7 @@
                                Foreground="{DynamicResource TextGhostBrush}"
                                ExampletalAlignment="Right" Margin="0,0,0,4" />
 
-                    <!-- Comment count -->
+                    <!-- Comment count (right-aligned to match check count above) -->
                     <StackPanel Orientation="Exampletal" ExampletalAlignment="Right">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -372,7 +373,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock Text="&#x1F4AC;" FontSize="11" Margin="0,0,4,0" />
+                        <TextBlock Text="&#xE8F2;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                   Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,4,0" />
                         <TextBlock Text="{Binding CommentCount}"
                                    FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
                     </StackPanel>

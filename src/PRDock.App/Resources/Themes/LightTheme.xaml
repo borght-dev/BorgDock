@@ -234,6 +234,12 @@
     <SolidColorBrush x:Key="TabActiveBrush" Color="#2563EB" />
     <SolidColorBrush x:Key="TabInactiveBrush" Color="#5A5F72" />
     <SolidColorBrush x:Key="CodeBlockBgBrush" Color="#F4F5F7" />
+    <SolidColorBrush x:Key="SyntaxKeywordBrush" Color="#A626A4" />
+    <SolidColorBrush x:Key="SyntaxStringBrush" Color="#50A14F" />
+    <SolidColorBrush x:Key="SyntaxCommentBrush" Color="#A0A1A7" />
+    <SolidColorBrush x:Key="SyntaxNumberBrush" Color="#986801" />
+    <SolidColorBrush x:Key="SyntaxTypeBrush" Color="#C18401" />
+    <SolidColorBrush x:Key="SyntaxPlainBrush" Color="#383A42" />
     <FontFamily x:Key="CodeFontFamily">Cascadia Code, Cascadia Mono, Consolas, Courier New</FontFamily>
 
     <!-- Wizard-specific -->

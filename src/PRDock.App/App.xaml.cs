@@ -273,6 +273,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<PRDetailViewModel>(sp =>
             new PRDetailViewModel(
                 sp.GetRequiredService<IGitHubService>(),
+                sp.GetRequiredService<IGitHubActionsService>(),
                 sp.GetRequiredService<IGitCommandRunner>(),
                 sp.GetRequiredService<ISettingsService>()));
         services.AddSingleton<MainViewModel>(sp =>

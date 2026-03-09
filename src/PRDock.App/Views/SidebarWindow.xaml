@@ -187,9 +187,11 @@
                     <StackPanel Grid.Column="1" Orientation="Exampletal" VerticalAlignment="Center">
                         <!-- "N open" badge -->
                         <Border Background="{DynamicResource SurfaceRaisedBrush}"
-                                CornerRadius="4" Padding="8,3" Margin="0,0,10,0">
+                                CornerRadius="4" Padding="8,3" Margin="0,0,10,0"
+                                VerticalAlignment="Center">
                             <TextBlock FontFamily="{DynamicResource CodeFontFamily}"
-                                       FontSize="11" Foreground="{DynamicResource TextMutedBrush}">
+                                       FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
+                                       VerticalAlignment="Center">
                                 <Run Text="{Binding TotalCount, Mode=OneWay}" />
                                 <Run Text=" open" />
                             </TextBlock>

@@ -185,7 +185,8 @@
             </Grid.RowDefinitions>
 
             <!-- ===== HEADER ===== -->
-            <Grid Grid.Row="0" Margin="24,20,24,16" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+            <Grid Grid.Row="0" Margin="24,20,24,16" Background="Transparent"
+                  MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -79,6 +80,16 @@ public class MarkdownRenderer : IMarkdownRenderer
                     _ => 14
                 };
                 AddInlines(hPara.Inlines, heading.Inline);
+
+                // Add bottom border for h1 and h2 (like GitHub)
+                if (heading.Level <= 2)
+                {
+                    hPara.Margin = new Thickness(0, 12, 0, 0);
+                    hPara.BorderBrush = ResolveBrush("SeparatorBrush", Brushes.Gray);
+                    hPara.BorderThickness = new Thickness(0, 0, 0, 1);
+                    hPara.Padding = new Thickness(0, 0, 0, 6);
+                }
+
                 return hPara;
 
             case ParagraphBlock para:
@@ -88,35 +99,12 @@ public class MarkdownRenderer : IMarkdownRenderer
 
             case FencedCodeBlock fenced:
                 var codeText = fenced.Lines.ToString().TrimEnd();
-                var codePara = new Paragraph(new Run(codeText)
-                {
-                    FontFamily = new FontFamily("Consolas, Courier New"),
-                    FontSize = 12
-                })
-                {
-                    Margin = new Thickness(0, 4, 0, 8),
-                    Padding = new Thickness(10, 8, 10, 8),
-                    Background = (Brush?)Application.Current?.TryFindResource("CodeBlockBgBrush")
-                        ?? new SolidColorBrush(Color.FromRgb(0x0D, 0x11, 0x17)),
-                    BorderBrush = (Brush?)Application.Current?.TryFindResource("SubtleBorderBrush")
-                        ?? Brushes.Gray,
-                    BorderThickness = new Thickness(1)
-                };
-                return codePara;
+                var lang = fenced.Info?.Trim().ToLowerInvariant() ?? "";
+                return BuildCodeBlock(codeText, lang);
 
             case CodeBlock code:
                 var cbText = code.Lines.ToString().TrimEnd();
-                return new Paragraph(new Run(cbText)
-                {
-                    FontFamily = new FontFamily("Consolas, Courier New"),
-                    FontSize = 12
-                })
-                {
-                    Margin = new Thickness(0, 4, 0, 8),
-                    Padding = new Thickness(10, 8, 10, 8),
-                    Background = (Brush?)Application.Current?.TryFindResource("CodeBlockBgBrush")
-                        ?? new SolidColorBrush(Color.FromRgb(0x0D, 0x11, 0x17))
-                };
+                return BuildCodeBlock(cbText, "");
 
             case ListBlock list:
                 var wpfList = new List
@@ -140,7 +128,7 @@ public class MarkdownRenderer : IMarkdownRenderer
             case ThematicBreakBlock:
                 return new Paragraph(new Run(""))
                 {
-                    BorderBrush = (Brush?)Application.Current?.TryFindResource("SeparatorBrush") ?? Brushes.Gray,
+                    BorderBrush = ResolveBrush("SeparatorBrush", Brushes.Gray),
                     BorderThickness = new Thickness(0, 0, 0, 1),
                     Margin = new Thickness(0, 4, 0, 8)
                 };
@@ -148,7 +136,7 @@ public class MarkdownRenderer : IMarkdownRenderer
             case QuoteBlock quote:
                 var section = new Section
                 {
-                    BorderBrush = (Brush?)Application.Current?.TryFindResource("AccentBrush") ?? Brushes.CornflowerBlue,
+                    BorderBrush = ResolveBrush("AccentBrush", Brushes.CornflowerBlue),
                     BorderThickness = new Thickness(3, 0, 0, 0),
                     Padding = new Thickness(12, 0, 0, 0),
                     Margin = new Thickness(0, 0, 0, 8)
@@ -167,6 +155,47 @@ public class MarkdownRenderer : IMarkdownRenderer
                 return fallback;
         }
     }
+
+    private static Paragraph BuildCodeBlock(string codeText, string lang)
+    {
+        var codePara = new Paragraph
+        {
+            Margin = new Thickness(0, 4, 0, 8),
+            Padding = new Thickness(10, 8, 10, 8),
+            Background = ResolveBrush("CodeBlockBgBrush",
+                new SolidColorBrush(Color.FromRgb(0x0D, 0x11, 0x17))),
+            BorderBrush = ResolveBrush("SubtleBorderBrush", Brushes.Gray),
+            BorderThickness = new Thickness(1)
+        };
+
+        var codeFont = new FontFamily("Consolas, Courier New");
+        var tokens = SyntaxHighlighter.Tokenize(codeText, lang);
+
+        foreach (var token in tokens)
+        {
+            var brush = token.Kind switch
+            {
+                TokenKind.Keyword => ResolveBrush("SyntaxKeywordBrush", Brushes.MediumPurple),
+                TokenKind.String => ResolveBrush("SyntaxStringBrush", Brushes.Green),
+                TokenKind.Comment => ResolveBrush("SyntaxCommentBrush", Brushes.Gray),
+                TokenKind.Number => ResolveBrush("SyntaxNumberBrush", Brushes.DarkOrange),
+                TokenKind.Type => ResolveBrush("SyntaxTypeBrush", Brushes.Goldenrod),
+                _ => ResolveBrush("SyntaxPlainBrush", Brushes.White)
+            };
+
+            codePara.Inlines.Add(new Run(token.Text)
+            {
+                FontFamily = codeFont,
+                FontSize = 12,
+                Foreground = brush
+            });
+        }
+
+        return codePara;
+    }
+
+    private static Brush ResolveBrush(string key, Brush fallback) =>
+        (Brush?)Application.Current?.TryFindResource(key) ?? fallback;
 
     private static void AddInlines(InlineCollection target, ContainerInline? container)
     {
@@ -197,8 +226,8 @@ public class MarkdownRenderer : IMarkdownRenderer
                 return new Run(code.Content)
                 {
                     FontFamily = new FontFamily("Consolas, Courier New"),
-                    Background = (Brush?)Application.Current?.TryFindResource("CodeBlockBgBrush")
-                        ?? new SolidColorBrush(Color.FromRgb(0x0D, 0x11, 0x17)),
+                    Background = ResolveBrush("CodeBlockBgBrush",
+                        new SolidColorBrush(Color.FromRgb(0x0D, 0x11, 0x17))),
                     FontSize = 12
                 };
 
@@ -266,5 +295,106 @@ public class MarkdownRenderer : IMarkdownRenderer
             return inlines;
         }
         return [new Run(block.ToString() ?? "")];
+    }
+}
+
+internal enum TokenKind { Plain, Keyword, String, Comment, Number, Type }
+
+internal readonly record struct SyntaxToken(string Text, TokenKind Kind);
+
+internal static partial class SyntaxHighlighter
+{
+    // Regex-based tokenizer: order matters — first match wins
+    [GeneratedRegex(
+        @"(?<comment>//[^\n]*|/\*[\s\S]*?\*/)" +
+        @"|(?<string>""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)" +
+        @"|(?<number>\b\d+(?:\.\d+)?\b)" +
+        @"|(?<word>\b[A-Za-z_]\w*\b)" +
+        @"|(?<other>[^\s\w]+|\s+)",
+        RegexOptions.Compiled)]
+    private static partial Regex TokenRegex();
+
+    private static readonly HashSet<string> JsKeywords = new(StringComparer.Ordinal)
+    {
+        "abstract", "async", "await", "break", "case", "catch", "class", "const",
+        "continue", "debugger", "default", "delete", "do", "else", "enum", "export",
+        "extends", "finally", "for", "from", "function", "if", "implements", "import",
+        "in", "instanceof", "interface", "let", "new", "of", "package", "private",
+        "protected", "public", "return", "static", "super", "switch", "this", "throw",
+        "try", "typeof", "var", "void", "while", "with", "yield",
+        "true", "false", "null", "undefined"
+    };
+
+    private static readonly HashSet<string> CsKeywords = new(StringComparer.Ordinal)
+    {
+        "abstract", "as", "async", "await", "base", "bool", "break", "byte", "case",
+        "catch", "char", "checked", "class", "const", "continue", "decimal", "default",
+        "delegate", "do", "double", "else", "enum", "event", "explicit", "extern",
+        "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit",
+        "in", "int", "interface", "internal", "is", "lock", "long", "namespace", "new",
+        "null", "object", "operator", "out", "override", "params", "partial", "private",
+        "protected", "public", "readonly", "record", "ref", "return", "sbyte", "sealed",
+        "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this",
+        "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe",
+        "ushort", "using", "var", "virtual", "void", "volatile", "while", "yield",
+        "where", "when", "required", "init", "get", "set", "value", "global"
+    };
+
+    private static readonly HashSet<string> JsTypes = new(StringComparer.Ordinal)
+    {
+        "Array", "Boolean", "Date", "Error", "Function", "Map", "Number", "Object",
+        "Promise", "Proxy", "RegExp", "Set", "String", "Symbol", "WeakMap", "WeakSet",
+        "ReactNode", "JSX", "HTMLElement", "Event", "Response", "Request"
+    };
+
+    private static readonly HashSet<string> CsTypes = new(StringComparer.Ordinal)
+    {
+        "Task", "List", "Dictionary", "IEnumerable", "IList", "IReadOnlyList",
+        "Action", "Func", "Span", "Memory", "StringBuilder", "Exception",
+        "Console", "Math", "Convert", "DateTime", "TimeSpan", "Guid"
+    };
+
+    public static List<SyntaxToken> Tokenize(string code, string lang)
+    {
+        var tokens = new List<SyntaxToken>();
+        if (string.IsNullOrEmpty(code))
+            return tokens;
+
+        var isCs = lang is "csharp" or "cs" or "c#";
+        var isJs = lang is "javascript" or "js" or "typescript" or "ts" or "tsx" or "jsx";
+        var doHighlight = isCs || isJs || string.IsNullOrEmpty(lang);
+
+        if (!doHighlight)
+        {
+            tokens.Add(new SyntaxToken(code, TokenKind.Plain));
+            return tokens;
+        }
+
+        var keywords = isCs ? CsKeywords : JsKeywords;
+        var types = isCs ? CsTypes : JsTypes;
+
+        foreach (Match m in TokenRegex().Matches(code))
+        {
+            if (m.Groups["comment"].Success)
+                tokens.Add(new SyntaxToken(m.Value, TokenKind.Comment));
+            else if (m.Groups["string"].Success)
+                tokens.Add(new SyntaxToken(m.Value, TokenKind.String));
+            else if (m.Groups["number"].Success)
+                tokens.Add(new SyntaxToken(m.Value, TokenKind.Number));
+            else if (m.Groups["word"].Success)
+            {
+                var word = m.Value;
+                if (keywords.Contains(word))
+                    tokens.Add(new SyntaxToken(word, TokenKind.Keyword));
+                else if (types.Contains(word) || (word.Length > 1 && char.IsUpper(word[0]) && word.Any(char.IsLower)))
+                    tokens.Add(new SyntaxToken(word, TokenKind.Type));
+                else
+                    tokens.Add(new SyntaxToken(word, TokenKind.Plain));
+            }
+            else
+                tokens.Add(new SyntaxToken(m.Value, TokenKind.Plain));
+        }
+
+        return tokens;
     }
 }
