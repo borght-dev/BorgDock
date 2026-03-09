@@ -37,6 +37,7 @@ jobs:
           -c Release
           -r win-x64
           --self-contained
+          -p:EnableWindowsTargeting=true
           -o publish
 
       - name: Install Velopack CLI
