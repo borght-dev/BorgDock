@@ -3,8 +3,10 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Markdig;
-using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
+using MarkdigTable = Markdig.Extensions.Tables.Table;
+using MarkdigTableRow = Markdig.Extensions.Tables.TableRow;
+using MarkdigTableCell = Markdig.Extensions.Tables.TableCell;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using WpfInline = System.Windows.Documents.Inline;
@@ -147,7 +149,7 @@ public class MarkdownRenderer : IMarkdownRenderer
                     section.Blocks.Add(ConvertBlock(child));
                 return section;
 
-            case Table mdTable:
+            case MarkdigTable mdTable:
                 return ConvertTable(mdTable);
 
             default:
@@ -159,6 +161,71 @@ public class MarkdownRenderer : IMarkdownRenderer
                     fallback.Inlines.Add(new Run(block.ToString() ?? ""));
                 return fallback;
         }
+    }
+
+    private static WpfBlock ConvertTable(MarkdigTable mdTable)
+    {
+        var table = new System.Windows.Documents.Table
+        {
+            CellSpacing = 0,
+            Margin = new Thickness(0, 4, 0, 8),
+            BorderBrush = ResolveBrush("SubtleBorderBrush", Brushes.Gray),
+            BorderThickness = new Thickness(1)
+        };
+
+        // Determine column count from the first row
+        var colCount = 0;
+        foreach (var child in mdTable)
+        {
+            if (child is MarkdigTableRow row && row.Count > colCount)
+                colCount = row.Count;
+        }
+
+        for (var i = 0; i < colCount; i++)
+            table.Columns.Add(new TableColumn());
+
+        var rowGroup = new TableRowGroup();
+        table.RowGroups.Add(rowGroup);
+
+        foreach (var child in mdTable)
+        {
+            if (child is not MarkdigTableRow mdRow) continue;
+
+            var tr = new System.Windows.Documents.TableRow();
+            if (mdRow.IsHeader)
+                tr.Background = ResolveBrush("SurfaceRaisedBrush",
+                    new SolidColorBrush(Color.FromRgb(0x1A, 0x1E, 0x24)));
+
+            foreach (var cellChild in mdRow)
+            {
+                if (cellChild is not MarkdigTableCell mdCell) continue;
+
+                var cell = new System.Windows.Documents.TableCell
+                {
+                    BorderBrush = ResolveBrush("SubtleBorderBrush", Brushes.Gray),
+                    BorderThickness = new Thickness(0, 0, 1, 1),
+                    Padding = new Thickness(8, 4, 8, 4)
+                };
+
+                foreach (var blockChild in mdCell)
+                {
+                    var converted = ConvertBlock(blockChild);
+                    if (converted is Paragraph cp)
+                        cp.Margin = new Thickness(0);
+                    cell.Blocks.Add(converted);
+                }
+
+                if (mdRow.IsHeader && cell.Blocks.FirstBlock is Paragraph headerPara)
+                    headerPara.FontWeight = FontWeights.SemiBold;
+
+                cell.ColumnSpan = mdCell.ColumnSpan;
+                tr.Cells.Add(cell);
+            }
+
+            rowGroup.Rows.Add(tr);
+        }
+
+        return table;
     }
 
     private static Paragraph BuildCodeBlock(string codeText, string lang)
