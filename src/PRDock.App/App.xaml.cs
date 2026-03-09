@@ -71,14 +71,16 @@ public partial class App : System.Windows.Application
         var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
         await settingsService.LoadAsync();
 
-        // Show setup wizard on first run
-        Log.Information("Settings loaded: SetupComplete={SetupComplete}, RepoCount={RepoCount}",
-            settingsService.CurrentSettings.SetupComplete, settingsService.CurrentSettings.Repos.Count);
+        // Show setup wizard only when repos or auth are genuinely missing.
+        // We no longer rely on the SetupComplete flag — checking actual config state
+        // prevents the wizard from reappearing after Velopack updates.
         var hasAnyRepo = settingsService.CurrentSettings.Repos.Any();
         var hasAuthConfigured = settingsService.CurrentSettings.GitHub.AuthMethod == "ghCli"
             || !string.IsNullOrWhiteSpace(settingsService.CurrentSettings.GitHub.PersonalAccessToken);
-        var needsSetup = !settingsService.CurrentSettings.SetupComplete && (!hasAnyRepo || !hasAuthConfigured);
-        if (needsSetup)
+        Log.Information("Settings loaded: RepoCount={RepoCount}, AuthConfigured={AuthConfigured}",
+            settingsService.CurrentSettings.Repos.Count, hasAuthConfigured);
+
+        if (!hasAnyRepo || !hasAuthConfigured)
         {
             var wizardVm = new SetupWizardViewModel(
                 _serviceProvider.GetRequiredService<IGitHubAuthService>(),
@@ -94,12 +96,6 @@ public partial class App : System.Windows.Application
 
             // Reload settings after wizard saved them
             await settingsService.LoadAsync();
-        }
-        else if (!settingsService.CurrentSettings.SetupComplete)
-        {
-            // Recover from older builds where SetupComplete was not persisted correctly.
-            settingsService.CurrentSettings.SetupComplete = true;
-            await settingsService.SaveAsync(settingsService.CurrentSettings);
         }
 
         // Sync startup shortcut with settings
