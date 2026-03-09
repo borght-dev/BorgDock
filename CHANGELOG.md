@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.8 — 2026-03-09
+
+### New Features
+
+- **Resizable PR detail window** — The PR detail panel now defaults to 800px wide and can be resized up to 1200px, giving you more room to review code changes, checks, and comments.
+
+### Improvements
+
+- **Wider sidebar by default** — The sidebar now starts at 800px wide (up from 420px) and can be expanded up to 1200px via the settings slider, so you can see more PR detail at a glance.
+- **Faster "Fix with Claude" launch** — Worktree setup, file fetching, and log fetching now run in parallel, cutting the wait time before Claude Code opens.
+- **Better worktree handling** — Existing worktrees are reused instead of failing, and the branch is always pulled to latest before launching Claude.
+
+### Bug Fixes
+
+- **"Fix with Claude" now works** — Fixed two invalid CLI flags (`--cwd` and `--prompt-file`) that prevented Claude Code from launching. The button now correctly opens a new terminal tab with Claude ready to fix your CI failures.
+- **Auto-update now detects new versions** — Update checks were silently failing because the GitHub token wasn't being passed to the update checker. Private repo releases are now properly authenticated.
+- **No more detached HEAD in worktrees** — Worktrees are now created with a proper local tracking branch instead of a detached HEAD state.
+
 ## 0.0.7 — 2026-03-09
 
 ### New Features
