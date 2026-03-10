@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.0 — 2026-03-10
+
+### New Features
+
+- **Multi-signal merge readiness indicators** — PR cards now display multiple signal indicators (CI status, reviews, conflicts, draft state) at a glance, replacing the old single-score ring with a richer, more informative view.
+- **Squash & merge from the sidebar** — Merge PRs directly from PRDock with one click. The PR list auto-refreshes after the merge completes.
+- **Toggle draft / ready for review** — Switch a PR between draft and ready-for-review without leaving your desktop.
+- **In-app notification bubbles** — Notifications now appear as polished in-app bubbles with smooth fade-and-slide animations, replacing the old OS toast popups.
+- **Expandable floating badge** — The floating badge can now expand to show your full PR list, so you can check statuses without opening the sidebar. It also supports upward expansion for bottom-of-screen placement.
+- **Manual refresh button** — A refresh button in the sidebar title bar lets you trigger an immediate data update anytime.
+
+### Improvements
+
+- **Polished animations throughout** — Sidebar slide-in, PR card expand, dialog entrances, badge fade, tab switching, and status dot pulse all have smooth, consistent motion powered by a centralized animation system.
+- **Better status color contrast** — The yellow/orange status color has been tuned for better visibility next to red indicators.
+- **Customizable indicator style** — Choose between different indicator display styles in Settings, with live preview as you switch.
+- **Crisp SVG readiness icons** — Merge readiness icons now use sharp SVG paths with animated spinners for in-progress states.
+- **Badge showcase mode** — Launch with `--showcase` to preview all floating badge variants side by side.
+
+### Bug Fixes
+
+- Fixed floating badge drifting out of position when expanding upward.
+- Fixed Markdown pipe tables not rendering correctly in review comments.
+- Fixed merge using the wrong strategy — now correctly uses squash merge to match repository settings.
+- Removed a redundant "CHECKS" section that appeared in expanded PR cards.
+
 ## 0.0.9 — 2026-03-09
 
 ### New Features
