@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — 2026-03-10
+
+### Improvements
+
+- **Theme-aware tray icon** — The system tray icon now automatically switches between light and dark variants to match your current theme, so it always looks right on your taskbar.
+- **Full brand icon set** — Added a complete set of PRDock icons (brand, dark, light, favicon, and transparent mark) in SVG and PNG at multiple sizes for a polished identity across all contexts.
+
 ## 1.0.0 — 2026-03-10
 
 ### New Features
