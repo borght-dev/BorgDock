@@ -117,6 +117,10 @@
     <SolidColorBrush x:Key="ActionSecondaryBackgroundBrush" Color="{StaticResource ActionSecondaryBackgroundColor}" />
     <Color x:Key="ActionSecondaryForegroundColor">#2563EB</Color>
     <SolidColorBrush x:Key="ActionSecondaryForegroundBrush" Color="{StaticResource ActionSecondaryForegroundColor}" />
+    <Color x:Key="ActionSuccessBackgroundColor">#1216A34A</Color>
+    <SolidColorBrush x:Key="ActionSuccessBackgroundBrush" Color="{StaticResource ActionSuccessBackgroundColor}" />
+    <Color x:Key="ActionSuccessForegroundColor">#16A34A</Color>
+    <SolidColorBrush x:Key="ActionSuccessForegroundBrush" Color="{StaticResource ActionSuccessForegroundColor}" />
     <Color x:Key="ActionDangerBackgroundColor">#0FDC2626</Color>
     <SolidColorBrush x:Key="ActionDangerBackgroundBrush" Color="{StaticResource ActionDangerBackgroundColor}" />
     <Color x:Key="ActionDangerForegroundColor">#DC2626</Color>

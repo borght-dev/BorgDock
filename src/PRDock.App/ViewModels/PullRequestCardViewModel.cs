@@ -73,6 +73,9 @@ public partial class PullRequestCardViewModel : ObservableObject
     private bool _hasAllChecksPassed;
 
     [ObservableProperty]
+    private bool _canMerge;
+
+    [ObservableProperty]
     private bool _canBypassMerge;
 
     [ObservableProperty]
@@ -187,6 +190,7 @@ public partial class PullRequestCardViewModel : ObservableObject
     public Action<PullRequestCardViewModel>? RerunRequested { get; set; }
     public Action<PullRequestCardViewModel>? FixWithClaudeRequested { get; set; }
     public Action<PullRequestCardViewModel>? MonitorRequested { get; set; }
+    public Action<PullRequestCardViewModel>? MergeRequested { get; set; }
     public Action<PullRequestCardViewModel>? BypassMergeRequested { get; set; }
     public Action<PullRequestCardViewModel>? DetailExpandRequested { get; set; }
     public Action<PullRequestCardViewModel>? OpenDetailViewRequested { get; set; }
@@ -216,6 +220,12 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void OpenDetailView()
     {
         OpenDetailViewRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void Merge()
+    {
+        MergeRequested?.Invoke(this);
     }
 
     [RelayCommand]

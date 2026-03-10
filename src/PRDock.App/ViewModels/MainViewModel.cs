@@ -318,6 +318,11 @@ public partial class MainViewModel : ObservableObject
         var hasAllChecksPassed = prWithChecks.OverallStatus == "green";
         var reviewMissing = pr.ReviewStatus is ReviewStatus.None or ReviewStatus.Pending or ReviewStatus.Commented;
         var isOpen = string.Equals(pr.State, "open", StringComparison.OrdinalIgnoreCase);
+        var canMerge = isOpen
+            && !pr.IsDraft
+            && hasAllChecksPassed
+            && pr.Mergeable != false
+            && pr.ReviewStatus == ReviewStatus.Approved;
         var canBypassMerge = isOpen
             && !pr.IsDraft
             && hasAllChecksPassed
@@ -350,11 +355,13 @@ public partial class MainViewModel : ObservableObject
             HasAllChecksPassed = hasAllChecksPassed,
             HasFailingChecks = prWithChecks.OverallStatus == "red",
             HasChecksInProgress = prWithChecks.Checks.Any(c => c.IsPending),
+            CanMerge = canMerge,
             CanBypassMerge = canBypassMerge,
             FailedCheckRuns = prWithChecks.Checks.Where(c => c.IsFailed).ToList(),
             RerunRequested = OnRerunRequested,
             FixWithClaudeRequested = OnFixWithClaudeRequested,
             MonitorRequested = OnMonitorRequested,
+            MergeRequested = OnMergeRequested,
             BypassMergeRequested = OnBypassMergeRequested,
             DetailExpandRequested = OnDetailExpandRequested,
             OpenDetailViewRequested = OnOpenDetailViewRequested,
@@ -405,6 +412,7 @@ public partial class MainViewModel : ObservableObject
                 card.RepoOwner, card.RepoName, card.Number, card.FirstFailedRunId);
             await _actionsService.ReRunWorkflowAsync(card.RepoOwner, card.RepoName, card.FirstFailedRunId);
             StatusText = $"Re-run triggered for PR #{card.Number}";
+            _ = PollNowAsync();
         }
         catch (Exception ex)
         {
@@ -712,6 +720,64 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private void OnMergeRequested(PullRequestCardViewModel card)
+    {
+        if (card.Number <= 0 || string.IsNullOrWhiteSpace(card.RepoOwner) || string.IsNullOrWhiteSpace(card.RepoName))
+            return;
+
+        try
+        {
+            StatusText = $"Merging PR #{card.Number}...";
+
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "gh",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.StartInfo.ArgumentList.Add("pr");
+            process.StartInfo.ArgumentList.Add("merge");
+            process.StartInfo.ArgumentList.Add(card.Number.ToString());
+            process.StartInfo.ArgumentList.Add("--repo");
+            process.StartInfo.ArgumentList.Add($"{card.RepoOwner}/{card.RepoName}");
+            process.StartInfo.ArgumentList.Add("--squash");
+
+            process.Start();
+            var stdOutTask = process.StandardOutput.ReadToEndAsync();
+            var stdErrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            var stdOut = stdOutTask.GetAwaiter().GetResult().Trim();
+            var stdErr = stdErrTask.GetAwaiter().GetResult().Trim();
+
+            if (process.ExitCode == 0)
+            {
+                StatusText = $"Merged PR #{card.Number}";
+                _ = PollNowAsync();
+                return;
+            }
+
+            var details = !string.IsNullOrWhiteSpace(stdErr) ? stdErr : stdOut;
+            if (details.Length > 140)
+                details = details[..140] + "...";
+
+            StatusText = string.IsNullOrWhiteSpace(details)
+                ? $"Merge failed for PR #{card.Number}"
+                : $"Merge failed for PR #{card.Number}: {details}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to merge PR #{Number}", card.Number);
+            StatusText = $"Merge failed for PR #{card.Number}: {ex.Message}";
+        }
+    }
+
     private void OnBypassMergeRequested(PullRequestCardViewModel card)
     {
         if (card.Number <= 0 || string.IsNullOrWhiteSpace(card.RepoOwner) || string.IsNullOrWhiteSpace(card.RepoName))
@@ -752,6 +818,7 @@ public partial class MainViewModel : ObservableObject
             if (process.ExitCode == 0)
             {
                 StatusText = $"Merged PR #{card.Number} with admin bypass";
+                _ = PollNowAsync();
                 return;
             }
 
