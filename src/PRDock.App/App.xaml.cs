@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
@@ -260,8 +261,9 @@ public partial class App : System.Windows.Application
             };
         }
 
-        // Setup system tray
+        // Setup system tray (must happen after ThemeManager is initialized)
         SetupSystemTray();
+        _themeManager.ThemeChanged += theme => Dispatcher.InvokeAsync(() => UpdateTrayIcon(theme));
 
         // Enable WinForms message pumping for NotifyIcon
         WinFormsApp.EnableVisualStyles();
@@ -331,7 +333,7 @@ public partial class App : System.Windows.Application
     {
         _notifyIcon = new System.Windows.Forms.NotifyIcon
         {
-            Icon = CreateDefaultIcon(),
+            Icon = CreateThemedTrayIcon(_themeManager?.CurrentTheme ?? "light"),
             Text = "PRDock — 0 open PRs",
             Visible = true
         };
@@ -353,17 +355,62 @@ public partial class App : System.Windows.Application
         _notifyIcon.ContextMenuStrip = contextMenu;
     }
 
-    private static System.Drawing.Icon CreateDefaultIcon()
+    private void UpdateTrayIcon(string theme)
     {
-        // Try loading embedded icon resource
-        var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "tray-icon.ico");
-        if (File.Exists(iconPath))
+        if (_notifyIcon is null) return;
+
+        var oldIcon = _notifyIcon.Icon;
+        _notifyIcon.Icon = CreateThemedTrayIcon(theme);
+
+        // Dispose the old icon if it's not a system icon
+        if (oldIcon is not null && oldIcon != System.Drawing.SystemIcons.Application)
+            oldIcon.Dispose();
+    }
+
+    private static System.Drawing.Icon CreateThemedTrayIcon(string theme)
+    {
+        var assetsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+        var variant = theme == "dark" ? "dark" : "light";
+        var iconSize = System.Windows.Forms.SystemInformation.SmallIconSize;
+
+        // Try exact-size PNG first (e.g., prdock-dark-16.png)
+        var exactPath = Path.Combine(assetsPath, $"prdock-{variant}-{iconSize.Width}.png");
+        if (File.Exists(exactPath))
+            return CreateIconFromPng(exactPath, iconSize);
+
+        // Scale down from the smallest available PNG
+        foreach (var size in new[] { 32, 48, 64, 128, 256, 512 })
         {
-            return new System.Drawing.Icon(iconPath);
+            var path = Path.Combine(assetsPath, $"prdock-{variant}-{size}.png");
+            if (File.Exists(path))
+                return CreateIconFromPng(path, iconSize);
         }
 
-        // Fallback: use the application's own icon or default
+        // Fallback to .ico file
+        var icoPath = Path.Combine(assetsPath, "tray-icon.ico");
+        if (File.Exists(icoPath))
+            return new System.Drawing.Icon(icoPath);
+
         return System.Drawing.SystemIcons.Application;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
+    private static System.Drawing.Icon CreateIconFromPng(string pngPath, System.Drawing.Size targetSize)
+    {
+        using var original = new System.Drawing.Bitmap(pngPath);
+        using var resized = new System.Drawing.Bitmap(original, targetSize);
+        var hIcon = resized.GetHicon();
+        try
+        {
+            using var tempIcon = System.Drawing.Icon.FromHandle(hIcon);
+            return (System.Drawing.Icon)tempIcon.Clone();
+        }
+        finally
+        {
+            DestroyIcon(hIcon);
+        }
     }
 
     private static WinFormsScreen? GetWindowScreen(Window? window)
