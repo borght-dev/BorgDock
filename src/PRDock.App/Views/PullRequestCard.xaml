@@ -491,11 +491,19 @@
         </Border>
 
         <!-- Expanded Content (visible when IsExpanded=true) -->
-        <Border Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"
+        <Border x:Name="ExpandedContent"
+                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"
                 Background="{DynamicResource ExpandedRowBgBrush}"
                 BorderBrush="{DynamicResource SeparatorBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="14,14,18,16">
+                Padding="14,14,18,16"
+                RenderTransformOrigin="0.5,0">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="ExpandedContentScale" ScaleX="1" ScaleY="1" />
+                    <TranslateTransform x:Name="ExpandedContentTranslate" />
+                </TransformGroup>
+            </Border.RenderTransform>
             <!-- Offset content to align with column 1 (roughly 38+14 = 52px from left) -->
             <StackPanel Margin="52,0,0,0">
 
