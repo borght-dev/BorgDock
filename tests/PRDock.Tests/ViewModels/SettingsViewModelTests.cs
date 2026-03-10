@@ -621,4 +621,41 @@ public class SettingsViewModelTests
 
         vm.CurrentVersion.Should().Be("dev");
     }
+
+    [Fact]
+    public void LoadFromSettings_LoadsIndicatorStyle()
+    {
+        var settings = new AppSettings
+        {
+            UI = new UiSettings { IndicatorStyle = "SignalDots" }
+        };
+        var vm = new SettingsViewModel(CreateMockSettingsService(settings));
+
+        vm.IndicatorStyle.Should().Be("SignalDots");
+    }
+
+    [Fact]
+    public void LoadFromSettings_DefaultIndicatorStyle()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+
+        vm.IndicatorStyle.Should().Be("SegmentRing");
+    }
+
+    [Fact]
+    public void ToAppSettings_MapsIndicatorStyle()
+    {
+        var vm = new SettingsViewModel(CreateMockSettingsService());
+        vm.IndicatorStyle = "SignalDots";
+
+        var result = vm.ToAppSettings();
+
+        result.UI.IndicatorStyle.Should().Be("SignalDots");
+    }
+
+    [Fact]
+    public void IndicatorStyleOptions_ContainsExpectedValues()
+    {
+        SettingsViewModel.IndicatorStyleOptions.Should().Contain("SegmentRing").And.Contain("SignalDots");
+    }
 }

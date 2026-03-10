@@ -244,4 +244,207 @@ public class PullRequestCardViewModelTests
 
         callbackArg.Should().BeSameAs(vm);
     }
+
+    // --- ComputeSignalColors tests ---
+
+    [Fact]
+    public void ComputeSignalColors_AllGreen_WhenAllPassing()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            StatusDotColor = "green",
+            HasAllChecksPassed = true,
+            HasFailingChecks = false,
+            HasChecksInProgress = false,
+            ReviewBadgeColor = "green",
+            HasMergeConflict = false,
+            IsDraft = false,
+            ApprovalCount = 1
+        };
+        vm.ComputeMergeScore();
+
+        vm.CiSignalColor.Should().Be("green");
+        vm.ReviewSignalColor.Should().Be("green");
+        vm.ConflictSignalColor.Should().Be("green");
+        vm.DraftSignalColor.Should().Be("green");
+        vm.BlockerCount.Should().Be(0);
+        vm.BlockerCountColor.Should().Be("green");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_CiRed_WhenFailingChecks()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasFailingChecks = true,
+            HasAllChecksPassed = false,
+            HasChecksInProgress = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.CiSignalColor.Should().Be("red");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_CiYellow_WhenChecksInProgress()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasFailingChecks = false,
+            HasAllChecksPassed = false,
+            HasChecksInProgress = true
+        };
+        vm.ComputeMergeScore();
+
+        vm.CiSignalColor.Should().Be("yellow");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_CiGray_WhenNoChecks()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasFailingChecks = false,
+            HasAllChecksPassed = false,
+            HasChecksInProgress = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.CiSignalColor.Should().Be("gray");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_ReviewRed_WhenChangesRequested()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            ReviewBadgeColor = "red",
+            IsDraft = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.ReviewSignalColor.Should().Be("red");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_ReviewRed_WhenPending()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            ReviewBadgeColor = "yellow",
+            IsDraft = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.ReviewSignalColor.Should().Be("red");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_ReviewGray_WhenDraft()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            ReviewBadgeColor = "green",
+            IsDraft = true
+        };
+        vm.ComputeMergeScore();
+
+        vm.ReviewSignalColor.Should().Be("gray");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_ConflictRed_WhenMergeConflict()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasMergeConflict = true
+        };
+        vm.ComputeMergeScore();
+
+        vm.ConflictSignalColor.Should().Be("red");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_ConflictGreen_WhenNoConflict()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasMergeConflict = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.ConflictSignalColor.Should().Be("green");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_DraftGray_WhenIsDraft()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            IsDraft = true
+        };
+        vm.ComputeMergeScore();
+
+        vm.DraftSignalColor.Should().Be("gray");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_DraftGreen_WhenNotDraft()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            IsDraft = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.DraftSignalColor.Should().Be("green");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_BlockerCount_CountsRedSignals()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasFailingChecks = true,
+            ReviewBadgeColor = "red",
+            HasMergeConflict = true,
+            IsDraft = false
+        };
+        vm.ComputeMergeScore();
+
+        vm.BlockerCount.Should().Be(3);
+        vm.BlockerCountColor.Should().Be("red");
+    }
+
+    [Fact]
+    public void ComputeSignalColors_BlockerCount_DoesNotCountDraft()
+    {
+        var vm = new PullRequestCardViewModel
+        {
+            HasFailingChecks = false,
+            HasAllChecksPassed = true,
+            ReviewBadgeColor = "green",
+            HasMergeConflict = false,
+            IsDraft = true
+        };
+        vm.ComputeMergeScore();
+
+        // Draft is gray, not red, so it shouldn't be counted as a blocker
+        vm.BlockerCount.Should().Be(0);
+        vm.BlockerCountColor.Should().Be("green");
+    }
+
+    [Fact]
+    public void DefaultValues_SignalColors_AreCorrect()
+    {
+        var vm = new PullRequestCardViewModel();
+
+        vm.CiSignalColor.Should().Be("gray");
+        vm.ReviewSignalColor.Should().Be("gray");
+        vm.ConflictSignalColor.Should().Be("green");
+        vm.DraftSignalColor.Should().Be("green");
+        vm.BlockerCount.Should().Be(0);
+        vm.BlockerCountColor.Should().Be("green");
+        vm.IndicatorStyle.Should().Be("SegmentRing");
+    }
 }
