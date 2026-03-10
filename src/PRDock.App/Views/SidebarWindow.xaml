@@ -261,6 +261,14 @@
                             </Ellipse>
                         </Border>
 
+                        <!-- Refresh -->
+                        <Button Command="{Binding PollNowCommand}"
+                                Style="{StaticResource HeaderButtonStyle}"
+                                ToolTip="Refresh (poll now)">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       Foreground="{DynamicResource IconButtonForegroundBrush}" />
+                        </Button>
+
                         <!-- Minimize to badge -->
                         <Button Command="{Binding MinimizeToBadgeCommand}"
                                 Style="{StaticResource HeaderButtonStyle}"
