@@ -4,6 +4,11 @@ namespace PRDock.App.Services;
 
 public interface INotificationService
 {
+    /// <summary>
+    /// Raised when a notification should be shown in the in-app bubble.
+    /// </summary>
+    event Action<InAppNotification>? NotificationRaised;
+
     void NotifyCheckFailed(PullRequest pr, string checkName);
     void NotifyAllChecksPassed(PullRequest pr);
     void NotifyReviewRequested(PullRequest pr, string reviewer);

@@ -1,0 +1,236 @@
+<Window x:Class="PRDock.App.Views.NotificationBubbleWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PRDock.App.ViewModels"
+        Title="PRDock Notification"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Width="380"
+        SizeToContent="Height"
+        Background="Transparent">
+
+    <Window.Style>
+        <Style TargetType="Window">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
+
+    <!-- Main notification card -->
+    <Border x:Name="NotificationCard" Margin="8" CornerRadius="12" ClipToBounds="True"
+            Background="{DynamicResource SurfaceRaisedBrush}"
+            BorderThickness="1"
+            MouseEnter="Card_MouseEnter"
+            MouseLeave="Card_MouseLeave">
+        <Border.BorderBrush>
+            <SolidColorBrush Color="{DynamicResource SubtleBorderColor}" />
+        </Border.BorderBrush>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="Black" />
+        </Border.Effect>
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="SlideTransform" X="400" />
+        </Border.RenderTransform>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Content -->
+            <Grid Grid.Row="0" Margin="16,14,16,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Severity icon circle -->
+                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18"
+                        VerticalAlignment="Top" Margin="0,2,12,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource NeutralBadgeBackgroundBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Severity}" Value="error">
+                                    <Setter Property="Background" Value="{DynamicResource ErrorBadgeBackgroundBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Severity}" Value="success">
+                                    <Setter Property="Background" Value="{DynamicResource SuccessBadgeBackgroundBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Severity}" Value="warning">
+                                    <Setter Property="Background" Value="{DynamicResource WarningBadgeBackgroundBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding SeverityIcon}" FontSize="16" FontWeight="Bold"
+                               ExampletalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Severity}" Value="error">
+                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Severity}" Value="success">
+                                        <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Severity}" Value="warning">
+                                        <Setter Property="Foreground" Value="{DynamicResource StatusYellowBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Border>
+
+                <!-- Text content -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <!-- Title -->
+                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                               MaxHeight="40" />
+
+                    <!-- Message -->
+                    <TextBlock Text="{Binding Message}" FontSize="11.5" Margin="0,3,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                               MaxHeight="36" />
+
+                    <!-- Action buttons -->
+                    <StackPanel Orientation="Exampletal" Margin="0,8,0,0">
+                        <!-- Primary action -->
+                        <Button Command="{Binding PrimaryActionCommand}" Cursor="Hand"
+                                Margin="0,0,8,0"
+                                AutomationProperties.AutomationId="NotifPrimaryAction">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" CornerRadius="6" Padding="10,5"
+                                                        Background="{DynamicResource AccentBrush}">
+                                                    <ContentPresenter ExampletalAlignment="Center"
+                                                                      VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasPrimaryAction}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <TextBlock Text="{Binding PrimaryActionLabel}" FontSize="11"
+                                       FontWeight="SemiBold" Foreground="White" />
+                        </Button>
+
+                        <!-- Secondary action -->
+                        <Button Command="{Binding SecondaryActionCommand}" Cursor="Hand"
+                                AutomationProperties.AutomationId="NotifSecondaryAction">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" CornerRadius="6" Padding="10,5"
+                                                        Background="{DynamicResource PrNumberBadgeBackgroundBrush}"
+                                                        BorderThickness="1"
+                                                        BorderBrush="{DynamicResource SubtleBorderBrush}">
+                                                    <ContentPresenter ExampletalAlignment="Center"
+                                                                      VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasSecondaryAction}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <TextBlock Text="{Binding SecondaryActionLabel}" FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Dismiss button -->
+                <Button Grid.Column="2" Command="{Binding DismissCommand}" Cursor="Hand"
+                        VerticalAlignment="Top" Margin="8,0,0,0"
+                        AutomationProperties.AutomationId="NotifDismissBtn">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Width="24" Height="24" CornerRadius="12"
+                                    Background="Transparent">
+                                <TextBlock Text="&#x2715;" FontSize="11"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           ExampletalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource PrNumberBadgeBackgroundBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- Auto-dismiss progress bar -->
+            <Border Grid.Row="1" Height="3" CornerRadius="0,0,12,12"
+                    ClipToBounds="True"
+                    Background="{DynamicResource BadgeProgressTrackBrush}">
+                <Border ExampletalAlignment="Stretch" RenderTransformOrigin="0,0.5">
+                    <Border.RenderTransform>
+                        <ScaleTransform ScaleX="{Binding ProgressFraction}" />
+                    </Border.RenderTransform>
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Severity}" Value="error">
+                                    <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Severity}" Value="success">
+                                    <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Severity}" Value="warning">
+                                    <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Toolkit.Uwp.Notifications;
 using PRDock.App.Models;
 
 namespace PRDock.App.Services;
@@ -8,6 +7,8 @@ public sealed class NotificationService : INotificationService
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<NotificationService> _logger;
+
+    public event Action<InAppNotification>? NotificationRaised;
 
     public NotificationService(ISettingsService settingsService, ILogger<NotificationService> logger)
     {
@@ -20,14 +21,20 @@ public sealed class NotificationService : INotificationService
         if (!_settingsService.CurrentSettings.Notifications.ToastOnCheckStatusChange)
             return;
 
-        ShowToast(
-            title: $"Check failed: {checkName}",
-            message: $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
-            launchUrl: pr.HtmlUrl,
-            buttons: [
+        RaiseNotification(new InAppNotification
+        {
+            Title = $"Check failed: {checkName}",
+            Message = $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
+            Severity = "error",
+            LaunchUrl = pr.HtmlUrl,
+            PrNumber = pr.Number,
+            RepoFullName = $"{pr.RepoOwner}/{pr.RepoName}",
+            Actions =
+            [
                 ("Open in GitHub", pr.HtmlUrl),
                 ("Fix with Claude", $"prdock://fix/{pr.RepoOwner}/{pr.RepoName}/{pr.Number}")
-            ]);
+            ]
+        });
     }
 
     public void NotifyAllChecksPassed(PullRequest pr)
@@ -35,11 +42,16 @@ public sealed class NotificationService : INotificationService
         if (!_settingsService.CurrentSettings.Notifications.ToastOnCheckStatusChange)
             return;
 
-        ShowToast(
-            title: "All checks passed",
-            message: $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
-            launchUrl: pr.HtmlUrl,
-            buttons: [("Open in GitHub", pr.HtmlUrl)]);
+        RaiseNotification(new InAppNotification
+        {
+            Title = "All checks passed",
+            Message = $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
+            Severity = "success",
+            LaunchUrl = pr.HtmlUrl,
+            PrNumber = pr.Number,
+            RepoFullName = $"{pr.RepoOwner}/{pr.RepoName}",
+            Actions = [("Open in GitHub", pr.HtmlUrl)]
+        });
     }
 
     public void NotifyReviewRequested(PullRequest pr, string reviewer)
@@ -47,32 +59,48 @@ public sealed class NotificationService : INotificationService
         if (!_settingsService.CurrentSettings.Notifications.ToastOnReviewUpdate)
             return;
 
-        ShowToast(
-            title: $"Review requested from {reviewer}",
-            message: $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
-            launchUrl: pr.HtmlUrl,
-            buttons: [("Open in GitHub", pr.HtmlUrl)]);
+        RaiseNotification(new InAppNotification
+        {
+            Title = $"Review requested from {reviewer}",
+            Message = $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
+            Severity = "warning",
+            LaunchUrl = pr.HtmlUrl,
+            PrNumber = pr.Number,
+            RepoFullName = $"{pr.RepoOwner}/{pr.RepoName}",
+            Actions = [("Open in GitHub", pr.HtmlUrl)]
+        });
     }
 
     public void NotifyClaudeReviewCritical(PullRequest pr, int count)
     {
-        ShowToast(
-            title: $"Claude found {count} critical issue{(count == 1 ? "" : "s")}",
-            message: $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
-            launchUrl: pr.HtmlUrl,
-            buttons: [
+        RaiseNotification(new InAppNotification
+        {
+            Title = $"Claude found {count} critical issue{(count == 1 ? "" : "s")}",
+            Message = $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
+            Severity = "error",
+            LaunchUrl = pr.HtmlUrl,
+            PrNumber = pr.Number,
+            RepoFullName = $"{pr.RepoOwner}/{pr.RepoName}",
+            Actions =
+            [
                 ("Open in GitHub", pr.HtmlUrl),
                 ("Fix with Claude", $"prdock://fix/{pr.RepoOwner}/{pr.RepoName}/{pr.Number}")
-            ]);
+            ]
+        });
     }
 
     public void NotifyFixCommitted(PullRequest pr)
     {
-        ShowToast(
-            title: "Fix committed",
-            message: $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
-            launchUrl: pr.HtmlUrl,
-            buttons: [("Open in GitHub", pr.HtmlUrl)]);
+        RaiseNotification(new InAppNotification
+        {
+            Title = "Fix committed",
+            Message = $"#{pr.Number} {pr.Title} ({pr.RepoOwner}/{pr.RepoName})",
+            Severity = "success",
+            LaunchUrl = pr.HtmlUrl,
+            PrNumber = pr.Number,
+            RepoFullName = $"{pr.RepoOwner}/{pr.RepoName}",
+            Actions = [("Open in GitHub", pr.HtmlUrl)]
+        });
     }
 
     public void ProcessStateTransitions(
@@ -132,34 +160,16 @@ public sealed class NotificationService : INotificationService
         }
     }
 
-    private void ShowToast(
-        string title,
-        string message,
-        string launchUrl,
-        List<(string Text, string Url)> buttons)
+    private void RaiseNotification(InAppNotification notification)
     {
         try
         {
-            var builder = new ToastContentBuilder()
-                .AddText(title)
-                .AddText(message)
-                .AddArgument("url", launchUrl);
-
-            foreach (var (text, url) in buttons)
-            {
-                builder.AddButton(
-                    new ToastButton()
-                        .SetContent(text)
-                        .AddArgument("url", url));
-            }
-
-            builder.Show();
-
-            _logger.LogDebug("Toast shown: {Title}", title);
+            NotificationRaised?.Invoke(notification);
+            _logger.LogDebug("Notification raised: {Title}", notification.Title);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to show toast notification: {Title}", title);
+            _logger.LogWarning(ex, "Failed to raise notification: {Title}", notification.Title);
         }
     }
 }

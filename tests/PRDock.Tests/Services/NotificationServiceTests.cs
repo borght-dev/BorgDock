@@ -346,6 +346,103 @@ public class NotificationServiceTests
 
     #endregion
 
+    #region NotificationRaised event
+
+    [Fact]
+    public void NotifyCheckFailed_RaisesNotificationRaisedEvent()
+    {
+        InAppNotification? raised = null;
+        _sut.NotificationRaised += n => raised = n;
+
+        _sut.NotifyCheckFailed(CreatePr(1), "build");
+
+        raised.Should().NotBeNull();
+        raised!.Title.Should().Be("Check failed: build");
+        raised.Severity.Should().Be("error");
+        raised.Actions.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void NotifyAllChecksPassed_RaisesNotificationRaisedEvent()
+    {
+        InAppNotification? raised = null;
+        _sut.NotificationRaised += n => raised = n;
+
+        _sut.NotifyAllChecksPassed(CreatePr(1));
+
+        raised.Should().NotBeNull();
+        raised!.Title.Should().Be("All checks passed");
+        raised.Severity.Should().Be("success");
+    }
+
+    [Fact]
+    public void NotifyCheckFailed_WhenDisabled_DoesNotRaiseEvent()
+    {
+        _settingsService.CurrentSettings.Returns(new AppSettings
+        {
+            Notifications = new NotificationSettings { ToastOnCheckStatusChange = false }
+        });
+        var sut = new NotificationService(_settingsService, _logger);
+
+        InAppNotification? raised = null;
+        sut.NotificationRaised += n => raised = n;
+
+        sut.NotifyCheckFailed(CreatePr(1), "build");
+
+        raised.Should().BeNull();
+    }
+
+    [Fact]
+    public void NotifyReviewRequested_RaisesWithWarningSeverity()
+    {
+        InAppNotification? raised = null;
+        _sut.NotificationRaised += n => raised = n;
+
+        _sut.NotifyReviewRequested(CreatePr(1), "alice");
+
+        raised.Should().NotBeNull();
+        raised!.Severity.Should().Be("warning");
+        raised.Title.Should().Contain("alice");
+    }
+
+    [Fact]
+    public void NotifyFixCommitted_RaisesWithSuccessSeverity()
+    {
+        InAppNotification? raised = null;
+        _sut.NotificationRaised += n => raised = n;
+
+        _sut.NotifyFixCommitted(CreatePr(1));
+
+        raised.Should().NotBeNull();
+        raised!.Title.Should().Be("Fix committed");
+        raised.Severity.Should().Be("success");
+    }
+
+    [Fact]
+    public void ProcessStateTransitions_YellowToRed_RaisesNotification()
+    {
+        var pr = CreatePr(1);
+        var raised = new List<InAppNotification>();
+        _sut.NotificationRaised += n => raised.Add(n);
+
+        var previous = new List<PullRequestWithChecks>
+        {
+            CreatePrWithChecks(pr, [CreateCheck("build", "in_progress", null)])
+        };
+        var current = new List<PullRequestWithChecks>
+        {
+            CreatePrWithChecks(pr, [CreateCheck("build", "completed", "failure")])
+        };
+
+        _sut.ProcessStateTransitions(previous, current);
+
+        raised.Should().ContainSingle();
+        raised[0].Severity.Should().Be("error");
+        raised[0].Title.Should().Contain("build");
+    }
+
+    #endregion
+
     #region Helpers
 
     private static PullRequest CreatePr(int number) => new()
