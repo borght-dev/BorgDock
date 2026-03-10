@@ -9,6 +9,9 @@
         <conv:StatusToColorConverter x:Key="StatusToColor" />
         <conv:MergeScoreToColorConverter x:Key="ScoreToColor" />
         <conv:ScoreToArcGeometryConverter x:Key="ScoreToArc" />
+        <conv:SegmentArcConverter x:Key="SegmentArc" />
+        <conv:SignalTooltipConverter x:Key="SignalTooltip" />
+        <conv:RingLegendTooltipConverter x:Key="RingLegendTooltip" />
         <conv:LabelToVariantConverter x:Key="LabelToVariant" />
         <conv:InitialsToColorConverter x:Key="InitialsToColor" />
         <conv:BoolToAngleConverter x:Key="BoolToAngle" />
@@ -74,26 +77,96 @@
                     <ColumnDefinition Width="Auto" MinWidth="110" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Column 0: Merge Score Ring -->
+                <!-- Column 0: Multi-Signal Indicator -->
                 <Grid Grid.Column="0" Width="38" Height="38" VerticalAlignment="Top">
-                    <!-- Canvas for absolute-coordinate ring rendering -->
-                    <Canvas>
-                        <Ellipse Canvas.Left="5" Canvas.Top="5" Width="28" Height="28"
-                                 StrokeThickness="3"
-                                 Stroke="{DynamicResource SurfaceRaisedBrush}"
-                                 Fill="Transparent" />
-                        <Path StrokeThickness="3"
-                              Stroke="{Binding MergeScore, Converter={StaticResource ScoreToColor}}"
-                              Data="{Binding MergeScore, Converter={StaticResource ScoreToArc}}"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round" />
-                    </Canvas>
-                    <!-- Score text -->
-                    <TextBlock Text="{Binding MergeScore}"
-                               FontSize="10" FontWeight="Bold"
-                               FontFamily="{DynamicResource CodeFontFamily}"
-                               Foreground="{Binding MergeScore, Converter={StaticResource ScoreToColor}}"
-                               ExampletalAlignment="Center" VerticalAlignment="Center" />
+                    <!-- SegmentRing style -->
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IndicatorStyle}" Value="SignalDots">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.ToolTip>
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource RingLegendTooltip}">
+                                        <Binding Path="CiSignalColor" />
+                                        <Binding Path="ReviewSignalColor" />
+                                        <Binding Path="ConflictSignalColor" />
+                                        <Binding Path="DraftSignalColor" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Grid.ToolTip>
+                        <Canvas>
+                            <!-- Background track -->
+                            <Ellipse Canvas.Left="5" Canvas.Top="5" Width="28" Height="28"
+                                     StrokeThickness="3"
+                                     Stroke="{DynamicResource SurfaceRaisedBrush}"
+                                     Fill="Transparent" />
+                            <!-- CI segment (top-right) -->
+                            <Path StrokeThickness="3"
+                                  Stroke="{Binding CiSignalColor, Converter={StaticResource StatusToColor}}"
+                                  Data="{Binding CiSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=0}"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  ToolTip="{Binding CiSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='CI Checks'}" />
+                            <!-- Reviews segment (bottom-right) -->
+                            <Path StrokeThickness="3"
+                                  Stroke="{Binding ReviewSignalColor, Converter={StaticResource StatusToColor}}"
+                                  Data="{Binding ReviewSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=1}"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  ToolTip="{Binding ReviewSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Reviews'}" />
+                            <!-- Conflicts segment (bottom-left) -->
+                            <Path StrokeThickness="3"
+                                  Stroke="{Binding ConflictSignalColor, Converter={StaticResource StatusToColor}}"
+                                  Data="{Binding ConflictSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=2}"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  ToolTip="{Binding ConflictSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Conflicts'}" />
+                            <!-- Ready for Review segment (top-left) -->
+                            <Path StrokeThickness="3"
+                                  Stroke="{Binding DraftSignalColor, Converter={StaticResource StatusToColor}}"
+                                  Data="{Binding DraftSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=3}"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  ToolTip="{Binding DraftSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Ready for Review'}" />
+                        </Canvas>
+                        <!-- Blocker count in center -->
+                        <TextBlock Text="{Binding BlockerCount}"
+                                   FontSize="10" FontWeight="Bold"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   Foreground="{Binding BlockerCountColor, Converter={StaticResource StatusToColor}}"
+                                   ExampletalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- SignalDots style -->
+                    <StackPanel VerticalAlignment="Center" ExampletalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IndicatorStyle}" Value="SignalDots">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Ellipse Width="6" Height="6" Margin="0,1.5"
+                                 Fill="{Binding CiSignalColor, Converter={StaticResource StatusToColor}}"
+                                 ToolTip="{Binding CiSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='CI Checks'}" />
+                        <Ellipse Width="6" Height="6" Margin="0,1.5"
+                                 Fill="{Binding ReviewSignalColor, Converter={StaticResource StatusToColor}}"
+                                 ToolTip="{Binding ReviewSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Reviews'}" />
+                        <Ellipse Width="6" Height="6" Margin="0,1.5"
+                                 Fill="{Binding ConflictSignalColor, Converter={StaticResource StatusToColor}}"
+                                 ToolTip="{Binding ConflictSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Conflicts'}" />
+                        <Ellipse Width="6" Height="6" Margin="0,1.5"
+                                 Fill="{Binding DraftSignalColor, Converter={StaticResource StatusToColor}}"
+                                 ToolTip="{Binding DraftSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Ready for Review'}" />
+                    </StackPanel>
                 </Grid>
 
                 <!-- Column 1: PR Info -->
@@ -473,26 +546,92 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Merge score ring -->
+                        <!-- Multi-Signal Indicator (expanded) -->
                         <Grid Grid.Column="0" Width="42" Height="42" Margin="0,0,12,0"
                               VerticalAlignment="Center">
-                            <Canvas Width="38" Height="38"
-                                    ExampletalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Canvas.Left="5" Canvas.Top="5"
-                                         Width="28" Height="28"
-                                         Stroke="{DynamicResource SubtleBorderBrush}"
-                                         StrokeThickness="2.5" Fill="Transparent" />
-                                <Path Data="{Binding MergeScore, Converter={StaticResource ScoreToArc}}"
-                                      Stroke="{Binding MergeScore, Converter={StaticResource ScoreToColor}}"
-                                      StrokeThickness="2.5"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round" />
-                            </Canvas>
-                            <TextBlock Text="{Binding MergeScore}"
-                                       ExampletalAlignment="Center" VerticalAlignment="Center"
-                                       FontSize="10" FontWeight="Bold"
-                                       FontFamily="{DynamicResource CodeFontFamily}"
-                                       Foreground="{Binding MergeScore, Converter={StaticResource ScoreToColor}}" />
+                            <!-- SegmentRing style -->
+                            <Grid>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IndicatorStyle}" Value="SignalDots">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Grid.ToolTip>
+                                    <TextBlock>
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource RingLegendTooltip}">
+                                                <Binding Path="CiSignalColor" />
+                                                <Binding Path="ReviewSignalColor" />
+                                                <Binding Path="ConflictSignalColor" />
+                                                <Binding Path="DraftSignalColor" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Grid.ToolTip>
+                                <Canvas Width="38" Height="38"
+                                        ExampletalAlignment="Center" VerticalAlignment="Center">
+                                    <Ellipse Canvas.Left="5" Canvas.Top="5"
+                                             Width="28" Height="28"
+                                             Stroke="{DynamicResource SubtleBorderBrush}"
+                                             StrokeThickness="2.5" Fill="Transparent" />
+                                    <Path StrokeThickness="2.5"
+                                          Stroke="{Binding CiSignalColor, Converter={StaticResource StatusToColor}}"
+                                          Data="{Binding CiSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=0}"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          ToolTip="{Binding CiSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='CI Checks'}" />
+                                    <Path StrokeThickness="2.5"
+                                          Stroke="{Binding ReviewSignalColor, Converter={StaticResource StatusToColor}}"
+                                          Data="{Binding ReviewSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=1}"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          ToolTip="{Binding ReviewSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Reviews'}" />
+                                    <Path StrokeThickness="2.5"
+                                          Stroke="{Binding ConflictSignalColor, Converter={StaticResource StatusToColor}}"
+                                          Data="{Binding ConflictSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=2}"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          ToolTip="{Binding ConflictSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Conflicts'}" />
+                                    <Path StrokeThickness="2.5"
+                                          Stroke="{Binding DraftSignalColor, Converter={StaticResource StatusToColor}}"
+                                          Data="{Binding DraftSignalColor, Converter={StaticResource SegmentArc}, ConverterParameter=3}"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          ToolTip="{Binding DraftSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Ready for Review'}" />
+                                </Canvas>
+                                <TextBlock Text="{Binding BlockerCount}"
+                                           ExampletalAlignment="Center" VerticalAlignment="Center"
+                                           FontSize="10" FontWeight="Bold"
+                                           FontFamily="{DynamicResource CodeFontFamily}"
+                                           Foreground="{Binding BlockerCountColor, Converter={StaticResource StatusToColor}}" />
+                            </Grid>
+
+                            <!-- SignalDots style (expanded) -->
+                            <StackPanel VerticalAlignment="Center" ExampletalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IndicatorStyle}" Value="SignalDots">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <Ellipse Width="7" Height="7" Margin="0,1.5"
+                                         Fill="{Binding CiSignalColor, Converter={StaticResource StatusToColor}}"
+                                         ToolTip="{Binding CiSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='CI Checks'}" />
+                                <Ellipse Width="7" Height="7" Margin="0,1.5"
+                                         Fill="{Binding ReviewSignalColor, Converter={StaticResource StatusToColor}}"
+                                         ToolTip="{Binding ReviewSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Reviews'}" />
+                                <Ellipse Width="7" Height="7" Margin="0,1.5"
+                                         Fill="{Binding ConflictSignalColor, Converter={StaticResource StatusToColor}}"
+                                         ToolTip="{Binding ConflictSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Conflicts'}" />
+                                <Ellipse Width="7" Height="7" Margin="0,1.5"
+                                         Fill="{Binding DraftSignalColor, Converter={StaticResource StatusToColor}}"
+                                         ToolTip="{Binding DraftSignalColor, Converter={StaticResource SignalTooltip}, ConverterParameter='Ready for Review'}" />
+                            </StackPanel>
                         </Grid>
 
                         <!-- Readiness checklist -->
