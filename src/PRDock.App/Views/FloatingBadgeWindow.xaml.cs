@@ -105,4 +105,10 @@ public partial class FloatingBadgeWindow : Window
             }
         }
     }
+
+    private void ExpandedPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Prevent window drag when clicking inside the expanded panel
+        e.Handled = true;
+    }
 }

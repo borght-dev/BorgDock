@@ -46,7 +46,7 @@ public class FloatingBadgeViewModelTests
 
         vm.Update(4, 0, 2);
 
-        vm.BadgeText.Should().Be("4 PRs \u00b7 2 pending");
+        vm.BadgeText.Should().Be("4 PRs \u00b7 2 in progress");
     }
 
     [Fact]
@@ -80,13 +80,13 @@ public class FloatingBadgeViewModelTests
     }
 
     [Fact]
-    public void Update_FailingPrioritizedOverPending_InBadgeText()
+    public void Update_FailingAndPending_ShowsBothInBadgeText()
     {
         var vm = new FloatingBadgeViewModel();
 
         vm.Update(5, 2, 3);
 
-        vm.BadgeText.Should().Be("5 PRs \u00b7 2 failing");
+        vm.BadgeText.Should().Be("5 PRs \u00b7 2 failing, 3 in progress");
     }
 
     [Theory]

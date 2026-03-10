@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PRDock.App.Models;
 using WpfColor = System.Windows.Media.Color;
 using WpfColorConverter = System.Windows.Media.ColorConverter;
 using System.Windows.Media;
@@ -48,9 +49,25 @@ public partial class FloatingBadgeViewModel : ObservableObject
     [ObservableProperty]
     private double _healthFraction = 1.0;
 
+    [ObservableProperty]
+    private bool _isExpanded;
+
+    [ObservableProperty]
+    private int _needsReviewCount;
+
+    [ObservableProperty]
+    private int _readyCount;
+
+    [ObservableProperty]
+    private string _lastUpdatedText = "";
+
     public ObservableCollection<string> PrStatuses { get; } = [];
 
     public ObservableCollection<BadgeAuthorInfo> AuthorInitials { get; } = [];
+
+    public ObservableCollection<BadgePrItem> MyPrs { get; } = [];
+
+    public ObservableCollection<BadgePrItem> TeamPrs { get; } = [];
 
     public event Action? ExpandSidebarRequested;
 
@@ -59,6 +76,9 @@ public partial class FloatingBadgeViewModel : ObservableObject
     public event Action<string>? DockSideRequested;
 
     public event Action? SettingsRequested;
+
+    /// <summary>Fires with (prNumber, repoOwner, repoName) when user clicks a PR in the expanded panel.</summary>
+    public event Action<int, string, string>? PrDetailRequested;
 
     public void Update(int totalPrCount, int failingCount, int pendingCount,
         IReadOnlyList<string>? prStatuses = null,
@@ -90,6 +110,77 @@ public partial class FloatingBadgeViewModel : ObservableObject
         }
     }
 
+    public void UpdateExpanded(IReadOnlyList<PullRequestWithChecks> prs, string currentUsername)
+    {
+        var total = prs.Count;
+        var failing = prs.Count(r => r.OverallStatus == "red");
+        var pending = prs.Count(r => r.OverallStatus == "yellow");
+        var prStatuses = prs.Select(r => r.OverallStatus).ToList();
+        var authors = prs
+            .Select(r => r.PullRequest.AuthorLogin)
+            .Where(l => !string.IsNullOrEmpty(l))
+            .Distinct()
+            .Take(3)
+            .Select(login => new BadgeAuthorInfo
+            {
+                Initials = GetInitials(login),
+                BackgroundBrush = GetAuthorBrush(login)
+            })
+            .ToList();
+
+        Update(total, failing, pending, prStatuses, authors);
+
+        var mine = prs.Where(p =>
+            string.Equals(p.PullRequest.AuthorLogin, currentUsername, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var team = prs.Where(p =>
+            !string.Equals(p.PullRequest.AuthorLogin, currentUsername, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        MyPrs.Clear();
+        foreach (var pr in mine) MyPrs.Add(ToBadgePrItem(pr));
+
+        TeamPrs.Clear();
+        foreach (var pr in team) TeamPrs.Add(ToBadgePrItem(pr));
+
+        NeedsReviewCount = prs.Count(p =>
+            p.PullRequest.ReviewStatus is ReviewStatus.None or ReviewStatus.Pending);
+        ReadyCount = prs.Count(p =>
+            p.OverallStatus == "green" && p.PullRequest.ReviewStatus == ReviewStatus.Approved);
+
+        LastUpdatedText = DateTime.Now.ToString("h:mm tt");
+    }
+
+    private static BadgePrItem ToBadgePrItem(PullRequestWithChecks prc)
+    {
+        var pr = prc.PullRequest;
+        var checksText = prc.Checks.Count > 0
+            ? $"{prc.PassedCount}/{prc.Checks.Count}"
+            : "";
+
+        return new BadgePrItem
+        {
+            Title = pr.Title,
+            Number = pr.Number,
+            TimeAgo = FormatTimeAgo(pr.UpdatedAt),
+            StatusColor = prc.OverallStatus,
+            ChecksText = checksText,
+            IsInProgress = prc.OverallStatus == "yellow",
+            RepoOwner = pr.RepoOwner,
+            RepoName = pr.RepoName,
+        };
+    }
+
+    internal static string FormatTimeAgo(DateTime updatedAt)
+    {
+        var elapsed = DateTime.UtcNow - updatedAt;
+        if (elapsed.TotalMinutes < 1) return "now";
+        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
+        if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";
+        if (elapsed.TotalDays < 7) return $"{(int)elapsed.TotalDays}d ago";
+        return $"{(int)(elapsed.TotalDays / 7)}w ago";
+    }
+
     public async void ShowToast(string message, int durationMs = 4000)
     {
         ToastText = message;
@@ -105,14 +196,13 @@ public partial class FloatingBadgeViewModel : ObservableObject
     internal static string FormatBadgeText(int total, int failing, int pending)
     {
         var prLabel = total == 1 ? "PR" : "PRs";
+        var parts = new List<string>(2);
+        if (failing > 0) parts.Add($"{failing} failing");
+        if (pending > 0) parts.Add($"{pending} in progress");
 
-        if (failing > 0)
-            return $"{total} {prLabel} \u00b7 {failing} failing";
-
-        if (pending > 0)
-            return $"{total} {prLabel} \u00b7 {pending} pending";
-
-        return $"{total} {prLabel}";
+        return parts.Count > 0
+            ? $"{total} {prLabel} \u00b7 {string.Join(", ", parts)}"
+            : $"{total} {prLabel}";
     }
 
     internal static string DetermineBackgroundColor(int failing, int pending)
@@ -124,9 +214,10 @@ public partial class FloatingBadgeViewModel : ObservableObject
 
     internal static string DetermineStatusText(int failing, int pending)
     {
-        if (failing > 0) return $"{failing} failing";
-        if (pending > 0) return $"{pending} pending";
-        return "all clear";
+        var parts = new List<string>(2);
+        if (failing > 0) parts.Add($"{failing} failing");
+        if (pending > 0) parts.Add($"{pending} in progress");
+        return parts.Count > 0 ? string.Join(", ", parts) : "all clear";
     }
 
     private static readonly string[] AvatarPalette =
@@ -176,6 +267,32 @@ public partial class FloatingBadgeViewModel : ObservableObject
     {
         SettingsRequested?.Invoke();
     }
+
+    [RelayCommand]
+    private void ToggleExpand()
+    {
+        IsExpanded = !IsExpanded;
+    }
+
+    [RelayCommand]
+    private void OpenPrDetail(BadgePrItem? item)
+    {
+        if (item is not null)
+            PrDetailRequested?.Invoke(item.Number, item.RepoOwner, item.RepoName);
+    }
+}
+
+public sealed class BadgePrItem
+{
+    public string Title { get; set; } = "";
+    public int Number { get; set; }
+    public string TimeAgo { get; set; } = "";
+    public string StatusColor { get; set; } = "gray";
+    public string ChecksText { get; set; } = "";
+    public bool HasChecksText => !string.IsNullOrEmpty(ChecksText);
+    public bool IsInProgress { get; set; }
+    public string RepoOwner { get; set; } = "";
+    public string RepoName { get; set; } = "";
 }
 
 public sealed class BadgeAuthorInfo
