@@ -35,6 +35,8 @@ public partial class App : System.Windows.Application
     private MainViewModel? _mainViewModel;
     private FloatingBadgeWindow? _floatingBadgeWindow;
     private FloatingBadgeViewModel? _floatingBadgeVm;
+    private NotificationBubbleWindow? _notificationBubbleWindow;
+    private NotificationBubbleViewModel? _notificationBubbleVm;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -139,6 +141,24 @@ public partial class App : System.Windows.Application
         };
         _floatingBadgeVm.QuitRequested += () => Shutdown();
         _floatingBadgeVm.SettingsRequested += () => _mainViewModel?.OpenSettingsCommand.Execute(null);
+        _floatingBadgeVm.PrDetailRequested += (prNumber, repoOwner, repoName) =>
+        {
+            var card = _mainViewModel?.FilteredPullRequests
+                .FirstOrDefault(c => c.Number == prNumber && c.RepoOwner == repoOwner && c.RepoName == repoName);
+            if (card is not null)
+                _mainViewModel!.OnOpenDetailViewRequested(card);
+        };
+
+        // Create notification bubble window
+        _notificationBubbleVm = new NotificationBubbleViewModel();
+        _notificationBubbleWindow = new NotificationBubbleWindow(_notificationBubbleVm);
+
+        // Wire up in-app notifications from NotificationService
+        var notificationService = _serviceProvider.GetRequiredService<INotificationService>();
+        notificationService.NotificationRaised += notification =>
+        {
+            Dispatcher.InvokeAsync(() => _notificationBubbleVm?.Show(notification));
+        };
 
         // Wire up auto-update checks
         var updateService = _serviceProvider.GetRequiredService<IUpdateService>();
@@ -153,23 +173,9 @@ public partial class App : System.Windows.Application
         // Wire up badge updates and start polling (after all event handlers are registered)
         pollingService.PollCompleted += results =>
         {
-            var total = results.Count;
-            var failing = results.Count(r => r.OverallStatus == "red");
-            var pending = results.Count(r => r.OverallStatus == "yellow");
-            var prStatuses = results.Select(r => r.OverallStatus).ToList();
-            var authors = results
-                .Select(r => r.PullRequest.AuthorLogin)
-                .Where(l => !string.IsNullOrEmpty(l))
-                .Distinct()
-                .Take(3)
-                .Select(login => new BadgeAuthorInfo
-                {
-                    Initials = FloatingBadgeViewModel.GetInitials(login),
-                    BackgroundBrush = FloatingBadgeViewModel.GetAuthorBrush(login)
-                })
-                .ToList();
+            var username = settingsService.CurrentSettings.GitHub.Username;
             System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
-                _floatingBadgeVm?.Update(total, failing, pending, prStatuses, authors));
+                _floatingBadgeVm?.UpdateExpanded(results, username));
         };
         pollingService.StartPolling();
 
@@ -392,6 +398,7 @@ public partial class App : System.Windows.Application
         _hotKeyManager?.Dispose();
         _themeManager?.Dispose();
 
+        _notificationBubbleWindow?.Close();
         _floatingBadgeWindow?.Close();
         _notifyIcon?.Dispose();
         _serviceProvider?.Dispose();
