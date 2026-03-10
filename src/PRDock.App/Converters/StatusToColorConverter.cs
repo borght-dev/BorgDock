@@ -18,7 +18,7 @@ public class StatusToColorConverter : IValueConverter
             "red" => app?.TryFindResource("StatusRedBrush") as SolidColorBrush
                      ?? new SolidColorBrush(ColorFromHex("#F87171")),
             "yellow" => app?.TryFindResource("StatusYellowBrush") as SolidColorBrush
-                        ?? new SolidColorBrush(ColorFromHex("#FBBF24")),
+                        ?? new SolidColorBrush(ColorFromHex("#F59E0B")),
             _ => app?.TryFindResource("StatusGrayBrush") as SolidColorBrush
                  ?? new SolidColorBrush(ColorFromHex("#5A5E6A")),
         };

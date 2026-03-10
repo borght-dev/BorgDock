@@ -64,7 +64,7 @@
     <SolidColorBrush x:Key="StatusRedBrush" Color="{StaticResource StatusRedColor}" />
 
     <!-- StatusYellow -->
-    <Color x:Key="StatusYellowColor">#B45309</Color>
+    <Color x:Key="StatusYellowColor">#D97706</Color>
     <SolidColorBrush x:Key="StatusYellowBrush" Color="{StaticResource StatusYellowColor}" />
 
     <!-- StatusGray -->

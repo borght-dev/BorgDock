@@ -40,7 +40,7 @@ public partial class FloatingBadgeWindow : Window
         var glowColor = vm.BackgroundColor switch
         {
             "red" => WpfColor.FromRgb(0xF8, 0x71, 0x71),
-            "yellow" => WpfColor.FromRgb(0xFB, 0xBF, 0x24),
+            "yellow" => WpfColor.FromRgb(0xF5, 0x9E, 0x0B),
             _ => WpfColor.FromRgb(0x34, 0xD3, 0x99),
         };
 
