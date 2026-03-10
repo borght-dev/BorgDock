@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media.Animation;
+using PRDock.App.Infrastructure;
 using PRDock.App.ViewModels;
 using WinFormsScreen = System.Windows.Forms.Screen;
 
@@ -66,21 +67,31 @@ public partial class NotificationBubbleWindow : Window
 
     private void PlaySlideIn()
     {
-        var anim = new DoubleAnimation(400, 0, TimeSpan.FromMilliseconds(300))
+        // Slide in from right (CSS-like slide animation)
+        var slide = new DoubleAnimation(400, 0, AnimationHelper.Slow)
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = AnimationHelper.EaseOut
         };
-        SlideTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        SlideTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, slide);
+
+        // Also fade in for extra polish
+        AnimationHelper.Fade(this, 0, 1, AnimationHelper.Normal);
     }
 
     private void PlaySlideOut()
     {
-        var anim = new DoubleAnimation(0, 400, TimeSpan.FromMilliseconds(250))
+        var slide = new DoubleAnimation(0, 400, AnimationHelper.Normal)
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            EasingFunction = AnimationHelper.EaseIn
         };
-        anim.Completed += (_, _) => Hide();
-        SlideTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        // Fade out simultaneously
+        var fade = new DoubleAnimation(1, 0, AnimationHelper.Normal)
+        {
+            EasingFunction = AnimationHelper.EaseIn
+        };
+        fade.Completed += (_, _) => Hide();
+        BeginAnimation(OpacityProperty, fade);
+        SlideTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, slide);
     }
 
     private void Card_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
