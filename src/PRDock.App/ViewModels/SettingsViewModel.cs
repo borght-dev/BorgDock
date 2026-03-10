@@ -73,6 +73,9 @@ public partial class SettingsViewModel : ObservableObject
     private string _badgeStyle = "GlassCapsule";
 
     [ObservableProperty]
+    private string _indicatorStyle = "SegmentRing";
+
+    [ObservableProperty]
     private string _editorCommand = "code";
 
     [ObservableProperty]
@@ -197,6 +200,7 @@ public partial class SettingsViewModel : ObservableObject
     public static IReadOnlyList<string> ThemeOptions { get; } = ["system", "light", "dark"];
     public static IReadOnlyList<string> BadgeStyleOptions { get; } =
         ["GlassCapsule", "MinimalNotch", "FloatingIsland", "LiquidMorph", "SpectralBar"];
+    public static IReadOnlyList<string> IndicatorStyleOptions { get; } = ["SegmentRing", "SignalDots"];
     public static IReadOnlyList<string> PostFixActionOptions { get; } = ["commitAndNotify", "commitOnly", "notifyOnly", "none"];
 
     // --- Commands ---
@@ -256,6 +260,7 @@ public partial class SettingsViewModel : ObservableObject
         SidebarWidthPx = settings.UI.SidebarWidthPx;
         Theme = settings.UI.Theme;
         BadgeStyle = settings.UI.BadgeStyle;
+        IndicatorStyle = settings.UI.IndicatorStyle;
         EditorCommand = settings.UI.EditorCommand;
         RunAtStartup = settings.UI.RunAtStartup;
 
@@ -302,6 +307,7 @@ public partial class SettingsViewModel : ObservableObject
                 SidebarWidthPx = SidebarWidthPx,
                 Theme = Theme,
                 BadgeStyle = BadgeStyle,
+                IndicatorStyle = IndicatorStyle,
                 GlobalHotkey = GlobalHotkey,
                 EditorCommand = EditorCommand,
                 RunAtStartup = RunAtStartup

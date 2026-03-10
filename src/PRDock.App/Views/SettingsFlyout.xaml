@@ -699,6 +699,13 @@
                                   Style="{StaticResource InputComboBoxStyle}"
                                   Margin="0,0,0,2" />
 
+                        <TextBlock Text="PR indicator" Style="{StaticResource FieldLabelStyle}" />
+                        <ComboBox AutomationProperties.AutomationId="IndicatorStyleComboBox"
+                                  ItemsSource="{Binding IndicatorStyleOptions}"
+                                  SelectedItem="{Binding IndicatorStyle, Mode=TwoWay}"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  Margin="0,0,0,2" />
+
                         <TextBlock Text="Editor command" Style="{StaticResource FieldLabelStyle}" />
                         <TextBox AutomationProperties.AutomationId="EditorCommandTextBox"
                                  Text="{Binding EditorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

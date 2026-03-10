@@ -61,6 +61,11 @@ public partial class MainViewModel : ObservableObject
             _httpClient.AuthenticationFailed += OnAuthenticationFailed;
         }
 
+        if (_settingsService is not null)
+        {
+            _settingsService.SettingsChanged += OnSettingsChanged;
+        }
+
         // Cleanup old prompt files on startup
         _claudeCodeLauncher?.CleanupOldPromptFiles();
     }
@@ -249,6 +254,13 @@ public partial class MainViewModel : ObservableObject
             UpdateUi();
     }
 
+    private void OnSettingsChanged(AppSettings settings)
+    {
+        var style = settings.UI.IndicatorStyle;
+        foreach (var card in _allPullRequests)
+            card.IndicatorStyle = style;
+    }
+
     private void OnAuthenticationFailed()
     {
         void UpdateUi()
@@ -378,6 +390,7 @@ public partial class MainViewModel : ObservableObject
         card.ApprovalCount = prWithChecks.PullRequest.ReviewStatus == PRDock.App.Models.ReviewStatus.Approved ? 1 : 0;
 
         card.ComputeMergeScore();
+        card.IndicatorStyle = _settingsService?.CurrentSettings.UI.IndicatorStyle ?? "SegmentRing";
 
         return card;
     }
