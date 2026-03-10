@@ -100,7 +100,7 @@
             </Setter>
         </Style>
 
-        <!-- Header button style -->
+        <!-- Header button style with scale hover animation -->
         <Style x:Key="HeaderButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource IconButtonBackgroundBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource IconButtonForegroundBrush}" />
@@ -110,6 +110,12 @@
             <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                </Setter.Value>
+            </Setter>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -129,6 +135,44 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.12" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.12" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.0" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.0" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -199,10 +243,10 @@
                             </TextBlock>
                         </Border>
 
-                        <!-- Status dot: RED when FailingCount > 0, GREEN when 0, with glow -->
+                        <!-- Status dot: RED when FailingCount > 0, GREEN when 0, with glow + pulse -->
                         <Grid Width="8" Height="8" Margin="0,0,10,0">
-                            <!-- Glow layer -->
-                            <Ellipse Width="8" Height="8">
+                            <!-- Glow layer with pulse animation (CSS: dp 1.5s ease-in-out infinite) -->
+                            <Ellipse x:Name="StatusGlow" Width="8" Height="8">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
                                         <Setter Property="Fill" Value="{DynamicResource StatusRedBrush}" />
@@ -219,6 +263,22 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Ellipse.Style>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                <DoubleAnimation
+                                                    Storyboard.TargetProperty="Opacity"
+                                                    From="0.3" To="0.8"
+                                                    Duration="0:0:1.5">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseInOut" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
                             </Ellipse>
                             <!-- Solid dot -->
                             <Ellipse Width="7" Height="7" ExampletalAlignment="Center" VerticalAlignment="Center">
@@ -559,14 +619,19 @@
              MUST keep x:Name="SettingsFlyoutPanel" — code-behind references it
              ═══════════════════════════════════════════════════════════════ -->
         <Border x:Name="SettingsOverlay"
-                Visibility="{Binding IsSettingsOpen, Converter={StaticResource BoolToVis}}"
+                Visibility="Collapsed"
                 Background="{DynamicResource OverlayBgBrush}"
-                Panel.ZIndex="100">
-            <Border ExampletalAlignment="Right"
+                Panel.ZIndex="100"
+                Opacity="0">
+            <Border x:Name="SettingsFlyoutBorder"
+                    ExampletalAlignment="Right"
                     Width="360"
                     Background="{DynamicResource CardBackgroundBrush}"
                     BorderBrush="{DynamicResource SubtleBorderBrush}"
                     BorderThickness="1,0,0,0">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="SettingsFlyoutTranslate" X="360" />
+                </Border.RenderTransform>
                 <views:SettingsFlyout x:Name="SettingsFlyoutPanel" />
             </Border>
         </Border>

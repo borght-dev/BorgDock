@@ -2,7 +2,10 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Microsoft.Extensions.DependencyInjection;
+using PRDock.App.Infrastructure;
 using PRDock.App.Models;
 using PRDock.App.Services;
 using PRDock.App.ViewModels;
@@ -20,6 +23,15 @@ public partial class SidebarWindow : Window
         DataContext = viewModel;
         InitializeComponent();
         Loaded += SidebarWindow_Loaded;
+        IsVisibleChanged += SidebarWindow_IsVisibleChanged;
+    }
+
+    private void SidebarWindow_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true && IsLoaded)
+        {
+            PlayEntranceAnimation();
+        }
     }
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
@@ -27,13 +39,22 @@ public partial class SidebarWindow : Window
     private void SidebarWindow_Loaded(object sender, RoutedEventArgs e)
     {
         PositionAtScreenEdge();
+        PlayEntranceAnimation();
 
-        // Wire settings flyout when it opens
+        // Wire settings flyout when it opens/closes
         ViewModel.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(MainViewModel.IsSettingsOpen) && ViewModel.IsSettingsOpen)
+            if (args.PropertyName == nameof(MainViewModel.IsSettingsOpen))
             {
-                WireSettingsFlyout();
+                if (ViewModel.IsSettingsOpen)
+                {
+                    WireSettingsFlyout();
+                    PlaySettingsOpenAnimation();
+                }
+                else
+                {
+                    PlaySettingsCloseAnimation();
+                }
             }
         };
 
@@ -42,6 +63,55 @@ public partial class SidebarWindow : Window
 
         // Wire PR detail view
         ViewModel.OpenPRDetailRequested += OnOpenPRDetailRequested;
+    }
+
+    private void PlayEntranceAnimation()
+    {
+        // Slide the entire window in from off-screen so background moves with content
+        var sidebarWidth = ActualWidth > 0 ? ActualWidth : Width;
+        var finalLeft = Left;
+
+        // Start off-screen: right-docked slides in from the right, left-docked from the left
+        var offScreenLeft = _sidebarEdge == "left"
+            ? finalLeft - sidebarWidth
+            : finalLeft + sidebarWidth;
+
+        var slide = new DoubleAnimation(offScreenLeft, finalLeft, AnimationHelper.Slow)
+        {
+            EasingFunction = AnimationHelper.EaseOut
+        };
+        BeginAnimation(LeftProperty, slide);
+    }
+
+    private void PlaySettingsOpenAnimation()
+    {
+        SettingsOverlay.Visibility = Visibility.Visible;
+
+        // Fade in overlay background
+        AnimationHelper.Fade(SettingsOverlay, 0, 1, AnimationHelper.Normal);
+
+        // Slide flyout panel in from right
+        var slide = new DoubleAnimation(360, 0, AnimationHelper.Normal)
+        {
+            EasingFunction = AnimationHelper.EaseOut
+        };
+        SettingsFlyoutTranslate.BeginAnimation(TranslateTransform.XProperty, slide);
+    }
+
+    private void PlaySettingsCloseAnimation()
+    {
+        // Fade out overlay background
+        AnimationHelper.Fade(SettingsOverlay, 1, 0, AnimationHelper.Normal, () =>
+        {
+            SettingsOverlay.Visibility = Visibility.Collapsed;
+        });
+
+        // Slide flyout panel out to the right
+        var slide = new DoubleAnimation(0, 360, AnimationHelper.Normal)
+        {
+            EasingFunction = AnimationHelper.EaseIn
+        };
+        SettingsFlyoutTranslate.BeginAnimation(TranslateTransform.XProperty, slide);
     }
 
     private void OnManageWorktreesRequested()
