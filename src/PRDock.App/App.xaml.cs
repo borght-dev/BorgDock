@@ -42,6 +42,14 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Dev showcase mode: show all badge variants side by side
+        if (e.Args.Contains("--showcase"))
+        {
+            var showcase = new Views.BadgeShowcaseWindow();
+            showcase.Show();
+            return;
+        }
+
         // Single-instance check
         _singleInstanceMutex = new Mutex(true, "PRDock_SingleInstance", out bool createdNew);
         if (!createdNew)
