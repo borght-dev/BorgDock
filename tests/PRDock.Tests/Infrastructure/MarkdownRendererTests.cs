@@ -72,4 +72,34 @@ public class MarkdownRendererTests
         var renderer = new MarkdownRenderer();
         renderer.Should().BeAssignableTo<IMarkdownRenderer>();
     }
+
+    [Fact]
+    public void RenderBlocks_SimpleTable_ReturnsTableBlock()
+    {
+        var md = "| A | B |\n|---|---|\n| 1 | 2 |";
+        var blocks = _renderer.RenderBlocks(md).ToList();
+
+        blocks.Should().ContainSingle()
+            .Which.Should().BeOfType<Table>();
+    }
+
+    [Fact]
+    public void RenderBlocks_TableAfterParagraphNoBlankLine_ReturnsTableBlock()
+    {
+        var md = "**Related file changes:**\n| File | Change Type |\n|------|-------------|\n| foo.cs | Modified |";
+        var blocks = _renderer.RenderBlocks(md).ToList();
+
+        blocks.Should().HaveCount(2);
+        blocks[1].Should().BeOfType<Table>();
+    }
+
+    [Fact]
+    public void RenderBlocks_TableAfterParagraphWithBlankLine_ReturnsTableBlock()
+    {
+        var md = "**Related file changes:**\n\n| File | Change Type |\n|------|-------------|\n| foo.cs | Modified |";
+        var blocks = _renderer.RenderBlocks(md).ToList();
+
+        blocks.Should().HaveCount(2);
+        blocks[1].Should().BeOfType<Table>();
+    }
 }

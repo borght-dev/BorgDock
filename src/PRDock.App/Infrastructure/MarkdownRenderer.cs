@@ -38,6 +38,7 @@ public class MarkdownRenderer : IMarkdownRenderer
         if (string.IsNullOrWhiteSpace(markdown))
             return [new Run("")];
 
+        markdown = PreProcessMarkdown(markdown);
         var doc = Markdig.Markdown.Parse(markdown, Pipeline);
         var inlines = new List<WpfInline>();
         foreach (var block in doc)
@@ -56,6 +57,7 @@ public class MarkdownRenderer : IMarkdownRenderer
 
         try
         {
+            markdown = PreProcessMarkdown(markdown);
             var doc = Markdig.Markdown.Parse(markdown, Pipeline);
             var blocks = new List<WpfBlock>();
             foreach (var block in doc)
@@ -264,6 +266,16 @@ public class MarkdownRenderer : IMarkdownRenderer
         }
 
         return codePara;
+    }
+
+    private static string PreProcessMarkdown(string markdown)
+    {
+        // Normalize line endings
+        markdown = markdown.Replace("\r\n", "\n");
+        // Markdig's pipe table parser needs a blank line before the table when
+        // it follows a paragraph. GitHub API markdown may omit this blank line.
+        markdown = Regex.Replace(markdown, @"(^|\n)((?!\|)[^\n]+)\n(\|)", "$1$2\n\n$3");
+        return markdown;
     }
 
     private static Brush ResolveBrush(string key, Brush fallback) =>
