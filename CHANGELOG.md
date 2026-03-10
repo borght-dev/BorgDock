@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 — 2026-03-10
+
+### Bug Fixes
+
+- **Notification windows are no longer transparent** — Floating notifications and badge toasts now have a solid background instead of being see-through, so they're readable regardless of what's behind them.
+
 ## 1.0.1 — 2026-03-10
 
 ### Improvements
