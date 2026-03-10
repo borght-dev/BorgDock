@@ -25,7 +25,7 @@
 
     <!-- Main notification card -->
     <Border x:Name="NotificationCard" Margin="8" CornerRadius="12" ClipToBounds="True"
-            Background="{DynamicResource SurfaceRaisedBrush}"
+            Background="{DynamicResource CardBackgroundBrush}"
             BorderThickness="1"
             MouseEnter="Card_MouseEnter"
             MouseLeave="Card_MouseLeave">

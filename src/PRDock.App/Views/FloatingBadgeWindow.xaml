@@ -23,7 +23,7 @@
         <!-- Toast bubble (appears above the badge) -->
         <Border x:Name="ToastBorder" Grid.Row="0" CornerRadius="10" Padding="12,8" Margin="0,0,0,6"
                 ExampletalAlignment="Center"
-                Background="{DynamicResource SurfaceRaisedBrush}"
+                Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource SubtleBorderBrush}"
                 BorderThickness="1">
             <Border.Effect>
