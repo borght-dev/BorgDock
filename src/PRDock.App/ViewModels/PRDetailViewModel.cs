@@ -82,14 +82,17 @@ public partial class PRDetailViewModel : ObservableObject
     [ObservableProperty] private int _mergeScore;
     [ObservableProperty] private int _passedChecks;
     [ObservableProperty] private int _totalChecks;
+    [ObservableProperty] private int _skippedChecks;
     [ObservableProperty] private int _approvalCount;
 
     // Readiness display booleans
     [ObservableProperty] private bool _isChecksPassing;
+    [ObservableProperty] private bool _hasChecksInProgress;
     [ObservableProperty] private bool _hasApproval;
     [ObservableProperty] private bool _isConflictFree;
     [ObservableProperty] private bool _isNotDraft;
     [ObservableProperty] private string _checksReadinessDetail = "";
+    [ObservableProperty] private string _checksTabLabel = "";
     [ObservableProperty] private string _approvalsReadinessDetail = "";
     [ObservableProperty] private string _conflictsReadinessDetail = "";
     [ObservableProperty] private string _draftReadinessDetail = "";
@@ -155,14 +158,20 @@ public partial class PRDetailViewModel : ObservableObject
         MergeScore = card.MergeScore;
         PassedChecks = card.PassedChecks;
         TotalChecks = card.TotalChecks;
+        SkippedChecks = card.SkippedChecks;
         ApprovalCount = card.ApprovalCount;
 
         IsChecksPassing = card.StatusDotColor == "green";
+        HasChecksInProgress = card.HasChecksInProgress;
         HasApproval = card.ApprovalCount >= 1;
         IsConflictFree = !card.HasMergeConflict;
         IsNotDraft = !card.IsDraft;
 
-        ChecksReadinessDetail = $"{card.PassedChecks}/{card.TotalChecks} passing";
+        var detailParts = new List<string> { $"{card.PassedChecks}/{card.TotalChecks} passing" };
+        if (card.HasChecksInProgress) detailParts.Add("in progress");
+        if (card.SkippedChecks > 0) detailParts.Add($"{card.SkippedChecks} skipped");
+        ChecksReadinessDetail = string.Join(", ", detailParts);
+        ChecksTabLabel = card.ChecksCountLabel;
         ApprovalsReadinessDetail = $"{card.ApprovalCount} approval{(card.ApprovalCount != 1 ? "s" : "")}";
         ConflictsReadinessDetail = card.HasMergeConflict ? "Has merge conflicts" : "Clean merge";
         DraftReadinessDetail = card.IsDraft ? "Still in draft" : "Ready for review";
@@ -299,7 +308,7 @@ public partial class PRDetailViewModel : ObservableObject
             var deduped = allRuns
                 .GroupBy(r => r.Name)
                 .Select(g => g.OrderByDescending(r => r.Id).First())
-                .OrderBy(r => r.IsFailed ? 0 : r.Status != "completed" ? 1 : 2)
+                .OrderBy(r => r.IsFailed ? 0 : r.IsPending ? 1 : r.IsSkipped ? 3 : 2)
                 .ThenBy(r => r.Name)
                 .ToList();
 
@@ -307,9 +316,20 @@ public partial class PRDetailViewModel : ObservableObject
             foreach (var run in deduped)
                 CheckRuns.Add(run);
 
+            var pendingCount = deduped.Count(r => r.IsPending);
             PassedChecks = deduped.Count(r => r.Conclusion == "success");
             TotalChecks = deduped.Count;
-            ChecksReadinessDetail = $"{PassedChecks}/{TotalChecks} passing";
+            SkippedChecks = deduped.Count(r => r.IsSkipped);
+            HasChecksInProgress = pendingCount > 0;
+
+            var parts = new List<string> { $"{PassedChecks}/{TotalChecks} passing" };
+            if (pendingCount > 0) parts.Add($"{pendingCount} in progress");
+            if (SkippedChecks > 0) parts.Add($"{SkippedChecks} skipped");
+            ChecksReadinessDetail = string.Join(", ", parts);
+
+            ChecksTabLabel = SkippedChecks > 0
+                ? $"{PassedChecks}/{TotalChecks}, {SkippedChecks} skipped"
+                : $"{PassedChecks}/{TotalChecks}";
 
             _checksLoaded = true;
         }

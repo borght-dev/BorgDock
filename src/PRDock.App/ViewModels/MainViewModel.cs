@@ -337,6 +337,7 @@ public partial class MainViewModel : ObservableObject
             FirstFailedRunId = firstFailedCheck?.CheckSuiteId ?? 0,
             HasAllChecksPassed = hasAllChecksPassed,
             HasFailingChecks = prWithChecks.OverallStatus == "red",
+            HasChecksInProgress = prWithChecks.Checks.Any(c => c.IsPending),
             CanBypassMerge = canBypassMerge,
             FailedCheckRuns = prWithChecks.Checks.Where(c => c.IsFailed).ToList(),
             RerunRequested = OnRerunRequested,
@@ -362,6 +363,10 @@ public partial class MainViewModel : ObservableObject
         card.CommitCount = prWithChecks.PullRequest.CommitCount;
         card.PassedChecks = prWithChecks.PassedCount;
         card.TotalChecks = prWithChecks.Checks.Count;
+        card.SkippedChecks = prWithChecks.SkippedCount;
+        card.ChecksCountLabel = prWithChecks.SkippedCount > 0
+            ? $"{prWithChecks.PassedCount}/{prWithChecks.Checks.Count}, {prWithChecks.SkippedCount} skipped"
+            : $"{prWithChecks.PassedCount}/{prWithChecks.Checks.Count}";
         card.AuthorInitials = PullRequestCardViewModel.ComputeInitials(prWithChecks.PullRequest.AuthorLogin);
 
         // Labels
@@ -661,7 +666,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private void OnOpenDetailViewRequested(PullRequestCardViewModel card)
+    internal void OnOpenDetailViewRequested(PullRequestCardViewModel card)
     {
         OpenPRDetailRequested?.Invoke(card);
     }
@@ -837,11 +842,14 @@ public partial class MainViewModel : ObservableObject
         var passed = prWithChecks.PassedCount;
         var failed = prWithChecks.FailedCheckNames.Count;
         var pending = prWithChecks.PendingCheckNames.Count;
+        var skipped = prWithChecks.SkippedCount;
         var total = prWithChecks.Checks.Count;
 
-        if (failed > 0) return $"{failed}/{total} failed";
-        if (pending > 0) return $"{pending}/{total} pending";
-        return $"{passed}/{total} passed";
+        var suffix = skipped > 0 ? $", {skipped} skipped" : "";
+
+        if (failed > 0) return $"{failed}/{total} failed{suffix}";
+        if (pending > 0) return $"{pending}/{total} pending{suffix}";
+        return $"{passed}/{total} passed{suffix}";
     }
 
     [RelayCommand]

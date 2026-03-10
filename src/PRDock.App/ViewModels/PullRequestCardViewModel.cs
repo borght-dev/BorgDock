@@ -79,6 +79,9 @@ public partial class PullRequestCardViewModel : ObservableObject
     private bool _hasFailingChecks;
 
     [ObservableProperty]
+    private bool _hasChecksInProgress;
+
+    [ObservableProperty]
     private bool _isCheckDetailLoading;
 
     [ObservableProperty]
@@ -112,6 +115,13 @@ public partial class PullRequestCardViewModel : ObservableObject
 
     [ObservableProperty]
     private int _totalChecks;
+
+    [ObservableProperty]
+    private int _skippedChecks;
+
+    // Formatted check count for display (e.g. "12/16" or "12/16, 1 skipped")
+    [ObservableProperty]
+    private string _checksCountLabel = "";
 
     // Merge score (computed)
     [ObservableProperty]

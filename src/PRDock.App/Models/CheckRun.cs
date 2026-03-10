@@ -14,5 +14,6 @@ public sealed class CheckRun
     public bool IsCompleted => Status == "completed";
     public bool IsSuccess => IsCompleted && Conclusion == "success";
     public bool IsFailed => IsCompleted && (Conclusion == "failure" || Conclusion == "timed_out");
+    public bool IsSkipped => IsCompleted && (Conclusion == "skipped" || Conclusion == "neutral");
     public bool IsPending => !IsCompleted;
 }
