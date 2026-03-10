@@ -58,6 +58,40 @@ public class MainViewModelMergeBypassTests
         card.CanBypassMerge.Should().BeFalse();
     }
 
+    [Fact]
+    public void PollCompleted_WiresToggleDraftCallback()
+    {
+        var polling = Substitute.For<IPRPollingService>();
+        var vm = new MainViewModel(polling);
+
+        polling.PollCompleted += Raise.Event<Action<IReadOnlyList<PullRequestWithChecks>>>(
+            (IReadOnlyList<PullRequestWithChecks>)
+            [
+                MakePrWithChecks(reviewStatus: ReviewStatus.None, mergeable: true, isDraft: true)
+            ]);
+
+        var card = vm.RepoGroups.Single().PullRequests.Single();
+        card.IsDraft.Should().BeTrue();
+        card.ToggleDraftRequested.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void PollCompleted_SetsIsDraft_WhenPrIsDraft()
+    {
+        var polling = Substitute.For<IPRPollingService>();
+        var vm = new MainViewModel(polling);
+
+        polling.PollCompleted += Raise.Event<Action<IReadOnlyList<PullRequestWithChecks>>>(
+            (IReadOnlyList<PullRequestWithChecks>)
+            [
+                MakePrWithChecks(reviewStatus: ReviewStatus.None, mergeable: true, isDraft: true)
+            ]);
+
+        var card = vm.RepoGroups.Single().PullRequests.Single();
+        card.IsDraft.Should().BeTrue();
+        card.StatusDotColor.Should().Be("gray"); // Draft PRs have gray status
+    }
+
     private static PullRequestWithChecks MakePrWithChecks(
         ReviewStatus reviewStatus,
         bool? mergeable,

@@ -346,7 +346,8 @@ public partial class MainViewModel : ObservableObject
             DetailExpandRequested = OnDetailExpandRequested,
             OpenDetailViewRequested = OnOpenDetailViewRequested,
             CheckoutRequested = OnCheckoutRequested,
-            CopyForClaudeRequested = OnCopyForClaudeRequested
+            CopyForClaudeRequested = OnCopyForClaudeRequested,
+            ToggleDraftRequested = OnToggleDraftRequested
         };
 
         foreach (var name in prWithChecks.FailedCheckNames)
@@ -748,6 +749,69 @@ public partial class MainViewModel : ObservableObject
         {
             Serilog.Log.Warning(ex, "Failed to bypass merge for PR #{Number}", card.Number);
             StatusText = $"Bypass merge failed for PR #{card.Number}: {ex.Message}";
+        }
+    }
+
+    private void OnToggleDraftRequested(PullRequestCardViewModel card)
+    {
+        if (card.Number <= 0 || string.IsNullOrWhiteSpace(card.RepoOwner) || string.IsNullOrWhiteSpace(card.RepoName))
+            return;
+
+        var action = card.IsDraft ? "ready for review" : "draft";
+        try
+        {
+            StatusText = $"Marking PR #{card.Number} as {action}...";
+
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "gh",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.StartInfo.ArgumentList.Add("pr");
+            process.StartInfo.ArgumentList.Add("ready");
+            process.StartInfo.ArgumentList.Add(card.Number.ToString());
+            process.StartInfo.ArgumentList.Add("--repo");
+            process.StartInfo.ArgumentList.Add($"{card.RepoOwner}/{card.RepoName}");
+
+            if (!card.IsDraft)
+                process.StartInfo.ArgumentList.Add("--undo");
+
+            process.Start();
+            var stdOutTask = process.StandardOutput.ReadToEndAsync();
+            var stdErrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            var stdOut = stdOutTask.GetAwaiter().GetResult().Trim();
+            var stdErr = stdErrTask.GetAwaiter().GetResult().Trim();
+
+            if (process.ExitCode == 0)
+            {
+                StatusText = $"PR #{card.Number} marked as {action}";
+                // Trigger immediate poll to refresh state
+                if (_pollingService is not null)
+                    _ = _pollingService.PollNowAsync();
+                return;
+            }
+
+            var details = !string.IsNullOrWhiteSpace(stdErr) ? stdErr : stdOut;
+            if (details.Length > 140)
+                details = details[..140] + "...";
+
+            StatusText = string.IsNullOrWhiteSpace(details)
+                ? $"Failed to mark PR #{card.Number} as {action}"
+                : $"Failed to mark PR #{card.Number} as {action}: {details}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to toggle draft for PR #{Number}", card.Number);
+            StatusText = $"Failed to toggle draft for PR #{card.Number}: {ex.Message}";
         }
     }
 

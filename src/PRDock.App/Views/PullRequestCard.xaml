@@ -825,6 +825,52 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Toggle Draft -->
+                    <Button Command="{Binding ToggleDraftCommand}"
+                            Margin="0,0,8,0" Cursor="Hand"
+                            Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                            AutomationProperties.AutomationId="ToggleDraftButton">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="BtnBorder" Background="Transparent"
+                                                    BorderBrush="{DynamicResource DraftBadgeBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter ExampletalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.85" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.72" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Foreground" Value="{DynamicResource DraftBadgeForegroundBrush}" />
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Exampletal">
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Convert to draft" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDraft}" Value="True">
+                                                <Setter Property="Text" Value="Ready for review" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+
                     <!-- Bypass merge (shown when CanBypassMerge) -->
                     <Button Command="{Binding BypassMergeCommand}"
                             Margin="0,0,8,0" Cursor="Hand"

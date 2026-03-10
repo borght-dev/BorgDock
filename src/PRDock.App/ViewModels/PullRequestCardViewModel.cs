@@ -160,6 +160,7 @@ public partial class PullRequestCardViewModel : ObservableObject
     public Action<PullRequestCardViewModel>? OpenDetailViewRequested { get; set; }
     public Action<PullRequestCardViewModel>? CheckoutRequested { get; set; }
     public Action<PullRequestCardViewModel>? CopyForClaudeRequested { get; set; }
+    public Action<PullRequestCardViewModel>? ToggleDraftRequested { get; set; }
 
     [RelayCommand]
     private void RerunFailedChecks()
@@ -306,6 +307,12 @@ public partial class PullRequestCardViewModel : ObservableObject
     private void CheckoutBranch()
     {
         CheckoutRequested?.Invoke(this);
+    }
+
+    [RelayCommand]
+    private void ToggleDraft()
+    {
+        ToggleDraftRequested?.Invoke(this);
     }
 
     public void ComputeMergeScore()

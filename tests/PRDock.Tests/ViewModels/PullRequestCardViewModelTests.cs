@@ -232,4 +232,16 @@ public class PullRequestCardViewModelTests
 
         callbackArg.Should().BeSameAs(vm);
     }
+
+    [Fact]
+    public void ToggleDraftCommand_InvokesToggleDraftRequestedCallback()
+    {
+        var vm = new PullRequestCardViewModel();
+        PullRequestCardViewModel? callbackArg = null;
+        vm.ToggleDraftRequested = card => callbackArg = card;
+
+        vm.ToggleDraftCommand.Execute(null);
+
+        callbackArg.Should().BeSameAs(vm);
+    }
 }

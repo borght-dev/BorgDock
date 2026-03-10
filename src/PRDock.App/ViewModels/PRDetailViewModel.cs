@@ -115,10 +115,14 @@ public partial class PRDetailViewModel : ObservableObject
     [ObservableProperty] private bool _isPostingComment;
     [ObservableProperty] private bool _isSubmittingReview;
 
+    // Toggle draft state
+    [ObservableProperty] private bool _isTogglingDraft;
+
     public event Action? CloseRequested;
     public event Action? RefreshRequested;
     public event Action? RerunChecksRequested;
     public event Action? FixWithClaudeRequested;
+    public event Action? ToggleDraftRequested;
 
     public void Initialize(PullRequestCardViewModel card)
     {
@@ -383,6 +387,12 @@ public partial class PRDetailViewModel : ObservableObject
     private void FixWithClaude()
     {
         FixWithClaudeRequested?.Invoke();
+    }
+
+    [RelayCommand]
+    private void ToggleDraft()
+    {
+        ToggleDraftRequested?.Invoke();
     }
 
     [RelayCommand]

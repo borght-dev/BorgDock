@@ -90,6 +90,7 @@ public partial class SidebarWindow : Window
         };
         vm.RerunChecksRequested += () => card.RerunRequested?.Invoke(card);
         vm.FixWithClaudeRequested += () => card.FixWithClaudeRequested?.Invoke(card);
+        vm.ToggleDraftRequested += () => card.ToggleDraftRequested?.Invoke(card);
         _detailWindow.Closed += (_, _) => _detailWindow = null;
 
         PositionDetailWindow(_detailWindow);

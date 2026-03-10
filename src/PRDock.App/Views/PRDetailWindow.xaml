@@ -308,6 +308,25 @@
                             <Run Text="&#x2726; " /><Run Text="Fix with Claude" />
                         </TextBlock>
                     </Button>
+                    <Button Command="{Binding ToggleDraftCommand}"
+                            Background="Transparent"
+                            BorderBrush="{DynamicResource DraftBadgeBorderBrush}"
+                            Style="{StaticResource OutlinedButton}"
+                            AutomationProperties.AutomationId="DetailToggleDraftButton">
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource DraftBadgeForegroundBrush}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Convert to draft" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDraft}" Value="True">
+                                            <Setter Property="Text" Value="Ready for review" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
                     <Button Command="{Binding OpenInBrowserCommand}"
                             Background="Transparent"
                             BorderBrush="{DynamicResource SubtleBorderBrush}"

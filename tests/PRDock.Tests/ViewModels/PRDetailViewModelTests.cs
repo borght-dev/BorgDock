@@ -409,4 +409,30 @@ public class PRDetailViewModelTests
         await _gitHubService.Received(1)
             .GetPullRequestFilesAsync("org", "repo", 42, Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public void ToggleDraftCommand_RaisesToggleDraftRequested()
+    {
+        var vm = CreateVm();
+        bool raised = false;
+        vm.ToggleDraftRequested += () => raised = true;
+
+        vm.ToggleDraftCommand.Execute(null);
+
+        raised.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Initialize_SetsIsDraftFromCard()
+    {
+        var vm = CreateVm();
+        var card = CreateCard();
+        card.IsDraft = true;
+
+        vm.Initialize(card);
+
+        vm.IsDraft.Should().BeTrue();
+        vm.IsNotDraft.Should().BeFalse();
+        vm.DraftReadinessDetail.Should().Be("Still in draft");
+    }
 }
