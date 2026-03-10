@@ -739,7 +739,7 @@ public partial class MainViewModel : ObservableObject
             process.StartInfo.ArgumentList.Add("--repo");
             process.StartInfo.ArgumentList.Add($"{card.RepoOwner}/{card.RepoName}");
             process.StartInfo.ArgumentList.Add("--admin");
-            process.StartInfo.ArgumentList.Add("--merge");
+            process.StartInfo.ArgumentList.Add("--squash");
 
             process.Start();
             var stdOutTask = process.StandardOutput.ReadToEndAsync();
