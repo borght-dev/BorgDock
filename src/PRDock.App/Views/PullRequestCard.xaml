@@ -428,13 +428,140 @@
                     </TextBlock>
                 </WrapPanel>
 
-                <!-- Description (rendered markdown, full height) -->
+                <!-- Merge Readiness (compact) -->
+                <Border Padding="10,10,12,10" Margin="0,0,0,12" CornerRadius="6"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource SubtleBorderBrush}"
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Merge score ring -->
+                        <Grid Grid.Column="0" Width="42" Height="42" Margin="0,0,12,0"
+                              VerticalAlignment="Center">
+                            <Canvas Width="38" Height="38"
+                                    ExampletalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Canvas.Left="5" Canvas.Top="5"
+                                         Width="28" Height="28"
+                                         Stroke="{DynamicResource SubtleBorderBrush}"
+                                         StrokeThickness="2.5" Fill="Transparent" />
+                                <Path Data="{Binding MergeScore, Converter={StaticResource ScoreToArc}}"
+                                      Stroke="{Binding MergeScore, Converter={StaticResource ScoreToColor}}"
+                                      StrokeThickness="2.5"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                            <TextBlock Text="{Binding MergeScore}"
+                                       ExampletalAlignment="Center" VerticalAlignment="Center"
+                                       FontSize="10" FontWeight="Bold"
+                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                       Foreground="{Binding MergeScore, Converter={StaticResource ScoreToColor}}" />
+                        </Grid>
+
+                        <!-- Readiness checklist -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <!-- CI Checks -->
+                            <StackPanel Orientation="Exampletal" Margin="0,0,0,3">
+                                <TextBlock Width="14" TextAlignment="Center" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#x2717;" />
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasAllChecksPassed}" Value="True">
+                                                    <Setter Property="Text" Value="&#x2713;" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="CI Checks" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock FontSize="10" FontFamily="{DynamicResource CodeFontFamily}"
+                                           Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center">
+                                    <Run Text="{Binding PassedChecks, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding TotalChecks, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <!-- Approvals -->
+                            <StackPanel Orientation="Exampletal" Margin="0,0,0,3">
+                                <TextBlock Width="14" TextAlignment="Center" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#x2713;" />
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ApprovalCount}" Value="0">
+                                                    <Setter Property="Text" Value="&#x2717;" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Approvals" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock FontSize="10" FontFamily="{DynamicResource CodeFontFamily}"
+                                           Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"
+                                           Text="{Binding ApprovalCount}" />
+                            </StackPanel>
+                            <!-- No Conflicts -->
+                            <StackPanel Orientation="Exampletal" Margin="0,0,0,3">
+                                <TextBlock Width="14" TextAlignment="Center" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#x2713;" />
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasMergeConflict}" Value="True">
+                                                    <Setter Property="Text" Value="&#x2717;" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="No Conflicts" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <!-- Not Draft -->
+                            <StackPanel Orientation="Exampletal">
+                                <TextBlock Width="14" TextAlignment="Center" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#x2713;" />
+                                            <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDraft}" Value="True">
+                                                    <Setter Property="Text" Value="&#x2717;" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Not Draft" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Description (constrained height with scrollbar) -->
                 <RichTextBox IsReadOnly="True" BorderThickness="0"
                              Background="Transparent"
                              Foreground="{DynamicResource TextTertiaryBrush}"
                              FontSize="12.5" MaxWidth="700" ExampletalAlignment="Left"
                              Padding="0"
                              Margin="0,0,0,14"
+                             MaxHeight="200"
                              VerticalScrollBarVisibility="Auto"
                              infra:MarkdownTextBlock.Markdown="{Binding Body}">
                     <RichTextBox.Style>
