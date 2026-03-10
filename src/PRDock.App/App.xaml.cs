@@ -185,6 +185,13 @@ public partial class App : System.Windows.Application
             System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
                 _floatingBadgeVm?.UpdateExpanded(results, username));
         };
+
+        // Seed the badge with cached data for instant display
+        if (cached.Count > 0)
+        {
+            _floatingBadgeVm.UpdateExpanded(cached, settingsService.CurrentSettings.GitHub.Username);
+        }
+
         pollingService.StartPolling();
 
         // Wire up merge/close celebration notifications

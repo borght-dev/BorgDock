@@ -14,6 +14,7 @@ namespace PRDock.App.Views;
 public partial class FloatingBadgeWindow : Window
 {
     private string _lastBackgroundColor = "green";
+    private bool _anchorBottom;
 
     public FloatingBadgeWindow(FloatingBadgeViewModel viewModel)
     {
@@ -29,6 +30,15 @@ public partial class FloatingBadgeWindow : Window
         // Auto-detect expand direction based on screen position
         LocationChanged += (_, _) => UpdateExpandDirection();
         Loaded += (_, _) => UpdateExpandDirection();
+
+        // Keep badge pinned when expanding upward by anchoring the bottom edge
+        SizeChanged += (_, e) =>
+        {
+            if (_anchorBottom && e.HeightChanged)
+            {
+                Top -= e.NewSize.Height - e.PreviousSize.Height;
+            }
+        };
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -78,6 +88,8 @@ public partial class FloatingBadgeWindow : Window
 
     private void ApplyExpandDirection(bool expandUpward)
     {
+        _anchorBottom = expandUpward;
+
         // Reorder grid rows:
         // Downward: Toast(0), Badge(1), Handle(2), Panel(3)
         // Upward:   Panel(0), Handle(1), Toast(2), Badge(3)
