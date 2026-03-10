@@ -353,9 +353,7 @@
                                  Command="{Binding SetTabCommand}" CommandParameter="Checks"
                                  Style="{StaticResource TabButtonStyle}">
                         <TextBlock FontSize="12" Foreground="{DynamicResource TextMutedBrush}">
-                            <Run Text="Checks " />
-                            <Run Text="{Binding PassedChecks, Mode=OneWay, StringFormat='({0}'}" />
-                            <Run Text="{Binding TotalChecks, Mode=OneWay, StringFormat='/{0})'}" />
+                            <Run Text="Checks (" /><Run Text="{Binding ChecksTabLabel, Mode=OneWay}" /><Run Text=")" />
                         </TextBlock>
                     </RadioButton>
                     <RadioButton GroupName="DetailTab"
@@ -435,21 +433,71 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <!-- CI Checks -->
                                         <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
-                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
-                                                       VerticalAlignment="Center" Margin="0,0,8,0">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="&#x2717;" />
-                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsChecksPassing}" Value="True">
-                                                                <Setter Property="Text" Value="&#x2713;" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <!-- Checkmark -->
+                                                <Path Data="M 3,8.5 L 6.5,12 L 13,4" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                      Stroke="{DynamicResource StatusGreenBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsChecksPassing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <!-- X mark -->
+                                                <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Stroke="{DynamicResource StatusRedBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsChecksPassing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding HasChecksInProgress}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <!-- Spinner -->
+                                                <Grid RenderTransformOrigin="0.5,0.5">
+                                                    <Grid.RenderTransform>
+                                                        <RotateTransform />
+                                                    </Grid.RenderTransform>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasChecksInProgress}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Grid.Triggers>
+                                                        <EventTrigger RoutedEvent="Loaded">
+                                                            <BeginStoryboard>
+                                                                <Storyboard RepeatBehavior="Forever">
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetProperty="(Grid.RenderTransform).(RotateTransform.Angle)"
+                                                                        From="0" To="360" Duration="0:0:1.5" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </EventTrigger>
+                                                    </Grid.Triggers>
+                                                    <Path Stroke="{DynamicResource StatusYellowBrush}"
+                                                          StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                          Data="M 8,1 A 7,7 0 1 1 1,8" />
+                                                </Grid>
+                                            </Grid>
                                             <TextBlock Text="CI Checks" FontSize="12" FontWeight="Medium"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -461,21 +509,36 @@
 
                                         <!-- Approvals -->
                                         <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
-                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
-                                                       VerticalAlignment="Center" Margin="0,0,8,0">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="&#x2717;" />
-                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding HasApproval}" Value="True">
-                                                                <Setter Property="Text" Value="&#x2713;" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <Path Data="M 3,8.5 L 6.5,12 L 13,4" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                      Stroke="{DynamicResource StatusGreenBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasApproval}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Stroke="{DynamicResource StatusRedBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasApproval}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Grid>
                                             <TextBlock Text="Approvals" FontSize="12" FontWeight="Medium"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -487,21 +550,36 @@
 
                                         <!-- No Conflicts -->
                                         <StackPanel Orientation="Exampletal" Margin="0,0,0,6">
-                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
-                                                       VerticalAlignment="Center" Margin="0,0,8,0">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="&#x2717;" />
-                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsConflictFree}" Value="True">
-                                                                <Setter Property="Text" Value="&#x2713;" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <Path Data="M 3,8.5 L 6.5,12 L 13,4" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                      Stroke="{DynamicResource StatusGreenBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsConflictFree}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Stroke="{DynamicResource StatusRedBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsConflictFree}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Grid>
                                             <TextBlock Text="No Conflicts" FontSize="12" FontWeight="Medium"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -513,21 +591,36 @@
 
                                         <!-- Not Draft -->
                                         <StackPanel Orientation="Exampletal">
-                                            <TextBlock Width="16" TextAlignment="Center" FontSize="13"
-                                                       VerticalAlignment="Center" Margin="0,0,8,0">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="&#x2717;" />
-                                                        <Setter Property="Foreground" Value="{DynamicResource StatusRedBrush}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsNotDraft}" Value="True">
-                                                                <Setter Property="Text" Value="&#x2713;" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource StatusGreenBrush}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <Path Data="M 3,8.5 L 6.5,12 L 13,4" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                      Stroke="{DynamicResource StatusGreenBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsNotDraft}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" StrokeThickness="2"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Stroke="{DynamicResource StatusRedBrush}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsNotDraft}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Grid>
                                             <TextBlock Text="Not Draft" FontSize="12" FontWeight="Medium"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -721,6 +814,10 @@
                                                         <Setter Property="Background" Value="{DynamicResource CheckFailedBgBrush}" />
                                                         <Setter Property="BorderBrush" Value="{DynamicResource CheckFailedBorderBrush}" />
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsSkipped}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
@@ -741,6 +838,9 @@
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsFailed}" Value="True">
                                                                 <Setter Property="Fill" Value="{DynamicResource StatusRedBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsSkipped}" Value="True">
+                                                                <Setter Property="Fill" Value="{DynamicResource TextFaintBrush}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
