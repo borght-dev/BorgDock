@@ -127,6 +127,28 @@ public partial class PullRequestCardViewModel : ObservableObject
     [ObservableProperty]
     private int _mergeScore;
 
+    // Multi-signal indicator colors
+    [ObservableProperty]
+    private string _ciSignalColor = "gray";
+
+    [ObservableProperty]
+    private string _reviewSignalColor = "gray";
+
+    [ObservableProperty]
+    private string _conflictSignalColor = "green";
+
+    [ObservableProperty]
+    private string _draftSignalColor = "green";
+
+    [ObservableProperty]
+    private int _blockerCount;
+
+    [ObservableProperty]
+    private string _blockerCountColor = "green";
+
+    [ObservableProperty]
+    private string _indicatorStyle = "SegmentRing";
+
     // Labels
     public ObservableCollection<string> Labels { get; } = [];
 
@@ -334,6 +356,44 @@ public partial class PullRequestCardViewModel : ObservableObject
         if (!HasMergeConflict) score += 15;                   // No conflicts
         if (!IsDraft) score += 10;                            // Not draft
         MergeScore = Math.Min(score, 100);
+        ComputeSignalColors();
+    }
+
+    public void ComputeSignalColors()
+    {
+        // CI: green (all pass), red (failing), yellow (in progress), gray (no checks)
+        if (HasFailingChecks)
+            CiSignalColor = "red";
+        else if (HasChecksInProgress)
+            CiSignalColor = "yellow";
+        else if (HasAllChecksPassed)
+            CiSignalColor = "green";
+        else
+            CiSignalColor = "gray";
+
+        // Reviews: green (approved), red (changes requested or pending review), gray (draft)
+        if (IsDraft)
+            ReviewSignalColor = "gray";
+        else if (ReviewBadgeColor == "green")
+            ReviewSignalColor = "green";
+        else if (ReviewBadgeColor == "red" || ReviewBadgeColor == "yellow")
+            ReviewSignalColor = "red";
+        else
+            ReviewSignalColor = "gray";
+
+        // Conflicts: green (clean), red (conflicts)
+        ConflictSignalColor = HasMergeConflict ? "red" : "green";
+
+        // Draft: green (not draft), gray (is draft)
+        DraftSignalColor = IsDraft ? "gray" : "green";
+
+        // BlockerCount: count of red signals (CI, Reviews, Conflicts — not Draft)
+        int blockers = 0;
+        if (CiSignalColor == "red") blockers++;
+        if (ReviewSignalColor == "red") blockers++;
+        if (ConflictSignalColor == "red") blockers++;
+        BlockerCount = blockers;
+        BlockerCountColor = blockers > 0 ? "red" : "green";
     }
 
     public static string ComputeInitials(string login)

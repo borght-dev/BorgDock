@@ -42,6 +42,7 @@ public sealed class UiSettings
     public string EditorCommand { get; set; } = "code";
     public bool RunAtStartup { get; set; }
     public string BadgeStyle { get; set; } = "GlassCapsule";
+    public string IndicatorStyle { get; set; } = "SegmentRing";
 }
 
 public sealed class NotificationSettings
