@@ -61,6 +61,9 @@ public partial class FloatingBadgeViewModel : ObservableObject
     [ObservableProperty]
     private string _lastUpdatedText = "";
 
+    [ObservableProperty]
+    private bool _expandUpward;
+
     public ObservableCollection<string> PrStatuses { get; } = [];
 
     public ObservableCollection<BadgeAuthorInfo> AuthorInitials { get; } = [];

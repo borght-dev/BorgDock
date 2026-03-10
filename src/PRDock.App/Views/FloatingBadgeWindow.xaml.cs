@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -24,6 +25,10 @@ public partial class FloatingBadgeWindow : Window
         // Wire up hover scale animation on the handle pill
         HandlePill.MouseEnter += (_, _) => AnimateHandlePillScale(1.15);
         HandlePill.MouseLeave += (_, _) => AnimateHandlePillScale(1.0);
+
+        // Auto-detect expand direction based on screen position
+        LocationChanged += (_, _) => UpdateExpandDirection();
+        Loaded += (_, _) => UpdateExpandDirection();
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -46,6 +51,53 @@ public partial class FloatingBadgeWindow : Window
             else
                 PlayCollapseAnimation();
         }
+        else if (e.PropertyName == nameof(FloatingBadgeViewModel.ExpandUpward))
+        {
+            var vm = (FloatingBadgeViewModel)DataContext;
+            ApplyExpandDirection(vm.ExpandUpward);
+        }
+    }
+
+    private void UpdateExpandDirection()
+    {
+        if (DataContext is not FloatingBadgeViewModel vm) return;
+        if (!IsLoaded) return;
+
+        var source = PresentationSource.FromVisual(this);
+        var dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+        var screenPoint = new System.Drawing.Point(
+            (int)(Left * dpiScaleY),
+            (int)(Top * dpiScaleY));
+        var screen = System.Windows.Forms.Screen.FromPoint(screenPoint);
+        var workingArea = screen.WorkingArea;
+        var midY = workingArea.Top + workingArea.Height / 2.0;
+
+        vm.ExpandUpward = (Top * dpiScaleY) > midY;
+    }
+
+    private void ApplyExpandDirection(bool expandUpward)
+    {
+        // Reorder grid rows:
+        // Downward: Toast(0), Badge(1), Handle(2), Panel(3)
+        // Upward:   Panel(0), Handle(1), Toast(2), Badge(3)
+        Grid.SetRow(ToastBorder, expandUpward ? 2 : 0);
+        Grid.SetRow(BadgeGrid, expandUpward ? 3 : 1);
+        Grid.SetRow(HandlePill, expandUpward ? 1 : 2);
+        Grid.SetRow(ExpandedPanel, expandUpward ? 0 : 3);
+
+        // Flip handle pill margin (overlap with badge)
+        HandlePill.Margin = expandUpward
+            ? new Thickness(0, 0, 0, -1)
+            : new Thickness(0, -1, 0, 0);
+
+        // Flip expanded panel margin and scale origin
+        ExpandedPanel.Margin = expandUpward
+            ? new Thickness(0, 0, 0, 2)
+            : new Thickness(0, 2, 0, 0);
+        ExpandedPanel.RenderTransformOrigin = expandUpward
+            ? new System.Windows.Point(0.5, 1.0)
+            : new System.Windows.Point(0.5, 0.0);
     }
 
     private void AnimateHandlePillScale(double targetScale)
@@ -60,6 +112,8 @@ public partial class FloatingBadgeWindow : Window
 
     private void PlayExpandAnimation()
     {
+        var expandUpward = (DataContext as FloatingBadgeViewModel)?.ExpandUpward ?? false;
+
         // Ensure the panel is visible before animating
         ExpandedPanel.Visibility = Visibility.Visible;
 
@@ -69,8 +123,9 @@ public partial class FloatingBadgeWindow : Window
         ExpandedPanelScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
         ExpandedPanelScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
 
-        // Slide from -8 → 0
-        var slide = new DoubleAnimation(-8, 0, AnimationHelper.Normal) { EasingFunction = AnimationHelper.EaseOut };
+        // Slide direction depends on expand direction
+        var slideFrom = expandUpward ? 8.0 : -8.0;
+        var slide = new DoubleAnimation(slideFrom, 0, AnimationHelper.Normal) { EasingFunction = AnimationHelper.EaseOut };
         ExpandedPanelTranslate.BeginAnimation(TranslateTransform.YProperty, slide);
 
         // Fade in
@@ -79,14 +134,17 @@ public partial class FloatingBadgeWindow : Window
 
     private void PlayCollapseAnimation()
     {
+        var expandUpward = (DataContext as FloatingBadgeViewModel)?.ExpandUpward ?? false;
+
         // Scale from 1.0 → 0.95
         var scaleX = new DoubleAnimation(1.0, 0.95, AnimationHelper.Normal) { EasingFunction = AnimationHelper.EaseIn };
         var scaleY = new DoubleAnimation(1.0, 0.95, AnimationHelper.Normal) { EasingFunction = AnimationHelper.EaseIn };
         ExpandedPanelScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
         ExpandedPanelScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
 
-        // Slide from 0 → -8
-        var slide = new DoubleAnimation(0, -8, AnimationHelper.Normal) { EasingFunction = AnimationHelper.EaseIn };
+        // Slide direction depends on expand direction
+        var slideTo = expandUpward ? 8.0 : -8.0;
+        var slide = new DoubleAnimation(0, slideTo, AnimationHelper.Normal) { EasingFunction = AnimationHelper.EaseIn };
         ExpandedPanelTranslate.BeginAnimation(TranslateTransform.YProperty, slide);
 
         // Fade out, then collapse visibility

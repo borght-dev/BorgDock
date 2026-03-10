@@ -1,0 +1,56 @@
+<Window x:Class="PRDock.App.Views.BadgeShowcaseWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PRDock — Badge Style Showcase"
+        Width="1580" Height="920"
+        WindowStartupLocation="CenterScreen"
+        Background="#16161E"
+        Loaded="Window_Loaded"
+        Closed="Window_Closed">
+
+    <Grid Margin="50,30,50,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0" Text="Badge Style Showcase"
+                   FontSize="22" FontWeight="Bold" Foreground="#E8E8EC"
+                   Margin="0,0,0,18" />
+
+        <!-- Column headers (style names) -->
+        <StackPanel Grid.Row="1" Orientation="Exampletal" Margin="0,0,0,12">
+            <TextBlock Width="280" Text="Glass Capsule" TextAlignment="Center"
+                       FontSize="11" FontWeight="SemiBold" Foreground="#888" />
+            <TextBlock Width="280" Text="Minimal Notch" TextAlignment="Center"
+                       FontSize="11" FontWeight="SemiBold" Foreground="#888" />
+            <TextBlock Width="280" Text="Floating Island" TextAlignment="Center"
+                       FontSize="11" FontWeight="SemiBold" Foreground="#888" />
+            <TextBlock Width="280" Text="Liquid Morph" TextAlignment="Center"
+                       FontSize="11" FontWeight="SemiBold" Foreground="#888" />
+            <TextBlock Width="280" Text="Spectral Bar" TextAlignment="Center"
+                       FontSize="11" FontWeight="SemiBold" Foreground="#888" />
+        </StackPanel>
+
+        <!-- Light theme row label -->
+        <StackPanel Grid.Row="2" Orientation="Exampletal" Margin="0,0,0,4">
+            <Border CornerRadius="3" Background="#2A2A3E" Padding="8,3">
+                <TextBlock Text="LIGHT" FontSize="10" FontWeight="Bold"
+                           Foreground="#A0A0B8" />
+            </Border>
+        </StackPanel>
+
+        <!-- Dark theme row label -->
+        <StackPanel Grid.Row="4" Orientation="Exampletal" Margin="0,0,0,4">
+            <Border CornerRadius="3" Background="#2A2A3E" Padding="8,3">
+                <TextBlock Text="DARK" FontSize="10" FontWeight="Bold"
+                           Foreground="#A0A0B8" />
+            </Border>
+        </StackPanel>
+    </Grid>
+</Window>

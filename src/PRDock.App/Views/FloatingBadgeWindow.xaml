@@ -12,9 +12,16 @@
         Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
-    <StackPanel>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
         <!-- Toast bubble (appears above the badge) -->
-        <Border CornerRadius="10" Padding="12,8" Margin="0,0,0,6"
+        <Border x:Name="ToastBorder" Grid.Row="0" CornerRadius="10" Padding="12,8" Margin="0,0,0,6"
                 ExampletalAlignment="Center"
                 Background="{DynamicResource SurfaceRaisedBrush}"
                 BorderBrush="{DynamicResource SubtleBorderBrush}"
@@ -39,7 +46,7 @@
         </Border>
 
         <!-- Badge styles container -->
-        <Grid Background="Transparent" Cursor="Hand">
+        <Grid x:Name="BadgeGrid" Grid.Row="1" Background="Transparent" Cursor="Hand">
             <Grid.ContextMenu>
                 <ContextMenu AutomationProperties.AutomationId="BadgeContextMenu">
                     <MenuItem Header="Dock Left"
@@ -685,7 +692,7 @@
         </Grid>
 
         <!-- Integrated handle pill — visually attached to the badge -->
-        <Button x:Name="HandlePill" Command="{Binding ToggleExpandCommand}"
+        <Button x:Name="HandlePill" Grid.Row="2" Command="{Binding ToggleExpandCommand}"
                 ExampletalAlignment="Center" Margin="0,-1,0,0" Cursor="Hand"
                 ToolTip="Show PR details"
                 RenderTransformOrigin="0.5,0.5">
@@ -709,13 +716,18 @@
                             <Setter TargetName="HandleBar" Property="Opacity" Value="0.7" />
                             <Setter TargetName="HandleBar" Property="Width" Value="36" />
                         </Trigger>
+                        <DataTrigger Binding="{Binding ExpandUpward}" Value="True">
+                            <Setter TargetName="HandleBorder" Property="CornerRadius" Value="10,10,0,0" />
+                            <Setter TargetName="HandleBorder" Property="BorderThickness" Value="1,1,1,0" />
+                            <Setter TargetName="HandleBorder" Property="Padding" Value="18,4,18,2" />
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Button.Template>
         </Button>
 
         <!-- ==================== Expanded PR Panel ==================== -->
-        <Border x:Name="ExpandedPanel" CornerRadius="12" Margin="0,2,0,0" Padding="16,12"
+        <Border x:Name="ExpandedPanel" Grid.Row="3" CornerRadius="12" Margin="0,2,0,0" Padding="16,12"
                 MinWidth="460"
                 Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource SubtleBorderBrush}"
@@ -1132,5 +1144,5 @@
                 </Border>
             </Grid>
         </Border>
-    </StackPanel>
+    </Grid>
 </Window>
