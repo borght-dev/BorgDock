@@ -31,16 +31,68 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="TabBorder"
-                                Background="Transparent"
-                                Padding="14,10"
-                                BorderThickness="0,0,0,2"
-                                BorderBrush="Transparent">
-                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid>
+                            <Border x:Name="TabBorder"
+                                    Background="Transparent"
+                                    Padding="14,10"
+                                    BorderThickness="0">
+                                <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Animated underline indicator -->
+                            <Border x:Name="TabIndicator"
+                                    VerticalAlignment="Bottom"
+                                    Height="2"
+                                    CornerRadius="1"
+                                    Background="{DynamicResource TabActiveBrush}"
+                                    RenderTransformOrigin="0.5,0.5"
+                                    Opacity="0">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleX="0" ScaleY="1" />
+                                </Border.RenderTransform>
+                            </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource TabActiveBrush}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="TabIndicator"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="TabIndicator"
+                                                             Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                             To="1" Duration="0:0:0.25">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="TabIndicator"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseIn" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="TabIndicator"
+                                                             Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                             To="0" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseIn" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
@@ -368,7 +420,7 @@
             </Border>
 
             <!-- ===== TAB CONTENT ===== -->
-            <Grid Grid.Row="2">
+            <Grid x:Name="TabContentGrid" Grid.Row="2">
 
                 <!-- OVERVIEW TAB -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="24,18,18,24">
