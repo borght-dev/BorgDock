@@ -228,12 +228,12 @@ public partial class App : System.Windows.Application
                 if (_mainViewModel.IsSidebarVisible)
                 {
                     _sidebarWindow.Show();
-                    _floatingBadgeWindow?.Hide();
+                    _floatingBadgeWindow?.FadeOutAndHide();
                 }
                 else
                 {
                     _sidebarWindow.Hide();
-                    _floatingBadgeWindow?.Show();
+                    _floatingBadgeWindow?.FadeInAndShow();
                 }
             }
         };
