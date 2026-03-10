@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — 2026-03-10
+
+### Improvements
+
+- **Notifications now appear at the top-right of your screen** — The notification bubble has moved from the bottom-right to the top-right corner, making it much harder to miss. It's also larger and bolder, with a colored severity accent strip, bigger icons, and a stronger shadow for maximum visibility.
+
 ## 1.0.2 — 2026-03-10
 
 ### Bug Fixes
