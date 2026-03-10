@@ -8,7 +8,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        Width="380"
+        Width="420"
         SizeToContent="Height"
         Background="Transparent">
 
@@ -33,20 +33,46 @@
             <SolidColorBrush Color="{DynamicResource SubtleBorderColor}" />
         </Border.BorderBrush>
         <Border.Effect>
-            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="Black" />
+            <DropShadowEffect BlurRadius="30" ShadowDepth="6" Opacity="0.45" Color="Black" />
         </Border.Effect>
         <Border.RenderTransform>
             <TranslateTransform x:Name="SlideTransform" X="400" />
         </Border.RenderTransform>
 
         <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Severity accent strip -->
+            <Border Grid.Column="0" CornerRadius="12,0,0,12">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Severity}" Value="error">
+                                <Setter Property="Background" Value="{DynamicResource StatusRedBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Severity}" Value="success">
+                                <Setter Property="Background" Value="{DynamicResource StatusGreenBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Severity}" Value="warning">
+                                <Setter Property="Background" Value="{DynamicResource StatusYellowBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+            </Border>
+
+        <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Content -->
-            <Grid Grid.Row="0" Margin="16,14,16,14">
+            <Grid Grid.Row="0" Margin="18,16,18,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -54,8 +80,8 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Severity icon circle -->
-                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18"
-                        VerticalAlignment="Top" Margin="0,2,12,0">
+                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="20"
+                        VerticalAlignment="Top" Margin="0,2,14,0">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Background" Value="{DynamicResource NeutralBadgeBackgroundBrush}" />
@@ -72,7 +98,7 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <TextBlock Text="{Binding SeverityIcon}" FontSize="16" FontWeight="Bold"
+                    <TextBlock Text="{Binding SeverityIcon}" FontSize="18" FontWeight="Bold"
                                ExampletalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -96,13 +122,13 @@
                 <!-- Text content -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <!-- Title -->
-                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
                                MaxHeight="40" />
 
                     <!-- Message -->
-                    <TextBlock Text="{Binding Message}" FontSize="11.5" Margin="0,3,0,0"
+                    <TextBlock Text="{Binding Message}" FontSize="12.5" Margin="0,4,0,0"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
                                MaxHeight="36" />
@@ -206,7 +232,7 @@
             </Grid>
 
             <!-- Auto-dismiss progress bar -->
-            <Border Grid.Row="1" Height="3" CornerRadius="0,0,12,12"
+            <Border Grid.Row="1" Height="3" CornerRadius="0,0,12,0"
                     ClipToBounds="True"
                     Background="{DynamicResource BadgeProgressTrackBrush}">
                 <Border ExampletalAlignment="Stretch" RenderTransformOrigin="0,0.5">
@@ -231,6 +257,7 @@
                     </Border.Style>
                 </Border>
             </Border>
+        </Grid>
         </Grid>
     </Border>
 </Window>

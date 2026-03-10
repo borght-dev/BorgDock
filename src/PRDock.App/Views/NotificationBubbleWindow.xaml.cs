@@ -44,13 +44,7 @@ public partial class NotificationBubbleWindow : Window
 
         var workArea = screen.WorkingArea;
         Left = workArea.Right / DpiScaleX() - Width - 12;
-        Top = workArea.Bottom / DpiScaleY() - ActualHeight - 12;
-
-        // If ActualHeight is 0 (first show), estimate
-        if (ActualHeight < 1)
-        {
-            Top = workArea.Bottom / DpiScaleY() - 160;
-        }
+        Top = workArea.Top / DpiScaleY() + 12;
     }
 
     private double DpiScaleX()
