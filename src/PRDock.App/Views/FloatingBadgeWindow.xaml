@@ -684,30 +684,48 @@
             </Border>
         </Grid>
 
-        <!-- Expand/collapse toggle -->
+        <!-- Expand/collapse toggle — slim integrated handle tab -->
         <Button Command="{Binding ToggleExpandCommand}"
-                ExampletalAlignment="Center" Margin="0,2,0,0" Cursor="Hand"
+                ExampletalAlignment="Center" Margin="0,0,0,0" Cursor="Hand"
                 ToolTip="Show PR details">
             <Button.Template>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="ToggleBorder"
                             Background="{DynamicResource BadgeSurfaceBrush}"
                             BorderBrush="{DynamicResource BadgeBorderBrush}"
-                            BorderThickness="1"
-                            Padding="20,5" CornerRadius="0,0,10,10">
+                            BorderThickness="1,0,1,1"
+                            Padding="16,3,16,5" CornerRadius="0,0,8,8">
                         <Border.Effect>
-                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.15" Color="Black" />
+                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.12" Color="Black" />
                         </Border.Effect>
-                        <TextBlock x:Name="Chevron" FontSize="16" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   ExampletalAlignment="Center" Text="&#x25BE;" />
+                        <StackPanel Orientation="Exampletal" ExampletalAlignment="Center">
+                            <!-- Decorative handle bar -->
+                            <Border x:Name="HandleBar" Width="20" Height="2.5" CornerRadius="1.5"
+                                    Background="{DynamicResource TextMutedBrush}" Opacity="0.4"
+                                    VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <!-- SVG chevron — crisper than a text glyph -->
+                            <Path x:Name="ChevronPath"
+                                  Width="8" Height="5" Stretch="Uniform"
+                                  StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Fill="Transparent"
+                                  Stroke="{DynamicResource TextTertiaryBrush}"
+                                  Data="M 0,0 L 4,3.5 L 8,0" />
+                        </StackPanel>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ToggleBorder" Property="Opacity" Value="0.7" />
+                            <Setter TargetName="ToggleBorder" Property="Background">
+                                <Setter.Value>
+                                    <SolidColorBrush Color="#F01E293B" />
+                                </Setter.Value>
+                            </Setter>
+                            <Setter TargetName="ChevronPath" Property="Stroke"
+                                    Value="{DynamicResource TextSecondaryBrush}" />
+                            <Setter TargetName="HandleBar" Property="Opacity" Value="0.65" />
                         </Trigger>
                         <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                            <Setter TargetName="Chevron" Property="Text" Value="&#x25B4;" />
+                            <Setter TargetName="ChevronPath" Property="Data" Value="M 0,3.5 L 4,0 L 8,3.5" />
                         </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
