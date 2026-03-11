@@ -100,6 +100,55 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _claudeCodePath = "";
 
+    // --- Azure DevOps section ---
+
+    [ObservableProperty]
+    private string _adoOrganization = "";
+
+    [ObservableProperty]
+    private string _adoProject = "";
+
+    [ObservableProperty]
+    private string _adoPersonalAccessToken = "";
+
+    [ObservableProperty]
+    private int _adoPollIntervalSeconds = 120;
+
+    [ObservableProperty]
+    private string _adoConnectionStatus = "";
+
+    [ObservableProperty]
+    private bool _isTestingAdoConnection;
+
+    [RelayCommand]
+    private async Task TestAdoConnectionAsync()
+    {
+        IsTestingAdoConnection = true;
+        AdoConnectionStatus = "Testing...";
+
+        try
+        {
+            var sp = ((PRDock.App.App)System.Windows.Application.Current).ServiceProvider;
+            var adoClient = sp?.GetService(typeof(Infrastructure.AzureDevOpsHttpClient)) as Infrastructure.AzureDevOpsHttpClient;
+            if (adoClient is null)
+            {
+                AdoConnectionStatus = "Service unavailable.";
+                return;
+            }
+
+            var error = await adoClient.TestConnectionAsync(AdoOrganization, AdoProject, AdoPersonalAccessToken);
+            AdoConnectionStatus = error ?? "Connected successfully!";
+        }
+        catch (Exception ex)
+        {
+            AdoConnectionStatus = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            IsTestingAdoConnection = false;
+        }
+    }
+
     // --- Hotkey section ---
 
     [ObservableProperty]
@@ -273,6 +322,11 @@ public partial class SettingsViewModel : ObservableObject
 
         GlobalHotkey = settings.UI.GlobalHotkey;
 
+        AdoOrganization = settings.AzureDevOps.Organization;
+        AdoProject = settings.AzureDevOps.Project;
+        AdoPersonalAccessToken = settings.AzureDevOps.PersonalAccessToken ?? "";
+        AdoPollIntervalSeconds = settings.AzureDevOps.PollIntervalSeconds;
+
         AutoCheckForUpdates = settings.Updates.AutoCheckEnabled;
         AutoDownloadUpdates = settings.Updates.AutoDownload;
     }
@@ -324,6 +378,15 @@ public partial class SettingsViewModel : ObservableObject
                 ClaudeCodePath = string.IsNullOrWhiteSpace(ClaudeCodePath) ? null : ClaudeCodePath
             },
             ClaudeReview = current.ClaudeReview,
+            AzureDevOps = new AzureDevOpsSettings
+            {
+                Organization = AdoOrganization,
+                Project = AdoProject,
+                PersonalAccessToken = string.IsNullOrWhiteSpace(AdoPersonalAccessToken) ? null : AdoPersonalAccessToken,
+                PollIntervalSeconds = AdoPollIntervalSeconds,
+                FavoriteQueryIds = current.AzureDevOps.FavoriteQueryIds,
+                LastSelectedQueryId = current.AzureDevOps.LastSelectedQueryId
+            },
             Updates = new UpdateSettings
             {
                 AutoCheckEnabled = AutoCheckForUpdates,

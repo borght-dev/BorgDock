@@ -1,0 +1,157 @@
+<UserControl x:Class="PRDock.App.Views.WorkItemCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:PRDock.App.Converters">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:WorkItemStateToColorConverter x:Key="StateToColor" />
+        <conv:PriorityToIconConverter x:Key="PriorityToIcon" />
+    </UserControl.Resources>
+
+    <!-- Main clickable row -->
+    <Border x:Name="RowBorder"
+            Cursor="Hand"
+            BorderThickness="2,0,0,0"
+            Padding="13,11,18,11"
+            MouseLeftButtonUp="Row_Click">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Background" Value="Transparent" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                    </Trigger>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                        <Setter Property="Background" Value="{DynamicResource SelectedRowBgBrush}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="38" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" MinWidth="80" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Column 0: Work item type icon + state color -->
+            <Grid Grid.Column="0" VerticalAlignment="Center" ExampletalAlignment="Center">
+                <!-- State color dot -->
+                <Ellipse Width="28" Height="28"
+                         Fill="{Binding State, Converter={StaticResource StateToColor}}"
+                         Opacity="0.15" />
+                <!-- Type initial -->
+                <TextBlock FontSize="12" FontWeight="Bold"
+                           ExampletalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{Binding State, Converter={StaticResource StateToColor}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="W" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding WorkItemType}" Value="Bug">
+                                    <Setter Property="Text" Value="B" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding WorkItemType}" Value="Task">
+                                    <Setter Property="Text" Value="T" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding WorkItemType}" Value="Feature">
+                                    <Setter Property="Text" Value="F" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding WorkItemType}" Value="Epic">
+                                    <Setter Property="Text" Value="E" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding WorkItemType}" Value="User Story">
+                                    <Setter Property="Text" Value="U" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <!-- Column 1: Title + metadata -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,8,0">
+                <!-- Title -->
+                <TextBlock Text="{Binding Title}"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           TextTrimming="CharacterEllipsis"
+                           MaxHeight="40" />
+
+                <!-- Metadata row: ID, type, assignedTo -->
+                <StackPanel Orientation="Exampletal" Margin="0,3,0,0">
+                    <TextBlock FontFamily="{DynamicResource CodeFontFamily}"
+                               FontSize="11" Foreground="{DynamicResource TextGhostBrush}">
+                        <Run Text="#" /><Run Text="{Binding Id, Mode=OneWay}" />
+                    </TextBlock>
+
+                    <TextBlock Text=" · " FontSize="11" Foreground="{DynamicResource TextGhostBrush}" />
+
+                    <TextBlock Text="{Binding WorkItemType}"
+                               FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+
+                    <!-- Assigned to -->
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextGhostBrush}"
+                               Margin="6,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding AssignedTo}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                        <Run Text="· " />
+                        <Run Text="{Binding AssignedTo, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Column 2: State badge + priority + age -->
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" ExampletalAlignment="Right">
+                <!-- State badge -->
+                <Border CornerRadius="4" Padding="7,2" ExampletalAlignment="Right"
+                        Margin="0,0,0,3">
+                    <Border.Background>
+                        <SolidColorBrush Color="{Binding State, Converter={StaticResource StateToColor}, ConverterParameter=color}"
+                                         Opacity="0.15" />
+                    </Border.Background>
+                    <TextBlock Text="{Binding State}"
+                               FontSize="10.5" FontWeight="SemiBold"
+                               Foreground="{Binding State, Converter={StaticResource StateToColor}}" />
+                </Border>
+
+                <!-- Priority + age row -->
+                <StackPanel Orientation="Exampletal" ExampletalAlignment="Right">
+                    <!-- Priority icon -->
+                    <TextBlock Text="{Binding Priority, Converter={StaticResource PriorityToIcon}}"
+                               FontFamily="Segoe MDL2 Assets" FontSize="10"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Priority}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="{Binding Age}"
+                               FontFamily="{DynamicResource CodeFontFamily}"
+                               FontSize="10.5"
+                               Foreground="{DynamicResource TextGhostBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

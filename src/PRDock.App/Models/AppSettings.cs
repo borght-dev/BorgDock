@@ -12,6 +12,7 @@ public sealed class AppSettings
     public ClaudeCodeSettings ClaudeCode { get; set; } = new();
     public ClaudeReviewSettings ClaudeReview { get; set; } = new();
     public UpdateSettings Updates { get; set; } = new();
+    public AzureDevOpsSettings AzureDevOps { get; set; } = new();
 }
 
 public sealed class GitHubSettings
@@ -67,4 +68,14 @@ public sealed class UpdateSettings
 {
     public bool AutoCheckEnabled { get; set; } = true;
     public bool AutoDownload { get; set; } = true;
+}
+
+public sealed class AzureDevOpsSettings
+{
+    public string Organization { get; set; } = "";
+    public string Project { get; set; } = "";
+    public string? PersonalAccessToken { get; set; }
+    public int PollIntervalSeconds { get; set; } = 120;
+    public List<Guid> FavoriteQueryIds { get; set; } = [];
+    public Guid? LastSelectedQueryId { get; set; }
 }

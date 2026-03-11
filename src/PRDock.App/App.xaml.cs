@@ -195,6 +195,13 @@ public partial class App : System.Windows.Application
 
         pollingService.StartPolling();
 
+        // Initialize Azure DevOps work items if configured
+        var adoHttpClient = _serviceProvider.GetRequiredService<Infrastructure.AzureDevOpsHttpClient>();
+        if (adoHttpClient.IsConfigured)
+        {
+            _mainViewModel.WorkItems?.Initialize();
+        }
+
         // Wire up merge/close celebration notifications
         _mainViewModel.PrClosedOrMerged += (title, author, prNumber, repoFullName) =>
         {
@@ -286,6 +293,13 @@ public partial class App : System.Windows.Application
             client.DefaultRequestHeaders.Add("User-Agent", "PRDock");
         });
 
+        services.AddHttpClient("AzureDevOps", client =>
+        {
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add("User-Agent", "PRDock");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
         // Services
         services.AddSingleton<IUpdateService, UpdateService>();
         services.AddSingleton<ISettingsService, SettingsService>();
@@ -304,8 +318,13 @@ public partial class App : System.Windows.Application
 
         // Infrastructure
         services.AddSingleton<GitHubHttpClient>();
+        services.AddSingleton<Infrastructure.AzureDevOpsHttpClient>();
         services.AddSingleton<ProcessTracker>();
         services.AddSingleton<IRetryHandler, RetryHandler>();
+
+        // Azure DevOps services
+        services.AddSingleton<IAzureDevOpsService, AzureDevOpsService>();
+        services.AddSingleton<IAzureDevOpsPollingService, AzureDevOpsPollingService>();
 
         // ViewModels
         services.AddTransient<PRDetailViewModel>(sp =>
@@ -313,6 +332,15 @@ public partial class App : System.Windows.Application
                 sp.GetRequiredService<IGitHubService>(),
                 sp.GetRequiredService<IGitHubActionsService>(),
                 sp.GetRequiredService<IGitCommandRunner>(),
+                sp.GetRequiredService<ISettingsService>()));
+        services.AddTransient<WorkItemDetailViewModel>(sp =>
+            new WorkItemDetailViewModel(
+                sp.GetRequiredService<IAzureDevOpsService>(),
+                sp.GetRequiredService<ISettingsService>()));
+        services.AddSingleton<WorkItemsViewModel>(sp =>
+            new WorkItemsViewModel(
+                sp.GetRequiredService<IAzureDevOpsService>(),
+                sp.GetRequiredService<IAzureDevOpsPollingService>(),
                 sp.GetRequiredService<ISettingsService>()));
         services.AddSingleton<MainViewModel>(sp =>
             new MainViewModel(
@@ -326,7 +354,8 @@ public partial class App : System.Windows.Application
                 sp.GetRequiredService<IWorktreeService>(),
                 sp.GetRequiredService<IGitHubService>(),
                 sp.GetRequiredService<IGitCommandRunner>(),
-                sp.GetRequiredService<IPRCacheService>()));
+                sp.GetRequiredService<IPRCacheService>(),
+                sp.GetRequiredService<WorkItemsViewModel>()));
     }
 
     private void SetupSystemTray()
@@ -456,6 +485,8 @@ public partial class App : System.Windows.Application
         // Stop polling before disposing services
         if (_serviceProvider?.GetService<IPRPollingService>() is { } pollingService)
             pollingService.StopPolling();
+        if (_serviceProvider?.GetService<IAzureDevOpsPollingService>() is { } adoPolling)
+            adoPolling.StopPolling();
 
         _hotKeyManager?.Dispose();
         _themeManager?.Dispose();

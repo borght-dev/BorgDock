@@ -20,7 +20,7 @@ src/PRDock.App/           # Main WPF application
   ViewModels/             # MainViewModel, PullRequestCardViewModel, RepoGroupViewModel (CommunityToolkit.Mvvm)
   Views/                  # SidebarWindow, PullRequestCard (chromeless WPF)
   Services/               # Settings, GitHubAuth, GitHub, GitHubActions, PRPolling services
-  Infrastructure/         # ThemeManager, HotKeyManager, WorkAreaManager, GitHubHttpClient
+  Infrastructure/         # ThemeManager, HotKeyManager, WorkAreaManager, GitHubHttpClient, AzureDevOpsHttpClient
   Converters/             # StatusToColorConverter, ExpanderArrowConverter
   Resources/Themes/       # LightTheme.xaml, DarkTheme.xaml
   App.xaml/.cs            # DI container, tray icon, lock file, hotkey registration
@@ -53,6 +53,7 @@ tests/PRDock.IntegrationTests/ # Integration/smoke tests
 - **Phase 6 COMPLETE**: Polish (NotificationService, FloatingBadge, auto-hide animation, SettingsFlyout, SetupWizard, keyboard nav, WorktreePruneDialog, recently closed PRs, merge conflict indicators)
 - **Phase 7 COMPLETE**: Hardening (RetryHandler, rate limit display, adaptive polling, graceful degradation)
 - **Auto-update COMPLETE**: Velopack integration (UpdateService, Settings UI, GitHub Actions release workflow)
+- **Phase 8: Azure DevOps COMPLETE**: Work items from saved queries, CRUD, query browser with favorites, filtering (state/assignedTo), attachment downloads, section switcher in sidebar
 
 Full spec: `PRDock-Implementation-Plan.md`
 

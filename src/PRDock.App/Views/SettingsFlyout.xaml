@@ -813,6 +813,46 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================== Azure DevOps ==================== -->
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Azure DevOps" Style="{StaticResource SectionHeaderStyle}" />
+
+                        <TextBlock Text="Organization" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox Text="{Binding AdoOrganization, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}" />
+
+                        <TextBlock Text="Project" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox Text="{Binding AdoProject, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}" />
+
+                        <TextBlock Text="Personal Access Token" Style="{StaticResource FieldLabelStyle}" />
+                        <PasswordBox x:Name="AdoPatPasswordBox"
+                                     PasswordChanged="AdoPatPasswordBox_PasswordChanged"
+                                     Padding="10,7"
+                                     BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                     BorderThickness="1"
+                                     Background="{DynamicResource SurfaceBrush}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     FontSize="12" />
+
+                        <TextBlock Text="Poll Interval (seconds)" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox Text="{Binding AdoPollIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InputTextBoxStyle}" />
+
+                        <StackPanel Orientation="Exampletal" Margin="0,8,0,0">
+                            <Button Content="Test Connection"
+                                    Command="{Binding TestAdoConnectionCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="12,6" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding AdoConnectionStatus}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================== Updates ==================== -->
                 <Border Style="{StaticResource SectionCardStyle}">
                     <StackPanel>

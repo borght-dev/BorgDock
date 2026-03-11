@@ -39,9 +39,10 @@ public partial class SettingsFlyout : WpfUserControl
     private void SyncPasswordBox(SettingsViewModel vm)
     {
         if (PatPasswordBox.Password != vm.PersonalAccessToken)
-        {
             PatPasswordBox.Password = vm.PersonalAccessToken;
-        }
+
+        if (AdoPatPasswordBox.Password != vm.AdoPersonalAccessToken)
+            AdoPatPasswordBox.Password = vm.AdoPersonalAccessToken;
     }
 
     private void PatPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
@@ -53,6 +54,13 @@ public partial class SettingsFlyout : WpfUserControl
         {
             vm.PersonalAccessToken = PatPasswordBox.Password;
         }
+    }
+
+    private void AdoPatPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel vm) return;
+        if (vm.AdoPersonalAccessToken != AdoPatPasswordBox.Password)
+            vm.AdoPersonalAccessToken = AdoPatPasswordBox.Password;
     }
 
     private void ManageWorktrees_Click(object sender, RoutedEventArgs e)

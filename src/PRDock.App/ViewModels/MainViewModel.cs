@@ -40,7 +40,8 @@ public partial class MainViewModel : ObservableObject
         IWorktreeService? worktreeService = null,
         IGitHubService? gitHubService = null,
         IGitCommandRunner? gitCommandRunner = null,
-        IPRCacheService? cacheService = null)
+        IPRCacheService? cacheService = null,
+        WorkItemsViewModel? workItemsViewModel = null)
     {
         _pollingService = pollingService;
         _httpClient = httpClient;
@@ -53,6 +54,7 @@ public partial class MainViewModel : ObservableObject
         _gitHubService = gitHubService;
         _gitCommandRunner = gitCommandRunner;
         _cacheService = cacheService;
+        WorkItems = workItemsViewModel;
         _pollingService.PollCompleted += OnPollCompleted;
         _pollingService.PollFailed += OnPollFailed;
 
@@ -112,6 +114,22 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isSettingsOpen;
+
+    [ObservableProperty]
+    private string _activeSection = "PullRequests";
+
+    public WorkItemsViewModel? WorkItems { get; }
+
+    public bool IsAdoConfigured => _settingsService?.CurrentSettings.AzureDevOps is { } ado
+        && !string.IsNullOrWhiteSpace(ado.Organization)
+        && !string.IsNullOrWhiteSpace(ado.Project)
+        && !string.IsNullOrWhiteSpace(ado.PersonalAccessToken);
+
+    [RelayCommand]
+    private void SwitchSection(string section)
+    {
+        ActiveSection = section;
+    }
 
     [ObservableProperty]
     private string _searchQuery = "";

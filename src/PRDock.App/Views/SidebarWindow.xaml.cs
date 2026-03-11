@@ -61,6 +61,12 @@ public partial class SidebarWindow : Window
         // Wire worktree prune dialog
         ViewModel.ManageWorktreesRequested += OnManageWorktreesRequested;
 
+        // Wire work item detail view
+        if (ViewModel.WorkItems is not null)
+        {
+            ViewModel.WorkItems.OpenDetailRequested += OnOpenWorkItemDetailRequested;
+        }
+
         // Wire PR detail view
         ViewModel.OpenPRDetailRequested += OnOpenPRDetailRequested;
     }
@@ -326,6 +332,61 @@ public partial class SidebarWindow : Window
     internal void RevealOnScreen(WinFormsScreen? targetScreen)
     {
         PositionAtScreenEdge(targetScreen);
+    }
+
+    private void OnOpenWorkItemDetailRequested(WorkItemCardViewModel card)
+    {
+        var app = (App)System.Windows.Application.Current;
+        var sp = app.ServiceProvider;
+        if (sp is null) return;
+
+        var vm = sp.GetRequiredService<WorkItemDetailViewModel>();
+        _ = vm.LoadCommand.ExecuteAsync(card.Id);
+        vm.WorkItemSaved += () => ViewModel.WorkItems?.RefreshCommand.Execute(null);
+        ShowWorkItemDetailWindow(vm);
+    }
+
+    private void QuerySelector_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (ViewModel.WorkItems is not null)
+        {
+            ViewModel.WorkItems.ToggleQueryBrowserCommand.Execute(null);
+        }
+    }
+
+    private void NewWorkItem_Click(object sender, RoutedEventArgs e)
+    {
+        var app = (App)System.Windows.Application.Current;
+        var sp = app.ServiceProvider;
+        if (sp is null) return;
+
+        var vm = sp.GetRequiredService<WorkItemDetailViewModel>();
+        vm.PrepareNewItem();
+        vm.WorkItemSaved += () => ViewModel.WorkItems?.RefreshCommand.Execute(null);
+        ShowWorkItemDetailWindow(vm);
+    }
+
+    private WorkItemDetailWindow? _workItemDetailWindow;
+
+    private void ShowWorkItemDetailWindow(WorkItemDetailViewModel vm)
+    {
+        _workItemDetailWindow?.Close();
+
+        _workItemDetailWindow = new WorkItemDetailWindow(vm);
+        _workItemDetailWindow.Closed += (_, _) => _workItemDetailWindow = null;
+
+        // Position adjacent to sidebar
+        var detailWidth = 600.0;
+        _workItemDetailWindow.Width = detailWidth;
+        _workItemDetailWindow.Top = Top;
+        _workItemDetailWindow.Height = Height;
+
+        if (_sidebarEdge == "right")
+            _workItemDetailWindow.Left = Left - detailWidth;
+        else
+            _workItemDetailWindow.Left = Left + ActualWidth;
+
+        _workItemDetailWindow.Show();
     }
 
     protected override void OnDeactivated(EventArgs e)
