@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRDock — Your PRs, always visible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+  :root {
+    --bg: #0a0e17;
+    --bg-raised: #0f1520;
+    --bg-card: #12161f;
+    --border: #1c2333;
+    --border-subtle: #161d2b;
+    --text: #e2e4e9;
+    --text-secondary: #7b8394;
+    --text-tertiary: #4a5168;
+    --accent: #2ea043;
+    --accent-dim: #268a38;
+    --accent-glow: rgba(46, 160, 67, 0.08);
+    --blue: #204C9C;
+    --blue-light: #3b6fc4;
+    --green: #2ea043;
+    --red: #f87171;
+    --font-display: 'Newsreader', Georgia, serif;
+    --font-body: 'Instrument Sans', -apple-system, sans-serif;
+    --font-mono: 'DM Mono', 'SF Mono', monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px;
+  }
+
+  /* ---- NAV ---- */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 0 clamp(1.5rem, 5vw, 4rem);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10, 14, 23, 0.8);
+    backdrop-filter: blur(20px) saturate(1.4);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .nav-logo-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-logo-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .nav-logo span {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 450;
+    letter-spacing: 0.01em;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    height: 34px;
+    padding: 0 16px;
+    background: var(--text) !important;
+    color: var(--bg) !important;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none !important;
+    transition: opacity 0.2s;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* ---- HERO ---- */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px clamp(1.5rem, 5vw, 4rem) 80px;
+    position: relative;
+  }
+
+  /* Radial glow behind hero */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(32, 76, 156, 0.06) 0%, rgba(46, 160, 67, 0.04) 40%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px 6px 8px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  .hero-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse-dot 2s ease infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(46, 160, 67, 0); }
+  }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    max-width: 700px;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--blue-light), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    color: var(--text-secondary);
+    max-width: 480px;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .btn-primary {
+    height: 48px;
+    padding: 0 28px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: -0.01em;
+  }
+
+  .btn-primary:hover {
+    background: #35b64d;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(46, 160, 67, 0.25);
+  }
+
+  .btn-secondary {
+    height: 48px;
+    padding: 0 24px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: -0.01em;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--text-tertiary);
+    color: var(--text);
+  }
+
+  .hero-price {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-top: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---- APP PREVIEW ---- */
+  .preview {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 5vw, 4rem);
+    position: relative;
+    z-index: 1;
+  }
+
+  .preview-window {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px var(--border-subtle),
+      0 20px 60px rgba(0,0,0,0.5),
+      0 0 120px rgba(32, 76, 156, 0.06);
+  }
+
+  .preview-titlebar {
+    height: 44px;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+  }
+
+  .preview-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .preview-dot:nth-child(1) { background: #ff5f57; }
+  .preview-dot:nth-child(2) { background: #febc2e; }
+  .preview-dot:nth-child(3) { background: #28c840; }
+
+  .preview-titlebar span {
+    flex: 1;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-right: 36px;
+  }
+
+  .preview-body {
+    padding: 24px;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Mock PR cards */
+  .mock-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .mock-card:hover { border-color: var(--text-tertiary); }
+
+  .mock-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .mock-status.pass { background: var(--green); box-shadow: 0 0 8px rgba(46, 160, 67, 0.3); }
+  .mock-status.fail { background: var(--red); box-shadow: 0 0 8px rgba(248, 113, 113, 0.3); }
+  .mock-status.pending { background: var(--blue-light); box-shadow: 0 0 8px rgba(59, 111, 196, 0.3); }
+
+  .mock-content { flex: 1; min-width: 0; }
+
+  .mock-title {
+    font-size: 13.5px;
+    font-weight: 550;
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mock-meta {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 10px;
+  }
+
+  .mock-branch {
+    color: var(--blue-light);
+  }
+
+  .mock-checks {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .mock-check {
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+  }
+
+  .mock-check.pass { background: var(--green); }
+  .mock-check.fail { background: var(--red); }
+  .mock-check.pending { background: var(--blue-light); }
+
+  .mock-repo-header {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 0 4px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 2px;
+  }
+
+  /* ---- FEATURES ---- */
+  .features {
+    padding: 160px clamp(1.5rem, 5vw, 4rem) 120px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .features-header {
+    text-align: center;
+    margin-bottom: 80px;
+  }
+
+  .features-header h2 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+  }
+
+  .features-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .feature-card {
+    background: var(--bg);
+    padding: 40px 32px;
+    transition: background 0.3s;
+  }
+
+  .feature-card:hover { background: var(--bg-raised); }
+
+  .feature-icon {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--blue-light);
+    margin-bottom: 20px;
+    letter-spacing: 0.02em;
+  }
+
+  .feature-card h3 {
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ---- HOW IT WORKS ---- */
+  .how {
+    padding: 80px clamp(1.5rem, 5vw, 4rem) 140px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .how h2 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.03em;
+    text-align: center;
+    margin-bottom: 60px;
+  }
+
+  .how-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .how-steps::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: 32px;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--border), var(--blue), var(--green), var(--border));
+  }
+
+  .how-step {
+    display: flex;
+    gap: 24px;
+    padding: 24px 0;
+    align-items: flex-start;
+  }
+
+  .how-step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--blue-light);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .how-step h4 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+
+  .how-step p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .how-step code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--green);
+  }
+
+  /* ---- CTA ---- */
+  .cta-section {
+    padding: 0 clamp(1.5rem, 5vw, 4rem) 160px;
+    text-align: center;
+  }
+
+  .cta-box {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 64px 48px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(32, 76, 156, 0.08), rgba(46, 160, 67, 0.04) 40%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .cta-box h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  .cta-box p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  .cta-box .btn-primary { position: relative; }
+
+  .cta-price-detail {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 1rem;
+    position: relative;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---- FOOTER ---- */
+  footer {
+    padding: 40px clamp(1.5rem, 5vw, 4rem);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  footer span {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  footer a {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+
+  footer a:hover { color: var(--text-secondary); }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  /* ---- KEYBOARD SHORTCUT TAG ---- */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 7px;
+    vertical-align: middle;
+    line-height: 1;
+  }
+
+  /* ---- SCROLL REVEAL ---- */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-delay-1 { transition-delay: 0.08s; }
+  .reveal-delay-2 { transition-delay: 0.16s; }
+  .reveal-delay-3 { transition-delay: 0.24s; }
+  .reveal-delay-4 { transition-delay: 0.32s; }
+  .reveal-delay-5 { transition-delay: 0.40s; }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 768px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+    .nav-links a:not(.nav-cta) { display: none; }
+    .hero-actions { flex-direction: column; }
+    .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+    footer { flex-direction: column; gap: 1rem; text-align: center; }
+  }
+
+  @media (max-width: 480px) {
+    .cta-box { padding: 48px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon"><svg width="28" height="28" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="nav-line" x1="2" y1="8" x2="14" y2="8"><stop offset="0%" stop-color="#204C9C"/><stop offset="100%" stop-color="#2ea043"/></linearGradient></defs><rect x="0" y="0" width="16" height="16" rx="4" fill="#12161f"/><path d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9" stroke="url(#nav-line)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="14" cy="9" r="1.5" fill="#2ea043"/></svg></div>
+    <span>PRDock</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">Setup</a>
+    <a href="#get" class="nav-cta">Download</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge reveal">
+    <div class="hero-badge-dot"></div>
+    v1.0 &mdash; now available for Windows
+  </div>
+  <h1 class="reveal reveal-delay-1">Your PRs,<br><em>always visible</em></h1>
+  <p class="hero-sub reveal reveal-delay-2">
+    A docked sidebar that puts pull requests, CI status, and AI reviews
+    at the edge of your screen. Glance, don't context-switch.
+  </p>
+  <div class="hero-actions reveal reveal-delay-3">
+    <a href="#get" class="btn-primary">
+      Download for Windows
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-6-6m6 6l6-6"/></svg>
+    </a>
+    <a href="#features" class="btn-secondary">See how it works</a>
+  </div>
+  <div class="hero-price reveal reveal-delay-4">$19 &middot; one-time &middot; free updates</div>
+</section>
+
+<!-- APP PREVIEW -->
+<div class="preview reveal">
+  <div class="preview-window">
+    <div class="preview-titlebar">
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <span>PRDock &mdash; 4 open</span>
+    </div>
+    <div class="preview-body">
+      <div class="mock-repo-header">acme/frontend</div>
+      <div class="mock-card">
+        <div class="mock-status pass"></div>
+        <div class="mock-content">
+          <div class="mock-title">feat: add onboarding flow redesign</div>
+          <div class="mock-meta">
+            <span class="mock-branch">onboarding-v2</span>
+            <span>#342 &middot; 2m ago</span>
+          </div>
+        </div>
+        <div class="mock-checks">
+          <div class="mock-check pass"></div>
+          <div class="mock-check pass"></div>
+          <div class="mock-check pass"></div>
+          <div class="mock-check pass"></div>
+        </div>
+      </div>
+      <div class="mock-card">
+        <div class="mock-status fail"></div>
+        <div class="mock-content">
+          <div class="mock-title">fix: resolve auth token refresh race condition</div>
+          <div class="mock-meta">
+            <span class="mock-branch">fix/auth-refresh</span>
+            <span>#339 &middot; 18m ago</span>
+          </div>
+        </div>
+        <div class="mock-checks">
+          <div class="mock-check pass"></div>
+          <div class="mock-check fail"></div>
+          <div class="mock-check pass"></div>
+        </div>
+      </div>
+      <div class="mock-repo-header">acme/api</div>
+      <div class="mock-card">
+        <div class="mock-status pending"></div>
+        <div class="mock-content">
+          <div class="mock-title">refactor: migrate to structured logging</div>
+          <div class="mock-meta">
+            <span class="mock-branch">structured-logs</span>
+            <span>#215 &middot; just now</span>
+          </div>
+        </div>
+        <div class="mock-checks">
+          <div class="mock-check pass"></div>
+          <div class="mock-check pending"></div>
+          <div class="mock-check pending"></div>
+          <div class="mock-check pending"></div>
+        </div>
+      </div>
+      <div class="mock-card">
+        <div class="mock-status pass"></div>
+        <div class="mock-content">
+          <div class="mock-title">chore: bump dependencies to latest</div>
+          <div class="mock-meta">
+            <span class="mock-branch">deps/update</span>
+            <span>#213 &middot; 1h ago</span>
+          </div>
+        </div>
+        <div class="mock-checks">
+          <div class="mock-check pass"></div>
+          <div class="mock-check pass"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="features-header reveal">
+    <h2>Built for peripheral vision</h2>
+    <p>PRDock lives at the edge of your screen. No tabs, no notifications to chase, no broken flow.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <div class="feature-icon">01 &mdash; sidebar</div>
+      <h3>Docked &amp; always there</h3>
+      <p>Slim sidebar hugs your screen edge. Toggle with <span class="kbd">Ctrl+Shift+P</span>. Your desktop resizes around it.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon">02 &mdash; checks</div>
+      <h3>CI at a glance</h3>
+      <p>Check suites and individual runs shown inline. Expand failures to see parsed logs without leaving your editor.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon">03 &mdash; claude</div>
+      <h3>AI code review</h3>
+      <p>Launch Claude Code on any PR with one click. Reviews land back in the sidebar, grouped by severity.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon">04 &mdash; repos</div>
+      <h3>Multi-repo grouping</h3>
+      <p>Watch as many repos as you need. PRs are grouped, sorted by update time, and filterable by status.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-4">
+      <div class="feature-icon">05 &mdash; notify</div>
+      <h3>Smart notifications</h3>
+      <p>Floating badge alerts you to failing checks and new review requests. Not another notification firehose.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-5">
+      <div class="feature-icon">06 &mdash; themes</div>
+      <h3>Light &amp; dark</h3>
+      <p>Follows your system preference or set it manually. Ships with two carefully tuned themes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <h2 class="reveal">Three minutes to set up</h2>
+  <div class="how-steps">
+    <div class="how-step reveal">
+      <div class="how-step-num">1</div>
+      <div>
+        <h4>Install &amp; launch</h4>
+        <p>Download the installer, run it. PRDock starts in your system tray.</p>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-delay-1">
+      <div class="how-step-num">2</div>
+      <div>
+        <h4>Authenticate with GitHub</h4>
+        <p>The setup wizard walks you through creating a personal access token. Paste it in, done.</p>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-delay-2">
+      <div class="how-step-num">3</div>
+      <div>
+        <h4>Add your repos</h4>
+        <p>Type <code>owner/repo</code> for each repository you want to watch. PRDock starts polling immediately.</p>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-delay-3">
+      <div class="how-step-num">4</div>
+      <div>
+        <h4>Dock &amp; forget</h4>
+        <p>Hit <span class="kbd">Ctrl+Shift+P</span> to toggle the sidebar. It's there when you glance, gone when you don't.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="get">
+  <div class="cta-box reveal">
+    <h2>Stop tab-switching<br>for PR status</h2>
+    <p>One purchase. No subscriptions. No telemetry. Just a native Windows app that does one thing well.</p>
+    <a href="#" class="btn-primary">
+      Download PRDock &mdash; $19
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-6-6m6 6l6-6"/></svg>
+    </a>
+    <div class="cta-price-detail">Windows 10+ &middot; .NET 10 &middot; ~8MB download</div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>&copy; 2026 PRDock</span>
+  <div class="footer-links">
+    <a href="#">GitHub</a>
+    <a href="#">Changelog</a>
+    <a href="mailto:hello@prdock.dev">Contact</a>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>
