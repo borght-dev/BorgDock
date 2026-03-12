@@ -152,19 +152,12 @@ public sealed class PRPollingService : IPRPollingService
                         _logger.LogDebug(ex, "Failed to fetch PR detail for #{Number}, stats will be 0", pr.Number);
                     }
 
-                    var suites = await _actionsService.GetCheckSuitesAsync(repo.Owner, repo.Name, pr.HeadRef, ct);
-                    var allChecks = new List<CheckRun>();
-
-                    foreach (var suite in suites)
-                    {
-                        var runs = await _actionsService.GetCheckRunsAsync(repo.Owner, repo.Name, suite.Id, ct);
-                        allChecks.AddRange(runs);
-                    }
+                    var allChecks = await _actionsService.GetCheckRunsForRefAsync(repo.Owner, repo.Name, pr.HeadRef, ct);
 
                     results.Add(new PullRequestWithChecks
                     {
                         PullRequest = pr,
-                        Checks = allChecks
+                        Checks = allChecks.ToList()
                     });
                 }
             }

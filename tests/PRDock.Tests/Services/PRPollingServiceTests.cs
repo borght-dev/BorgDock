@@ -106,26 +106,20 @@ public class PRPollingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task PollNowAsync_FetchesCheckSuitesAndRunsForEachPR()
+    public async Task PollNowAsync_FetchesCheckRunsForRefForEachPR()
     {
         var pr = new PullRequest { Number = 1, HeadRef = "abc123", RepoOwner = "octocat", RepoName = "hello-world" };
         _gitHubService.GetOpenPullRequestsAsync("octocat", "hello-world", Arg.Any<CancellationToken>())
             .Returns(new List<PullRequest> { pr });
 
-        var suite = new CheckSuite { Id = 10, HeadSha = "abc123" };
-        _actionsService.GetCheckSuitesAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>())
-            .Returns(new List<CheckSuite> { suite });
-
         var checkRun = new CheckRun { Id = 100, Name = "build", Status = "completed", Conclusion = "success", CheckSuiteId = 10 };
-        _actionsService.GetCheckRunsAsync("octocat", "hello-world", 10, Arg.Any<CancellationToken>())
+        _actionsService.GetCheckRunsForRefAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>())
             .Returns(new List<CheckRun> { checkRun });
 
         await _sut.PollNowAsync();
 
         await _actionsService.Received(1)
-            .GetCheckSuitesAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>());
-        await _actionsService.Received(1)
-            .GetCheckRunsAsync("octocat", "hello-world", 10, Arg.Any<CancellationToken>());
+            .GetCheckRunsForRefAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -135,12 +129,8 @@ public class PRPollingServiceTests : IDisposable
         _gitHubService.GetOpenPullRequestsAsync("octocat", "hello-world", Arg.Any<CancellationToken>())
             .Returns(new List<PullRequest> { pr });
 
-        var suite = new CheckSuite { Id = 10, HeadSha = "abc123" };
-        _actionsService.GetCheckSuitesAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>())
-            .Returns(new List<CheckSuite> { suite });
-
         var checkRun = new CheckRun { Id = 100, Name = "build", Status = "completed", Conclusion = "success", CheckSuiteId = 10 };
-        _actionsService.GetCheckRunsAsync("octocat", "hello-world", 10, Arg.Any<CancellationToken>())
+        _actionsService.GetCheckRunsForRefAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>())
             .Returns(new List<CheckRun> { checkRun });
 
         IReadOnlyList<PullRequestWithChecks>? result = null;
@@ -188,21 +178,18 @@ public class PRPollingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task PollNowAsync_WithMultipleCheckSuites_AggregatesAllCheckRuns()
+    public async Task PollNowAsync_WithMultipleCheckRuns_AggregatesCorrectly()
     {
         var pr = new PullRequest { Number = 1, HeadRef = "abc123", RepoOwner = "octocat", RepoName = "hello-world" };
         _gitHubService.GetOpenPullRequestsAsync("octocat", "hello-world", Arg.Any<CancellationToken>())
             .Returns(new List<PullRequest> { pr });
 
-        var suite1 = new CheckSuite { Id = 10, HeadSha = "abc123" };
-        var suite2 = new CheckSuite { Id = 20, HeadSha = "abc123" };
-        _actionsService.GetCheckSuitesAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>())
-            .Returns(new List<CheckSuite> { suite1, suite2 });
-
-        _actionsService.GetCheckRunsAsync("octocat", "hello-world", 10, Arg.Any<CancellationToken>())
-            .Returns(new List<CheckRun> { new() { Id = 100, Name = "build", Status = "completed", Conclusion = "success" } });
-        _actionsService.GetCheckRunsAsync("octocat", "hello-world", 20, Arg.Any<CancellationToken>())
-            .Returns(new List<CheckRun> { new() { Id = 200, Name = "lint", Status = "completed", Conclusion = "failure" } });
+        _actionsService.GetCheckRunsForRefAsync("octocat", "hello-world", "abc123", Arg.Any<CancellationToken>())
+            .Returns(new List<CheckRun>
+            {
+                new() { Id = 100, Name = "build", Status = "completed", Conclusion = "success", CheckSuiteId = 10 },
+                new() { Id = 200, Name = "lint", Status = "completed", Conclusion = "failure", CheckSuiteId = 20 }
+            });
 
         IReadOnlyList<PullRequestWithChecks>? result = null;
         _sut.PollCompleted += data => result = data;

@@ -296,13 +296,7 @@ public partial class PRDetailViewModel : ObservableObject
         ChecksError = "";
         try
         {
-            var suites = await _actionsService.GetCheckSuitesAsync(RepoOwner, RepoName, HeadRef);
-            var allRuns = new List<CheckRun>();
-            foreach (var suite in suites)
-            {
-                var runs = await _actionsService.GetCheckRunsAsync(RepoOwner, RepoName, suite.Id);
-                allRuns.AddRange(runs);
-            }
+            var allRuns = (await _actionsService.GetCheckRunsForRefAsync(RepoOwner, RepoName, HeadRef)).ToList();
 
             // Deduplicate by name (keep latest), then sort: failed first, then pending, then passed
             var deduped = allRuns

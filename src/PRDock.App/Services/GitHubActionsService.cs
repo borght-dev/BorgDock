@@ -78,6 +78,33 @@ public sealed class GitHubActionsService : IGitHubActionsService
         }).ToList().AsReadOnly() ?? new List<CheckRun>().AsReadOnly();
     }
 
+    public async Task<IReadOnlyList<CheckRun>> GetCheckRunsForRefAsync(
+        string owner, string repo, string gitRef, CancellationToken ct = default)
+    {
+        var client = await CreateAuthenticatedClientAsync(ct);
+        var url = $"repos/{owner}/{repo}/commits/{gitRef}/check-runs?per_page=100";
+
+        _logger.LogDebug("Fetching check runs for ref {Ref} from {Url}", gitRef, url);
+
+        var response = await client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var wrapper = JsonSerializer.Deserialize<CheckRunsResponse>(json, GitHubJsonOptions);
+
+        return wrapper?.CheckRuns?.Select(dto => new CheckRun
+        {
+            Id = dto.Id,
+            Name = dto.Name ?? "",
+            Status = dto.Status ?? "",
+            Conclusion = dto.Conclusion,
+            StartedAt = dto.StartedAt,
+            CompletedAt = dto.CompletedAt,
+            HtmlUrl = dto.HtmlUrl ?? "",
+            CheckSuiteId = dto.CheckSuite?.Id ?? 0
+        }).ToList().AsReadOnly() ?? new List<CheckRun>().AsReadOnly();
+    }
+
     public async Task<IReadOnlyList<WorkflowJob>> GetWorkflowJobsAsync(
         string owner, string repo, long runId, CancellationToken ct = default)
     {
@@ -191,6 +218,12 @@ public sealed class GitHubActionsService : IGitHubActionsService
         public DateTime? StartedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
         public string? HtmlUrl { get; set; }
+        public CheckSuiteRefDto? CheckSuite { get; set; }
+    }
+
+    private sealed class CheckSuiteRefDto
+    {
+        public long Id { get; set; }
     }
 
     private sealed class WorkflowJobsResponse

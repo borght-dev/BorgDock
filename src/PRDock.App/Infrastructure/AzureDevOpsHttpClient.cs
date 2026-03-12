@@ -155,7 +155,7 @@ public sealed class AzureDevOpsHttpClient
     {
         try
         {
-            var url = $"https://dev.azure.com/{Uri.EscapeDataString(organization)}/{Uri.EscapeDataString(project)}/_apis/projects/{Uri.EscapeDataString(project)}?api-version=7.1";
+            var url = $"https://dev.azure.com/{Uri.EscapeDataString(organization)}/_apis/projects/{Uri.EscapeDataString(project)}?api-version=7.1";
             var client = _httpClientFactory.CreateClient("AzureDevOps");
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             var bytes = Encoding.ASCII.GetBytes($":{pat}");
