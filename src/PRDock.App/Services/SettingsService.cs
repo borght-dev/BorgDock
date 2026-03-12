@@ -43,24 +43,29 @@ public sealed class SettingsService : ISettingsService
         if (loaded is not null)
         {
             CurrentSettings = loaded;
-            return;
         }
-
-        // Main file missing or corrupt — try backup
-        loaded = await TryLoadFromFileAsync(BackupFilePath);
-        if (loaded is not null)
+        else
         {
-            _logger.LogWarning("Restored settings from backup file {Path}.", BackupFilePath);
-            CurrentSettings = loaded;
-            // Re-write the main file from the restored backup
-            await AtomicWriteAsync(SettingsFilePath, loaded);
-            return;
+            // Main file missing or corrupt — try backup
+            loaded = await TryLoadFromFileAsync(BackupFilePath);
+            if (loaded is not null)
+            {
+                _logger.LogWarning("Restored settings from backup file {Path}.", BackupFilePath);
+                CurrentSettings = loaded;
+                // Re-write the main file from the restored backup
+                await AtomicWriteAsync(SettingsFilePath, loaded);
+            }
+            else
+            {
+                // No usable settings file at all — create defaults
+                _logger.LogInformation("No settings files found. Creating defaults at {Path}.", SettingsFilePath);
+                CurrentSettings = new AppSettings();
+                await AtomicWriteAsync(SettingsFilePath, CurrentSettings);
+            }
         }
 
-        // No usable settings file at all — create defaults
-        _logger.LogInformation("No settings files found. Creating defaults at {Path}.", SettingsFilePath);
-        CurrentSettings = new AppSettings();
-        await AtomicWriteAsync(SettingsFilePath, CurrentSettings);
+        // In debug builds, overlay settings.dev.json from the repo root
+        ApplyDevOverrides();
     }
 
     public async Task SaveAsync(AppSettings settings)
@@ -112,6 +117,50 @@ public sealed class SettingsService : ISettingsService
         {
             _logger.LogError(ex, "Failed to read settings file at {Path}.", path);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// In DEBUG builds, merges non-default values from settings.dev.json (repo root)
+    /// into the current settings. This lets developers keep credentials locally
+    /// without polluting %APPDATA% settings or committing secrets.
+    /// </summary>
+    [System.Diagnostics.Conditional("DEBUG")]
+    private void ApplyDevOverrides()
+    {
+        var devPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "settings.dev.json");
+        devPath = Path.GetFullPath(devPath); // normalize
+
+        if (!File.Exists(devPath))
+            return;
+
+        try
+        {
+            var json = File.ReadAllText(devPath);
+            var overrides = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+            if (overrides is null) return;
+
+            _logger.LogInformation("Applying dev overrides from {Path}", devPath);
+
+            // Merge ADO settings if they have values
+            var ado = overrides.AzureDevOps;
+            if (!string.IsNullOrWhiteSpace(ado.Organization))
+                CurrentSettings.AzureDevOps.Organization = ado.Organization;
+            if (!string.IsNullOrWhiteSpace(ado.Project))
+                CurrentSettings.AzureDevOps.Project = ado.Project;
+            if (!string.IsNullOrWhiteSpace(ado.PersonalAccessToken))
+                CurrentSettings.AzureDevOps.PersonalAccessToken = ado.PersonalAccessToken;
+
+            // Merge GitHub settings if they have values
+            var gh = overrides.GitHub;
+            if (!string.IsNullOrWhiteSpace(gh.PersonalAccessToken))
+                CurrentSettings.GitHub.PersonalAccessToken = gh.PersonalAccessToken;
+            if (!string.IsNullOrWhiteSpace(gh.Username))
+                CurrentSettings.GitHub.Username = gh.Username;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load dev overrides from {Path}", devPath);
         }
     }
 
