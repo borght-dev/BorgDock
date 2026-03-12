@@ -346,13 +346,7 @@ public partial class SidebarWindow : Window
         ShowWorkItemDetailWindow(vm);
     }
 
-    private void QuerySelector_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (ViewModel.WorkItems is not null)
-        {
-            ViewModel.WorkItems.ToggleQueryBrowserCommand.Execute(null);
-        }
-    }
+    // QuerySelector now uses Command binding directly in XAML
 
     private void NewWorkItem_Click(object sender, RoutedEventArgs e)
     {

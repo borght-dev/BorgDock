@@ -102,6 +102,22 @@
                            Margin="14,8"
                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
 
+                <!-- Error / not-configured message -->
+                <TextBlock Text="{Binding QueryLoadError}"
+                           FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
+                           Margin="14,8" TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding QueryLoadError}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
                 <ItemsControl ItemsSource="{Binding QueryTree}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

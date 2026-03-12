@@ -650,19 +650,25 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- Query name button -->
-                            <Border Grid.Column="0" Cursor="Hand"
-                                    Background="{DynamicResource InputBgBrush}"
-                                    BorderBrush="{DynamicResource InputBorderBrush}"
-                                    BorderThickness="1" CornerRadius="6"
-                                    Padding="10,7"
-                                    MouseLeftButtonUp="QuerySelector_Click">
-                                <Grid>
-                                    <TextBlock Text="{Binding SelectedQueryName}"
-                                               FontSize="12.5"
-                                               Foreground="{DynamicResource TextPrimaryBrush}"
-                                               TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </Border>
+                            <Button Grid.Column="0" Cursor="Hand"
+                                    Command="{Binding ToggleQueryBrowserCommand}"
+                                    ExampletalContentAlignment="Left"
+                                    Padding="10,7">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{DynamicResource InputBgBrush}"
+                                                BorderBrush="{DynamicResource InputBorderBrush}"
+                                                BorderThickness="1" CornerRadius="6"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter ExampletalAlignment="{TemplateBinding ExampletalContentAlignment}" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <TextBlock Text="{Binding SelectedQueryName}"
+                                           FontSize="12.5"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Button>
 
                             <!-- Refresh -->
                             <Button Grid.Column="1" Margin="6,0,0,0"
@@ -790,7 +796,13 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+
                 </Grid>
+
+                <!-- Query Browser overlay (covers work items list area) -->
+                <views:QueryBrowserPanel Grid.Row="1"
+                                         Panel.ZIndex="10"
+                                         Visibility="{Binding IsQueryBrowserOpen, Converter={StaticResource BoolToVis}}" />
             </Grid>
 
             <!-- ═══════════════════════════════════════════════════════════════

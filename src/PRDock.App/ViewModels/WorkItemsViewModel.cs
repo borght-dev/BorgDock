@@ -78,14 +78,27 @@ public partial class WorkItemsViewModel : ObservableObject
             _ = LoadQueriesAsync();
     }
 
+    [ObservableProperty]
+    private string _queryLoadError = "";
+
     [RelayCommand]
     private async Task LoadQueriesAsync()
     {
+        QueryLoadError = "";
+        var ado = _settingsService.CurrentSettings.AzureDevOps;
+        if (string.IsNullOrWhiteSpace(ado.Organization) ||
+            string.IsNullOrWhiteSpace(ado.Project) ||
+            string.IsNullOrWhiteSpace(ado.PersonalAccessToken))
+        {
+            QueryLoadError = "Azure DevOps is not configured.\nGo to Settings to set your organization, project, and PAT.";
+            return;
+        }
+
         IsLoading = true;
         try
         {
             var queries = await _adoService.GetQueriesAsync();
-            var favorites = _settingsService.CurrentSettings.AzureDevOps.FavoriteQueryIds;
+            var favorites = ado.FavoriteQueryIds;
 
             QueryTree.Clear();
             FavoriteQueries.Clear();
@@ -95,10 +108,14 @@ public partial class WorkItemsViewModel : ObservableObject
                 var node = MapQueryToNode(q, favorites);
                 QueryTree.Add(node);
             }
+
+            if (QueryTree.Count == 0)
+                QueryLoadError = "No queries found.";
         }
         catch (Exception ex)
         {
-            StatusText = $"Failed to load queries: {ex.Message}";
+            QueryLoadError = $"Failed to load queries: {ex.Message}";
+            StatusText = QueryLoadError;
             Serilog.Log.Warning(ex, "Failed to load ADO queries");
         }
         finally
