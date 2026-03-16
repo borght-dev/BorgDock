@@ -707,12 +707,22 @@
                             </Button>
                         </Grid>
 
-                        <!-- Filter row: state + assignedTo -->
+                        <!-- Filter row: state + assignedTo + search -->
                         <StackPanel Orientation="Exampletal">
                             <ComboBox ItemsSource="{Binding AvailableStates}"
                                       SelectedItem="{Binding FilterState}"
                                       FontSize="11" Padding="8,4" MinWidth="80"
-                                      Margin="0,0,6,0" />
+                                      Margin="0,0,6,0"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource InputBgBrush}"
+                                      BorderBrush="{DynamicResource InputBorderBrush}" />
+                            <ComboBox ItemsSource="{Binding AvailableAssignees}"
+                                      SelectedItem="{Binding FilterAssignedTo}"
+                                      FontSize="11" Padding="8,4" MinWidth="110"
+                                      Margin="0,0,6,0"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource InputBgBrush}"
+                                      BorderBrush="{DynamicResource InputBorderBrush}" />
                             <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                                      FontSize="11.5" Padding="8,5" MinWidth="140">
                                 <TextBox.Style>

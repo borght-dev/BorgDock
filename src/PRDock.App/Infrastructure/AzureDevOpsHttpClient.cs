@@ -73,6 +73,24 @@ public sealed class AzureDevOpsHttpClient
         return await HandleResponse<T>(response, url, ct);
     }
 
+    /// <summary>
+    /// GET at organization level (no project in path).
+    /// </summary>
+    public async Task<T?> GetOrgLevelAsync<T>(string relativeUrl, CancellationToken ct = default)
+    {
+        var org = _settingsService.CurrentSettings.AzureDevOps.Organization;
+        var separator = relativeUrl.Contains('?') ? "&" : "?";
+        var url = $"https://dev.azure.com/{Uri.EscapeDataString(org)}/_apis/{relativeUrl}{separator}api-version=7.1";
+        _logger.LogDebug("ADO GET (org) {Url}", url);
+
+        var client = _httpClientFactory.CreateClient("AzureDevOps");
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = GetAuthHeader();
+
+        var response = await client.SendAsync(request, ct);
+        return await HandleResponse<T>(response, url, ct);
+    }
+
     public async Task<T?> PostAsync<T>(string relativeUrl, object body, string? contentType = null, CancellationToken ct = default)
     {
         var url = BuildUrl(relativeUrl);

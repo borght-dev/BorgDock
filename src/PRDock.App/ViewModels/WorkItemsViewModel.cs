@@ -14,6 +14,7 @@ public partial class WorkItemsViewModel : ObservableObject
     private readonly ISettingsService _settingsService;
 
     private IReadOnlyList<WorkItem> _allWorkItems = [];
+    private string? _currentUserDisplayName;
 
     public WorkItemsViewModel(
         IAzureDevOpsService adoService,
@@ -47,7 +48,7 @@ public partial class WorkItemsViewModel : ObservableObject
     private string _filterState = "All";
 
     [ObservableProperty]
-    private string _filterAssignedTo = "";
+    private string _filterAssignedTo = "Anyone";
 
     [ObservableProperty]
     private string _searchQuery = "";
@@ -64,7 +65,7 @@ public partial class WorkItemsViewModel : ObservableObject
 
     // Available states for filter dropdown
     public ObservableCollection<string> AvailableStates { get; } = ["All"];
-    public ObservableCollection<string> AvailableAssignees { get; } = [""];
+    public ObservableCollection<string> AvailableAssignees { get; } = ["Anyone"];
 
     partial void OnFilterStateChanged(string value) => ApplyFiltering();
     partial void OnFilterAssignedToChanged(string value) => ApplyFiltering();
@@ -208,11 +209,75 @@ public partial class WorkItemsViewModel : ObservableObject
 
     public void Initialize()
     {
-        var lastQueryId = _settingsService.CurrentSettings.AzureDevOps.LastSelectedQueryId;
+        var ado = _settingsService.CurrentSettings.AzureDevOps;
+        var lastQueryId = ado.LastSelectedQueryId;
         if (lastQueryId is not null)
         {
             SelectedQueryId = lastQueryId;
             _pollingService.StartPolling(lastQueryId.Value);
+            // Resolve the query name in the background
+            _ = ResolveQueryNameAsync(lastQueryId.Value);
+        }
+        else if (ado.FavoriteQueryIds.Count > 0)
+        {
+            // No last selected query, but there are favorites — auto-select the first one
+            _ = AutoSelectFirstFavoriteAsync(ado.FavoriteQueryIds[0]);
+        }
+
+        _ = ResolveCurrentUserAsync();
+    }
+
+    private async Task ResolveQueryNameAsync(Guid queryId)
+    {
+        try
+        {
+            await LoadQueriesAsync();
+            var node = FindNodeById(QueryTree, queryId);
+            if (node is not null)
+                SelectedQueryName = node.Name;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to resolve query name");
+        }
+    }
+
+    private static AdoQueryTreeNode? FindNodeById(IEnumerable<AdoQueryTreeNode> nodes, Guid id)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Id == id) return node;
+            var child = FindNodeById(node.Children, id);
+            if (child is not null) return child;
+        }
+        return null;
+    }
+
+    private async Task AutoSelectFirstFavoriteAsync(Guid favoriteId)
+    {
+        try
+        {
+            await LoadQueriesAsync();
+
+            var favoriteNode = FavoriteQueries.FirstOrDefault(f => f.Id == favoriteId);
+            if (favoriteNode is not null)
+                await SelectQueryAsync(favoriteNode);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to auto-select first favorite query");
+        }
+    }
+
+    private async Task ResolveCurrentUserAsync()
+    {
+        try
+        {
+            _currentUserDisplayName = await _adoService.GetCurrentUserDisplayNameAsync();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to resolve ADO current user");
         }
     }
 
@@ -255,8 +320,10 @@ public partial class WorkItemsViewModel : ObservableObject
         if (FilterState != "All")
             filtered = filtered.Where(w => w.State.Equals(FilterState, StringComparison.OrdinalIgnoreCase));
 
-        if (!string.IsNullOrWhiteSpace(FilterAssignedTo))
-            filtered = filtered.Where(w => w.AssignedTo.Contains(FilterAssignedTo, StringComparison.OrdinalIgnoreCase));
+        if (FilterAssignedTo == "@Me" && _currentUserDisplayName is not null)
+            filtered = filtered.Where(w => w.AssignedTo.Equals(_currentUserDisplayName, StringComparison.OrdinalIgnoreCase));
+        else if (FilterAssignedTo != "Anyone" && !string.IsNullOrWhiteSpace(FilterAssignedTo))
+            filtered = filtered.Where(w => w.AssignedTo.Equals(FilterAssignedTo, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
@@ -276,17 +343,23 @@ public partial class WorkItemsViewModel : ObservableObject
 
     private void UpdateAvailableFilters()
     {
+        var prevState = FilterState;
         var states = _allWorkItems.Select(w => w.State).Distinct().OrderBy(s => s).ToList();
         AvailableStates.Clear();
         AvailableStates.Add("All");
         foreach (var s in states)
             AvailableStates.Add(s);
+        FilterState = AvailableStates.Contains(prevState) ? prevState : "All";
 
+        var prevAssignee = FilterAssignedTo;
         var assignees = _allWorkItems.Select(w => w.AssignedTo).Where(a => !string.IsNullOrEmpty(a)).Distinct().OrderBy(a => a).ToList();
         AvailableAssignees.Clear();
-        AvailableAssignees.Add("");
+        AvailableAssignees.Add("Anyone");
+        if (_currentUserDisplayName is not null)
+            AvailableAssignees.Add("@Me");
         foreach (var a in assignees)
             AvailableAssignees.Add(a);
+        FilterAssignedTo = AvailableAssignees.Contains(prevAssignee) ? prevAssignee : "Anyone";
     }
 
     private AdoQueryTreeNode MapQueryToNode(AdoQuery query, List<Guid> favoriteIds)

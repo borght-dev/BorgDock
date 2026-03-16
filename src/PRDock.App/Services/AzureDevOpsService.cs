@@ -106,6 +106,12 @@ public sealed class AzureDevOpsService : IAzureDevOpsService
         return _httpClient.TestConnectionAsync(organization, project, pat, ct);
     }
 
+    public async Task<string?> GetCurrentUserDisplayNameAsync(CancellationToken ct = default)
+    {
+        var response = await _httpClient.GetOrgLevelAsync<ConnectionDataResponse>("connectionData", ct);
+        return response?.AuthenticatedUser?.ProviderDisplayName;
+    }
+
     private void EnrichHtmlUrl(WorkItem wi)
     {
         var s = _settingsService.CurrentSettings.AzureDevOps;
@@ -121,5 +127,15 @@ public sealed class AzureDevOpsService : IAzureDevOpsService
     private sealed class AdoWorkItemListResponse
     {
         public List<WorkItem> Value { get; set; } = [];
+    }
+
+    private sealed class ConnectionDataResponse
+    {
+        public AuthenticatedUserInfo? AuthenticatedUser { get; set; }
+    }
+
+    private sealed class AuthenticatedUserInfo
+    {
+        public string ProviderDisplayName { get; set; } = "";
     }
 }
