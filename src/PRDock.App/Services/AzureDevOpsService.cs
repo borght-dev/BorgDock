@@ -112,6 +112,14 @@ public sealed class AzureDevOpsService : IAzureDevOpsService
         return response?.AuthenticatedUser?.ProviderDisplayName;
     }
 
+    public async Task<IReadOnlyList<string>> GetWorkItemTypeStatesAsync(string workItemType, CancellationToken ct = default)
+    {
+        var encodedType = Uri.EscapeDataString(workItemType);
+        var response = await _httpClient.GetAsync<WorkItemTypeStateListResponse>(
+            $"wit/workitemtypes/{encodedType}/states", ct);
+        return response?.Value.Select(s => s.Name).ToList() ?? [];
+    }
+
     private void EnrichHtmlUrl(WorkItem wi)
     {
         var s = _settingsService.CurrentSettings.AzureDevOps;
@@ -127,6 +135,17 @@ public sealed class AzureDevOpsService : IAzureDevOpsService
     private sealed class AdoWorkItemListResponse
     {
         public List<WorkItem> Value { get; set; } = [];
+    }
+
+    private sealed class WorkItemTypeStateListResponse
+    {
+        public List<WorkItemTypeStateEntry> Value { get; set; } = [];
+    }
+
+    private sealed class WorkItemTypeStateEntry
+    {
+        public string Name { get; set; } = "";
+        public string Color { get; set; } = "";
     }
 
     private sealed class ConnectionDataResponse

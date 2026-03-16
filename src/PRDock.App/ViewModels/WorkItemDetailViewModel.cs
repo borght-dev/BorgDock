@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PRDock.App.Infrastructure;
 using PRDock.App.Models;
 using PRDock.App.Services;
 
@@ -71,6 +72,10 @@ public partial class WorkItemDetailViewModel : ObservableObject
     private string _newItemType = "User Story";
 
     public ObservableCollection<WorkItemAttachmentViewModel> Attachments { get; } = [];
+    public ObservableCollection<DynamicFieldItem> RichTextFields { get; } = [];
+    public ObservableCollection<DynamicFieldItem> StandardFields { get; } = [];
+    public ObservableCollection<DynamicFieldItem> CustomFields { get; } = [];
+    public ObservableCollection<string> AvailableStates { get; } = [];
 
     public static IReadOnlyList<string> WorkItemTypeOptions { get; } =
         ["User Story", "Bug", "Task", "Feature", "Epic"];
@@ -107,6 +112,35 @@ public partial class WorkItemDetailViewModel : ObservableObject
                     Size = rel.ResourceSize ?? 0,
                     Url = rel.Url
                 });
+            }
+
+            // Fetch valid states for this work item type
+            AvailableStates.Clear();
+            try
+            {
+                var states = await _adoService.GetWorkItemTypeStatesAsync(wi.WorkItemType);
+                foreach (var s in states)
+                    AvailableStates.Add(s);
+            }
+            catch (Exception stateEx)
+            {
+                Serilog.Log.Warning(stateEx, "Failed to fetch states for {Type}", wi.WorkItemType);
+            }
+
+            // Populate dynamic fields from all remaining API fields
+            RichTextFields.Clear();
+            StandardFields.Clear();
+            CustomFields.Clear();
+            var classified = WorkItemFieldClassifier.Classify(wi.Fields);
+            foreach (var f in classified)
+            {
+                var col = f.Section switch
+                {
+                    FieldSection.RichText => RichTextFields,
+                    FieldSection.Custom => CustomFields,
+                    _ => StandardFields,
+                };
+                col.Add(f);
             }
 
             StatusText = "";
@@ -154,6 +188,7 @@ public partial class WorkItemDetailViewModel : ObservableObject
             else
             {
                 patches.Add(new JsonPatchOperation { Op = "replace", Path = "/fields/System.Title", Value = Title });
+                patches.Add(new JsonPatchOperation { Op = "replace", Path = "/fields/System.State", Value = State });
                 patches.Add(new JsonPatchOperation { Op = "replace", Path = "/fields/System.Description", Value = Description ?? "" });
                 patches.Add(new JsonPatchOperation { Op = "replace", Path = "/fields/System.Tags", Value = Tags ?? "" });
                 if (!string.IsNullOrEmpty(AssignedTo))
@@ -234,6 +269,9 @@ public partial class WorkItemDetailViewModel : ObservableObject
         Type = "User Story";
         HtmlUrl = "";
         Attachments.Clear();
+        RichTextFields.Clear();
+        StandardFields.Clear();
+        CustomFields.Clear();
         StatusText = "";
     }
 

@@ -15,4 +15,5 @@ public interface IAzureDevOpsService
     Task<Stream> DownloadAttachmentAsync(Guid attachmentId, string fileName, CancellationToken ct = default);
     Task<string?> TestConnectionAsync(string organization, string project, string pat, CancellationToken ct = default);
     Task<string?> GetCurrentUserDisplayNameAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<string>> GetWorkItemTypeStatesAsync(string workItemType, CancellationToken ct = default);
 }

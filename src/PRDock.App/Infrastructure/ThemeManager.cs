@@ -20,6 +20,8 @@ public sealed class ThemeManager : IDisposable
     private string _mode = "system";
     private bool _disposed;
 
+    public static ThemeManager? Instance { get; private set; }
+
     public string CurrentTheme { get; private set; } = "light";
 
     public event Action<string>? ThemeChanged;
@@ -27,6 +29,7 @@ public sealed class ThemeManager : IDisposable
     public ThemeManager(WpfApplication application)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
+        Instance = this;
     }
 
     public void ApplyTheme(string mode)

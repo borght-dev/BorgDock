@@ -202,6 +202,9 @@ public partial class App : System.Windows.Application
             _mainViewModel.WorkItems?.Initialize();
         }
 
+        // Wire up HtmlWebView auth for ADO images
+        Views.HtmlWebView.SettingsService = settingsService;
+
         // Wire up merge/close celebration notifications
         _mainViewModel.PrClosedOrMerged += (title, author, prNumber, repoFullName) =>
         {

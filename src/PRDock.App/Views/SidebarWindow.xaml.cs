@@ -156,6 +156,7 @@ public partial class SidebarWindow : Window
         {
             _detailWindow?.Close();
             _detailWindow = null;
+            _suppressAutoHide = false;
         };
         vm.RefreshRequested += () =>
         {
@@ -167,8 +168,13 @@ public partial class SidebarWindow : Window
         vm.RerunChecksRequested += () => card.RerunRequested?.Invoke(card);
         vm.FixWithClaudeRequested += () => card.FixWithClaudeRequested?.Invoke(card);
         vm.ToggleDraftRequested += () => card.ToggleDraftRequested?.Invoke(card);
-        _detailWindow.Closed += (_, _) => _detailWindow = null;
+        _detailWindow.Closed += (_, _) =>
+        {
+            _detailWindow = null;
+            _suppressAutoHide = false;
+        };
 
+        _suppressAutoHide = true;
         PositionDetailWindow(_detailWindow);
         _detailWindow.Show();
     }
@@ -361,13 +367,18 @@ public partial class SidebarWindow : Window
     }
 
     private WorkItemDetailWindow? _workItemDetailWindow;
+    private bool _suppressAutoHide;
 
     private void ShowWorkItemDetailWindow(WorkItemDetailViewModel vm)
     {
         _workItemDetailWindow?.Close();
 
         _workItemDetailWindow = new WorkItemDetailWindow(vm);
-        _workItemDetailWindow.Closed += (_, _) => _workItemDetailWindow = null;
+        _workItemDetailWindow.Closed += (_, _) =>
+        {
+            _workItemDetailWindow = null;
+            _suppressAutoHide = false;
+        };
 
         // Position adjacent to sidebar
         var detailWidth = 600.0;
@@ -380,13 +391,15 @@ public partial class SidebarWindow : Window
         else
             _workItemDetailWindow.Left = Left + ActualWidth;
 
+        _suppressAutoHide = true;
         _workItemDetailWindow.Show();
     }
 
     protected override void OnDeactivated(EventArgs e)
     {
         base.OnDeactivated(e);
-        ViewModel.MinimizeToBadgeCommand.Execute(null);
+        if (!_suppressAutoHide)
+            ViewModel.MinimizeToBadgeCommand.Execute(null);
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)

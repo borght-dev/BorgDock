@@ -1,5 +1,8 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using PRDock.App.ViewModels;
 using WpfUserControl = System.Windows.Controls.UserControl;
 
@@ -16,7 +19,6 @@ public partial class WorkItemDetailPanel : WpfUserControl
     {
         if (DataContext is WorkItemDetailViewModel vm)
         {
-            // Signal parent to close
             CloseRequested?.Invoke();
         }
     }
@@ -27,6 +29,25 @@ public partial class WorkItemDetailPanel : WpfUserControl
             && DataContext is WorkItemDetailViewModel vm)
         {
             vm.DownloadAttachmentCommand.Execute(attachment);
+        }
+    }
+
+    private void RichTextResize_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        // Find the Border sibling (the HtmlWebView container) above this Thumb
+        if (sender is not Thumb thumb) return;
+        var parent = VisualTreeHelper.GetParent(thumb) as StackPanel;
+        if (parent is null) return;
+
+        // The Border is the second child (index 1) in the StackPanel: Label, Border, Thumb
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            if (VisualTreeHelper.GetChild(parent, i) is Border border && border.Child is HtmlWebView)
+            {
+                var newHeight = border.ActualHeight + e.VerticalChange;
+                border.Height = Math.Max(100, newHeight);
+                break;
+            }
         }
     }
 
