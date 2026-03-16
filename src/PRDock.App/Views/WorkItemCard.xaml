@@ -7,6 +7,144 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:WorkItemStateToColorConverter x:Key="StateToColor" />
         <conv:PriorityToIconConverter x:Key="PriorityToIcon" />
+
+        <!-- Themed context menu -->
+        <Style TargetType="{x:Type ContextMenu}">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="2,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ContextMenu}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.18" Color="#000000" />
+                            </Border.Effect>
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Themed menu item -->
+        <Style TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Border x:Name="Bd" Background="Transparent"
+                                CornerRadius="4" Padding="10,6" Margin="0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <!-- Checkmark -->
+                                <TextBlock x:Name="Check" Grid.Column="0" Text="&#xE73E;"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,8,0"
+                                           Visibility="Collapsed" />
+                                <!-- Content -->
+                                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                                  VerticalAlignment="Center" />
+                                <!-- Submenu arrow -->
+                                <TextBlock x:Name="Arrow" Grid.Column="2" Text="&#xE76C;"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           Foreground="{DynamicResource TextGhostBrush}"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"
+                                           Visibility="Collapsed" />
+                                <!-- Popup for submenu -->
+                                <Popup x:Name="PART_Popup" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Placement="Right" AllowsTransparency="True"
+                                       Focusable="False" PopupAnimation="Fade"
+                                       ExampletalOffset="-2" VerticalOffset="-6">
+                                    <Border Background="{DynamicResource CardBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SubtleBorderBrush}"
+                                            BorderThickness="1" CornerRadius="6" Padding="2,4"
+                                            MaxHeight="420">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.18" Color="#000000" />
+                                        </Border.Effect>
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" ExampletalScrollBarVisibility="Disabled">
+                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="True">
+                                <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource TextGhostBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Themed separator -->
+        <Style TargetType="{x:Type Separator}">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="8,4" />
+            <Setter Property="Background" Value="{DynamicResource SeparatorBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Separator}">
+                        <Border Background="{TemplateBinding Background}"
+                                Height="{TemplateBinding Height}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Transparent button template for action buttons -->
+        <Style x:Key="ActionBtnStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ExampletalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource IconButtonPressedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <!-- Main clickable row -->
@@ -15,6 +153,36 @@
             BorderThickness="2,0,0,0"
             Padding="13,11,18,11"
             MouseLeftButtonUp="Row_Click">
+        <Border.ContextMenu>
+            <ContextMenu x:Name="CardContextMenu" Opened="CardContextMenu_Opened">
+                <MenuItem Click="ContextTrack_Click">
+                    <MenuItem.Style>
+                        <Style TargetType="MenuItem">
+                            <Setter Property="Header" Value="Track this item" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTracked}" Value="True">
+                                    <Setter Property="Header" Value="Stop tracking" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </MenuItem.Style>
+                </MenuItem>
+                <MenuItem Click="ContextWorkingOn_Click">
+                    <MenuItem.Style>
+                        <Style TargetType="MenuItem">
+                            <Setter Property="Header" Value="Mark as working on" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsWorkingOn}" Value="True">
+                                    <Setter Property="Header" Value="Stop working on" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </MenuItem.Style>
+                </MenuItem>
+                <Separator />
+                <MenuItem x:Name="WorktreeSubmenu" Header="Set worktree" />
+            </ContextMenu>
+        </Border.ContextMenu>
         <Border.Style>
             <Style TargetType="Border">
                 <Setter Property="BorderBrush" Value="Transparent" />
@@ -23,6 +191,14 @@
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
                     </Trigger>
+                    <DataTrigger Binding="{Binding IsTracked}" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource TrackedBorderBrush}" />
+                        <Setter Property="Background" Value="{DynamicResource TrackedSoftBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsWorkingOn}" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource WorkingOnBorderBrush}" />
+                        <Setter Property="Background" Value="{DynamicResource WorkingOnSoftBrush}" />
+                    </DataTrigger>
                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                         <Setter Property="Background" Value="{DynamicResource SelectedRowBgBrush}" />
@@ -35,6 +211,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="38" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" MinWidth="80" />
             </Grid.ColumnDefinitions>
 
@@ -73,7 +250,7 @@
                 </TextBlock>
             </Grid>
 
-            <!-- Column 1: Title + metadata -->
+            <!-- Column 1: Title + metadata + worktree -->
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,8,0">
                 <!-- Title -->
                 <TextBlock Text="{Binding Title}"
@@ -111,10 +288,112 @@
                         <Run Text="{Binding AssignedTo, Mode=OneWay}" />
                     </TextBlock>
                 </StackPanel>
+
+                <!-- Worktree path (shown when Working On and path is set) -->
+                <StackPanel Orientation="Exampletal" Margin="0,2,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsWorkingOn}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                               Foreground="{DynamicResource WorkingOnBorderBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <TextBlock FontFamily="{DynamicResource CodeFontFamily}"
+                               FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                               TextTrimming="CharacterEllipsis" MaxWidth="280"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="{Binding WorktreePath}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WorktreePath}" Value="">
+                                        <Setter Property="Text" Value="Right-click to set worktree" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextGhostBrush}" />
+                                        <Setter Property="FontStyle" Value="Italic" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
             </StackPanel>
 
-            <!-- Column 2: State badge + priority + age -->
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" ExampletalAlignment="Right">
+            <!-- Column 2: Tracking action buttons (hover-reveal) -->
+            <StackPanel x:Name="TrackingActions" Grid.Column="2"
+                        Orientation="Exampletal" VerticalAlignment="Center"
+                        Margin="0,0,6,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Opacity" Value="0" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMouseOver, ElementName=RowBorder}" Value="True">
+                                <Setter Property="Opacity" Value="1" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsTracked}" Value="True">
+                                <Setter Property="Opacity" Value="1" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsWorkingOn}" Value="True">
+                                <Setter Property="Opacity" Value="1" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <!-- Track button -->
+                <Button Style="{StaticResource ActionBtnStyle}"
+                        Click="ToggleTracked_Click"
+                        ToolTip="Track this item — keep it pinned at the top">
+                    <StackPanel Orientation="Exampletal">
+                        <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsTracked}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource TrackedBorderBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+
+                <!-- Working On button -->
+                <Button x:Name="WorkingOnBtn" Style="{StaticResource ActionBtnStyle}"
+                        Click="ToggleWorkingOn_Click" Margin="2,0,0,0"
+                        ToolTip="Mark as working on (assigns active worktree)"
+                        MouseEnter="WorkingOnBtn_MouseEnter">
+                    <StackPanel Orientation="Exampletal">
+                        <TextBlock Text="&#xE90F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsWorkingOn}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource WorkingOnBorderBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- Column 3: State badge + priority + age -->
+            <StackPanel Grid.Column="3" VerticalAlignment="Center" ExampletalAlignment="Right">
                 <!-- State badge -->
                 <Border CornerRadius="4" Padding="7,2" ExampletalAlignment="Right"
                         Margin="0,0,0,3">

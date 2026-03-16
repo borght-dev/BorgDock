@@ -341,7 +341,8 @@ public partial class App : System.Windows.Application
             new WorkItemsViewModel(
                 sp.GetRequiredService<IAzureDevOpsService>(),
                 sp.GetRequiredService<IAzureDevOpsPollingService>(),
-                sp.GetRequiredService<ISettingsService>()));
+                sp.GetRequiredService<ISettingsService>(),
+                sp.GetRequiredService<IWorktreeService>()));
         services.AddSingleton<MainViewModel>(sp =>
             new MainViewModel(
                 sp.GetRequiredService<IPRPollingService>(),

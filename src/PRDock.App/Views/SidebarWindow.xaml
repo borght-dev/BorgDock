@@ -755,6 +755,77 @@
                                 </TextBox.Style>
                             </TextBox>
                         </StackPanel>
+
+                        <!-- Tracking filter chips + worktree selector -->
+                        <Grid Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Exampletal">
+                                <RadioButton Style="{StaticResource FilterChipStyle}"
+                                             GroupName="WorkItemTrackingFilter"
+                                             IsChecked="{Binding FilterTracking, Converter={StaticResource StringEqualityConverter}, ConverterParameter=All}">
+                                    <TextBlock Text="All" FontSize="10.5" />
+                                </RadioButton>
+                                <RadioButton Style="{StaticResource FilterChipStyle}"
+                                             GroupName="WorkItemTrackingFilter"
+                                             IsChecked="{Binding FilterTracking, Converter={StaticResource StringEqualityConverter}, ConverterParameter=WorkingOn}">
+                                    <StackPanel Orientation="Exampletal">
+                                        <TextBlock Text="&#xE90F;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                                   VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="Working On" FontSize="10.5" />
+                                        <Border Background="{DynamicResource SurfaceRaisedBrush}"
+                                                CornerRadius="3" Padding="5,1" Margin="5,0,0,0">
+                                            <TextBlock Text="{Binding WorkingOnCount}"
+                                                       FontSize="10" FontWeight="SemiBold"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource TextGhostBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton Style="{StaticResource FilterChipStyle}"
+                                             GroupName="WorkItemTrackingFilter"
+                                             IsChecked="{Binding FilterTracking, Converter={StaticResource StringEqualityConverter}, ConverterParameter=Tracked}">
+                                    <StackPanel Orientation="Exampletal">
+                                        <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                                   VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="Tracked" FontSize="10.5" />
+                                        <Border Background="{DynamicResource SurfaceRaisedBrush}"
+                                                CornerRadius="3" Padding="5,1" Margin="5,0,0,0">
+                                            <TextBlock Text="{Binding TrackedCount}"
+                                                       FontSize="10" FontWeight="SemiBold"
+                                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                                       Foreground="{DynamicResource TextGhostBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                </RadioButton>
+                            </StackPanel>
+
+                            <!-- Active worktree selector -->
+                            <StackPanel Grid.Column="1" Orientation="Exampletal"
+                                        ExampletalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           Foreground="{DynamicResource WorkingOnBorderBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <ComboBox ItemsSource="{Binding AvailableWorktrees}"
+                                          SelectedItem="{Binding ActiveWorktree}"
+                                          DisplayMemberPath="BranchName"
+                                          FontSize="10.5" Padding="6,3" MinWidth="100"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                          Background="{DynamicResource InputBgBrush}"
+                                          BorderBrush="{DynamicResource InputBorderBrush}"
+                                          ToolTip="Active worktree — new 'Working On' items get this worktree" />
+                                <Button Style="{StaticResource HeaderButtonStyle}"
+                                        Command="{Binding ApplyWorktreeToAllWorkingOnCommand}"
+                                        ToolTip="Apply this worktree to all Working On items"
+                                        Width="24" Height="24" Margin="2,0,0,0">
+                                    <TextBlock Text="&#xE8AB;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                               Foreground="{DynamicResource IconButtonForegroundBrush}" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
@@ -813,6 +884,7 @@
                 <views:QueryBrowserPanel Grid.Row="1"
                                          Panel.ZIndex="10"
                                          Visibility="{Binding IsQueryBrowserOpen, Converter={StaticResource BoolToVis}}" />
+
             </Grid>
 
             <!-- ═══════════════════════════════════════════════════════════════
@@ -874,6 +946,16 @@
                         </TextBlock.Style>
                         <Run Text="{Binding WorkItems.FilteredWorkItems.Count, Mode=OneWay}" />
                         <Run Text=" work items" />
+                        <Run Text="  " />
+                        <Run Text="&#x25CF;" Foreground="{DynamicResource WorkingOnBorderBrush}" />
+                        <Run Text=" " />
+                        <Run Text="{Binding WorkItems.WorkingOnCount, Mode=OneWay}" />
+                        <Run Text=" active" />
+                        <Run Text="  " />
+                        <Run Text="&#x25CF;" Foreground="{DynamicResource TrackedBorderBrush}" />
+                        <Run Text=" " />
+                        <Run Text="{Binding WorkItems.TrackedCount, Mode=OneWay}" />
+                        <Run Text=" tracked" />
                     </TextBlock>
 
                     <!-- Right: last updated -->

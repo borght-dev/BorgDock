@@ -34,6 +34,17 @@ public partial class WorkItemCardViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private bool _isTracked;
+
+    [ObservableProperty]
+    private bool _isWorkingOn;
+
+    [ObservableProperty]
+    private string _worktreePath = "";
+
+    public int TrackingSortWeight => IsWorkingOn ? 0 : IsTracked ? 1 : 2;
+
     public static string FormatAge(DateTime? date)
     {
         if (date is null) return "";
@@ -44,7 +55,11 @@ public partial class WorkItemCardViewModel : ObservableObject
         return $"{(int)(span.TotalDays / 30)}mo";
     }
 
-    public static WorkItemCardViewModel FromWorkItem(PRDock.App.Models.WorkItem wi)
+    public static WorkItemCardViewModel FromWorkItem(
+        PRDock.App.Models.WorkItem wi,
+        bool isTracked = false,
+        bool isWorkingOn = false,
+        string worktreePath = "")
     {
         return new WorkItemCardViewModel
         {
@@ -56,7 +71,10 @@ public partial class WorkItemCardViewModel : ObservableObject
             Priority = wi.Priority,
             Tags = wi.Tags,
             Age = FormatAge(wi.ChangedDate),
-            HtmlUrl = wi.HtmlUrl
+            HtmlUrl = wi.HtmlUrl,
+            IsTracked = isTracked,
+            IsWorkingOn = isWorkingOn,
+            WorktreePath = worktreePath,
         };
     }
 }

@@ -78,4 +78,7 @@ public sealed class AzureDevOpsSettings
     public int PollIntervalSeconds { get; set; } = 120;
     public List<Guid> FavoriteQueryIds { get; set; } = [];
     public Guid? LastSelectedQueryId { get; set; }
+    public List<int> TrackedWorkItemIds { get; set; } = [];
+    public List<int> WorkingOnWorkItemIds { get; set; } = [];
+    public Dictionary<int, string> WorkItemWorktreePaths { get; set; } = new();
 }

@@ -55,6 +55,12 @@
     <SolidColorBrush x:Key="PurpleSoftBrush" Color="#0F7C3AED" />
     <SolidColorBrush x:Key="PurpleBorderBrush" Color="#247C3AED" />
 
+    <!-- Tracking states -->
+    <SolidColorBrush x:Key="TrackedBorderBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="TrackedSoftBrush" Color="#0F2563EB" />
+    <SolidColorBrush x:Key="WorkingOnBorderBrush" Color="#7C3AED" />
+    <SolidColorBrush x:Key="WorkingOnSoftBrush" Color="#0F7C3AED" />
+
     <!-- StatusGreen -->
     <Color x:Key="StatusGreenColor">#16A34A</Color>
     <SolidColorBrush x:Key="StatusGreenBrush" Color="{StaticResource StatusGreenColor}" />
