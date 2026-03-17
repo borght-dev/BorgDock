@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { getClient } from '@/services/github/singleton';
+import { getReviews } from '@/services/github/reviews';
 
 interface Review {
   id: number;
@@ -52,13 +54,23 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
     let cancelled = false;
     (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const result = await invoke<Review[]>('get_pr_reviews', {
-          owner: repoOwner,
-          repo: repoName,
-          prNumber,
-        });
-        if (!cancelled) setReviews(result);
+        const client = getClient();
+        if (!client) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        const result = await getReviews(client, repoOwner, repoName, prNumber);
+        if (!cancelled) {
+          setReviews(
+            result.map((r) => ({
+              id: r.id,
+              user: r.user?.login ?? '',
+              state: r.state ?? '',
+              body: r.body ?? '',
+              submittedAt: r.submitted_at ?? '',
+            }))
+          );
+        }
       } catch (err) {
         console.error('Failed to load reviews:', err);
       } finally {

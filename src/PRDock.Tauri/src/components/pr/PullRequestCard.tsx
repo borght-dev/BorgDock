@@ -1,13 +1,22 @@
+import { useState, useCallback } from 'react';
 import clsx from 'clsx';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { PullRequestWithChecks } from '@/types';
 import { useUiStore } from '@/stores/ui-store';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { getClient } from '@/services/github/singleton';
+import { rerunWorkflow } from '@/services/github/checks';
 import { StatusIndicator } from './StatusIndicator';
+import { MultiSignalIndicator } from './MultiSignalIndicator';
 import { MergeScoreBadge } from './MergeScoreBadge';
 import { LabelBadge } from './LabelBadge';
+import { PrContextMenu } from './PrContextMenu';
 
 interface PullRequestCardProps {
   prWithChecks: PullRequestWithChecks;
+  isFocused?: boolean;
 }
 
 function reviewStatusLabel(status: string): string {
@@ -56,11 +65,28 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-export function PullRequestCard({ prWithChecks }: PullRequestCardProps) {
-  const { pullRequest: pr, overallStatus, passedCount, checks } = prWithChecks;
+function ActionButton({ label, icon, onClick }: { label: string; icon: string; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(e); }}
+      className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-subtle-border)] transition-colors"
+      title={label}
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProps) {
+  const { pullRequest: pr, overallStatus, passedCount, checks, failedCheckNames } = prWithChecks;
   const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
   const username = usePrStore((s) => s.username);
+  const settings = useSettingsStore((s) => s.settings);
+  const { fixWithClaude, monitorPr } = useClaudeActions();
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const isMyPr =
     username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
@@ -68,85 +94,186 @@ export function PullRequestCard({ prWithChecks }: PullRequestCardProps) {
   const totalChecks = checks.length;
   const mergeScore = computeMergeScore(prWithChecks);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Find a failed check for rerun
+  const failedCheck = checks.find(
+    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out'
+  );
+
+  const handleRerun = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const client = getClient();
+      if (!client || !failedCheck) return;
+      rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch((err) =>
+        console.error('Failed to rerun checks:', err)
+      );
+    },
+    [failedCheck, pr.repoOwner, pr.repoName]
+  );
+
+  const handleFix = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const firstFailedName = failedCheckNames[0] ?? 'unknown';
+      fixWithClaude(prWithChecks, firstFailedName, [], [], '').catch((err) =>
+        console.error('Fix with Claude failed:', err)
+      );
+    },
+    [prWithChecks, failedCheckNames, fixWithClaude]
+  );
+
+  const handleMonitor = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      monitorPr(prWithChecks).catch((err) =>
+        console.error('Monitor with Claude failed:', err)
+      );
+    },
+    [prWithChecks, monitorPr]
+  );
+
+  const handleCopyErrors = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (failedCheckNames.length === 0) return;
+      const markdown = [
+        `## Failed checks for PR #${pr.number}`,
+        '',
+        ...failedCheckNames.map((name: string) => `- ${name}`),
+      ].join('\n');
+      writeText(markdown).catch((err) =>
+        console.error('Failed to copy errors:', err)
+      );
+    },
+    [failedCheckNames, pr.number]
+  );
+
   return (
-    <button
-      onClick={() => selectPr(pr.number)}
-      className={clsx(
-        'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors',
-        isSelected
-          ? 'bg-[var(--color-selected-row-bg)] border-[var(--color-accent)]'
-          : isMyPr
-            ? 'bg-[var(--color-card-background)] border-[var(--color-card-border-my-pr)] hover:bg-[var(--color-surface-hover)]'
-            : 'bg-[var(--color-card-background)] border-[var(--color-card-border)] hover:bg-[var(--color-surface-hover)]',
-        'shadow-sm',
-      )}
-    >
-      {/* Status dot */}
-      <div className="mt-1.5">
-        <StatusIndicator status={overallStatus} />
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        {/* Title row */}
-        <div className="flex items-start gap-1.5">
-          <span className="truncate text-xs font-medium text-[var(--color-text-primary)]">
-            {pr.title}
-          </span>
-          <span className="shrink-0 rounded bg-[var(--color-pr-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-pr-badge-fg)]">
-            #{pr.number}
-          </span>
-          {pr.isDraft && (
-            <span className="shrink-0 rounded bg-[var(--color-draft-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-draft-badge-fg)] border border-[var(--color-draft-badge-border)]">
-              Draft
-            </span>
-          )}
-        </div>
-
-        {/* Meta row */}
-        <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
-          <span className="truncate">
-            {pr.repoOwner}/{pr.repoName}
-          </span>
-          <span
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]"
-            title={pr.authorLogin}
-          >
-            {avatarInitials(pr.authorLogin)}
-          </span>
-          <span className="truncate font-mono text-[var(--color-text-muted)]">
-            {pr.headRef}
-          </span>
-        </div>
-
-        {/* Labels + check summary */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {pr.labels.map((label) => (
-            <LabelBadge key={label} label={label} />
-          ))}
-          {totalChecks > 0 && (
-            <span className="text-[10px] text-[var(--color-text-muted)]">
-              {passedCount}/{totalChecks} checks passed
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Right side: review status + merge score */}
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
-        {pr.reviewStatus !== 'none' && (
-          <span
-            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-            style={{
-              color: reviewStatusColor(pr.reviewStatus),
-              backgroundColor: `color-mix(in srgb, ${reviewStatusColor(pr.reviewStatus)} 10%, transparent)`,
-            }}
-          >
-            {reviewStatusLabel(pr.reviewStatus)}
-          </span>
+    <>
+      <button
+        data-pr-card
+        onClick={() => selectPr(pr.number)}
+        onContextMenu={handleContextMenu}
+        className={clsx(
+          'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors',
+          isSelected
+            ? 'bg-[var(--color-selected-row-bg)] border-[var(--color-accent)]'
+            : isMyPr
+              ? 'bg-[var(--color-card-background)] border-[var(--color-card-border-my-pr)] hover:bg-[var(--color-surface-hover)]'
+              : 'bg-[var(--color-card-background)] border-[var(--color-card-border)] hover:bg-[var(--color-surface-hover)]',
+          isFocused && 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-background)]',
+          'shadow-sm',
         )}
-        <MergeScoreBadge score={mergeScore} />
-      </div>
-    </button>
+      >
+        {/* Status indicator */}
+        <div className="mt-1.5">
+          {settings.ui.indicatorStyle === 'SegmentRing' || settings.ui.indicatorStyle === 'ProgressArc' ? (
+            <MultiSignalIndicator pr={prWithChecks} size={20} style={settings.ui.indicatorStyle} />
+          ) : (
+            <StatusIndicator status={overallStatus} />
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          {/* Title row */}
+          <div className="flex items-start gap-1.5">
+            <span className="truncate text-xs font-medium text-[var(--color-text-primary)]">
+              {pr.title}
+            </span>
+            <span className="shrink-0 rounded bg-[var(--color-pr-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-pr-badge-fg)]">
+              #{pr.number}
+            </span>
+            {pr.isDraft && (
+              <span className="shrink-0 rounded bg-[var(--color-draft-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-draft-badge-fg)] border border-[var(--color-draft-badge-border)]">
+                Draft
+              </span>
+            )}
+            {pr.mergedAt && (
+              <span className="shrink-0 rounded bg-[var(--color-success-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-success-badge-fg)] border border-[var(--color-success-badge-border)]">
+                Merged
+              </span>
+            )}
+            {pr.closedAt && !pr.mergedAt && (
+              <span className="shrink-0 rounded bg-[var(--color-surface-raised)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
+                Closed
+              </span>
+            )}
+          </div>
+
+          {/* Meta row */}
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
+            <span className="truncate">
+              {pr.repoOwner}/{pr.repoName}
+            </span>
+            <span
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]"
+              title={pr.authorLogin}
+            >
+              {avatarInitials(pr.authorLogin)}
+            </span>
+            <span className="truncate font-mono text-[var(--color-text-muted)]">
+              {pr.headRef}
+            </span>
+          </div>
+
+          {/* Labels + check summary */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {pr.labels.map((label) => (
+              <LabelBadge key={label} label={label} />
+            ))}
+            {totalChecks > 0 && (
+              <span className="text-[10px] text-[var(--color-text-muted)]">
+                {passedCount}/{totalChecks} checks passed
+              </span>
+            )}
+          </div>
+
+          {/* Action buttons - visible on hover */}
+          <div className="mt-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {overallStatus === 'red' && (
+              <ActionButton label="Re-run" icon={"\u21BB"} onClick={handleRerun} />
+            )}
+            {overallStatus === 'red' && (
+              <ActionButton label="Fix" icon={"\u26A1"} onClick={handleFix} />
+            )}
+            <ActionButton label="Monitor" icon={"\u25B6"} onClick={handleMonitor} />
+            {overallStatus === 'red' && (
+              <ActionButton label="Copy" icon={"\uD83D\uDCCB"} onClick={handleCopyErrors} />
+            )}
+          </div>
+        </div>
+
+        {/* Right side: review status + merge score */}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {pr.reviewStatus !== 'none' && (
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              style={{
+                color: reviewStatusColor(pr.reviewStatus),
+                backgroundColor: `color-mix(in srgb, ${reviewStatusColor(pr.reviewStatus)} 10%, transparent)`,
+              }}
+            >
+              {reviewStatusLabel(pr.reviewStatus)}
+            </span>
+          )}
+          <MergeScoreBadge score={mergeScore} />
+        </div>
+      </button>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <PrContextMenu
+          pr={prWithChecks}
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
   );
 }

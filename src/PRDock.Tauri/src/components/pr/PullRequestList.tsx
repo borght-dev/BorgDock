@@ -17,8 +17,29 @@ function SkeletonCard() {
 export function PullRequestList() {
   const isPolling = usePrStore((s) => s.isPolling);
   const lastPollTime = usePrStore((s) => s.lastPollTime);
+
+  // Subscribe to the underlying state so this component re-renders
+  // when filter/search/sort/data changes. The function-typed selectors
+  // (filteredPrs, groupedByRepo) have a stable reference and would
+  // never trigger a re-render on their own.
+  const pullRequests = usePrStore((s) => s.pullRequests);
+  const closedPullRequests = usePrStore((s) => s.closedPullRequests);
+  const filter = usePrStore((s) => s.filter);
+  const searchQuery = usePrStore((s) => s.searchQuery);
+  const sortBy = usePrStore((s) => s.sortBy);
+  const username = usePrStore((s) => s.username);
+
   const groupedByRepo = usePrStore((s) => s.groupedByRepo);
   const filteredPrs = usePrStore((s) => s.filteredPrs);
+
+  // Intentionally reference the subscribed values so the linter
+  // doesn't remove them and React doesn't skip re-renders.
+  void pullRequests;
+  void closedPullRequests;
+  void filter;
+  void searchQuery;
+  void sortBy;
+  void username;
 
   const groups = groupedByRepo();
   const prs = filteredPrs();
