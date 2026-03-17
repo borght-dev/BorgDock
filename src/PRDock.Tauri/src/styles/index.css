@@ -1,0 +1,418 @@
+@import "tailwindcss";
+
+/*
+ * PRDock theme variables.
+ * Light theme is the default; dark overrides are applied via the `.dark` class on <html>.
+ * Values are ported from WPF LightTheme.xaml / DarkTheme.xaml.
+ */
+
+:root {
+  /* Background */
+  --color-background: #f4f5f7;
+  --color-card-background: #ffffff;
+  --color-card-border: rgba(0, 0, 0, 0.06);
+  --color-card-border-my-pr: rgba(37, 99, 235, 0.2);
+
+  /* Text hierarchy */
+  --color-text-primary: #1a1d26;
+  --color-text-secondary: #2e3342;
+  --color-text-tertiary: #5a5f72;
+  --color-text-muted: #7a7f92;
+  --color-text-faint: #9298aa;
+  --color-text-ghost: #b8bcc8;
+
+  /* Accent */
+  --color-accent: #2563eb;
+  --color-accent-foreground: #ffffff;
+  --color-accent-subtle: rgba(37, 99, 235, 0.06);
+
+  /* Purple accent */
+  --color-purple: #7c3aed;
+  --color-purple-soft: rgba(124, 58, 237, 0.06);
+  --color-purple-border: rgba(124, 58, 237, 0.14);
+
+  /* Tracking states */
+  --color-tracked-border: #2563eb;
+  --color-tracked-soft: rgba(37, 99, 235, 0.06);
+  --color-working-on-border: #7c3aed;
+  --color-working-on-soft: rgba(124, 58, 237, 0.06);
+
+  /* Status */
+  --color-status-green: #16a34a;
+  --color-status-red: #dc2626;
+  --color-status-yellow: #d97706;
+  --color-status-gray: #94a3b8;
+
+  /* Separator */
+  --color-separator: rgba(0, 0, 0, 0.07);
+
+  /* Filter chip */
+  --color-filter-chip-bg: rgba(0, 0, 0, 0.04);
+  --color-filter-chip-fg: #5a5f72;
+
+  /* Surfaces */
+  --color-sidebar-gradient-top: #f4f5f7;
+  --color-sidebar-gradient-bottom: #eeeef2;
+  --color-surface: #ffffff;
+  --color-surface-raised: rgba(0, 0, 0, 0.02);
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+
+  /* Borders */
+  --color-subtle-border: rgba(0, 0, 0, 0.06);
+  --color-strong-border: rgba(0, 0, 0, 0.12);
+
+  /* Controls */
+  --color-icon-btn-bg: transparent;
+  --color-icon-btn-hover: rgba(0, 0, 0, 0.04);
+  --color-icon-btn-pressed: rgba(0, 0, 0, 0.08);
+  --color-icon-btn-fg: #5a5f72;
+
+  /* Action buttons */
+  --color-action-secondary-bg: transparent;
+  --color-action-secondary-fg: #2563eb;
+  --color-action-success-bg: rgba(22, 163, 74, 0.07);
+  --color-action-success-fg: #16a34a;
+  --color-action-danger-bg: rgba(220, 38, 38, 0.06);
+  --color-action-danger-fg: #dc2626;
+
+  /* Scrollbar */
+  --color-scrollbar-thumb: rgba(0, 0, 0, 0.1);
+  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.18);
+
+  /* PR number badge */
+  --color-pr-badge-bg: rgba(0, 0, 0, 0.04);
+  --color-pr-badge-fg: #5a5f72;
+  --color-pr-my-badge-bg: rgba(37, 99, 235, 0.06);
+  --color-pr-my-badge-fg: #2563eb;
+
+  /* Success badge */
+  --color-success-badge-bg: rgba(22, 163, 74, 0.07);
+  --color-success-badge-fg: #16a34a;
+  --color-success-badge-border: rgba(22, 163, 74, 0.18);
+
+  /* Warning badge */
+  --color-warning-badge-bg: rgba(180, 83, 9, 0.06);
+  --color-warning-badge-fg: #b45309;
+  --color-warning-badge-border: rgba(180, 83, 9, 0.14);
+
+  /* Error badge */
+  --color-error-badge-bg: rgba(220, 38, 38, 0.06);
+  --color-error-badge-fg: #dc2626;
+  --color-error-badge-border: rgba(220, 38, 38, 0.14);
+
+  /* Neutral badge */
+  --color-neutral-badge-bg: rgba(124, 58, 237, 0.06);
+  --color-neutral-badge-fg: #7c3aed;
+  --color-neutral-badge-border: rgba(124, 58, 237, 0.14);
+
+  /* Draft badge */
+  --color-draft-badge-bg: rgba(0, 0, 0, 0.04);
+  --color-draft-badge-fg: #7a7f92;
+  --color-draft-badge-border: rgba(0, 0, 0, 0.14);
+
+  /* Review status */
+  --color-review-approved: #16a34a;
+  --color-review-changes-requested: #dc2626;
+  --color-review-required: #b45309;
+  --color-review-commented: #5a5f72;
+
+  /* Comment count */
+  --color-comment-count-fg: #7a7f92;
+
+  /* Branch badges */
+  --color-branch-badge-bg: rgba(37, 99, 235, 0.06);
+  --color-branch-badge-border: rgba(37, 99, 235, 0.14);
+  --color-target-badge-bg: rgba(0, 0, 0, 0.03);
+  --color-target-badge-border: rgba(0, 0, 0, 0.08);
+
+  /* Input */
+  --color-input-bg: #ffffff;
+  --color-input-border: rgba(0, 0, 0, 0.12);
+
+  /* Row states */
+  --color-selected-row-bg: rgba(37, 99, 235, 0.04);
+  --color-expanded-row-bg: rgba(0, 0, 0, 0.01);
+
+  /* Status bar */
+  --color-status-bar-bg: rgba(255, 255, 255, 0.88);
+
+  /* Modal/overlay */
+  --color-overlay-bg: rgba(0, 0, 0, 0.35);
+  --color-modal-bg: #ffffff;
+  --color-modal-border: rgba(0, 0, 0, 0.08);
+
+  /* Title bar */
+  --color-title-bar-bg: rgba(255, 255, 255, 0.88);
+
+  /* Logo gradient */
+  --color-logo-gradient-start: #2563eb;
+  --color-logo-gradient-end: #7c3aed;
+
+  /* Avatar */
+  --color-avatar-text: #ffffff;
+
+  /* Checks */
+  --color-check-passed-bg: rgba(22, 163, 74, 0.03);
+  --color-check-passed-border: rgba(22, 163, 74, 0.1);
+  --color-check-failed-bg: rgba(220, 38, 38, 0.03);
+  --color-check-failed-border: rgba(220, 38, 38, 0.1);
+
+  /* Glow */
+  --color-green-glow: rgba(22, 163, 74, 0.12);
+  --color-red-glow: rgba(220, 38, 38, 0.18);
+
+  /* Floating badge */
+  --color-badge-glass: rgba(244, 246, 249, 0.8);
+  --color-badge-surface: rgba(240, 242, 245, 0.9);
+  --color-badge-border: rgba(0, 0, 0, 0.09);
+  --color-badge-glow-green: rgba(22, 163, 74, 0.25);
+  --color-badge-glow-red: rgba(220, 38, 38, 0.25);
+  --color-badge-glow-yellow: rgba(180, 83, 9, 0.25);
+  --color-badge-progress-track: rgba(0, 0, 0, 0.07);
+
+  /* Diff */
+  --color-diff-added-bg: rgba(22, 163, 74, 0.07);
+  --color-diff-deleted-bg: rgba(220, 38, 38, 0.06);
+  --color-diff-hunk-header: rgba(0, 0, 0, 0.03);
+  --color-tab-active: #2563eb;
+  --color-tab-inactive: #5a5f72;
+  --color-code-block-bg: #f4f5f7;
+
+  /* Syntax */
+  --color-syntax-keyword: #a626a4;
+  --color-syntax-string: #50a14f;
+  --color-syntax-comment: #a0a1a7;
+  --color-syntax-number: #986801;
+  --color-syntax-type: #c18401;
+  --color-syntax-plain: #383a42;
+
+  /* Code font */
+  --font-code: "Cascadia Code", "Cascadia Mono", "Consolas", "Courier New",
+    monospace;
+
+  /* Wizard */
+  --color-wizard-step-active: #2563eb;
+  --color-wizard-step-complete: #16a34a;
+  --color-wizard-step-inactive: #b8bcc8;
+  --color-wizard-step-track: rgba(0, 0, 0, 0.08);
+}
+
+/* ---- Dark theme overrides ---- */
+.dark {
+  --color-background: #0a0c14;
+  --color-card-background: #0d0f17;
+  --color-card-border: rgba(139, 143, 163, 0.06);
+  --color-card-border-my-pr: rgba(99, 179, 237, 0.2);
+
+  --color-text-primary: #e2e4ea;
+  --color-text-secondary: #c0c4d4;
+  --color-text-tertiary: #8b8fa3;
+  --color-text-muted: #5a5e6a;
+  --color-text-faint: #4a4e5a;
+  --color-text-ghost: #3a3e4a;
+
+  --color-accent: #63b3ed;
+  --color-accent-foreground: #0a0c14;
+  --color-accent-subtle: rgba(99, 179, 237, 0.08);
+
+  --color-purple: #a78bfa;
+  --color-purple-soft: rgba(167, 139, 250, 0.08);
+  --color-purple-border: rgba(167, 139, 250, 0.2);
+
+  --color-tracked-border: #63b3ed;
+  --color-tracked-soft: rgba(99, 179, 237, 0.08);
+  --color-working-on-border: #a78bfa;
+  --color-working-on-soft: rgba(167, 139, 250, 0.08);
+
+  --color-status-green: #34d399;
+  --color-status-red: #f87171;
+  --color-status-yellow: #f59e0b;
+  --color-status-gray: #5a5e6a;
+
+  --color-separator: rgba(139, 143, 163, 0.06);
+
+  --color-filter-chip-bg: rgba(139, 143, 163, 0.06);
+  --color-filter-chip-fg: #8b8fa3;
+
+  --color-sidebar-gradient-top: #0a0c14;
+  --color-sidebar-gradient-bottom: #0d0f17;
+  --color-surface: #0d0f17;
+  --color-surface-raised: rgba(139, 143, 163, 0.02);
+  --color-surface-hover: rgba(139, 143, 163, 0.03);
+
+  --color-subtle-border: rgba(139, 143, 163, 0.06);
+  --color-strong-border: rgba(139, 143, 163, 0.08);
+
+  --color-icon-btn-bg: transparent;
+  --color-icon-btn-hover: rgba(139, 143, 163, 0.06);
+  --color-icon-btn-pressed: rgba(139, 143, 163, 0.08);
+  --color-icon-btn-fg: #8b8fa3;
+
+  --color-action-secondary-bg: transparent;
+  --color-action-secondary-fg: #63b3ed;
+  --color-action-success-bg: rgba(52, 211, 153, 0.1);
+  --color-action-success-fg: #34d399;
+  --color-action-danger-bg: rgba(248, 113, 113, 0.1);
+  --color-action-danger-fg: #f87171;
+
+  --color-scrollbar-thumb: rgba(139, 143, 163, 0.12);
+  --color-scrollbar-thumb-hover: rgba(139, 143, 163, 0.2);
+
+  --color-pr-badge-bg: rgba(139, 143, 163, 0.06);
+  --color-pr-badge-fg: #8b8fa3;
+  --color-pr-my-badge-bg: rgba(99, 179, 237, 0.08);
+  --color-pr-my-badge-fg: #63b3ed;
+
+  --color-success-badge-bg: rgba(52, 211, 153, 0.1);
+  --color-success-badge-fg: #34d399;
+  --color-success-badge-border: rgba(52, 211, 153, 0.25);
+
+  --color-warning-badge-bg: rgba(251, 191, 36, 0.1);
+  --color-warning-badge-fg: #fbbf24;
+  --color-warning-badge-border: rgba(251, 191, 36, 0.12);
+
+  --color-error-badge-bg: rgba(248, 113, 113, 0.1);
+  --color-error-badge-fg: #f87171;
+  --color-error-badge-border: rgba(248, 113, 113, 0.2);
+
+  --color-neutral-badge-bg: rgba(167, 139, 250, 0.08);
+  --color-neutral-badge-fg: #a78bfa;
+  --color-neutral-badge-border: rgba(167, 139, 250, 0.2);
+
+  --color-draft-badge-bg: rgba(139, 143, 163, 0.08);
+  --color-draft-badge-fg: #6b6f80;
+  --color-draft-badge-border: rgba(139, 143, 163, 0.25);
+
+  --color-review-approved: #34d399;
+  --color-review-changes-requested: #f87171;
+  --color-review-required: #fbbf24;
+  --color-review-commented: #8b8fa3;
+
+  --color-comment-count-fg: #5a5e6a;
+
+  --color-branch-badge-bg: rgba(99, 179, 237, 0.08);
+  --color-branch-badge-border: rgba(99, 179, 237, 0.15);
+  --color-target-badge-bg: rgba(139, 143, 163, 0.06);
+  --color-target-badge-border: rgba(139, 143, 163, 0.1);
+
+  --color-input-bg: rgba(139, 143, 163, 0.04);
+  --color-input-border: rgba(139, 143, 163, 0.08);
+
+  --color-selected-row-bg: rgba(99, 179, 237, 0.04);
+  --color-expanded-row-bg: rgba(139, 143, 163, 0.02);
+
+  --color-status-bar-bg: rgba(13, 15, 23, 0.6);
+
+  --color-overlay-bg: rgba(0, 0, 0, 0.65);
+  --color-modal-bg: #12141e;
+  --color-modal-border: rgba(139, 143, 163, 0.1);
+
+  --color-title-bar-bg: rgba(13, 15, 23, 0.8);
+
+  --color-logo-gradient-start: #63b3ed;
+  --color-logo-gradient-end: #a78bfa;
+
+  --color-avatar-text: #0d0f17;
+
+  --color-check-passed-bg: rgba(52, 211, 153, 0.02);
+  --color-check-passed-border: rgba(52, 211, 153, 0.06);
+  --color-check-failed-bg: rgba(248, 113, 113, 0.04);
+  --color-check-failed-border: rgba(248, 113, 113, 0.1);
+
+  --color-green-glow: rgba(52, 211, 153, 0.3);
+  --color-red-glow: rgba(248, 113, 113, 0.5);
+
+  --color-badge-glass: rgba(17, 24, 39, 0.8);
+  --color-badge-surface: rgba(17, 24, 39, 0.9);
+  --color-badge-border: rgba(255, 255, 255, 0.15);
+  --color-badge-glow-green: rgba(52, 211, 153, 0.25);
+  --color-badge-glow-red: rgba(248, 113, 113, 0.25);
+  --color-badge-glow-yellow: rgba(251, 191, 36, 0.25);
+  --color-badge-progress-track: rgba(255, 255, 255, 0.08);
+
+  --color-diff-added-bg: rgba(52, 211, 153, 0.1);
+  --color-diff-deleted-bg: rgba(248, 113, 113, 0.1);
+  --color-diff-hunk-header: rgba(139, 143, 163, 0.06);
+  --color-tab-active: #63b3ed;
+  --color-tab-inactive: #8b8fa3;
+  --color-code-block-bg: #0a0c14;
+
+  --color-syntax-keyword: #c678dd;
+  --color-syntax-string: #98c379;
+  --color-syntax-comment: #5c6370;
+  --color-syntax-number: #d19a66;
+  --color-syntax-type: #e5c07b;
+  --color-syntax-plain: #abb2bf;
+
+  --color-wizard-step-active: #63b3ed;
+  --color-wizard-step-complete: #34d399;
+  --color-wizard-step-inactive: #3a3e4a;
+  --color-wizard-step-track: rgba(139, 143, 163, 0.08);
+}
+
+/* Base styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}
+
+/* Field input utility */
+.field-input {
+  border-radius: 0.438rem;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-input-bg);
+  padding: 0.438rem 0.625rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field-input:focus {
+  border-color: var(--color-accent);
+}
+.field-input::placeholder {
+  color: var(--color-text-ghost);
+}
+
+/* Badge breathing animation */
+@keyframes breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.05);
+  }
+}
+
+/* Scale-in for wizard done step */
+@keyframes scale-in {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
