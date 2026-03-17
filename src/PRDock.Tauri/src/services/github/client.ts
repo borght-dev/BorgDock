@@ -105,6 +105,66 @@ export class GitHubClient {
     return (await response.json()) as T;
   }
 
+  async put<T>(path: string, body: unknown): Promise<T> {
+    const url = `https://api.github.com/${path}`;
+    const token = await this.getToken();
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'PRDock',
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    this.parseRateLimitHeaders(response);
+
+    if (!response.ok) {
+      throw new GitHubApiError(
+        `GitHub API error: ${response.status} ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return (await response.json()) as T;
+  }
+
+  async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+    const token = await this.getToken();
+
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'PRDock',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+
+    this.parseRateLimitHeaders(response);
+
+    if (!response.ok) {
+      throw new GitHubApiError(
+        `GitHub GraphQL error: ${response.status} ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    if (result.errors?.length > 0) {
+      throw new GitHubApiError(
+        `GraphQL error: ${result.errors[0].message}`,
+        422
+      );
+    }
+
+    return result.data as T;
+  }
+
   private async fetchWithRetry(
     url: string,
     extraHeaders?: Record<string, string>

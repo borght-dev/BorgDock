@@ -26,6 +26,7 @@ interface GitHubReviewDto {
   id: number;
   state: string;
   body: string | null;
+  submitted_at: string;
   user: { login: string } | null;
 }
 

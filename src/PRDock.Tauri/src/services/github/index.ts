@@ -10,4 +10,5 @@ export {
   detectSeverity,
   splitStructuredReview,
 } from './reviews';
+export { mergePullRequest, toggleDraft, submitReview, postComment } from './mutations';
 export { getGitHubToken } from './auth';
