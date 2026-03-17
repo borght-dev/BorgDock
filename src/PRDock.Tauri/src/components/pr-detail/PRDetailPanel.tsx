@@ -7,8 +7,9 @@ import { CommitsTab } from './CommitsTab';
 import { FilesTab } from './FilesTab';
 import { ChecksTab } from './ChecksTab';
 import { ReviewsTab } from './ReviewsTab';
+import { CommentsTab } from './CommentsTab';
 
-const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews'] as const;
+const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
 
 interface PRDetailPanelProps {
@@ -93,6 +94,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
         {activeTab === 'Files' && <FilesTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
         {activeTab === 'Checks' && <ChecksTab checks={pr.checks} />}
         {activeTab === 'Reviews' && <ReviewsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
+        {activeTab === 'Comments' && <CommentsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
       </div>
     </div>
   );

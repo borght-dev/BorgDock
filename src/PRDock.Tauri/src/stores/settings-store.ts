@@ -20,9 +20,9 @@ const defaultSettings: AppSettings = {
   ui: {
     sidebarEdge: 'right',
     sidebarMode: 'pinned',
-    sidebarWidthPx: 380,
+    sidebarWidthPx: 800,
     theme: 'system',
-    globalHotkey: 'Ctrl+Shift+Super+G',
+    globalHotkey: 'Ctrl+Win+Shift+G',
     editorCommand: 'code',
     runAtStartup: false,
     badgeStyle: 'GlassCapsule',
@@ -30,18 +30,18 @@ const defaultSettings: AppSettings = {
   },
   notifications: {
     toastOnCheckStatusChange: true,
-    toastOnNewPR: true,
+    toastOnNewPR: false,
     toastOnReviewUpdate: true,
   },
   claudeCode: {
     defaultPostFixAction: 'commitAndNotify',
   },
   claudeReview: {
-    botUsername: 'claude-code',
+    botUsername: 'claude[bot]',
   },
   updates: {
     autoCheckEnabled: true,
-    autoDownload: false,
+    autoDownload: true,
   },
   azureDevOps: {
     organization: '',

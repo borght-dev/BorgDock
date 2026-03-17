@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { FloatingBadge, type StatusColor, type BadgePrItem } from './FloatingBadge';
+import clsx from 'clsx';
+import { type StatusColor, type BadgePrItem } from './FloatingBadge';
 import { badgeStyleMap, type BadgeStyleProps } from './BadgeStyles';
 
 interface BadgeData {
@@ -97,20 +98,41 @@ export function BadgeApp() {
     }
   }, []);
 
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const toggleExpanded = useCallback(async () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const size = next
+        ? { width: 900, height: 500 }
+        : { width: 260, height: 50 };
+      await invoke('resize_badge', { width: size.width, height: size.height });
+    } catch { /* ignore */ }
+  }, [isExpanded]);
+
   const statusColor = determineStatusColor(data.failingCount, data.pendingCount);
   const statusText = formatStatusText(data.failingCount, data.pendingCount);
 
-  const BadgeStyleComponent = useMemo<React.ComponentType<BadgeStyleProps> | null>(() => {
-    if (!data.badgeStyle) return null;
-    return badgeStyleMap[data.badgeStyle] ?? null;
+  const BadgeStyleComponent = useMemo<React.ComponentType<BadgeStyleProps>>(() => {
+    const match = data.badgeStyle ? badgeStyleMap[data.badgeStyle] : undefined;
+    const fallback = badgeStyleMap['GlassCapsule']!;
+    return match ?? fallback;
   }, [data.badgeStyle]);
+
+  const STATUS_DOT_MAP: Record<StatusColor, string> = {
+    green: 'var(--color-status-green)',
+    red: 'var(--color-status-red)',
+    yellow: 'var(--color-status-yellow)',
+  };
 
   return (
     <div
-      className="flex h-screen w-screen items-center justify-center"
+      className="flex h-screen w-screen items-start justify-center pt-1"
       style={{ background: 'transparent' }}
     >
-      {BadgeStyleComponent ? (
+      <div className="flex flex-col items-center">
         <BadgeStyleComponent
           totalPrCount={data.totalPrCount}
           failingCount={data.failingCount}
@@ -118,20 +140,90 @@ export function BadgeApp() {
           statusColor={statusColor}
           statusText={statusText}
           onClick={handleExpandSidebar}
+          onToggleExpand={toggleExpanded}
+          isExpanded={isExpanded}
         />
-      ) : (
-        <FloatingBadge
-          totalPrCount={data.totalPrCount}
-          failingCount={data.failingCount}
-          pendingCount={data.pendingCount}
-          statusColor={statusColor}
-          statusText={statusText}
-          onExpandSidebar={handleExpandSidebar}
-          myPrs={data.myPrs}
-          teamPrs={data.teamPrs}
-          onOpenPr={handleOpenPr}
-        />
-      )}
+
+        {/* Expanded PR panel */}
+        {isExpanded && (
+          <div
+            className={clsx(
+              'mt-1 w-[880px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
+              'shadow-lg overflow-hidden'
+            )}
+          >
+            <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
+              <PrColumn title="MY PRS" items={data.myPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
+              <PrColumn title="TEAM" items={data.teamPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
+            </div>
+            <div className="flex items-center justify-center gap-3 border-t border-[var(--color-separator)] px-3 py-2">
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {data.totalPrCount} total
+              </span>
+              {data.failingCount > 0 && (
+                <span className="text-xs text-[var(--color-status-red)]">
+                  {data.failingCount} failing
+                </span>
+              )}
+              {data.pendingCount > 0 && (
+                <span className="text-xs text-[var(--color-status-yellow)]">
+                  {data.pendingCount} pending
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PrColumn({
+  title,
+  items,
+  statusDotMap,
+  onOpenPr,
+}: {
+  title: string;
+  items: BadgePrItem[];
+  statusDotMap: Record<StatusColor, string>;
+  onOpenPr: (item: BadgePrItem) => void;
+}) {
+  return (
+    <div className="px-2.5 py-2.5">
+      <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-ghost)]">
+        {title}
+      </div>
+      <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
+        {items.map((item) => (
+          <button
+            key={`${item.repoOwner}/${item.repoName}#${item.number}`}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[var(--color-surface-hover)] transition-colors"
+            onClick={() => onOpenPr(item)}
+          >
+            <div
+              className="h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: statusDotMap[item.statusColor] }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-[var(--color-text-primary)] leading-snug">
+                {item.title}
+              </div>
+              <div className="text-[11px] text-[var(--color-text-muted)]">
+                #{item.number} {item.timeAgo}
+              </div>
+            </div>
+            {item.checksText && (
+              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]">
+                {item.checksText}
+              </span>
+            )}
+          </button>
+        ))}
+        {items.length === 0 && (
+          <div className="py-3 text-center text-xs text-[var(--color-text-ghost)]">None</div>
+        )}
+      </div>
     </div>
   );
 }

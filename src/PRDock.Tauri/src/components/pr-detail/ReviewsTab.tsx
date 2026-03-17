@@ -131,7 +131,7 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
             </div>
             {/* Body */}
             {review.body && (
-              <div className="text-xs text-[var(--color-text-secondary)] [&_a]:text-[var(--color-accent)] [&_code]:bg-[var(--color-code-block-bg)] [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[10px]">
+              <div className="markdown-body">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{review.body}</ReactMarkdown>
               </div>
             )}

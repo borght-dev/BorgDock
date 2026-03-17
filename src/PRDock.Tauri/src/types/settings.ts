@@ -2,9 +2,9 @@ export type AuthMethod = 'ghCli' | 'pat';
 export type SidebarEdge = 'left' | 'right';
 export type SidebarMode = 'pinned' | 'floating';
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type BadgeStyle = 'GlassCapsule' | 'MinimalDot';
-export type IndicatorStyle = 'SegmentRing' | 'ProgressArc';
-export type PostFixAction = 'commitAndNotify' | 'commitOnly' | 'notifyOnly';
+export type BadgeStyle = 'GlassCapsule' | 'MinimalNotch' | 'FloatingIsland' | 'LiquidMorph' | 'SpectralBar';
+export type IndicatorStyle = 'SegmentRing' | 'SignalDots';
+export type PostFixAction = 'commitAndNotify' | 'commitOnly' | 'notifyOnly' | 'none';
 
 export interface GitHubSettings {
   authMethod: AuthMethod;

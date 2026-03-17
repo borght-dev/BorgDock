@@ -4,6 +4,7 @@ const POST_FIX_OPTIONS: { value: PostFixAction; label: string }[] = [
   { value: 'commitAndNotify', label: 'Commit & Notify' },
   { value: 'commitOnly', label: 'Commit Only' },
   { value: 'notifyOnly', label: 'Notify Only' },
+  { value: 'none', label: 'None' },
 ];
 
 interface ClaudeSectionProps {

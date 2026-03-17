@@ -23,8 +23,8 @@ const MODE_OPTIONS: { value: SidebarMode; label: string }[] = [
   { value: 'floating', label: 'Floating' },
 ];
 
-const BADGE_STYLES: BadgeStyle[] = ['GlassCapsule', 'MinimalDot'];
-const INDICATOR_STYLES: IndicatorStyle[] = ['SegmentRing', 'ProgressArc'];
+const BADGE_STYLES: BadgeStyle[] = ['GlassCapsule', 'MinimalNotch', 'FloatingIsland', 'LiquidMorph', 'SpectralBar'];
+const INDICATOR_STYLES: IndicatorStyle[] = ['SegmentRing', 'SignalDots'];
 
 export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
   const update = (partial: Partial<UiSettings>) => onChange({ ...ui, ...partial });
@@ -96,15 +96,15 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         <input
           type="range"
           className="w-full accent-[var(--color-accent)]"
-          min={280}
-          max={800}
+          min={200}
+          max={1200}
           step={10}
           value={ui.sidebarWidthPx}
           onChange={(e) => update({ sidebarWidthPx: Number(e.target.value) })}
         />
         <div className="flex justify-between text-[9px] text-[var(--color-text-ghost)]">
-          <span>280</span>
-          <span>800</span>
+          <span>200</span>
+          <span>1200</span>
         </div>
       </FieldLabel>
 

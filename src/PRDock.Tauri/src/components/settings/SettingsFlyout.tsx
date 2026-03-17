@@ -38,11 +38,11 @@ export function SettingsFlyout() {
     if (d.gitHub.personalAccessToken && !d.gitHub.personalAccessToken.startsWith('ghp_') && !d.gitHub.personalAccessToken.startsWith('github_pat_')) {
       errors.patFormat = 'PAT should start with ghp_ or github_pat_';
     }
-    if (d.gitHub.pollIntervalSeconds < 10 || d.gitHub.pollIntervalSeconds > 600) {
-      errors.pollInterval = 'Poll interval must be between 10 and 600 seconds.';
+    if (d.gitHub.pollIntervalSeconds < 15 || d.gitHub.pollIntervalSeconds > 300) {
+      errors.pollInterval = 'Poll interval must be between 15 and 300 seconds.';
     }
-    if (d.ui.sidebarWidthPx < 280 || d.ui.sidebarWidthPx > 800) {
-      errors.sidebarWidth = 'Sidebar width must be between 280 and 800 pixels.';
+    if (d.ui.sidebarWidthPx < 200 || d.ui.sidebarWidthPx > 1200) {
+      errors.sidebarWidth = 'Sidebar width must be between 200 and 1200 pixels.';
     }
     return errors;
   }, []);

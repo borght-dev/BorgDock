@@ -220,7 +220,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Description */}
       {p.body && (
-        <div className="prose prose-sm max-w-none text-xs text-[var(--color-text-secondary)] [&_a]:text-[var(--color-accent)] [&_code]:bg-[var(--color-code-block-bg)] [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[10px] [&_code]:font-[var(--font-code)] [&_pre]:bg-[var(--color-code-block-bg)] [&_pre]:rounded-md [&_pre]:p-2">
+        <div className="markdown-body">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{p.body}</ReactMarkdown>
         </div>
       )}
