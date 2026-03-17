@@ -199,6 +199,7 @@
 
 /* ---- Dark theme overrides ---- */
 .dark {
+  color-scheme: dark;
   --color-background: #0a0c14;
   --color-card-background: #0d0f17;
   --color-card-border: rgba(139, 143, 163, 0.06);

@@ -38,7 +38,14 @@ interface WorkItemsState {
 
 function getField(item: WorkItem, field: string): string {
   const value = item.fields[field];
-  return typeof value === 'string' ? value : '';
+  if (typeof value === 'string') return value;
+  // ADO identity fields are objects with displayName
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.displayName === 'string') return obj.displayName;
+    if (typeof obj.uniqueName === 'string') return obj.uniqueName;
+  }
+  return '';
 }
 
 function flattenQueries(queries: AdoQuery[]): AdoQuery[] {

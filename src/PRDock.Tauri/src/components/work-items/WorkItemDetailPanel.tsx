@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import clsx from 'clsx';
 import type { DynamicFieldItem, WorkItemAttachment } from '../../types';
+import { useAdoImageAuth } from '@/hooks/useAdoImageAuth';
 
 export interface WorkItemDetailData {
   id?: number;
@@ -20,6 +21,7 @@ interface WorkItemDetailPanelProps {
   isSaving: boolean;
   statusText?: string;
   availableStates: string[];
+  availableAssignees?: string[];
   richTextFields: DynamicFieldItem[];
   standardFields: DynamicFieldItem[];
   customFields: DynamicFieldItem[];
@@ -83,6 +85,9 @@ function FieldSection({
 }
 
 function ReadOnlyField({ field }: { field: DynamicFieldItem }) {
+  const htmlRef = useRef<HTMLDivElement>(null);
+  useAdoImageAuth(htmlRef, field.htmlContent);
+
   if (!field.value && !field.htmlContent) return null;
   return (
     <div className="mb-2">
@@ -91,7 +96,8 @@ function ReadOnlyField({ field }: { field: DynamicFieldItem }) {
       </label>
       {field.isHtml && field.htmlContent ? (
         <div
-          className="prose-sm rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-2 text-[13px] text-[var(--color-text-secondary)]"
+          ref={htmlRef}
+          className="prose-sm rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-2 text-[13px] text-[var(--color-text-secondary)] [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded"
           dangerouslySetInnerHTML={{ __html: field.htmlContent }}
         />
       ) : (
@@ -109,6 +115,7 @@ export function WorkItemDetailPanel({
   isSaving,
   statusText,
   availableStates,
+  availableAssignees,
   richTextFields,
   standardFields,
   customFields,
@@ -259,12 +266,25 @@ export function WorkItemDetailPanel({
           <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
             Assigned To
           </label>
-          <input
-            type="text"
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-          />
+          {availableAssignees && availableAssignees.length > 0 ? (
+            <select
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+            >
+              <option value="">Unassigned</option>
+              {availableAssignees.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+            />
+          )}
         </div>
 
         {/* Priority */}
