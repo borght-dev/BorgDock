@@ -1,5 +1,5 @@
 use tauri::Manager;
-use tauri_plugin_global_shortcut::GlobalShortcutExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 #[tauri::command]
 pub fn register_hotkey(
@@ -13,7 +13,12 @@ pub fn register_hotkey(
     app.global_shortcut()
         .on_shortcut(
             shortcut.as_str(),
-            move |_app, _shortcut, _event| {
+            move |_app, _shortcut, event| {
+                // Only act on key-down, ignore key-up
+                if event.state != ShortcutState::Pressed {
+                    return;
+                }
+
                 if let Some(win) = app_clone.get_webview_window("main") {
                     let visible = win.is_visible().unwrap_or(false);
                     if visible {

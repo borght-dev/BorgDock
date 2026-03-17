@@ -44,11 +44,13 @@ pub fn run() {
             // Auth
             auth::gh_cli_token,
             auth::validate_pat,
+            auth::check_github_auth,
             // Platform
             platform::window::position_sidebar,
             platform::window::toggle_sidebar,
             platform::window::show_badge,
             platform::window::hide_badge,
+            platform::window::resize_badge,
             platform::work_area::reserve_work_area,
             platform::work_area::restore_work_area,
             platform::hotkey::register_hotkey,
@@ -61,6 +63,7 @@ pub fn run() {
             git::commands::git_fetch,
             git::commands::git_checkout,
             git::commands::git_current_branch,
+            git::commands::discover_repos,
             // Process
             git::process::launch_claude_code,
             git::process::get_active_sessions,

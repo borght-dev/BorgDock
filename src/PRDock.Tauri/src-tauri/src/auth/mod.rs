@@ -57,3 +57,22 @@ pub async fn validate_pat(token: String) -> Result<String, String> {
 
     result
 }
+
+#[tauri::command]
+pub async fn check_github_auth(method: String, pat: Option<String>) -> Result<String, String> {
+    match method.as_str() {
+        "ghCli" => {
+            // Try gh CLI
+            let token = gh_cli_token()?;
+            validate_pat(token).await
+        }
+        "pat" => {
+            let token = pat.ok_or("PAT is required when method is 'pat'")?;
+            if token.trim().is_empty() {
+                return Err("PAT is empty".to_string());
+            }
+            validate_pat(token).await
+        }
+        _ => Err(format!("Unknown auth method: {method}")),
+    }
+}
