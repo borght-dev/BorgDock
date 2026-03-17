@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AzureDevOpsSettings } from '@/types';
+import { AdoClient } from '@/services/ado/client';
 
 interface AdoSectionProps {
   azureDevOps: AzureDevOpsSettings;
@@ -9,22 +10,34 @@ interface AdoSectionProps {
 export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
   const [showToken, setShowToken] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testError, setTestError] = useState('');
 
   const update = (partial: Partial<AzureDevOpsSettings>) =>
     onChange({ ...azureDevOps, ...partial });
 
   const handleTestConnection = async () => {
     setTestStatus('testing');
+    setTestError('');
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('test_ado_connection', {
-        organization: azureDevOps.organization,
-        project: azureDevOps.project,
-        pat: azureDevOps.personalAccessToken,
-      });
-      setTestStatus('success');
+      const client = new AdoClient(
+        azureDevOps.organization,
+        azureDevOps.project,
+        azureDevOps.personalAccessToken ?? '',
+      );
+      const error = await client.testConnection(
+        azureDevOps.organization,
+        azureDevOps.project,
+        azureDevOps.personalAccessToken ?? '',
+      );
+      if (error) {
+        setTestStatus('error');
+        setTestError(error);
+      } else {
+        setTestStatus('success');
+      }
     } catch {
       setTestStatus('error');
+      setTestError('Connection failed.');
     }
   };
 
@@ -91,7 +104,9 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
           <span className="text-[10px] text-[var(--color-status-green)]">Connected</span>
         )}
         {testStatus === 'error' && (
-          <span className="text-[10px] text-[var(--color-status-red)]">Failed</span>
+          <span className="text-[10px] text-[var(--color-status-red)]">
+            {testError || 'Failed'}
+          </span>
         )}
       </div>
     </div>

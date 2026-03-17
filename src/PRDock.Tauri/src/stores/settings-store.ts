@@ -22,7 +22,7 @@ const defaultSettings: AppSettings = {
     sidebarMode: 'pinned',
     sidebarWidthPx: 380,
     theme: 'system',
-    globalHotkey: 'Ctrl+Shift+P',
+    globalHotkey: 'Ctrl+Shift+Super+G',
     editorCommand: 'code',
     runAtStartup: false,
     badgeStyle: 'GlassCapsule',

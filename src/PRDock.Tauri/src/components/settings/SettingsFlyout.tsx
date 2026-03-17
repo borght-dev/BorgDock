@@ -9,6 +9,7 @@ import { NotificationSection } from './NotificationSection';
 import { ClaudeSection } from './ClaudeSection';
 import { AdoSection } from './AdoSection';
 import { UpdateSection } from './UpdateSection';
+import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import type { AppSettings } from '@/types';
 
 export function SettingsFlyout() {
@@ -17,7 +18,8 @@ export function SettingsFlyout() {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const closeSettings = () => setSettingsOpen(false);
   const [draft, setDraft] = useState<AppSettings>(settings);
-  const [validationError, setValidationError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [isPruneOpen, setIsPruneOpen] = useState(false);
 
   useEffect(() => {
     if (isSettingsOpen) setDraft(settings);
@@ -28,18 +30,34 @@ export function SettingsFlyout() {
     []
   );
 
-  const handleSave = useCallback(async () => {
-    setValidationError('');
-    if (draft.gitHub.authMethod === 'pat' && !draft.gitHub.personalAccessToken) {
-      setValidationError('PAT is required when using Personal Access Token auth.');
-      return;
+  const validate = useCallback((d: AppSettings): Record<string, string> => {
+    const errors: Record<string, string> = {};
+    if (d.gitHub.authMethod === 'pat' && !d.gitHub.personalAccessToken) {
+      errors.pat = 'PAT is required when using Personal Access Token auth.';
     }
+    if (d.gitHub.personalAccessToken && !d.gitHub.personalAccessToken.startsWith('ghp_') && !d.gitHub.personalAccessToken.startsWith('github_pat_')) {
+      errors.patFormat = 'PAT should start with ghp_ or github_pat_';
+    }
+    if (d.gitHub.pollIntervalSeconds < 10 || d.gitHub.pollIntervalSeconds > 600) {
+      errors.pollInterval = 'Poll interval must be between 10 and 600 seconds.';
+    }
+    if (d.ui.sidebarWidthPx < 280 || d.ui.sidebarWidthPx > 800) {
+      errors.sidebarWidth = 'Sidebar width must be between 280 and 800 pixels.';
+    }
+    return errors;
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const errors = validate(draft);
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     await saveSettings(draft);
     closeSettings();
-  }, [draft, saveSettings, closeSettings]);
+  }, [draft, saveSettings, closeSettings, validate]);
 
   const handleCancel = useCallback(() => {
     setDraft(settings);
+    setValidationErrors({});
     closeSettings();
   }, [settings, closeSettings]);
 
@@ -79,6 +97,15 @@ export function SettingsFlyout() {
               github={draft.gitHub}
               onChange={(gitHub) => updateDraft({ gitHub })}
             />
+            {validationErrors.pat && (
+              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">{validationErrors.pat}</p>
+            )}
+            {validationErrors.patFormat && (
+              <p className="mt-1 text-[10px] text-[var(--color-status-yellow)]">{validationErrors.patFormat}</p>
+            )}
+            {validationErrors.pollInterval && (
+              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">{validationErrors.pollInterval}</p>
+            )}
           </SectionCard>
 
           <SectionCard title="Repositories">
@@ -93,6 +120,9 @@ export function SettingsFlyout() {
               ui={draft.ui}
               onChange={(ui) => updateDraft({ ui })}
             />
+            {validationErrors.sidebarWidth && (
+              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">{validationErrors.sidebarWidth}</p>
+            )}
           </SectionCard>
 
           <SectionCard title="Notifications">
@@ -119,13 +149,20 @@ export function SettingsFlyout() {
           <SectionCard title="Updates">
             <UpdateSection updates={draft.updates} onChange={(updates) => updateDraft({ updates })} />
           </SectionCard>
+
+          {/* Maintenance */}
+          <SectionCard title="Maintenance">
+            <button
+              onClick={() => setIsPruneOpen(true)}
+              className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            >
+              Prune Worktrees
+            </button>
+          </SectionCard>
         </div>
 
         {/* Footer */}
         <div className="border-t border-[var(--color-separator)] px-4 py-3">
-          {validationError && (
-            <p className="mb-2 text-[11px] text-[var(--color-status-red)]">{validationError}</p>
-          )}
           <div className="flex justify-end gap-2">
             <button
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] transition-colors"
@@ -142,6 +179,12 @@ export function SettingsFlyout() {
           </div>
         </div>
       </div>
+
+      {/* Worktree Prune Dialog */}
+      <WorktreePruneDialog
+        isOpen={isPruneOpen}
+        onClose={() => setIsPruneOpen(false)}
+      />
     </>
   );
 }

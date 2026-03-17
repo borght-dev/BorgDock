@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import type { UiSettings, ThemeMode, SidebarEdge, BadgeStyle, IndicatorStyle } from '@/types';
+import type { UiSettings, ThemeMode, SidebarEdge, SidebarMode, BadgeStyle, IndicatorStyle } from '@/types';
+import { HotkeyRecorder } from './HotkeyRecorder';
 
 interface AppearanceSectionProps {
   ui: UiSettings;
@@ -15,6 +16,11 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 const EDGE_OPTIONS: { value: SidebarEdge; label: string }[] = [
   { value: 'left', label: 'Left' },
   { value: 'right', label: 'Right' },
+];
+
+const MODE_OPTIONS: { value: SidebarMode; label: string }[] = [
+  { value: 'pinned', label: 'Pinned' },
+  { value: 'floating', label: 'Floating' },
 ];
 
 const BADGE_STYLES: BadgeStyle[] = ['GlassCapsule', 'MinimalDot'];
@@ -65,17 +71,41 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         </div>
       </FieldLabel>
 
+      {/* Sidebar Mode */}
+      <FieldLabel label="Sidebar Mode">
+        <div className="flex gap-1">
+          {MODE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              className={clsx(
+                'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
+                ui.sidebarMode === value
+                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]'
+              )}
+              onClick={() => update({ sidebarMode: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </FieldLabel>
+
       {/* Sidebar Width */}
       <FieldLabel label={`Sidebar Width: ${ui.sidebarWidthPx}px`}>
         <input
           type="range"
           className="w-full accent-[var(--color-accent)]"
-          min={200}
-          max={1200}
+          min={280}
+          max={800}
           step={10}
           value={ui.sidebarWidthPx}
           onChange={(e) => update({ sidebarWidthPx: Number(e.target.value) })}
         />
+        <div className="flex justify-between text-[9px] text-[var(--color-text-ghost)]">
+          <span>280</span>
+          <span>800</span>
+        </div>
       </FieldLabel>
 
       {/* Badge Style */}
@@ -106,13 +136,34 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
 
       {/* Global Hotkey */}
       <FieldLabel label="Global Hotkey">
-        <input
-          className="field-input w-full"
+        <HotkeyRecorder
           value={ui.globalHotkey}
-          onChange={(e) => update({ globalHotkey: e.target.value })}
-          placeholder="Ctrl+Shift+P"
+          onChange={(shortcut) => update({ globalHotkey: shortcut })}
         />
       </FieldLabel>
+
+      {/* Run at Startup */}
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
+          Run at startup
+        </label>
+        <button
+          onClick={() => update({ runAtStartup: !ui.runAtStartup })}
+          className={clsx(
+            'relative h-5 w-9 rounded-full transition-colors',
+            ui.runAtStartup
+              ? 'bg-[var(--color-accent)]'
+              : 'bg-[var(--color-filter-chip-bg)]'
+          )}
+        >
+          <div
+            className={clsx(
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+              ui.runAtStartup ? 'translate-x-4' : 'translate-x-0.5'
+            )}
+          />
+        </button>
+      </div>
     </div>
   );
 }
