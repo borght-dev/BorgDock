@@ -59,21 +59,47 @@ pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
     Ok(())
 }
 
+/// Resize the badge window, keeping it centered horizontally.
+/// `anchor`: `"top"` keeps the top edge fixed, `"bottom"` keeps the bottom edge fixed,
+///           `"auto"` grows upward only if the window would go off-screen.
+/// Returns `"up"` if the window grew/anchored upward, `"down"` otherwise.
 #[tauri::command]
-pub fn resize_badge(app: tauri::AppHandle, width: u32, height: u32) -> Result<(), String> {
+pub fn resize_badge(app: tauri::AppHandle, width: u32, height: u32, anchor: Option<String>) -> Result<String, String> {
+    let mut direction = "down".to_string();
+    let anchor = anchor.unwrap_or_else(|| "auto".to_string());
+
     if let Some(badge_win) = app.get_webview_window("badge") {
         let scale = badge_win.scale_factor().unwrap_or(1.0);
         let pw = (width as f64 * scale) as u32;
         let ph = (height as f64 * scale) as u32;
 
-        // Re-center horizontally after resize
-        if let Ok(Some(monitor)) = badge_win.current_monitor() {
-            let screen_size = monitor.size();
-            let screen_pos = monitor.position();
-            let x = screen_pos.x + (screen_size.width as i32 - pw as i32) / 2;
-            let y = screen_pos.y + 8;
+        if let (Ok(cur_pos), Ok(cur_size)) = (badge_win.outer_position(), badge_win.outer_size()) {
+            let mid_x = cur_pos.x + cur_size.width as i32 / 2;
+            let new_x = mid_x - pw as i32 / 2;
+            let cur_bottom = cur_pos.y + cur_size.height as i32;
+
+            let new_y = if anchor == "bottom" {
+                // Keep bottom edge fixed
+                direction = "up".to_string();
+                cur_bottom - ph as i32
+            } else if anchor == "top" {
+                // Keep top edge fixed
+                cur_pos.y
+            } else {
+                // Auto: grow upward only if expanding would go off-screen
+                let mut y = cur_pos.y;
+                if let Ok(Some(monitor)) = badge_win.current_monitor() {
+                    let screen_bottom = monitor.position().y + monitor.size().height as i32;
+                    if cur_pos.y + ph as i32 > screen_bottom {
+                        y = cur_bottom - ph as i32;
+                        direction = "up".to_string();
+                    }
+                }
+                y
+            };
+
             let _ = badge_win.set_position(tauri::Position::Physical(
-                tauri::PhysicalPosition::new(x, y),
+                tauri::PhysicalPosition::new(new_x, new_y),
             ));
         }
 
@@ -81,7 +107,7 @@ pub fn resize_badge(app: tauri::AppHandle, width: u32, height: u32) -> Result<()
             .set_size(tauri::Size::Physical(tauri::PhysicalSize::new(pw, ph)))
             .map_err(|e| e.to_string())?;
     }
-    Ok(())
+    Ok(direction)
 }
 
 #[tauri::command]

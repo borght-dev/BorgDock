@@ -4,7 +4,7 @@ import type { PullRequestWithChecks } from '@/types';
 interface MultiSignalIndicatorProps {
   pr: PullRequestWithChecks;
   size?: number;
-  style?: 'SegmentRing' | 'ProgressArc';
+  style?: 'SegmentRing' | 'ProgressArc' | 'SignalDots';
 }
 
 type SignalColor = 'green' | 'red' | 'yellow' | 'gray';

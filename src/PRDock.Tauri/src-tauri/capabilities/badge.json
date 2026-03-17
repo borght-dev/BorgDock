@@ -3,6 +3,8 @@
   "description": "Permissions for the floating badge window",
   "windows": ["badge"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging"
   ]
 }

@@ -70,46 +70,65 @@ export function FloatingBadge({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Main badge pill */}
-      <button
+      {/* Main badge pill — outer div is draggable */}
+      <div
+        data-tauri-drag-region
         className={clsx(
-          'flex items-center gap-2 rounded-full px-3.5 py-1.5',
+          'flex items-center rounded-full cursor-grab active:cursor-grabbing',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-          'transition-all hover:scale-[1.02]',
           'animate-[breathe_3s_ease-in-out_infinite]'
         )}
         style={{
           boxShadow: `0 0 20px ${glowColor}, 0 2px 8px rgba(0,0,0,0.08)`,
         }}
-        onClick={onExpandSidebar}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          toggleExpanded();
-        }}
       >
-        {/* Status icon */}
-        <div
-          className="h-3 w-3 rounded-full shrink-0"
-          style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
-        />
+        {/* Click target — opens sidebar */}
+        <button
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-l-full hover:bg-[var(--color-surface-hover)] transition-colors"
+          onClick={onExpandSidebar}
+        >
+          {/* Status icon */}
+          <div
+            className="h-3 w-3 rounded-full shrink-0"
+            style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
+          />
 
-        {/* PR count */}
-        <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
+          {/* PR count */}
+          <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
 
-        {/* Separator */}
-        <div className="h-3 w-px bg-[var(--color-separator)]" />
+          {/* Separator */}
+          <div className="h-3 w-px bg-[var(--color-separator)]" />
 
-        {/* Status text */}
-        <span className="text-[11px] text-[var(--color-text-tertiary)] whitespace-nowrap">
-          {statusText}
-        </span>
-      </button>
+          {/* Status text */}
+          <span className="text-[11px] text-[var(--color-text-tertiary)] whitespace-nowrap">
+            {statusText}
+          </span>
+        </button>
 
-      {/* Handle to toggle expanded */}
-      <button
-        className="mt-0.5 h-1 w-8 rounded-full bg-[var(--color-text-ghost)] opacity-0 hover:opacity-50 transition-opacity"
-        onClick={() => toggleExpanded()}
-      />
+        {/* Expand/collapse chevron */}
+        <button
+          className={clsx(
+            'flex items-center justify-center self-stretch px-2 rounded-r-full',
+            'border-l border-[var(--color-separator)]',
+            'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
+            'hover:bg-[var(--color-surface-hover)] transition-colors'
+          )}
+          onClick={() => toggleExpanded()}
+          title={isExpanded ? 'Collapse' : 'Expand PR list'}
+        >
+          <svg
+            className={clsx('w-3.5 h-3.5 transition-transform', isExpanded && 'rotate-180')}
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 5l3 3 3-3" />
+          </svg>
+        </button>
+      </div>
 
       {/* Expanded panel */}
       {isExpanded && (

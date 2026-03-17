@@ -99,18 +99,26 @@ export function BadgeApp() {
   }, []);
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandDirection, setExpandDirection] = useState<'up' | 'down'>('down');
 
   const toggleExpanded = useCallback(async () => {
     const next = !isExpanded;
     setIsExpanded(next);
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      const size = next
-        ? { width: 900, height: 500 }
-        : { width: 260, height: 50 };
-      await invoke('resize_badge', { width: size.width, height: size.height });
+      if (next) {
+        // Expanding: let the backend auto-detect direction
+        const size = { width: 900, height: 500 };
+        const dir = await invoke<string>('resize_badge', { width: size.width, height: size.height, anchor: 'auto' });
+        setExpandDirection(dir === 'up' ? 'up' : 'down');
+      } else {
+        // Collapsing: anchor the edge where the pill is so it doesn't jump
+        const size = { width: 260, height: 50 };
+        const anchor = expandDirection === 'up' ? 'bottom' : 'top';
+        await invoke('resize_badge', { width: size.width, height: size.height, anchor });
+      }
     } catch { /* ignore */ }
-  }, [isExpanded]);
+  }, [isExpanded, expandDirection]);
 
   const statusColor = determineStatusColor(data.failingCount, data.pendingCount);
   const statusText = formatStatusText(data.failingCount, data.pendingCount);
@@ -127,12 +135,48 @@ export function BadgeApp() {
     yellow: 'var(--color-status-yellow)',
   };
 
+  const expandUp = isExpanded && expandDirection === 'up';
+
+  const prPanel = isExpanded && (
+    <div
+      className={clsx(
+        'w-[880px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
+        'shadow-lg overflow-hidden',
+        expandUp ? 'mb-1' : 'mt-1'
+      )}
+    >
+      <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
+        <PrColumn title="MY PRS" items={data.myPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
+        <PrColumn title="TEAM" items={data.teamPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
+      </div>
+      <div className="flex items-center justify-center gap-3 border-t border-[var(--color-separator)] px-3 py-2">
+        <span className="text-xs text-[var(--color-text-muted)]">
+          {data.totalPrCount} total
+        </span>
+        {data.failingCount > 0 && (
+          <span className="text-xs text-[var(--color-status-red)]">
+            {data.failingCount} failing
+          </span>
+        )}
+        {data.pendingCount > 0 && (
+          <span className="text-xs text-[var(--color-status-yellow)]">
+            {data.pendingCount} pending
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
-      className="flex h-screen w-screen items-start justify-center pt-1"
+      className={clsx(
+        'flex h-screen w-screen justify-center',
+        expandUp ? 'items-end pb-1' : 'items-start pt-1'
+      )}
       style={{ background: 'transparent' }}
     >
       <div className="flex flex-col items-center">
+        {expandUp && prPanel}
         <BadgeStyleComponent
           totalPrCount={data.totalPrCount}
           failingCount={data.failingCount}
@@ -143,36 +187,7 @@ export function BadgeApp() {
           onToggleExpand={toggleExpanded}
           isExpanded={isExpanded}
         />
-
-        {/* Expanded PR panel */}
-        {isExpanded && (
-          <div
-            className={clsx(
-              'mt-1 w-[880px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
-              'shadow-lg overflow-hidden'
-            )}
-          >
-            <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
-              <PrColumn title="MY PRS" items={data.myPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
-              <PrColumn title="TEAM" items={data.teamPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
-            </div>
-            <div className="flex items-center justify-center gap-3 border-t border-[var(--color-separator)] px-3 py-2">
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {data.totalPrCount} total
-              </span>
-              {data.failingCount > 0 && (
-                <span className="text-xs text-[var(--color-status-red)]">
-                  {data.failingCount} failing
-                </span>
-              )}
-              {data.pendingCount > 0 && (
-                <span className="text-xs text-[var(--color-status-yellow)]">
-                  {data.pendingCount} pending
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+        {!expandUp && prPanel}
       </div>
     </div>
   );

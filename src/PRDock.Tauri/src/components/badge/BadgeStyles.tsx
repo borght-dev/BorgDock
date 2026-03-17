@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import clsx from 'clsx';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { StatusColor } from './FloatingBadge';
 
 export interface BadgeStyleProps {
@@ -9,6 +10,44 @@ export interface BadgeStyleProps {
   statusColor: StatusColor;
   statusText: string;
   onClick: () => void;
+  onToggleExpand?: () => void;
+  isExpanded?: boolean;
+}
+
+/** Start native window drag immediately on mousedown. */
+function handleDragMouseDown(e: React.MouseEvent) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  getCurrentWindow().startDragging();
+}
+
+function ExpandChevron({ isExpanded, onToggleExpand }: { isExpanded?: boolean; onToggleExpand?: () => void }) {
+  if (!onToggleExpand) return null;
+  return (
+    <button
+      data-testid="badge-expand-chevron"
+      className={clsx(
+        'flex items-center justify-center self-stretch px-2 rounded-r-full',
+        'border-l border-[var(--color-separator)]',
+        'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
+        'hover:bg-[var(--color-surface-hover)] transition-colors'
+      )}
+      onClick={onToggleExpand}
+      title={isExpanded ? 'Collapse' : 'Expand PR list'}
+    >
+      <svg
+        className={clsx('w-3.5 h-3.5 transition-transform', isExpanded && 'rotate-180')}
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3 5l3 3 3-3" />
+      </svg>
+    </button>
+  );
 }
 
 const STATUS_DOT_MAP: Record<StatusColor, string> = {
@@ -32,34 +71,65 @@ function GlassCapsule({
   statusColor,
   statusText,
   onClick,
+  onToggleExpand,
+  isExpanded,
 }: BadgeStyleProps) {
   const glowColor = GLOW_MAP[statusColor];
 
   return (
-    <button
+    <div
       className={clsx(
-        'flex items-center gap-2 rounded-full px-3.5 py-1.5',
+        'flex items-center rounded-full',
         'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-        'transition-all hover:scale-[1.02]',
         'animate-[breathe_3s_ease-in-out_infinite]',
       )}
       style={{
         boxShadow: `0 0 20px ${glowColor}, 0 2px 8px rgba(0,0,0,0.08)`,
       }}
-      onClick={onClick}
     >
+      {/* Drag handle — mousedown calls startDragging() directly */}
       <div
-        className="h-3 w-3 shrink-0 rounded-full"
-        style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
-      />
-      <span className="text-sm font-bold text-[var(--color-text-primary)]">
-        {totalPrCount}
-      </span>
-      <div className="h-3 w-px bg-[var(--color-separator)]" />
-      <span className="whitespace-nowrap text-[11px] text-[var(--color-text-tertiary)]">
-        {statusText}
-      </span>
-    </button>
+        data-testid="badge-drag-handle"
+        className="flex items-center gap-0.5 pl-2.5 py-2 cursor-grab active:cursor-grabbing select-none"
+        title="Drag to reposition"
+        onMouseDown={handleDragMouseDown}
+      >
+        <div className="flex flex-col gap-[3px] opacity-40 pointer-events-none">
+          <div className="flex gap-[3px]">
+            <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+            <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+          </div>
+          <div className="flex gap-[3px]">
+            <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+            <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+          </div>
+          <div className="flex gap-[3px]">
+            <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+            <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+          </div>
+        </div>
+      </div>
+
+      {/* Open sidebar button */}
+      <button
+        data-testid="badge-open-sidebar"
+        className="flex items-center gap-2 px-2 py-1.5 hover:bg-[var(--color-surface-hover)] transition-colors"
+        onClick={onClick}
+      >
+        <div
+          className="h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
+        />
+        <span className="text-sm font-bold text-[var(--color-text-primary)]">
+          {totalPrCount}
+        </span>
+        <div className="h-3 w-px bg-[var(--color-separator)]" />
+        <span className="whitespace-nowrap text-[11px] text-[var(--color-text-tertiary)]">
+          {statusText}
+        </span>
+      </button>
+      <ExpandChevron isExpanded={isExpanded} onToggleExpand={onToggleExpand} />
+    </div>
   );
 }
 

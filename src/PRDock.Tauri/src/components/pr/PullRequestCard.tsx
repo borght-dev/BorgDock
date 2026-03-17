@@ -172,7 +172,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
       >
         {/* Status indicator */}
         <div className="mt-1.5">
-          {settings.ui.indicatorStyle === 'SegmentRing' || settings.ui.indicatorStyle === 'ProgressArc' ? (
+          {settings.ui.indicatorStyle === 'SegmentRing' || settings.ui.indicatorStyle === 'SignalDots' ? (
             <MultiSignalIndicator pr={prWithChecks} size={20} style={settings.ui.indicatorStyle} />
           ) : (
             <StatusIndicator status={overallStatus} />

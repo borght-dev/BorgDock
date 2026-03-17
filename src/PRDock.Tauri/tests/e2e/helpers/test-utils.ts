@@ -42,6 +42,8 @@ export const TAURI_MOCK_SCRIPT = `
         case 'position_sidebar':
         case 'toggle_sidebar':
         case 'show_badge':
+        case 'hide_badge':
+        case 'resize_badge':
         case 'init_cache':
           return null;
 
