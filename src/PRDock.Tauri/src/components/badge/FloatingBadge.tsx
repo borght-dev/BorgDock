@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import clsx from 'clsx';
 
 export type StatusColor = 'green' | 'red' | 'yellow';
+
+const BADGE_COLLAPSED = { width: 260, height: 50 };
+const BADGE_EXPANDED = { width: 340, height: 400 };
 
 export interface BadgePrItem {
   title: string;
@@ -51,6 +54,18 @@ export function FloatingBadge({
 }: FloatingBadgeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const toggleExpanded = useCallback(async (expand?: boolean) => {
+    const next = expand ?? !isExpanded;
+    setIsExpanded(next);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const size = next ? BADGE_EXPANDED : BADGE_COLLAPSED;
+      await invoke('resize_badge', { width: size.width, height: size.height });
+    } catch {
+      // ignore
+    }
+  }, [isExpanded]);
+
   const glowColor = GLOW_MAP[statusColor];
 
   return (
@@ -69,7 +84,7 @@ export function FloatingBadge({
         onClick={onExpandSidebar}
         onContextMenu={(e) => {
           e.preventDefault();
-          setIsExpanded((prev) => !prev);
+          toggleExpanded();
         }}
       >
         {/* Status icon */}
@@ -93,7 +108,7 @@ export function FloatingBadge({
       {/* Handle to toggle expanded */}
       <button
         className="mt-0.5 h-1 w-8 rounded-full bg-[var(--color-text-ghost)] opacity-0 hover:opacity-50 transition-opacity"
-        onClick={() => setIsExpanded((prev) => !prev)}
+        onClick={() => toggleExpanded()}
       />
 
       {/* Expanded panel */}

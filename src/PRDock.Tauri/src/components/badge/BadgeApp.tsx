@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FloatingBadge, type StatusColor, type BadgePrItem } from './FloatingBadge';
+import { badgeStyleMap, type BadgeStyleProps } from './BadgeStyles';
 
 interface BadgeData {
   totalPrCount: number;
@@ -7,6 +8,7 @@ interface BadgeData {
   pendingCount: number;
   myPrs: BadgePrItem[];
   teamPrs: BadgePrItem[];
+  badgeStyle?: string;
 }
 
 function determineStatusColor(failing: number, pending: number): StatusColor {
@@ -32,62 +34,91 @@ export function BadgeApp() {
     teamPrs: [],
   });
 
+  // Listen for badge-update events from the main window
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
-    async function setup() {
+    (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen<BadgeData>('badge-update', (event) => {
           setData(event.payload);
         });
+        // Request fresh data from the main window now that we're listening
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('main', 'badge-request-data', {});
       } catch (err) {
         console.error('Failed to listen for badge updates:', err);
       }
-    }
+    })();
 
-    setup();
     return () => unlisten?.();
   }, []);
 
   const handleExpandSidebar = useCallback(async () => {
     try {
-      const { emit } = await import('@tauri-apps/api/event');
-      await emit('expand-sidebar');
+      const { invoke } = await import('@tauri-apps/api/core');
+      // Reset badge window to collapsed size before hiding
+      await invoke('resize_badge', { width: 260, height: 50 });
+      // Show the main sidebar and hide the badge window directly
+      await invoke('toggle_sidebar');
+      await invoke('hide_badge');
     } catch (err) {
-      console.error('Failed to emit expand-sidebar:', err);
+      console.error('Failed to expand sidebar:', err);
     }
   }, []);
 
   const handleOpenPr = useCallback(async (item: BadgePrItem) => {
     try {
-      const { emit } = await import('@tauri-apps/api/event');
-      await emit('open-pr-detail', {
+      const { emitTo } = await import('@tauri-apps/api/event');
+      const { invoke } = await import('@tauri-apps/api/core');
+      await emitTo('main', 'open-pr-detail', {
         number: item.number,
         repoOwner: item.repoOwner,
         repoName: item.repoName,
       });
+      await invoke('toggle_sidebar');
+      await invoke('hide_badge');
     } catch (err) {
-      console.error('Failed to emit open-pr-detail:', err);
+      console.error('Failed to open PR:', err);
     }
   }, []);
 
   const statusColor = determineStatusColor(data.failingCount, data.pendingCount);
   const statusText = formatStatusText(data.failingCount, data.pendingCount);
 
+  const BadgeStyleComponent = useMemo<React.ComponentType<BadgeStyleProps> | null>(() => {
+    if (!data.badgeStyle) return null;
+    return badgeStyleMap[data.badgeStyle] ?? null;
+  }, [data.badgeStyle]);
+
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-transparent">
-      <FloatingBadge
-        totalPrCount={data.totalPrCount}
-        failingCount={data.failingCount}
-        pendingCount={data.pendingCount}
-        statusColor={statusColor}
-        statusText={statusText}
-        onExpandSidebar={handleExpandSidebar}
-        myPrs={data.myPrs}
-        teamPrs={data.teamPrs}
-        onOpenPr={handleOpenPr}
-      />
+    <div
+      className="flex h-screen w-screen items-center justify-center"
+      style={{ background: 'transparent' }}
+    >
+      {BadgeStyleComponent ? (
+        <BadgeStyleComponent
+          totalPrCount={data.totalPrCount}
+          failingCount={data.failingCount}
+          pendingCount={data.pendingCount}
+          statusColor={statusColor}
+          statusText={statusText}
+          onClick={handleExpandSidebar}
+        />
+      ) : (
+        <FloatingBadge
+          totalPrCount={data.totalPrCount}
+          failingCount={data.failingCount}
+          pendingCount={data.pendingCount}
+          statusColor={statusColor}
+          statusText={statusText}
+          onExpandSidebar={handleExpandSidebar}
+          myPrs={data.myPrs}
+          teamPrs={data.teamPrs}
+          onOpenPr={handleOpenPr}
+        />
+      )}
     </div>
   );
 }
