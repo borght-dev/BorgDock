@@ -162,8 +162,8 @@
   --color-red-glow: rgba(220, 38, 38, 0.18);
 
   /* Floating badge */
-  --color-badge-glass: rgba(244, 246, 249, 0.8);
-  --color-badge-surface: rgba(240, 242, 245, 0.9);
+  --color-badge-glass: rgba(244, 246, 249, 0.97);
+  --color-badge-surface: rgba(240, 242, 245, 0.97);
   --color-badge-border: rgba(0, 0, 0, 0.09);
   --color-badge-glow-green: rgba(22, 163, 74, 0.25);
   --color-badge-glow-red: rgba(220, 38, 38, 0.25);
@@ -323,8 +323,8 @@
   --color-green-glow: rgba(52, 211, 153, 0.3);
   --color-red-glow: rgba(248, 113, 113, 0.5);
 
-  --color-badge-glass: rgba(17, 24, 39, 0.8);
-  --color-badge-surface: rgba(17, 24, 39, 0.9);
+  --color-badge-glass: rgba(17, 24, 39, 0.97);
+  --color-badge-surface: rgba(17, 24, 39, 0.97);
   --color-badge-border: rgba(255, 255, 255, 0.15);
   --color-badge-glow-green: rgba(52, 211, 153, 0.25);
   --color-badge-glow-red: rgba(248, 113, 113, 0.25);

@@ -1,0 +1,8 @@
+{
+  "identifier": "badge-capability",
+  "description": "Permissions for the floating badge window",
+  "windows": ["badge"],
+  "permissions": [
+    "core:default"
+  ]
+}

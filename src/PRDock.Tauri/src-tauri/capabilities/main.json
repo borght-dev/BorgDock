@@ -1,0 +1,20 @@
+{
+  "identifier": "main-capability",
+  "description": "Permissions for the main sidebar window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "global-shortcut:default",
+    "notification:default",
+    "shell:default",
+    "dialog:default",
+    "autostart:default",
+    "updater:default",
+    "store:default",
+    "clipboard-manager:default",
+    "opener:default",
+    "fs:default",
+    "log:default",
+    "os:default"
+  ]
+}

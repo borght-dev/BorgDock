@@ -9,6 +9,7 @@ interface BadgeData {
   myPrs: BadgePrItem[];
   teamPrs: BadgePrItem[];
   badgeStyle?: string;
+  theme?: string;
 }
 
 function determineStatusColor(failing: number, pending: number): StatusColor {
@@ -23,6 +24,13 @@ function formatStatusText(failing: number, pending: number): string {
   if (failing > 0) parts.push(`${failing} failing`);
   if (pending > 0) parts.push(`${pending} in progress`);
   return parts.join(', ');
+}
+
+function applyBadgeTheme(theme: string) {
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark', isDark);
 }
 
 export function BadgeApp() {
@@ -40,15 +48,20 @@ export function BadgeApp() {
 
     (async () => {
       try {
-        const { listen } = await import('@tauri-apps/api/event');
+        console.log('[Badge] Setting up badge-update listener...');
+        const { listen, emit } = await import('@tauri-apps/api/event');
         unlisten = await listen<BadgeData>('badge-update', (event) => {
+          console.log('[Badge] Received badge-update:', JSON.stringify(event.payload));
           setData(event.payload);
+          if (event.payload.theme) {
+            applyBadgeTheme(event.payload.theme);
+          }
         });
-        // Request fresh data from the main window now that we're listening
-        const { emitTo } = await import('@tauri-apps/api/event');
-        await emitTo('main', 'badge-request-data', {});
+        console.log('[Badge] Listener registered, requesting fresh data...');
+        await emit('badge-request-data', {});
+        console.log('[Badge] badge-request-data emitted');
       } catch (err) {
-        console.error('Failed to listen for badge updates:', err);
+        console.error('[Badge] Failed to listen for badge updates:', err);
       }
     })();
 

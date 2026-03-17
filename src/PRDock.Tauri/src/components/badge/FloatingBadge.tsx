@@ -75,7 +75,7 @@ export function FloatingBadge({
         className={clsx(
           'flex items-center gap-2 rounded-full px-3.5 py-1.5',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-          'backdrop-blur-md transition-all hover:scale-[1.02]',
+          'transition-all hover:scale-[1.02]',
           'animate-[breathe_3s_ease-in-out_infinite]'
         )}
         style={{
@@ -116,7 +116,7 @@ export function FloatingBadge({
         <div
           className={clsx(
             'mt-1 w-[320px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
-            'backdrop-blur-md shadow-lg overflow-hidden'
+            'shadow-lg overflow-hidden'
           )}
         >
           <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">

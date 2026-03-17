@@ -45,12 +45,14 @@ export interface BadgeUpdatePayload {
   myPrs: BadgePrItem[];
   teamPrs: BadgePrItem[];
   badgeStyle: string;
+  theme: string;
 }
 
 function buildBadgePayload(
   pullRequests: PullRequestWithChecks[],
   username: string,
   badgeStyle: string,
+  theme: string,
 ): BadgeUpdatePayload {
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
   const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
@@ -71,16 +73,27 @@ function buildBadgePayload(
     myPrs,
     teamPrs,
     badgeStyle,
+    theme,
   };
 }
 
 async function sendToBadge(payload: BadgeUpdatePayload) {
   try {
-    const { emitTo } = await import('@tauri-apps/api/event');
-    // Target the badge window explicitly by its label
-    await emitTo('badge', 'badge-update', payload);
-  } catch {
-    // Badge sync is best-effort
+    const { emit } = await import('@tauri-apps/api/event');
+    console.log('[BadgeSync] Sending badge-update:', {
+      totalPrCount: payload.totalPrCount,
+      failingCount: payload.failingCount,
+      pendingCount: payload.pendingCount,
+      myPrs: payload.myPrs.length,
+      teamPrs: payload.teamPrs.length,
+      badgeStyle: payload.badgeStyle,
+      theme: payload.theme,
+    });
+    // Broadcast globally — the badge window picks it up via listen()
+    await emit('badge-update', payload);
+    console.log('[BadgeSync] badge-update emitted successfully');
+  } catch (err) {
+    console.error('[BadgeSync] Failed to emit badge-update:', err);
   }
 }
 
@@ -88,12 +101,13 @@ export function useBadgeSync() {
   const pullRequests = usePrStore((s) => s.pullRequests);
   const username = usePrStore((s) => s.username);
   const badgeStyle = useSettingsStore((s) => s.settings.ui.badgeStyle);
+  const theme = useSettingsStore((s) => s.settings.ui.theme);
 
-  // Emit badge data whenever PRs, username, or badge style change
+  // Emit badge data whenever PRs, username, badge style, or theme change
   useEffect(() => {
-    const payload = buildBadgePayload(pullRequests, username, badgeStyle);
+    const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme);
     sendToBadge(payload);
-  }, [pullRequests, username, badgeStyle]);
+  }, [pullRequests, username, badgeStyle, theme]);
 
   // Respond to badge-request-data: re-send current payload
   useEffect(() => {
@@ -102,11 +116,11 @@ export function useBadgeSync() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('badge-request-data', () => {
-          const payload = buildBadgePayload(
-            usePrStore.getState().pullRequests,
-            usePrStore.getState().username,
-            useSettingsStore.getState().settings.ui.badgeStyle,
-          );
+          const prs = usePrStore.getState().pullRequests;
+          const user = usePrStore.getState().username;
+          const st = useSettingsStore.getState().settings;
+          console.log('[BadgeSync] Received badge-request-data, PRs in store:', prs.length, 'username:', user);
+          const payload = buildBadgePayload(prs, user, st.ui.badgeStyle, st.ui.theme);
           sendToBadge(payload);
         });
       } catch {

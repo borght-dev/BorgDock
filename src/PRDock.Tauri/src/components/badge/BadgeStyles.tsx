@@ -40,7 +40,7 @@ function GlassCapsule({
       className={clsx(
         'flex items-center gap-2 rounded-full px-3.5 py-1.5',
         'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-        'backdrop-blur-md transition-all hover:scale-[1.02]',
+        'transition-all hover:scale-[1.02]',
         'animate-[breathe_3s_ease-in-out_infinite]',
       )}
       style={{
@@ -166,7 +166,7 @@ function LiquidMorph({
       className={clsx(
         'relative flex h-12 w-12 items-center justify-center',
         'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-        'backdrop-blur-md transition-transform hover:scale-105',
+        'transition-transform hover:scale-105',
       )}
       style={{
         borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
@@ -227,7 +227,7 @@ function SpectralBar({
         className={clsx(
           'mb-1 flex items-center gap-2 rounded-lg px-3 py-1.5',
           'bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
-          'backdrop-blur-md shadow-md transition-all duration-200',
+          'shadow-md transition-all duration-200',
           isHovered ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0',
         )}
       >
