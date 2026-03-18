@@ -21,6 +21,8 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         badge: path.resolve(__dirname, "badge.html"),
+        palette: path.resolve(__dirname, "palette.html"),
+        'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),
       },
     },
   },

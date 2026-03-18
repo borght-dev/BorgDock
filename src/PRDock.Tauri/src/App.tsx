@@ -127,6 +127,7 @@ export default function App() {
     return () => unlisten?.();
   }, []);
 
+
   // Loading state
   if (isLoading) {
     return (

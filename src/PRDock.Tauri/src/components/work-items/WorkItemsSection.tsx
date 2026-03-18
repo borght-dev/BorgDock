@@ -426,6 +426,7 @@ export function WorkItemsSection() {
     [getClient]
   );
 
+
   const handleSave = useCallback(
     async (updates: WorkItemFieldUpdates) => {
       if (!selectedWorkItemId || !detailItem) return;
