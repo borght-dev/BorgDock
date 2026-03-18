@@ -7,3 +7,4 @@ src-tauri/gen/
 # Tauri updater signing keys
 .tauri-signing-key
 .tauri-signing-key.pub
+test-results/
