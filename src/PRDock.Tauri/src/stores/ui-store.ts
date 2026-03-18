@@ -8,6 +8,9 @@ interface UiState {
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
   expandedRepoGroups: Set<string>;
+  isCommandPaletteOpen: boolean;
+  isDragging: boolean;
+  pendingWorkItemId: number | null;
 
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
@@ -15,6 +18,9 @@ interface UiState {
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
+  setCommandPaletteOpen: (open: boolean) => void;
+  setDragging: (dragging: boolean) => void;
+  setPendingWorkItemId: (id: number | null) => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -23,6 +29,9 @@ export const useUiStore = create<UiState>()((set) => ({
   activeSection: 'prs',
   selectedPrNumber: null,
   expandedRepoGroups: new Set<string>(),
+  isCommandPaletteOpen: false,
+  isDragging: false,
+  pendingWorkItemId: null,
 
   toggleSidebar: () =>
     set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
@@ -45,4 +54,10 @@ export const useUiStore = create<UiState>()((set) => ({
       }
       return { expandedRepoGroups: next };
     }),
+
+  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+
+  setDragging: (dragging) => set({ isDragging: dragging }),
+
+  setPendingWorkItemId: (id) => set({ pendingWorkItemId: id }),
 }));
