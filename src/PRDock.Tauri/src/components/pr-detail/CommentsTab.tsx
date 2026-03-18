@@ -23,7 +23,40 @@ function formatRelativeDate(dateStr: string): string {
 }
 
 function avatarInitials(login: string): string {
-  return login.slice(0, 2).toUpperCase();
+  // Strip [bot] suffix for cleaner initials
+  const clean = login.replace(/\[bot\]$/, '').trim();
+  return clean.slice(0, 2).toUpperCase();
+}
+
+/**
+ * Curated palette of distinguishable author colors.
+ * Pairs: [avatar-bg (solid), stripe/tint (used at 12% opacity for card bg)].
+ * Colors chosen to be vibrant yet legible in both light and dark themes.
+ */
+const AUTHOR_PALETTE = [
+  '#0d9488', // teal
+  '#e11d48', // rose
+  '#d97706', // amber
+  '#4f46e5', // indigo
+  '#059669', // emerald
+  '#c026d3', // fuchsia
+  '#0284c7', // sky
+  '#ea580c', // orange
+  '#6d28d9', // violet
+  '#0891b2', // cyan
+] as const;
+
+/** Deterministic hash → palette index for a given username. */
+function authorColor(author: string): string {
+  let hash = 0;
+  for (let i = 0; i < author.length; i++) {
+    hash = ((hash << 5) - hash + author.charCodeAt(i)) | 0;
+  }
+  return AUTHOR_PALETTE[Math.abs(hash) % AUTHOR_PALETTE.length]!;
+}
+
+function isBot(login: string): boolean {
+  return login.endsWith('[bot]') || login.endsWith('-bot');
 }
 
 export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps) {
@@ -76,14 +109,22 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
 
   if (loading) {
     return (
-      <div className="space-y-3 p-3">
+      <div className="space-y-2 p-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="space-y-2 animate-pulse">
-            <div className="flex gap-2">
-              <div className="h-5 w-5 rounded-full bg-[var(--color-surface-raised)]" />
-              <div className="h-3 w-24 rounded bg-[var(--color-surface-raised)]" />
+          <div
+            key={i}
+            className="animate-pulse rounded-lg border border-[var(--color-subtle-border)] p-3"
+            style={{ animationDelay: `${i * 120}ms` }}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-full bg-[var(--color-surface-raised)]" />
+              <div className="h-3 w-20 rounded bg-[var(--color-surface-raised)]" />
+              <div className="ml-auto h-2.5 w-10 rounded bg-[var(--color-surface-raised)]" />
             </div>
-            <div className="h-10 w-full rounded bg-[var(--color-surface-raised)]" />
+            <div className="mt-2.5 space-y-1.5">
+              <div className="h-2.5 w-full rounded bg-[var(--color-surface-raised)]" />
+              <div className="h-2.5 w-3/4 rounded bg-[var(--color-surface-raised)]" />
+            </div>
           </div>
         ))}
       </div>
@@ -97,44 +138,124 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
         {comments.length === 0 ? (
           <p className="p-3 text-xs text-[var(--color-text-muted)]">No comments yet.</p>
         ) : (
-          <div className="divide-y divide-[var(--color-separator)]">
-            {comments.map((comment) => (
-              <div key={comment.id} className="px-3 py-2.5 space-y-1.5">
-                {/* Header */}
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]">
-                    {avatarInitials(comment.author)}
-                  </span>
-                  <span className="text-xs font-medium text-[var(--color-text-primary)]">
-                    {comment.author}
-                  </span>
-                  <span className="text-[10px] text-[var(--color-text-muted)]">
-                    {formatRelativeDate(comment.createdAt)}
-                  </span>
-                </div>
-                {/* File reference for inline comments */}
-                {comment.filePath && (
-                  <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                    {comment.filePath}
-                    {comment.lineNumber != null && `:${comment.lineNumber}`}
+          <div className="space-y-2 p-3">
+            {comments.map((comment, idx) => {
+              const color = authorColor(comment.author);
+              const bot = isBot(comment.author);
+              // Collapse top margin when same author posts consecutively
+              const prevSameAuthor = idx > 0 && comments[idx - 1]?.author === comment.author;
+
+              return (
+                <div
+                  key={comment.id}
+                  className="comment-card-enter flex overflow-hidden rounded-lg border border-[var(--color-subtle-border)]"
+                  style={{
+                    animationDelay: `${idx * 40}ms`,
+                    marginTop: prevSameAuthor ? '4px' : undefined,
+                  }}
+                >
+                  {/* Left author stripe */}
+                  <div
+                    className="w-[3px] shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+
+                  <div className="min-w-0 flex-1 px-3 py-2.5">
+                    {/* Author header — hide if same as previous for visual grouping */}
+                    {!prevSameAuthor && (
+                      <div className="mb-1.5 flex items-center gap-2">
+                        {/* Avatar */}
+                        <span
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8px] font-bold"
+                          style={{
+                            backgroundColor: color,
+                            color: '#fff',
+                          }}
+                        >
+                          {bot ? (
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="5" width="10" height="8" rx="1.5" />
+                              <path d="M6 9h0M10 9h0" strokeWidth="2" />
+                              <path d="M8 5V3" />
+                              <circle cx="8" cy="2.5" r="0.5" fill="currentColor" stroke="none" />
+                            </svg>
+                          ) : (
+                            avatarInitials(comment.author)
+                          )}
+                        </span>
+
+                        {/* Name + badges */}
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color }}
+                        >
+                          {comment.author}
+                        </span>
+
+                        {bot && (
+                          <span
+                            className="rounded px-1 py-px text-[9px] font-medium leading-none"
+                            style={{
+                              color,
+                              backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
+                            }}
+                          >
+                            bot
+                          </span>
+                        )}
+
+                        <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
+                          {formatRelativeDate(comment.createdAt)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Timestamp when header is collapsed */}
+                    {prevSameAuthor && (
+                      <div className="mb-1 flex">
+                        <span className="text-[10px] text-[var(--color-text-faint)]">
+                          {formatRelativeDate(comment.createdAt)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* File reference for inline comments */}
+                    {comment.filePath && (
+                      <div
+                        className="mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono"
+                        style={{
+                          color,
+                          backgroundColor: `color-mix(in srgb, ${color} 6%, transparent)`,
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6L9 2z" />
+                          <path d="M9 2v4h4" />
+                        </svg>
+                        {comment.filePath}
+                        {comment.lineNumber != null && `:${comment.lineNumber}`}
+                      </div>
+                    )}
+
+                    {/* Body */}
+                    <div className="markdown-body">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{comment.body}</ReactMarkdown>
+                    </div>
                   </div>
-                )}
-                {/* Body */}
-                <div className="markdown-body">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{comment.body}</ReactMarkdown>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={bottomRef} />
           </div>
         )}
       </div>
 
       {/* Comment input */}
-      <div className="border-t border-[var(--color-separator)] px-3 py-2">
-        <div className="flex gap-2">
+      <div className="border-t border-[var(--color-separator)] px-3 py-2.5">
+        <div className="overflow-hidden rounded-lg border border-[var(--color-input-border)] transition-colors focus-within:border-[var(--color-accent)]">
           <textarea
-            className="field-input min-h-[60px] flex-1 resize-none text-xs"
+            className="block w-full resize-none bg-[var(--color-input-bg)] px-3 py-2 text-xs text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-ghost)]"
+            rows={2}
             placeholder="Leave a comment..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
@@ -144,13 +265,18 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
               }
             }}
           />
-          <button
-            className="self-end rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-50"
-            onClick={handlePost}
-            disabled={posting || !newComment.trim()}
-          >
-            {posting ? 'Posting...' : 'Comment'}
-          </button>
+          <div className="flex items-center justify-between bg-[var(--color-surface-raised)] px-3 py-1.5">
+            <span className="text-[10px] text-[var(--color-text-faint)]">
+              Ctrl+Enter to submit
+            </span>
+            <button
+              className="rounded-md px-3 py-1 text-[11px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
+              onClick={handlePost}
+              disabled={posting || !newComment.trim()}
+            >
+              {posting ? 'Posting...' : 'Comment'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

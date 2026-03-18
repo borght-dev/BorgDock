@@ -11,15 +11,36 @@ public partial class SettingsViewModel : ObservableObject
     private readonly ISettingsService _settingsService;
     private readonly IStartupManager? _startupManager;
     private readonly IUpdateService? _updateService;
+    private readonly IMigrationService? _migrationService;
 
-    public SettingsViewModel(ISettingsService settingsService, IStartupManager? startupManager = null, IUpdateService? updateService = null)
+    public SettingsViewModel(
+        ISettingsService settingsService,
+        IStartupManager? startupManager = null,
+        IUpdateService? updateService = null,
+        IMigrationService? migrationService = null)
     {
         _settingsService = settingsService;
         _startupManager = startupManager;
         _updateService = updateService;
+        _migrationService = migrationService;
         CurrentVersion = updateService?.CurrentVersion ?? "dev";
         LoadFromSettings(_settingsService.CurrentSettings);
+
+        if (_migrationService is not null)
+        {
+            _migrationService.MigrationAvailable += info =>
+            {
+                System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
+                {
+                    IsTauriAvailable = true;
+                    TauriVersion = info.Version;
+                    _pendingMigration = info;
+                });
+            };
+        }
     }
+
+    private Models.MigrationInfo? _pendingMigration;
 
     // --- GitHub section ---
 
@@ -193,6 +214,39 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private bool _isTauriAvailable;
+
+    [ObservableProperty]
+    private string _tauriVersion = "";
+
+    [ObservableProperty]
+    private bool _isMigrating;
+
+    [ObservableProperty]
+    private int _migrationProgress;
+
+    [RelayCommand]
+    private async Task MigrateToTauriAsync()
+    {
+        if (_migrationService is null || _pendingMigration is null) return;
+
+        IsMigrating = true;
+        MigrationProgress = 0;
+
+        try
+        {
+            var progress = new Progress<int>(p => MigrationProgress = p);
+            var installerPath = await _migrationService.DownloadInstallerAsync(_pendingMigration, progress);
+            _migrationService.LaunchInstallerAndExit(installerPath);
+        }
+        catch
+        {
+            UpdateStatusText = "Migration download failed.";
+            IsMigrating = false;
+        }
+    }
 
     [RelayCommand]
     private async Task CheckForUpdatesAsync()

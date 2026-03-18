@@ -1,5 +1,7 @@
-import { useState } from 'react';
 import type { UpdateSettings } from '@/types';
+import { useUpdateStore } from '@/stores/update-store';
+import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { useSettingsStore } from '@/stores/settings-store';
 
 interface UpdateSectionProps {
   updates: UpdateSettings;
@@ -7,25 +9,13 @@ interface UpdateSectionProps {
 }
 
 export function UpdateSection({ updates, onChange }: UpdateSectionProps) {
-  const [isChecking, setIsChecking] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState('');
+  const settings = useSettingsStore((s) => s.settings);
+  const { checkForUpdate, downloadAndInstall } = useAutoUpdate(settings);
+  const { checking, downloading, progress, available, version, statusText, currentVersion } =
+    useUpdateStore();
 
   const update = (partial: Partial<UpdateSettings>) =>
     onChange({ ...updates, ...partial });
-
-  const handleCheckForUpdates = async () => {
-    setIsChecking(true);
-    setUpdateStatus('');
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const result = await invoke<string>('check_for_updates');
-      setUpdateStatus(result ?? 'Up to date');
-    } catch {
-      setUpdateStatus('Check failed');
-    } finally {
-      setIsChecking(false);
-    }
-  };
 
   return (
     <div className="space-y-2.5">
@@ -46,19 +36,40 @@ export function UpdateSection({ updates, onChange }: UpdateSectionProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-action-secondary-fg)] bg-[var(--color-action-secondary-bg)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
-          onClick={handleCheckForUpdates}
-          disabled={isChecking}
-        >
-          {isChecking ? 'Checking...' : 'Check for Updates'}
-        </button>
-        {updateStatus && (
-          <span className="text-[10px] text-[var(--color-text-muted)]">{updateStatus}</span>
+        {available && !downloading && progress < 100 ? (
+          <button
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            onClick={downloadAndInstall}
+            disabled={downloading}
+          >
+            Install v{version}
+          </button>
+        ) : (
+          <button
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-action-secondary-fg)] bg-[var(--color-action-secondary-bg)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+            onClick={checkForUpdate}
+            disabled={checking || downloading}
+          >
+            {checking ? 'Checking...' : 'Check for Updates'}
+          </button>
+        )}
+        {statusText && (
+          <span className="text-[10px] text-[var(--color-text-muted)]">{statusText}</span>
         )}
       </div>
 
-      <div className="text-[10px] text-[var(--color-text-ghost)]">v0.1.0</div>
+      {downloading && (
+        <div className="h-1 w-full rounded-full bg-[var(--color-filter-chip-bg)] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
+      <div className="text-[10px] text-[var(--color-text-ghost)]">
+        v{currentVersion || '0.1.0'}
+      </div>
     </div>
   );
 }

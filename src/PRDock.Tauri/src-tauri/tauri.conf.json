@@ -33,6 +33,7 @@
         "transparent": true,
         "shadow": false,
         "visible": false,
+        "skipTaskbar": true,
         "url": "badge.html",
         "backgroundColor": [0, 0, 0, 0]
       }
@@ -47,8 +48,10 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [],
-      "pubkey": ""
+      "endpoints": [
+        "https://github.com/borght-dev/PRDock/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVGMTYxODQ2RjBEOTkwNTAKUldSUWtObndSaGdXWHlUZnBGNEphU1F6a0lQY2ZDYXFpRElWeTNVM0lnUDk2UENlZEh5RVZnaG8K"
     }
   }
 }

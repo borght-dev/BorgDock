@@ -1,32 +1,44 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import type { AppSettings } from '@/types';
 import { useNotificationStore } from '@/stores/notification-store';
+import { useUpdateStore } from '@/stores/update-store';
 
-interface UpdateState {
-  available: boolean;
-  version: string | null;
-  downloading: boolean;
-  progress: number;
-}
+const INITIAL_CHECK_DELAY_MS = 10_000;
+const PERIODIC_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 export function useAutoUpdate(settings: AppSettings) {
-  const [updateState, setUpdateState] = useState<UpdateState>({
-    available: false,
-    version: null,
-    downloading: false,
-    progress: 0,
-  });
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Load current version on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getVersion } = await import('@tauri-apps/api/app');
+        const version = await getVersion();
+        useUpdateStore.getState().setCurrentVersion(version);
+      } catch {
+        // Fallback for dev mode
+        useUpdateStore.getState().setCurrentVersion('0.1.0');
+      }
+    })();
+  }, []);
 
   const checkForUpdate = useCallback(async () => {
+    const s = useUpdateStore.getState();
+    if (s.checking || s.downloading) return;
+
+    useUpdateStore.getState().setChecking(true);
+    useUpdateStore.getState().setStatusText('Checking for updates...');
+
     try {
       const { check } = await import('@tauri-apps/plugin-updater');
       const update = await check();
+
       if (update) {
-        setUpdateState((prev) => ({
-          ...prev,
-          available: true,
-          version: update.version,
-        }));
+        useUpdateStore.getState().setAvailable(update.version);
+        useUpdateStore.getState().setStatusText(
+          `Update available: v${update.version}`
+        );
 
         useNotificationStore.getState().show({
           title: `Update available: v${update.version}`,
@@ -38,15 +50,23 @@ export function useAutoUpdate(settings: AppSettings) {
         if (settings.updates.autoDownload) {
           await downloadAndInstall();
         }
+      } else {
+        useUpdateStore.getState().setStatusText('You\'re on the latest version');
       }
     } catch (err) {
       console.error('Update check failed:', err);
+      useUpdateStore.getState().setStatusText('Update check failed');
+    } finally {
+      useUpdateStore.getState().setChecking(false);
     }
   }, [settings.updates.autoDownload]);
 
   const downloadAndInstall = useCallback(async () => {
     try {
-      setUpdateState((prev) => ({ ...prev, downloading: true, progress: 0 }));
+      useUpdateStore.getState().setDownloading(true);
+      useUpdateStore.getState().setProgress(0);
+      useUpdateStore.getState().setStatusText('Downloading update...');
+
       const { check } = await import('@tauri-apps/plugin-updater');
       const update = await check();
       if (!update) return;
@@ -62,14 +82,17 @@ export function useAutoUpdate(settings: AppSettings) {
           case 'Progress':
             downloaded += event.data.chunkLength;
             if (contentLength > 0) {
-              setUpdateState((prev) => ({
-                ...prev,
-                progress: Math.round((downloaded / contentLength) * 100),
-              }));
+              const pct = Math.round((downloaded / contentLength) * 100);
+              useUpdateStore.getState().setProgress(pct);
+              useUpdateStore.getState().setStatusText(`Downloading... ${pct}%`);
             }
             break;
           case 'Finished':
-            setUpdateState((prev) => ({ ...prev, downloading: false, progress: 100 }));
+            useUpdateStore.getState().setProgress(100);
+            useUpdateStore.getState().setDownloading(false);
+            useUpdateStore.getState().setStatusText(
+              'Update ready — restart to apply'
+            );
             break;
         }
       });
@@ -82,18 +105,40 @@ export function useAutoUpdate(settings: AppSettings) {
       });
     } catch (err) {
       console.error('Update download failed:', err);
-      setUpdateState((prev) => ({ ...prev, downloading: false }));
+      useUpdateStore.getState().setDownloading(false);
+      useUpdateStore.getState().setStatusText('Download failed');
     }
   }, []);
 
-  // Check on mount if enabled
+  // Initial delayed check + periodic checks
   useEffect(() => {
-    if (settings.updates.autoCheckEnabled) {
-      // Delay check by 10 seconds to not interfere with startup
-      const timer = setTimeout(checkForUpdate, 10_000);
-      return () => clearTimeout(timer);
+    if (!settings.updates.autoCheckEnabled) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
     }
+
+    // Delayed initial check
+    const timer = setTimeout(() => {
+      checkForUpdate();
+
+      // Start periodic checks after initial
+      intervalRef.current = setInterval(
+        checkForUpdate,
+        PERIODIC_CHECK_INTERVAL_MS
+      );
+    }, INITIAL_CHECK_DELAY_MS);
+
+    return () => {
+      clearTimeout(timer);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [settings.updates.autoCheckEnabled, checkForUpdate]);
 
-  return { updateState, checkForUpdate, downloadAndInstall };
+  return { checkForUpdate, downloadAndInstall };
 }

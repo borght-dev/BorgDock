@@ -118,6 +118,15 @@ pub fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn hide_sidebar(app: tauri::AppHandle) -> Result<(), String> {
+    let win = get_main_window(&app)?;
+    if win.is_visible().unwrap_or(false) {
+        win.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
     app.get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())

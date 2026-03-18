@@ -130,6 +130,22 @@ fn parse_github_remote(url: &str) -> Option<(String, String)> {
 }
 
 #[tauri::command]
+pub fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
+    let p = Path::new(&path);
+    if !p.join(".git").exists() {
+        return Err("Not a git repository".into());
+    }
+    let remote_url = run_git(&path, &["remote", "get-url", "origin"])?;
+    let (owner, name) = parse_github_remote(&remote_url)
+        .ok_or("Could not parse GitHub remote from origin URL")?;
+    Ok(DiscoveredRepo {
+        owner,
+        name,
+        local_path: path,
+    })
+}
+
+#[tauri::command]
 pub fn git_fetch(repo_path: String, remote: Option<String>) -> Result<(), String> {
     let remote = remote.unwrap_or_else(|| "origin".to_string());
     run_git(&repo_path, &["fetch", &remote])?;

@@ -107,7 +107,7 @@ export function SetupWizard() {
   }, [currentStep]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay-bg)]">
+    <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-background)]">
       <div className="flex w-[580px] flex-col rounded-2xl bg-[var(--color-modal-bg)] border border-[var(--color-modal-border)] shadow-2xl overflow-hidden"
         style={{ maxHeight: '520px' }}
       >
@@ -179,6 +179,9 @@ export function SetupWizard() {
               onSelectAll={() => setRepos((prev) => prev.map((r) => ({ ...r, isSelected: true })))}
               onDeselectAll={() =>
                 setRepos((prev) => prev.map((r) => ({ ...r, isSelected: false })))
+              }
+              onAddRepo={(repo) =>
+                setRepos((prev) => [{ ...repo, worktreeSubfolder: '.worktrees' }, ...prev])
               }
             />
           )}

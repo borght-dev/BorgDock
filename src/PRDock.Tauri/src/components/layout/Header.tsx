@@ -1,6 +1,16 @@
 import { useCallback } from 'react';
 import clsx from 'clsx';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useUiStore, type ActiveSection } from '@/stores/ui-store';
+
+function handleHeaderDragStart(e: React.MouseEvent) {
+  if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+  e.preventDefault();
+  const setDragging = useUiStore.getState().setDragging;
+  setDragging(true);
+  const win = getCurrentWindow();
+  win.startDragging().finally(() => setDragging(false));
+}
 
 function dispatchRefresh() {
   document.dispatchEvent(new CustomEvent('prdock-refresh'));
@@ -28,7 +38,10 @@ export function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-separator)]">
+    <header
+      onMouseDown={handleHeaderDragStart}
+      className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-separator)] cursor-grab active:cursor-grabbing"
+    >
       {/* Logo */}
       <span
         className="text-sm font-bold bg-clip-text text-transparent select-none"

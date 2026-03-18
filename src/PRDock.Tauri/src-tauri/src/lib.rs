@@ -48,6 +48,7 @@ pub fn run() {
             // Platform
             platform::window::position_sidebar,
             platform::window::toggle_sidebar,
+            platform::window::hide_sidebar,
             platform::window::show_badge,
             platform::window::hide_badge,
             platform::window::resize_badge,
@@ -64,6 +65,7 @@ pub fn run() {
             git::commands::git_checkout,
             git::commands::git_current_branch,
             git::commands::discover_repos,
+            git::commands::resolve_repo_path,
             // Process
             git::process::launch_claude_code,
             git::process::get_active_sessions,

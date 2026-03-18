@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import clsx from 'clsx';
 
 interface DiscoveredRepo {
@@ -13,9 +14,48 @@ interface RepoStepProps {
   onToggleRepo: (index: number) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  onAddRepo: (repo: DiscoveredRepo) => void;
 }
 
-export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDeselectAll }: RepoStepProps) {
+export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDeselectAll, onAddRepo }: RepoStepProps) {
+  const [manualInput, setManualInput] = useState('');
+  const [addError, setAddError] = useState('');
+
+  const handleAdd = async () => {
+    const input = manualInput.trim();
+    if (!input) return;
+    setAddError('');
+
+    // Check if it looks like a local path (drive letter or starts with / or \)
+    const isPath = /^[a-zA-Z]:[/\\]/.test(input) || input.startsWith('/') || input.startsWith('\\');
+
+    if (isPath) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const repo = await invoke<{ owner: string; name: string; localPath: string }>('resolve_repo_path', { path: input });
+        const exists = repos.some(r => r.owner === repo.owner && r.name === repo.name);
+        if (!exists) {
+          onAddRepo({ ...repo, isSelected: true });
+        }
+        setManualInput('');
+      } catch {
+        setAddError('Not a valid git repo with a remote');
+      }
+    } else if (input.includes('/')) {
+      const [owner, ...rest] = input.split('/');
+      const name = rest.join('/');
+      if (owner && name) {
+        const exists = repos.some(r => r.owner === owner && r.name === name);
+        if (!exists) {
+          onAddRepo({ owner, name, localPath: '', isSelected: true });
+        }
+        setManualInput('');
+      }
+    } else {
+      setAddError('Enter a local path or owner/name');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="text-center">
@@ -23,9 +63,30 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
           Select Repositories
         </h2>
         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-          Choose which repositories to monitor
+          Add repos by path or owner/name, or select from discovered repos
         </p>
       </div>
+
+      {/* Manual add */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={manualInput}
+          onChange={(e) => { setManualInput(e.target.value); setAddError(''); }}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          placeholder="D:\repos\my-project or owner/name"
+          className="flex-1 rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
+        />
+        <button
+          className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity"
+          onClick={handleAdd}
+        >
+          Add
+        </button>
+      </div>
+      {addError && (
+        <p className="-mt-2 text-[10px] text-[var(--color-status-red)]">{addError}</p>
+      )}
 
       {/* Bulk actions */}
       <div className="flex items-center gap-2">
@@ -43,7 +104,7 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
         </button>
         {isScanning && (
           <span className="text-[11px] text-[var(--color-text-muted)] animate-pulse">
-            Discovering repositories...
+            Scanning...
           </span>
         )}
       </div>
