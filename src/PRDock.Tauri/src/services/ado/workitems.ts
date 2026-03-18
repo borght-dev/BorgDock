@@ -103,3 +103,66 @@ export async function getWorkItemTypeStates(
 
   return (response.value ?? []).map((s) => s.name);
 }
+
+export function buildIdPrefixWiql(prefix: string): string {
+  if (!prefix || !/^\d+$/.test(prefix)) {
+    throw new Error('Prefix must be a non-empty numeric string.');
+  }
+
+  const clauses: string[] = [];
+  const prefixValue = parseInt(prefix, 10);
+
+  // Exact match
+  clauses.push(`[System.Id] = ${prefixValue}`);
+
+  // Expand to cover IDs with more digits (up to 7 total)
+  for (let totalDigits = prefix.length + 1; totalDigits <= 7; totalDigits++) {
+    const suffixDigits = totalDigits - prefix.length;
+    const lo = prefixValue * Math.pow(10, suffixDigits);
+    const hi = lo + Math.pow(10, suffixDigits) - 1;
+    clauses.push(`([System.Id] >= ${lo} AND [System.Id] <= ${hi})`);
+  }
+
+  return `SELECT [System.Id] FROM WorkItems WHERE ${clauses.join(' OR ')}`;
+}
+
+interface WiqlResponse {
+  workItems: Array<{ id: number; url: string }>;
+}
+
+export async function searchWorkItemsByIdPrefix(
+  client: AdoClient,
+  idPrefix: string
+): Promise<WorkItem[]> {
+  const wiql = buildIdPrefixWiql(idPrefix);
+  const response = await client.post<WiqlResponse>('wit/wiql?$top=20', {
+    query: wiql,
+  });
+
+  const ids = (response.workItems ?? []).map((w) => w.id);
+  if (ids.length === 0) return [];
+
+  return getWorkItems(client, ids);
+}
+
+export async function searchWorkItemsByText(
+  client: AdoClient,
+  text: string
+): Promise<WorkItem[]> {
+  // Escape single quotes in WIQL
+  const escaped = text.replace(/'/g, "''");
+  const wiql =
+    `SELECT [System.Id] FROM WorkItems WHERE ` +
+    `[System.Title] CONTAINS '${escaped}' ` +
+    `OR [System.AssignedTo] CONTAINS '${escaped}' ` +
+    `ORDER BY [System.ChangedDate] DESC`;
+
+  const response = await client.post<WiqlResponse>('wit/wiql?$top=20', {
+    query: wiql,
+  });
+
+  const ids = (response.workItems ?? []).map((w) => w.id);
+  if (ids.length === 0) return [];
+
+  return getWorkItems(client, ids);
+}
