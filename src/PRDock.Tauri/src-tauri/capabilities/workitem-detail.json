@@ -1,0 +1,15 @@
+{
+  "identifier": "workitem-detail-capability",
+  "description": "Permissions for the work item detail pop-out window",
+  "windows": ["workitem-detail-*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-set-title",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-visible",
+    "opener:default",
+    "dialog:default",
+    "fs:default"
+  ]
+}
