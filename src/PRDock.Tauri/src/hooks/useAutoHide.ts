@@ -3,6 +3,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { AppSettings } from '@/types';
 
 const AUTO_HIDE_DELAY_MS = 3000;
+const FOCUS_LOST_DEBOUNCE_MS = 200;
 
 async function hideSidebarShowBadge() {
   try {
@@ -63,8 +64,10 @@ export function useAutoHide(settings: AppSettings) {
 
   // Hide sidebar + show badge when window loses focus (click outside)
   // Skip when minimized so the taskbar icon can still restore the window.
+  // Debounced so that transient focus loss during window drag doesn't hide.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let focusLostTimer: ReturnType<typeof setTimeout> | null = null;
 
     (async () => {
       try {
@@ -73,17 +76,31 @@ export function useAutoHide(settings: AppSettings) {
 
         unlisten = await win.onFocusChanged(async ({ payload: focused }) => {
           if (!focused) {
-            // Don't hide if the user minimized — let the taskbar icon restore it
-            const minimized = await win.isMinimized();
-            if (minimized) return;
+            // Debounce: wait briefly so a drag-induced focus blip is ignored
+            focusLostTimer = setTimeout(async () => {
+              focusLostTimer = null;
 
-            // Don't hide during a window drag operation
-            const { useUiStore } = await import('@/stores/ui-store');
-            if (useUiStore.getState().isDragging) return;
+              // Re-check focus — the window may have regained it during the delay
+              const stillUnfocused = !(await win.isFocused());
+              if (!stillUnfocused) return;
 
-            setSidebarVisible(false);
-            hideSidebarShowBadge();
+              // Don't hide if the user minimized — let the taskbar icon restore it
+              const minimized = await win.isMinimized();
+              if (minimized) return;
+
+              // Don't hide during a window drag operation
+              if (useUiStore.getState().isDragging) return;
+
+              setSidebarVisible(false);
+              hideSidebarShowBadge();
+            }, FOCUS_LOST_DEBOUNCE_MS);
           } else {
+            // Focus regained — cancel any pending hide
+            if (focusLostTimer) {
+              clearTimeout(focusLostTimer);
+              focusLostTimer = null;
+            }
+
             // Sidebar regained focus (e.g. taskbar click) — hide badge
             setSidebarVisible(true);
             try {
@@ -99,7 +116,10 @@ export function useAutoHide(settings: AppSettings) {
       }
     })();
 
-    return () => unlisten?.();
+    return () => {
+      unlisten?.();
+      if (focusLostTimer) clearTimeout(focusLostTimer);
+    };
   }, [setSidebarVisible]);
 
   return { startHideTimer, clearTimer };
