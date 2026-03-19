@@ -20,6 +20,7 @@
         "alwaysOnTop": true,
         "resizable": true,
         "transparent": true,
+        "skipTaskbar": true,
         "url": "index.html"
       },
       {

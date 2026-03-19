@@ -46,6 +46,12 @@ export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
     [updateEffective],
   );
 
+  // Sync when the external setting changes
+  useEffect(() => {
+    setThemeState(initial);
+    updateEffective(initial);
+  }, [initial, updateEffective]);
+
   // Listen for OS theme changes when in system mode
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');

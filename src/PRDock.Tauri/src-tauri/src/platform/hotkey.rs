@@ -90,6 +90,7 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             .inner_size(900.0, 650.0)
             .decorations(false)
             .resizable(true)
+            .skip_taskbar(true)
             .center()
             .focused(true)
             .build()

@@ -159,6 +159,7 @@ pub fn open_pr_detail_window(
         .inner_size(800.0, 900.0)
         .decorations(false)
         .resizable(true)
+        .skip_taskbar(true)
         .build()
         .map_err(|e| e.to_string())?;
 
