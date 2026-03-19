@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback } from 'react';
+import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 
 function handleHeaderDragStart(e: React.MouseEvent) {
@@ -25,6 +26,7 @@ export function Header() {
   const activeSection = useUiStore((s) => s.activeSection);
   const setActiveSection = useUiStore((s) => s.setActiveSection);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const isPolling = usePrStore((s) => s.isPolling);
 
   const handleMinimize = useCallback(async () => {
     try {
@@ -73,6 +75,13 @@ export function Header() {
 
       {/* Actions */}
       <div className="flex items-center gap-0.5">
+        {/* Polling spinner */}
+        {isPolling && (
+          <span
+            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-dashed mr-0.5"
+            style={{ borderColor: 'var(--color-accent)' }}
+          />
+        )}
         <button
           onClick={dispatchRefresh}
           className="rounded-md p-1.5 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"

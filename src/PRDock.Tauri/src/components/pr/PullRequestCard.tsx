@@ -55,22 +55,25 @@ function reviewStatusColor(status: string): string {
 
 function computeMergeScore(pr: PullRequestWithChecks): number {
   let score = 0;
-  const total = pr.checks.length;
+  const relevant = pr.checks.length - pr.skippedCount;
 
-  // Checks component (40%)
-  if (total > 0) {
-    score += (pr.passedCount / total) * 40;
+  // CI checks (25%)
+  if (relevant > 0) {
+    score += (pr.passedCount / relevant) * 25;
   } else {
-    score += 40; // No checks = full marks
+    score += 25; // No checks = full marks
   }
 
-  // Review component (40%)
-  if (pr.pullRequest.reviewStatus === 'approved') score += 40;
-  else if (pr.pullRequest.reviewStatus === 'commented') score += 20;
-  else if (pr.pullRequest.reviewStatus === 'pending') score += 10;
+  // Approvals (25%)
+  if (pr.pullRequest.reviewStatus === 'approved') score += 25;
+  else if (pr.pullRequest.reviewStatus === 'commented') score += 10;
+  else if (pr.pullRequest.reviewStatus === 'pending') score += 5;
 
-  // No conflicts (20%)
-  if (pr.pullRequest.mergeable !== false) score += 20;
+  // No conflicts (25%)
+  if (pr.pullRequest.mergeable !== false) score += 25;
+
+  // Not draft (25%)
+  if (!pr.pullRequest.isDraft) score += 25;
 
   return Math.round(score);
 }
@@ -189,7 +192,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
   const username = usePrStore((s) => s.username);
   const settings = useSettingsStore((s) => s.settings);
-  const { fixWithClaude, monitorPr } = useClaudeActions();
+  const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
   const showNotification = useNotificationStore((s) => s.show);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -246,6 +249,16 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
       monitorPr(prWithChecks).catch((err) => showError('Monitor with Claude failed', err));
     },
     [prWithChecks, monitorPr, showError],
+  );
+
+  const handleResolveConflicts = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      resolveConflicts(prWithChecks).catch((err) =>
+        showError('Resolve conflicts failed', err),
+      );
+    },
+    [prWithChecks, resolveConflicts, showError],
   );
 
   const handleCopyErrors = useCallback(
@@ -324,6 +337,19 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
                 Closed
               </span>
             )}
+            {pr.mergeable === false && (
+              <span className="shrink-0 rounded bg-[var(--color-error-badge-bg)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-error-badge-fg)] border border-[var(--color-error-badge-border)] animate-pulse">
+                {'\u26A1'} Conflicts
+              </span>
+            )}
+            {prWithChecks.pendingCheckNames.length > 0 && (
+              <span className="shrink-0 flex items-center gap-1 rounded bg-[var(--color-warning-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-badge-fg)] border border-[var(--color-warning-badge-border)]">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="animate-spin">
+                  <path d="M6 1a5 5 0 1 0 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                in progress
+              </span>
+            )}
           </div>
 
           {/* Meta row */}
@@ -347,7 +373,8 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             ))}
             {totalChecks > 0 && (
               <span className="text-[10px] text-[var(--color-text-muted)]">
-                {passedCount}/{totalChecks} checks passed
+                {passedCount}/{totalChecks - prWithChecks.skippedCount} checks passed
+                {prWithChecks.skippedCount > 0 && ` (${prWithChecks.skippedCount} skipped)`}
               </span>
             )}
           </div>
@@ -371,6 +398,13 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
               </span>
             )}
           </div>
+
+          {/* Conflict resolve button - always visible when conflicts */}
+          {pr.mergeable === false && (
+            <div className="mt-1.5">
+              <ExpandedActionButton label="Resolve Conflicts" icon={'\u2726'} onClick={handleResolveConflicts} variant="accent" />
+            </div>
+          )}
 
           {/* Action buttons - visible on hover */}
           <div className="mt-1.5 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

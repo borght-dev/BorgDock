@@ -61,22 +61,25 @@ function computeDraftColor(pr: PullRequestWithChecks): SignalColor {
 
 function computeMergeScore(pr: PullRequestWithChecks): number {
   let score = 0;
-  const total = pr.checks.length;
+  const relevant = pr.checks.length - pr.skippedCount;
 
-  // Checks component (40%)
-  if (total > 0) {
-    score += (pr.passedCount / total) * 40;
+  // CI checks (25%)
+  if (relevant > 0) {
+    score += (pr.passedCount / relevant) * 25;
   } else {
-    score += 40; // No checks = full marks
+    score += 25; // No checks = full marks
   }
 
-  // Review component (40%)
-  if (pr.pullRequest.reviewStatus === 'approved') score += 40;
-  else if (pr.pullRequest.reviewStatus === 'commented') score += 20;
-  else if (pr.pullRequest.reviewStatus === 'pending') score += 10;
+  // Approvals (25%)
+  if (pr.pullRequest.reviewStatus === 'approved') score += 25;
+  else if (pr.pullRequest.reviewStatus === 'commented') score += 10;
+  else if (pr.pullRequest.reviewStatus === 'pending') score += 5;
 
-  // No conflicts (20%)
-  if (pr.pullRequest.mergeable !== false) score += 20;
+  // No conflicts (25%)
+  if (pr.pullRequest.mergeable !== false) score += 25;
+
+  // Not draft (25%)
+  if (!pr.pullRequest.isDraft) score += 25;
 
   return Math.round(score);
 }

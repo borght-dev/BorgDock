@@ -1,4 +1,5 @@
 import { usePrStore } from '@/stores/pr-store';
+import { PullRequestCard } from './PullRequestCard';
 import { RepoGroup } from './RepoGroup';
 
 function SkeletonCard() {
@@ -77,11 +78,33 @@ export function PullRequestList() {
     );
   }
 
+  // Show recently closed section at the bottom (unless already filtering to closed)
+  const showRecentlyClosed = filter !== 'closed' && closedPullRequests.length > 0;
+
   return (
     <div className="flex flex-col gap-0.5">
       {[...groups.entries()].map(([repoKey, repoPrs]) => (
         <RepoGroup key={repoKey} repoKey={repoKey} prs={repoPrs} />
       ))}
+
+      {showRecentlyClosed && (
+        <>
+          <div
+            className="mt-3 border-t px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider"
+            style={{
+              borderColor: 'var(--color-separator)',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            Recently Closed
+          </div>
+          {closedPullRequests.map((pr) => (
+            <div key={pr.pullRequest.number} className="px-0.5">
+              <PullRequestCard prWithChecks={pr} />
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }

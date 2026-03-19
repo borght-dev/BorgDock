@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useClaudeActions } from '@/hooks/useClaudeActions';
 import {
+  bypassMergePullRequest,
   mergePullRequest,
   postComment,
   submitReview,
@@ -57,11 +59,24 @@ function handleCopyBranch(branch: string) {
 export function OverviewTab({ pr }: OverviewTabProps) {
   const p = pr.pullRequest;
   const [actionStatus, setActionStatus] = useState('');
+  const [mergeSuccess, setMergeSuccess] = useState(false);
   const [reviewBody, setReviewBody] = useState('');
   const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>(
     'COMMENT',
   );
   const [commentBody, setCommentBody] = useState('');
+  const { resolveConflicts } = useClaudeActions();
+
+  const handleResolveConflicts = useCallback(async () => {
+    setActionStatus('Launching Claude to resolve conflicts...');
+    try {
+      await resolveConflicts(pr);
+      setActionStatus('Claude is resolving conflicts');
+    } catch (err) {
+      setActionStatus(`Failed: ${err}`);
+    }
+    setTimeout(() => setActionStatus(''), 5000);
+  }, [pr, resolveConflicts]);
 
   const handleCheckout = useCallback(async () => {
     setActionStatus('Checking out...');
@@ -81,12 +96,25 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     if (!client) return;
     setActionStatus('Merging...');
     try {
-      await mergePullRequest(client, p.repoOwner, p.repoName, p.number);
-      setActionStatus('Merged!');
+      await mergePullRequest(client, p.repoOwner, p.repoName, p.number, 'squash');
+      setActionStatus('');
+      setMergeSuccess(true);
     } catch (err) {
       setActionStatus(`Merge failed: ${err}`);
+      setTimeout(() => setActionStatus(''), 5000);
     }
-    setTimeout(() => setActionStatus(''), 3000);
+  }, [p.repoOwner, p.repoName, p.number]);
+
+  const handleBypassMerge = useCallback(async () => {
+    setActionStatus('Merging...');
+    try {
+      await bypassMergePullRequest(p.repoOwner, p.repoName, p.number);
+      setActionStatus('');
+      setMergeSuccess(true);
+    } catch (err) {
+      setActionStatus(`Bypass merge failed: ${err}`);
+      setTimeout(() => setActionStatus(''), 5000);
+    }
   }, [p.repoOwner, p.repoName, p.number]);
 
   const handleToggleDraft = useCallback(async () => {
@@ -244,15 +272,37 @@ export function OverviewTab({ pr }: OverviewTabProps) {
             onClick={handleMerge}
             className="rounded-md bg-[var(--color-action-success-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-green)] hover:opacity-90 transition-opacity"
           >
-            Merge
+            Squash &amp; Merge
           </button>
         )}
+        {p.mergeable === false && (
+          <button
+            onClick={handleResolveConflicts}
+            className="rounded-md border border-[var(--color-purple-border)] bg-[var(--color-purple-soft)] px-3 py-1.5 text-xs font-medium text-[var(--color-purple)] hover:opacity-90 transition-opacity"
+          >
+            {'\u2726'} Resolve Conflicts
+          </button>
+        )}
+        <button
+          onClick={handleBypassMerge}
+          className="rounded-md bg-[var(--color-action-danger-bg)] border border-[var(--color-error-badge-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-action-danger-fg)] hover:opacity-90 transition-opacity"
+        >
+          Bypass Merge
+        </button>
       </div>
 
       {/* Action status */}
-      {actionStatus && (
-        <div className="text-[11px] text-[var(--color-text-muted)]">{actionStatus}</div>
+      {actionStatus && !mergeSuccess && (
+        <div className="flex items-center gap-2 rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+          {actionStatus.includes('...') && (
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          )}
+          {actionStatus}
+        </div>
       )}
+
+      {/* Merge celebration */}
+      {mergeSuccess && <MergeCelebration prNumber={p.number} title={p.title} />}
 
       {/* Description */}
       {p.body && (
@@ -318,6 +368,34 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           >
             Post
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MergeCelebration({ prNumber, title }: { prNumber: number; title: string }) {
+  return (
+    <div className="merge-celebration">
+      <div className="merge-celebration-inner">
+        <div className="merge-celebration-icon">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="19" stroke="var(--color-status-green)" strokeWidth="2" fill="var(--color-action-success-bg)" />
+            <path
+              d="M12 20.5l5.5 5.5L28 15"
+              stroke="var(--color-status-green)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="merge-checkmark"
+            />
+          </svg>
+        </div>
+        <div className="merge-celebration-title">
+          PR #{prNumber} merged!
+        </div>
+        <div className="merge-celebration-subtitle">
+          {title}
         </div>
       </div>
     </div>
