@@ -24,6 +24,7 @@ export default defineConfig({
         palette: path.resolve(__dirname, "palette.html"),
         'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),
         'pr-detail': path.resolve(__dirname, "pr-detail.html"),
+        sql: path.resolve(__dirname, "sql.html"),
       },
     },
   },

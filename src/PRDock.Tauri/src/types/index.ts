@@ -35,6 +35,8 @@ export type {
   RepoSettings,
   SidebarEdge,
   SidebarMode,
+  SqlServerConnection,
+  SqlSettings,
   ThemeMode,
   UiSettings,
   UpdateSettings,

@@ -66,6 +66,42 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
 
+    // Register SQL window shortcut (Ctrl+F10)
+    let app_sql = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F10", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+
+            // If SQL window already exists, focus it
+            if let Some(win) = app_sql.get_webview_window("sql") {
+                let _ = win.set_focus();
+                return;
+            }
+
+            // Create a new SQL window
+            if let Ok(win) = WebviewWindowBuilder::new(
+                &app_sql,
+                "sql",
+                tauri::WebviewUrl::App("sql.html".into()),
+            )
+            .title("PRDock SQL")
+            .inner_size(900.0, 650.0)
+            .decorations(true)
+            .resizable(true)
+            .center()
+            .focused(true)
+            .build()
+            {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    let _ = win.set_focus();
+                });
+            }
+        })
+        .map_err(|e| format!("Failed to register SQL hotkey: {e}"))?;
+
     Ok(())
 }
 

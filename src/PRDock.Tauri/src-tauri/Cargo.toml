@@ -38,6 +38,10 @@ reqwest = { version = "0.12", features = ["blocking", "json"] }
 urlencoding = "2"
 log = "0.4"
 png = "0.17"
+tiberius = { version = "0.12", default-features = false, features = ["tds73", "chrono", "winauth", "rust_decimal"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+rust_decimal = "1"
+chrono = "0.4"
 
 [profile.release]
 strip = true

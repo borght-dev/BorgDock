@@ -1,0 +1,16 @@
+{
+  "identifier": "sql-capability",
+  "description": "Permissions for the SQL query window",
+  "windows": ["sql"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-set-position",
+    "core:window:allow-set-focus",
+    "core:window:allow-outer-position",
+    "core:window:allow-scale-factor",
+    "core:window:allow-is-visible",
+    "core:event:default",
+    "clipboard-manager:default"
+  ]
+}

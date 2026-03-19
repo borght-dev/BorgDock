@@ -72,6 +72,22 @@ export interface AzureDevOpsSettings {
   recentWorkItemIds: number[];
 }
 
+export interface SqlServerConnection {
+  name: string;
+  server: string;
+  port: number;
+  database: string;
+  authentication: 'windows' | 'sql';
+  username?: string;
+  password?: string;
+  trustServerCertificate: boolean;
+}
+
+export interface SqlSettings {
+  connections: SqlServerConnection[];
+  lastUsedConnection?: string;
+}
+
 export interface AppSettings {
   setupComplete: boolean;
   gitHub: GitHubSettings;
@@ -82,4 +98,5 @@ export interface AppSettings {
   claudeReview: ClaudeReviewSettings;
   updates: UpdateSettings;
   azureDevOps: AzureDevOpsSettings;
+  sql: SqlSettings;
 }

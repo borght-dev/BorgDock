@@ -53,6 +53,9 @@ const defaultSettings: AppSettings = {
     workItemWorktreePaths: {},
     recentWorkItemIds: [],
   },
+  sql: {
+    connections: [],
+  },
 };
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({

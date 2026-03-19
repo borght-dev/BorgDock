@@ -3,6 +3,7 @@ pub mod cache;
 pub mod git;
 pub mod platform;
 pub mod settings;
+pub mod sql;
 
 use cache::PrCache;
 use git::process::ProcessState;
@@ -93,6 +94,9 @@ pub fn run() {
             cache::cache_load_prs,
             cache::cache_save_prs,
             cache::cache_cleanup,
+            // SQL
+            sql::execute_sql_query,
+            sql::test_sql_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

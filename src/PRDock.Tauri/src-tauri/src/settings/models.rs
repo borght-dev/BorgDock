@@ -21,6 +21,8 @@ pub struct AppSettings {
     pub updates: UpdateSettings,
     #[serde(default)]
     pub azure_dev_ops: AzureDevOpsSettings,
+    #[serde(default)]
+    pub sql: SqlSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,6 +270,56 @@ impl Default for AzureDevOpsSettings {
             working_on_work_item_ids: Vec::new(),
             work_item_worktree_paths: std::collections::HashMap::new(),
             recent_work_item_ids: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SqlSettings {
+    #[serde(default)]
+    pub connections: Vec<SqlServerConnection>,
+    pub last_used_connection: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SqlServerConnection {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub server: String,
+    #[serde(default = "default_sql_port")]
+    pub port: u16,
+    #[serde(default)]
+    pub database: String,
+    #[serde(default = "default_sql_auth")]
+    pub authentication: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    #[serde(default = "default_true")]
+    pub trust_server_certificate: bool,
+}
+
+fn default_sql_port() -> u16 {
+    1433
+}
+
+fn default_sql_auth() -> String {
+    "windows".to_string()
+}
+
+impl Default for SqlServerConnection {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            server: String::new(),
+            port: 1433,
+            database: String::new(),
+            authentication: "windows".to_string(),
+            username: None,
+            password: None,
+            trust_server_certificate: true,
         }
     }
 }

@@ -10,6 +10,7 @@ import { ClaudeSection } from './ClaudeSection';
 import { GitHubSection } from './GitHubSection';
 import { NotificationSection } from './NotificationSection';
 import { RepoSection } from './RepoSection';
+import { SqlSection } from './SqlSection';
 import { UpdateSection } from './UpdateSection';
 
 export function SettingsFlyout() {
@@ -144,6 +145,10 @@ export function SettingsFlyout() {
               azureDevOps={draft.azureDevOps}
               onChange={(azureDevOps) => updateDraft({ azureDevOps })}
             />
+          </SectionCard>
+
+          <SectionCard title="SQL Server">
+            <SqlSection sql={draft.sql} onChange={(sql) => updateDraft({ sql })} />
           </SectionCard>
 
           <SectionCard title="Updates">

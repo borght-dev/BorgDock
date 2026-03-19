@@ -61,8 +61,8 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
     serde_json::from_value(settings_value).map_err(|e| format!("Failed to apply dev overlay: {e}"))
 }
 
-#[tauri::command]
-pub fn load_settings() -> Result<AppSettings, String> {
+/// Load settings without the `#[tauri::command]` wrapper — callable from other Rust modules.
+pub fn load_settings_internal() -> Result<AppSettings, String> {
     let dir = settings_dir();
     fs::create_dir_all(&dir).map_err(|e| format!("Failed to create settings dir: {e}"))?;
 
@@ -87,6 +87,11 @@ pub fn load_settings() -> Result<AppSettings, String> {
 
     #[allow(unreachable_code)]
     Ok(settings)
+}
+
+#[tauri::command]
+pub fn load_settings() -> Result<AppSettings, String> {
+    load_settings_internal()
 }
 
 #[cfg(test)]
