@@ -8,6 +8,7 @@ import { GitHubClient } from '@/services/github/client';
 import { getOpenPRs } from '@/services/github/pulls';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { PRDetailPanel } from './PRDetailPanel';
 
 export function PRDetailApp() {
@@ -84,15 +85,24 @@ export function PRDetailApp() {
     })();
   }, [owner, repo, number]);
 
+  const titleText = pr
+    ? `PR #${number} — ${pr.pullRequest.title}`
+    : number
+      ? `PR #${number}`
+      : 'Pull Request';
+
   if (error) {
     return (
       <div
-        className="flex h-screen items-center justify-center"
+        className="flex h-screen flex-col"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-          {error}
-        </p>
+        <WindowTitleBar title={titleText} />
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+            {error}
+          </p>
+        </div>
       </div>
     );
   }
@@ -100,17 +110,23 @@ export function PRDetailApp() {
   if (isLoading || !pr) {
     return (
       <div
-        className="flex h-screen items-center justify-center"
+        className="flex h-screen flex-col"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+        <WindowTitleBar title={titleText} />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen relative" style={{ backgroundColor: 'var(--color-surface)' }}>
-      <PRDetailPanel pr={pr} />
+    <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <WindowTitleBar title={titleText} />
+      <div className="relative flex-1 overflow-y-auto">
+        <PRDetailPanel pr={pr} />
+      </div>
     </div>
   );
 }

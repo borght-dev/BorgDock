@@ -1,8 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdoClient } from '@/services/ado/client';
-import { searchWorkItemsByIdPrefix, searchWorkItemsByText } from '@/services/ado/workitems';
+import {
+  getAssignedToMe,
+  getWorkItems,
+  searchWorkItemsByIdPrefix,
+  searchWorkItemsByText,
+} from '@/services/ado/workitems';
 import type { WorkItem } from '@/types';
 import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
 
@@ -14,6 +19,11 @@ interface ResultItem {
   assignedTo: string;
 }
 
+interface Section {
+  label: string;
+  items: ResultItem[];
+}
+
 function getField(item: WorkItem, field: string): string {
   const value = item.fields[field];
   if (typeof value === 'string') return value;
@@ -22,6 +32,16 @@ function getField(item: WorkItem, field: string): string {
     if (typeof obj.displayName === 'string') return obj.displayName;
   }
   return '';
+}
+
+function mapWorkItem(wi: WorkItem): ResultItem {
+  return {
+    id: wi.id,
+    title: getField(wi, 'System.Title'),
+    state: getField(wi, 'System.State'),
+    workItemType: getField(wi, 'System.WorkItemType'),
+    assignedTo: getField(wi, 'System.AssignedTo'),
+  };
 }
 
 const POSITION_KEY = 'prdock-palette-position';
@@ -43,7 +63,6 @@ async function saveCurrentPosition() {
     const win = getCurrentWindow();
     const pos = await win.outerPosition();
     const scale = await win.scaleFactor();
-    // Store logical coordinates so they work across DPI changes
     localStorage.setItem(
       POSITION_KEY,
       JSON.stringify({
@@ -58,15 +77,23 @@ async function saveCurrentPosition() {
 
 export function PaletteApp() {
   const [adoSettings, setAdoSettings] = useState<AzureDevOpsSettings | null>(null);
+  const [recentIds, setRecentIds] = useState<number[]>([]);
+  const [workingOnIds, setWorkingOnIds] = useState<Set<number>>(new Set());
+  const [recentItems, setRecentItems] = useState<ResultItem[]>([]);
+  const [assignedToMeItems, setAssignedToMeItems] = useState<ResultItem[]>([]);
+  const [workingOnItems, setWorkingOnItems] = useState<ResultItem[]>([]);
+  const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [results, setResults] = useState<ResultItem[]>([]);
+  const [searchResults, setSearchResults] = useState<ResultItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [statusText, setStatusText] = useState('Type a work item ID...');
+  const [statusText, setStatusText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const searchCtsRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const isSearchMode = searchText.trim().length > 0;
 
   // Load settings and restore saved position on mount
   useEffect(() => {
@@ -74,6 +101,8 @@ export function PaletteApp() {
       try {
         const settings = await invoke<AppSettings>('load_settings');
         setAdoSettings(settings.azureDevOps);
+        setRecentIds(settings.azureDevOps.recentWorkItemIds ?? []);
+        setWorkingOnIds(new Set(settings.azureDevOps.workingOnWorkItemIds ?? []));
         const t = settings.ui?.theme ?? 'system';
         const isDark =
           t === 'dark' ||
@@ -102,7 +131,88 @@ export function PaletteApp() {
     })();
   }, []);
 
-  // Focus input on mount — grab OS window focus first, then focus the input
+  // Fetch browse items (working on, assigned to me, recent) from ADO
+  useEffect(() => {
+    if (!adoSettings) return;
+    const client = new AdoClient(
+      adoSettings.organization,
+      adoSettings.project,
+      adoSettings.personalAccessToken ?? '',
+    );
+
+    setIsLoadingBrowse(true);
+
+    const allIds = [...workingOnIds, ...recentIds];
+    const uniqueIds = [...new Set(allIds)];
+
+    // Fetch working-on + recent items and assigned-to-me in parallel
+    Promise.all([
+      uniqueIds.length > 0 ? getWorkItems(client, uniqueIds) : Promise.resolve([]),
+      getAssignedToMe(client).catch(() => []),
+    ])
+      .then(([fetchedItems, assignedItems]) => {
+        const byId = new Map(fetchedItems.map((wi) => [wi.id, wi]));
+
+        // Working on
+        const working = [...workingOnIds]
+          .map((id) => byId.get(id))
+          .filter((wi): wi is WorkItem => wi !== undefined)
+          .map(mapWorkItem);
+        setWorkingOnItems(working);
+
+        // Assigned to me
+        setAssignedToMeItems(assignedItems.map(mapWorkItem));
+
+        // Recent (preserve order)
+        const recent = recentIds
+          .map((id) => byId.get(id))
+          .filter((wi): wi is WorkItem => wi !== undefined)
+          .map(mapWorkItem);
+        setRecentItems(recent);
+      })
+      .catch(() => {
+        /* best effort */
+      })
+      .finally(() => setIsLoadingBrowse(false));
+  }, [adoSettings, recentIds, workingOnIds]);
+
+  // Build sections for browse mode
+  const browseSections: Section[] = useMemo(() => {
+    const sections: Section[] = [];
+    const shownIds = new Set<number>();
+
+    if (workingOnItems.length > 0) {
+      sections.push({ label: 'Working On', items: workingOnItems });
+      for (const i of workingOnItems) shownIds.add(i.id);
+    }
+
+    if (assignedToMeItems.length > 0) {
+      const filtered = assignedToMeItems.filter((i) => !shownIds.has(i.id));
+      if (filtered.length > 0) {
+        sections.push({ label: 'Assigned to Me', items: filtered });
+        for (const i of filtered) shownIds.add(i.id);
+      }
+    }
+
+    if (recentItems.length > 0) {
+      const filtered = recentItems.filter((i) => !shownIds.has(i.id));
+      if (filtered.length > 0) {
+        sections.push({ label: 'Recent', items: filtered });
+      }
+    }
+
+    return sections;
+  }, [workingOnItems, assignedToMeItems, recentItems]);
+
+  // Flat list for keyboard navigation in browse mode
+  const browseFlat = useMemo(
+    () => browseSections.flatMap((s) => s.items),
+    [browseSections],
+  );
+
+  const navItems = isSearchMode ? searchResults : browseFlat;
+
+  // Focus input on mount
   useEffect(() => {
     let attempts = 0;
     const interval = setInterval(async () => {
@@ -120,14 +230,19 @@ export function PaletteApp() {
     return () => clearInterval(interval);
   }, []);
 
-  // Global keydown for Escape (works even when input has focus)
+  // Set initial selection when browse data loads
+  useEffect(() => {
+    if (!isSearchMode && browseFlat.length > 0) {
+      setSelectedIndex(0);
+    }
+  }, [browseFlat.length, isSearchMode]);
+
+  // Global keydown for Escape
   useEffect(() => {
     function handleGlobalKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        getCurrentWindow()
-          .close()
-          .catch(() => {});
+        getCurrentWindow().close().catch(() => {});
       }
     }
     document.addEventListener('keydown', handleGlobalKey);
@@ -149,15 +264,15 @@ export function PaletteApp() {
 
     const trimmed = searchText.trim();
     if (!trimmed) {
-      setResults([]);
-      setSelectedIndex(-1);
-      setStatusText('Search by ID, title, or assigned to...');
+      setSearchResults([]);
+      setSelectedIndex(browseFlat.length > 0 ? 0 : -1);
+      setStatusText('');
       return;
     }
 
     const isNumeric = /^\d+$/.test(trimmed);
     if (trimmed.length < 2) {
-      setResults([]);
+      setSearchResults([]);
       setSelectedIndex(-1);
       setStatusText(isNumeric ? 'Type at least 2 digits' : 'Type at least 2 characters');
       return;
@@ -184,15 +299,8 @@ export function PaletteApp() {
           : await searchWorkItemsByText(client, trimmed);
         if (controller.signal.aborted) return;
 
-        const mapped: ResultItem[] = items.map((wi) => ({
-          id: wi.id,
-          title: getField(wi, 'System.Title'),
-          state: getField(wi, 'System.State'),
-          workItemType: getField(wi, 'System.WorkItemType'),
-          assignedTo: getField(wi, 'System.AssignedTo'),
-        }));
-
-        setResults(mapped);
+        const mapped = items.map(mapWorkItem);
+        setSearchResults(mapped);
         setSelectedIndex(mapped.length > 0 ? 0 : -1);
         setStatusText(
           mapped.length === 0
@@ -216,66 +324,83 @@ export function PaletteApp() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchText, getClient]);
+  }, [searchText, getClient, browseFlat.length]);
 
   // Scroll selected item into view
   useEffect(() => {
     if (selectedIndex < 0 || !listRef.current) return;
-    const items = listRef.current.children;
-    items[selectedIndex]?.scrollIntoView({ block: 'nearest' });
+    // Account for section headers in the DOM
+    const allRows = listRef.current.querySelectorAll('[data-palette-row]');
+    allRows[selectedIndex]?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  const selectAndClose = useCallback(async (id: number) => {
-    try {
-      await saveCurrentPosition();
-      // Open a pop-out detail window for this work item
-      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-      new WebviewWindow(`workitem-detail-${id}`, {
-        url: `workitem-detail.html?id=${id}`,
-        title: `Work Item #${id}`,
-        width: 550,
-        height: 700,
-        center: true,
-        decorations: true,
-        resizable: true,
-        focus: true,
-      });
-    } catch (err) {
-      console.error('Failed to open detail window:', err);
-    }
-    getCurrentWindow()
-      .close()
-      .catch(() => {});
-  }, []);
+  const selectAndClose = useCallback(
+    async (id: number) => {
+      try {
+        await saveCurrentPosition();
+
+        // Save as recent in settings
+        const updatedRecent = [id, ...recentIds.filter((x) => x !== id)].slice(0, 20);
+        try {
+          const settings = await invoke<AppSettings>('load_settings');
+          await invoke('save_settings', {
+            settings: {
+              ...settings,
+              azureDevOps: { ...settings.azureDevOps, recentWorkItemIds: updatedRecent },
+            },
+          });
+        } catch {
+          /* best effort */
+        }
+
+        // Open a pop-out detail window for this work item
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        new WebviewWindow(`workitem-detail-${id}`, {
+          url: `workitem-detail.html?id=${id}`,
+          title: `Work Item #${id}`,
+          width: 550,
+          height: 700,
+          center: true,
+          decorations: false,
+          resizable: true,
+          focus: true,
+        });
+      } catch (err) {
+        console.error('Failed to open detail window:', err);
+      }
+      getCurrentWindow().close().catch(() => {});
+    },
+    [recentIds],
+  );
 
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          if (results.length > 0) {
-            setSelectedIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
+          if (navItems.length > 0) {
+            setSelectedIndex((i) => (i <= 0 ? navItems.length - 1 : i - 1));
           }
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (results.length > 0) {
-            setSelectedIndex((i) => (i >= results.length - 1 ? 0 : i + 1));
+          if (navItems.length > 0) {
+            setSelectedIndex((i) => (i >= navItems.length - 1 ? 0 : i + 1));
           }
           break;
         case 'Enter':
           e.preventDefault();
-          if (selectedIndex >= 0 && selectedIndex < results.length) {
-            const item = results[selectedIndex];
+          if (selectedIndex >= 0 && selectedIndex < navItems.length) {
+            const item = navItems[selectedIndex];
             if (item) selectAndClose(item.id);
           }
           break;
       }
     },
-    [results, selectedIndex, selectAndClose],
+    [navItems, selectedIndex, selectAndClose],
   );
 
-  // Save position whenever the window is moved (covers drag-end)
+  // Save position whenever the window is moved
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     (async () => {
@@ -292,6 +417,9 @@ export function PaletteApp() {
     getCurrentWindow().startDragging();
   }
 
+  // Track flat index offset for sectioned rendering
+  let globalOffset = 0;
+
   return (
     <div
       className="h-screen w-screen overflow-hidden"
@@ -305,18 +433,9 @@ export function PaletteApp() {
           onMouseDown={startDrag}
         >
           <div className="flex gap-1">
-            <div
-              className="h-1 w-1 rounded-full"
-              style={{ backgroundColor: 'var(--color-text-ghost)' }}
-            />
-            <div
-              className="h-1 w-1 rounded-full"
-              style={{ backgroundColor: 'var(--color-text-ghost)' }}
-            />
-            <div
-              className="h-1 w-1 rounded-full"
-              style={{ backgroundColor: 'var(--color-text-ghost)' }}
-            />
+            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
+            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
+            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
           </div>
         </div>
 
@@ -339,52 +458,74 @@ export function PaletteApp() {
           />
         </div>
 
-        {/* Results list */}
-        {results.length > 0 && (
-          <div ref={listRef} className="max-h-80 overflow-y-auto">
-            {results.map((item, index) => (
-              <div
+        {/* Content area */}
+        <div ref={listRef} className="max-h-80 overflow-y-auto">
+          {isSearchMode ? (
+            /* Search results */
+            searchResults.map((item, index) => (
+              <PaletteRow
                 key={item.id}
-                className="flex cursor-pointer items-center justify-between px-4 py-2 transition-colors"
-                style={{
-                  backgroundColor:
-                    index === selectedIndex ? 'var(--color-accent-subtle)' : 'transparent',
-                }}
+                item={item}
+                isSelected={index === selectedIndex}
                 onMouseEnter={() => setSelectedIndex(index)}
-                onClick={() => selectAndClose(item.id)}
-              >
-                <div className="flex min-w-0 items-center gap-2">
+                onSelect={selectAndClose}
+              />
+            ))
+          ) : (
+            /* Browse sections */
+            <>
+              {browseSections.length === 0 && !isLoadingBrowse && (
+                <div
+                  className="px-4 py-6 text-center text-[13px]"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  Type to search work items
+                </div>
+              )}
+              {isLoadingBrowse && browseSections.length === 0 && (
+                <div className="flex items-center justify-center py-6">
                   <span
-                    className="shrink-0 text-[13px] font-bold"
-                    style={{ color: 'var(--color-accent)' }}
-                  >
-                    #{item.id}
-                  </span>
-                  <span
-                    className="truncate text-[13px]"
-                    style={{ color: 'var(--color-text-primary)' }}
-                  >
-                    {item.title}
+                    className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
+                    style={{ color: 'var(--color-text-muted)' }}
+                  />
+                  <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+                    Loading...
                   </span>
                 </div>
-                <div className="ml-2 flex shrink-0 items-center gap-1.5">
-                  <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
-                    {item.workItemType}
-                  </span>
-                  <span
-                    className="text-[11px] font-semibold"
-                    style={{ color: 'var(--color-accent)' }}
-                  >
-                    {item.state}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+              {browseSections.map((section) => {
+                const sectionStart = globalOffset;
+                const rendered = (
+                  <div key={section.label}>
+                    <div
+                      className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'var(--color-text-tertiary)' }}
+                    >
+                      {section.label}
+                    </div>
+                    {section.items.map((item, localIndex) => {
+                      const flatIndex = sectionStart + localIndex;
+                      return (
+                        <PaletteRow
+                          key={item.id}
+                          item={item}
+                          isSelected={flatIndex === selectedIndex}
+                          onMouseEnter={() => setSelectedIndex(flatIndex)}
+                          onSelect={selectAndClose}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+                globalOffset += section.items.length;
+                return rendered;
+              })}
+            </>
+          )}
+        </div>
 
         {/* Separator */}
-        {results.length > 0 && (
+        {(navItems.length > 0 || browseSections.length > 0) && (
           <div className="h-px" style={{ backgroundColor: 'var(--color-separator)' }} />
         )}
 
@@ -394,12 +535,53 @@ export function PaletteApp() {
             {isSearching && (
               <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent align-middle" />
             )}
-            {statusText}
+            {statusText || (navItems.length > 0 ? '\u2191\u2193 navigate \u00b7 \u23ce select' : '')}
           </span>
           <span className="text-[11px]" style={{ color: 'var(--color-text-faint)' }}>
             Esc to close
           </span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PaletteRow({
+  item,
+  isSelected,
+  onMouseEnter,
+  onSelect,
+}: {
+  item: ResultItem;
+  isSelected: boolean;
+  onMouseEnter: () => void;
+  onSelect: (id: number) => void;
+}) {
+  return (
+    <div
+      data-palette-row
+      className="flex cursor-pointer items-center justify-between px-4 py-2 transition-colors"
+      style={{
+        backgroundColor: isSelected ? 'var(--color-accent-subtle)' : 'transparent',
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseDown={() => onSelect(item.id)}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 text-[13px] font-bold" style={{ color: 'var(--color-accent)' }}>
+          #{item.id}
+        </span>
+        <span className="truncate text-[13px]" style={{ color: 'var(--color-text-primary)' }}>
+          {item.title}
+        </span>
+      </div>
+      <div className="ml-2 flex shrink-0 items-center gap-1.5">
+        <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+          {item.workItemType}
+        </span>
+        <span className="text-[11px] font-semibold" style={{ color: 'var(--color-accent)' }}>
+          {item.state}
+        </span>
       </div>
     </div>
   );

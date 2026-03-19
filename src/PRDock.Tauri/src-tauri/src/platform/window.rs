@@ -157,7 +157,7 @@ pub fn open_pr_detail_window(
     WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url_str.into()))
         .title(format!("PR #{} - {}/{}", number, owner, repo))
         .inner_size(800.0, 900.0)
-        .decorations(true)
+        .decorations(false)
         .resizable(true)
         .build()
         .map_err(|e| e.to_string())?;

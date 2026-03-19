@@ -19,6 +19,7 @@ import type {
   WorkItemComment,
 } from '@/types';
 import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import {
   type WorkItemDetailData,
   WorkItemDetailPanel,
@@ -465,15 +466,24 @@ export function WorkItemDetailApp() {
     return extractAttachments(workItem);
   }, [workItem]);
 
+  const titleText = detailData
+    ? `#${detailData.id} — ${detailData.title}`
+    : workItemId
+      ? `Work Item #${workItemId}`
+      : 'Work Item';
+
   if (error) {
     return (
       <div
-        className="flex h-screen items-center justify-center"
+        className="flex h-screen flex-col"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-          {error}
-        </p>
+        <WindowTitleBar title={titleText} />
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+            {error}
+          </p>
+        </div>
       </div>
     );
   }
@@ -481,16 +491,21 @@ export function WorkItemDetailApp() {
   if (!detailData) {
     return (
       <div
-        className="flex h-screen items-center justify-center"
+        className="flex h-screen flex-col"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+        <WindowTitleBar title={titleText} />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen" style={{ backgroundColor: 'var(--color-surface)' }}>
+    <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <WindowTitleBar title={titleText} />
+      <div className="flex-1 overflow-y-auto">
       <WorkItemDetailPanel
         item={detailData}
         isLoading={isLoading}
@@ -510,6 +525,7 @@ export function WorkItemDetailApp() {
         onDownloadAttachment={handleDownloadAttachment}
         onAddComment={handleAddComment}
       />
+      </div>
     </div>
   );
 }

@@ -599,6 +599,57 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════
+   Custom Window Title Bar (chromeless windows)
+   ════════════════════════════════════════════════════════ */
+
+.window-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding-left: 12px;
+  background: var(--color-card-background);
+  border-bottom: 1px solid var(--color-separator);
+  user-select: none;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+.window-titlebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.window-titlebar-controls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.window-titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.window-titlebar-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+.window-titlebar-btn--close:hover {
+  background: #e81123;
+  color: #ffffff;
+}
+
+/* ════════════════════════════════════════════════════════
    SQL Query Window
    ════════════════════════════════════════════════════════ */
 

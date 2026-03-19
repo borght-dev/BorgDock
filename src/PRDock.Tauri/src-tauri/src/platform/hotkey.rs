@@ -88,7 +88,7 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             )
             .title("PRDock SQL")
             .inner_size(900.0, 650.0)
-            .decorations(true)
+            .decorations(false)
             .resizable(true)
             .center()
             .focused(true)

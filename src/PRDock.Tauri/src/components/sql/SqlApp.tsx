@@ -4,6 +4,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppSettings, SqlSettings } from '@/types/settings';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { ResultsTable } from './ResultsTable';
 
 interface QueryResult {
@@ -297,6 +298,9 @@ export function SqlApp() {
 
   return (
     <div className="sql-app flex h-screen w-screen flex-col overflow-hidden">
+      {/* ── Title bar ───────────────────────────────────── */}
+      <WindowTitleBar title="PRDock SQL" />
+
       {/* ── Toolbar ─────────────────────────────────────── */}
       <div className="sql-toolbar flex items-center gap-2 px-3 py-1.5">
         {/* Connection picker */}

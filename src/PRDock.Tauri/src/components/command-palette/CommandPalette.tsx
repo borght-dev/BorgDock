@@ -162,8 +162,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
         setRecentItems(localRecent);
       })
       .finally(() => setIsLoadingRecent(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, getClient, recentIds.map, recentIds.filter, workItems.find, workItems.map]);
+  }, [isOpen, getClient, recentIds, workItems]);
 
   // Focus input when opened
   useEffect(() => {

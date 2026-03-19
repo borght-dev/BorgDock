@@ -162,6 +162,23 @@ export async function searchWorkItemsByIdPrefix(
   return getWorkItems(client, ids);
 }
 
+export async function getAssignedToMe(client: AdoClient): Promise<WorkItem[]> {
+  const wiql =
+    `SELECT [System.Id] FROM WorkItems WHERE ` +
+    `[System.AssignedTo] = @Me ` +
+    `AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' AND [System.State] <> 'Done' ` +
+    `ORDER BY [System.ChangedDate] DESC`;
+
+  const response = await client.post<WiqlResponse>('wit/wiql?$top=20', {
+    query: wiql,
+  });
+
+  const ids = (response.workItems ?? []).map((w) => w.id);
+  if (ids.length === 0) return [];
+
+  return getWorkItems(client, ids);
+}
+
 export async function searchWorkItemsByText(client: AdoClient, text: string): Promise<WorkItem[]> {
   // Escape single quotes in WIQL
   const escaped = text.replace(/'/g, "''");
