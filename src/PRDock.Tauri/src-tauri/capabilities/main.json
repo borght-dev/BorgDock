@@ -13,8 +13,10 @@
     "updater:default",
     "store:default",
     "clipboard-manager:default",
+    "clipboard-manager:allow-write-text",
     "opener:default",
     "fs:default",
+    "fs:allow-temp-write-recursive",
     "log:default",
     "os:default"
   ]
