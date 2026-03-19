@@ -105,9 +105,7 @@ function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
 
   // 4. Not draft
   const draftStatus: CheckStatus = pr.pullRequest.isDraft ? 'pending' : 'pass';
-  const draftDesc = pr.pullRequest.isDraft
-    ? 'PR is marked as draft'
-    : 'Ready for review';
+  const draftDesc = pr.pullRequest.isDraft ? 'PR is marked as draft' : 'Ready for review';
 
   return [
     { label: 'Checks passed', description: checksDesc, status: checksStatus },
@@ -148,7 +146,14 @@ function StatusIcon({ status }: { status: CheckStatus }) {
       return (
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
           <circle cx="8" cy="8" r="7" fill="var(--color-status-yellow)" opacity="0.12" />
-          <circle cx="8" cy="8" r="3" stroke="var(--color-status-yellow)" strokeWidth="1.5" fill="none" />
+          <circle
+            cx="8"
+            cy="8"
+            r="3"
+            stroke="var(--color-status-yellow)"
+            strokeWidth="1.5"
+            fill="none"
+          />
           <path
             d="M8 6v2.5l1.5 1"
             stroke="var(--color-status-yellow)"
@@ -245,9 +250,7 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
               <div className="text-xs font-medium text-[var(--color-text-primary)]">
                 {item.label}
               </div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">
-                {item.description}
-              </div>
+              <div className="text-[10px] text-[var(--color-text-muted)]">{item.description}</div>
             </div>
           </div>
         ))}

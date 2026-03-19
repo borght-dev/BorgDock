@@ -1,12 +1,12 @@
-import { useRef, useCallback } from 'react';
-import type { PullRequestWithChecks, AppSettings } from '@/types';
-import { useNotificationStore } from '@/stores/notification-store';
+import { useCallback, useRef } from 'react';
 import {
-  detectStateTransitions,
-  buildCheckFailedNotification,
   buildAllChecksPassedNotification,
+  buildCheckFailedNotification,
+  detectStateTransitions,
   sendOsNotification,
 } from '@/services/notification';
+import { useNotificationStore } from '@/stores/notification-store';
+import type { AppSettings, InAppNotification, PullRequestWithChecks } from '@/types';
 
 export function useStateTransitions(settings: AppSettings) {
   const previousPrsRef = useRef<PullRequestWithChecks[]>([]);
@@ -22,14 +22,14 @@ export function useStateTransitions(settings: AppSettings) {
       const transitions = detectStateTransitions(oldPrs, newPrs);
 
       for (const transition of transitions) {
-        let notification;
+        let notification: InAppNotification | undefined;
 
         switch (transition.type) {
           case 'checkFailed':
             if (!settings.notifications.toastOnCheckStatusChange) continue;
             notification = buildCheckFailedNotification(
               transition.pr,
-              transition.detail ?? 'Unknown check'
+              transition.detail ?? 'Unknown check',
             );
             break;
           case 'allChecksPassed':
@@ -58,7 +58,7 @@ export function useStateTransitions(settings: AppSettings) {
         }
       }
     },
-    [settings.notifications]
+    [settings.notifications],
   );
 
   return { processTransitions };

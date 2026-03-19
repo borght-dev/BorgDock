@@ -7,7 +7,7 @@ export async function mergePullRequest(
   owner: string,
   repo: string,
   prNumber: number,
-  method: 'merge' | 'squash' | 'rebase' = 'merge'
+  method: 'merge' | 'squash' | 'rebase' = 'merge',
 ): Promise<void> {
   await client.put(`repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
     merge_method: method,
@@ -33,12 +33,10 @@ export async function toggleDraft(
   owner: string,
   repo: string,
   prNumber: number,
-  isDraft: boolean
+  isDraft: boolean,
 ): Promise<void> {
   // Step 1: Get the PR's GraphQL node ID via REST
-  const pr = await client.get<PrNodeIdResponse>(
-    `repos/${owner}/${repo}/pulls/${prNumber}`
-  );
+  const pr = await client.get<PrNodeIdResponse>(`repos/${owner}/${repo}/pulls/${prNumber}`);
   const nodeId = pr.node_id;
 
   // Step 2: Call the appropriate GraphQL mutation
@@ -77,7 +75,7 @@ export async function submitReview(
   repo: string,
   prNumber: number,
   event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT',
-  body?: string
+  body?: string,
 ): Promise<void> {
   await client.post(`repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
     event,
@@ -90,19 +88,11 @@ export async function submitReview(
 export async function bypassMergePullRequest(
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   await invoke('run_gh_command', {
-    args: [
-      'pr',
-      'merge',
-      String(prNumber),
-      '--squash',
-      '--admin',
-      '--repo',
-      `${owner}/${repo}`,
-    ],
+    args: ['pr', 'merge', String(prNumber), '--squash', '--admin', '--repo', `${owner}/${repo}`],
   });
 }
 
@@ -113,7 +103,7 @@ export async function postComment(
   owner: string,
   repo: string,
   prNumber: number,
-  body: string
+  body: string,
 ): Promise<void> {
   await client.post(`repos/${owner}/${repo}/issues/${prNumber}/comments`, {
     body,

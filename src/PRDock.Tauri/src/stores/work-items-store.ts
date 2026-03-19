@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WorkItem, AdoQuery } from '@/types';
+import type { AdoQuery, WorkItem } from '@/types';
 
 interface WorkItemsState {
   queryTree: AdoQuery[];
@@ -95,9 +95,7 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
 
     // State filter
     if (stateFilter !== 'all') {
-      result = result.filter(
-        (item) => getField(item, 'System.State') === stateFilter,
-      );
+      result = result.filter((item) => getField(item, 'System.State') === stateFilter);
     }
 
     // Assigned to filter
@@ -110,8 +108,7 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
     } else if (assignedToFilter !== '') {
       result = result.filter(
         (item) =>
-          getField(item, 'System.AssignedTo').toLowerCase() ===
-          assignedToFilter.toLowerCase(),
+          getField(item, 'System.AssignedTo').toLowerCase() === assignedToFilter.toLowerCase(),
       );
     }
 

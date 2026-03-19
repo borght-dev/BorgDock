@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { AppSettings, PullRequestWithChecks, CheckRun } from '@/types';
-import { useSettingsStore } from '@/stores/settings-store';
-import { GitHubClient } from '@/services/github/client';
-import { getGitHubToken } from '@/services/github/auth';
-import { getOpenPRs } from '@/services/github/pulls';
-import { getCheckRunsForRef } from '@/services/github/checks';
+import { useEffect, useMemo, useState } from 'react';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
+import { getGitHubToken } from '@/services/github/auth';
+import { getCheckRunsForRef } from '@/services/github/checks';
+import { GitHubClient } from '@/services/github/client';
+import { getOpenPRs } from '@/services/github/pulls';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
 import { PRDetailPanel } from './PRDetailPanel';
 
 export function PRDetailApp() {

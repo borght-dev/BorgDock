@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { sortReviews, severityOrder } from '../ReviewsTab';
+import { describe, expect, it } from 'vitest';
+import { severityOrder, sortReviews } from '../ReviewsTab';
 
 const makeReview = (overrides: Record<string, unknown> = {}) => ({
   id: 1,

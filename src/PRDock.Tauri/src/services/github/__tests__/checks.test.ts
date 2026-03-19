@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { getCheckRuns, getCheckSuites, getCheckRunsForRef } from '../checks';
-import { GitHubClient } from '../client';
+import { describe, expect, it, vi } from 'vitest';
+import { getCheckRuns, getCheckRunsForRef, getCheckSuites } from '../checks';
+import type { GitHubClient } from '../client';
 
 function createMockClient() {
   return {
@@ -37,9 +37,7 @@ describe('getCheckSuites', () => {
     expect(suite.headSha).toBe('abc123');
     expect(suite.checkRuns).toEqual([]);
 
-    expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/commits/abc123/check-suites'
-    );
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/commits/abc123/check-suites');
   });
 });
 
@@ -87,9 +85,7 @@ describe('getCheckRuns', () => {
     expect(test.name).toBe('test');
     expect(test.conclusion).toBe('failure');
 
-    expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/check-suites/100/check-runs'
-    );
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/check-suites/100/check-runs');
   });
 
   it('handles null conclusion', async () => {
@@ -144,8 +140,6 @@ describe('getCheckRunsForRef', () => {
     expect(run.id).toBe(400);
     expect(run.checkSuiteId).toBe(150);
 
-    expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/commits/abc123/check-runs'
-    );
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/commits/abc123/check-runs');
   });
 });

@@ -18,8 +18,7 @@ fn db_path() -> std::path::PathBuf {
 pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
     let path = db_path();
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create cache dir: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create cache dir: {e}"))?;
     }
 
     let conn =
@@ -37,7 +36,10 @@ pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
     )
     .map_err(|e| format!("Failed to create cache table: {e}"))?;
 
-    let mut lock = state.conn.lock().map_err(|e| format!("Lock poisoned: {e}"))?;
+    let mut lock = state
+        .conn
+        .lock()
+        .map_err(|e| format!("Lock poisoned: {e}"))?;
     *lock = Some(conn);
     Ok(())
 }
@@ -48,13 +50,14 @@ pub fn cache_load_prs(
     repo_owner: String,
     repo_name: String,
 ) -> Result<Vec<Value>, String> {
-    let lock = state.conn.lock().map_err(|e| format!("Lock poisoned: {e}"))?;
+    let lock = state
+        .conn
+        .lock()
+        .map_err(|e| format!("Lock poisoned: {e}"))?;
     let conn = lock.as_ref().ok_or("Cache not initialized")?;
 
     let mut stmt = conn
-        .prepare(
-            "SELECT json_data FROM cached_prs WHERE repo_owner = ?1 AND repo_name = ?2",
-        )
+        .prepare("SELECT json_data FROM cached_prs WHERE repo_owner = ?1 AND repo_name = ?2")
         .map_err(|e| format!("Failed to prepare query: {e}"))?;
 
     let rows = stmt
@@ -82,7 +85,10 @@ pub fn cache_save_prs(
     repo_name: String,
     prs: Vec<Value>,
 ) -> Result<(), String> {
-    let lock = state.conn.lock().map_err(|e| format!("Lock poisoned: {e}"))?;
+    let lock = state
+        .conn
+        .lock()
+        .map_err(|e| format!("Lock poisoned: {e}"))?;
     let conn = lock.as_ref().ok_or("Cache not initialized")?;
 
     // Clear existing entries for this repo
@@ -95,10 +101,7 @@ pub fn cache_save_prs(
     let now = chrono_now();
 
     for pr in &prs {
-        let pr_number = pr
-            .get("number")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32;
+        let pr_number = pr.get("number").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
         let json_data =
             serde_json::to_string(pr).map_err(|e| format!("JSON serialize error: {e}"))?;
 
@@ -115,7 +118,10 @@ pub fn cache_save_prs(
 
 #[tauri::command]
 pub fn cache_cleanup(state: State<'_, PrCache>) -> Result<u64, String> {
-    let lock = state.conn.lock().map_err(|e| format!("Lock poisoned: {e}"))?;
+    let lock = state
+        .conn
+        .lock()
+        .map_err(|e| format!("Lock poisoned: {e}"))?;
     let conn = lock.as_ref().ok_or("Cache not initialized")?;
 
     // Remove entries older than 7 days

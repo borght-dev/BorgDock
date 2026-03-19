@@ -8,10 +8,14 @@ interface ReviewCommentCardProps {
 
 function severityColor(severity: CommentSeverity): string {
   switch (severity) {
-    case 'critical': return 'var(--color-status-red)';
-    case 'suggestion': return 'var(--color-purple)';
-    case 'praise': return 'var(--color-status-green)';
-    default: return 'var(--color-status-gray)';
+    case 'critical':
+      return 'var(--color-status-red)';
+    case 'suggestion':
+      return 'var(--color-purple)';
+    case 'praise':
+      return 'var(--color-status-green)';
+    default:
+      return 'var(--color-status-gray)';
   }
 }
 
@@ -21,10 +25,7 @@ export function ReviewCommentCard({ comment }: ReviewCommentCardProps) {
   return (
     <div className="flex gap-2 rounded-md border border-[var(--color-subtle-border)] p-2.5">
       {/* Severity dot */}
-      <span
-        className="mt-1 h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: color }}
-      />
+      <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
 
       <div className="min-w-0 flex-1 space-y-1">
         {/* File path */}

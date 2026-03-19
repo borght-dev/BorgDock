@@ -4,9 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
  * Gets a GitHub token. Tries the `gh` CLI first via Tauri command,
  * falls back to PAT from settings.
  */
-export async function getGitHubToken(
-  patFromSettings?: string
-): Promise<string> {
+export async function getGitHubToken(patFromSettings?: string): Promise<string> {
   // Try gh CLI token first
   try {
     const token = await invoke<string>('gh_cli_token');
@@ -23,6 +21,6 @@ export async function getGitHubToken(
   }
 
   throw new Error(
-    'No GitHub token available. Configure a Personal Access Token or install the GitHub CLI.'
+    'No GitHub token available. Configure a Personal Access Token or install the GitHub CLI.',
   );
 }

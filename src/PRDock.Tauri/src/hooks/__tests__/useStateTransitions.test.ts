@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { detectStateTransitions } from '../../services/notification';
+import { describe, expect, it } from 'vitest';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
+import { detectStateTransitions } from '../../services/notification';
 
 function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
@@ -30,7 +30,7 @@ function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
 }
 
 function makePrWithChecks(
-  overrides: Partial<PullRequestWithChecks> & { pr?: Partial<PullRequest> } = {}
+  overrides: Partial<PullRequestWithChecks> & { pr?: Partial<PullRequest> } = {},
 ): PullRequestWithChecks {
   const { pr, ...rest } = overrides;
   return {
@@ -90,9 +90,7 @@ describe('detectStateTransitions', () => {
 
   it('detects review changes requested transition', () => {
     const oldPrs = [makePrWithChecks({ pr: { reviewStatus: 'approved' } })];
-    const newPrs = [
-      makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } }),
-    ];
+    const newPrs = [makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } })];
 
     const transitions = detectStateTransitions(oldPrs, newPrs);
 
@@ -140,11 +138,7 @@ describe('detectStateTransitions', () => {
     const transitions = detectStateTransitions(oldPrs, newPrs);
 
     const types = transitions.map((t) => t.type).sort();
-    expect(types).toEqual([
-      'allChecksPassed',
-      'checkFailed',
-      'reviewChangesRequested',
-    ]);
+    expect(types).toEqual(['allChecksPassed', 'checkFailed', 'reviewChangesRequested']);
   });
 
   it('reports the specific failed check name in the detail field', () => {
@@ -158,9 +152,7 @@ describe('detectStateTransitions', () => {
 
     const transitions = detectStateTransitions(oldPrs, newPrs);
 
-    const checkFailedTransitions = transitions.filter(
-      (t) => t.type === 'checkFailed'
-    );
+    const checkFailedTransitions = transitions.filter((t) => t.type === 'checkFailed');
     expect(checkFailedTransitions).toHaveLength(2);
     const details = checkFailedTransitions.map((t) => t.detail);
     expect(details).toContain('ci/lint');

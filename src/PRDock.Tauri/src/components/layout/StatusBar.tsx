@@ -18,7 +18,8 @@ export function StatusBar() {
   const openCount = pullRequests.length;
 
   return (
-    <div className="flex items-center justify-between px-3 py-1 text-[10px] text-[var(--color-text-muted)] bg-[var(--color-status-bar-bg)] backdrop-blur-sm border-t border-[var(--color-separator)]"
+    <div
+      className="flex items-center justify-between px-3 py-1 text-[10px] text-[var(--color-text-muted)] bg-[var(--color-status-bar-bg)] backdrop-blur-sm border-t border-[var(--color-separator)]"
       style={{ height: 28 }}
     >
       <span>

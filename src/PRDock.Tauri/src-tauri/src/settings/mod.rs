@@ -11,9 +11,7 @@ pub fn merge_json(base: &mut Value, overlay: &Value) {
     match (base, overlay) {
         (Value::Object(base_map), Value::Object(overlay_map)) => {
             for (key, overlay_val) in overlay_map {
-                let entry = base_map
-                    .entry(key.clone())
-                    .or_insert(Value::Null);
+                let entry = base_map.entry(key.clone()).or_insert(Value::Null);
                 merge_json(entry, overlay_val);
             }
         }
@@ -60,8 +58,7 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
         .map_err(|e| format!("Failed to parse settings.dev.json: {e}"))?;
     let mut settings_value = serde_json::to_value(&settings).map_err(|e| e.to_string())?;
     merge_json(&mut settings_value, &dev_value);
-    serde_json::from_value(settings_value)
-        .map_err(|e| format!("Failed to apply dev overlay: {e}"))
+    serde_json::from_value(settings_value).map_err(|e| format!("Failed to apply dev overlay: {e}"))
 }
 
 #[tauri::command]

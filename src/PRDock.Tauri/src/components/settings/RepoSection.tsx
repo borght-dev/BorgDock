@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
 import clsx from 'clsx';
+import { useCallback, useState } from 'react';
 import type { RepoSettings } from '@/types';
 
 interface RepoSectionProps {
@@ -29,19 +29,17 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
 
   const toggleRepo = useCallback(
     (index: number) => {
-      const updated = repos.map((r, i) =>
-        i === index ? { ...r, enabled: !r.enabled } : r
-      );
+      const updated = repos.map((r, i) => (i === index ? { ...r, enabled: !r.enabled } : r));
       onChange(updated);
     },
-    [repos, onChange]
+    [repos, onChange],
   );
 
   const removeRepo = useCallback(
     (index: number) => {
       onChange(repos.filter((_, i) => i !== index));
     },
-    [repos, onChange]
+    [repos, onChange],
   );
 
   return (
@@ -56,14 +54,14 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
           <button
             className={clsx(
               'h-4 w-7 rounded-full transition-colors relative shrink-0',
-              repo.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]'
+              repo.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
             )}
             onClick={() => toggleRepo(i)}
           >
             <span
               className={clsx(
                 'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform shadow-sm',
-                repo.enabled ? 'left-3.5' : 'left-0.5'
+                repo.enabled ? 'left-3.5' : 'left-0.5',
               )}
             />
           </button>

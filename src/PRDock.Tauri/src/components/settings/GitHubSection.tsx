@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import clsx from 'clsx';
+import { useState } from 'react';
 import type { GitHubSettings } from '@/types';
 
 interface GitHubSectionProps {
@@ -10,8 +10,7 @@ interface GitHubSectionProps {
 export function GitHubSection({ github, onChange }: GitHubSectionProps) {
   const [showToken, setShowToken] = useState(false);
 
-  const update = (partial: Partial<GitHubSettings>) =>
-    onChange({ ...github, ...partial });
+  const update = (partial: Partial<GitHubSettings>) => onChange({ ...github, ...partial });
 
   return (
     <div className="space-y-2.5">
@@ -25,7 +24,7 @@ export function GitHubSection({ github, onChange }: GitHubSectionProps) {
                 'flex-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
                 github.authMethod === method
                   ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
               )}
               onClick={() => update({ authMethod: method })}
             >

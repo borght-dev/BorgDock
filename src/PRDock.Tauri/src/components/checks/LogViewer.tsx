@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface LogViewerProps {
   log: string;
@@ -14,7 +14,7 @@ export function LogViewer({ log }: LogViewerProps) {
     if (autoScroll && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [log, autoScroll]);
+  }, [autoScroll]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;

@@ -72,9 +72,7 @@ export function PullRequestList() {
           <path d="M10 2v4h4" />
           <path d="m10 2 4 4" />
         </svg>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          No pull requests found
-        </p>
+        <p className="text-xs text-[var(--color-text-muted)]">No pull requests found</p>
       </div>
     );
   }

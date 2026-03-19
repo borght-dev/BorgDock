@@ -1,34 +1,34 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useWorkItemsStore } from '@/stores/work-items-store';
-import { useSettingsStore } from '@/stores/settings-store';
-import { useUiStore } from '@/stores/ui-store';
-import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
-import { WorkItemList } from '@/components/work-items/WorkItemList';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type AdoQueryTreeNode, QueryBrowser } from '@/components/work-items/QueryBrowser';
 import type { WorkItemCardData } from '@/components/work-items/WorkItemCard';
 import {
-  WorkItemDetailPanel,
   type WorkItemDetailData,
+  WorkItemDetailPanel,
   type WorkItemFieldUpdates,
 } from '@/components/work-items/WorkItemDetailPanel';
-import { QueryBrowser, type AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
+import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
+import { WorkItemList } from '@/components/work-items/WorkItemList';
 import { AdoClient } from '@/services/ado/client';
 import { executeQuery } from '@/services/ado/queries';
 import {
-  getWorkItem,
-  updateWorkItem,
+  addWorkItemComment,
   deleteWorkItem,
   downloadAttachment,
-  getWorkItemTypeStates,
+  getWorkItem,
   getWorkItemComments,
-  addWorkItemComment,
+  getWorkItemTypeStates,
+  updateWorkItem,
 } from '@/services/ado/workitems';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
+import { useWorkItemsStore } from '@/stores/work-items-store';
 import type {
-  WorkItem,
-  WorkItemComment,
-  DynamicFieldItem,
-  WorkItemAttachment,
-  JsonPatchOperation,
   AdoQuery,
+  DynamicFieldItem,
+  JsonPatchOperation,
+  WorkItem,
+  WorkItemAttachment,
+  WorkItemComment,
 } from '@/types';
 
 // ---- Helpers ----
@@ -80,7 +80,7 @@ function mapToCardData(
   store: WorkItemsStoreSnapshot,
   selectedId: number | null,
   organization: string,
-  project: string
+  project: string,
 ): WorkItemCardData {
   const htmlUrl =
     item.htmlUrl ||
@@ -143,7 +143,7 @@ function tryFormatDate(value: string): string | null {
   // Only attempt if it looks like an ISO date (e.g. 2026-03-13T07:46:03.1Z)
   if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
   const d = new Date(value);
-  if (isNaN(d.getTime())) return null;
+  if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -168,7 +168,12 @@ function formatFieldValue(value: unknown): string | null {
   }
 
   if (Array.isArray(value)) {
-    return value.map((v) => formatFieldValue(v)).filter(Boolean).join(', ') || null;
+    return (
+      value
+        .map((v) => formatFieldValue(v))
+        .filter(Boolean)
+        .join(', ') || null
+    );
   }
 
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -239,7 +244,10 @@ function classifyFields(item: WorkItem): {
       continue;
     }
 
-    const isCustom = key.startsWith('Custom.') || key.startsWith('Microsoft.VSTS.CMMI.') || !key.startsWith('System.') && !key.startsWith('Microsoft.VSTS.');
+    const isCustom =
+      key.startsWith('Custom.') ||
+      key.startsWith('Microsoft.VSTS.CMMI.') ||
+      (!key.startsWith('System.') && !key.startsWith('Microsoft.VSTS.'));
 
     const field: DynamicFieldItem = {
       fieldKey: key,
@@ -264,19 +272,16 @@ function extractAttachments(item: WorkItem): WorkItemAttachment[] {
   return item.relations
     .filter((r) => r.rel === 'AttachedFile')
     .map((r) => ({
-      id: String(r.attributes['id'] ?? r.url.split('/').pop() ?? ''),
-      fileName: String(r.attributes['name'] ?? 'attachment'),
-      size: Number(r.attributes['resourceSize'] ?? 0),
+      id: String(r.attributes.id ?? r.url.split('/').pop() ?? ''),
+      fileName: String(r.attributes.name ?? 'attachment'),
+      size: Number(r.attributes.resourceSize ?? 0),
       url: r.url,
     }));
 }
 
 // ---- Query tree node mapping ----
 
-function mapQueryTreeNodes(
-  queries: AdoQuery[],
-  favoriteIds: string[]
-): AdoQueryTreeNode[] {
+function mapQueryTreeNodes(queries: AdoQuery[], favoriteIds: string[]): AdoQueryTreeNode[] {
   return queries.map((q) => ({
     ...q,
     isFavorite: favoriteIds.includes(q.id),
@@ -336,7 +341,7 @@ export function WorkItemsSection() {
     return new AdoClient(
       adoSettings.organization,
       adoSettings.project,
-      adoSettings.personalAccessToken
+      adoSettings.personalAccessToken,
     );
   }, [adoSettings.organization, adoSettings.project, adoSettings.personalAccessToken]);
 
@@ -362,8 +367,8 @@ export function WorkItemsSection() {
         storeSnapshot,
         selectedWorkItemId,
         adoSettings.organization,
-        adoSettings.project
-      )
+        adoSettings.project,
+      ),
     );
   }, [
     items,
@@ -378,7 +383,7 @@ export function WorkItemsSection() {
   // Query browser tree nodes
   const queryTreeNodes: AdoQueryTreeNode[] = useMemo(
     () => mapQueryTreeNodes(queryTree, favoriteQueryIds),
-    [queryTree, favoriteQueryIds]
+    [queryTree, favoriteQueryIds],
   );
 
   const favoriteQueries: AdoQueryTreeNode[] = useMemo(() => {
@@ -436,7 +441,7 @@ export function WorkItemsSection() {
         setIsDetailLoading(false);
       }
     },
-    [getClient]
+    [getClient],
   );
 
   // Pick up work item ID from command palette
@@ -511,9 +516,7 @@ export function WorkItemsSection() {
 
         // Update the item in the store's work items list
         const currentItems = useWorkItemsStore.getState().workItems;
-        const updatedItems = currentItems.map((wi) =>
-          wi.id === updated.id ? updated : wi
-        );
+        const updatedItems = currentItems.map((wi) => (wi.id === updated.id ? updated : wi));
         useWorkItemsStore.getState().setWorkItems(updatedItems);
       } catch (err) {
         console.error('Failed to save work item:', err);
@@ -522,7 +525,7 @@ export function WorkItemsSection() {
         setIsSaving(false);
       }
     },
-    [selectedWorkItemId, detailItem, getClient]
+    [selectedWorkItemId, detailItem, getClient],
   );
 
   const handleDelete = useCallback(async () => {
@@ -551,13 +554,16 @@ export function WorkItemsSection() {
     }
   }, [selectedWorkItemId, getClient]);
 
-  const handleAddComment = useCallback(async (text: string) => {
-    if (!selectedWorkItemId) return;
-    const client = getClient();
-    if (!client) return;
-    const newComment = await addWorkItemComment(client, selectedWorkItemId, text);
-    setDetailComments((prev) => [...prev, newComment]);
-  }, [selectedWorkItemId, getClient]);
+  const handleAddComment = useCallback(
+    async (text: string) => {
+      if (!selectedWorkItemId) return;
+      const client = getClient();
+      if (!client) return;
+      const newComment = await addWorkItemComment(client, selectedWorkItemId, text);
+      setDetailComments((prev) => [...prev, newComment]);
+    },
+    [selectedWorkItemId, getClient],
+  );
 
   const handleCloseDetail = useCallback(() => {
     setSelectedWorkItemId(null);
@@ -595,7 +601,7 @@ export function WorkItemsSection() {
         console.error('Failed to download attachment:', err);
       }
     },
-    [getClient]
+    [getClient],
   );
 
   const handleSelectQuery = useCallback((queryId: string) => {
@@ -656,8 +662,7 @@ export function WorkItemsSection() {
       state: getField(detailItem, 'System.State'),
       workItemType: getField(detailItem, 'System.WorkItemType'),
       assignedTo: getField(detailItem, 'System.AssignedTo'),
-      priority:
-        Number(detailItem.fields['Microsoft.VSTS.Common.Priority']) || undefined,
+      priority: Number(detailItem.fields['Microsoft.VSTS.Common.Priority']) || undefined,
       tags: getField(detailItem, 'System.Tags'),
       htmlUrl,
       isNewItem: false,
@@ -706,27 +711,17 @@ export function WorkItemsSection() {
         states={availableStates()}
         assignees={availableAssignees()}
         selectedState={stateFilter === 'all' ? 'All' : stateFilter}
-        selectedAssignee={
-          assignedToFilter === ''
-            ? 'Anyone'
-            : assignedToFilter
-        }
+        selectedAssignee={assignedToFilter === '' ? 'Anyone' : assignedToFilter}
         trackingFilter={trackingFilter}
         trackedCount={trackedWorkItemIds.size}
         workingOnCount={workingOnWorkItemIds.size}
         onStateChange={(state) =>
-          useWorkItemsStore
-            .getState()
-            .setStateFilter(state === 'All' ? 'all' : state)
+          useWorkItemsStore.getState().setStateFilter(state === 'All' ? 'all' : state)
         }
         onAssigneeChange={(assignee) =>
-          useWorkItemsStore
-            .getState()
-            .setAssignedToFilter(assignee === 'Anyone' ? '' : assignee)
+          useWorkItemsStore.getState().setAssignedToFilter(assignee === 'Anyone' ? '' : assignee)
         }
-        onTrackingFilterChange={(filter) =>
-          useWorkItemsStore.getState().setTrackingFilter(filter)
-        }
+        onTrackingFilterChange={(filter) => useWorkItemsStore.getState().setTrackingFilter(filter)}
         onRefresh={handleRefresh}
         onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
         selectedQueryName={selectedQueryName}

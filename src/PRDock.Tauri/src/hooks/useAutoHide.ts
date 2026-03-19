@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from 'react';
-import type { AppSettings } from '@/types';
+import { useCallback, useEffect, useRef } from 'react';
 import { useUiStore } from '@/stores/ui-store';
+import type { AppSettings } from '@/types';
 
 const AUTO_HIDE_DELAY_MS = 3000;
 
@@ -9,7 +9,9 @@ async function hideSidebarShowBadge() {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('hide_sidebar');
     await invoke('show_badge', { count: 0 });
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function useAutoHide(settings: AppSettings) {
@@ -87,10 +89,14 @@ export function useAutoHide(settings: AppSettings) {
             try {
               const { invoke } = await import('@tauri-apps/api/core');
               await invoke('hide_badge');
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
         });
-      } catch { /* ignore in non-Tauri env */ }
+      } catch {
+        /* ignore in non-Tauri env */
+      }
     })();
 
     return () => unlisten?.();

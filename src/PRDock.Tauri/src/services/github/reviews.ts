@@ -36,21 +36,19 @@ export async function getReviews(
   client: GitHubClient,
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
 ): Promise<GitHubReviewDto[]> {
-  return client.get<GitHubReviewDto[]>(
-    `repos/${owner}/${repo}/pulls/${prNumber}/reviews`
-  );
+  return client.get<GitHubReviewDto[]>(`repos/${owner}/${repo}/pulls/${prNumber}/reviews`);
 }
 
 export async function getReviewComments(
   client: GitHubClient,
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
 ): Promise<ClaudeReviewComment[]> {
   const dtos = await client.get<GitHubPrReviewCommentDto[]>(
-    `repos/${owner}/${repo}/pulls/${prNumber}/comments`
+    `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
   );
 
   return dtos.map((dto) => ({
@@ -70,7 +68,7 @@ export async function getBotReviewComments(
   owner: string,
   repo: string,
   prNumber: number,
-  botUsername: string
+  botUsername: string,
 ): Promise<ClaudeReviewComment[]> {
   const comments: ClaudeReviewComment[] = [];
   const botLower = botUsername.toLowerCase();
@@ -78,7 +76,7 @@ export async function getBotReviewComments(
   // 1. PR review comments (inline code comments)
   try {
     const reviewDtos = await client.get<GitHubPrReviewCommentDto[]>(
-      `repos/${owner}/${repo}/pulls/${prNumber}/comments`
+      `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
     );
 
     for (const dto of reviewDtos) {
@@ -103,7 +101,7 @@ export async function getBotReviewComments(
   // 2. Issue comments (top-level PR comments)
   try {
     const issueDtos = await client.get<GitHubIssueCommentDto[]>(
-      `repos/${owner}/${repo}/issues/${prNumber}/comments`
+      `repos/${owner}/${repo}/issues/${prNumber}/comments`,
     );
 
     for (const dto of issueDtos) {
@@ -138,14 +136,14 @@ export async function getAllComments(
   client: GitHubClient,
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
 ): Promise<ClaudeReviewComment[]> {
   const comments: ClaudeReviewComment[] = [];
 
   // PR review comments
   try {
     const reviewDtos = await client.get<GitHubPrReviewCommentDto[]>(
-      `repos/${owner}/${repo}/pulls/${prNumber}/comments`
+      `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
     );
 
     for (const dto of reviewDtos) {
@@ -167,7 +165,7 @@ export async function getAllComments(
   // Issue comments
   try {
     const issueDtos = await client.get<GitHubIssueCommentDto[]>(
-      `repos/${owner}/${repo}/issues/${prNumber}/comments`
+      `repos/${owner}/${repo}/issues/${prNumber}/comments`,
     );
 
     for (const dto of issueDtos) {
@@ -184,9 +182,7 @@ export async function getAllComments(
     // Skip on failure
   }
 
-  return comments.sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
+  return comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
 // --- Severity detection ---
@@ -205,9 +201,7 @@ export function detectSeverity(body: string): CommentSeverity {
   }
 
   // Heuristic: if it contains "bug", "vulnerability", "security", "breaking" -> critical
-  if (
-    /\b(bug|vulnerability|security issue|breaking change)\b/i.test(body)
-  ) {
+  if (/\b(bug|vulnerability|security issue|breaking change)\b/i.test(body)) {
     return 'critical';
   }
 
@@ -224,18 +218,12 @@ export function detectSeverity(body: string): CommentSeverity {
   return 'unknown';
 }
 
-export function splitStructuredReview(
-  comment: ClaudeReviewComment
-): ClaudeReviewComment[] {
+export function splitStructuredReview(comment: ClaudeReviewComment): ClaudeReviewComment[] {
   const body = comment.body;
 
   // Look for structured sections like "## Issues" or "## Positives"
-  const issuesMatch = body.match(
-    /##\s*Issues?\s*\n([\s\S]*?)(?=##|$)/i
-  );
-  const positivesMatch = body.match(
-    /##\s*Positives?\s*\n([\s\S]*?)(?=##|$)/i
-  );
+  const issuesMatch = body.match(/##\s*Issues?\s*\n([\s\S]*?)(?=##|$)/i);
+  const positivesMatch = body.match(/##\s*Positives?\s*\n([\s\S]*?)(?=##|$)/i);
 
   if (!issuesMatch && !positivesMatch) {
     return [comment];

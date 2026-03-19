@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import type { PullRequestWithChecks, PullRequest } from '@/types';
+import { describe, expect, it } from 'vitest';
+import type { PullRequest, PullRequestWithChecks } from '@/types';
 
 // We test the pure buildBadgePayload logic extracted from useBadgeSync.
 // Re-implementing it here to verify the data transformation is correct.

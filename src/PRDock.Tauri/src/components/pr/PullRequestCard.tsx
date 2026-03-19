@@ -1,18 +1,18 @@
-import { useState, useCallback } from 'react';
-import clsx from 'clsx';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import type { PullRequestWithChecks } from '@/types';
-import { useUiStore } from '@/stores/ui-store';
+import clsx from 'clsx';
+import { useCallback, useState } from 'react';
+import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { rerunWorkflow } from '@/services/github/checks';
+import { getClient } from '@/services/github/singleton';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { getClient } from '@/services/github/singleton';
-import { rerunWorkflow } from '@/services/github/checks';
-import { StatusIndicator } from './StatusIndicator';
-import { MultiSignalIndicator } from './MultiSignalIndicator';
-import { MergeScoreBadge } from './MergeScoreBadge';
+import { useUiStore } from '@/stores/ui-store';
+import type { PullRequestWithChecks } from '@/types';
 import { LabelBadge } from './LabelBadge';
+import { MergeScoreBadge } from './MergeScoreBadge';
+import { MultiSignalIndicator } from './MultiSignalIndicator';
 import { PrContextMenu } from './PrContextMenu';
+import { StatusIndicator } from './StatusIndicator';
 
 interface PullRequestCardProps {
   prWithChecks: PullRequestWithChecks;
@@ -21,21 +21,31 @@ interface PullRequestCardProps {
 
 function reviewStatusLabel(status: string): string {
   switch (status) {
-    case 'approved': return 'Approved';
-    case 'changesRequested': return 'Changes Requested';
-    case 'pending': return 'Review Pending';
-    case 'commented': return 'Commented';
-    default: return '';
+    case 'approved':
+      return 'Approved';
+    case 'changesRequested':
+      return 'Changes Requested';
+    case 'pending':
+      return 'Review Pending';
+    case 'commented':
+      return 'Commented';
+    default:
+      return '';
   }
 }
 
 function reviewStatusColor(status: string): string {
   switch (status) {
-    case 'approved': return 'var(--color-review-approved)';
-    case 'changesRequested': return 'var(--color-review-changes-requested)';
-    case 'pending': return 'var(--color-review-required)';
-    case 'commented': return 'var(--color-review-commented)';
-    default: return 'var(--color-text-muted)';
+    case 'approved':
+      return 'var(--color-review-approved)';
+    case 'changesRequested':
+      return 'var(--color-review-changes-requested)';
+    case 'pending':
+      return 'var(--color-review-required)';
+    case 'commented':
+      return 'var(--color-review-commented)';
+    default:
+      return 'var(--color-text-muted)';
   }
 }
 
@@ -65,10 +75,21 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-function ActionButton({ label, icon, onClick }: { label: string; icon: string; onClick: (e: React.MouseEvent) => void }) {
+function ActionButton({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: string;
+  onClick: (e: React.MouseEvent) => void;
+}) {
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onClick(e); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(e);
+      }}
       className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-subtle-border)] transition-colors"
       title={label}
     >
@@ -90,8 +111,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const isMyPr =
-    username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
+  const isMyPr = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
   const isSelected = selectedPrNumber === pr.number;
   const totalChecks = checks.length;
   const mergeScore = computeMergeScore(prWithChecks);
@@ -103,7 +123,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
 
   // Find a failed check for rerun
   const failedCheck = checks.find(
-    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out'
+    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
   );
 
   const handleRerun = useCallback(
@@ -112,10 +132,10 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
       const client = getClient();
       if (!client || !failedCheck) return;
       rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch((err) =>
-        console.error('Failed to rerun checks:', err)
+        console.error('Failed to rerun checks:', err),
       );
     },
-    [failedCheck, pr.repoOwner, pr.repoName]
+    [failedCheck, pr.repoOwner, pr.repoName],
   );
 
   const handleFix = useCallback(
@@ -123,20 +143,18 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
       e.stopPropagation();
       const firstFailedName = failedCheckNames[0] ?? 'unknown';
       fixWithClaude(prWithChecks, firstFailedName, [], [], '').catch((err) =>
-        console.error('Fix with Claude failed:', err)
+        console.error('Fix with Claude failed:', err),
       );
     },
-    [prWithChecks, failedCheckNames, fixWithClaude]
+    [prWithChecks, failedCheckNames, fixWithClaude],
   );
 
   const handleMonitor = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      monitorPr(prWithChecks).catch((err) =>
-        console.error('Monitor with Claude failed:', err)
-      );
+      monitorPr(prWithChecks).catch((err) => console.error('Monitor with Claude failed:', err));
     },
-    [prWithChecks, monitorPr]
+    [prWithChecks, monitorPr],
   );
 
   const handleCopyErrors = useCallback(
@@ -148,11 +166,9 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
         '',
         ...failedCheckNames.map((name: string) => `- ${name}`),
       ].join('\n');
-      writeText(markdown).catch((err) =>
-        console.error('Failed to copy errors:', err)
-      );
+      writeText(markdown).catch((err) => console.error('Failed to copy errors:', err));
     },
-    [failedCheckNames, pr.number]
+    [failedCheckNames, pr.number],
   );
 
   return (
@@ -168,13 +184,15 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             : isMyPr
               ? 'bg-[var(--color-card-background)] border-[var(--color-card-border-my-pr)] hover:bg-[var(--color-surface-hover)]'
               : 'bg-[var(--color-card-background)] border-[var(--color-card-border)] hover:bg-[var(--color-surface-hover)]',
-          isFocused && 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-background)]',
+          isFocused &&
+            'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-background)]',
           'shadow-sm',
         )}
       >
         {/* Status indicator */}
         <div className="mt-1.5">
-          {settings.ui.indicatorStyle === 'SegmentRing' || settings.ui.indicatorStyle === 'SignalDots' ? (
+          {settings.ui.indicatorStyle === 'SegmentRing' ||
+          settings.ui.indicatorStyle === 'SignalDots' ? (
             <MultiSignalIndicator pr={prWithChecks} size={20} style={settings.ui.indicatorStyle} />
           ) : (
             <StatusIndicator status={overallStatus} />
@@ -219,9 +237,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             >
               {avatarInitials(pr.authorLogin)}
             </span>
-            <span className="truncate font-mono text-[var(--color-text-muted)]">
-              {pr.headRef}
-            </span>
+            <span className="truncate font-mono text-[var(--color-text-muted)]">{pr.headRef}</span>
           </div>
 
           {/* Labels + check summary */}
@@ -239,39 +255,53 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
           {/* Stats row */}
           <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
             {pr.commentCount > 0 && (
-              <span title="Comments">{'\uD83D\uDCAC'} {pr.commentCount}</span>
+              <span title="Comments">
+                {'\uD83D\uDCAC'} {pr.commentCount}
+              </span>
             )}
             {(pr.additions > 0 || pr.deletions > 0) && (
               <span>
-                <span className="text-green-500">+{pr.additions}</span>
-                {' '}
+                <span className="text-green-500">+{pr.additions}</span>{' '}
                 <span className="text-red-500">-{pr.deletions}</span>
               </span>
             )}
             {pr.commitCount > 0 && (
-              <span title="Commits">{pr.commitCount} commit{pr.commitCount !== 1 ? 's' : ''}</span>
+              <span title="Commits">
+                {pr.commitCount} commit{pr.commitCount !== 1 ? 's' : ''}
+              </span>
             )}
           </div>
 
           {/* Action buttons - visible on hover */}
           <div className="mt-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {overallStatus === 'red' && (
-              <ActionButton label="Re-run" icon={"\u21BB"} onClick={handleRerun} />
+              <ActionButton label="Re-run" icon={'\u21BB'} onClick={handleRerun} />
             )}
             {overallStatus === 'red' && (
-              <ActionButton label="Fix" icon={"\u26A1"} onClick={handleFix} />
+              <ActionButton label="Fix" icon={'\u26A1'} onClick={handleFix} />
             )}
-            <ActionButton label="Monitor" icon={"\u25B6"} onClick={handleMonitor} />
+            <ActionButton label="Monitor" icon={'\u25B6'} onClick={handleMonitor} />
             {overallStatus === 'red' && (
-              <ActionButton label="Copy" icon={"\uD83D\uDCCB"} onClick={handleCopyErrors} />
+              <ActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={handleCopyErrors} />
             )}
             <button
               data-expand-toggle
-              onClick={(e) => { e.stopPropagation(); togglePrExpanded(pr.number); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePrExpanded(pr.number);
+              }}
               className="flex items-center rounded px-1 py-0.5 text-[9px] text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-subtle-border)] transition-colors"
               title={isExpanded ? 'Collapse' : 'Expand'}
             >
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 {isExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
               </svg>
             </button>

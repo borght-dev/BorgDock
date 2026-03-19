@@ -30,8 +30,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             _ => include_bytes!("../../icons/tray-dark.png"),
         };
 
-        decode_png_to_rgba(png_bytes)
-            .unwrap_or_else(|| app.default_window_icon().cloned().unwrap())
+        decode_png_to_rgba(png_bytes).unwrap_or_else(|| app.default_window_icon().cloned().unwrap())
     };
 
     TrayIconBuilder::new()
@@ -83,5 +82,9 @@ fn decode_png_to_rgba(png_bytes: &[u8]) -> Option<tauri::image::Image<'static>> 
         _ => return None,
     };
 
-    Some(tauri::image::Image::new_owned(rgba, info.width, info.height))
+    Some(tauri::image::Image::new_owned(
+        rgba,
+        info.width,
+        info.height,
+    ))
 }

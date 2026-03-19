@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useUiStore } from '@/stores/ui-store';
-import { useSettingsStore } from '@/stores/settings-store';
-import { useWorkItemsStore } from '@/stores/work-items-store';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdoClient } from '@/services/ado/client';
-import { searchWorkItemsByIdPrefix, getWorkItems } from '@/services/ado/workitems';
+import { getWorkItems, searchWorkItemsByIdPrefix } from '@/services/ado/workitems';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
+import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { WorkItem } from '@/types';
 
 interface ResultItem {
@@ -75,9 +75,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
   // Build the "Working On" and "Assigned to Me" sections from in-memory work items
   const workingOnSection: ResultItem[] = useMemo(() => {
     if (workingOnIds.size === 0) return [];
-    return workItems
-      .filter((wi) => workingOnIds.has(wi.id))
-      .map(mapWorkItem);
+    return workItems.filter((wi) => workingOnIds.has(wi.id)).map(mapWorkItem);
   }, [workItems, workingOnIds]);
 
   const assignedToMeSection: ResultItem[] = useMemo(() => {
@@ -85,10 +83,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
     return workItems
       .filter((wi) => {
         const assignee = getField(wi, 'System.AssignedTo');
-        return (
-          assignee.toLowerCase() === currentUser.toLowerCase() &&
-          !workingOnIds.has(wi.id)
-        );
+        return assignee.toLowerCase() === currentUser.toLowerCase() && !workingOnIds.has(wi.id);
       })
       .map(mapWorkItem);
   }, [workItems, currentUser, workingOnIds]);
@@ -168,7 +163,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
       })
       .finally(() => setIsLoadingRecent(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, getClient, recentIds.map, recentIds.filter, workItems.find, workItems.map]);
 
   // Focus input when opened
   useEffect(() => {
@@ -181,7 +176,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
       requestAnimationFrame(() => inputRef.current?.focus());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, browseFlat.length]);
 
   // Debounced search
   useEffect(() => {
@@ -366,8 +361,13 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
               )}
               {isLoadingRecent && browseSections.length === 0 && (
                 <div className="flex items-center justify-center py-6">
-                  <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" style={{ color: 'var(--color-text-muted)' }} />
-                  <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>Loading...</span>
+                  <span
+                    className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
+                    style={{ color: 'var(--color-text-muted)' }}
+                  />
+                  <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+                    Loading...
+                  </span>
                 </div>
               )}
               {browseSections.map((section) => {
@@ -444,30 +444,18 @@ function PaletteRow({
       onMouseDown={() => onSelect(item.id)}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <span
-          className="shrink-0 text-[13px] font-bold"
-          style={{ color: 'var(--color-accent)' }}
-        >
+        <span className="shrink-0 text-[13px] font-bold" style={{ color: 'var(--color-accent)' }}>
           #{item.id}
         </span>
-        <span
-          className="truncate text-[13px]"
-          style={{ color: 'var(--color-text-primary)' }}
-        >
+        <span className="truncate text-[13px]" style={{ color: 'var(--color-text-primary)' }}>
           {item.title}
         </span>
       </div>
       <div className="ml-2 flex shrink-0 items-center gap-1.5">
-        <span
-          className="text-[11px]"
-          style={{ color: 'var(--color-text-tertiary)' }}
-        >
+        <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
           {item.workItemType}
         </span>
-        <span
-          className="text-[11px] font-semibold"
-          style={{ color: 'var(--color-accent)' }}
-        >
+        <span className="text-[11px] font-semibold" style={{ color: 'var(--color-accent)' }}>
           {item.state}
         </span>
       </div>

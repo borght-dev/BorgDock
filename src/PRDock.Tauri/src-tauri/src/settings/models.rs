@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     #[serde(default)]
@@ -21,22 +21,6 @@ pub struct AppSettings {
     pub updates: UpdateSettings,
     #[serde(default)]
     pub azure_dev_ops: AzureDevOpsSettings,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        Self {
-            setup_complete: false,
-            git_hub: GitHubSettings::default(),
-            repos: Vec::new(),
-            ui: UiSettings::default(),
-            notifications: NotificationSettings::default(),
-            claude_code: ClaudeCodeSettings::default(),
-            claude_review: ClaudeReviewSettings::default(),
-            updates: UpdateSettings::default(),
-            azure_dev_ops: AzureDevOpsSettings::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,14 +1,14 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import clsx from 'clsx';
 import { invoke } from '@tauri-apps/api/core';
-import type { PullRequestWithChecks } from '@/types';
+import clsx from 'clsx';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useUiStore } from '@/stores/ui-store';
-import { OverviewTab } from './OverviewTab';
+import type { PullRequestWithChecks } from '@/types';
+import { ChecksTab } from './ChecksTab';
+import { CommentsTab } from './CommentsTab';
 import { CommitsTab } from './CommitsTab';
 import { FilesTab } from './FilesTab';
-import { ChecksTab } from './ChecksTab';
+import { OverviewTab } from './OverviewTab';
 import { ReviewsTab } from './ReviewsTab';
-import { CommentsTab } from './CommentsTab';
 
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
@@ -65,9 +65,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
           <h2 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
             {pr.pullRequest.title}
           </h2>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            #{pr.pullRequest.number}
-          </span>
+          <span className="text-xs text-[var(--color-text-muted)]">#{pr.pullRequest.number}</span>
         </div>
         <button
           onClick={handlePopOut}
@@ -75,7 +73,15 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
           aria-label="Pop out"
           title="Open in new window"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
             <path d="M9 2h5v5" />
             <path d="m14 2-7 7" />
             <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
@@ -89,7 +95,9 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
           {tabs.map((tab, i) => (
             <button
               key={tab}
-              ref={(el) => { tabsRef.current[i] = el; }}
+              ref={(el) => {
+                tabsRef.current[i] = el;
+              }}
               onClick={() => setActiveTab(tab)}
               className={clsx(
                 'px-3 py-2 text-xs font-medium transition-colors',
@@ -111,12 +119,40 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
 
       {/* Tab content — all tabs rendered eagerly for instant switching */}
       <div className="flex-1 overflow-y-auto">
-        <div className={activeTab === 'Overview' ? '' : 'hidden'}><OverviewTab pr={pr} /></div>
-        <div className={activeTab === 'Commits' ? '' : 'hidden'}><CommitsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
-        <div className={activeTab === 'Files' ? '' : 'hidden'}><FilesTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
-        <div className={activeTab === 'Checks' ? '' : 'hidden'}><ChecksTab checks={pr.checks} /></div>
-        <div className={activeTab === 'Reviews' ? '' : 'hidden'}><ReviewsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
-        <div className={activeTab === 'Comments' ? '' : 'hidden'}><CommentsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
+        <div className={activeTab === 'Overview' ? '' : 'hidden'}>
+          <OverviewTab pr={pr} />
+        </div>
+        <div className={activeTab === 'Commits' ? '' : 'hidden'}>
+          <CommitsTab
+            prNumber={pr.pullRequest.number}
+            repoOwner={pr.pullRequest.repoOwner}
+            repoName={pr.pullRequest.repoName}
+          />
+        </div>
+        <div className={activeTab === 'Files' ? '' : 'hidden'}>
+          <FilesTab
+            prNumber={pr.pullRequest.number}
+            repoOwner={pr.pullRequest.repoOwner}
+            repoName={pr.pullRequest.repoName}
+          />
+        </div>
+        <div className={activeTab === 'Checks' ? '' : 'hidden'}>
+          <ChecksTab checks={pr.checks} />
+        </div>
+        <div className={activeTab === 'Reviews' ? '' : 'hidden'}>
+          <ReviewsTab
+            prNumber={pr.pullRequest.number}
+            repoOwner={pr.pullRequest.repoOwner}
+            repoName={pr.pullRequest.repoName}
+          />
+        </div>
+        <div className={activeTab === 'Comments' ? '' : 'hidden'}>
+          <CommentsTab
+            prNumber={pr.pullRequest.number}
+            repoOwner={pr.pullRequest.repoOwner}
+            repoName={pr.pullRequest.repoName}
+          />
+        </div>
       </div>
     </div>
   );

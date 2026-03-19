@@ -1,25 +1,23 @@
-import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { PullRequestWithChecks, ParsedError } from '@/types';
-import { useSettingsStore } from '@/stores/settings-store';
+import { useCallback } from 'react';
 import {
-  buildFixPrompt,
   buildConflictPrompt,
+  buildFixPrompt,
   buildMonitorPrompt,
-  writePromptFile,
   launchClaude,
+  writePromptFile,
 } from '@/services/claude-launcher';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { ParsedError, PullRequestWithChecks } from '@/types';
 
 export function useClaudeActions() {
   const settings = useSettingsStore((s) => s.settings);
 
   const findRepoSettings = useCallback(
     (owner: string, name: string) => {
-      return settings.repos.find(
-        (r) => r.owner === owner && r.name === name
-      );
+      return settings.repos.find((r) => r.owner === owner && r.name === name);
     },
-    [settings.repos]
+    [settings.repos],
   );
 
   const getOrCreateWorktree = useCallback(
@@ -27,18 +25,17 @@ export function useClaudeActions() {
       const repo = findRepoSettings(owner, name);
       if (!repo?.worktreeBasePath) {
         throw new Error(
-          `No worktree base path configured for ${owner}/${name}. Configure it in Settings → Repos.`
+          `No worktree base path configured for ${owner}/${name}. Configure it in Settings → Repos.`,
         );
       }
 
       // Try to find existing worktree for this branch
-      const worktrees = await invoke<Array<{ path: string; branchName: string; isMainWorktree: boolean }>>(
-        'list_worktrees',
-        { basePath: repo.worktreeBasePath }
-      );
+      const worktrees = await invoke<
+        Array<{ path: string; branchName: string; isMainWorktree: boolean }>
+      >('list_worktrees', { basePath: repo.worktreeBasePath });
 
       const existing = worktrees.find(
-        (w) => w.branchName === branch || w.branchName === `refs/heads/${branch}`
+        (w) => w.branchName === branch || w.branchName === `refs/heads/${branch}`,
       );
       if (existing) return existing.path;
 
@@ -51,7 +48,7 @@ export function useClaudeActions() {
 
       return result;
     },
-    [findRepoSettings]
+    [findRepoSettings],
   );
 
   const fixWithClaude = useCallback(
@@ -60,7 +57,7 @@ export function useClaudeActions() {
       checkName: string,
       errors: ParsedError[],
       changedFiles: string[],
-      rawLog: string
+      rawLog: string,
     ) => {
       const p = pr.pullRequest;
       const repo = findRepoSettings(p.repoOwner, p.repoName);
@@ -71,7 +68,7 @@ export function useClaudeActions() {
       const promptFile = await writePromptFile(prompt);
       await launchClaude(worktreePath, promptFile, `Fix failing check: ${checkName}`);
     },
-    [findRepoSettings, getOrCreateWorktree]
+    [findRepoSettings, getOrCreateWorktree],
   );
 
   const resolveConflicts = useCallback(
@@ -82,7 +79,7 @@ export function useClaudeActions() {
       const promptFile = await writePromptFile(prompt);
       await launchClaude(worktreePath, promptFile, 'Resolve merge conflicts');
     },
-    [getOrCreateWorktree]
+    [getOrCreateWorktree],
   );
 
   const monitorPr = useCallback(
@@ -96,7 +93,7 @@ export function useClaudeActions() {
       const promptFile = await writePromptFile(prompt);
       await launchClaude(worktreePath, promptFile, `Monitor PR #${p.number}`);
     },
-    [findRepoSettings, getOrCreateWorktree]
+    [findRepoSettings, getOrCreateWorktree],
   );
 
   return { fixWithClaude, resolveConflicts, monitorPr };

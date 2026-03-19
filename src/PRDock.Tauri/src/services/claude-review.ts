@@ -10,9 +10,7 @@ export interface GroupedReviews {
 /**
  * Groups Claude review comments by severity.
  */
-export function parseClaudeReviewComments(
-  comments: ClaudeReviewComment[]
-): GroupedReviews {
+export function parseClaudeReviewComments(comments: ClaudeReviewComment[]): GroupedReviews {
   const groups: GroupedReviews = {
     critical: [],
     suggestion: [],

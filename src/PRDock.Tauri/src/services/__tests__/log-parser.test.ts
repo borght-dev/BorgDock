@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parseLogForErrors, preprocessLog } from '../log-parser';
 
 describe('preprocessLog', () => {
@@ -55,22 +55,15 @@ describe('parseLogForErrors', () => {
 
       const errors = parseLogForErrors(log);
       expect(errors).toHaveLength(3);
-      expect(errors.map((e) => e.errorCode)).toEqual([
-        'ASPDEPR002',
-        'NETSDK1100',
-        'CA1234',
-      ]);
+      expect(errors.map((e) => e.errorCode)).toEqual(['ASPDEPR002', 'NETSDK1100', 'CA1234']);
     });
   });
 
   describe('dotnet test failures', () => {
     it('parses failed test names', () => {
-      const log = [
-        '  Failed MyNamespace.MyTest',
-        '    Expected: 1',
-        '    Actual:   2',
-        '',
-      ].join('\n');
+      const log = ['  Failed MyNamespace.MyTest', '    Expected: 1', '    Actual:   2', ''].join(
+        '\n',
+      );
 
       const errors = parseLogForErrors(log);
       expect(errors).toHaveLength(1);
@@ -121,12 +114,8 @@ describe('parseLogForErrors', () => {
       const errors = parseLogForErrors(log);
 
       // Should have summary + failure
-      const playwrightErrors = errors.filter(
-        (e) => e.category === 'Playwright'
-      );
-      const summaryErrors = errors.filter(
-        (e) => e.category === 'PlaywrightSummary'
-      );
+      const playwrightErrors = errors.filter((e) => e.category === 'Playwright');
+      const summaryErrors = errors.filter((e) => e.category === 'PlaywrightSummary');
 
       expect(playwrightErrors).toHaveLength(1);
       expect(playwrightErrors[0]!.filePath).toBe('tests/login.spec.ts');
@@ -138,14 +127,11 @@ describe('parseLogForErrors', () => {
     });
 
     it('skips Playwright parsing without browser tags', () => {
-      const log = [
-        '1 failed',
-        '38 passed',
-      ].join('\n');
+      const log = ['1 failed', '38 passed'].join('\n');
 
       const errors = parseLogForErrors(log);
       const playwrightErrors = errors.filter(
-        (e) => e.category === 'Playwright' || e.category === 'PlaywrightSummary'
+        (e) => e.category === 'Playwright' || e.category === 'PlaywrightSummary',
       );
       expect(playwrightErrors).toHaveLength(0);
     });

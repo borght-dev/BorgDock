@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
 
 /**
@@ -16,7 +16,7 @@ export function useAdoImageAuth(containerRef: RefObject<HTMLElement | null>, htm
     const pat = useSettingsStore.getState().settings.azureDevOps.personalAccessToken;
     if (!pat) return;
 
-    const authHeader = 'Basic ' + btoa(':' + pat);
+    const authHeader = `Basic ${btoa(`:${pat}`)}`;
     const imgs = el.querySelectorAll<HTMLImageElement>('img');
     let cancelled = false;
 

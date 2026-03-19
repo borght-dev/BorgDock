@@ -1,13 +1,13 @@
-export { AdoClient, AdoAuthError, AdoApiError } from './client';
-export { getQueryTree, executeQuery } from './queries';
+export { getAdoAuthHeader } from './auth';
+export { AdoApiError, AdoAuthError, AdoClient } from './client';
+export { executeQuery, getQueryTree } from './queries';
 export {
-  getWorkItems,
-  getWorkItem,
   createWorkItem,
-  updateWorkItem,
   deleteWorkItem,
   downloadAttachment,
   getCurrentUserDisplayName,
+  getWorkItem,
+  getWorkItems,
   getWorkItemTypeStates,
+  updateWorkItem,
 } from './workitems';
-export { getAdoAuthHeader } from './auth';

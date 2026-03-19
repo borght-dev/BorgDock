@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import clsx from 'clsx';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import clsx from 'clsx';
+import { useState } from 'react';
 import type { StatusColor } from './FloatingBadge';
 
 export interface BadgeStyleProps {
@@ -21,7 +21,13 @@ function handleDragMouseDown(e: React.MouseEvent) {
   getCurrentWindow().startDragging();
 }
 
-function ExpandChevron({ isExpanded, onToggleExpand }: { isExpanded?: boolean; onToggleExpand?: () => void }) {
+function ExpandChevron({
+  isExpanded,
+  onToggleExpand,
+}: {
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+}) {
   if (!onToggleExpand) return null;
   return (
     <button
@@ -30,7 +36,7 @@ function ExpandChevron({ isExpanded, onToggleExpand }: { isExpanded?: boolean; o
         'flex items-center justify-center self-stretch px-2 rounded-r-full',
         'border-l border-[var(--color-separator)]',
         'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
-        'hover:bg-[var(--color-surface-hover)] transition-colors'
+        'hover:bg-[var(--color-surface-hover)] transition-colors',
       )}
       onClick={onToggleExpand}
       title={isExpanded ? 'Collapse' : 'Expand PR list'}
@@ -120,9 +126,7 @@ function GlassCapsule({
           className="h-3 w-3 shrink-0 rounded-full"
           style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
         />
-        <span className="text-sm font-bold text-[var(--color-text-primary)]">
-          {totalPrCount}
-        </span>
+        <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
         <div className="h-3 w-px bg-[var(--color-separator)]" />
         <span className="whitespace-nowrap text-[11px] text-[var(--color-text-tertiary)]">
           {statusText}
@@ -137,11 +141,7 @@ function GlassCapsule({
  * MinimalNotch - A small notch/tab at the screen edge.
  * Very minimal: count + colored dot. Narrow (80px), solid background.
  */
-function MinimalNotch({
-  totalPrCount,
-  statusColor,
-  onClick,
-}: BadgeStyleProps) {
+function MinimalNotch({ totalPrCount, statusColor, onClick }: BadgeStyleProps) {
   return (
     <button
       className={clsx(
@@ -156,9 +156,7 @@ function MinimalNotch({
         className="h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
       />
-      <span className="text-xs font-bold text-[var(--color-text-primary)]">
-        {totalPrCount}
-      </span>
+      <span className="text-xs font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
     </button>
   );
 }
@@ -194,12 +192,8 @@ function FloatingIsland({
         className="h-3 w-3 shrink-0 rounded-full"
         style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
       />
-      <span className="text-sm font-bold text-[var(--color-text-primary)]">
-        {totalPrCount}
-      </span>
-      <span className="truncate text-[11px] text-[var(--color-text-tertiary)]">
-        {statusText}
-      </span>
+      <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
+      <span className="truncate text-[11px] text-[var(--color-text-tertiary)]">{statusText}</span>
       {hasDetails && (
         <div className="ml-auto flex items-center gap-1.5">
           {failingCount > 0 && (
@@ -223,11 +217,7 @@ function FloatingIsland({
  * Uses animated border-radius to create a morphing blob effect.
  * Shows count in center.
  */
-function LiquidMorph({
-  totalPrCount,
-  statusColor,
-  onClick,
-}: BadgeStyleProps) {
+function LiquidMorph({ totalPrCount, statusColor, onClick }: BadgeStyleProps) {
   const glowColor = GLOW_MAP[statusColor];
   const dotColor = STATUS_DOT_MAP[statusColor];
 
@@ -250,9 +240,7 @@ function LiquidMorph({
         className="absolute inset-1 rounded-full opacity-20"
         style={{ border: `2px solid ${dotColor}` }}
       />
-      <span className="text-sm font-bold text-[var(--color-text-primary)]">
-        {totalPrCount}
-      </span>
+      <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
       {/* Inline keyframes via style element */}
       <style>{`
         @keyframes liquidMorph {
@@ -301,12 +289,8 @@ function SpectralBar({
           isHovered ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0',
         )}
       >
-        <span className="text-xs font-bold text-[var(--color-text-primary)]">
-          {totalPrCount}
-        </span>
-        <span className="text-[10px] text-[var(--color-text-tertiary)]">
-          {statusText}
-        </span>
+        <span className="text-xs font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
+        <span className="text-[10px] text-[var(--color-text-tertiary)]">{statusText}</span>
         {failingCount > 0 && (
           <span className="text-[10px] font-medium" style={{ color: STATUS_DOT_MAP.red }}>
             {failingCount} failing
@@ -342,4 +326,4 @@ export const badgeStyleMap: Record<string, React.ComponentType<BadgeStyleProps>>
   SpectralBar,
 };
 
-export { GlassCapsule, MinimalNotch, FloatingIsland, LiquidMorph, SpectralBar };
+export { FloatingIsland, GlassCapsule, LiquidMorph, MinimalNotch, SpectralBar };

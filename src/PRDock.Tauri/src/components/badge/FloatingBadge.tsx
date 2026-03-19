@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
 import clsx from 'clsx';
+import { useCallback, useState } from 'react';
 
 export type StatusColor = 'green' | 'red' | 'yellow';
 
@@ -54,17 +54,20 @@ export function FloatingBadge({
 }: FloatingBadgeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const toggleExpanded = useCallback(async (expand?: boolean) => {
-    const next = expand ?? !isExpanded;
-    setIsExpanded(next);
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const size = next ? BADGE_EXPANDED : BADGE_COLLAPSED;
-      await invoke('resize_badge', { width: size.width, height: size.height });
-    } catch {
-      // ignore
-    }
-  }, [isExpanded]);
+  const toggleExpanded = useCallback(
+    async (expand?: boolean) => {
+      const next = expand ?? !isExpanded;
+      setIsExpanded(next);
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const size = next ? BADGE_EXPANDED : BADGE_COLLAPSED;
+        await invoke('resize_badge', { width: size.width, height: size.height });
+      } catch {
+        // ignore
+      }
+    },
+    [isExpanded],
+  );
 
   const glowColor = GLOW_MAP[statusColor];
 
@@ -76,7 +79,7 @@ export function FloatingBadge({
         className={clsx(
           'flex items-center rounded-full cursor-grab active:cursor-grabbing',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-          'animate-[breathe_3s_ease-in-out_infinite]'
+          'animate-[breathe_3s_ease-in-out_infinite]',
         )}
         style={{
           boxShadow: `0 0 20px ${glowColor}, 0 2px 8px rgba(0,0,0,0.08)`,
@@ -111,7 +114,7 @@ export function FloatingBadge({
             'flex items-center justify-center self-stretch px-2 rounded-r-full',
             'border-l border-[var(--color-separator)]',
             'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
-            'hover:bg-[var(--color-surface-hover)] transition-colors'
+            'hover:bg-[var(--color-surface-hover)] transition-colors',
           )}
           onClick={() => toggleExpanded()}
           title={isExpanded ? 'Collapse' : 'Expand PR list'}
@@ -135,7 +138,7 @@ export function FloatingBadge({
         <div
           className={clsx(
             'mt-1 w-[320px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
-            'shadow-lg overflow-hidden'
+            'shadow-lg overflow-hidden',
           )}
         >
           <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
@@ -147,9 +150,7 @@ export function FloatingBadge({
 
           {/* Footer summary */}
           <div className="flex items-center justify-center gap-3 border-t border-[var(--color-separator)] px-3 py-1.5">
-            <span className="text-[10px] text-[var(--color-text-muted)]">
-              {totalPrCount} total
-            </span>
+            <span className="text-[10px] text-[var(--color-text-muted)]">{totalPrCount} total</span>
             {failingCount > 0 && (
               <span className="text-[10px] text-[var(--color-status-red)]">
                 {failingCount} failing
@@ -193,7 +194,10 @@ function PrColumn({
               style={{ backgroundColor: STATUS_DOT_MAP[item.statusColor] }}
             />
             <div className="flex-1 min-w-0">
-              <div className="truncate text-[10px] text-[var(--color-text-primary)]" style={{ maxWidth: 120 }}>
+              <div
+                className="truncate text-[10px] text-[var(--color-text-primary)]"
+                style={{ maxWidth: 120 }}
+              >
                 {item.title}
               </div>
               <div className="text-[9px] text-[var(--color-text-muted)]">

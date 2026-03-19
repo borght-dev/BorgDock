@@ -35,10 +35,7 @@ interface PrState {
   setRateLimit: (rateLimit: RateLimit | null) => void;
 }
 
-function matchesSearch(
-  pr: PullRequestWithChecks,
-  query: string,
-): boolean {
+function matchesSearch(pr: PullRequestWithChecks, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
   const p = pr.pullRequest;
@@ -53,10 +50,7 @@ function matchesSearch(
 }
 
 function isMyPr(pr: PullRequestWithChecks, username: string): boolean {
-  return (
-    username !== '' &&
-    pr.pullRequest.authorLogin.toLowerCase() === username.toLowerCase()
-  );
+  return username !== '' && pr.pullRequest.authorLogin.toLowerCase() === username.toLowerCase();
 }
 
 function isFailing(pr: PullRequestWithChecks): boolean {
@@ -118,16 +112,16 @@ function sortPrs(
     switch (sortBy) {
       case 'updated':
         return (
-          new Date(b.pullRequest.updatedAt).getTime() -
-          new Date(a.pullRequest.updatedAt).getTime()
+          new Date(b.pullRequest.updatedAt).getTime() - new Date(a.pullRequest.updatedAt).getTime()
         );
       case 'created':
         return (
-          new Date(b.pullRequest.createdAt).getTime() -
-          new Date(a.pullRequest.createdAt).getTime()
+          new Date(b.pullRequest.createdAt).getTime() - new Date(a.pullRequest.createdAt).getTime()
         );
       case 'title':
         return a.pullRequest.title.localeCompare(b.pullRequest.title);
+      default:
+        return 0;
     }
   });
 }

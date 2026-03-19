@@ -1,4 +1,4 @@
-import type { CheckSuite, CheckRun } from '@/types';
+import type { CheckRun, CheckSuite } from '@/types';
 import type { GitHubClient } from './client';
 
 // --- GitHub API DTOs ---
@@ -37,10 +37,10 @@ export async function getCheckSuites(
   client: GitHubClient,
   owner: string,
   repo: string,
-  ref: string
+  ref: string,
 ): Promise<CheckSuite[]> {
   const response = await client.get<GitHubCheckSuitesResponse>(
-    `repos/${owner}/${repo}/commits/${ref}/check-suites`
+    `repos/${owner}/${repo}/commits/${ref}/check-suites`,
   );
 
   return response.check_suites.map((dto) => ({
@@ -56,10 +56,10 @@ export async function getCheckRuns(
   client: GitHubClient,
   owner: string,
   repo: string,
-  checkSuiteId: number
+  checkSuiteId: number,
 ): Promise<CheckRun[]> {
   const response = await client.get<GitHubCheckRunsResponse>(
-    `repos/${owner}/${repo}/check-suites/${checkSuiteId}/check-runs`
+    `repos/${owner}/${repo}/check-suites/${checkSuiteId}/check-runs`,
   );
 
   return response.check_runs.map((dto) => ({
@@ -78,10 +78,10 @@ export async function getCheckRunsForRef(
   client: GitHubClient,
   owner: string,
   repo: string,
-  ref: string
+  ref: string,
 ): Promise<CheckRun[]> {
   const response = await client.get<GitHubCheckRunsResponse>(
-    `repos/${owner}/${repo}/commits/${ref}/check-runs`
+    `repos/${owner}/${repo}/commits/${ref}/check-runs`,
   );
 
   return response.check_runs.map((dto) => ({
@@ -100,7 +100,7 @@ export async function getJobLog(
   client: GitHubClient,
   owner: string,
   repo: string,
-  jobId: number
+  jobId: number,
 ): Promise<string> {
   return client.getRaw(`repos/${owner}/${repo}/actions/jobs/${jobId}/logs`);
 }
@@ -109,7 +109,7 @@ export async function rerunWorkflow(
   client: GitHubClient,
   owner: string,
   repo: string,
-  runId: number
+  runId: number,
 ): Promise<void> {
   await client.post(`repos/${owner}/${repo}/actions/runs/${runId}/rerun`, {});
 }

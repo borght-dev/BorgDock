@@ -1,4 +1,4 @@
-import type { PullRequestWithChecks, RepoSettings, ParsedError } from '@/types';
+import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
 
 // Build a fix prompt for Claude Code when checks are failing
 export function buildFixPrompt(
@@ -7,7 +7,7 @@ export function buildFixPrompt(
   errors: ParsedError[],
   changedFiles: string[],
   rawLog: string,
-  repoSettings: RepoSettings
+  repoSettings: RepoSettings,
 ): string {
   const p = pr.pullRequest;
   let prompt = `# Fix Failing Check: ${checkName}\n\n`;
@@ -74,10 +74,7 @@ export function buildConflictPrompt(pr: PullRequestWithChecks): string {
 }
 
 // Build a monitoring prompt for Claude Code
-export function buildMonitorPrompt(
-  pr: PullRequestWithChecks,
-  _repoSettings: RepoSettings
-): string {
+export function buildMonitorPrompt(pr: PullRequestWithChecks, _repoSettings: RepoSettings): string {
   const p = pr.pullRequest;
   let prompt = `# Monitor PR: #${p.number} ${p.title}\n\n`;
   prompt += `## Context\n`;
@@ -109,7 +106,7 @@ export async function writePromptFile(content: string): Promise<string> {
 export async function launchClaude(
   worktreePath: string,
   promptFile: string,
-  message?: string
+  message?: string,
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   await invoke('launch_claude_code', {

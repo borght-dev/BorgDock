@@ -1,9 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { PullRequestWithChecks } from '@/types';
+import {
+  mergePullRequest,
+  postComment,
+  submitReview,
+  toggleDraft,
+} from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
-import { mergePullRequest, toggleDraft, submitReview, postComment } from '@/services/github/mutations';
+import type { PullRequestWithChecks } from '@/types';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
 interface OverviewTabProps {
@@ -30,26 +35,32 @@ function formatAge(dateStr: string): string {
 }
 
 function handleOpenInBrowser(url: string) {
-  import('@tauri-apps/plugin-opener').then(({ openUrl }) => {
-    openUrl(url).catch(console.error);
-  }).catch(() => {
-    window.open(url, '_blank');
-  });
+  import('@tauri-apps/plugin-opener')
+    .then(({ openUrl }) => {
+      openUrl(url).catch(console.error);
+    })
+    .catch(() => {
+      window.open(url, '_blank');
+    });
 }
 
 function handleCopyBranch(branch: string) {
-  import('@tauri-apps/plugin-clipboard-manager').then(({ writeText }) => {
-    writeText(branch).catch(console.error);
-  }).catch(() => {
-    navigator.clipboard.writeText(branch).catch(console.error);
-  });
+  import('@tauri-apps/plugin-clipboard-manager')
+    .then(({ writeText }) => {
+      writeText(branch).catch(console.error);
+    })
+    .catch(() => {
+      navigator.clipboard.writeText(branch).catch(console.error);
+    });
 }
 
 export function OverviewTab({ pr }: OverviewTabProps) {
   const p = pr.pullRequest;
   const [actionStatus, setActionStatus] = useState('');
   const [reviewBody, setReviewBody] = useState('');
-  const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>('COMMENT');
+  const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>(
+    'COMMENT',
+  );
   const [commentBody, setCommentBody] = useState('');
 
   const handleCheckout = useCallback(async () => {
@@ -96,7 +107,14 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     if (!client) return;
     setActionStatus('Submitting review...');
     try {
-      await submitReview(client, p.repoOwner, p.repoName, p.number, reviewEvent, reviewBody || undefined);
+      await submitReview(
+        client,
+        p.repoOwner,
+        p.repoName,
+        p.number,
+        reviewEvent,
+        reviewBody || undefined,
+      );
       setActionStatus('Review submitted!');
       setReviewBody('');
     } catch (err) {
@@ -138,7 +156,15 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           <span className="rounded border border-[var(--color-branch-badge-border)] bg-[var(--color-branch-badge-bg)] px-1.5 py-0.5 font-mono text-[10px]">
             {p.headRef}
           </span>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
             <path d="m5 8 6 0M9 5l3 3-3 3" />
           </svg>
           <span className="rounded border border-[var(--color-target-badge-border)] bg-[var(--color-target-badge-bg)] px-1.5 py-0.5 font-mono text-[10px]">
@@ -149,11 +175,21 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Stats */}
       <div className="flex flex-wrap items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
-        <span title="Additions" className="text-[var(--color-status-green)]">+{p.additions}</span>
-        <span title="Deletions" className="text-[var(--color-status-red)]">-{p.deletions}</span>
-        <span>{p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}</span>
-        <span>{p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}</span>
-        <span>{p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}</span>
+        <span title="Additions" className="text-[var(--color-status-green)]">
+          +{p.additions}
+        </span>
+        <span title="Deletions" className="text-[var(--color-status-red)]">
+          -{p.deletions}
+        </span>
+        <span>
+          {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
+        </span>
+        <span>
+          {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
+        </span>
+        <span>
+          {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* Merge status */}

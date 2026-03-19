@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import clsx from 'clsx';
+import { useState } from 'react';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 import { ReviewCommentCard } from './ReviewCommentCard';
 
@@ -82,10 +82,7 @@ export function ClaudeReviewPanel({ comments }: ClaudeReviewPanelProps) {
               >
                 <path d="m6 4 4 4-4 4" />
               </svg>
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: group.color }}
-              />
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: group.color }} />
               <span className="text-xs font-medium text-[var(--color-text-secondary)]">
                 {group.label}
               </span>

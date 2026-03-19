@@ -1,14 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { ClaudeReviewComment } from '@/types';
 import {
-  parseClaudeReviewComments,
   detectSeverityFromBody,
   getReviewSummary,
+  parseClaudeReviewComments,
 } from '../claude-review';
-import type { ClaudeReviewComment } from '@/types';
 
-function makeComment(
-  overrides: Partial<ClaudeReviewComment> = {}
-): ClaudeReviewComment {
+function makeComment(overrides: Partial<ClaudeReviewComment> = {}): ClaudeReviewComment {
   return {
     id: '1',
     author: 'claude-bot',
@@ -38,35 +36,25 @@ describe('detectSeverityFromBody', () => {
   });
 
   it('detects [suggestion] marker', () => {
-    expect(detectSeverityFromBody('[suggestion] Consider refactoring')).toBe(
-      'suggestion'
-    );
+    expect(detectSeverityFromBody('[suggestion] Consider refactoring')).toBe('suggestion');
   });
 
   it('detects [praise] marker', () => {
-    expect(detectSeverityFromBody('[praise] Clean implementation')).toBe(
-      'praise'
-    );
+    expect(detectSeverityFromBody('[praise] Clean implementation')).toBe('praise');
   });
 
   it('detects bug/vulnerability keywords as critical', () => {
-    expect(detectSeverityFromBody('This has a security issue')).toBe(
-      'critical'
-    );
+    expect(detectSeverityFromBody('This has a security issue')).toBe('critical');
     expect(detectSeverityFromBody('There is a bug here')).toBe('critical');
   });
 
   it('detects praise keywords', () => {
     expect(detectSeverityFromBody('Nice work on this function')).toBe('praise');
-    expect(detectSeverityFromBody('Well done with the refactor')).toBe(
-      'praise'
-    );
+    expect(detectSeverityFromBody('Well done with the refactor')).toBe('praise');
   });
 
   it('detects suggestion keywords', () => {
-    expect(detectSeverityFromBody('Consider using a map here')).toBe(
-      'suggestion'
-    );
+    expect(detectSeverityFromBody('Consider using a map here')).toBe('suggestion');
     expect(detectSeverityFromBody('nit: extra whitespace')).toBe('suggestion');
   });
 

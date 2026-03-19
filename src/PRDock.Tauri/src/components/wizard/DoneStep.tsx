@@ -6,12 +6,10 @@ export function DoneStep() {
         <span className="text-2xl text-[var(--color-status-green)]">&#10003;</span>
       </div>
 
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-        You're all set!
-      </h2>
+      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">You're all set!</h2>
       <p className="text-xs text-[var(--color-text-tertiary)] text-center max-w-xs">
-        PRDock is configured and ready to monitor your pull requests. You can
-        adjust these settings anytime from the gear icon.
+        PRDock is configured and ready to monitor your pull requests. You can adjust these settings
+        anytime from the gear icon.
       </p>
     </div>
   );

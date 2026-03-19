@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { OverallStatus, PullRequestWithChecks, ReviewStatus } from '@/types';
 import { usePrStore } from '../pr-store';
-import type { PullRequestWithChecks, OverallStatus, ReviewStatus } from '@/types';
 
 function makePr(overrides: {
   number?: number;
@@ -111,16 +111,23 @@ describe('pr-store', () => {
     });
 
     it('excludes drafts from "ready"', () => {
-      usePrStore.getState().setPullRequests([
-        makePr({ number: 10, overallStatus: 'green', reviewStatus: 'approved', isDraft: true }),
-      ]);
+      usePrStore
+        .getState()
+        .setPullRequests([
+          makePr({ number: 10, overallStatus: 'green', reviewStatus: 'approved', isDraft: true }),
+        ]);
       usePrStore.getState().setFilter('ready');
       expect(usePrStore.getState().filteredPrs()).toHaveLength(0);
     });
 
     it('excludes unmergeable PRs from "ready"', () => {
       usePrStore.getState().setPullRequests([
-        makePr({ number: 10, overallStatus: 'green', reviewStatus: 'approved', mergeable: false }),
+        makePr({
+          number: 10,
+          overallStatus: 'green',
+          reviewStatus: 'approved',
+          mergeable: false,
+        }),
       ]);
       usePrStore.getState().setFilter('ready');
       expect(usePrStore.getState().filteredPrs()).toHaveLength(0);
@@ -147,8 +154,20 @@ describe('pr-store', () => {
     beforeEach(() => {
       usePrStore.getState().setPullRequests([
         makePr({ number: 1, title: 'Fix login bug', authorLogin: 'alice', headRef: 'fix/login' }),
-        makePr({ number: 2, title: 'Add dashboard', authorLogin: 'bob', headRef: 'add/dashboard', labels: ['enhancement'] }),
-        makePr({ number: 3, title: 'Update README', repoOwner: 'acme', repoName: 'docs', headRef: 'docs/readme' }),
+        makePr({
+          number: 2,
+          title: 'Add dashboard',
+          authorLogin: 'bob',
+          headRef: 'add/dashboard',
+          labels: ['enhancement'],
+        }),
+        makePr({
+          number: 3,
+          title: 'Update README',
+          repoOwner: 'acme',
+          repoName: 'docs',
+          headRef: 'docs/readme',
+        }),
       ]);
     });
 
@@ -201,9 +220,24 @@ describe('pr-store', () => {
 
   describe('sorting', () => {
     const prs = [
-      makePr({ number: 1, title: 'Zebra', updatedAt: '2025-01-01T00:00:00Z', createdAt: '2025-01-03T00:00:00Z' }),
-      makePr({ number: 2, title: 'Alpha', updatedAt: '2025-01-03T00:00:00Z', createdAt: '2025-01-01T00:00:00Z' }),
-      makePr({ number: 3, title: 'Middle', updatedAt: '2025-01-02T00:00:00Z', createdAt: '2025-01-02T00:00:00Z' }),
+      makePr({
+        number: 1,
+        title: 'Zebra',
+        updatedAt: '2025-01-01T00:00:00Z',
+        createdAt: '2025-01-03T00:00:00Z',
+      }),
+      makePr({
+        number: 2,
+        title: 'Alpha',
+        updatedAt: '2025-01-03T00:00:00Z',
+        createdAt: '2025-01-01T00:00:00Z',
+      }),
+      makePr({
+        number: 3,
+        title: 'Middle',
+        updatedAt: '2025-01-02T00:00:00Z',
+        createdAt: '2025-01-02T00:00:00Z',
+      }),
     ];
 
     beforeEach(() => {
@@ -226,28 +260,28 @@ describe('pr-store', () => {
     it('sorts by title alphabetically', () => {
       usePrStore.getState().setSortBy('title');
       const result = usePrStore.getState().filteredPrs();
-      expect(result.map((p) => p.pullRequest.title)).toEqual([
-        'Alpha',
-        'Middle',
-        'Zebra',
-      ]);
+      expect(result.map((p) => p.pullRequest.title)).toEqual(['Alpha', 'Middle', 'Zebra']);
     });
 
     it('sorts user PRs first', () => {
       usePrStore.getState().setUsername('testuser');
-      usePrStore.getState().setPullRequests([
-        makePr({ number: 1, authorLogin: 'other', updatedAt: '2025-01-03T00:00:00Z' }),
-        makePr({ number: 2, authorLogin: 'testuser', updatedAt: '2025-01-01T00:00:00Z' }),
-      ]);
+      usePrStore
+        .getState()
+        .setPullRequests([
+          makePr({ number: 1, authorLogin: 'other', updatedAt: '2025-01-03T00:00:00Z' }),
+          makePr({ number: 2, authorLogin: 'testuser', updatedAt: '2025-01-01T00:00:00Z' }),
+        ]);
       const result = usePrStore.getState().filteredPrs();
       expect(result[0]!.pullRequest.number).toBe(2);
     });
 
     it('sorts drafts after non-drafts', () => {
-      usePrStore.getState().setPullRequests([
-        makePr({ number: 1, isDraft: true, updatedAt: '2025-01-03T00:00:00Z' }),
-        makePr({ number: 2, isDraft: false, updatedAt: '2025-01-01T00:00:00Z' }),
-      ]);
+      usePrStore
+        .getState()
+        .setPullRequests([
+          makePr({ number: 1, isDraft: true, updatedAt: '2025-01-03T00:00:00Z' }),
+          makePr({ number: 2, isDraft: false, updatedAt: '2025-01-01T00:00:00Z' }),
+        ]);
       const result = usePrStore.getState().filteredPrs();
       expect(result[0]!.pullRequest.number).toBe(2);
     });
@@ -255,11 +289,13 @@ describe('pr-store', () => {
 
   describe('grouping', () => {
     it('groups PRs by owner/repo', () => {
-      usePrStore.getState().setPullRequests([
-        makePr({ number: 1, repoOwner: 'acme', repoName: 'api' }),
-        makePr({ number: 2, repoOwner: 'acme', repoName: 'web' }),
-        makePr({ number: 3, repoOwner: 'acme', repoName: 'api' }),
-      ]);
+      usePrStore
+        .getState()
+        .setPullRequests([
+          makePr({ number: 1, repoOwner: 'acme', repoName: 'api' }),
+          makePr({ number: 2, repoOwner: 'acme', repoName: 'web' }),
+          makePr({ number: 3, repoOwner: 'acme', repoName: 'api' }),
+        ]);
       const groups = usePrStore.getState().groupedByRepo();
       expect(groups.size).toBe(2);
       expect(groups.get('acme/api')).toHaveLength(2);
@@ -268,10 +304,12 @@ describe('pr-store', () => {
 
     it('sorts groups with user PRs first', () => {
       usePrStore.getState().setUsername('me');
-      usePrStore.getState().setPullRequests([
-        makePr({ number: 1, repoOwner: 'a', repoName: 'first', authorLogin: 'other' }),
-        makePr({ number: 2, repoOwner: 'z', repoName: 'last', authorLogin: 'me' }),
-      ]);
+      usePrStore
+        .getState()
+        .setPullRequests([
+          makePr({ number: 1, repoOwner: 'a', repoName: 'first', authorLogin: 'other' }),
+          makePr({ number: 2, repoOwner: 'z', repoName: 'last', authorLogin: 'me' }),
+        ]);
       const groups = usePrStore.getState().groupedByRepo();
       const keys = [...groups.keys()];
       expect(keys[0]).toBe('z/last');
@@ -283,13 +321,21 @@ describe('pr-store', () => {
     it('returns correct counts per filter', () => {
       usePrStore.getState().setUsername('me');
       usePrStore.getState().setPullRequests([
-        makePr({ number: 1, authorLogin: 'me', overallStatus: 'green', reviewStatus: 'approved' }),
+        makePr({
+          number: 1,
+          authorLogin: 'me',
+          overallStatus: 'green',
+          reviewStatus: 'approved',
+        }),
         makePr({ number: 2, authorLogin: 'other', overallStatus: 'red' }),
-        makePr({ number: 3, authorLogin: 'other', overallStatus: 'yellow', reviewStatus: 'pending' }),
+        makePr({
+          number: 3,
+          authorLogin: 'other',
+          overallStatus: 'yellow',
+          reviewStatus: 'pending',
+        }),
       ]);
-      usePrStore.getState().setClosedPullRequests([
-        makePr({ number: 99 }),
-      ]);
+      usePrStore.getState().setClosedPullRequests([makePr({ number: 99 })]);
       const counts = usePrStore.getState().counts();
       expect(counts.all).toBe(3);
       expect(counts.mine).toBe(1);

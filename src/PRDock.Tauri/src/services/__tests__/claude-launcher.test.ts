@@ -1,14 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import {
-  buildFixPrompt,
-  buildConflictPrompt,
-  buildMonitorPrompt,
-} from '../claude-launcher';
-import type { PullRequestWithChecks, ParsedError, RepoSettings } from '@/types';
+import { describe, expect, it } from 'vitest';
+import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
+import { buildConflictPrompt, buildFixPrompt, buildMonitorPrompt } from '../claude-launcher';
 
-function makePrWithChecks(
-  overrides: Partial<PullRequestWithChecks> = {}
-): PullRequestWithChecks {
+function makePrWithChecks(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
   return {
     pullRequest: {
       number: 42,
@@ -43,9 +37,7 @@ function makePrWithChecks(
   };
 }
 
-function makeRepoSettings(
-  overrides: Partial<RepoSettings> = {}
-): RepoSettings {
+function makeRepoSettings(overrides: Partial<RepoSettings> = {}): RepoSettings {
   return {
     owner: 'owner',
     name: 'repo',
@@ -79,40 +71,19 @@ function makeErrors(): ParsedError[] {
 
 describe('buildFixPrompt', () => {
   it('includes the check name in the title', () => {
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'ci/build',
-      [],
-      [],
-      '',
-      makeRepoSettings()
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'ci/build', [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('# Fix Failing Check: ci/build');
   });
 
   it('includes PR number and title', () => {
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'build',
-      [],
-      [],
-      '',
-      makeRepoSettings()
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('#42 Fix login flow');
   });
 
   it('includes branch names', () => {
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'build',
-      [],
-      [],
-      '',
-      makeRepoSettings()
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('fix/login');
     expect(prompt).toContain('main');
@@ -121,14 +92,7 @@ describe('buildFixPrompt', () => {
 
   it('includes parsed errors with file paths and line numbers', () => {
     const errors = makeErrors();
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'build',
-      errors,
-      [],
-      '',
-      makeRepoSettings()
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'build', errors, [], '', makeRepoSettings());
 
     expect(prompt).toContain('src/auth.ts:42');
     expect(prompt).toContain('Property does not exist on type');
@@ -146,7 +110,7 @@ describe('buildFixPrompt', () => {
       [],
       changedFiles,
       '',
-      makeRepoSettings()
+      makeRepoSettings(),
     );
 
     expect(prompt).toContain('## Changed Files in This PR');
@@ -158,14 +122,7 @@ describe('buildFixPrompt', () => {
     const logLines = Array.from({ length: 300 }, (_, i) => `log line ${i + 1}`);
     const rawLog = logLines.join('\n');
 
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'build',
-      [],
-      [],
-      rawLog,
-      makeRepoSettings()
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], rawLog, makeRepoSettings());
 
     expect(prompt).toContain('## Raw Log (last 200 lines)');
     expect(prompt).toContain('log line 101');
@@ -178,35 +135,19 @@ describe('buildFixPrompt', () => {
       fixPromptTemplate: 'Always run `npm test` after making changes.',
     });
 
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'build',
-      [],
-      [],
-      '',
-      repoSettings
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', repoSettings);
 
     expect(prompt).toContain('## Additional Instructions');
-    expect(prompt).toContain(
-      'Always run `npm test` after making changes.'
-    );
+    expect(prompt).toContain('Always run `npm test` after making changes.');
   });
 
   it('includes task instructions', () => {
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      'build',
-      [],
-      [],
-      '',
-      makeRepoSettings()
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('## Task');
     expect(prompt).toContain('Fix the failing check "build"');
     expect(prompt).toContain(
-      'Focus only on errors that are relevant to the files changed in this PR'
+      'Focus only on errors that are relevant to the files changed in this PR',
     );
   });
 });
@@ -238,10 +179,7 @@ describe('buildConflictPrompt', () => {
 
 describe('buildMonitorPrompt', () => {
   it('includes PR number and title', () => {
-    const prompt = buildMonitorPrompt(
-      makePrWithChecks(),
-      makeRepoSettings()
-    );
+    const prompt = buildMonitorPrompt(makePrWithChecks(), makeRepoSettings());
 
     expect(prompt).toContain('#42 Fix login flow');
   });
@@ -249,17 +187,14 @@ describe('buildMonitorPrompt', () => {
   it('includes current status', () => {
     const prompt = buildMonitorPrompt(
       makePrWithChecks({ overallStatus: 'red' }),
-      makeRepoSettings()
+      makeRepoSettings(),
     );
 
     expect(prompt).toContain('**Status:** red');
   });
 
   it('includes monitoring instructions', () => {
-    const prompt = buildMonitorPrompt(
-      makePrWithChecks(),
-      makeRepoSettings()
-    );
+    const prompt = buildMonitorPrompt(makePrWithChecks(), makeRepoSettings());
 
     expect(prompt).toContain('Monitor this PR for any issues');
     expect(prompt).toContain('New check failures');

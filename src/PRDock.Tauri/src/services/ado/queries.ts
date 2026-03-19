@@ -21,20 +21,13 @@ interface AdoQueryExecuteResponse {
 }
 
 export async function getQueryTree(client: AdoClient): Promise<AdoQuery[]> {
-  const response = await client.get<AdoQueryListResponse>(
-    'wit/queries?$depth=2&$expand=minimal'
-  );
+  const response = await client.get<AdoQueryListResponse>('wit/queries?$depth=2&$expand=minimal');
 
   return (response.value ?? []).map(mapToAdoQuery);
 }
 
-export async function executeQuery(
-  client: AdoClient,
-  queryId: string
-): Promise<WorkItem[]> {
-  const response = await client.get<AdoQueryExecuteResponse>(
-    `wit/wiql/${queryId}`
-  );
+export async function executeQuery(client: AdoClient, queryId: string): Promise<WorkItem[]> {
+  const response = await client.get<AdoQueryExecuteResponse>(`wit/wiql/${queryId}`);
 
   const ids = (response.workItems ?? []).map((w) => w.id);
   if (ids.length === 0) return [];

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AdoClient, AdoAuthError, AdoApiError } from '../client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AdoApiError, AdoAuthError, AdoClient } from '../client';
 
 describe('AdoClient retry', () => {
   let fetchSpy: ReturnType<typeof vi.fn>;

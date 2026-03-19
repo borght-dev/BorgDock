@@ -8,7 +8,12 @@ interface PositionStepProps {
   onThemeChange: (theme: ThemeMode) => void;
 }
 
-export function PositionStep({ sidebarEdge, theme, onEdgeChange, onThemeChange }: PositionStepProps) {
+export function PositionStep({
+  sidebarEdge,
+  theme,
+  onEdgeChange,
+  onThemeChange,
+}: PositionStepProps) {
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="text-center">
@@ -33,7 +38,7 @@ export function PositionStep({ sidebarEdge, theme, onEdgeChange, onThemeChange }
                 'flex-1 flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-all',
                 sidebarEdge === edge
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)]'
-                  : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]'
+                  : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]',
               )}
               onClick={() => onEdgeChange(edge)}
             >
@@ -73,7 +78,7 @@ export function PositionStep({ sidebarEdge, theme, onEdgeChange, onThemeChange }
                 'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
                 theme === t
                   ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
               )}
               onClick={() => onThemeChange(t)}
             >

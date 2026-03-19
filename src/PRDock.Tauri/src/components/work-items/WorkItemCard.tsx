@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
 import clsx from 'clsx';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WorktreeInfo } from '../../types';
 
 export interface WorkItemCardData {
@@ -39,10 +39,8 @@ const TYPE_LETTERS: Record<string, string> = {
 function stateColor(state: string): string {
   const s = state.toLowerCase();
   if (s === 'new') return 'var(--color-accent)';
-  if (['active', 'committed', 'in progress'].includes(s))
-    return 'var(--color-accent)';
-  if (['resolved', 'done', 'closed'].includes(s))
-    return 'var(--color-status-green)';
+  if (['active', 'committed', 'in progress'].includes(s)) return 'var(--color-accent)';
+  if (['resolved', 'done', 'closed'].includes(s)) return 'var(--color-status-green)';
   if (s === 'removed') return 'var(--color-status-gray)';
   return 'var(--color-status-yellow)';
 }
@@ -77,13 +75,10 @@ export function WorkItemCard({
   } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setContextMenu({ x: e.clientX, y: e.clientY });
-    },
-    []
-  );
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -111,7 +106,7 @@ export function WorkItemCard({
               ? 'border-[var(--color-tracked-border)] bg-[var(--color-tracked-soft)]'
               : item.isSelected
                 ? 'border-[var(--color-accent)] bg-[var(--color-selected-row-bg)]'
-                : 'border-[var(--color-card-border)] bg-[var(--color-card-background)] hover:bg-[var(--color-surface-hover)]'
+                : 'border-[var(--color-card-border)] bg-[var(--color-card-background)] hover:bg-[var(--color-surface-hover)]',
         )}
         onClick={() => onSelect(item.id)}
         onContextMenu={handleContextMenu}
@@ -162,7 +157,7 @@ export function WorkItemCard({
                 'flex gap-1',
                 !item.isTracked &&
                   !item.isWorkingOn &&
-                  'opacity-0 transition-opacity group-hover/card:opacity-100'
+                  'opacity-0 transition-opacity group-hover/card:opacity-100',
               )}
             >
               <button
@@ -171,34 +166,44 @@ export function WorkItemCard({
                   'rounded p-1 transition-colors',
                   item.isTracked
                     ? 'text-[var(--color-tracked-border)]'
-                    : 'text-[var(--color-text-ghost)] hover:text-[var(--color-tracked-border)]'
+                    : 'text-[var(--color-text-ghost)] hover:text-[var(--color-tracked-border)]',
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleTracked(item.id);
                 }}
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill={item.isTracked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.3">
+                <svg
+                  className="h-3.5 w-3.5"
+                  viewBox="0 0 16 16"
+                  fill={item.isTracked ? 'currentColor' : 'none'}
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                >
                   <path d="M8 1.5C4.5 1.5 1.5 8 1.5 8s3 6.5 6.5 6.5S14.5 8 14.5 8s-3-6.5-6.5-6.5z" />
                   <circle cx="8" cy="8" r="2.5" />
                 </svg>
               </button>
               <button
-                title={
-                  item.isWorkingOn ? 'Stop working on' : 'Mark as working on'
-                }
+                title={item.isWorkingOn ? 'Stop working on' : 'Mark as working on'}
                 className={clsx(
                   'rounded p-1 transition-colors',
                   item.isWorkingOn
                     ? 'text-[var(--color-working-on-border)]'
-                    : 'text-[var(--color-text-ghost)] hover:text-[var(--color-working-on-border)]'
+                    : 'text-[var(--color-text-ghost)] hover:text-[var(--color-working-on-border)]',
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleWorkingOn(item.id);
                 }}
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <svg
+                  className="h-3.5 w-3.5"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                >
                   <path d="M2 5l3.5 3.5L14 2" strokeLinecap="round" strokeLinejoin="round" />
                   {item.isWorkingOn && (
                     <path d="M2 10l3.5 3.5L14 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -270,7 +275,7 @@ export function WorkItemCard({
                     'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)]',
                     wt.path === item.worktreePath
                       ? 'text-[var(--color-accent)]'
-                      : 'text-[var(--color-text-secondary)]'
+                      : 'text-[var(--color-text-secondary)]',
                   )}
                   onClick={() => {
                     onAssignWorktree(item.id, wt.path);
@@ -278,13 +283,17 @@ export function WorkItemCard({
                   }}
                 >
                   {wt.path === item.worktreePath && (
-                    <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="h-3 w-3 shrink-0"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M3 8l3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
-                  <span className="truncate font-mono text-[12px]">
-                    {wt.branchName || wt.path}
-                  </span>
+                  <span className="truncate font-mono text-[12px]">{wt.branchName || wt.path}</span>
                 </button>
               ))}
             </>

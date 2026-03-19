@@ -1,11 +1,7 @@
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WebviewWindow};
+use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 #[tauri::command]
-pub fn position_sidebar(
-    app: tauri::AppHandle,
-    edge: String,
-    width: u32,
-) -> Result<(), String> {
+pub fn position_sidebar(app: tauri::AppHandle, edge: String, width: u32) -> Result<(), String> {
     let win = get_main_window(&app)?;
     apply_sidebar_position(&win, &edge, width)
 }
@@ -48,12 +44,15 @@ pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
             let _ = badge_win.set_position(tauri::Position::Physical(
                 tauri::PhysicalPosition::new(x, y),
             ));
-            let _ = badge_win.set_size(tauri::Size::Physical(
-                tauri::PhysicalSize::new(badge_width, badge_height),
-            ));
+            let _ = badge_win.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+                badge_width,
+                badge_height,
+            )));
         }
         badge_win.show().map_err(|e| e.to_string())?;
-        badge_win.set_always_on_top(true).map_err(|e| e.to_string())?;
+        badge_win
+            .set_always_on_top(true)
+            .map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -64,7 +63,12 @@ pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
 ///           `"auto"` grows upward only if the window would go off-screen.
 /// Returns `"up"` if the window grew/anchored upward, `"down"` otherwise.
 #[tauri::command]
-pub fn resize_badge(app: tauri::AppHandle, width: u32, height: u32, anchor: Option<String>) -> Result<String, String> {
+pub fn resize_badge(
+    app: tauri::AppHandle,
+    width: u32,
+    height: u32,
+    anchor: Option<String>,
+) -> Result<String, String> {
     let mut direction = "down".to_string();
     let anchor = anchor.unwrap_or_else(|| "auto".to_string());
 
@@ -150,17 +154,13 @@ pub fn open_pr_detail_window(
         number
     );
 
-    WebviewWindowBuilder::new(
-        &app,
-        &label,
-        WebviewUrl::App(url_str.into()),
-    )
-    .title(format!("PR #{} - {}/{}", number, owner, repo))
-    .inner_size(800.0, 900.0)
-    .decorations(true)
-    .resizable(true)
-    .build()
-    .map_err(|e| e.to_string())?;
+    WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url_str.into()))
+        .title(format!("PR #{} - {}/{}", number, owner, repo))
+        .inner_size(800.0, 900.0)
+        .decorations(true)
+        .resizable(true)
+        .build()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -170,11 +170,7 @@ fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
         .ok_or_else(|| "Main window not found".to_string())
 }
 
-fn apply_sidebar_position(
-    win: &WebviewWindow,
-    edge: &str,
-    width: u32,
-) -> Result<(), String> {
+fn apply_sidebar_position(win: &WebviewWindow, edge: &str, width: u32) -> Result<(), String> {
     let monitor = win
         .current_monitor()
         .map_err(|e| e.to_string())?
@@ -192,10 +188,16 @@ fn apply_sidebar_position(
         _ => screen_pos.x + (screen_size.width as i32 - physical_width as i32),
     };
 
-    win.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, screen_pos.y)))
-        .map_err(|e| e.to_string())?;
-    win.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(physical_width, height)))
-        .map_err(|e| e.to_string())?;
+    win.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
+        x,
+        screen_pos.y,
+    )))
+    .map_err(|e| e.to_string())?;
+    win.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+        physical_width,
+        height,
+    )))
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }

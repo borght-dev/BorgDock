@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { PullRequestFileChange } from '@/types';
 
 interface FilesTabProps {
@@ -9,18 +9,25 @@ interface FilesTabProps {
 
 function fileIcon(status: string): string {
   switch (status) {
-    case 'added': return '+';
-    case 'removed': return '-';
-    case 'renamed': return 'R';
-    default: return 'M';
+    case 'added':
+      return '+';
+    case 'removed':
+      return '-';
+    case 'renamed':
+      return 'R';
+    default:
+      return 'M';
   }
 }
 
 function fileIconColor(status: string): string {
   switch (status) {
-    case 'added': return 'var(--color-status-green)';
-    case 'removed': return 'var(--color-status-red)';
-    default: return 'var(--color-text-muted)';
+    case 'added':
+      return 'var(--color-status-green)';
+    case 'removed':
+      return 'var(--color-status-red)';
+    default:
+      return 'var(--color-text-muted)';
   }
 }
 
@@ -45,14 +52,19 @@ export function FilesTab({ prNumber, repoOwner, repoName }: FilesTabProps) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [prNumber, repoOwner, repoName]);
 
   if (loading) {
     return (
       <div className="space-y-2 p-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-5 w-full rounded bg-[var(--color-surface-raised)] animate-pulse" />
+          <div
+            key={i}
+            className="h-5 w-full rounded bg-[var(--color-surface-raised)] animate-pulse"
+          />
         ))}
       </div>
     );

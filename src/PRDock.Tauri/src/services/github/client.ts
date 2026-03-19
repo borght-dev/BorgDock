@@ -40,15 +40,13 @@ export class GitHubClient {
     }
 
     if (response.status === 401 || response.status === 403) {
-      throw new GitHubAuthError(
-        `GitHub API authentication failed (${response.status}).`
-      );
+      throw new GitHubAuthError(`GitHub API authentication failed (${response.status}).`);
     }
 
     if (!response.ok) {
       throw new GitHubApiError(
         `GitHub API error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
@@ -71,7 +69,7 @@ export class GitHubClient {
     if (!response.ok) {
       throw new GitHubApiError(
         `GitHub API error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
@@ -98,7 +96,7 @@ export class GitHubClient {
     if (!response.ok) {
       throw new GitHubApiError(
         `GitHub API error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
@@ -125,7 +123,7 @@ export class GitHubClient {
     if (!response.ok) {
       throw new GitHubApiError(
         `GitHub API error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
@@ -150,16 +148,13 @@ export class GitHubClient {
     if (!response.ok) {
       throw new GitHubApiError(
         `GitHub GraphQL error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
     const result = await response.json();
     if (result.errors?.length > 0) {
-      throw new GitHubApiError(
-        `GraphQL error: ${result.errors[0].message}`,
-        422
-      );
+      throw new GitHubApiError(`GraphQL error: ${result.errors[0].message}`, 422);
     }
 
     return result.data as T;
@@ -167,7 +162,7 @@ export class GitHubClient {
 
   private async fetchWithRetry(
     url: string,
-    extraHeaders?: Record<string, string>
+    extraHeaders?: Record<string, string>,
   ): Promise<Response> {
     const maxRetries = 3;
     const baseDelay = 1000;
@@ -195,10 +190,7 @@ export class GitHubClient {
         if (response.status === 403 && this.rateLimit.remaining === 0) {
           const resetTime = this.rateLimit.reset;
           if (resetTime && attempt < maxRetries) {
-            const waitMs = Math.max(
-              0,
-              resetTime.getTime() - Date.now()
-            );
+            const waitMs = Math.max(0, resetTime.getTime() - Date.now());
             const cappedWait = Math.min(waitMs, 120_000);
             await sleep(cappedWait);
             continue;
@@ -217,7 +209,7 @@ export class GitHubClient {
         if (attempt === maxRetries) {
           throw error;
         }
-        const delay = baseDelay * Math.pow(2, attempt);
+        const delay = baseDelay * 2 ** attempt;
         await sleep(delay);
       }
     }
@@ -229,19 +221,19 @@ export class GitHubClient {
     const remaining = response.headers.get('X-RateLimit-Remaining');
     if (remaining) {
       const val = parseInt(remaining, 10);
-      if (!isNaN(val)) this.rateLimit.remaining = val;
+      if (!Number.isNaN(val)) this.rateLimit.remaining = val;
     }
 
     const limit = response.headers.get('X-RateLimit-Limit');
     if (limit) {
       const val = parseInt(limit, 10);
-      if (!isNaN(val)) this.rateLimit.total = val;
+      if (!Number.isNaN(val)) this.rateLimit.total = val;
     }
 
     const reset = response.headers.get('X-RateLimit-Reset');
     if (reset) {
       const val = parseInt(reset, 10);
-      if (!isNaN(val)) this.rateLimit.reset = new Date(val * 1000);
+      if (!Number.isNaN(val)) this.rateLimit.reset = new Date(val * 1000);
     }
   }
 }
@@ -266,24 +258,20 @@ function isTransient(status: number): boolean {
   return TRANSIENT_STATUS_CODES.has(status);
 }
 
-function getRetryDelay(
-  attempt: number,
-  response: Response,
-  baseDelay: number
-): number {
+function getRetryDelay(attempt: number, response: Response, baseDelay: number): number {
   const retryAfter = response.headers.get('Retry-After');
   if (retryAfter) {
     const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds)) {
+    if (!Number.isNaN(seconds)) {
       return Math.min(seconds * 1000, 120_000);
     }
     const date = new Date(retryAfter);
-    if (!isNaN(date.getTime())) {
+    if (!Number.isNaN(date.getTime())) {
       const wait = date.getTime() - Date.now();
       return Math.min(Math.max(wait, 0), 120_000);
     }
   }
-  return baseDelay * Math.pow(2, attempt);
+  return baseDelay * 2 ** attempt;
 }
 
 function sleep(ms: number): Promise<void> {

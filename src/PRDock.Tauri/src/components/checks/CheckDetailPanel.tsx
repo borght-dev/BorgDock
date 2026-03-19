@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { CheckRun, ParsedError } from '@/types';
-import { ParsedErrorCard } from './ParsedErrorCard';
 import { LogViewer } from './LogViewer';
+import { ParsedErrorCard } from './ParsedErrorCard';
 
 interface CheckDetailPanelProps {
   checkRuns: CheckRun[];
@@ -62,9 +62,7 @@ export function CheckDetailPanel({
                 No parsed errors for this check run.
               </p>
             ) : (
-              parsedErrors.map((error, i) => (
-                <ParsedErrorCard key={i} error={error} />
-              ))
+              parsedErrors.map((error, i) => <ParsedErrorCard key={i} error={error} />)
             )}
           </div>
         )}

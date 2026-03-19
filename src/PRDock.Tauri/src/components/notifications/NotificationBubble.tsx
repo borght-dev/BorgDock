@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
 import clsx from 'clsx';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InAppNotification, NotificationSeverity } from '@/types';
 
 const SEVERITY_STYLES: Record<
@@ -83,7 +83,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
       className={clsx(
         'w-[360px] rounded-xl overflow-hidden shadow-lg transition-transform duration-300',
         'bg-[var(--color-card-background)] border border-[var(--color-card-border)]',
-        isVisible ? 'translate-x-0' : 'translate-x-[400px]'
+        isVisible ? 'translate-x-0' : 'translate-x-[400px]',
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -124,7 +124,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
                       'rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors',
                       i === 0
                         ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90'
-                        : 'bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)]'
+                        : 'bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)]',
                     )}
                     onClick={onDismiss}
                   >

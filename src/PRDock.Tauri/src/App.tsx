@@ -1,26 +1,26 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useCallback, useEffect, useMemo } from 'react';
+import { CommandPalette } from '@/components/command-palette/CommandPalette';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
+import { PullRequestList } from '@/components/pr/PullRequestList';
+import { SettingsFlyout } from '@/components/settings/SettingsFlyout';
+import { SetupWizard } from '@/components/wizard/SetupWizard';
+import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
+import { useAdoPolling } from '@/hooks/useAdoPolling';
+import { useAutoHide } from '@/hooks/useAutoHide';
+import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { useBadgeSync } from '@/hooks/useBadgeSync';
+import { useCacheInit } from '@/hooks/useCacheInit';
+import { useGitHubPolling } from '@/hooks/useGitHubPolling';
+import { useKeyboardNav } from '@/hooks/useKeyboardNav';
+import { useRunAtStartup } from '@/hooks/useRunAtStartup';
+import { useStateTransitions } from '@/hooks/useStateTransitions';
+import { useTheme } from '@/hooks/useTheme';
+import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { RepoSettings } from '@/types';
-import { useTheme } from '@/hooks/useTheme';
-import { useGitHubPolling } from '@/hooks/useGitHubPolling';
-import { useAdoPolling } from '@/hooks/useAdoPolling';
-import { useCacheInit } from '@/hooks/useCacheInit';
-import { useStateTransitions } from '@/hooks/useStateTransitions';
-import { useBadgeSync } from '@/hooks/useBadgeSync';
-import { useAutoHide } from '@/hooks/useAutoHide';
-import { useKeyboardNav } from '@/hooks/useKeyboardNav';
-import { useAutoUpdate } from '@/hooks/useAutoUpdate';
-import { useRunAtStartup } from '@/hooks/useRunAtStartup';
-import { SetupWizard } from '@/components/wizard/SetupWizard';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { PullRequestList } from '@/components/pr/PullRequestList';
-import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
-import { SettingsFlyout } from '@/components/settings/SettingsFlyout';
-import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
-import { CommandPalette } from '@/components/command-palette/CommandPalette';
-import { usePrStore } from '@/stores/pr-store';
-import { invoke } from '@tauri-apps/api/core';
 
 export default function App() {
   const { settings, isLoading, loadSettings } = useSettingsStore();
@@ -101,8 +101,8 @@ export default function App() {
         .replace(/\bWin\b/gi, 'Super')
         .replace(/\bMeta\b/gi, 'Super')
         .replace(/\bCmd\b/gi, 'Super');
-      invoke('register_hotkey', { shortcut }).catch(
-        (err) => console.error('Failed to register hotkey:', err)
+      invoke('register_hotkey', { shortcut }).catch((err) =>
+        console.error('Failed to register hotkey:', err),
       );
     }
     return () => {
@@ -133,7 +133,6 @@ export default function App() {
     })();
     return () => unlisten?.();
   }, []);
-
 
   // Loading state
   if (isLoading) {

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { NotificationBubble } from './NotificationBubble';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InAppNotification } from '@/types';
+import { NotificationBubble } from './NotificationBubble';
 
 const MAX_VISIBLE = 3;
 const QUEUE_DELAY_MS = 300;
@@ -15,7 +15,10 @@ interface NotificationManagerProps {
   onClearNotification: (index: number) => void;
 }
 
-export function NotificationManager({ notifications, onClearNotification }: NotificationManagerProps) {
+export function NotificationManager({
+  notifications,
+  onClearNotification,
+}: NotificationManagerProps) {
   const [active, setActive] = useState<ActiveNotification[]>([]);
   const nextIdRef = useRef(0);
   const processedRef = useRef(0);
@@ -44,12 +47,10 @@ export function NotificationManager({ notifications, onClearNotification }: Noti
   const handleDismiss = useCallback(
     (id: number) => {
       setActive((prev) => prev.filter((n) => n.id !== id));
-      const index = notifications.findIndex(
-        (_, i) => i === active.findIndex((a) => a.id === id)
-      );
+      const index = notifications.findIndex((_, i) => i === active.findIndex((a) => a.id === id));
       if (index >= 0) onClearNotification(index);
     },
-    [notifications, active, onClearNotification]
+    [notifications, active, onClearNotification],
   );
 
   if (active.length === 0) return null;

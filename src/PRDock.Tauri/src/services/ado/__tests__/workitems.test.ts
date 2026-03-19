@@ -1,6 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getWorkItems, getWorkItem, createWorkItem, updateWorkItem, deleteWorkItem } from '../workitems';
-import { AdoClient } from '../client';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AdoClient } from '../client';
+import {
+  createWorkItem,
+  deleteWorkItem,
+  getWorkItem,
+  getWorkItems,
+  updateWorkItem,
+} from '../workitems';
 
 function createMockClient() {
   return {
@@ -53,9 +59,7 @@ describe('getWorkItems', () => {
     expect(item.id).toBe(123);
     expect(item.fields['System.Title']).toBe('Fix the bug');
 
-    expect(client.get).toHaveBeenCalledWith(
-      'wit/workitems?ids=123&$expand=relations'
-    );
+    expect(client.get).toHaveBeenCalledWith('wit/workitems?ids=123&$expand=relations');
   });
 
   it('batches requests in groups of 200', async () => {
@@ -89,9 +93,7 @@ describe('getWorkItem', () => {
     const result = await getWorkItem(client, 123);
 
     expect(result.id).toBe(123);
-    expect(client.get).toHaveBeenCalledWith(
-      'wit/workitems/123?$expand=relations'
-    );
+    expect(client.get).toHaveBeenCalledWith('wit/workitems/123?$expand=relations');
   });
 });
 
@@ -100,9 +102,7 @@ describe('createWorkItem', () => {
     const client = createMockClient();
     vi.mocked(client.patch).mockResolvedValueOnce(fakeWorkItem);
 
-    const fields = [
-      { op: 'add', path: '/fields/System.Title', value: 'Fix the bug' },
-    ];
+    const fields = [{ op: 'add', path: '/fields/System.Title', value: 'Fix the bug' }];
 
     const result = await createWorkItem(client, 'Bug', fields);
 
@@ -110,7 +110,7 @@ describe('createWorkItem', () => {
     expect(client.patch).toHaveBeenCalledWith(
       'wit/workitems/$Bug',
       fields,
-      'application/json-patch+json'
+      'application/json-patch+json',
     );
   });
 
@@ -123,7 +123,7 @@ describe('createWorkItem', () => {
     expect(client.patch).toHaveBeenCalledWith(
       'wit/workitems/$User%20Story',
       [],
-      'application/json-patch+json'
+      'application/json-patch+json',
     );
   });
 });
@@ -131,12 +131,13 @@ describe('createWorkItem', () => {
 describe('updateWorkItem', () => {
   it('updates a work item with patch operations', async () => {
     const client = createMockClient();
-    const updatedItem = { ...fakeWorkItem, fields: { ...fakeWorkItem.fields, 'System.State': 'Resolved' } };
+    const updatedItem = {
+      ...fakeWorkItem,
+      fields: { ...fakeWorkItem.fields, 'System.State': 'Resolved' },
+    };
     vi.mocked(client.patch).mockResolvedValueOnce(updatedItem);
 
-    const operations = [
-      { op: 'replace', path: '/fields/System.State', value: 'Resolved' },
-    ];
+    const operations = [{ op: 'replace', path: '/fields/System.State', value: 'Resolved' }];
 
     const result = await updateWorkItem(client, 123, operations);
 
@@ -144,7 +145,7 @@ describe('updateWorkItem', () => {
     expect(client.patch).toHaveBeenCalledWith(
       'wit/workitems/123',
       operations,
-      'application/json-patch+json'
+      'application/json-patch+json',
     );
   });
 });

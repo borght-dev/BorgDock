@@ -1,62 +1,55 @@
 export type {
-  AppSettings,
-  GitHubSettings,
-  RepoSettings,
-  UiSettings,
-  NotificationSettings,
-  ClaudeCodeSettings,
-  ClaudeReviewSettings,
-  UpdateSettings,
-  AzureDevOpsSettings,
-  AuthMethod,
-  SidebarEdge,
-  SidebarMode,
-  ThemeMode,
-  BadgeStyle,
-  IndicatorStyle,
-  PostFixAction,
-} from './settings';
-
-export type {
-  PullRequest,
-  PullRequestWithChecks,
-  PullRequestCommit,
-  PullRequestFileChange,
-  ReviewStatus,
-  OverallStatus,
-} from './pull-request';
-
-export type {
   CheckRun,
   CheckSuite,
-  WorkflowJob,
   ParsedError,
+  WorkflowJob,
 } from './check-run';
-
-export type {
-  WorkItem,
-  WorkItemRelation,
-  WorkItemAttachment,
-  WorkItemComment,
-  AdoQuery,
-  AdoQueryResult,
-  AdoQueryWorkItemRef,
-  DynamicFieldItem,
-  JsonPatchOperation,
-  FieldSection,
-} from './work-item';
-
 export type {
   ClaudeReviewComment,
   CommentSeverity,
 } from './claude-review';
-
 export type {
   InAppNotification,
   NotificationAction,
   NotificationSeverity,
 } from './notification';
-
-export type { WorktreeInfo } from './worktree';
-
+export type {
+  OverallStatus,
+  PullRequest,
+  PullRequestCommit,
+  PullRequestFileChange,
+  PullRequestWithChecks,
+  ReviewStatus,
+} from './pull-request';
+export type {
+  AppSettings,
+  AuthMethod,
+  AzureDevOpsSettings,
+  BadgeStyle,
+  ClaudeCodeSettings,
+  ClaudeReviewSettings,
+  GitHubSettings,
+  IndicatorStyle,
+  NotificationSettings,
+  PostFixAction,
+  RepoSettings,
+  SidebarEdge,
+  SidebarMode,
+  ThemeMode,
+  UiSettings,
+  UpdateSettings,
+} from './settings';
 export type { UpdateInfo } from './update';
+export type {
+  AdoQuery,
+  AdoQueryResult,
+  AdoQueryWorkItemRef,
+  DynamicFieldItem,
+  FieldSection,
+  JsonPatchOperation,
+  WorkItem,
+  WorkItemAttachment,
+  WorkItemComment,
+  WorkItemRelation,
+} from './work-item';
+export type { WorktreeInfo } from './worktree';

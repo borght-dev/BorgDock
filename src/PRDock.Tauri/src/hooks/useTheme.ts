@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ThemeMode } from '../types';
 
 type EffectiveTheme = 'light' | 'dark';
@@ -11,9 +11,7 @@ interface UseThemeReturn {
 }
 
 function getSystemPreference(): EffectiveTheme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function resolveEffectiveTheme(mode: ThemeMode): EffectiveTheme {
@@ -31,7 +29,7 @@ function applyTheme(effective: EffectiveTheme) {
 export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
   const [theme, setThemeState] = useState<ThemeMode>(initial);
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(
-    resolveEffectiveTheme(initial)
+    resolveEffectiveTheme(initial),
   );
 
   const updateEffective = useCallback((mode: ThemeMode) => {
@@ -45,7 +43,7 @@ export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
       setThemeState(mode);
       updateEffective(mode);
     },
-    [updateEffective]
+    [updateEffective],
   );
 
   // Listen for OS theme changes when in system mode
@@ -63,7 +61,7 @@ export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
   // Apply theme on mount
   useEffect(() => {
     applyTheme(effectiveTheme);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveTheme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Try Tauri window theme detection
   useEffect(() => {
@@ -75,8 +73,7 @@ export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const tauriTheme = await getCurrentWindow().theme();
         if (!cancelled && tauriTheme) {
-          const effective: EffectiveTheme =
-            tauriTheme === 'dark' ? 'dark' : 'light';
+          const effective: EffectiveTheme = tauriTheme === 'dark' ? 'dark' : 'light';
           setEffectiveTheme(effective);
           applyTheme(effective);
         }

@@ -1,23 +1,17 @@
-import { useEffect, useRef, useCallback } from 'react';
-import type { AppSettings } from '@/types';
-import { useWorkItemsStore } from '@/stores/work-items-store';
-import { AdoClient } from '@/services/ado/client';
-import { getQueryTree, executeQuery } from '@/services/ado/queries';
-import { getCurrentUserDisplayName } from '@/services/ado/workitems';
+import { useCallback, useEffect, useRef } from 'react';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
-import type { AdoQuery } from '@/types';
+import { AdoClient } from '@/services/ado/client';
+import { executeQuery, getQueryTree } from '@/services/ado/queries';
+import { getCurrentUserDisplayName } from '@/services/ado/workitems';
+import { useWorkItemsStore } from '@/stores/work-items-store';
+import type { AdoQuery, AppSettings } from '@/types';
 
-function mapQueryToTreeNode(
-  query: AdoQuery,
-  favoriteIds: string[]
-): AdoQueryTreeNode {
+function mapQueryToTreeNode(query: AdoQuery, favoriteIds: string[]): AdoQueryTreeNode {
   return {
     ...query,
     isFavorite: favoriteIds.includes(query.id),
     isExpanded: false,
-    children: query.children.map((child) =>
-      mapQueryToTreeNode(child, favoriteIds)
-    ),
+    children: query.children.map((child) => mapQueryToTreeNode(child, favoriteIds)),
   };
 }
 
@@ -27,8 +21,7 @@ export function useAdoPolling(settings: AppSettings) {
   const prevQueryIdRef = useRef<string | null>(null);
 
   const isConfigured =
-    !!settings.azureDevOps.organization &&
-    !!settings.azureDevOps.personalAccessToken;
+    !!settings.azureDevOps.organization && !!settings.azureDevOps.personalAccessToken;
 
   // Create/update client when settings change
   useEffect(() => {
@@ -40,7 +33,7 @@ export function useAdoPolling(settings: AppSettings) {
     clientRef.current = new AdoClient(
       settings.azureDevOps.organization,
       settings.azureDevOps.project,
-      settings.azureDevOps.personalAccessToken!
+      settings.azureDevOps.personalAccessToken!,
     );
   }, [
     isConfigured,
@@ -56,7 +49,7 @@ export function useAdoPolling(settings: AppSettings) {
     const client = new AdoClient(
       settings.azureDevOps.organization,
       settings.azureDevOps.project,
-      settings.azureDevOps.personalAccessToken!
+      settings.azureDevOps.personalAccessToken!,
     );
     clientRef.current = client;
 
@@ -77,17 +70,14 @@ export function useAdoPolling(settings: AppSettings) {
       try {
         const rawTree = await getQueryTree(client);
         const favoriteIds = settings.azureDevOps.favoriteQueryIds;
-        const tree: AdoQueryTreeNode[] = rawTree.map((q) =>
-          mapQueryToTreeNode(q, favoriteIds)
-        );
+        const tree: AdoQueryTreeNode[] = rawTree.map((q) => mapQueryToTreeNode(q, favoriteIds));
         useWorkItemsStore.getState().setQueryTree(tree);
       } catch (err) {
         console.error('Failed to load ADO query tree:', err);
       }
 
       // Set favorite query IDs from settings
-      const currentFavorites =
-        useWorkItemsStore.getState().favoriteQueryIds;
+      const currentFavorites = useWorkItemsStore.getState().favoriteQueryIds;
       for (const id of settings.azureDevOps.favoriteQueryIds) {
         if (!currentFavorites.includes(id)) {
           useWorkItemsStore.getState().toggleFavorite(id);
@@ -96,9 +86,7 @@ export function useAdoPolling(settings: AppSettings) {
 
       // Restore tracked/workingOn IDs from settings
       const trackedIds = new Set(settings.azureDevOps.trackedWorkItemIds);
-      const workingOnIds = new Set(
-        settings.azureDevOps.workingOnWorkItemIds
-      );
+      const workingOnIds = new Set(settings.azureDevOps.workingOnWorkItemIds);
       const worktreePaths = settings.azureDevOps.workItemWorktreePaths;
 
       // Sync tracked IDs
@@ -123,21 +111,28 @@ export function useAdoPolling(settings: AppSettings) {
 
       // Sync worktree paths
       for (const [idStr, path] of Object.entries(worktreePaths)) {
-        useWorkItemsStore
-          .getState()
-          .setWorktreePath(Number(idStr), path);
+        useWorkItemsStore.getState().setWorktreePath(Number(idStr), path);
       }
 
       // Auto-select last selected query
       if (settings.azureDevOps.lastSelectedQueryId) {
-        useWorkItemsStore
-          .getState()
-          .selectQuery(settings.azureDevOps.lastSelectedQueryId);
+        useWorkItemsStore.getState().selectQuery(settings.azureDevOps.lastSelectedQueryId);
       }
     })();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConfigured]);
+  }, [
+    isConfigured,
+    settings.azureDevOps.favoriteQueryIds,
+    settings.azureDevOps.lastSelectedQueryId,
+    settings.azureDevOps.organization,
+    settings.azureDevOps.personalAccessToken,
+    settings.azureDevOps.project,
+    settings.azureDevOps.recentWorkItemIds,
+    settings.azureDevOps.trackedWorkItemIds,
+    settings.azureDevOps.workItemWorktreePaths,
+    settings.azureDevOps.workingOnWorkItemIds,
+  ]);
 
   // Subscribe to selectedQueryId changes and fetch work items
   useEffect(() => {
@@ -170,8 +165,7 @@ export function useAdoPolling(settings: AppSettings) {
   useEffect(() => {
     if (!isConfigured) return;
 
-    const intervalMs =
-      (settings.azureDevOps.pollIntervalSeconds || 120) * 1000;
+    const intervalMs = (settings.azureDevOps.pollIntervalSeconds || 120) * 1000;
 
     intervalRef.current = setInterval(() => {
       const queryId = useWorkItemsStore.getState().selectedQueryId;

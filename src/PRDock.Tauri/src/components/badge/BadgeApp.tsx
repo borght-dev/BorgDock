@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import clsx from 'clsx';
-import { type StatusColor, type BadgePrItem } from './FloatingBadge';
-import { badgeStyleMap, type BadgeStyleProps } from './BadgeStyles';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type BadgeStyleProps, badgeStyleMap } from './BadgeStyles';
+import type { BadgePrItem, StatusColor } from './FloatingBadge';
 
 interface BadgeData {
   totalPrCount: number;
@@ -109,7 +109,11 @@ export function BadgeApp() {
       if (next) {
         // Expanding: let the backend auto-detect direction
         const size = { width: 900, height: 500 };
-        const dir = await invoke<string>('resize_badge', { width: size.width, height: size.height, anchor: 'auto' });
+        const dir = await invoke<string>('resize_badge', {
+          width: size.width,
+          height: size.height,
+          anchor: 'auto',
+        });
         setExpandDirection(dir === 'up' ? 'up' : 'down');
       } else {
         // Collapsing: anchor the edge where the pill is so it doesn't jump
@@ -117,7 +121,9 @@ export function BadgeApp() {
         const anchor = expandDirection === 'up' ? 'bottom' : 'top';
         await invoke('resize_badge', { width: size.width, height: size.height, anchor });
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [isExpanded, expandDirection]);
 
   const statusColor = determineStatusColor(data.failingCount, data.pendingCount);
@@ -125,7 +131,7 @@ export function BadgeApp() {
 
   const BadgeStyleComponent = useMemo<React.ComponentType<BadgeStyleProps>>(() => {
     const match = data.badgeStyle ? badgeStyleMap[data.badgeStyle] : undefined;
-    const fallback = badgeStyleMap['GlassCapsule']!;
+    const fallback = badgeStyleMap.GlassCapsule!;
     return match ?? fallback;
   }, [data.badgeStyle]);
 
@@ -142,17 +148,25 @@ export function BadgeApp() {
       className={clsx(
         'w-[880px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
         'shadow-lg overflow-hidden',
-        expandUp ? 'mb-1' : 'mt-1'
+        expandUp ? 'mb-1' : 'mt-1',
       )}
     >
       <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
-        <PrColumn title="MY PRS" items={data.myPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
-        <PrColumn title="TEAM" items={data.teamPrs} statusDotMap={STATUS_DOT_MAP} onOpenPr={handleOpenPr} />
+        <PrColumn
+          title="MY PRS"
+          items={data.myPrs}
+          statusDotMap={STATUS_DOT_MAP}
+          onOpenPr={handleOpenPr}
+        />
+        <PrColumn
+          title="TEAM"
+          items={data.teamPrs}
+          statusDotMap={STATUS_DOT_MAP}
+          onOpenPr={handleOpenPr}
+        />
       </div>
       <div className="flex items-center justify-center gap-3 border-t border-[var(--color-separator)] px-3 py-2">
-        <span className="text-xs text-[var(--color-text-muted)]">
-          {data.totalPrCount} total
-        </span>
+        <span className="text-xs text-[var(--color-text-muted)]">{data.totalPrCount} total</span>
         {data.failingCount > 0 && (
           <span className="text-xs text-[var(--color-status-red)]">
             {data.failingCount} failing
@@ -171,7 +185,7 @@ export function BadgeApp() {
     <div
       className={clsx(
         'flex h-screen w-screen justify-center',
-        expandUp ? 'items-end pb-1' : 'items-start pt-1'
+        expandUp ? 'items-end pb-1' : 'items-start pt-1',
       )}
       style={{ background: 'transparent' }}
     >

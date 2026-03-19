@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePrStore } from '@/stores/pr-store';
 
 export function SearchBar() {

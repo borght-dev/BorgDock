@@ -1,7 +1,7 @@
-export { PRDetailPanel } from './PRDetailPanel';
-export { OverviewTab } from './OverviewTab';
+export { ChecksTab } from './ChecksTab';
+export { CommentsTab } from './CommentsTab';
 export { CommitsTab } from './CommitsTab';
 export { FilesTab } from './FilesTab';
-export { ChecksTab } from './ChecksTab';
+export { OverviewTab } from './OverviewTab';
+export { PRDetailPanel } from './PRDetailPanel';
 export { ReviewsTab } from './ReviewsTab';
-export { CommentsTab } from './CommentsTab';

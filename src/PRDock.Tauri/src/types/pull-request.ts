@@ -1,11 +1,6 @@
 import type { CheckRun } from './check-run';
 
-export type ReviewStatus =
-  | 'none'
-  | 'pending'
-  | 'commented'
-  | 'approved'
-  | 'changesRequested';
+export type ReviewStatus = 'none' | 'pending' | 'commented' | 'approved' | 'changesRequested';
 
 export type OverallStatus = 'red' | 'yellow' | 'green' | 'gray';
 

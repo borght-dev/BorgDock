@@ -1,9 +1,4 @@
-import type {
-  PullRequest,
-  PullRequestCommit,
-  PullRequestFileChange,
-  ReviewStatus,
-} from '@/types';
+import type { PullRequest, PullRequestCommit, PullRequestFileChange, ReviewStatus } from '@/types';
 import type { GitHubClient } from './client';
 
 // --- GitHub API DTOs (snake_case) ---
@@ -76,11 +71,9 @@ interface GitHubFileChangeDto {
 export async function getOpenPRs(
   client: GitHubClient,
   owner: string,
-  repo: string
+  repo: string,
 ): Promise<PullRequest[]> {
-  const dtos = await client.get<GitHubPullRequestDto[]>(
-    `repos/${owner}/${repo}/pulls?state=open`
-  );
+  const dtos = await client.get<GitHubPullRequestDto[]>(`repos/${owner}/${repo}/pulls?state=open`);
 
   const pullRequests: PullRequest[] = [];
 
@@ -89,7 +82,7 @@ export async function getOpenPRs(
 
     try {
       const reviews = await client.get<GitHubReviewDto[]>(
-        `repos/${owner}/${repo}/pulls/${dto.number}/reviews`
+        `repos/${owner}/${repo}/pulls/${dto.number}/reviews`,
       );
       pr.reviewStatus = aggregateReviewStatus(reviews);
     } catch {
@@ -106,7 +99,7 @@ export async function getClosedPRs(
   client: GitHubClient,
   owner: string,
   repo: string,
-  since?: string
+  since?: string,
 ): Promise<PullRequest[]> {
   let url = `repos/${owner}/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`;
   if (since) {
@@ -121,10 +114,10 @@ export async function getPRCommits(
   client: GitHubClient,
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
 ): Promise<PullRequestCommit[]> {
   const dtos = await client.get<GitHubCommitDto[]>(
-    `repos/${owner}/${repo}/pulls/${prNumber}/commits`
+    `repos/${owner}/${repo}/pulls/${prNumber}/commits`,
   );
 
   return dtos.map((d) => ({
@@ -140,10 +133,10 @@ export async function getPRFiles(
   client: GitHubClient,
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
 ): Promise<PullRequestFileChange[]> {
   const dtos = await client.get<GitHubFileChangeDto[]>(
-    `repos/${owner}/${repo}/pulls/${prNumber}/files`
+    `repos/${owner}/${repo}/pulls/${prNumber}/files`,
   );
 
   return dtos.map((d) => ({
@@ -158,9 +151,7 @@ export async function getPRFiles(
 
 // --- Helpers ---
 
-export function aggregateReviewStatus(
-  reviews: GitHubReviewDto[]
-): ReviewStatus {
+export function aggregateReviewStatus(reviews: GitHubReviewDto[]): ReviewStatus {
   if (reviews.length === 0) return 'none';
 
   // Latest review per user
@@ -185,11 +176,7 @@ export function aggregateReviewStatus(
   return 'none';
 }
 
-function mapToPullRequest(
-  dto: GitHubPullRequestDto,
-  owner: string,
-  repo: string
-): PullRequest {
+function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string): PullRequest {
   return {
     number: dto.number,
     title: dto.title ?? '',
@@ -208,8 +195,7 @@ function mapToPullRequest(
     repoName: repo,
     reviewStatus: 'none',
     commentCount: (dto.comments ?? 0) + (dto.review_comments ?? 0),
-    labels:
-      dto.labels?.map((l) => l.name).filter((n) => n.length > 0) ?? [],
+    labels: dto.labels?.map((l) => l.name).filter((n) => n.length > 0) ?? [],
     additions: dto.additions,
     deletions: dto.deletions,
     changedFiles: dto.changed_files,

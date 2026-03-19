@@ -9,10 +9,7 @@ export function NotificationOverlay() {
 
   return (
     <div className="fixed right-3 top-3 z-50">
-      <NotificationBubble
-        notification={activeNotification}
-        onDismiss={dismiss}
-      />
+      <NotificationBubble notification={activeNotification} onDismiss={dismiss} />
     </div>
   );
 }

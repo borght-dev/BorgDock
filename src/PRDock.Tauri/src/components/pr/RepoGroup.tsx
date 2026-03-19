@@ -1,7 +1,7 @@
-import { useRef, useEffect, useState } from 'react';
 import clsx from 'clsx';
-import type { PullRequestWithChecks } from '@/types';
+import { useEffect, useRef, useState } from 'react';
 import { useUiStore } from '@/stores/ui-store';
+import type { PullRequestWithChecks } from '@/types';
 import { PullRequestCard } from './PullRequestCard';
 
 interface RepoGroupProps {
@@ -74,10 +74,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
       >
         <div className="flex flex-col gap-1 pl-1 pt-0.5">
           {prs.map((pr) => (
-            <PullRequestCard
-              key={pr.pullRequest.number}
-              prWithChecks={pr}
-            />
+            <PullRequestCard key={pr.pullRequest.number} prWithChecks={pr} />
           ))}
         </div>
       </div>

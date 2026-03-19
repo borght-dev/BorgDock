@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildIdPrefixWiql } from '../workitems';
 
 describe('buildIdPrefixWiql', () => {
@@ -24,9 +24,7 @@ describe('buildIdPrefixWiql', () => {
   it('generates only exact match for 7-digit prefix', () => {
     const wiql = buildIdPrefixWiql('9999999');
 
-    expect(wiql).toBe(
-      'SELECT [System.Id] FROM WorkItems WHERE [System.Id] = 9999999',
-    );
+    expect(wiql).toBe('SELECT [System.Id] FROM WorkItems WHERE [System.Id] = 9999999');
   });
 
   it('throws for empty string', () => {

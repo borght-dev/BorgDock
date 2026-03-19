@@ -3,26 +3,22 @@ import type { ParsedError } from '@/types';
 // --- Regex patterns ---
 
 // MSBuild: path(line,col): error CODE: message
-const MSBUILD_RE =
-  /^(.+?)\((\d+),(\d+)\):\s*error\s+([A-Z]+\d+):\s*(.+)$/gm;
+const MSBUILD_RE = /^(.+?)\((\d+),(\d+)\):\s*error\s+([A-Z]+\d+):\s*(.+)$/gm;
 
 // dotnet test: "Failed <TestName>"
 const DOTNET_TEST_FAILED_RE = /^\s*Failed\s+(\S+)\s*$/gm;
 
 // TypeScript: file(line,col): error TSXXXX: message
-const TYPESCRIPT_RE =
-  /^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$/gm;
+const TYPESCRIPT_RE = /^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$/gm;
 
 // ESLint: file:line:col - error message
 const ESLINT_RE = /^(.+?):(\d+):(\d+)\s+-\s+error\s+(.+)$/gm;
 
 // Playwright: numbered failure header
-const PLAYWRIGHT_FAILURE_RE =
-  /\d+\)\s*\[(\w+)\]\s*›\s*(.+?):(\d+):\d+\s*›\s*(.+?)\s*$/gm;
+const PLAYWRIGHT_FAILURE_RE = /\d+\)\s*\[(\w+)\]\s*›\s*(.+?):(\d+):\d+\s*›\s*(.+?)\s*$/gm;
 
 // Playwright summary line
-const PLAYWRIGHT_SUMMARY_LINE_RE =
-  /^\s*(\d+)\s+(failed|flaky|skipped|did not run|passed)/gm;
+const PLAYWRIGHT_SUMMARY_LINE_RE = /^\s*(\d+)\s+(failed|flaky|skipped|did not run|passed)/gm;
 
 // GitHub Actions error annotation
 const GITHUB_ACTIONS_ERROR_RE = /^##\[error\](.+)$/gm;
@@ -44,10 +40,7 @@ const SUMMARY_LINE_RE = /^\s*\d+\s+(error|warning)/i;
 
 // --- Public API ---
 
-export function parseLogForErrors(
-  logText: string,
-  changedFiles: string[] = []
-): ParsedError[] {
+export function parseLogForErrors(logText: string, changedFiles: string[] = []): ParsedError[] {
   if (!logText.trim()) return [];
 
   const cleanLog = preprocessLog(logText);
@@ -71,8 +64,7 @@ export function parseLogForErrors(
     if (error.filePath) {
       const normalized = normalizePath(error.filePath);
       error.isIntroducedByPr = [...normalizedChanged].some(
-        (changed) =>
-          normalized.endsWith(changed) || changed.endsWith(normalized)
+        (changed) => normalized.endsWith(changed) || changed.endsWith(normalized),
       );
     }
   }
@@ -312,18 +304,11 @@ function collectTestErrorContext(lines: string[], startLine: number): string {
   return contextLines.join(' ');
 }
 
-function collectPlaywrightErrorContext(
-  lines: string[],
-  startIndex: number
-): string {
+function collectPlaywrightErrorContext(lines: string[], startIndex: number): string {
   const contextLines: string[] = [];
   const failureRe = new RegExp(PLAYWRIGHT_FAILURE_RE.source, PLAYWRIGHT_FAILURE_RE.flags);
 
-  for (
-    let i = startIndex + 1;
-    i < lines.length && contextLines.length < 30;
-    i++
-  ) {
+  for (let i = startIndex + 1; i < lines.length && contextLines.length < 30; i++) {
     const line = lines[i]!.replace(/\r$/, '');
     const trimmed = line.trim();
 

@@ -1,7 +1,7 @@
-import { useEffect, useCallback, useRef } from 'react';
-import type { AppSettings } from '@/types';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useUpdateStore } from '@/stores/update-store';
+import type { AppSettings } from '@/types';
 
 const INITIAL_CHECK_DELAY_MS = 10_000;
 const PERIODIC_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -22,44 +22,6 @@ export function useAutoUpdate(settings: AppSettings) {
       }
     })();
   }, []);
-
-  const checkForUpdate = useCallback(async () => {
-    const s = useUpdateStore.getState();
-    if (s.checking || s.downloading) return;
-
-    useUpdateStore.getState().setChecking(true);
-    useUpdateStore.getState().setStatusText('Checking for updates...');
-
-    try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
-
-      if (update) {
-        useUpdateStore.getState().setAvailable(update.version);
-        useUpdateStore.getState().setStatusText(
-          `Update available: v${update.version}`
-        );
-
-        useNotificationStore.getState().show({
-          title: `Update available: v${update.version}`,
-          message: 'A new version of PRDock is available.',
-          severity: 'info',
-          actions: [],
-        });
-
-        if (settings.updates.autoDownload) {
-          await downloadAndInstall();
-        }
-      } else {
-        useUpdateStore.getState().setStatusText('You\'re on the latest version');
-      }
-    } catch (err) {
-      console.error('Update check failed:', err);
-      useUpdateStore.getState().setStatusText('Update check failed');
-    } finally {
-      useUpdateStore.getState().setChecking(false);
-    }
-  }, [settings.updates.autoDownload]);
 
   const downloadAndInstall = useCallback(async () => {
     try {
@@ -90,9 +52,7 @@ export function useAutoUpdate(settings: AppSettings) {
           case 'Finished':
             useUpdateStore.getState().setProgress(100);
             useUpdateStore.getState().setDownloading(false);
-            useUpdateStore.getState().setStatusText(
-              'Update ready — restart to apply'
-            );
+            useUpdateStore.getState().setStatusText('Update ready — restart to apply');
             break;
         }
       });
@@ -110,6 +70,42 @@ export function useAutoUpdate(settings: AppSettings) {
     }
   }, []);
 
+  const checkForUpdate = useCallback(async () => {
+    const s = useUpdateStore.getState();
+    if (s.checking || s.downloading) return;
+
+    useUpdateStore.getState().setChecking(true);
+    useUpdateStore.getState().setStatusText('Checking for updates...');
+
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const update = await check();
+
+      if (update) {
+        useUpdateStore.getState().setAvailable(update.version);
+        useUpdateStore.getState().setStatusText(`Update available: v${update.version}`);
+
+        useNotificationStore.getState().show({
+          title: `Update available: v${update.version}`,
+          message: 'A new version of PRDock is available.',
+          severity: 'info',
+          actions: [],
+        });
+
+        if (settings.updates.autoDownload) {
+          await downloadAndInstall();
+        }
+      } else {
+        useUpdateStore.getState().setStatusText("You're on the latest version");
+      }
+    } catch (err) {
+      console.error('Update check failed:', err);
+      useUpdateStore.getState().setStatusText('Update check failed');
+    } finally {
+      useUpdateStore.getState().setChecking(false);
+    }
+  }, [settings.updates.autoDownload, downloadAndInstall]);
+
   // Initial delayed check + periodic checks
   useEffect(() => {
     if (!settings.updates.autoCheckEnabled) {
@@ -125,10 +121,7 @@ export function useAutoUpdate(settings: AppSettings) {
       checkForUpdate();
 
       // Start periodic checks after initial
-      intervalRef.current = setInterval(
-        checkForUpdate,
-        PERIODIC_CHECK_INTERVAL_MS
-      );
+      intervalRef.current = setInterval(checkForUpdate, PERIODIC_CHECK_INTERVAL_MS);
     }, INITIAL_CHECK_DELAY_MS);
 
     return () => {

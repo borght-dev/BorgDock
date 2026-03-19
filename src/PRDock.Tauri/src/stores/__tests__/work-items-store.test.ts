@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { AdoQuery, WorkItem } from '@/types';
 import { useWorkItemsStore } from '../work-items-store';
-import type { WorkItem, AdoQuery } from '@/types';
 
 function makeWorkItem(overrides: {
   id?: number;
@@ -60,7 +60,13 @@ describe('work-items-store', () => {
       makeWorkItem({ id: 1, title: 'Bug fix', state: 'Active', assignedTo: 'Alice' }),
       makeWorkItem({ id: 2, title: 'Feature', state: 'New', assignedTo: 'Bob' }),
       makeWorkItem({ id: 3, title: 'Refactor', state: 'Active', assignedTo: 'Alice' }),
-      makeWorkItem({ id: 4, title: 'Docs update', state: 'Closed', assignedTo: 'Charlie', tags: 'docs' }),
+      makeWorkItem({
+        id: 4,
+        title: 'Docs update',
+        state: 'Closed',
+        assignedTo: 'Charlie',
+        tags: 'docs',
+      }),
     ];
 
     beforeEach(() => {
@@ -127,11 +133,7 @@ describe('work-items-store', () => {
   });
 
   describe('tracking', () => {
-    const items = [
-      makeWorkItem({ id: 1 }),
-      makeWorkItem({ id: 2 }),
-      makeWorkItem({ id: 3 }),
-    ];
+    const items = [makeWorkItem({ id: 1 }), makeWorkItem({ id: 2 }), makeWorkItem({ id: 3 })];
 
     beforeEach(() => {
       useWorkItemsStore.getState().setWorkItems(items);
@@ -180,10 +182,7 @@ describe('work-items-store', () => {
     it('returns favorite queries from tree', () => {
       const tree = [
         makeQuery('q1', 'My Bugs'),
-        makeQuery('folder', 'Folder', [
-          makeQuery('q2', 'Team Tasks'),
-          makeQuery('q3', 'Backlog'),
-        ]),
+        makeQuery('folder', 'Folder', [makeQuery('q2', 'Team Tasks'), makeQuery('q3', 'Backlog')]),
       ];
       useWorkItemsStore.getState().setQueryTree(tree);
       useWorkItemsStore.getState().toggleFavorite('q1');
@@ -197,29 +196,31 @@ describe('work-items-store', () => {
   describe('worktree paths', () => {
     it('sets worktree path for work item', () => {
       useWorkItemsStore.getState().setWorktreePath(42, '/path/to/worktree');
-      expect(useWorkItemsStore.getState().workItemWorktreePaths[42]).toBe(
-        '/path/to/worktree',
-      );
+      expect(useWorkItemsStore.getState().workItemWorktreePaths[42]).toBe('/path/to/worktree');
     });
   });
 
   describe('available states and assignees', () => {
     it('returns unique states from work items', () => {
-      useWorkItemsStore.getState().setWorkItems([
-        makeWorkItem({ id: 1, state: 'Active' }),
-        makeWorkItem({ id: 2, state: 'New' }),
-        makeWorkItem({ id: 3, state: 'Active' }),
-      ]);
+      useWorkItemsStore
+        .getState()
+        .setWorkItems([
+          makeWorkItem({ id: 1, state: 'Active' }),
+          makeWorkItem({ id: 2, state: 'New' }),
+          makeWorkItem({ id: 3, state: 'Active' }),
+        ]);
       const states = useWorkItemsStore.getState().availableStates();
       expect(states).toEqual(['Active', 'New']);
     });
 
     it('returns unique assignees from work items', () => {
-      useWorkItemsStore.getState().setWorkItems([
-        makeWorkItem({ id: 1, assignedTo: 'Bob' }),
-        makeWorkItem({ id: 2, assignedTo: 'Alice' }),
-        makeWorkItem({ id: 3, assignedTo: 'Bob' }),
-      ]);
+      useWorkItemsStore
+        .getState()
+        .setWorkItems([
+          makeWorkItem({ id: 1, assignedTo: 'Bob' }),
+          makeWorkItem({ id: 2, assignedTo: 'Alice' }),
+          makeWorkItem({ id: 3, assignedTo: 'Bob' }),
+        ]);
       const assignees = useWorkItemsStore.getState().availableAssignees();
       expect(assignees).toEqual(['Alice', 'Bob']);
     });

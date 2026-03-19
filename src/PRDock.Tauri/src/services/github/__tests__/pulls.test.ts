@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getOpenPRs, getClosedPRs, aggregateReviewStatus } from '../pulls';
-import { GitHubClient } from '../client';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GitHubClient } from '../client';
+import { aggregateReviewStatus, getClosedPRs, getOpenPRs } from '../pulls';
 
 // Mock the client
 function createMockClient() {
@@ -51,9 +51,7 @@ describe('getOpenPRs', () => {
     // First call: PR list
     getSpy.mockResolvedValueOnce([fakePrDto]);
     // Second call: reviews for PR #42
-    getSpy.mockResolvedValueOnce([
-      { state: 'APPROVED', user: { login: 'bob', avatar_url: '' } },
-    ]);
+    getSpy.mockResolvedValueOnce([{ state: 'APPROVED', user: { login: 'bob', avatar_url: '' } }]);
 
     const result = await getOpenPRs(client, 'owner', 'repo');
 
@@ -109,7 +107,7 @@ describe('getClosedPRs', () => {
     expect(result[0]!.closedAt).toBe('2025-01-17T10:00:00Z');
 
     expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/pulls?state=closed&sort=updated&direction=desc&per_page=30'
+      'repos/owner/repo/pulls?state=closed&sort=updated&direction=desc&per_page=30',
     );
   });
 
@@ -120,7 +118,7 @@ describe('getClosedPRs', () => {
     await getClosedPRs(client, 'owner', 'repo', '2025-01-01T00:00:00Z');
 
     expect(client.get).toHaveBeenCalledWith(
-      expect.stringContaining('since=2025-01-01T00%3A00%3A00Z')
+      expect.stringContaining('since=2025-01-01T00%3A00%3A00Z'),
     );
   });
 });
@@ -132,9 +130,7 @@ describe('aggregateReviewStatus', () => {
 
   it('returns approved when only approved reviews', () => {
     expect(
-      aggregateReviewStatus([
-        { state: 'APPROVED', user: { login: 'alice', avatar_url: '' } },
-      ])
+      aggregateReviewStatus([{ state: 'APPROVED', user: { login: 'alice', avatar_url: '' } }]),
     ).toBe('approved');
   });
 
@@ -143,7 +139,7 @@ describe('aggregateReviewStatus', () => {
       aggregateReviewStatus([
         { state: 'APPROVED', user: { login: 'alice', avatar_url: '' } },
         { state: 'CHANGES_REQUESTED', user: { login: 'bob', avatar_url: '' } },
-      ])
+      ]),
     ).toBe('changesRequested');
   });
 
@@ -153,23 +149,19 @@ describe('aggregateReviewStatus', () => {
       aggregateReviewStatus([
         { state: 'CHANGES_REQUESTED', user: { login: 'bob', avatar_url: '' } },
         { state: 'APPROVED', user: { login: 'bob', avatar_url: '' } },
-      ])
+      ]),
     ).toBe('approved');
   });
 
   it('returns commented when only commented reviews', () => {
     expect(
-      aggregateReviewStatus([
-        { state: 'COMMENTED', user: { login: 'alice', avatar_url: '' } },
-      ])
+      aggregateReviewStatus([{ state: 'COMMENTED', user: { login: 'alice', avatar_url: '' } }]),
     ).toBe('commented');
   });
 
   it('returns pending when only pending reviews', () => {
     expect(
-      aggregateReviewStatus([
-        { state: 'PENDING', user: { login: 'alice', avatar_url: '' } },
-      ])
+      aggregateReviewStatus([{ state: 'PENDING', user: { login: 'alice', avatar_url: '' } }]),
     ).toBe('pending');
   });
 });

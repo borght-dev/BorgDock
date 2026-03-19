@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
 import clsx from 'clsx';
+import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getClient } from '@/services/github/singleton';
 import { getReviews } from '@/services/github/reviews';
+import { getClient } from '@/services/github/singleton';
 
 interface Review {
   id: number;
@@ -49,10 +49,14 @@ function avatarInitials(login: string): string {
 
 export function severityOrder(state: string): number {
   switch (state) {
-    case 'CHANGES_REQUESTED': return 0;
-    case 'COMMENTED': return 1;
-    case 'APPROVED': return 2;
-    default: return 3;
+    case 'CHANGES_REQUESTED':
+      return 0;
+    case 'COMMENTED':
+      return 1;
+    case 'APPROVED':
+      return 2;
+    default:
+      return 3;
   }
 }
 
@@ -62,16 +66,14 @@ export function sortReviews(reviews: Review[], mode: SortMode | string): Review[
   switch (mode) {
     case 'oldest':
       return [...reviews].sort(
-        (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+        (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime(),
       );
     case 'newest':
       return [...reviews].sort(
-        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
       );
     case 'severity':
-      return [...reviews].sort(
-        (a, b) => severityOrder(a.state) - severityOrder(b.state)
-      );
+      return [...reviews].sort((a, b) => severityOrder(a.state) - severityOrder(b.state));
     case 'file':
       return [...reviews]; // reviews don't have file paths — passthrough
     default:
@@ -104,7 +106,7 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
               state: r.state ?? '',
               body: r.body ?? '',
               submittedAt: r.submitted_at ?? '',
-            }))
+            })),
           );
         }
       } catch (err) {
@@ -113,7 +115,9 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [prNumber, repoOwner, repoName]);
 
   if (loading) {
@@ -133,9 +137,7 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
   }
 
   if (reviews.length === 0) {
-    return (
-      <p className="p-3 text-xs text-[var(--color-text-muted)]">No reviews yet.</p>
-    );
+    return <p className="p-3 text-xs text-[var(--color-text-muted)]">No reviews yet.</p>;
   }
 
   const sortedReviews = sortReviews(reviews, sortMode);
@@ -161,40 +163,40 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
       </div>
 
       <div className="divide-y divide-[var(--color-separator)]">
-      {sortedReviews.map((review) => {
-        const { label, color } = stateLabel(review.state);
-        return (
-          <div key={review.id} className="px-3 py-2.5 space-y-1.5">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]">
-                {avatarInitials(review.user)}
-              </span>
-              <span className="text-xs font-medium text-[var(--color-text-primary)]">
-                {review.user}
-              </span>
-              <span className="text-[10px] text-[var(--color-text-muted)]">
-                {formatRelativeDate(review.submittedAt)}
-              </span>
-              <span
-                className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium"
-                style={{
-                  color,
-                  backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
-                }}
-              >
-                {label}
-              </span>
-            </div>
-            {/* Body */}
-            {review.body && (
-              <div className="markdown-body">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{review.body}</ReactMarkdown>
+        {sortedReviews.map((review) => {
+          const { label, color } = stateLabel(review.state);
+          return (
+            <div key={review.id} className="px-3 py-2.5 space-y-1.5">
+              {/* Header */}
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]">
+                  {avatarInitials(review.user)}
+                </span>
+                <span className="text-xs font-medium text-[var(--color-text-primary)]">
+                  {review.user}
+                </span>
+                <span className="text-[10px] text-[var(--color-text-muted)]">
+                  {formatRelativeDate(review.submittedAt)}
+                </span>
+                <span
+                  className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium"
+                  style={{
+                    color,
+                    backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
+                  }}
+                >
+                  {label}
+                </span>
               </div>
-            )}
-          </div>
-        );
-      })}
+              {/* Body */}
+              {review.body && (
+                <div className="markdown-body">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{review.body}</ReactMarkdown>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

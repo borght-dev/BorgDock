@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { aggregatePrWithChecks, computeOverallStatus } from '../aggregate';
+import { describe, expect, it } from 'vitest';
 import type { CheckRun, PullRequest } from '@/types';
+import { aggregatePrWithChecks, computeOverallStatus } from '../aggregate';
 
 function makeCheckRun(overrides: Partial<CheckRun> = {}): CheckRun {
   return {

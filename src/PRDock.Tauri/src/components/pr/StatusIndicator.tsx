@@ -15,10 +15,7 @@ interface StatusIndicatorProps {
 export function StatusIndicator({ status }: StatusIndicatorProps) {
   return (
     <span
-      className={clsx(
-        'inline-block h-2.5 w-2.5 shrink-0 rounded-full',
-        statusColors[status],
-      )}
+      className={clsx('inline-block h-2.5 w-2.5 shrink-0 rounded-full', statusColors[status])}
       aria-label={`Status: ${status}`}
     />
   );

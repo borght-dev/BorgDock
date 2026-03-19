@@ -13,8 +13,7 @@ interface ClaudeSectionProps {
 }
 
 export function ClaudeSection({ claudeCode, onChange }: ClaudeSectionProps) {
-  const update = (partial: Partial<ClaudeCodeSettings>) =>
-    onChange({ ...claudeCode, ...partial });
+  const update = (partial: Partial<ClaudeCodeSettings>) => onChange({ ...claudeCode, ...partial });
 
   return (
     <div className="space-y-2.5">
@@ -28,7 +27,9 @@ export function ClaudeSection({ claudeCode, onChange }: ClaudeSectionProps) {
           onChange={(e) => update({ defaultPostFixAction: e.target.value as PostFixAction })}
         >
           {POST_FIX_OPTIONS.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
+            <option key={value} value={value}>
+              {label}
+            </option>
           ))}
         </select>
       </div>

@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
 import clsx from 'clsx';
-import { AuthStep } from './AuthStep';
-import { RepoStep } from './RepoStep';
-import { PositionStep } from './PositionStep';
-import { DoneStep } from './DoneStep';
+import { useCallback, useMemo, useState } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, RepoSettings, SidebarEdge } from '@/types';
+import { AuthStep } from './AuthStep';
+import { DoneStep } from './DoneStep';
+import { PositionStep } from './PositionStep';
+import { RepoStep } from './RepoStep';
 
 const STEPS = ['Auth', 'Repos', 'Position', 'Done'] as const;
 
@@ -59,7 +59,9 @@ export function SetupWizard() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const discovered = await invoke<DiscoveredRepo[]>('discover_repos');
-        setRepos(discovered.map((r) => ({ ...r, isSelected: true, worktreeSubfolder: '.worktrees' })));
+        setRepos(
+          discovered.map((r) => ({ ...r, isSelected: true, worktreeSubfolder: '.worktrees' })),
+        );
       } catch {
         setRepos([]);
       } finally {
@@ -98,7 +100,18 @@ export function SetupWizard() {
       await saveSettings(updated);
       setCurrentStep(3);
     }
-  }, [currentStep, isOnFinalStep, repos, settings, authMethod, pat, username, sidebarEdge, theme, saveSettings]);
+  }, [
+    currentStep,
+    isOnFinalStep,
+    repos,
+    settings,
+    authMethod,
+    pat,
+    username,
+    sidebarEdge,
+    theme,
+    saveSettings,
+  ]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0 && currentStep < 3) {
@@ -108,7 +121,8 @@ export function SetupWizard() {
 
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-background)]">
-      <div className="flex w-[580px] flex-col rounded-2xl bg-[var(--color-modal-bg)] border border-[var(--color-modal-border)] shadow-2xl overflow-hidden"
+      <div
+        className="flex w-[580px] flex-col rounded-2xl bg-[var(--color-modal-bg)] border border-[var(--color-modal-border)] shadow-2xl overflow-hidden"
         style={{ maxHeight: '520px' }}
       >
         {/* Step indicators */}
@@ -120,7 +134,7 @@ export function SetupWizard() {
                   'rounded-full transition-all',
                   i === currentStep && 'h-5 w-5 bg-[var(--color-wizard-step-active)]',
                   i < currentStep && 'h-2 w-2 bg-[var(--color-wizard-step-complete)]',
-                  i > currentStep && 'h-2 w-2 bg-[var(--color-wizard-step-inactive)]'
+                  i > currentStep && 'h-2 w-2 bg-[var(--color-wizard-step-inactive)]',
                 )}
               />
               {i < STEPS.length - 1 && (
@@ -129,7 +143,7 @@ export function SetupWizard() {
                     'h-px w-8',
                     i < currentStep
                       ? 'bg-[var(--color-wizard-step-complete)]'
-                      : 'bg-[var(--color-wizard-step-track)]'
+                      : 'bg-[var(--color-wizard-step-track)]',
                   )}
                 />
               )}
@@ -173,7 +187,7 @@ export function SetupWizard() {
               isScanning={isScanning}
               onToggleRepo={(index) =>
                 setRepos((prev) =>
-                  prev.map((r, i) => (i === index ? { ...r, isSelected: !r.isSelected } : r))
+                  prev.map((r, i) => (i === index ? { ...r, isSelected: !r.isSelected } : r)),
                 )
               }
               onSelectAll={() => setRepos((prev) => prev.map((r) => ({ ...r, isSelected: true })))}

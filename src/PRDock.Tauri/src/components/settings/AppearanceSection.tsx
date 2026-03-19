@@ -1,5 +1,12 @@
 import clsx from 'clsx';
-import type { UiSettings, ThemeMode, SidebarEdge, SidebarMode, BadgeStyle, IndicatorStyle } from '@/types';
+import type {
+  BadgeStyle,
+  IndicatorStyle,
+  SidebarEdge,
+  SidebarMode,
+  ThemeMode,
+  UiSettings,
+} from '@/types';
 import { HotkeyRecorder } from './HotkeyRecorder';
 
 interface AppearanceSectionProps {
@@ -23,7 +30,13 @@ const MODE_OPTIONS: { value: SidebarMode; label: string }[] = [
   { value: 'floating', label: 'Floating' },
 ];
 
-const BADGE_STYLES: BadgeStyle[] = ['GlassCapsule', 'MinimalNotch', 'FloatingIsland', 'LiquidMorph', 'SpectralBar'];
+const BADGE_STYLES: BadgeStyle[] = [
+  'GlassCapsule',
+  'MinimalNotch',
+  'FloatingIsland',
+  'LiquidMorph',
+  'SpectralBar',
+];
 const INDICATOR_STYLES: IndicatorStyle[] = ['SegmentRing', 'SignalDots'];
 
 export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
@@ -41,7 +54,7 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
                 'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
                 ui.theme === value
                   ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
               )}
               onClick={() => update({ theme: value })}
             >
@@ -61,7 +74,7 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
                 'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
                 ui.sidebarEdge === value
                   ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
               )}
               onClick={() => update({ sidebarEdge: value })}
             >
@@ -81,7 +94,7 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
                 'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
                 ui.sidebarMode === value
                   ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
               )}
               onClick={() => update({ sidebarMode: value })}
             >
@@ -116,7 +129,9 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
           onChange={(e) => update({ badgeStyle: e.target.value as BadgeStyle })}
         >
           {BADGE_STYLES.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
         </select>
       </FieldLabel>
@@ -129,7 +144,9 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
           onChange={(e) => update({ indicatorStyle: e.target.value as IndicatorStyle })}
         >
           {INDICATOR_STYLES.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
         </select>
       </FieldLabel>
@@ -151,15 +168,13 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
           onClick={() => update({ runAtStartup: !ui.runAtStartup })}
           className={clsx(
             'relative h-5 w-9 rounded-full transition-colors',
-            ui.runAtStartup
-              ? 'bg-[var(--color-accent)]'
-              : 'bg-[var(--color-filter-chip-bg)]'
+            ui.runAtStartup ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
           )}
         >
           <div
             className={clsx(
               'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
-              ui.runAtStartup ? 'translate-x-4' : 'translate-x-0.5'
+              ui.runAtStartup ? 'translate-x-4' : 'translate-x-0.5',
             )}
           />
         </button>

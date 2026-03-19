@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import clsx from 'clsx';
+import { useState } from 'react';
 
 interface AuthStepProps {
   authMethod: 'ghCli' | 'pat';
@@ -44,15 +44,20 @@ export function AuthStep({
               ? 'border-[var(--color-success-badge-border)] bg-[var(--color-success-badge-bg)] text-[var(--color-status-green)]'
               : authStatus === 'Checking...'
                 ? 'border-[var(--color-warning-badge-border)] bg-[var(--color-warning-badge-bg)] text-[var(--color-status-yellow)]'
-                : 'border-[var(--color-error-badge-border)] bg-[var(--color-error-badge-bg)] text-[var(--color-status-red)]'
+                : 'border-[var(--color-error-badge-border)] bg-[var(--color-error-badge-bg)] text-[var(--color-status-red)]',
           )}
         >
           <span
             className={clsx(
               'h-2 w-2 rounded-full shrink-0',
               isAuthValid && 'bg-[var(--color-status-green)]',
-              !isAuthValid && authStatus === 'Checking...' && 'bg-[var(--color-status-yellow)] animate-pulse',
-              !isAuthValid && authStatus !== 'Checking...' && authStatus && 'bg-[var(--color-status-red)]'
+              !isAuthValid &&
+                authStatus === 'Checking...' &&
+                'bg-[var(--color-status-yellow)] animate-pulse',
+              !isAuthValid &&
+                authStatus !== 'Checking...' &&
+                authStatus &&
+                'bg-[var(--color-status-red)]',
             )}
           />
           {authStatus}
@@ -68,7 +73,7 @@ export function AuthStep({
               'flex-1 rounded-lg border-2 px-4 py-3 text-center transition-all',
               authMethod === method
                 ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)]'
-                : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]'
+                : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]',
             )}
             onClick={() => onAuthMethodChange(method)}
           >

@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import {
-  detectStateTransitions,
-  buildCheckFailedNotification,
-  buildAllChecksPassedNotification,
-  buildReviewRequestedNotification,
-  buildClaudeReviewCriticalNotification,
-} from '../notification';
+import { describe, expect, it } from 'vitest';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
+import {
+  buildAllChecksPassedNotification,
+  buildCheckFailedNotification,
+  buildClaudeReviewCriticalNotification,
+  buildReviewRequestedNotification,
+  detectStateTransitions,
+} from '../notification';
 
 function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
@@ -36,7 +36,7 @@ function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
 }
 
 function makePrWithChecks(
-  overrides: Partial<PullRequestWithChecks> & { pr?: Partial<PullRequest> } = {}
+  overrides: Partial<PullRequestWithChecks> & { pr?: Partial<PullRequest> } = {},
 ): PullRequestWithChecks {
   const { pr, ...rest } = overrides;
   return {
@@ -79,12 +79,8 @@ describe('detectStateTransitions', () => {
   });
 
   it('detects review changes requested transition', () => {
-    const old = [
-      makePrWithChecks({ pr: { reviewStatus: 'none' } }),
-    ];
-    const cur = [
-      makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } }),
-    ];
+    const old = [makePrWithChecks({ pr: { reviewStatus: 'none' } })];
+    const cur = [makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } })];
 
     const transitions = detectStateTransitions(old, cur);
 

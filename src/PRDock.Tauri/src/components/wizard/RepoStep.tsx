@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import clsx from 'clsx';
+import { useState } from 'react';
 
 interface DiscoveredRepo {
   owner: string;
@@ -17,7 +17,14 @@ interface RepoStepProps {
   onAddRepo: (repo: DiscoveredRepo) => void;
 }
 
-export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDeselectAll, onAddRepo }: RepoStepProps) {
+export function RepoStep({
+  repos,
+  isScanning,
+  onToggleRepo,
+  onSelectAll,
+  onDeselectAll,
+  onAddRepo,
+}: RepoStepProps) {
   const [manualInput, setManualInput] = useState('');
   const [addError, setAddError] = useState('');
 
@@ -32,8 +39,11 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
     if (isPath) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        const repo = await invoke<{ owner: string; name: string; localPath: string }>('resolve_repo_path', { path: input });
-        const exists = repos.some(r => r.owner === repo.owner && r.name === repo.name);
+        const repo = await invoke<{ owner: string; name: string; localPath: string }>(
+          'resolve_repo_path',
+          { path: input },
+        );
+        const exists = repos.some((r) => r.owner === repo.owner && r.name === repo.name);
         if (!exists) {
           onAddRepo({ ...repo, isSelected: true });
         }
@@ -45,7 +55,7 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
       const [owner, ...rest] = input.split('/');
       const name = rest.join('/');
       if (owner && name) {
-        const exists = repos.some(r => r.owner === owner && r.name === name);
+        const exists = repos.some((r) => r.owner === owner && r.name === name);
         if (!exists) {
           onAddRepo({ owner, name, localPath: '', isSelected: true });
         }
@@ -72,7 +82,10 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
         <input
           type="text"
           value={manualInput}
-          onChange={(e) => { setManualInput(e.target.value); setAddError(''); }}
+          onChange={(e) => {
+            setManualInput(e.target.value);
+            setAddError('');
+          }}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="D:\repos\my-project or owner/name"
           className="flex-1 rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
@@ -84,9 +97,7 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
           Add
         </button>
       </div>
-      {addError && (
-        <p className="-mt-2 text-[10px] text-[var(--color-status-red)]">{addError}</p>
-      )}
+      {addError && <p className="-mt-2 text-[10px] text-[var(--color-status-red)]">{addError}</p>}
 
       {/* Bulk actions */}
       <div className="flex items-center gap-2">
@@ -118,7 +129,7 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
               'flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-all',
               repo.isSelected
                 ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)]'
-                : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]'
+                : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]',
             )}
             onClick={() => onToggleRepo(i)}
           >
@@ -128,7 +139,7 @@ export function RepoStep({ repos, isScanning, onToggleRepo, onSelectAll, onDesel
                 'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
                 repo.isSelected
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent)]'
-                  : 'border-[var(--color-input-border)]'
+                  : 'border-[var(--color-input-border)]',
               )}
             >
               {repo.isSelected && (

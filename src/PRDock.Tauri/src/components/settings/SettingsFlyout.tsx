@@ -1,22 +1,22 @@
-import { useState, useCallback, useEffect } from 'react';
 import clsx from 'clsx';
+import { useCallback, useEffect, useState } from 'react';
+import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import { GitHubSection } from './GitHubSection';
-import { RepoSection } from './RepoSection';
-import { AppearanceSection } from './AppearanceSection';
-import { NotificationSection } from './NotificationSection';
-import { ClaudeSection } from './ClaudeSection';
-import { AdoSection } from './AdoSection';
-import { UpdateSection } from './UpdateSection';
-import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import type { AppSettings } from '@/types';
+import { AdoSection } from './AdoSection';
+import { AppearanceSection } from './AppearanceSection';
+import { ClaudeSection } from './ClaudeSection';
+import { GitHubSection } from './GitHubSection';
+import { NotificationSection } from './NotificationSection';
+import { RepoSection } from './RepoSection';
+import { UpdateSection } from './UpdateSection';
 
 export function SettingsFlyout() {
   const { settings, saveSettings } = useSettingsStore();
   const isSettingsOpen = useUiStore((s) => s.isSettingsOpen);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
-  const closeSettings = () => setSettingsOpen(false);
+  const closeSettings = useCallback(() => setSettingsOpen(false), [setSettingsOpen]);
   const [draft, setDraft] = useState<AppSettings>(settings);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isPruneOpen, setIsPruneOpen] = useState(false);
@@ -27,7 +27,7 @@ export function SettingsFlyout() {
 
   const updateDraft = useCallback(
     (partial: Partial<AppSettings>) => setDraft((prev) => ({ ...prev, ...partial })),
-    []
+    [],
   );
 
   const validate = useCallback((d: AppSettings): Record<string, string> => {
@@ -35,7 +35,11 @@ export function SettingsFlyout() {
     if (d.gitHub.authMethod === 'pat' && !d.gitHub.personalAccessToken) {
       errors.pat = 'PAT is required when using Personal Access Token auth.';
     }
-    if (d.gitHub.personalAccessToken && !d.gitHub.personalAccessToken.startsWith('ghp_') && !d.gitHub.personalAccessToken.startsWith('github_pat_')) {
+    if (
+      d.gitHub.personalAccessToken &&
+      !d.gitHub.personalAccessToken.startsWith('ghp_') &&
+      !d.gitHub.personalAccessToken.startsWith('github_pat_')
+    ) {
       errors.patFormat = 'PAT should start with ghp_ or github_pat_';
     }
     if (d.gitHub.pollIntervalSeconds < 15 || d.gitHub.pollIntervalSeconds > 300) {
@@ -66,17 +70,14 @@ export function SettingsFlyout() {
   return (
     <>
       {/* Overlay */}
-      <div
-        className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]"
-        onClick={handleCancel}
-      />
+      <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={handleCancel} />
 
       {/* Flyout panel */}
       <div
         className={clsx(
           'fixed right-0 top-0 z-50 flex h-full w-[360px] flex-col',
           'bg-[var(--color-modal-bg)] border-l border-[var(--color-modal-border)]',
-          'shadow-xl'
+          'shadow-xl',
         )}
       >
         {/* Header */}
@@ -93,35 +94,34 @@ export function SettingsFlyout() {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <SectionCard title="GitHub">
-            <GitHubSection
-              github={draft.gitHub}
-              onChange={(gitHub) => updateDraft({ gitHub })}
-            />
+            <GitHubSection github={draft.gitHub} onChange={(gitHub) => updateDraft({ gitHub })} />
             {validationErrors.pat && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">{validationErrors.pat}</p>
+              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">
+                {validationErrors.pat}
+              </p>
             )}
             {validationErrors.patFormat && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-yellow)]">{validationErrors.patFormat}</p>
+              <p className="mt-1 text-[10px] text-[var(--color-status-yellow)]">
+                {validationErrors.patFormat}
+              </p>
             )}
             {validationErrors.pollInterval && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">{validationErrors.pollInterval}</p>
+              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">
+                {validationErrors.pollInterval}
+              </p>
             )}
           </SectionCard>
 
           <SectionCard title="Repositories">
-            <RepoSection
-              repos={draft.repos}
-              onChange={(repos) => updateDraft({ repos })}
-            />
+            <RepoSection repos={draft.repos} onChange={(repos) => updateDraft({ repos })} />
           </SectionCard>
 
           <SectionCard title="Appearance">
-            <AppearanceSection
-              ui={draft.ui}
-              onChange={(ui) => updateDraft({ ui })}
-            />
+            <AppearanceSection ui={draft.ui} onChange={(ui) => updateDraft({ ui })} />
             {validationErrors.sidebarWidth && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">{validationErrors.sidebarWidth}</p>
+              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">
+                {validationErrors.sidebarWidth}
+              </p>
             )}
           </SectionCard>
 
@@ -147,7 +147,10 @@ export function SettingsFlyout() {
           </SectionCard>
 
           <SectionCard title="Updates">
-            <UpdateSection updates={draft.updates} onChange={(updates) => updateDraft({ updates })} />
+            <UpdateSection
+              updates={draft.updates}
+              onChange={(updates) => updateDraft({ updates })}
+            />
           </SectionCard>
 
           {/* Maintenance */}
@@ -181,10 +184,7 @@ export function SettingsFlyout() {
       </div>
 
       {/* Worktree Prune Dialog */}
-      <WorktreePruneDialog
-        isOpen={isPruneOpen}
-        onClose={() => setIsPruneOpen(false)}
-      />
+      <WorktreePruneDialog isOpen={isPruneOpen} onClose={() => setIsPruneOpen(false)} />
     </>
   );
 }

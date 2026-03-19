@@ -1,6 +1,6 @@
-import { WorkItemCard } from './WorkItemCard';
-import type { WorkItemCardData } from './WorkItemCard';
 import type { WorktreeInfo } from '../../types';
+import type { WorkItemCardData } from './WorkItemCard';
+import { WorkItemCard } from './WorkItemCard';
 
 interface WorkItemListProps {
   items: WorkItemCardData[];
@@ -32,9 +32,7 @@ export function WorkItemList({
       <div className="flex flex-1 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
-          <span className="text-[13px] text-[var(--color-text-muted)]">
-            Loading work items...
-          </span>
+          <span className="text-[13px] text-[var(--color-text-muted)]">Loading work items...</span>
         </div>
       </div>
     );
@@ -44,7 +42,13 @@ export function WorkItemList({
     return (
       <div className="flex flex-1 items-center justify-center px-6">
         <div className="text-center">
-          <svg className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+          <svg
+            className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+          >
             <rect x="2" y="3" width="12" height="10" rx="1.5" />
             <path d="M5 6h6M5 9h4" />
           </svg>
@@ -60,7 +64,13 @@ export function WorkItemList({
     return (
       <div className="flex flex-1 items-center justify-center px-6">
         <div className="text-center">
-          <svg className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+          <svg
+            className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+          >
             <circle cx="8" cy="8" r="6" />
             <path d="M8 5v3M8 10v.5" strokeLinecap="round" />
           </svg>

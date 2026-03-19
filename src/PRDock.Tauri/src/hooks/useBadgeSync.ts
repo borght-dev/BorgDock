@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
+import type { BadgePrItem, StatusColor } from '@/components/badge/FloatingBadge';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
-import type { BadgePrItem, StatusColor } from '@/components/badge/FloatingBadge';
 
 function toStatusColor(status: string): StatusColor {
   if (status === 'red') return 'red';
@@ -119,7 +119,12 @@ export function useBadgeSync() {
           const prs = usePrStore.getState().pullRequests;
           const user = usePrStore.getState().username;
           const st = useSettingsStore.getState().settings;
-          console.log('[BadgeSync] Received badge-request-data, PRs in store:', prs.length, 'username:', user);
+          console.log(
+            '[BadgeSync] Received badge-request-data, PRs in store:',
+            prs.length,
+            'username:',
+            user,
+          );
           const payload = buildBadgePayload(prs, user, st.ui.badgeStyle, st.ui.theme);
           sendToBadge(payload);
         });

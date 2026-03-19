@@ -5,9 +5,7 @@ export function useRunAtStartup(settings: AppSettings) {
   useEffect(() => {
     (async () => {
       try {
-        const { enable, disable, isEnabled } = await import(
-          '@tauri-apps/plugin-autostart'
-        );
+        const { enable, disable, isEnabled } = await import('@tauri-apps/plugin-autostart');
 
         const currentlyEnabled = await isEnabled();
 

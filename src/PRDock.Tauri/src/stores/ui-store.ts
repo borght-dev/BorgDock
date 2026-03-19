@@ -38,8 +38,7 @@ export const useUiStore = create<UiState>()((set) => ({
   isDragging: false,
   pendingWorkItemId: null,
 
-  toggleSidebar: () =>
-    set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
+  toggleSidebar: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
 
   setSidebarVisible: (visible) => set({ isSidebarVisible: visible }),
 

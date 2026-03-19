@@ -39,12 +39,7 @@ export interface AdoQueryWorkItemRef {
   url: string;
 }
 
-export type FieldSection =
-  | 'richText'
-  | 'standard'
-  | 'path'
-  | 'dates'
-  | 'custom';
+export type FieldSection = 'richText' | 'standard' | 'path' | 'dates' | 'custom';
 
 export interface DynamicFieldItem {
   fieldKey: string;

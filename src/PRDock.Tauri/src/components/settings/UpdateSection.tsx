@@ -1,7 +1,7 @@
-import type { UpdateSettings } from '@/types';
-import { useUpdateStore } from '@/stores/update-store';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUpdateStore } from '@/stores/update-store';
+import type { UpdateSettings } from '@/types';
 
 interface UpdateSectionProps {
   updates: UpdateSettings;
@@ -14,8 +14,7 @@ export function UpdateSection({ updates, onChange }: UpdateSectionProps) {
   const { checking, downloading, progress, available, version, statusText, currentVersion } =
     useUpdateStore();
 
-  const update = (partial: Partial<UpdateSettings>) =>
-    onChange({ ...updates, ...partial });
+  const update = (partial: Partial<UpdateSettings>) => onChange({ ...updates, ...partial });
 
   return (
     <div className="space-y-2.5">
@@ -67,20 +66,12 @@ export function UpdateSection({ updates, onChange }: UpdateSectionProps) {
         </div>
       )}
 
-      <div className="text-[10px] text-[var(--color-text-ghost)]">
-        v{currentVersion || '0.1.0'}
-      </div>
+      <div className="text-[10px] text-[var(--color-text-ghost)]">v{currentVersion || '0.1.0'}</div>
     </div>
   );
 }
 
-function ToggleSwitch({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
+function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       className={`h-4 w-7 rounded-full transition-colors relative shrink-0 ${

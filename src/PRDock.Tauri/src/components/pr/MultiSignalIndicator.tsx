@@ -37,11 +37,15 @@ function computeCiColor(pr: PullRequestWithChecks): SignalColor {
 
 function computeReviewColor(pr: PullRequestWithChecks): SignalColor {
   switch (pr.pullRequest.reviewStatus) {
-    case 'approved': return 'green';
-    case 'changesRequested': return 'red';
+    case 'approved':
+      return 'green';
+    case 'changesRequested':
+      return 'red';
     case 'pending':
-    case 'commented': return 'yellow';
-    default: return 'gray';
+    case 'commented':
+      return 'yellow';
+    default:
+      return 'gray';
   }
 }
 
@@ -100,11 +104,46 @@ function SegmentRing({ pr, size }: { pr: PullRequestWithChecks; size: number }) 
   // Each entry: signal label, color, radius, strokeWidth, quadrant start/end angles
   // Top-right: 0-90 (CI), Bottom-right: 90-180 (Review),
   // Bottom-left: 180-270 (Conflicts), Top-left: 270-360 (Draft)
-  const segments: { label: string; color: SignalColor; r: number; sw: number; start: number; end: number }[] = [
-    { label: 'CI', color: ciColor, r: radii[0]!, sw: strokeWidths[0]!, start: 0 + gap / 2, end: 90 - gap / 2 },
-    { label: 'Review', color: reviewColor, r: radii[1]!, sw: strokeWidths[1]!, start: 90 + gap / 2, end: 180 - gap / 2 },
-    { label: 'Conflicts', color: conflictColor, r: radii[2]!, sw: strokeWidths[2]!, start: 180 + gap / 2, end: 270 - gap / 2 },
-    { label: 'Draft', color: draftColor, r: radii[3]!, sw: strokeWidths[3]!, start: 270 + gap / 2, end: 360 - gap / 2 },
+  const segments: {
+    label: string;
+    color: SignalColor;
+    r: number;
+    sw: number;
+    start: number;
+    end: number;
+  }[] = [
+    {
+      label: 'CI',
+      color: ciColor,
+      r: radii[0]!,
+      sw: strokeWidths[0]!,
+      start: 0 + gap / 2,
+      end: 90 - gap / 2,
+    },
+    {
+      label: 'Review',
+      color: reviewColor,
+      r: radii[1]!,
+      sw: strokeWidths[1]!,
+      start: 90 + gap / 2,
+      end: 180 - gap / 2,
+    },
+    {
+      label: 'Conflicts',
+      color: conflictColor,
+      r: radii[2]!,
+      sw: strokeWidths[2]!,
+      start: 180 + gap / 2,
+      end: 270 - gap / 2,
+    },
+    {
+      label: 'Draft',
+      color: draftColor,
+      r: radii[3]!,
+      sw: strokeWidths[3]!,
+      start: 270 + gap / 2,
+      end: 360 - gap / 2,
+    },
   ];
 
   return (

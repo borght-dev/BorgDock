@@ -1,14 +1,20 @@
-export { GitHubClient, GitHubAuthError, GitHubApiError } from './client';
-export type { RateLimit } from './client';
-export { getOpenPRs, getClosedPRs, getPRCommits, getPRFiles, aggregateReviewStatus } from './pulls';
-export { getCheckSuites, getCheckRuns, getCheckRunsForRef, getJobLog, rerunWorkflow } from './checks';
+export { getGitHubToken } from './auth';
 export {
-  getReviews,
-  getReviewComments,
-  getBotReviewComments,
-  getAllComments,
+  getCheckRuns,
+  getCheckRunsForRef,
+  getCheckSuites,
+  getJobLog,
+  rerunWorkflow,
+} from './checks';
+export type { RateLimit } from './client';
+export { GitHubApiError, GitHubAuthError, GitHubClient } from './client';
+export { mergePullRequest, postComment, submitReview, toggleDraft } from './mutations';
+export { aggregateReviewStatus, getClosedPRs, getOpenPRs, getPRCommits, getPRFiles } from './pulls';
+export {
   detectSeverity,
+  getAllComments,
+  getBotReviewComments,
+  getReviewComments,
+  getReviews,
   splitStructuredReview,
 } from './reviews';
-export { mergePullRequest, toggleDraft, submitReview, postComment } from './mutations';
-export { getGitHubToken } from './auth';

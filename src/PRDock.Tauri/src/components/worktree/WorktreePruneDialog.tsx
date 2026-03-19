@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import clsx from 'clsx';
 import { invoke } from '@tauri-apps/api/core';
-import { useSettingsStore } from '@/stores/settings-store';
+import clsx from 'clsx';
+import { useCallback, useEffect, useState } from 'react';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { WorktreeInfo } from '@/types';
 
 interface WorktreePruneDialogProps {
@@ -44,7 +44,7 @@ function statusClasses(status: WorktreeStatus): string {
 
 function truncatePath(path: string, maxLen = 50): string {
   if (path.length <= maxLen) return path;
-  return '...' + path.slice(-(maxLen - 3));
+  return `...${path.slice(-(maxLen - 3))}`;
 }
 
 export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProps) {
@@ -60,12 +60,8 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   const [error, setError] = useState('');
 
   // Collect open PR branch names for comparison
-  const openBranches = new Set(
-    pullRequests.map((pr) => pr.pullRequest.headRef)
-  );
-  const closedBranches = new Set(
-    closedPullRequests.map((pr) => pr.pullRequest.headRef)
-  );
+  const openBranches = new Set(pullRequests.map((pr) => pr.pullRequest.headRef));
+  const closedBranches = new Set(closedPullRequests.map((pr) => pr.pullRequest.headRef));
 
   const classifyWorktree = useCallback(
     (branchName: string): WorktreeStatus => {
@@ -75,7 +71,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
       if (closedBranches.has(shortName) || closedBranches.has(branchName)) return 'closed';
       return 'orphaned';
     },
-    [openBranches, closedBranches]
+    [openBranches, closedBranches],
   );
 
   const loadWorktrees = useCallback(async () => {
@@ -123,9 +119,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   }, [isOpen, loadWorktrees]);
 
   const toggleRow = useCallback((index: number) => {
-    setRows((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, isSelected: !r.isSelected } : r))
-    );
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, isSelected: !r.isSelected } : r)));
   }, []);
 
   const selectAllOrphaned = useCallback(() => {
@@ -133,7 +127,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
       prev.map((r) => ({
         ...r,
         isSelected: r.status === 'orphaned' || r.status === 'closed',
-      }))
+      })),
     );
   }, []);
 
@@ -187,10 +181,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   return (
     <>
       {/* Overlay */}
-      <div
-        className="fixed inset-0 z-50 bg-black/50"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
@@ -207,7 +198,13 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
               className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
               onClick={onClose}
             >
-              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <path d="M4 4l8 8M12 4l-8 8" />
               </svg>
             </button>
@@ -255,7 +252,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                       'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
                       row.isSelected
                         ? 'bg-[var(--color-selected-row-bg)]'
-                        : 'hover:bg-[var(--color-surface-hover)]'
+                        : 'hover:bg-[var(--color-surface-hover)]',
                     )}
                   >
                     <input
@@ -272,13 +269,16 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                         <span
                           className={clsx(
                             'inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none',
-                            statusClasses(row.status)
+                            statusClasses(row.status),
                           )}
                         >
                           {statusLabel(row.status)}
                         </span>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]" title={row.worktree.path}>
+                      <div
+                        className="mt-0.5 text-[11px] text-[var(--color-text-muted)]"
+                        title={row.worktree.path}
+                      >
                         {truncatePath(row.worktree.path)}
                       </div>
                     </div>
@@ -290,20 +290,22 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
 
           {/* Footer */}
           <div className="border-t border-[var(--color-separator)] px-5 py-3.5">
-            {error && (
-              <p className="mb-2 text-[11px] text-[var(--color-status-red)]">{error}</p>
-            )}
+            {error && <p className="mb-2 text-[11px] text-[var(--color-status-red)]">{error}</p>}
 
             {isRemoving && (
               <div className="mb-2.5">
                 <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
                   <span>Removing worktrees...</span>
-                  <span>{removeProgress}/{removeTotal}</span>
+                  <span>
+                    {removeProgress}/{removeTotal}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-raised)]">
                   <div
                     className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300"
-                    style={{ width: removeTotal > 0 ? `${(removeProgress / removeTotal) * 100}%` : '0%' }}
+                    style={{
+                      width: removeTotal > 0 ? `${(removeProgress / removeTotal) * 100}%` : '0%',
+                    }}
                   />
                 </div>
               </div>
@@ -321,7 +323,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                   'rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity',
                   selectedCount > 0
                     ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-action-danger-fg)] hover:opacity-80'
-                    : 'bg-[var(--color-surface-raised)] text-[var(--color-text-ghost)] cursor-not-allowed'
+                    : 'bg-[var(--color-surface-raised)] text-[var(--color-text-ghost)] cursor-not-allowed',
                 )}
                 disabled={selectedCount === 0 || isRemoving}
                 onClick={removeSelected}

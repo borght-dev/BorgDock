@@ -1,16 +1,29 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AdoClient } from '@/services/ado/client';
-import { getWorkItem, getWorkItemTypeStates, updateWorkItem, deleteWorkItem, getWorkItemComments, addWorkItemComment } from '@/services/ado/workitems';
 import {
-  WorkItemDetailPanel,
+  addWorkItemComment,
+  deleteWorkItem,
+  getWorkItem,
+  getWorkItemComments,
+  getWorkItemTypeStates,
+  updateWorkItem,
+} from '@/services/ado/workitems';
+import { useSettingsStore } from '@/stores/settings-store';
+import type {
+  DynamicFieldItem,
+  JsonPatchOperation,
+  WorkItem,
+  WorkItemAttachment,
+  WorkItemComment,
+} from '@/types';
+import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
+import {
   type WorkItemDetailData,
+  WorkItemDetailPanel,
   type WorkItemFieldUpdates,
 } from './WorkItemDetailPanel';
-import type { WorkItem, WorkItemComment, DynamicFieldItem, WorkItemAttachment, JsonPatchOperation } from '@/types';
-import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
-import { useSettingsStore } from '@/stores/settings-store';
 
 // ---- Field helpers (shared with WorkItemsSection) ----
 
@@ -33,23 +46,40 @@ const RICH_TEXT_FIELDS = new Set([
 ]);
 
 const SKIP_FIELDS = new Set([
-  'System.Id', 'System.Rev', 'System.Title', 'System.State',
-  'System.WorkItemType', 'System.AssignedTo', 'System.Tags',
-  'Microsoft.VSTS.Common.Priority', 'System.CreatedDate',
-  'System.AreaId', 'System.IterationId', 'System.NodeName',
-  'System.TeamProject', 'System.Watermark', 'System.CommentCount',
-  'System.BoardColumn', 'System.BoardColumnDone',
-  'System.AuthorizedDate', 'System.RevisedDate', 'System.PersonId',
-  'System.IsDeleted', 'System.Reason',
+  'System.Id',
+  'System.Rev',
+  'System.Title',
+  'System.State',
+  'System.WorkItemType',
+  'System.AssignedTo',
+  'System.Tags',
+  'Microsoft.VSTS.Common.Priority',
+  'System.CreatedDate',
+  'System.AreaId',
+  'System.IterationId',
+  'System.NodeName',
+  'System.TeamProject',
+  'System.Watermark',
+  'System.CommentCount',
+  'System.BoardColumn',
+  'System.BoardColumnDone',
+  'System.AuthorizedDate',
+  'System.RevisedDate',
+  'System.PersonId',
+  'System.IsDeleted',
+  'System.Reason',
 ]);
 
 function tryFormatDate(value: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
   const d = new Date(value);
-  if (isNaN(d.getTime())) return null;
+  if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -63,7 +93,12 @@ function formatFieldValue(value: unknown): string | null {
     return null;
   }
   if (Array.isArray(value)) {
-    return value.map((v) => formatFieldValue(v)).filter(Boolean).join(', ') || null;
+    return (
+      value
+        .map((v) => formatFieldValue(v))
+        .filter(Boolean)
+        .join(', ') || null
+    );
   }
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   const str = String(value);
@@ -92,7 +127,13 @@ function classifyFields(item: WorkItem) {
     if (isKnownHtml) {
       const strValue = typeof value === 'string' ? value : '';
       if (!strValue) continue;
-      richText.push({ fieldKey: key, label, isHtml: true, htmlContent: strValue, section: 'richText' });
+      richText.push({
+        fieldKey: key,
+        label,
+        isHtml: true,
+        htmlContent: strValue,
+        section: 'richText',
+      });
       continue;
     }
 
@@ -101,7 +142,13 @@ function classifyFields(item: WorkItem) {
 
     const isHtml = typeof value === 'string' && looksLikeHtml(value);
     if (isHtml) {
-      richText.push({ fieldKey: key, label, isHtml: true, htmlContent: formatted, section: 'richText' });
+      richText.push({
+        fieldKey: key,
+        label,
+        isHtml: true,
+        htmlContent: formatted,
+        section: 'richText',
+      });
       continue;
     }
 
@@ -120,9 +167,9 @@ function extractAttachments(item: WorkItem): WorkItemAttachment[] {
   return item.relations
     .filter((r) => r.rel === 'AttachedFile')
     .map((r) => ({
-      id: String(r.attributes['id'] ?? r.url.split('/').pop() ?? ''),
-      fileName: String(r.attributes['name'] ?? 'attachment'),
-      size: Number(r.attributes['resourceSize'] ?? 0),
+      id: String(r.attributes.id ?? r.url.split('/').pop() ?? ''),
+      fileName: String(r.attributes.name ?? 'attachment'),
+      size: Number(r.attributes.resourceSize ?? 0),
       url: r.url,
     }));
 }
@@ -130,7 +177,7 @@ function extractAttachments(item: WorkItem): WorkItemAttachment[] {
 // ---- Image auth ----
 
 async function replaceAdoImageUrls(html: string, pat: string): Promise<string> {
-  const authHeader = 'Basic ' + btoa(':' + pat);
+  const authHeader = `Basic ${btoa(`:${pat}`)}`;
   // Match img src attributes pointing to ADO
   const imgRegex = /(<img[^>]+src=["'])([^"']*(?:dev\.azure\.com|visualstudio\.com)[^"']*)(["'])/gi;
   const matches = [...html.matchAll(imgRegex)];
@@ -152,7 +199,10 @@ async function replaceAdoImageUrls(html: string, pat: string): Promise<string> {
   return result;
 }
 
-async function processFieldImages(fields: DynamicFieldItem[], pat: string): Promise<DynamicFieldItem[]> {
+async function processFieldImages(
+  fields: DynamicFieldItem[],
+  pat: string,
+): Promise<DynamicFieldItem[]> {
   const processed: DynamicFieldItem[] = [];
   for (const field of fields) {
     if (field.isHtml && field.htmlContent) {
@@ -205,7 +255,8 @@ export function WorkItemDetailApp() {
 
         // Apply theme
         const t = settings.ui?.theme ?? 'system';
-        const isDark = t === 'dark' ||
+        const isDark =
+          t === 'dark' ||
           (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', isDark);
 
@@ -223,7 +274,9 @@ export function WorkItemDetailApp() {
 
         // Set window title
         const title = getField(item, 'System.Title');
-        getCurrentWindow().setTitle(`#${workItemId} - ${title}`).catch(() => {});
+        getCurrentWindow()
+          .setTitle(`#${workItemId} - ${title}`)
+          .catch(() => {});
 
         // Load available states
         const itemType = getField(item, 'System.WorkItemType');
@@ -274,9 +327,20 @@ export function WorkItemDetailApp() {
       if (updates.state !== getField(workItem, 'System.State'))
         operations.push({ op: 'replace', path: '/fields/System.State', value: updates.state });
       if (updates.assignedTo !== getField(workItem, 'System.AssignedTo'))
-        operations.push({ op: 'replace', path: '/fields/System.AssignedTo', value: updates.assignedTo });
-      if (updates.priority !== (Number(workItem.fields['Microsoft.VSTS.Common.Priority']) || undefined))
-        operations.push({ op: 'replace', path: '/fields/Microsoft.VSTS.Common.Priority', value: updates.priority ?? '' });
+        operations.push({
+          op: 'replace',
+          path: '/fields/System.AssignedTo',
+          value: updates.assignedTo,
+        });
+      if (
+        updates.priority !==
+        (Number(workItem.fields['Microsoft.VSTS.Common.Priority']) || undefined)
+      )
+        operations.push({
+          op: 'replace',
+          path: '/fields/Microsoft.VSTS.Common.Priority',
+          value: updates.priority ?? '',
+        });
       if (updates.tags !== getField(workItem, 'System.Tags'))
         operations.push({ op: 'replace', path: '/fields/System.Tags', value: updates.tags });
 
@@ -308,7 +372,9 @@ export function WorkItemDetailApp() {
     setIsSaving(true);
     try {
       await deleteWorkItem(client, workItemId);
-      getCurrentWindow().close().catch(() => {});
+      getCurrentWindow()
+        .close()
+        .catch(() => {});
     } catch (err) {
       console.error('Failed to delete:', err);
       setStatusText('Delete failed');
@@ -317,16 +383,21 @@ export function WorkItemDetailApp() {
     }
   }, [workItemId, getClient]);
 
-  const handleAddComment = useCallback(async (text: string) => {
-    if (!workItemId) return;
-    const client = getClient();
-    if (!client) return;
-    const newComment = await addWorkItemComment(client, workItemId, text);
-    setComments((prev) => [...prev, newComment]);
-  }, [workItemId, getClient]);
+  const handleAddComment = useCallback(
+    async (text: string) => {
+      if (!workItemId) return;
+      const client = getClient();
+      if (!client) return;
+      const newComment = await addWorkItemComment(client, workItemId, text);
+      setComments((prev) => [...prev, newComment]);
+    },
+    [workItemId, getClient],
+  );
 
   const handleClose = useCallback(() => {
-    getCurrentWindow().close().catch(() => {});
+    getCurrentWindow()
+      .close()
+      .catch(() => {});
   }, []);
 
   const handleOpenInBrowser = useCallback(async (url: string) => {
@@ -380,7 +451,12 @@ export function WorkItemDetailApp() {
   }, [workItem, adoSettings]);
 
   const { richText, standard, custom } = useMemo(() => {
-    if (!workItem) return { richText: [] as DynamicFieldItem[], standard: [] as DynamicFieldItem[], custom: [] as DynamicFieldItem[] };
+    if (!workItem)
+      return {
+        richText: [] as DynamicFieldItem[],
+        standard: [] as DynamicFieldItem[],
+        custom: [] as DynamicFieldItem[],
+      };
     return classifyFields(workItem);
   }, [workItem]);
 
@@ -391,15 +467,23 @@ export function WorkItemDetailApp() {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ backgroundColor: 'var(--color-surface)' }}>
-        <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>{error}</p>
+      <div
+        className="flex h-screen items-center justify-center"
+        style={{ backgroundColor: 'var(--color-surface)' }}
+      >
+        <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+          {error}
+        </p>
       </div>
     );
   }
 
   if (!detailData) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div
+        className="flex h-screen items-center justify-center"
+        style={{ backgroundColor: 'var(--color-surface)' }}
+      >
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
       </div>
     );

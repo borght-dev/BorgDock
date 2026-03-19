@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AdoClient } from '@/services/ado/client';
 import { searchWorkItemsByIdPrefix, searchWorkItemsByText } from '@/services/ado/workitems';
 import type { WorkItem } from '@/types';
-import type { AzureDevOpsSettings, AppSettings } from '@/types/settings';
+import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
 
 interface ResultItem {
   id: number;
@@ -32,7 +32,9 @@ function loadSavedPosition(): { x: number; y: number } | null {
     if (!raw) return null;
     const pos = JSON.parse(raw);
     if (typeof pos.x === 'number' && typeof pos.y === 'number') return pos;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
@@ -42,11 +44,16 @@ async function saveCurrentPosition() {
     const pos = await win.outerPosition();
     const scale = await win.scaleFactor();
     // Store logical coordinates so they work across DPI changes
-    localStorage.setItem(POSITION_KEY, JSON.stringify({
-      x: Math.round(pos.x / scale),
-      y: Math.round(pos.y / scale),
-    }));
-  } catch { /* ignore */ }
+    localStorage.setItem(
+      POSITION_KEY,
+      JSON.stringify({
+        x: Math.round(pos.x / scale),
+        y: Math.round(pos.y / scale),
+      }),
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 export function PaletteApp() {
@@ -78,12 +85,19 @@ export function PaletteApp() {
 
       // Restore saved position (only if it's on-screen)
       const saved = loadSavedPosition();
-      if (saved && saved.x >= 0 && saved.y >= 0 &&
-          saved.x < screen.width && saved.y < screen.height) {
+      if (
+        saved &&
+        saved.x >= 0 &&
+        saved.y >= 0 &&
+        saved.x < screen.width &&
+        saved.y < screen.height
+      ) {
         try {
           const { LogicalPosition } = await import('@tauri-apps/api/dpi');
           await getCurrentWindow().setPosition(new LogicalPosition(saved.x, saved.y));
-        } catch { /* ignore — use center */ }
+        } catch {
+          /* ignore — use center */
+        }
       }
     })();
   }, []);
@@ -94,7 +108,9 @@ export function PaletteApp() {
     const interval = setInterval(async () => {
       try {
         await getCurrentWindow().setFocus();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       inputRef.current?.focus();
       attempts++;
       if (document.activeElement === inputRef.current || attempts > 30) {
@@ -109,7 +125,9 @@ export function PaletteApp() {
     function handleGlobalKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        getCurrentWindow().close().catch(() => {});
+        getCurrentWindow()
+          .close()
+          .catch(() => {});
       }
     }
     document.addEventListener('keydown', handleGlobalKey);
@@ -207,29 +225,28 @@ export function PaletteApp() {
     items[selectedIndex]?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  const selectAndClose = useCallback(
-    async (id: number) => {
-      try {
-        await saveCurrentPosition();
-        // Open a pop-out detail window for this work item
-        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-        new WebviewWindow(`workitem-detail-${id}`, {
-          url: `workitem-detail.html?id=${id}`,
-          title: `Work Item #${id}`,
-          width: 550,
-          height: 700,
-          center: true,
-          decorations: true,
-          resizable: true,
-          focus: true,
-        });
-      } catch (err) {
-        console.error('Failed to open detail window:', err);
-      }
-      getCurrentWindow().close().catch(() => {});
-    },
-    [],
-  );
+  const selectAndClose = useCallback(async (id: number) => {
+    try {
+      await saveCurrentPosition();
+      // Open a pop-out detail window for this work item
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      new WebviewWindow(`workitem-detail-${id}`, {
+        url: `workitem-detail.html?id=${id}`,
+        title: `Work Item #${id}`,
+        width: 550,
+        height: 700,
+        center: true,
+        decorations: true,
+        resizable: true,
+        focus: true,
+      });
+    } catch (err) {
+      console.error('Failed to open detail window:', err);
+    }
+    getCurrentWindow()
+      .close()
+      .catch(() => {});
+  }, []);
 
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -288,9 +305,18 @@ export function PaletteApp() {
           onMouseDown={startDrag}
         >
           <div className="flex gap-1">
-            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
-            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
-            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
+            <div
+              className="h-1 w-1 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-ghost)' }}
+            />
+            <div
+              className="h-1 w-1 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-ghost)' }}
+            />
+            <div
+              className="h-1 w-1 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-ghost)' }}
+            />
           </div>
         </div>
 
@@ -322,9 +348,7 @@ export function PaletteApp() {
                 className="flex cursor-pointer items-center justify-between px-4 py-2 transition-colors"
                 style={{
                   backgroundColor:
-                    index === selectedIndex
-                      ? 'var(--color-accent-subtle)'
-                      : 'transparent',
+                    index === selectedIndex ? 'var(--color-accent-subtle)' : 'transparent',
                 }}
                 onMouseEnter={() => setSelectedIndex(index)}
                 onClick={() => selectAndClose(item.id)}
@@ -344,10 +368,7 @@ export function PaletteApp() {
                   </span>
                 </div>
                 <div className="ml-2 flex shrink-0 items-center gap-1.5">
-                  <span
-                    className="text-[11px]"
-                    style={{ color: 'var(--color-text-tertiary)' }}
-                  >
+                  <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
                     {item.workItemType}
                   </span>
                   <span

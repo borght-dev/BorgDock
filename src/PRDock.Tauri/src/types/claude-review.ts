@@ -1,8 +1,4 @@
-export type CommentSeverity =
-  | 'unknown'
-  | 'critical'
-  | 'suggestion'
-  | 'praise';
+export type CommentSeverity = 'unknown' | 'critical' | 'suggestion' | 'praise';
 
 export interface ClaudeReviewComment {
   id: string;

@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { usePrStore, type PrFilter } from '@/stores/pr-store';
+import { type PrFilter, usePrStore } from '@/stores/pr-store';
 
 const filters: { key: PrFilter; label: string }[] = [
   { key: 'all', label: 'All' },

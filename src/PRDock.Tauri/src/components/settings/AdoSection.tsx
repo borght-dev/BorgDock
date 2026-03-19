@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { AzureDevOpsSettings } from '@/types';
 import { AdoClient } from '@/services/ado/client';
+import type { AzureDevOpsSettings } from '@/types';
 
 interface AdoSectionProps {
   azureDevOps: AzureDevOpsSettings;

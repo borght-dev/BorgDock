@@ -44,11 +44,10 @@ pub async fn validate_pat(token: String) -> Result<String, String> {
             ));
         }
 
-        let body: serde_json::Value = resp.json().map_err(|e| format!("Failed to parse response: {e}"))?;
-        let login = body["login"]
-            .as_str()
-            .unwrap_or("unknown")
-            .to_string();
+        let body: serde_json::Value = resp
+            .json()
+            .map_err(|e| format!("Failed to parse response: {e}"))?;
+        let login = body["login"].as_str().unwrap_or("unknown").to_string();
 
         Ok(login)
     })

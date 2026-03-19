@@ -11,7 +11,7 @@ export class AdoClient {
     this.org = org;
     this.project = project;
     this.pat = pat;
-    this.authHeader = 'Basic ' + btoa(':' + pat);
+    this.authHeader = `Basic ${btoa(`:${pat}`)}`;
   }
 
   private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
@@ -21,9 +21,7 @@ export class AdoClient {
         return response;
       }
       const retryAfter = response.headers.get('Retry-After');
-      const delay = retryAfter
-        ? parseInt(retryAfter, 10) * 1000 || 1000
-        : 1000 * Math.pow(2, attempt);
+      const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 || 1000 : 1000 * 2 ** attempt;
       await new Promise((r) => setTimeout(r, delay));
     }
     throw new Error('Retry loop exhausted');
@@ -31,9 +29,7 @@ export class AdoClient {
 
   get isConfigured(): boolean {
     return (
-      this.org.trim().length > 0 &&
-      this.project.trim().length > 0 &&
-      this.pat.trim().length > 0
+      this.org.trim().length > 0 && this.project.trim().length > 0 && this.pat.trim().length > 0
     );
   }
 
@@ -74,7 +70,7 @@ export class AdoClient {
     relativePath: string,
     body: unknown,
     contentType?: string,
-    apiVersion?: string
+    apiVersion?: string,
   ): Promise<T> {
     const url = this.buildUrl(relativePath, apiVersion);
     const response = await this.fetchWithRetry(url, {
@@ -88,11 +84,7 @@ export class AdoClient {
     return this.handleResponse<T>(response, url);
   }
 
-  async patch<T>(
-    relativePath: string,
-    body: unknown,
-    contentType?: string
-  ): Promise<T> {
+  async patch<T>(relativePath: string, body: unknown, contentType?: string): Promise<T> {
     const url = this.buildUrl(relativePath);
     const response = await this.fetchWithRetry(url, {
       method: 'PATCH',
@@ -113,15 +105,13 @@ export class AdoClient {
     });
 
     if (response.status === 401 || response.status === 403) {
-      throw new AdoAuthError(
-        `Azure DevOps authentication failed (${response.status}).`
-      );
+      throw new AdoAuthError(`Azure DevOps authentication failed (${response.status}).`);
     }
 
     if (!response.ok) {
       throw new AdoApiError(
         `Azure DevOps API error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
   }
@@ -131,31 +121,25 @@ export class AdoClient {
     const response = await this.fetchWithRetry(url, { headers: this.headers });
 
     if (response.status === 401 || response.status === 403) {
-      throw new AdoAuthError(
-        `Azure DevOps authentication failed (${response.status}).`
-      );
+      throw new AdoAuthError(`Azure DevOps authentication failed (${response.status}).`);
     }
 
     if (!response.ok) {
       throw new AdoApiError(
         `Azure DevOps API error: ${response.status} ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
     return response.blob();
   }
 
-  async testConnection(
-    organization: string,
-    project: string,
-    pat: string
-  ): Promise<string | null> {
+  async testConnection(organization: string, project: string, pat: string): Promise<string | null> {
     try {
       const url = `https://dev.azure.com/${encodeURIComponent(organization)}/_apis/projects/${encodeURIComponent(project)}?api-version=7.1`;
       const response = await fetch(url, {
         headers: {
-          Authorization: 'Basic ' + btoa(':' + pat),
+          Authorization: `Basic ${btoa(`:${pat}`)}`,
           'Content-Type': 'application/json',
         },
       });
@@ -177,20 +161,15 @@ export class AdoClient {
     }
   }
 
-  private async handleResponse<T>(
-    response: Response,
-    url: string
-  ): Promise<T> {
+  private async handleResponse<T>(response: Response, url: string): Promise<T> {
     if (response.status === 401 || response.status === 403) {
-      throw new AdoAuthError(
-        `Azure DevOps authentication failed (${response.status}).`
-      );
+      throw new AdoAuthError(`Azure DevOps authentication failed (${response.status}).`);
     }
 
     if (!response.ok) {
       throw new AdoApiError(
         `Azure DevOps API error: ${response.status} ${response.statusText} for ${url}`,
-        response.status
+        response.status,
       );
     }
 

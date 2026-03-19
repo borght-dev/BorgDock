@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getClient } from '@/services/github/singleton';
 import { getAllComments, postComment } from '@/services/github';
+import { getClient } from '@/services/github/singleton';
 import type { ClaudeReviewComment } from '@/types';
 
 interface CommentsTabProps {
@@ -66,7 +66,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
   const [posting, setPosting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       const client = getClient();
       if (!client) return;
@@ -77,7 +77,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [repoOwner, repoName, prNumber]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,8 +85,10 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
       await loadComments();
       if (cancelled) return;
     })();
-    return () => { cancelled = true; };
-  }, [prNumber, repoOwner, repoName]);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadComments]);
 
   const handlePost = async () => {
     const text = newComment.trim();
@@ -155,10 +157,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
                   }}
                 >
                   {/* Left author stripe */}
-                  <div
-                    className="w-[3px] shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
+                  <div className="w-[3px] shrink-0" style={{ backgroundColor: color }} />
 
                   <div className="min-w-0 flex-1 px-3 py-2.5">
                     {/* Author header — hide if same as previous for visual grouping */}
@@ -173,7 +172,16 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
                           }}
                         >
                           {bot ? (
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <rect x="3" y="5" width="10" height="8" rx="1.5" />
                               <path d="M6 9h0M10 9h0" strokeWidth="2" />
                               <path d="M8 5V3" />
@@ -185,10 +193,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
                         </span>
 
                         {/* Name + badges */}
-                        <span
-                          className="text-xs font-semibold"
-                          style={{ color }}
-                        >
+                        <span className="text-xs font-semibold" style={{ color }}>
                           {comment.author}
                         </span>
 
@@ -228,7 +233,16 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
                           backgroundColor: `color-mix(in srgb, ${color} 6%, transparent)`,
                         }}
                       >
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M9 2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6L9 2z" />
                           <path d="M9 2v4h4" />
                         </svg>
@@ -266,9 +280,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
             }}
           />
           <div className="flex items-center justify-between bg-[var(--color-surface-raised)] px-3 py-1.5">
-            <span className="text-[10px] text-[var(--color-text-faint)]">
-              Ctrl+Enter to submit
-            </span>
+            <span className="text-[10px] text-[var(--color-text-faint)]">Ctrl+Enter to submit</span>
             <button
               className="rounded-md px-3 py-1 text-[11px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
               onClick={handlePost}

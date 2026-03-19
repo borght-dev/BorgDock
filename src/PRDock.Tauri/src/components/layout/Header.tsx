@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
-import clsx from 'clsx';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useUiStore, type ActiveSection } from '@/stores/ui-store';
+import clsx from 'clsx';
+import { useCallback } from 'react';
+import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 
 function handleHeaderDragStart(e: React.MouseEvent) {
   if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;

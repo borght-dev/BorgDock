@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { PullRequestCommit } from '@/types';
 
 interface CommitsTabProps {
@@ -39,7 +39,9 @@ export function CommitsTab({ prNumber, repoOwner, repoName }: CommitsTabProps) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [prNumber, repoOwner, repoName]);
 
   if (loading) {
@@ -59,9 +61,7 @@ export function CommitsTab({ prNumber, repoOwner, repoName }: CommitsTabProps) {
   }
 
   if (commits.length === 0) {
-    return (
-      <p className="p-3 text-xs text-[var(--color-text-muted)]">No commits found.</p>
-    );
+    return <p className="p-3 text-xs text-[var(--color-text-muted)]">No commits found.</p>;
   }
 
   return (

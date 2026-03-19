@@ -118,10 +118,7 @@ fn parse_github_remote(url: &str) -> Option<(String, String)> {
     }
 
     // Generic: try to extract last two path segments as owner/name
-    let segments: Vec<&str> = trimmed
-        .rsplit('/')
-        .take(2)
-        .collect();
+    let segments: Vec<&str> = trimmed.rsplit('/').take(2).collect();
     if segments.len() == 2 {
         return Some((segments[1].to_string(), segments[0].to_string()));
     }
@@ -136,8 +133,8 @@ pub fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
         return Err("Not a git repository".into());
     }
     let remote_url = run_git(&path, &["remote", "get-url", "origin"])?;
-    let (owner, name) = parse_github_remote(&remote_url)
-        .ok_or("Could not parse GitHub remote from origin URL")?;
+    let (owner, name) =
+        parse_github_remote(&remote_url).ok_or("Could not parse GitHub remote from origin URL")?;
     Ok(DiscoveredRepo {
         owner,
         name,

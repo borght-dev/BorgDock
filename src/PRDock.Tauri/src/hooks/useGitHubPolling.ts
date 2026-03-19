@@ -1,12 +1,12 @@
-import { useEffect, useRef, useCallback } from 'react';
-import type { AppSettings, PullRequestWithChecks } from '@/types';
-import { usePrStore } from '@/stores/pr-store';
-import { initClient, getClient } from '@/services/github/singleton';
-import { getGitHubToken } from '@/services/github/auth';
-import { getOpenPRs, getClosedPRs } from '@/services/github/pulls';
-import { getCheckRunsForRef } from '@/services/github/checks';
+import { useCallback, useEffect, useRef } from 'react';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
+import { getGitHubToken } from '@/services/github/auth';
+import { getCheckRunsForRef } from '@/services/github/checks';
+import { getClosedPRs, getOpenPRs } from '@/services/github/pulls';
+import { getClient, initClient } from '@/services/github/singleton';
 import { PollingManager } from '@/services/polling';
+import { usePrStore } from '@/stores/pr-store';
+import type { AppSettings, PullRequestWithChecks } from '@/types';
 
 export function useGitHubPolling(settings: AppSettings) {
   const pollingRef = useRef<PollingManager<PullRequestWithChecks[]> | null>(null);
@@ -64,12 +64,7 @@ export function useGitHubPolling(settings: AppSettings) {
 
           for (const pr of prs) {
             try {
-              const checks = await getCheckRunsForRef(
-                c,
-                repo.owner,
-                repo.name,
-                pr.headRef
-              );
+              const checks = await getCheckRunsForRef(c, repo.owner, repo.name, pr.headRef);
               allPrs.push(aggregatePrWithChecks(pr, checks));
             } catch {
               allPrs.push(aggregatePrWithChecks(pr, []));
@@ -116,7 +111,7 @@ export function useGitHubPolling(settings: AppSettings) {
             client,
             repo.owner,
             repo.name,
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
           );
           for (const pr of closedPrs) {
             closedResults.push(aggregatePrWithChecks(pr, []));

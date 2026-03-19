@@ -1,13 +1,13 @@
-import { useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import type { PullRequestWithChecks } from '@/types';
-import { useSettingsStore } from '@/stores/settings-store';
-import { getClient } from '@/services/github/singleton';
-import { mergePullRequest, toggleDraft, bypassMergePullRequest } from '@/services/github/mutations';
-import { rerunWorkflow } from '@/services/github/checks';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { useCallback, useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { rerunWorkflow } from '@/services/github/checks';
+import { bypassMergePullRequest, mergePullRequest, toggleDraft } from '@/services/github/mutations';
+import { getClient } from '@/services/github/singleton';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { PullRequestWithChecks } from '@/types';
 
 interface PrContextMenuProps {
   pr: PullRequestWithChecks;
@@ -76,20 +76,16 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
   const repo = pullRequest.repoName;
 
   // Find the repo config for worktree/checkout path
-  const repoConfig = settings.repos.find(
-    (r) => r.owner === owner && r.name === repo
-  );
+  const repoConfig = settings.repos.find((r) => r.owner === owner && r.name === repo);
   const repoPath = repoConfig?.worktreeBasePath || '';
 
   const hasFailingChecks = failedCheckNames.length > 0;
   const canMerge =
-    !pullRequest.isDraft &&
-    overallStatus === 'green' &&
-    pullRequest.state === 'open';
+    !pullRequest.isDraft && overallStatus === 'green' && pullRequest.state === 'open';
 
   // Find a failed check's run ID for rerun (pick the first failed check's suite)
   const failedCheck = pr.checks.find(
-    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out'
+    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
   );
 
   const handleAction = useCallback(
@@ -99,7 +95,7 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
         onClose();
       };
     },
-    [onClose]
+    [onClose],
   );
 
   const handleOpenInGitHub = handleAction(async () => {
@@ -133,13 +129,7 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
   const handleToggleDraft = handleAction(async () => {
     const client = getClient();
     if (!client) return;
-    await toggleDraft(
-      client,
-      owner,
-      repo,
-      pullRequest.number,
-      !pullRequest.isDraft
-    );
+    await toggleDraft(client, owner, repo, pullRequest.number, !pullRequest.isDraft);
   });
 
   const handleRerunFailed = handleAction(async () => {
@@ -199,11 +189,7 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
 
       <Separator />
 
-      <MenuItem
-        label="Checkout branch"
-        onClick={handleCheckout}
-        disabled={!repoPath}
-      />
+      <MenuItem label="Checkout branch" onClick={handleCheckout} disabled={!repoPath} />
       <MenuItem
         label={pullRequest.isDraft ? 'Mark as ready' : 'Mark as draft'}
         onClick={handleToggleDraft}
@@ -217,18 +203,11 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
         disabled={!hasFailingChecks || !failedCheck}
       />
       <MenuItem label="Fix with Claude" onClick={handleFixWithClaude} />
-      <MenuItem
-        label="Monitor with Claude"
-        onClick={handleMonitorWithClaude}
-      />
+      <MenuItem label="Monitor with Claude" onClick={handleMonitorWithClaude} />
 
       <Separator />
 
-      <MenuItem
-        label="Merge"
-        onClick={handleMerge}
-        disabled={!canMerge}
-      />
+      <MenuItem label="Merge" onClick={handleMerge} disabled={!canMerge} />
       <MenuItem
         label="Bypass merge (admin)"
         onClick={handleBypassMerge}

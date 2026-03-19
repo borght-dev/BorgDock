@@ -1,10 +1,10 @@
-import { Header } from './Header';
+import { PRDetailPanel } from '@/components/pr-detail/PRDetailPanel';
+import { usePrStore } from '@/stores/pr-store';
+import { useUiStore } from '@/stores/ui-store';
 import { FilterBar } from './FilterBar';
+import { Header } from './Header';
 import { SearchBar } from './SearchBar';
 import { StatusBar } from './StatusBar';
-import { useUiStore } from '@/stores/ui-store';
-import { usePrStore } from '@/stores/pr-store';
-import { PRDetailPanel } from '@/components/pr-detail/PRDetailPanel';
 
 interface SidebarProps {
   children: React.ReactNode;

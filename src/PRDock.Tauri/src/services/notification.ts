@@ -1,13 +1,9 @@
-import type {
-  PullRequest,
-  PullRequestWithChecks,
-  InAppNotification,
-} from '@/types';
 import {
   isPermissionGranted,
   requestPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
+import type { InAppNotification, PullRequest, PullRequestWithChecks } from '@/types';
 
 export interface StateTransition {
   type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested';
@@ -19,12 +15,10 @@ export interface StateTransition {
 
 export function detectStateTransitions(
   oldPrs: PullRequestWithChecks[],
-  newPrs: PullRequestWithChecks[]
+  newPrs: PullRequestWithChecks[],
 ): StateTransition[] {
   const transitions: StateTransition[] = [];
-  const oldByKey = new Map(
-    oldPrs.map((p) => [prKey(p.pullRequest), p])
-  );
+  const oldByKey = new Map(oldPrs.map((p) => [prKey(p.pullRequest), p]));
 
   for (const cur of newPrs) {
     const key = prKey(cur.pullRequest);
@@ -84,7 +78,7 @@ export function detectStateTransitions(
 
 export function buildCheckFailedNotification(
   pr: PullRequest,
-  checkName: string
+  checkName: string,
 ): InAppNotification {
   return {
     title: `Check failed: ${checkName}`,
@@ -103,9 +97,7 @@ export function buildCheckFailedNotification(
   };
 }
 
-export function buildAllChecksPassedNotification(
-  pr: PullRequest
-): InAppNotification {
+export function buildAllChecksPassedNotification(pr: PullRequest): InAppNotification {
   return {
     title: 'All checks passed',
     message: `#${pr.number} ${pr.title} (${pr.repoOwner}/${pr.repoName})`,
@@ -119,7 +111,7 @@ export function buildAllChecksPassedNotification(
 
 export function buildReviewRequestedNotification(
   pr: PullRequest,
-  reviewer: string
+  reviewer: string,
 ): InAppNotification {
   return {
     title: `Review requested from ${reviewer}`,
@@ -134,7 +126,7 @@ export function buildReviewRequestedNotification(
 
 export function buildClaudeReviewCriticalNotification(
   pr: PullRequest,
-  count: number
+  count: number,
 ): InAppNotification {
   return {
     title: `Claude found ${count} critical issue${count === 1 ? '' : 's'}`,
@@ -153,9 +145,7 @@ export function buildClaudeReviewCriticalNotification(
   };
 }
 
-export function buildFixCommittedNotification(
-  pr: PullRequest
-): InAppNotification {
+export function buildFixCommittedNotification(pr: PullRequest): InAppNotification {
   return {
     title: 'Fix committed',
     message: `#${pr.number} ${pr.title} (${pr.repoOwner}/${pr.repoName})`,
@@ -169,10 +159,7 @@ export function buildFixCommittedNotification(
 
 // --- OS notification ---
 
-export async function sendOsNotification(
-  title: string,
-  body: string
-): Promise<void> {
+export async function sendOsNotification(title: string, body: string): Promise<void> {
   let permissionGranted = await isPermissionGranted();
 
   if (!permissionGranted) {

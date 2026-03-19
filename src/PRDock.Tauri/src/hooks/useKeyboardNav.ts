@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 
@@ -27,10 +27,7 @@ export function useKeyboardNav() {
         case 'ArrowDown':
         case 'j': {
           e.preventDefault();
-          focusedIndexRef.current = Math.min(
-            focusedIndexRef.current + 1,
-            filteredPrs.length - 1
-          );
+          focusedIndexRef.current = Math.min(focusedIndexRef.current + 1, filteredPrs.length - 1);
           const pr = filteredPrs[focusedIndexRef.current];
           if (pr) selectPr(pr.pullRequest.number);
           // Scroll focused card into view
@@ -76,7 +73,7 @@ export function useKeyboardNav() {
         }
       }
     },
-    [selectPr, selectedPrNumber]
+    [selectPr, selectedPrNumber],
   );
 
   useEffect(() => {

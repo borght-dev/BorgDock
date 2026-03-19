@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
 import clsx from 'clsx';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface HotkeyRecorderProps {
   value: string;
@@ -72,7 +72,7 @@ export function HotkeyRecorder({ value, onChange }: HotkeyRecorderProps) {
           'flex-1 rounded-md border px-2.5 py-1.5 text-left text-[13px] font-mono transition-colors',
           recording
             ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
-            : 'border-[var(--color-input-border)] bg-[var(--color-input-bg)] text-[var(--color-text-primary)]'
+            : 'border-[var(--color-input-border)] bg-[var(--color-input-bg)] text-[var(--color-text-primary)]',
         )}
       >
         {recording

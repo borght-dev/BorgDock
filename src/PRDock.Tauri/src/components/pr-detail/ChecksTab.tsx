@@ -48,9 +48,7 @@ function groupBySuite(checks: CheckRun[]): Map<number, CheckRun[]> {
 
 export function ChecksTab({ checks }: ChecksTabProps) {
   if (checks.length === 0) {
-    return (
-      <p className="p-3 text-xs text-[var(--color-text-muted)]">No checks found.</p>
-    );
+    return <p className="p-3 text-xs text-[var(--color-text-muted)]">No checks found.</p>;
   }
 
   const grouped = groupBySuite(checks);
