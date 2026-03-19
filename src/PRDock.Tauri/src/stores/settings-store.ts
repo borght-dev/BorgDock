@@ -51,6 +51,7 @@ const defaultSettings: AppSettings = {
     trackedWorkItemIds: [],
     workingOnWorkItemIds: [],
     workItemWorktreePaths: {},
+    recentWorkItemIds: [],
   },
 };
 

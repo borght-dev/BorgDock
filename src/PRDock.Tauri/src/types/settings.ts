@@ -64,6 +64,7 @@ export interface AzureDevOpsSettings {
   trackedWorkItemIds: number[];
   workingOnWorkItemIds: number[];
   workItemWorktreePaths: Record<number, string>;
+  recentWorkItemIds: number[];
 }
 
 export interface AppSettings {

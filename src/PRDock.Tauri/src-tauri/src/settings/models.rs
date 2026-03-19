@@ -263,6 +263,8 @@ pub struct AzureDevOpsSettings {
     pub working_on_work_item_ids: Vec<i32>,
     #[serde(default)]
     pub work_item_worktree_paths: std::collections::HashMap<i32, String>,
+    #[serde(default)]
+    pub recent_work_item_ids: Vec<i32>,
 }
 
 fn default_ado_poll_interval() -> u32 {
@@ -281,6 +283,7 @@ impl Default for AzureDevOpsSettings {
             tracked_work_item_ids: Vec::new(),
             working_on_work_item_ids: Vec::new(),
             work_item_worktree_paths: std::collections::HashMap::new(),
+            recent_work_item_ids: Vec::new(),
         }
     }
 }

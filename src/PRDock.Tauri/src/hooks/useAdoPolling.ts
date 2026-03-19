@@ -115,6 +115,12 @@ export function useAdoPolling(settings: AppSettings) {
         }
       }
 
+      // Restore recent work item IDs
+      const recentIds = settings.azureDevOps.recentWorkItemIds ?? [];
+      if (recentIds.length > 0) {
+        useWorkItemsStore.getState().setRecentWorkItemIds(recentIds);
+      }
+
       // Sync worktree paths
       for (const [idStr, path] of Object.entries(worktreePaths)) {
         useWorkItemsStore

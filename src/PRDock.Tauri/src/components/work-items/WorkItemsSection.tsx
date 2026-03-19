@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
 import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
 import { WorkItemList } from '@/components/work-items/WorkItemList';
 import type { WorkItemCardData } from '@/components/work-items/WorkItemCard';
@@ -18,9 +19,12 @@ import {
   deleteWorkItem,
   downloadAttachment,
   getWorkItemTypeStates,
+  getWorkItemComments,
+  addWorkItemComment,
 } from '@/services/ado/workitems';
 import type {
   WorkItem,
+  WorkItemComment,
   DynamicFieldItem,
   WorkItemAttachment,
   JsonPatchOperation,
@@ -321,6 +325,8 @@ export function WorkItemsSection() {
   const [statusText, setStatusText] = useState<string | undefined>();
   const [detailItem, setDetailItem] = useState<WorkItem | null>(null);
   const [detailStates, setDetailStates] = useState<string[]>([]);
+  const [detailComments, setDetailComments] = useState<WorkItemComment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   // ADO client helper
   const getClient = useCallback((): AdoClient | null => {
@@ -405,6 +411,13 @@ export function WorkItemsSection() {
         const fullItem = await getWorkItem(client, id);
         setDetailItem(fullItem);
 
+        // Load comments
+        setIsLoadingComments(true);
+        getWorkItemComments(client, id)
+          .then((c) => setDetailComments(c))
+          .catch((err) => console.error('Failed to load comments:', err))
+          .finally(() => setIsLoadingComments(false));
+
         // Load available states for the work item type
         const itemType = getField(fullItem, 'System.WorkItemType');
         if (itemType) {
@@ -426,6 +439,14 @@ export function WorkItemsSection() {
     [getClient]
   );
 
+  // Pick up work item ID from command palette
+  const pendingWorkItemId = useUiStore((s) => s.pendingWorkItemId);
+  useEffect(() => {
+    if (pendingWorkItemId !== null) {
+      useUiStore.getState().setPendingWorkItemId(null);
+      handleSelectWorkItem(pendingWorkItemId);
+    }
+  }, [pendingWorkItemId, handleSelectWorkItem]);
 
   const handleSave = useCallback(
     async (updates: WorkItemFieldUpdates) => {
@@ -530,9 +551,18 @@ export function WorkItemsSection() {
     }
   }, [selectedWorkItemId, getClient]);
 
+  const handleAddComment = useCallback(async (text: string) => {
+    if (!selectedWorkItemId) return;
+    const client = getClient();
+    if (!client) return;
+    const newComment = await addWorkItemComment(client, selectedWorkItemId, text);
+    setDetailComments((prev) => [...prev, newComment]);
+  }, [selectedWorkItemId, getClient]);
+
   const handleCloseDetail = useCallback(() => {
     setSelectedWorkItemId(null);
     setDetailItem(null);
+    setDetailComments([]);
     setStatusText(undefined);
   }, []);
 
@@ -571,10 +601,25 @@ export function WorkItemsSection() {
   const handleSelectQuery = useCallback((queryId: string) => {
     useWorkItemsStore.getState().selectQuery(queryId);
     setQueryBrowserOpen(false);
+
+    // Persist last selected query to settings
+    const current = useSettingsStore.getState().settings;
+    useSettingsStore.getState().saveSettings({
+      ...current,
+      azureDevOps: { ...current.azureDevOps, lastSelectedQueryId: queryId },
+    });
   }, []);
 
   const handleToggleFavorite = useCallback((queryId: string) => {
     useWorkItemsStore.getState().toggleFavorite(queryId);
+
+    // Persist to settings
+    const updatedIds = useWorkItemsStore.getState().favoriteQueryIds;
+    const current = useSettingsStore.getState().settings;
+    useSettingsStore.getState().saveSettings({
+      ...current,
+      azureDevOps: { ...current.azureDevOps, favoriteQueryIds: updatedIds },
+    });
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -712,15 +757,33 @@ export function WorkItemsSection() {
         isEmpty={items.length === 0 && !!selectedQueryId}
         selectedQueryName={selectedQueryName}
         onSelect={handleSelectWorkItem}
-        onToggleTracked={(id) =>
-          useWorkItemsStore.getState().toggleTracked(id)
-        }
-        onToggleWorkingOn={(id) =>
-          useWorkItemsStore.getState().toggleWorkingOn(id)
-        }
-        onAssignWorktree={(id, path) =>
-          useWorkItemsStore.getState().setWorktreePath(id, path)
-        }
+        onToggleTracked={(id) => {
+          useWorkItemsStore.getState().toggleTracked(id);
+          const ids = [...useWorkItemsStore.getState().trackedWorkItemIds];
+          const current = useSettingsStore.getState().settings;
+          useSettingsStore.getState().saveSettings({
+            ...current,
+            azureDevOps: { ...current.azureDevOps, trackedWorkItemIds: ids },
+          });
+        }}
+        onToggleWorkingOn={(id) => {
+          useWorkItemsStore.getState().toggleWorkingOn(id);
+          const ids = [...useWorkItemsStore.getState().workingOnWorkItemIds];
+          const current = useSettingsStore.getState().settings;
+          useSettingsStore.getState().saveSettings({
+            ...current,
+            azureDevOps: { ...current.azureDevOps, workingOnWorkItemIds: ids },
+          });
+        }}
+        onAssignWorktree={(id, path) => {
+          useWorkItemsStore.getState().setWorktreePath(id, path);
+          const paths = useWorkItemsStore.getState().workItemWorktreePaths;
+          const current = useSettingsStore.getState().settings;
+          useSettingsStore.getState().saveSettings({
+            ...current,
+            azureDevOps: { ...current.azureDevOps, workItemWorktreePaths: paths },
+          });
+        }}
         onOpenInBrowser={handleOpenInBrowser}
       />
 
@@ -738,11 +801,14 @@ export function WorkItemsSection() {
             standardFields={standard}
             customFields={custom}
             attachments={attachments}
+            comments={detailComments}
+            isLoadingComments={isLoadingComments}
             onSave={handleSave}
             onDelete={handleDelete}
             onClose={handleCloseDetail}
             onOpenInBrowser={handleOpenInBrowser}
             onDownloadAttachment={handleDownloadAttachment}
+            onAddComment={handleAddComment}
           />
         </div>
       )}

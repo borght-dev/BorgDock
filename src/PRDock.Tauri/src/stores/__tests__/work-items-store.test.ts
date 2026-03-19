@@ -49,6 +49,7 @@ describe('work-items-store', () => {
       trackedWorkItemIds: new Set<number>(),
       workingOnWorkItemIds: new Set<number>(),
       workItemWorktreePaths: {},
+      recentWorkItemIds: [],
       currentUserDisplayName: '',
       isLoading: false,
     });
@@ -221,6 +222,71 @@ describe('work-items-store', () => {
       ]);
       const assignees = useWorkItemsStore.getState().availableAssignees();
       expect(assignees).toEqual(['Alice', 'Bob']);
+    });
+  });
+
+  describe('recent work items', () => {
+    it('adds an item to the front of recents', () => {
+      useWorkItemsStore.getState().addRecentWorkItem(100);
+      useWorkItemsStore.getState().addRecentWorkItem(200);
+      expect(useWorkItemsStore.getState().recentWorkItemIds).toEqual([200, 100]);
+    });
+
+    it('moves an already-recent item to the front', () => {
+      useWorkItemsStore.getState().addRecentWorkItem(1);
+      useWorkItemsStore.getState().addRecentWorkItem(2);
+      useWorkItemsStore.getState().addRecentWorkItem(3);
+      useWorkItemsStore.getState().addRecentWorkItem(1);
+      expect(useWorkItemsStore.getState().recentWorkItemIds).toEqual([1, 3, 2]);
+    });
+
+    it('caps at 20 items', () => {
+      for (let i = 1; i <= 25; i++) {
+        useWorkItemsStore.getState().addRecentWorkItem(i);
+      }
+      const ids = useWorkItemsStore.getState().recentWorkItemIds;
+      expect(ids).toHaveLength(20);
+      expect(ids[0]).toBe(25);
+      expect(ids[19]).toBe(6);
+    });
+
+    it('sets recent IDs directly', () => {
+      useWorkItemsStore.getState().setRecentWorkItemIds([10, 20, 30]);
+      expect(useWorkItemsStore.getState().recentWorkItemIds).toEqual([10, 20, 30]);
+    });
+  });
+
+  describe('applyWorktreeToAllWorkingOn', () => {
+    it('assigns path to all working-on items', () => {
+      useWorkItemsStore.setState({
+        workingOnWorkItemIds: new Set([10, 20, 30]),
+        workItemWorktreePaths: { 10: '/old/path' },
+      });
+      useWorkItemsStore.getState().applyWorktreeToAllWorkingOn('/new/worktree');
+      const paths = useWorkItemsStore.getState().workItemWorktreePaths;
+      expect(paths[10]).toBe('/new/worktree');
+      expect(paths[20]).toBe('/new/worktree');
+      expect(paths[30]).toBe('/new/worktree');
+    });
+
+    it('does nothing when no items are working-on', () => {
+      useWorkItemsStore.setState({
+        workingOnWorkItemIds: new Set(),
+        workItemWorktreePaths: {},
+      });
+      useWorkItemsStore.getState().applyWorktreeToAllWorkingOn('/path');
+      expect(useWorkItemsStore.getState().workItemWorktreePaths).toEqual({});
+    });
+
+    it('preserves paths for non-working-on items', () => {
+      useWorkItemsStore.setState({
+        workingOnWorkItemIds: new Set([10]),
+        workItemWorktreePaths: { 99: '/other' },
+      });
+      useWorkItemsStore.getState().applyWorktreeToAllWorkingOn('/new');
+      const paths = useWorkItemsStore.getState().workItemWorktreePaths;
+      expect(paths[99]).toBe('/other');
+      expect(paths[10]).toBe('/new');
     });
   });
 });

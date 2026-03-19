@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUiStore } from '@/stores/ui-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useWorkItemsStore } from '@/stores/work-items-store';
 import { AdoClient } from '@/services/ado/client';
-import { searchWorkItemsByIdPrefix } from '@/services/ado/workitems';
+import { searchWorkItemsByIdPrefix, getWorkItems } from '@/services/ado/workitems';
 import type { WorkItem } from '@/types';
 
 interface ResultItem {
@@ -11,6 +12,11 @@ interface ResultItem {
   state: string;
   workItemType: string;
   assignedTo: string;
+}
+
+interface Section {
+  label: string;
+  items: ResultItem[];
 }
 
 function getField(item: WorkItem, field: string): string {
@@ -23,6 +29,16 @@ function getField(item: WorkItem, field: string): string {
   return '';
 }
 
+function mapWorkItem(wi: WorkItem): ResultItem {
+  return {
+    id: wi.id,
+    title: getField(wi, 'System.Title'),
+    state: getField(wi, 'System.State'),
+    workItemType: getField(wi, 'System.WorkItemType'),
+    assignedTo: getField(wi, 'System.AssignedTo'),
+  };
+}
+
 interface CommandPaletteProps {
   onSelectWorkItem: (id: number) => void;
 }
@@ -32,33 +48,140 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
   const setOpen = useUiStore((s) => s.setCommandPaletteOpen);
   const settings = useSettingsStore((s) => s.settings);
 
+  const workItems = useWorkItemsStore((s) => s.workItems);
+  const workingOnIds = useWorkItemsStore((s) => s.workingOnWorkItemIds);
+  const currentUser = useWorkItemsStore((s) => s.currentUserDisplayName);
+  const recentIds = useWorkItemsStore((s) => s.recentWorkItemIds);
+
   const [searchText, setSearchText] = useState('');
-  const [results, setResults] = useState<ResultItem[]>([]);
+  const [searchResults, setSearchResults] = useState<ResultItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [statusText, setStatusText] = useState('Type a work item ID...');
+  const [statusText, setStatusText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [recentItems, setRecentItems] = useState<ResultItem[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const searchCtsRef = useRef<AbortController | null>(null);
 
-  // Focus input when opened
-  useEffect(() => {
-    if (isOpen) {
-      setSearchText('');
-      setResults([]);
-      setSelectedIndex(-1);
-      setStatusText('Type a work item ID...');
-      setIsSearching(false);
-      // Small delay to ensure DOM is ready
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [isOpen]);
+  const isSearchMode = searchText.trim().length > 0;
 
   const getClient = useCallback(() => {
     const ado = settings.azureDevOps;
     return new AdoClient(ado.organization, ado.project, ado.personalAccessToken ?? '');
   }, [settings.azureDevOps]);
+
+  // Build the "Working On" and "Assigned to Me" sections from in-memory work items
+  const workingOnSection: ResultItem[] = useMemo(() => {
+    if (workingOnIds.size === 0) return [];
+    return workItems
+      .filter((wi) => workingOnIds.has(wi.id))
+      .map(mapWorkItem);
+  }, [workItems, workingOnIds]);
+
+  const assignedToMeSection: ResultItem[] = useMemo(() => {
+    if (!currentUser) return [];
+    return workItems
+      .filter((wi) => {
+        const assignee = getField(wi, 'System.AssignedTo');
+        return (
+          assignee.toLowerCase() === currentUser.toLowerCase() &&
+          !workingOnIds.has(wi.id)
+        );
+      })
+      .map(mapWorkItem);
+  }, [workItems, currentUser, workingOnIds]);
+
+  // Build sections for browse mode
+  const browseSections: Section[] = useMemo(() => {
+    const sections: Section[] = [];
+    if (workingOnSection.length > 0) {
+      sections.push({ label: 'Working On', items: workingOnSection });
+    }
+    if (assignedToMeSection.length > 0) {
+      sections.push({ label: 'Assigned to Me', items: assignedToMeSection });
+    }
+    if (recentItems.length > 0) {
+      // Exclude items already shown in working-on or assigned sections
+      const shownIds = new Set([
+        ...workingOnSection.map((i) => i.id),
+        ...assignedToMeSection.map((i) => i.id),
+      ]);
+      const filtered = recentItems.filter((i) => !shownIds.has(i.id));
+      if (filtered.length > 0) {
+        sections.push({ label: 'Recent', items: filtered });
+      }
+    }
+    return sections;
+  }, [workingOnSection, assignedToMeSection, recentItems]);
+
+  // Flat list of all browse items for keyboard navigation
+  const browseFlat: ResultItem[] = useMemo(
+    () => browseSections.flatMap((s) => s.items),
+    [browseSections],
+  );
+
+  // The navigable items list depends on mode
+  const navItems = isSearchMode ? searchResults : browseFlat;
+
+  // Load recent items from ADO when palette opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Find recent IDs that are NOT already in the local workItems array
+    const localIds = new Set(workItems.map((wi) => wi.id));
+    const missingIds = recentIds.filter((id) => !localIds.has(id));
+
+    // Map local items immediately
+    const localRecent = recentIds
+      .filter((id) => localIds.has(id))
+      .map((id) => {
+        const wi = workItems.find((w) => w.id === id)!;
+        return mapWorkItem(wi);
+      });
+
+    if (missingIds.length === 0) {
+      setRecentItems(localRecent);
+      return;
+    }
+
+    // Fetch missing items from ADO
+    setIsLoadingRecent(true);
+    const client = getClient();
+    getWorkItems(client, missingIds)
+      .then((fetched) => {
+        const fetchedMap = new Map(fetched.map((wi) => [wi.id, mapWorkItem(wi)]));
+        // Rebuild in original order
+        const all = recentIds
+          .map((id) => {
+            const local = localRecent.find((l) => l.id === id);
+            if (local) return local;
+            return fetchedMap.get(id) ?? null;
+          })
+          .filter((x): x is ResultItem => x !== null);
+        setRecentItems(all);
+      })
+      .catch(() => {
+        // Best-effort: show what we have locally
+        setRecentItems(localRecent);
+      })
+      .finally(() => setIsLoadingRecent(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      setSearchText('');
+      setSearchResults([]);
+      setSelectedIndex(browseFlat.length > 0 ? 0 : -1);
+      setStatusText('');
+      setIsSearching(false);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Debounced search
   useEffect(() => {
@@ -67,21 +190,21 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
     searchCtsRef.current?.abort();
 
     if (!searchText.trim()) {
-      setResults([]);
-      setSelectedIndex(-1);
-      setStatusText('Type a work item ID...');
+      setSearchResults([]);
+      setSelectedIndex(browseFlat.length > 0 ? 0 : -1);
+      setStatusText('');
       return;
     }
 
     if (!/^\d+$/.test(searchText)) {
-      setResults([]);
+      setSearchResults([]);
       setSelectedIndex(-1);
       setStatusText('Type a numeric ID');
       return;
     }
 
     if (searchText.length < 2) {
-      setResults([]);
+      setSearchResults([]);
       setSelectedIndex(-1);
       setStatusText('Type at least 2 digits');
       return;
@@ -101,15 +224,8 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
         const items = await searchWorkItemsByIdPrefix(client, searchText);
         if (controller.signal.aborted) return;
 
-        const mapped: ResultItem[] = items.map((wi) => ({
-          id: wi.id,
-          title: getField(wi, 'System.Title'),
-          state: getField(wi, 'System.State'),
-          workItemType: getField(wi, 'System.WorkItemType'),
-          assignedTo: getField(wi, 'System.AssignedTo'),
-        }));
-
-        setResults(mapped);
+        const mapped = items.map(mapWorkItem);
+        setSearchResults(mapped);
         setSelectedIndex(mapped.length > 0 ? 0 : -1);
         setStatusText(
           mapped.length === 0
@@ -133,7 +249,25 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchText, isOpen, getClient]);
+  }, [searchText, isOpen, getClient, browseFlat.length]);
+
+  const handleSelect = useCallback(
+    (id: number) => {
+      setOpen(false);
+
+      // Record as recent
+      useWorkItemsStore.getState().addRecentWorkItem(id);
+      const ids = useWorkItemsStore.getState().recentWorkItemIds;
+      const current = useSettingsStore.getState().settings;
+      useSettingsStore.getState().saveSettings({
+        ...current,
+        azureDevOps: { ...current.azureDevOps, recentWorkItemIds: ids },
+      });
+
+      onSelectWorkItem(id);
+    },
+    [setOpen, onSelectWorkItem],
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -144,40 +278,32 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
           break;
         case 'ArrowUp':
           e.preventDefault();
-          if (results.length > 0) {
-            setSelectedIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
+          if (navItems.length > 0) {
+            setSelectedIndex((i) => (i <= 0 ? navItems.length - 1 : i - 1));
           }
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (results.length > 0) {
-            setSelectedIndex((i) => (i >= results.length - 1 ? 0 : i + 1));
+          if (navItems.length > 0) {
+            setSelectedIndex((i) => (i >= navItems.length - 1 ? 0 : i + 1));
           }
           break;
         case 'Enter':
           e.preventDefault();
-          if (selectedIndex >= 0 && selectedIndex < results.length) {
-            const item = results[selectedIndex];
-            if (item) {
-              setOpen(false);
-              onSelectWorkItem(item.id);
-            }
+          if (selectedIndex >= 0 && selectedIndex < navItems.length) {
+            const item = navItems[selectedIndex];
+            if (item) handleSelect(item.id);
           }
           break;
       }
     },
-    [results, selectedIndex, setOpen, onSelectWorkItem],
-  );
-
-  const handleItemClick = useCallback(
-    (id: number) => {
-      setOpen(false);
-      onSelectWorkItem(id);
-    },
-    [setOpen, onSelectWorkItem],
+    [navItems, selectedIndex, setOpen, handleSelect],
   );
 
   if (!isOpen) return null;
+
+  // Compute a flat index offset for each section so we can map section-local index to global
+  let globalOffset = 0;
 
   return (
     <div
@@ -214,57 +340,69 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
           />
         </div>
 
-        {/* Results list */}
-        {results.length > 0 && (
-          <div className="max-h-80 overflow-y-auto">
-            {results.map((item, index) => (
-              <div
+        {/* Content area */}
+        <div className="max-h-80 overflow-y-auto">
+          {isSearchMode ? (
+            /* Search results */
+            searchResults.map((item, index) => (
+              <PaletteRow
                 key={item.id}
-                className="flex cursor-pointer items-center justify-between px-4 py-2 transition-colors"
-                style={{
-                  backgroundColor:
-                    index === selectedIndex
-                      ? 'var(--color-accent-subtle)'
-                      : 'transparent',
-                }}
+                item={item}
+                isSelected={index === selectedIndex}
                 onMouseEnter={() => setSelectedIndex(index)}
-                onMouseDown={() => handleItemClick(item.id)}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className="shrink-0 text-[13px] font-bold"
-                    style={{ color: 'var(--color-accent)' }}
-                  >
-                    #{item.id}
-                  </span>
-                  <span
-                    className="truncate text-[13px]"
-                    style={{ color: 'var(--color-text-primary)' }}
-                  >
-                    {item.title}
-                  </span>
+                onSelect={handleSelect}
+              />
+            ))
+          ) : (
+            /* Browse sections */
+            <>
+              {browseSections.length === 0 && !isLoadingRecent && (
+                <div
+                  className="px-4 py-6 text-center text-[13px]"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  Type a work item ID to search
                 </div>
-                <div className="ml-2 flex shrink-0 items-center gap-1.5">
-                  <span
-                    className="text-[11px]"
-                    style={{ color: 'var(--color-text-tertiary)' }}
-                  >
-                    {item.workItemType}
-                  </span>
-                  <span
-                    className="text-[11px] font-semibold"
-                    style={{ color: 'var(--color-accent)' }}
-                  >
-                    {item.state}
-                  </span>
+              )}
+              {isLoadingRecent && browseSections.length === 0 && (
+                <div className="flex items-center justify-center py-6">
+                  <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" style={{ color: 'var(--color-text-muted)' }} />
+                  <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>Loading...</span>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+              {browseSections.map((section) => {
+                const sectionStart = globalOffset;
+                const rendered = (
+                  <div key={section.label}>
+                    <div
+                      className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'var(--color-text-tertiary)' }}
+                    >
+                      {section.label}
+                    </div>
+                    {section.items.map((item, localIndex) => {
+                      const flatIndex = sectionStart + localIndex;
+                      return (
+                        <PaletteRow
+                          key={item.id}
+                          item={item}
+                          isSelected={flatIndex === selectedIndex}
+                          onMouseEnter={() => setSelectedIndex(flatIndex)}
+                          onSelect={handleSelect}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+                globalOffset += section.items.length;
+                return rendered;
+              })}
+            </>
+          )}
+        </div>
 
         {/* Separator */}
-        {results.length > 0 && (
+        {(navItems.length > 0 || browseSections.length > 0) && (
           <div className="h-px" style={{ backgroundColor: 'var(--color-separator)' }} />
         )}
 
@@ -274,12 +412,64 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
             {isSearching && (
               <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent align-middle" />
             )}
-            {statusText}
+            {statusText || (isSearchMode ? '' : `\u2191\u2193 navigate \u00b7 \u23ce select`)}
           </span>
           <span className="text-[11px]" style={{ color: 'var(--color-text-faint)' }}>
             Esc to close
           </span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PaletteRow({
+  item,
+  isSelected,
+  onMouseEnter,
+  onSelect,
+}: {
+  item: ResultItem;
+  isSelected: boolean;
+  onMouseEnter: () => void;
+  onSelect: (id: number) => void;
+}) {
+  return (
+    <div
+      className="flex cursor-pointer items-center justify-between px-4 py-2 transition-colors"
+      style={{
+        backgroundColor: isSelected ? 'var(--color-accent-subtle)' : 'transparent',
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseDown={() => onSelect(item.id)}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="shrink-0 text-[13px] font-bold"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          #{item.id}
+        </span>
+        <span
+          className="truncate text-[13px]"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          {item.title}
+        </span>
+      </div>
+      <div className="ml-2 flex shrink-0 items-center gap-1.5">
+        <span
+          className="text-[11px]"
+          style={{ color: 'var(--color-text-tertiary)' }}
+        >
+          {item.workItemType}
+        </span>
+        <span
+          className="text-[11px] font-semibold"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          {item.state}
+        </span>
       </div>
     </div>
   );

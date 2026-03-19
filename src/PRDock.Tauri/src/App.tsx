@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { RepoSettings } from '@/types';
@@ -18,6 +18,7 @@ import { PullRequestList } from '@/components/pr/PullRequestList';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { SettingsFlyout } from '@/components/settings/SettingsFlyout';
 import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
+import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { usePrStore } from '@/stores/pr-store';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -86,6 +87,12 @@ export default function App() {
   // Run at startup sync
   useRunAtStartup(settings);
 
+  // Command palette: select a work item → switch to work items section and open detail
+  const handlePaletteSelectWorkItem = useCallback((id: number) => {
+    useUiStore.getState().setActiveSection('workitems');
+    useUiStore.getState().setPendingWorkItemId(id);
+  }, []);
+
   // Register global hotkey
   useEffect(() => {
     if (settings.ui.globalHotkey) {
@@ -150,6 +157,7 @@ export default function App() {
       </Sidebar>
       <SettingsFlyout />
       <NotificationOverlay />
+      <CommandPalette onSelectWorkItem={handlePaletteSelectWorkItem} />
     </>
   );
 }

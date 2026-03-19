@@ -13,6 +13,7 @@ interface WorkItemsState {
   trackedWorkItemIds: Set<number>;
   workingOnWorkItemIds: Set<number>;
   workItemWorktreePaths: Record<number, string>;
+  recentWorkItemIds: number[];
   currentUserDisplayName: string;
   isLoading: boolean;
 
@@ -32,6 +33,9 @@ interface WorkItemsState {
   toggleTracked: (workItemId: number) => void;
   toggleWorkingOn: (workItemId: number) => void;
   setWorktreePath: (workItemId: number, path: string) => void;
+  applyWorktreeToAllWorkingOn: (path: string) => void;
+  addRecentWorkItem: (id: number) => void;
+  setRecentWorkItemIds: (ids: number[]) => void;
   setCurrentUserDisplayName: (name: string) => void;
   setIsLoading: (loading: boolean) => void;
 }
@@ -71,6 +75,7 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
   trackedWorkItemIds: new Set<number>(),
   workingOnWorkItemIds: new Set<number>(),
   workItemWorktreePaths: {},
+  recentWorkItemIds: [],
   currentUserDisplayName: '',
   isLoading: false,
 
@@ -204,6 +209,23 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
         [workItemId]: path,
       },
     })),
+
+  applyWorktreeToAllWorkingOn: (path) =>
+    set((state) => {
+      const updated = { ...state.workItemWorktreePaths };
+      for (const id of state.workingOnWorkItemIds) {
+        updated[id] = path;
+      }
+      return { workItemWorktreePaths: updated };
+    }),
+
+  addRecentWorkItem: (id) =>
+    set((state) => {
+      const filtered = state.recentWorkItemIds.filter((x) => x !== id);
+      return { recentWorkItemIds: [id, ...filtered].slice(0, 20) };
+    }),
+
+  setRecentWorkItemIds: (ids) => set({ recentWorkItemIds: ids }),
 
   setCurrentUserDisplayName: (name) => set({ currentUserDisplayName: name }),
   setIsLoading: (loading) => set({ isLoading: loading }),
