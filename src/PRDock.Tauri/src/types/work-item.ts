@@ -60,3 +60,14 @@ export interface JsonPatchOperation {
   path: string;
   value?: unknown;
 }
+
+export interface WorkItemComment {
+  id: number;
+  text: string;
+  createdBy: {
+    displayName: string;
+    uniqueName?: string;
+  };
+  createdDate: string;
+  modifiedDate: string;
+}

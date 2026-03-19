@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import clsx from 'clsx';
-import type { DynamicFieldItem, WorkItemAttachment } from '../../types';
+import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '../../types';
 import { useAdoImageAuth } from '@/hooks/useAdoImageAuth';
 
 export interface WorkItemDetailData {
@@ -26,11 +26,14 @@ interface WorkItemDetailPanelProps {
   standardFields: DynamicFieldItem[];
   customFields: DynamicFieldItem[];
   attachments: WorkItemAttachment[];
+  comments?: WorkItemComment[];
+  isLoadingComments?: boolean;
   onSave: (updates: WorkItemFieldUpdates) => void;
   onDelete?: () => void;
   onClose: () => void;
   onOpenInBrowser: (url: string) => void;
   onDownloadAttachment: (attachment: WorkItemAttachment) => void;
+  onAddComment?: (text: string) => Promise<void>;
 }
 
 export interface WorkItemFieldUpdates {
@@ -59,6 +62,28 @@ function stateColor(state: string): string {
     return 'var(--color-status-green)';
   if (s === 'removed') return 'var(--color-status-gray)';
   return 'var(--color-status-yellow)';
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function avatarInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
 }
 
 function formatSize(bytes: number): string {
@@ -120,11 +145,14 @@ export function WorkItemDetailPanel({
   standardFields,
   customFields,
   attachments,
+  comments,
+  isLoadingComments,
   onSave,
   onDelete,
   onClose,
   onOpenInBrowser,
   onDownloadAttachment,
+  onAddComment,
 }: WorkItemDetailPanelProps) {
   const [title, setTitle] = useState(item.title);
   const [state, setState] = useState(item.state);
@@ -132,6 +160,19 @@ export function WorkItemDetailPanel({
   const [priority, setPriority] = useState(item.priority);
   const [tags, setTags] = useState(item.tags);
   const [newItemType, setNewItemType] = useState(item.workItemType || 'Task');
+  const [commentText, setCommentText] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+
+  const handleAddComment = useCallback(async () => {
+    if (!commentText.trim() || !onAddComment) return;
+    setIsPostingComment(true);
+    try {
+      await onAddComment(commentText.trim());
+      setCommentText('');
+    } finally {
+      setIsPostingComment(false);
+    }
+  }, [commentText, onAddComment]);
 
   const handleSave = useCallback(() => {
     onSave({
@@ -369,6 +410,77 @@ export function WorkItemDetailPanel({
                 </button>
               ))}
             </div>
+          </FieldSection>
+        )}
+
+        {/* Discussion / Comments */}
+        {!item.isNewItem && (
+          <FieldSection title="Discussion">
+            {isLoadingComments && (
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="animate-pulse space-y-1.5">
+                    <div className="flex gap-2">
+                      <div className="h-5 w-5 rounded-full bg-[var(--color-surface-raised)]" />
+                      <div className="h-3 w-24 rounded bg-[var(--color-surface-raised)]" />
+                    </div>
+                    <div className="h-8 w-full rounded bg-[var(--color-surface-raised)]" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {!isLoadingComments && comments && comments.length === 0 && (
+              <p className="text-[12px] text-[var(--color-text-ghost)]">No comments yet.</p>
+            )}
+            {!isLoadingComments && comments && comments.length > 0 && (
+              <div className="space-y-3">
+                {comments.map((c) => (
+                  <div key={c.id} className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-2.5">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]">
+                        {avatarInitials(c.createdBy.displayName)}
+                      </span>
+                      <span className="text-[12px] font-medium text-[var(--color-text-primary)]">
+                        {c.createdBy.displayName}
+                      </span>
+                      <span className="text-[10px] text-[var(--color-text-ghost)]">
+                        {formatRelativeDate(c.createdDate)}
+                      </span>
+                    </div>
+                    <div
+                      className="prose-sm text-[13px] text-[var(--color-text-secondary)] [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_a]:text-[var(--color-accent)] [&_a]:underline"
+                      dangerouslySetInnerHTML={{ __html: c.text }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Add comment */}
+            {onAddComment && (
+              <div className="mt-3">
+                <textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  rows={2}
+                  placeholder="Add a comment..."
+                  className="w-full resize-none rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                />
+                <div className="mt-1.5 flex justify-end">
+                  <button
+                    onClick={handleAddComment}
+                    disabled={isPostingComment || !commentText.trim()}
+                    className={clsx(
+                      'rounded-md px-3 py-1 text-[12px] font-medium transition-colors',
+                      isPostingComment || !commentText.trim()
+                        ? 'cursor-not-allowed bg-[var(--color-filter-chip-bg)] text-[var(--color-text-ghost)]'
+                        : 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90'
+                    )}
+                  >
+                    {isPostingComment ? 'Posting...' : 'Comment'}
+                  </button>
+                </div>
+              </div>
+            )}
           </FieldSection>
         )}
       </div>

@@ -1,4 +1,4 @@
-use tauri::{Manager, WebviewWindow};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WebviewWindow};
 
 #[tauri::command]
 pub fn position_sidebar(
@@ -124,6 +124,44 @@ pub fn hide_sidebar(app: tauri::AppHandle) -> Result<(), String> {
     if win.is_visible().unwrap_or(false) {
         win.hide().map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_pr_detail_window(
+    app: tauri::AppHandle,
+    owner: String,
+    repo: String,
+    number: u32,
+) -> Result<(), String> {
+    let label = format!("pr-detail-{}-{}-{}", owner, repo, number);
+
+    // If the window already exists, just show and focus it
+    if let Some(existing) = app.get_webview_window(&label) {
+        existing.show().map_err(|e| e.to_string())?;
+        existing.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let url_str = format!(
+        "pr-detail.html?owner={}&repo={}&number={}",
+        urlencoding::encode(&owner),
+        urlencoding::encode(&repo),
+        number
+    );
+
+    WebviewWindowBuilder::new(
+        &app,
+        &label,
+        WebviewUrl::App(url_str.into()),
+    )
+    .title(format!("PR #{} - {}/{}", number, owner, repo))
+    .inner_size(800.0, 900.0)
+    .decorations(true)
+    .resizable(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 

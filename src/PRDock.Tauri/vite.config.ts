@@ -23,6 +23,7 @@ export default defineConfig({
         badge: path.resolve(__dirname, "badge.html"),
         palette: path.resolve(__dirname, "palette.html"),
         'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),
+        'pr-detail': path.resolve(__dirname, "pr-detail.html"),
       },
     },
   },

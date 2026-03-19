@@ -162,3 +162,23 @@ pub fn git_checkout(repo_path: String, branch: String) -> Result<(), String> {
 pub fn git_current_branch(repo_path: String) -> Result<String, String> {
     run_git(&repo_path, &["rev-parse", "--abbrev-ref", "HEAD"])
 }
+
+#[tauri::command]
+pub fn run_gh_command(args: Vec<String>) -> Result<String, String> {
+    let output = Command::new("gh")
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to run gh: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "gh {} failed (exit {}): {}",
+            args.join(" "),
+            output.status.code().unwrap_or(-1),
+            stderr.trim()
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}

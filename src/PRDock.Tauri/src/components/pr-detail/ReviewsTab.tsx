@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import clsx from 'clsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getClient } from '@/services/github/singleton';
@@ -46,9 +47,44 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
+export function severityOrder(state: string): number {
+  switch (state) {
+    case 'CHANGES_REQUESTED': return 0;
+    case 'COMMENTED': return 1;
+    case 'APPROVED': return 2;
+    default: return 3;
+  }
+}
+
+export type SortMode = 'newest' | 'oldest' | 'severity' | 'file';
+
+export function sortReviews(reviews: Review[], mode: SortMode | string): Review[] {
+  switch (mode) {
+    case 'oldest':
+      return [...reviews].sort(
+        (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+      );
+    case 'newest':
+      return [...reviews].sort(
+        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      );
+    case 'severity':
+      return [...reviews].sort(
+        (a, b) => severityOrder(a.state) - severityOrder(b.state)
+      );
+    case 'file':
+      return [...reviews]; // reviews don't have file paths — passthrough
+    default:
+      return reviews;
+  }
+}
+
+const SORT_MODES: SortMode[] = ['newest', 'oldest', 'severity', 'file'];
+
 export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
 
   useEffect(() => {
     let cancelled = false;
@@ -102,9 +138,30 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
     );
   }
 
+  const sortedReviews = sortReviews(reviews, sortMode);
+
   return (
-    <div className="divide-y divide-[var(--color-separator)]">
-      {reviews.map((review) => {
+    <div>
+      {/* Sort buttons */}
+      <div className="flex gap-1 px-3 py-1.5 border-b border-[var(--color-separator)]">
+        {SORT_MODES.map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setSortMode(mode)}
+            className={clsx(
+              'px-2 py-0.5 text-[10px] rounded transition-colors',
+              sortMode === mode
+                ? 'bg-[var(--color-accent)] text-[var(--color-avatar-text)]'
+                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
+            )}
+          >
+            {mode.charAt(0).toUpperCase() + mode.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      <div className="divide-y divide-[var(--color-separator)]">
+      {sortedReviews.map((review) => {
         const { label, color } = stateLabel(review.state);
         return (
           <div key={review.id} className="px-3 py-2.5 space-y-1.5">
@@ -138,6 +195,7 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { AdoClient } from '@/services/ado/client';
-import { getWorkItem, getWorkItemTypeStates, updateWorkItem, deleteWorkItem } from '@/services/ado/workitems';
+import { getWorkItem, getWorkItemTypeStates, updateWorkItem, deleteWorkItem, getWorkItemComments, addWorkItemComment } from '@/services/ado/workitems';
 import {
   WorkItemDetailPanel,
   type WorkItemDetailData,
   type WorkItemFieldUpdates,
 } from './WorkItemDetailPanel';
-import type { WorkItem, DynamicFieldItem, WorkItemAttachment, JsonPatchOperation } from '@/types';
+import type { WorkItem, WorkItemComment, DynamicFieldItem, WorkItemAttachment, JsonPatchOperation } from '@/types';
 import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
 import { useSettingsStore } from '@/stores/settings-store';
 
@@ -172,6 +172,8 @@ export function WorkItemDetailApp() {
   const [workItem, setWorkItem] = useState<WorkItem | null>(null);
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [processedRichText, setProcessedRichText] = useState<DynamicFieldItem[] | null>(null);
+  const [comments, setComments] = useState<WorkItemComment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [statusText, setStatusText] = useState<string | undefined>();
@@ -233,6 +235,13 @@ export function WorkItemDetailApp() {
             setAvailableStates([getField(item, 'System.State')]);
           }
         }
+
+        // Load comments
+        setIsLoadingComments(true);
+        getWorkItemComments(client, workItemId)
+          .then((c) => setComments(c))
+          .catch((err) => console.error('Failed to load comments:', err))
+          .finally(() => setIsLoadingComments(false));
 
         // Pre-process rich text images with ADO auth
         const pat = ado.personalAccessToken;
@@ -306,6 +315,14 @@ export function WorkItemDetailApp() {
     } finally {
       setIsSaving(false);
     }
+  }, [workItemId, getClient]);
+
+  const handleAddComment = useCallback(async (text: string) => {
+    if (!workItemId) return;
+    const client = getClient();
+    if (!client) return;
+    const newComment = await addWorkItemComment(client, workItemId, text);
+    setComments((prev) => [...prev, newComment]);
   }, [workItemId, getClient]);
 
   const handleClose = useCallback(() => {
@@ -400,11 +417,14 @@ export function WorkItemDetailApp() {
         standardFields={standard}
         customFields={custom}
         attachments={attachments}
+        comments={comments}
+        isLoadingComments={isLoadingComments}
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={handleClose}
         onOpenInBrowser={handleOpenInBrowser}
         onDownloadAttachment={handleDownloadAttachment}
+        onAddComment={handleAddComment}
       />
     </div>
   );

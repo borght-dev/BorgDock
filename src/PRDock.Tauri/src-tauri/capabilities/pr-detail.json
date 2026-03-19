@@ -1,0 +1,14 @@
+{
+  "identifier": "pr-detail-capability",
+  "description": "Permissions for the PR detail pop-out window",
+  "windows": ["pr-detail-*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-set-title",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-visible",
+    "opener:default",
+    "clipboard-manager:default"
+  ]
+}

@@ -10,6 +10,21 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 pub fn run() {
+    let log_plugin = tauri_plugin_log::Builder::new()
+        .target(tauri_plugin_log::Target::new(
+            tauri_plugin_log::TargetKind::Folder {
+                path: dirs::config_dir()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join("PRDock")
+                    .join("logs"),
+                file_name: Some("prdock".into()),
+            },
+        ))
+        .max_file_size(5_000_000)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+        .level(log::LevelFilter::Info)
+        .build();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
@@ -25,7 +40,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(log_plugin)
         .plugin(tauri_plugin_os::init())
         .manage(ProcessState {
             processes: Mutex::new(HashMap::new()),
@@ -66,6 +81,9 @@ pub fn run() {
             git::commands::git_current_branch,
             git::commands::discover_repos,
             git::commands::resolve_repo_path,
+            git::commands::run_gh_command,
+            // Window
+            platform::window::open_pr_detail_window,
             // Process
             git::process::launch_claude_code,
             git::process::get_active_sessions,

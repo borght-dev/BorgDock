@@ -82,6 +82,8 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const { pullRequest: pr, overallStatus, passedCount, checks, failedCheckNames } = prWithChecks;
   const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
+  const togglePrExpanded = useUiStore((s) => s.togglePrExpanded);
+  const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
   const username = usePrStore((s) => s.username);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr } = useClaudeActions();
@@ -234,6 +236,23 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             )}
           </div>
 
+          {/* Stats row */}
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
+            {pr.commentCount > 0 && (
+              <span title="Comments">{'\uD83D\uDCAC'} {pr.commentCount}</span>
+            )}
+            {(pr.additions > 0 || pr.deletions > 0) && (
+              <span>
+                <span className="text-green-500">+{pr.additions}</span>
+                {' '}
+                <span className="text-red-500">-{pr.deletions}</span>
+              </span>
+            )}
+            {pr.commitCount > 0 && (
+              <span title="Commits">{pr.commitCount} commit{pr.commitCount !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+
           {/* Action buttons - visible on hover */}
           <div className="mt-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {overallStatus === 'red' && (
@@ -246,7 +265,31 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             {overallStatus === 'red' && (
               <ActionButton label="Copy" icon={"\uD83D\uDCCB"} onClick={handleCopyErrors} />
             )}
+            <button
+              data-expand-toggle
+              onClick={(e) => { e.stopPropagation(); togglePrExpanded(pr.number); }}
+              className="flex items-center rounded px-1 py-0.5 text-[9px] text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-subtle-border)] transition-colors"
+              title={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                {isExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
+              </svg>
+            </button>
           </div>
+
+          {/* Inline expansion */}
+          {isExpanded && (
+            <div className="border-t border-[var(--color-separator)] pt-2 mt-2 space-y-2">
+              <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {pr.headRef} {'\u2192'} {pr.baseRef}
+              </div>
+              {pr.body && (
+                <div className="text-[11px] text-[var(--color-text-secondary)] line-clamp-4">
+                  {pr.body}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right side: review status + merge score */}

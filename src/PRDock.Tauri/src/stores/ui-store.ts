@@ -8,6 +8,7 @@ interface UiState {
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
   expandedRepoGroups: Set<string>;
+  expandedPrNumbers: Set<number>;
   isCommandPaletteOpen: boolean;
   isDragging: boolean;
   pendingWorkItemId: number | null;
@@ -18,6 +19,9 @@ interface UiState {
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
+  collapseAllRepoGroups: () => void;
+  togglePrExpanded: (prNumber: number) => void;
+  collapseAllPrs: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
@@ -29,6 +33,7 @@ export const useUiStore = create<UiState>()((set) => ({
   activeSection: 'prs',
   selectedPrNumber: null,
   expandedRepoGroups: new Set<string>(),
+  expandedPrNumbers: new Set<number>(),
   isCommandPaletteOpen: false,
   isDragging: false,
   pendingWorkItemId: null,
@@ -54,6 +59,21 @@ export const useUiStore = create<UiState>()((set) => ({
       }
       return { expandedRepoGroups: next };
     }),
+
+  collapseAllRepoGroups: () => set({ expandedRepoGroups: new Set() }),
+
+  togglePrExpanded: (prNumber) =>
+    set((state) => {
+      const next = new Set(state.expandedPrNumbers);
+      if (next.has(prNumber)) {
+        next.delete(prNumber);
+      } else {
+        next.add(prNumber);
+      }
+      return { expandedPrNumbers: next };
+    }),
+
+  collapseAllPrs: () => set({ expandedPrNumbers: new Set() }),
 
   setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
 

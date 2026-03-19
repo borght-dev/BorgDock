@@ -85,6 +85,27 @@ export async function submitReview(
   });
 }
 
+// --- Bypass merge (admin) using gh CLI via Tauri shell ---
+
+export async function bypassMergePullRequest(
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('run_gh_command', {
+    args: [
+      'pr',
+      'merge',
+      String(prNumber),
+      '--squash',
+      '--admin',
+      '--repo',
+      `${owner}/${repo}`,
+    ],
+  });
+}
+
 // --- Post a comment ---
 
 export async function postComment(

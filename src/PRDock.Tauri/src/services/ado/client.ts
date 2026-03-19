@@ -1,3 +1,6 @@
+const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503]);
+const MAX_RETRIES = 3;
+
 export class AdoClient {
   private readonly org: string;
   private readonly project: string;
@@ -9,6 +12,21 @@ export class AdoClient {
     this.project = project;
     this.pat = pat;
     this.authHeader = 'Basic ' + btoa(':' + pat);
+  }
+
+  private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const response = await fetch(url, init);
+      if (!TRANSIENT_STATUS_CODES.has(response.status) || attempt === MAX_RETRIES) {
+        return response;
+      }
+      const retryAfter = response.headers.get('Retry-After');
+      const delay = retryAfter
+        ? parseInt(retryAfter, 10) * 1000 || 1000
+        : 1000 * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    throw new Error('Retry loop exhausted');
   }
 
   get isConfigured(): boolean {
@@ -23,9 +41,9 @@ export class AdoClient {
     return `https://dev.azure.com/${encodeURIComponent(this.org)}/${encodeURIComponent(this.project)}/_apis`;
   }
 
-  private buildUrl(relativePath: string): string {
+  private buildUrl(relativePath: string, apiVersion = '7.1'): string {
     const separator = relativePath.includes('?') ? '&' : '?';
-    return `${this.baseUrl}/${relativePath}${separator}api-version=7.1`;
+    return `${this.baseUrl}/${relativePath}${separator}api-version=${apiVersion}`;
   }
 
   private buildOrgUrl(relativePath: string): string {
@@ -40,25 +58,26 @@ export class AdoClient {
     };
   }
 
-  async get<T>(relativePath: string): Promise<T> {
-    const url = this.buildUrl(relativePath);
-    const response = await fetch(url, { headers: this.headers });
+  async get<T>(relativePath: string, apiVersion?: string): Promise<T> {
+    const url = this.buildUrl(relativePath, apiVersion);
+    const response = await this.fetchWithRetry(url, { headers: this.headers });
     return this.handleResponse<T>(response, url);
   }
 
   async getOrgLevel<T>(relativePath: string): Promise<T> {
     const url = this.buildOrgUrl(relativePath);
-    const response = await fetch(url, { headers: this.headers });
+    const response = await this.fetchWithRetry(url, { headers: this.headers });
     return this.handleResponse<T>(response, url);
   }
 
   async post<T>(
     relativePath: string,
     body: unknown,
-    contentType?: string
+    contentType?: string,
+    apiVersion?: string
   ): Promise<T> {
-    const url = this.buildUrl(relativePath);
-    const response = await fetch(url, {
+    const url = this.buildUrl(relativePath, apiVersion);
+    const response = await this.fetchWithRetry(url, {
       method: 'POST',
       headers: {
         ...this.headers,
@@ -75,7 +94,7 @@ export class AdoClient {
     contentType?: string
   ): Promise<T> {
     const url = this.buildUrl(relativePath);
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       method: 'PATCH',
       headers: {
         ...this.headers,
@@ -88,7 +107,7 @@ export class AdoClient {
 
   async delete(relativePath: string): Promise<void> {
     const url = this.buildUrl(relativePath);
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       method: 'DELETE',
       headers: this.headers,
     });
@@ -109,7 +128,7 @@ export class AdoClient {
 
   async getStream(relativePath: string): Promise<Blob> {
     const url = this.buildUrl(relativePath);
-    const response = await fetch(url, { headers: this.headers });
+    const response = await this.fetchWithRetry(url, { headers: this.headers });
 
     if (response.status === 401 || response.status === 403) {
       throw new AdoAuthError(

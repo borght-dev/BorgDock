@@ -67,6 +67,13 @@ export function useKeyboardNav() {
           }
           break;
         }
+        case 'e':
+        case 'E': {
+          e.preventDefault();
+          useUiStore.getState().collapseAllRepoGroups();
+          useUiStore.getState().collapseAllPrs();
+          break;
+        }
       }
     },
     [selectPr, selectedPrNumber]

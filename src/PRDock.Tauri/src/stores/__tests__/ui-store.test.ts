@@ -9,6 +9,7 @@ describe('ui-store', () => {
       activeSection: 'prs',
       selectedPrNumber: null,
       expandedRepoGroups: new Set<string>(),
+      expandedPrNumbers: new Set<number>(),
     });
   });
 
@@ -75,6 +76,32 @@ describe('ui-store', () => {
       useUiStore.getState().toggleRepoGroup('a/one');
       expect(useUiStore.getState().expandedRepoGroups.has('a/one')).toBe(false);
       expect(useUiStore.getState().expandedRepoGroups.has('b/two')).toBe(true);
+    });
+  });
+
+  describe('expandedPrNumbers', () => {
+    it('toggles PR expansion', () => {
+      useUiStore.getState().togglePrExpanded(42);
+      expect(useUiStore.getState().expandedPrNumbers.has(42)).toBe(true);
+      useUiStore.getState().togglePrExpanded(42);
+      expect(useUiStore.getState().expandedPrNumbers.has(42)).toBe(false);
+    });
+
+    it('collapseAllPrs clears all expanded', () => {
+      useUiStore.getState().togglePrExpanded(1);
+      useUiStore.getState().togglePrExpanded(2);
+      useUiStore.getState().collapseAllPrs();
+      expect(useUiStore.getState().expandedPrNumbers.size).toBe(0);
+    });
+  });
+
+  describe('collapseAllRepoGroups', () => {
+    it('clears all expanded repo groups', () => {
+      useUiStore.setState({
+        expandedRepoGroups: new Set(['owner/repo1', 'owner/repo2']),
+      });
+      useUiStore.getState().collapseAllRepoGroups();
+      expect(useUiStore.getState().expandedRepoGroups.size).toBe(0);
     });
   });
 });

@@ -53,7 +53,12 @@ export function useGitHubPolling(settings: AppSettings) {
 
       const allPrs: PullRequestWithChecks[] = [];
 
-      for (const repo of enabledRepos) {
+      for (let i = 0; i < enabledRepos.length; i++) {
+        // Stagger: wait 500ms between repos (skip first)
+        if (i > 0) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        const repo = enabledRepos[i]!;
         try {
           const prs = await getOpenPRs(c, repo.owner, repo.name);
 

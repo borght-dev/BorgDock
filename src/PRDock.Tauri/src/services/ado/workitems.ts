@@ -1,4 +1,4 @@
-import type { WorkItem, JsonPatchOperation } from '@/types';
+import type { WorkItem, WorkItemComment, JsonPatchOperation } from '@/types';
 import type { AdoClient } from './client';
 
 interface AdoWorkItemListResponse {
@@ -102,6 +102,40 @@ export async function getWorkItemTypeStates(
   }>(`wit/workitemtypes/${encodedType}/states`);
 
   return (response.value ?? []).map((s) => s.name);
+}
+
+// --- Work item comments (Discussion) ---
+
+interface AdoCommentsResponse {
+  totalCount: number;
+  count: number;
+  comments: WorkItemComment[];
+}
+
+const COMMENTS_API_VERSION = '7.1-preview.4';
+
+export async function getWorkItemComments(
+  client: AdoClient,
+  workItemId: number
+): Promise<WorkItemComment[]> {
+  const response = await client.get<AdoCommentsResponse>(
+    `wit/workitems/${workItemId}/comments?$top=200&order=asc`,
+    COMMENTS_API_VERSION
+  );
+  return response.comments ?? [];
+}
+
+export async function addWorkItemComment(
+  client: AdoClient,
+  workItemId: number,
+  text: string
+): Promise<WorkItemComment> {
+  return client.post<WorkItemComment>(
+    `wit/workitems/${workItemId}/comments`,
+    { text },
+    undefined,
+    COMMENTS_API_VERSION
+  );
 }
 
 export function buildIdPrefixWiql(prefix: string): string {

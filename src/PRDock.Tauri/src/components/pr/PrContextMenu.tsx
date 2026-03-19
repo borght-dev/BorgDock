@@ -5,7 +5,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { PullRequestWithChecks } from '@/types';
 import { useSettingsStore } from '@/stores/settings-store';
 import { getClient } from '@/services/github/singleton';
-import { mergePullRequest, toggleDraft } from '@/services/github/mutations';
+import { mergePullRequest, toggleDraft, bypassMergePullRequest } from '@/services/github/mutations';
 import { rerunWorkflow } from '@/services/github/checks';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 
@@ -163,6 +163,19 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
     await mergePullRequest(client, owner, repo, pullRequest.number);
   });
 
+  const handleBypassMerge = handleAction(async () => {
+    await bypassMergePullRequest(owner, repo, pullRequest.number);
+  });
+
+  const handleOpenInDetailWindow = handleAction(async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('open_pr_detail_window', {
+      owner,
+      repo,
+      number: pullRequest.number,
+    });
+  });
+
   return (
     <div
       ref={menuRef}
@@ -175,6 +188,7 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
       }}
     >
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
+      <MenuItem label="Open in detail window" onClick={handleOpenInDetailWindow} />
       <MenuItem label="Copy branch name" onClick={handleCopyBranch} />
       <MenuItem label="Copy PR URL" onClick={handleCopyUrl} />
       <MenuItem
@@ -214,6 +228,11 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
         label="Merge"
         onClick={handleMerge}
         disabled={!canMerge}
+      />
+      <MenuItem
+        label="Bypass merge (admin)"
+        onClick={handleBypassMerge}
+        disabled={pullRequest.state !== 'open'}
       />
     </div>
   );

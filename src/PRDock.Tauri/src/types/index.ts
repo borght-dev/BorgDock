@@ -37,6 +37,7 @@ export type {
   WorkItem,
   WorkItemRelation,
   WorkItemAttachment,
+  WorkItemComment,
   AdoQuery,
   AdoQueryResult,
   AdoQueryWorkItemRef,

@@ -1,8 +1,27 @@
 pub mod models;
 
 use models::AppSettings;
+use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
+
+/// Recursively merge `overlay` into `base`. Objects are deep-merged;
+/// scalars and arrays in overlay replace those in base.
+pub fn merge_json(base: &mut Value, overlay: &Value) {
+    match (base, overlay) {
+        (Value::Object(base_map), Value::Object(overlay_map)) => {
+            for (key, overlay_val) in overlay_map {
+                let entry = base_map
+                    .entry(key.clone())
+                    .or_insert(Value::Null);
+                merge_json(entry, overlay_val);
+            }
+        }
+        (base, overlay) => {
+            *base = overlay.clone();
+        }
+    }
+}
 
 fn settings_dir() -> PathBuf {
     dirs::config_dir()
@@ -27,6 +46,24 @@ fn atomic_write(path: &PathBuf, settings: &AppSettings) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(debug_assertions)]
+fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
+    let dev_path = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .join("settings.dev.json");
+    if !dev_path.exists() {
+        return Ok(settings);
+    }
+    let dev_content = fs::read_to_string(&dev_path)
+        .map_err(|e| format!("Failed to read settings.dev.json: {e}"))?;
+    let dev_value: Value = serde_json::from_str(&dev_content)
+        .map_err(|e| format!("Failed to parse settings.dev.json: {e}"))?;
+    let mut settings_value = serde_json::to_value(&settings).map_err(|e| e.to_string())?;
+    merge_json(&mut settings_value, &dev_value);
+    serde_json::from_value(settings_value)
+        .map_err(|e| format!("Failed to apply dev overlay: {e}"))
+}
+
 #[tauri::command]
 pub fn load_settings() -> Result<AppSettings, String> {
     let dir = settings_dir();
@@ -34,32 +71,78 @@ pub fn load_settings() -> Result<AppSettings, String> {
 
     let main_path = settings_path();
 
-    // Try main file first
-    if main_path.exists() {
+    let settings = if main_path.exists() {
         match fs::read_to_string(&main_path) {
             Ok(json) => match serde_json::from_str::<AppSettings>(&json) {
-                Ok(settings) => return Ok(settings),
-                Err(_) => { /* fall through to backup */ }
+                Ok(s) => s,
+                Err(_) => load_from_backup(&main_path)?,
             },
-            Err(_) => { /* fall through to backup */ }
+            Err(_) => load_from_backup(&main_path)?,
         }
+    } else {
+        load_from_backup(&main_path)?
+    };
+
+    #[cfg(debug_assertions)]
+    {
+        return apply_dev_overlay(settings);
     }
 
-    // Try backup
+    #[allow(unreachable_code)]
+    Ok(settings)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::merge_json;
+    use serde_json::json;
+
+    #[test]
+    fn merge_overrides_scalar_values() {
+        let mut base = json!({ "a": 1, "b": 2 });
+        let overlay = json!({ "b": 99 });
+        merge_json(&mut base, &overlay);
+        assert_eq!(base, json!({ "a": 1, "b": 99 }));
+    }
+
+    #[test]
+    fn merge_deep_merges_objects() {
+        let mut base = json!({ "github": { "authMethod": "ghCli", "pollInterval": 60 } });
+        let overlay = json!({ "github": { "pollInterval": 30 } });
+        merge_json(&mut base, &overlay);
+        assert_eq!(base["github"]["authMethod"], "ghCli");
+        assert_eq!(base["github"]["pollInterval"], 30);
+    }
+
+    #[test]
+    fn merge_adds_new_keys() {
+        let mut base = json!({ "a": 1 });
+        let overlay = json!({ "b": 2 });
+        merge_json(&mut base, &overlay);
+        assert_eq!(base, json!({ "a": 1, "b": 2 }));
+    }
+
+    #[test]
+    fn merge_replaces_arrays() {
+        let mut base = json!({ "repos": [1, 2] });
+        let overlay = json!({ "repos": [3] });
+        merge_json(&mut base, &overlay);
+        assert_eq!(base["repos"], json!([3]));
+    }
+}
+
+fn load_from_backup(main_path: &PathBuf) -> Result<AppSettings, String> {
     let bak_path = backup_path();
     if bak_path.exists() {
         if let Ok(json) = fs::read_to_string(&bak_path) {
             if let Ok(settings) = serde_json::from_str::<AppSettings>(&json) {
-                // Restore main from backup
-                let _ = atomic_write(&main_path, &settings);
+                let _ = atomic_write(main_path, &settings);
                 return Ok(settings);
             }
         }
     }
-
-    // No usable file — return defaults and persist them
     let defaults = AppSettings::default();
-    atomic_write(&main_path, &defaults)?;
+    atomic_write(main_path, &defaults)?;
     Ok(defaults)
 }
 

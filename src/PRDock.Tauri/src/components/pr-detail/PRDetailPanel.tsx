@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
+import { invoke } from '@tauri-apps/api/core';
 import type { PullRequestWithChecks } from '@/types';
 import { useUiStore } from '@/stores/ui-store';
 import { OverviewTab } from './OverviewTab';
@@ -21,6 +22,15 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const [underline, setUnderline] = useState({ left: 0, width: 0 });
+
+  const handlePopOut = useCallback(() => {
+    invoke('open_pr_detail_window', {
+      owner: pr.pullRequest.repoOwner,
+      repo: pr.pullRequest.repoName,
+      number: pr.pullRequest.number,
+    }).catch((err) => console.error('Pop-out failed:', err));
+    selectPr(null);
+  }, [pr, selectPr]);
 
   useEffect(() => {
     const idx = tabs.indexOf(activeTab);
@@ -59,6 +69,18 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
             #{pr.pullRequest.number}
           </span>
         </div>
+        <button
+          onClick={handlePopOut}
+          className="mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+          aria-label="Pop out"
+          title="Open in new window"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M9 2h5v5" />
+            <path d="m14 2-7 7" />
+            <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
+          </svg>
+        </button>
       </div>
 
       {/* Tab bar */}
@@ -87,14 +109,14 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
         />
       </div>
 
-      {/* Tab content */}
+      {/* Tab content — all tabs rendered eagerly for instant switching */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === 'Overview' && <OverviewTab pr={pr} />}
-        {activeTab === 'Commits' && <CommitsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
-        {activeTab === 'Files' && <FilesTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
-        {activeTab === 'Checks' && <ChecksTab checks={pr.checks} />}
-        {activeTab === 'Reviews' && <ReviewsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
-        {activeTab === 'Comments' && <CommentsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} />}
+        <div className={activeTab === 'Overview' ? '' : 'hidden'}><OverviewTab pr={pr} /></div>
+        <div className={activeTab === 'Commits' ? '' : 'hidden'}><CommitsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
+        <div className={activeTab === 'Files' ? '' : 'hidden'}><FilesTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
+        <div className={activeTab === 'Checks' ? '' : 'hidden'}><ChecksTab checks={pr.checks} /></div>
+        <div className={activeTab === 'Reviews' ? '' : 'hidden'}><ReviewsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
+        <div className={activeTab === 'Comments' ? '' : 'hidden'}><CommentsTab prNumber={pr.pullRequest.number} repoOwner={pr.pullRequest.repoOwner} repoName={pr.pullRequest.repoName} /></div>
       </div>
     </div>
   );
