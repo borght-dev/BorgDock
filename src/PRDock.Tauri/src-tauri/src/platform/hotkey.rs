@@ -60,7 +60,6 @@ pub fn register_hotkey(
                 .decorations(false)
                 .always_on_top(true)
                 .resizable(false)
-                .transparent(false)
                 .skip_taskbar(true)
                 .center()
                 .focused(true)
