@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod cache;
 pub mod git;
+pub mod notification;
 pub mod platform;
 pub mod settings;
 pub mod sql;
@@ -97,6 +98,8 @@ pub fn run() {
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,
+            // Notification
+            notification::send_notification,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

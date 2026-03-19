@@ -1,8 +1,3 @@
-import {
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
-} from '@tauri-apps/plugin-notification';
 import type { InAppNotification, PullRequest, PullRequestWithChecks } from '@/types';
 
 export interface StateTransition {
@@ -160,16 +155,8 @@ export function buildFixCommittedNotification(pr: PullRequest): InAppNotificatio
 // --- OS notification ---
 
 export async function sendOsNotification(title: string, body: string): Promise<void> {
-  let permissionGranted = await isPermissionGranted();
-
-  if (!permissionGranted) {
-    const permission = await requestPermission();
-    permissionGranted = permission === 'granted';
-  }
-
-  if (permissionGranted) {
-    sendNotification({ title, body });
-  }
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('send_notification', { title, body });
 }
 
 // --- Helpers ---

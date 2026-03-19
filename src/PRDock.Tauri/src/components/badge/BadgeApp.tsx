@@ -7,6 +7,7 @@ interface BadgeData {
   totalPrCount: number;
   failingCount: number;
   pendingCount: number;
+  notificationCount: number;
   myPrs: BadgePrItem[];
   teamPrs: BadgePrItem[];
   badgeStyle?: string;
@@ -39,6 +40,7 @@ export function BadgeApp() {
     totalPrCount: 0,
     failingCount: 0,
     pendingCount: 0,
+    notificationCount: 0,
     myPrs: [],
     teamPrs: [],
   });
@@ -191,16 +193,32 @@ export function BadgeApp() {
     >
       <div className="flex flex-col items-center">
         {expandUp && prPanel}
-        <BadgeStyleComponent
-          totalPrCount={data.totalPrCount}
-          failingCount={data.failingCount}
-          pendingCount={data.pendingCount}
-          statusColor={statusColor}
-          statusText={statusText}
-          onClick={handleExpandSidebar}
-          onToggleExpand={toggleExpanded}
-          isExpanded={isExpanded}
-        />
+        <div className="relative">
+          <BadgeStyleComponent
+            totalPrCount={data.totalPrCount}
+            failingCount={data.failingCount}
+            pendingCount={data.pendingCount}
+            statusColor={statusColor}
+            statusText={statusText}
+            onClick={handleExpandSidebar}
+            onToggleExpand={toggleExpanded}
+            isExpanded={isExpanded}
+          />
+          {data.notificationCount > 0 && (
+            <div
+              className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full text-[9px] font-bold text-white shadow-md animate-[notifPop_0.3s_ease-out]"
+              style={{
+                backgroundColor: 'var(--color-status-red)',
+                minWidth: 18,
+                height: 18,
+                padding: '0 4px',
+                boxShadow: '0 0 6px var(--color-badge-glow-red)',
+              }}
+            >
+              {data.notificationCount}
+            </div>
+          )}
+        </div>
         {!expandUp && prPanel}
       </div>
     </div>

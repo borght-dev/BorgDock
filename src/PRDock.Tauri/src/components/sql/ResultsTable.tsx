@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { useCallback, useRef, useState } from 'react';
 
 interface ResultsTableProps {
@@ -7,7 +8,12 @@ interface ResultsTableProps {
   onSelectionChange: (selected: Set<number>) => void;
 }
 
-export function ResultsTable({ columns, rows, selectedRows, onSelectionChange }: ResultsTableProps) {
+export function ResultsTable({
+  columns,
+  rows,
+  selectedRows,
+  onSelectionChange,
+}: ResultsTableProps) {
   const [lastClickedRow, setLastClickedRow] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -41,51 +47,39 @@ export function ResultsTable({ columns, rows, selectedRows, onSelectionChange }:
   if (columns.length === 0) return null;
 
   return (
-    <div ref={tableRef} className="flex-1 overflow-auto">
-      <table className="w-full border-collapse text-xs" style={{ fontFamily: 'Consolas, "Courier New", monospace' }}>
-        <thead className="sticky top-0 z-10">
-          <tr style={{ backgroundColor: 'var(--color-surface-raised)' }}>
+    <div ref={tableRef} className="sql-results-container">
+      <table className="sql-results-table">
+        <thead>
+          <tr>
+            <th className="sql-row-num-header">#</th>
             {columns.map((col, i) => (
-              <th
-                key={i}
-                className="whitespace-nowrap border-b px-3 py-1.5 text-left text-[11px] font-semibold"
-                style={{
-                  borderColor: 'var(--color-separator)',
-                  color: 'var(--color-text-secondary)',
-                }}
-              >
-                {col}
+              <th key={i} className="sql-col-header">
+                <span className="sql-col-name">{col}</span>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIdx) => (
-            <tr
-              key={rowIdx}
-              className="cursor-pointer transition-colors"
-              style={{
-                backgroundColor: selectedRows.has(rowIdx)
-                  ? 'var(--color-accent-subtle)'
-                  : 'transparent',
-              }}
-              onClick={(e) => handleRowClick(rowIdx, e)}
-            >
-              {row.map((cell, colIdx) => (
-                <td
-                  key={colIdx}
-                  className="whitespace-nowrap border-b px-3 py-1"
-                  style={{
-                    borderColor: 'var(--color-separator)',
-                    color: cell === null ? 'var(--color-text-ghost)' : 'var(--color-text-primary)',
-                    fontStyle: cell === null ? 'italic' : 'normal',
-                  }}
-                >
-                  {cell === null ? 'NULL' : cell}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row, rowIdx) => {
+            const isSelected = selectedRows.has(rowIdx);
+            return (
+              <tr
+                key={rowIdx}
+                className={clsx('sql-data-row', isSelected && 'sql-data-row--selected')}
+                onClick={(e) => handleRowClick(rowIdx, e)}
+              >
+                <td className="sql-row-num">{rowIdx + 1}</td>
+                {row.map((cell, colIdx) => (
+                  <td
+                    key={colIdx}
+                    className={clsx('sql-cell', cell === null && 'sql-cell--null')}
+                  >
+                    {cell === null ? 'NULL' : cell}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

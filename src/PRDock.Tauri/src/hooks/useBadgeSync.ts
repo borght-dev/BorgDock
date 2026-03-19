@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { BadgePrItem, StatusColor } from '@/components/badge/FloatingBadge';
+import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -42,6 +43,7 @@ export interface BadgeUpdatePayload {
   totalPrCount: number;
   failingCount: number;
   pendingCount: number;
+  notificationCount: number;
   myPrs: BadgePrItem[];
   teamPrs: BadgePrItem[];
   badgeStyle: string;
@@ -53,6 +55,7 @@ function buildBadgePayload(
   username: string,
   badgeStyle: string,
   theme: string,
+  notificationCount: number,
 ): BadgeUpdatePayload {
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
   const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
@@ -70,6 +73,7 @@ function buildBadgePayload(
     totalPrCount: pullRequests.length,
     failingCount,
     pendingCount,
+    notificationCount,
     myPrs,
     teamPrs,
     badgeStyle,
@@ -102,12 +106,16 @@ export function useBadgeSync() {
   const username = usePrStore((s) => s.username);
   const badgeStyle = useSettingsStore((s) => s.settings.ui.badgeStyle);
   const theme = useSettingsStore((s) => s.settings.ui.theme);
+  const activeNotification = useNotificationStore((s) => s.activeNotification);
+  const queuedNotifications = useNotificationStore((s) => s.notifications);
+  const notificationCount =
+    queuedNotifications.length + (activeNotification ? 1 : 0);
 
-  // Emit badge data whenever PRs, username, badge style, or theme change
+  // Emit badge data whenever PRs, username, badge style, theme, or notifications change
   useEffect(() => {
-    const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme);
+    const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme, notificationCount);
     sendToBadge(payload);
-  }, [pullRequests, username, badgeStyle, theme]);
+  }, [pullRequests, username, badgeStyle, theme, notificationCount]);
 
   // Respond to badge-request-data: re-send current payload
   useEffect(() => {
@@ -119,13 +127,15 @@ export function useBadgeSync() {
           const prs = usePrStore.getState().pullRequests;
           const user = usePrStore.getState().username;
           const st = useSettingsStore.getState().settings;
+          const ns = useNotificationStore.getState();
+          const nc = ns.notifications.length + (ns.activeNotification ? 1 : 0);
           console.log(
             '[BadgeSync] Received badge-request-data, PRs in store:',
             prs.length,
             'username:',
             user,
           );
-          const payload = buildBadgePayload(prs, user, st.ui.badgeStyle, st.ui.theme);
+          const payload = buildBadgePayload(prs, user, st.ui.badgeStyle, st.ui.theme, nc);
           sendToBadge(payload);
         });
       } catch {

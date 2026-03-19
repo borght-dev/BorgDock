@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { ResultsTable } from './ResultsTable';
@@ -45,6 +46,80 @@ async function saveCurrentPosition() {
   }
 }
 
+/* ── Icons ─────────────────────────────────────────────── */
+
+function PlayIcon({ className }: { className?: string }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className={className}>
+      <path d="M4.5 2.5v11l9-5.5z" />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className={clsx('animate-spin', className)}
+    >
+      <path d="M8 1a7 7 0 1 0 7 7" />
+    </svg>
+  );
+}
+
+function DatabaseIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <ellipse cx="8" cy="4" rx="6" ry="2.5" />
+      <path d="M2 4v4c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5V4" />
+      <path d="M2 8v4c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5V8" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="5" y="5" width="9" height="9" rx="1.5" />
+      <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 8.5 3.5 3.5 6.5-8" />
+    </svg>
+  );
+}
+
+/* ── Main App ──────────────────────────────────────────── */
+
 export function SqlApp() {
   const [sqlSettings, setSqlSettings] = useState<SqlSettings | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string>('');
@@ -55,6 +130,8 @@ export function SqlApp() {
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [copyFlash, setCopyFlash] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [editorHeight, setEditorHeight] = useState(140);
+  const isDragging = useRef(false);
 
   // Load settings and restore position
   useEffect(() => {
@@ -63,14 +140,12 @@ export function SqlApp() {
         const settings = await invoke<AppSettings>('load_settings');
         setSqlSettings(settings.sql);
 
-        // Apply theme
         const t = settings.ui?.theme ?? 'system';
         const isDark =
           t === 'dark' ||
           (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', isDark);
 
-        // Select last used connection or first available
         const lastUsed = settings.sql.lastUsedConnection;
         if (lastUsed && settings.sql.connections.some((c) => c.name === lastUsed)) {
           setSelectedConnection(lastUsed);
@@ -81,7 +156,6 @@ export function SqlApp() {
         console.error('Failed to load settings:', err);
       }
 
-      // Restore saved position
       const saved = loadSavedPosition();
       if (
         saved &&
@@ -127,6 +201,30 @@ export function SqlApp() {
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
+  // Drag-to-resize editor
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!isDragging.current) return;
+      e.preventDefault();
+      const container = document.getElementById('sql-editor-area');
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const newHeight = Math.max(60, Math.min(400, e.clientY - rect.top));
+      setEditorHeight(newHeight);
+    }
+    function onMouseUp() {
+      isDragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
+
   const runQuery = useCallback(async () => {
     if (!selectedConnection || !query.trim()) return;
     setIsRunning(true);
@@ -147,7 +245,6 @@ export function SqlApp() {
     }
   }, [selectedConnection, query]);
 
-  // Ctrl+Enter to run
   const handleTextareaKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -195,112 +292,108 @@ export function SqlApp() {
   }, [result, query, getRowsForCopy, flash]);
 
   const hasConnections = sqlSettings && sqlSettings.connections.length > 0;
+  const hasResults = result && result.columns.length > 0;
+  const lineCount = query.split('\n').length;
 
   return (
-    <div
-      className="flex h-screen w-screen flex-col overflow-hidden"
-      style={{ backgroundColor: 'var(--color-card-background)' }}
-    >
-      {/* Connection picker */}
-      <div
-        className="flex items-center gap-2 border-b px-3 py-2"
-        style={{ borderColor: 'var(--color-separator)' }}
-      >
-        <label
-          className="shrink-0 text-[11px] font-medium"
-          style={{ color: 'var(--color-text-tertiary)' }}
-        >
-          Connection
-        </label>
-        {hasConnections ? (
-          <select
-            className="flex-1 rounded border px-2 py-1 text-xs outline-none"
-            style={{
-              backgroundColor: 'var(--color-input-bg)',
-              borderColor: 'var(--color-input-border)',
-              color: 'var(--color-text-primary)',
-            }}
-            value={selectedConnection}
-            onChange={(e) => setSelectedConnection(e.target.value)}
-          >
-            {sqlSettings.connections.map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            No connections configured — open Settings
-          </span>
-        )}
-      </div>
+    <div className="sql-app flex h-screen w-screen flex-col overflow-hidden">
+      {/* ── Toolbar ─────────────────────────────────────── */}
+      <div className="sql-toolbar flex items-center gap-2 px-3 py-1.5">
+        {/* Connection picker */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="sql-connection-icon">
+            <DatabaseIcon />
+          </div>
+          {hasConnections ? (
+            <select
+              className="sql-connection-select flex-1 min-w-0"
+              value={selectedConnection}
+              onChange={(e) => setSelectedConnection(e.target.value)}
+            >
+              {sqlSettings.connections.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="sql-no-connections">No connections — open Settings</span>
+          )}
+        </div>
 
-      {/* Query editor */}
-      <div className="px-3 pt-2">
-        <textarea
-          ref={textareaRef}
-          className="w-full resize-y rounded border px-3 py-2 text-xs outline-none"
-          style={{
-            fontFamily: 'Consolas, "Courier New", monospace',
-            minHeight: '100px',
-            maxHeight: '300px',
-            backgroundColor: 'var(--color-input-bg)',
-            borderColor: 'var(--color-input-border)',
-            color: 'var(--color-text-primary)',
-            caretColor: 'var(--color-accent)',
-          }}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleTextareaKeyDown}
-          placeholder="Enter SQL query..."
-          spellCheck={false}
-        />
-      </div>
+        {/* Separator */}
+        <div className="sql-toolbar-separator" />
 
-      {/* Toolbar */}
-      <div
-        className="flex items-center gap-2 border-b px-3 py-1.5"
-        style={{ borderColor: 'var(--color-separator)' }}
-      >
+        {/* Run button */}
         <button
-          className="rounded-md px-3 py-1 text-[11px] font-semibold transition-opacity disabled:opacity-50"
-          style={{
-            backgroundColor: 'var(--color-accent)',
-            color: 'var(--color-accent-foreground)',
-          }}
+          className={clsx('sql-run-btn', isRunning && 'sql-run-btn--running')}
           onClick={runQuery}
           disabled={isRunning || !hasConnections || !query.trim()}
         >
-          {isRunning ? 'Running...' : 'Run'}
+          {isRunning ? (
+            <>
+              <SpinnerIcon />
+              <span>Running</span>
+            </>
+          ) : (
+            <>
+              <PlayIcon />
+              <span>Run</span>
+            </>
+          )}
         </button>
-        <span className="text-[10px]" style={{ color: 'var(--color-text-ghost)' }}>
-          Ctrl+Enter
-        </span>
-        {isRunning && (
-          <span
-            className="ml-auto inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
-            style={{ color: 'var(--color-accent)' }}
-          />
-        )}
+        <kbd className="sql-kbd">Ctrl+Enter</kbd>
       </div>
 
-      {/* Error display */}
+      {/* ── Editor area ─────────────────────────────────── */}
+      <div id="sql-editor-area" className="sql-editor-area" style={{ height: editorHeight }}>
+        {/* Line numbers gutter */}
+        <div className="sql-gutter" aria-hidden="true">
+          {Array.from({ length: Math.max(lineCount, 6) }, (_, i) => (
+            <div key={i} className="sql-gutter-line">
+              {i + 1}
+            </div>
+          ))}
+        </div>
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          className="sql-textarea"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleTextareaKeyDown}
+          placeholder="SELECT * FROM ..."
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+        />
+      </div>
+
+      {/* ── Resize handle ───────────────────────────────── */}
+      <div
+        className="sql-resize-handle"
+        onMouseDown={() => {
+          isDragging.current = true;
+          document.body.style.cursor = 'row-resize';
+          document.body.style.userSelect = 'none';
+        }}
+      >
+        <div className="sql-resize-grip" />
+      </div>
+
+      {/* ── Error display ───────────────────────────────── */}
       {error && (
-        <div
-          className="border-b px-3 py-2 text-xs"
-          style={{
-            borderColor: 'var(--color-separator)',
-            color: 'var(--color-status-red)',
-            backgroundColor: 'var(--color-surface-raised)',
-          }}
-        >
-          {error}
+        <div className="sql-error">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <circle cx="8" cy="8" r="6.5" />
+            <path d="M8 5v3.5M8 10.5v.5" />
+          </svg>
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Results table */}
-      {result && result.columns.length > 0 && (
+      {/* ── Results ─────────────────────────────────────── */}
+      {hasResults && (
         <ResultsTable
           columns={result.columns}
           rows={result.rows}
@@ -309,72 +402,60 @@ export function SqlApp() {
         />
       )}
 
-      {/* Empty results message */}
+      {/* Empty results */}
       {result && result.columns.length === 0 && !error && (
-        <div
-          className="flex flex-1 items-center justify-center text-xs"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          Query executed successfully — no results returned
+        <div className="sql-empty-results">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
+            <path d="m3 8.5 3.5 3.5 6.5-8" />
+          </svg>
+          <span>Query executed — no results returned</span>
         </div>
       )}
 
-      {/* Status bar */}
-      <div
-        className="flex shrink-0 items-center justify-between border-t px-3 py-1.5"
-        style={{
-          borderColor: 'var(--color-separator)',
-          backgroundColor: 'var(--color-surface-raised)',
-        }}
-      >
-        <div className="flex items-center gap-3">
+      {/* ── Status bar ──────────────────────────────────── */}
+      <div className="sql-status-bar">
+        <div className="sql-status-left">
           {result && (
             <>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
-                {result.rowCount} row{result.rowCount !== 1 ? 's' : ''}
-                {result.truncated ? ' (truncated)' : ''} — {result.executionTimeMs}ms
+              <span className="sql-status-rows">
+                {result.rowCount.toLocaleString()} row{result.rowCount !== 1 ? 's' : ''}
+                {result.truncated && <span className="sql-status-truncated"> (truncated)</span>}
               </span>
+              <span className="sql-status-dot" />
+              <span className="sql-status-time">{result.executionTimeMs}ms</span>
               {selectedRows.size > 0 && (
-                <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  {selectedRows.size} selected
-                </span>
+                <>
+                  <span className="sql-status-dot" />
+                  <span className="sql-status-selected">{selectedRows.size} selected</span>
+                </>
               )}
             </>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+
+        <div className="sql-status-right">
           {copyFlash && (
-            <span
-              className="text-[10px] font-medium"
-              style={{ color: 'var(--color-status-green)' }}
-            >
+            <span className="sql-copy-flash">
+              <CheckIcon />
               {copyFlash}
             </span>
           )}
           {result && result.rows.length > 0 && (
-            <>
-              <CopyButton label="Values" onClick={copyValues} />
-              <CopyButton label="+ Headers" onClick={copyWithHeaders} />
-              <CopyButton label="All" onClick={copyAll} />
-            </>
+            <div className="sql-copy-group">
+              <CopyIcon />
+              <button className="sql-copy-btn" onClick={copyValues}>
+                Values
+              </button>
+              <button className="sql-copy-btn" onClick={copyWithHeaders}>
+                + Headers
+              </button>
+              <button className="sql-copy-btn" onClick={copyAll}>
+                All
+              </button>
+            </div>
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-function CopyButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      className="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
-      style={{
-        color: 'var(--color-text-secondary)',
-        backgroundColor: 'var(--color-surface-hover)',
-      }}
-      onClick={onClick}
-    >
-      {label}
-    </button>
   );
 }
