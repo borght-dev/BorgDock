@@ -75,22 +75,17 @@ export async function getOpenPRs(
 ): Promise<PullRequest[]> {
   const dtos = await client.get<GitHubPullRequestDto[]>(`repos/${owner}/${repo}/pulls?state=open`);
 
-  const pullRequests: PullRequest[] = [];
+  const pullRequests = dtos.map((dto) => mapToPullRequest(dto, owner, repo));
 
-  for (const dto of dtos) {
-    const pr = mapToPullRequest(dto, owner, repo);
-
-    try {
+  // Fetch reviews for all PRs in parallel
+  await Promise.allSettled(
+    pullRequests.map(async (pr, i) => {
       const reviews = await client.get<GitHubReviewDto[]>(
-        `repos/${owner}/${repo}/pulls/${dto.number}/reviews`,
+        `repos/${owner}/${repo}/pulls/${dtos[i]!.number}/reviews`,
       );
       pr.reviewStatus = aggregateReviewStatus(reviews);
-    } catch {
-      // If reviews fail, leave as 'none'
-    }
-
-    pullRequests.push(pr);
-  }
+    }),
+  );
 
   return pullRequests;
 }

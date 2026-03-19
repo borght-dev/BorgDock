@@ -75,63 +75,75 @@ fn parse_worktree_list(output: &str) -> Vec<WorktreeInfo> {
 }
 
 #[tauri::command]
-pub fn list_worktrees(base_path: String) -> Result<Vec<WorktreeInfo>, String> {
-    let output = run_git(&base_path, &["worktree", "list", "--porcelain"])?;
-    Ok(parse_worktree_list(&output))
+pub async fn list_worktrees(base_path: String) -> Result<Vec<WorktreeInfo>, String> {
+    tokio::task::spawn_blocking(move || {
+        let output = run_git(&base_path, &["worktree", "list", "--porcelain"])?;
+        Ok(parse_worktree_list(&output))
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn create_worktree(
+pub async fn create_worktree(
     base_path: String,
     subfolder: String,
     branch_name: String,
 ) -> Result<String, String> {
-    // Fetch the remote branch first
-    let _ = run_git(&base_path, &["fetch", "origin", &branch_name]);
+    tokio::task::spawn_blocking(move || {
+        // Fetch the remote branch first
+        let _ = run_git(&base_path, &["fetch", "origin", &branch_name]);
 
-    let worktree_dir = std::path::Path::new(&base_path).join(&subfolder);
-    std::fs::create_dir_all(&worktree_dir)
-        .map_err(|e| format!("Failed to create worktree directory: {e}"))?;
+        let worktree_dir = std::path::Path::new(&base_path).join(&subfolder);
+        std::fs::create_dir_all(&worktree_dir)
+            .map_err(|e| format!("Failed to create worktree directory: {e}"))?;
 
-    let sanitized = sanitize_branch_name(&branch_name);
-    let worktree_path = worktree_dir.join(&sanitized);
-    let worktree_path_str = worktree_path.to_string_lossy().to_string();
+        let sanitized = sanitize_branch_name(&branch_name);
+        let worktree_path = worktree_dir.join(&sanitized);
+        let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
-    // If directory already exists, pull latest
-    if worktree_path.exists() {
-        let _ = run_git(
-            &worktree_path_str,
+        // If directory already exists, pull latest
+        if worktree_path.exists() {
+            let _ = run_git(
+                &worktree_path_str,
+                &[
+                    "checkout",
+                    "-B",
+                    &branch_name,
+                    &format!("origin/{branch_name}"),
+                ],
+            );
+            let _ = run_git(&worktree_path_str, &["pull", "--ff-only"]);
+            return Ok(worktree_path_str);
+        }
+
+        // Create new worktree with tracking branch
+        run_git(
+            &base_path,
             &[
-                "checkout",
+                "worktree",
+                "add",
                 "-B",
                 &branch_name,
+                &worktree_path_str,
                 &format!("origin/{branch_name}"),
             ],
-        );
-        let _ = run_git(&worktree_path_str, &["pull", "--ff-only"]);
-        return Ok(worktree_path_str);
-    }
+        )?;
 
-    // Create new worktree with tracking branch
-    run_git(
-        &base_path,
-        &[
-            "worktree",
-            "add",
-            "-B",
-            &branch_name,
-            &worktree_path_str,
-            &format!("origin/{branch_name}"),
-        ],
-    )?;
-
-    Ok(worktree_path_str)
+        Ok(worktree_path_str)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn remove_worktree(base_path: String, worktree_path: String) -> Result<(), String> {
-    run_git(&base_path, &["worktree", "remove", &worktree_path])?;
-    Ok(())
+pub async fn remove_worktree(base_path: String, worktree_path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        run_git(&base_path, &["worktree", "remove", &worktree_path])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 fn sanitize_branch_name(name: &str) -> String {

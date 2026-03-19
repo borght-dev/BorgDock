@@ -1,9 +1,13 @@
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { MergeReadinessChecklist } from '@/components/pr-detail/MergeReadinessChecklist';
 import { rerunWorkflow } from '@/services/github/checks';
 import { getClient } from '@/services/github/singleton';
+import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -75,25 +79,103 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-function ActionButton({
+
+function ExpandedContent({
+  prWithChecks,
+}: {
+  prWithChecks: PullRequestWithChecks;
+}) {
+  const pr = prWithChecks.pullRequest;
+
+  return (
+    <div
+      className="border-t border-[var(--color-separator)] bg-[var(--color-expanded-row-bg,var(--color-surface-raised))] rounded-b-lg pt-3 mt-2 space-y-3 -mx-2.5 -mb-2.5 px-2.5 pb-2.5"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Branch info */}
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="rounded border border-[var(--color-branch-badge-border)] bg-[var(--color-branch-badge-bg)] px-1.5 py-0.5 font-mono text-[var(--color-accent)]">
+          {pr.headRef}
+        </span>
+        <span className="text-[var(--color-text-ghost)]">{'\u2192'}</span>
+        <span className="rounded border border-[var(--color-target-badge-border)] bg-[var(--color-target-badge-bg)] px-1.5 py-0.5 font-mono text-[var(--color-text-tertiary)]">
+          {pr.baseRef}
+        </span>
+        <span className="text-[var(--color-text-ghost)]">{'\u00B7'}</span>
+        <span className="font-mono text-[var(--color-text-faint)]">
+          {pr.commitCount} commit{pr.commitCount !== 1 ? 's' : ''}
+        </span>
+        <span className="text-[var(--color-text-ghost)]">{'\u00B7'}</span>
+        <span className="font-mono">
+          <span className="text-[var(--color-status-green)]">+{pr.additions}</span>
+          <span className="text-[var(--color-text-ghost)]"> / </span>
+          <span className="text-[var(--color-status-red)]">-{pr.deletions}</span>
+        </span>
+        <span className="text-[var(--color-text-ghost)]">{'\u00B7'}</span>
+        <span className="font-mono text-[var(--color-text-faint)]">
+          {pr.changedFiles} file{pr.changedFiles !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Merge readiness checklist */}
+      <MergeReadinessChecklist pr={prWithChecks} />
+
+      {/* PR body - markdown rendered */}
+      {pr.body && (
+        <div className="markdown-body max-h-[200px] overflow-y-auto text-[11px]">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{pr.body}</ReactMarkdown>
+        </div>
+      )}
+
+      {/* Review summary */}
+      {pr.reviewStatus !== 'none' && (
+        <div className="text-[11px] text-[var(--color-text-secondary)]">
+          {pr.reviewStatus === 'approved' && '\u2705 Approved'}
+          {pr.reviewStatus === 'changesRequested' && '\u274C Changes Requested'}
+          {pr.reviewStatus === 'pending' && '\u23F3 Review Pending'}
+          {pr.reviewStatus === 'commented' && '\uD83D\uDCAC Commented'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExpandedActionButton({
   label,
   icon,
   onClick,
+  variant = 'default',
 }: {
   label: string;
-  icon: string;
+  icon?: string;
   onClick: (e: React.MouseEvent) => void;
+  variant?: 'default' | 'accent' | 'purple' | 'success' | 'draft';
 }) {
+  const variantClasses = {
+    default:
+      'border-[var(--color-subtle-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
+    accent:
+      'border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]',
+    purple:
+      'border-[var(--color-purple-border,#7c3aed)] text-[var(--color-purple,#a78bfa)] hover:bg-[color-mix(in_srgb,var(--color-purple,#a78bfa)_10%,transparent)]',
+    success:
+      'border-[var(--color-success-badge-border)] bg-[var(--color-action-success-bg,color-mix(in_srgb,var(--color-status-green)_15%,transparent))] text-[var(--color-status-green)] hover:opacity-90',
+    draft:
+      'border-[var(--color-draft-badge-border)] text-[var(--color-draft-badge-fg)] hover:bg-[color-mix(in_srgb,var(--color-draft-badge-fg)_10%,transparent)]',
+  };
+
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
         onClick(e);
       }}
-      className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-subtle-border)] transition-colors"
-      title={label}
+      className={clsx(
+        'flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold cursor-pointer transition-colors',
+        variantClasses[variant],
+      )}
     >
-      <span>{icon}</span>
+      {icon && <span className="text-[10px]">{icon}</span>}
       <span>{label}</span>
     </button>
   );
@@ -108,6 +190,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const username = usePrStore((s) => s.username);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr } = useClaudeActions();
+  const showNotification = useNotificationStore((s) => s.show);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -121,6 +204,14 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
     setContextMenu({ x: e.clientX, y: e.clientY });
   }, []);
 
+  const showError = useCallback(
+    (title: string, err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      showNotification({ title, message, severity: 'error', actions: [] });
+    },
+    [showNotification],
+  );
+
   // Find a failed check for rerun
   const failedCheck = checks.find(
     (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
@@ -132,10 +223,10 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
       const client = getClient();
       if (!client || !failedCheck) return;
       rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch((err) =>
-        console.error('Failed to rerun checks:', err),
+        showError('Failed to re-run checks', err),
       );
     },
-    [failedCheck, pr.repoOwner, pr.repoName],
+    [failedCheck, pr.repoOwner, pr.repoName, showError],
   );
 
   const handleFix = useCallback(
@@ -143,18 +234,18 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
       e.stopPropagation();
       const firstFailedName = failedCheckNames[0] ?? 'unknown';
       fixWithClaude(prWithChecks, firstFailedName, [], [], '').catch((err) =>
-        console.error('Fix with Claude failed:', err),
+        showError('Fix with Claude failed', err),
       );
     },
-    [prWithChecks, failedCheckNames, fixWithClaude],
+    [prWithChecks, failedCheckNames, fixWithClaude, showError],
   );
 
   const handleMonitor = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      monitorPr(prWithChecks).catch((err) => console.error('Monitor with Claude failed:', err));
+      monitorPr(prWithChecks).catch((err) => showError('Monitor with Claude failed', err));
     },
-    [prWithChecks, monitorPr],
+    [prWithChecks, monitorPr, showError],
   );
 
   const handleCopyErrors = useCallback(
@@ -166,9 +257,18 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
         '',
         ...failedCheckNames.map((name: string) => `- ${name}`),
       ].join('\n');
-      writeText(markdown).catch((err) => console.error('Failed to copy errors:', err));
+      writeText(markdown)
+        .then(() =>
+          showNotification({
+            title: 'Copied to clipboard',
+            message: `${failedCheckNames.length} failed check(s) copied`,
+            severity: 'success',
+            actions: [],
+          }),
+        )
+        .catch((err) => showError('Failed to copy errors', err));
     },
-    [failedCheckNames, pr.number],
+    [failedCheckNames, pr.number, showNotification, showError],
   );
 
   return (
@@ -273,16 +373,16 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
           </div>
 
           {/* Action buttons - visible on hover */}
-          <div className="mt-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {overallStatus === 'red' && (
-              <ActionButton label="Re-run" icon={'\u21BB'} onClick={handleRerun} />
+          <div className="mt-1.5 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {overallStatus === 'red' && failedCheck && (
+              <ExpandedActionButton label="Re-run" icon={'\u21BB'} onClick={handleRerun} variant="accent" />
             )}
             {overallStatus === 'red' && (
-              <ActionButton label="Fix" icon={'\u26A1'} onClick={handleFix} />
+              <ExpandedActionButton label="Fix" icon={'\u2726'} onClick={handleFix} variant="purple" />
             )}
-            <ActionButton label="Monitor" icon={'\u25B6'} onClick={handleMonitor} />
-            {overallStatus === 'red' && (
-              <ActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={handleCopyErrors} />
+            <ExpandedActionButton label="Monitor" icon={'\u25B6'} onClick={handleMonitor} variant="purple" />
+            {failedCheckNames.length > 0 && (
+              <ExpandedActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={handleCopyErrors} variant="default" />
             )}
             <button
               data-expand-toggle
@@ -290,7 +390,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
                 e.stopPropagation();
                 togglePrExpanded(pr.number);
               }}
-              className="flex items-center rounded px-1 py-0.5 text-[9px] text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-subtle-border)] transition-colors"
+              className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold cursor-pointer border-[var(--color-subtle-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
               title={isExpanded ? 'Collapse' : 'Expand'}
             >
               <svg
@@ -309,16 +409,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
 
           {/* Inline expansion */}
           {isExpanded && (
-            <div className="border-t border-[var(--color-separator)] pt-2 mt-2 space-y-2">
-              <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                {pr.headRef} {'\u2192'} {pr.baseRef}
-              </div>
-              {pr.body && (
-                <div className="text-[11px] text-[var(--color-text-secondary)] line-clamp-4">
-                  {pr.body}
-                </div>
-              )}
-            </div>
+            <ExpandedContent prWithChecks={prWithChecks} />
           )}
         </div>
 

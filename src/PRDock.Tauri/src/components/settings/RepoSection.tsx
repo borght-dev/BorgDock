@@ -35,6 +35,14 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
     [repos, onChange],
   );
 
+  const updateRepo = useCallback(
+    (index: number, patch: Partial<RepoSettings>) => {
+      const updated = repos.map((r, i) => (i === index ? { ...r, ...patch } : r));
+      onChange(updated);
+    },
+    [repos, onChange],
+  );
+
   const removeRepo = useCallback(
     (index: number) => {
       onChange(repos.filter((_, i) => i !== index));
@@ -42,40 +50,80 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
     [repos, onChange],
   );
 
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
   return (
     <div className="space-y-2.5">
       {/* Repo list */}
       {repos.map((repo, i) => (
         <div
           key={`${repo.owner}/${repo.name}`}
-          className="flex items-center gap-2 rounded-md border border-[var(--color-subtle-border)] px-2.5 py-1.5"
+          className="rounded-md border border-[var(--color-subtle-border)] px-2.5 py-1.5"
         >
-          {/* Toggle */}
-          <button
-            className={clsx(
-              'h-4 w-7 rounded-full transition-colors relative shrink-0',
-              repo.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
-            )}
-            onClick={() => toggleRepo(i)}
-          >
-            <span
+          <div className="flex items-center gap-2">
+            {/* Toggle */}
+            <button
               className={clsx(
-                'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform shadow-sm',
-                repo.enabled ? 'left-3.5' : 'left-0.5',
+                'h-4 w-7 rounded-full transition-colors relative shrink-0',
+                repo.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
               )}
-            />
-          </button>
+              onClick={() => toggleRepo(i)}
+            >
+              <span
+                className={clsx(
+                  'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform shadow-sm',
+                  repo.enabled ? 'left-3.5' : 'left-0.5',
+                )}
+              />
+            </button>
 
-          <span className="flex-1 truncate text-xs text-[var(--color-text-primary)]">
-            {repo.owner}/{repo.name}
-          </span>
+            <button
+              className="flex-1 truncate text-xs text-[var(--color-text-primary)] text-left cursor-pointer hover:text-[var(--color-accent)] transition-colors"
+              onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
+            >
+              {repo.owner}/{repo.name}
+            </button>
 
-          <button
-            className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-status-red)] transition-colors"
-            onClick={() => removeRepo(i)}
-          >
-            &#10005;
-          </button>
+            <button
+              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-status-red)] transition-colors"
+              onClick={() => removeRepo(i)}
+            >
+              &#10005;
+            </button>
+          </div>
+
+          {/* Expanded settings */}
+          {expandedIndex === i && (
+            <div className="mt-2 space-y-2 border-t border-[var(--color-separator)] pt-2">
+              <div>
+                <label className="text-[10px] text-[var(--color-text-muted)]">
+                  Worktree base path
+                </label>
+                <input
+                  className="field-input w-full"
+                  value={repo.worktreeBasePath}
+                  onChange={(e) => updateRepo(i, { worktreeBasePath: e.target.value })}
+                  placeholder="e.g. D:\repos\my-project"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--color-text-muted)]">
+                  Claude instructions (for Fix &amp; Monitor)
+                </label>
+                <textarea
+                  className="field-input w-full resize-y"
+                  rows={3}
+                  value={repo.fixPromptTemplate ?? ''}
+                  onChange={(e) =>
+                    updateRepo(i, {
+                      fixPromptTemplate: e.target.value || undefined,
+                    })
+                  }
+                  placeholder="e.g. When E2E tests fail, use /fix-e2e to fix them."
+                />
+              </div>
+            </div>
+          )}
         </div>
       ))}
 

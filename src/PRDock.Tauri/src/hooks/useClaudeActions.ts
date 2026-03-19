@@ -10,6 +10,9 @@ import {
 import { useSettingsStore } from '@/stores/settings-store';
 import type { ParsedError, PullRequestWithChecks } from '@/types';
 
+const log = (step: string, detail?: string) =>
+  console.log(`[claude-actions] ${step}${detail ? `: ${detail}` : ''}`);
+
 export function useClaudeActions() {
   const settings = useSettingsStore((s) => s.settings);
 
@@ -29,22 +32,27 @@ export function useClaudeActions() {
         );
       }
 
-      // Try to find existing worktree for this branch
+      log('list_worktrees', repo.worktreeBasePath);
       const worktrees = await invoke<
         Array<{ path: string; branchName: string; isMainWorktree: boolean }>
       >('list_worktrees', { basePath: repo.worktreeBasePath });
+      log('list_worktrees done', `found ${worktrees.length} worktrees`);
 
       const existing = worktrees.find(
         (w) => w.branchName === branch || w.branchName === `refs/heads/${branch}`,
       );
-      if (existing) return existing.path;
+      if (existing) {
+        log('reusing worktree', existing.path);
+        return existing.path;
+      }
 
-      // Create new worktree
+      log('create_worktree', `branch=${branch}`);
       const result = await invoke<string>('create_worktree', {
         basePath: repo.worktreeBasePath,
         subfolder: repo.worktreeSubfolder || '.worktrees',
         branchName: branch,
       });
+      log('create_worktree done', result);
 
       return result;
     },
@@ -60,13 +68,20 @@ export function useClaudeActions() {
       rawLog: string,
     ) => {
       const p = pr.pullRequest;
+      log('fixWithClaude', `PR #${p.number} check=${checkName}`);
+
       const repo = findRepoSettings(p.repoOwner, p.repoName);
       if (!repo) throw new Error(`Repo ${p.repoOwner}/${p.repoName} not found in settings`);
 
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
+      log('building fix prompt');
       const prompt = buildFixPrompt(pr, checkName, errors, changedFiles, rawLog, repo);
+      log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
+      log('prompt written', promptFile);
+      log('launching claude');
       await launchClaude(worktreePath, promptFile, `Fix failing check: ${checkName}`);
+      log('claude launched');
     },
     [findRepoSettings, getOrCreateWorktree],
   );
@@ -74,10 +89,13 @@ export function useClaudeActions() {
   const resolveConflicts = useCallback(
     async (pr: PullRequestWithChecks) => {
       const p = pr.pullRequest;
+      log('resolveConflicts', `PR #${p.number}`);
+
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       const prompt = buildConflictPrompt(pr);
       const promptFile = await writePromptFile(prompt);
       await launchClaude(worktreePath, promptFile, 'Resolve merge conflicts');
+      log('claude launched for conflict resolution');
     },
     [getOrCreateWorktree],
   );
@@ -85,13 +103,20 @@ export function useClaudeActions() {
   const monitorPr = useCallback(
     async (pr: PullRequestWithChecks) => {
       const p = pr.pullRequest;
+      log('monitorPr', `PR #${p.number} branch=${p.headRef}`);
+
       const repo = findRepoSettings(p.repoOwner, p.repoName);
       if (!repo) throw new Error(`Repo ${p.repoOwner}/${p.repoName} not found in settings`);
 
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
+      log('building monitor prompt');
       const prompt = buildMonitorPrompt(pr, repo);
+      log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
+      log('prompt written', promptFile);
+      log('launching claude');
       await launchClaude(worktreePath, promptFile, `Monitor PR #${p.number}`);
+      log('claude launched');
     },
     [findRepoSettings, getOrCreateWorktree],
   );

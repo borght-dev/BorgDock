@@ -74,19 +74,75 @@ export function buildConflictPrompt(pr: PullRequestWithChecks): string {
 }
 
 // Build a monitoring prompt for Claude Code
-export function buildMonitorPrompt(pr: PullRequestWithChecks, _repoSettings: RepoSettings): string {
+export function buildMonitorPrompt(pr: PullRequestWithChecks, repoSettings: RepoSettings): string {
   const p = pr.pullRequest;
-  let prompt = `# Monitor PR: #${p.number} ${p.title}\n\n`;
+  const ghRepo = `${p.repoOwner}/${p.repoName}`;
+
+  let prompt = `# Monitor PR #${p.number}: ${p.title}\n\n`;
   prompt += `## Context\n`;
+  prompt += `- **PR:** #${p.number} — ${p.title}\n`;
   prompt += `- **Branch:** ${p.headRef} → ${p.baseRef}\n`;
   prompt += `- **Author:** ${p.authorLogin}\n`;
-  prompt += `- **Status:** ${pr.overallStatus}\n\n`;
-  prompt += `## Task\n\n`;
-  prompt += `Monitor this PR for any issues. Watch for:\n`;
-  prompt += `- New check failures\n`;
-  prompt += `- Review comments that need addressing\n`;
-  prompt += `- Merge conflicts\n\n`;
-  prompt += `If any issues arise, fix them automatically.\n`;
+  prompt += `- **Repo:** ${ghRepo}\n`;
+  prompt += `- **URL:** ${p.htmlUrl}\n`;
+  prompt += `- **Current status:** ${pr.overallStatus}\n\n`;
+
+  prompt += `## Monitoring Loop\n\n`;
+  prompt += `You are monitoring this PR until all CI checks pass. Run the following loop (max 5 fix cycles):\n\n`;
+  prompt += `### Step 1: Check CI status\n`;
+  prompt += `\`\`\`bash\n`;
+  prompt += `gh pr checks ${p.number} --repo ${ghRepo}\n`;
+  prompt += `\`\`\`\n\n`;
+
+  prompt += `### Step 2: Evaluate results\n\n`;
+  prompt += `- **All checks pass** → Print a success summary and stop.\n`;
+  prompt += `- **Checks still in progress** → Wait 60 seconds, then go to Step 1.\n`;
+  prompt += `- **One or more checks failed** → Continue to Step 3.\n\n`;
+
+  prompt += `### Step 3: Diagnose the failure\n\n`;
+  prompt += `1. Identify which check(s) failed from the output above.\n`;
+  prompt += `2. Get the run ID of the failed check:\n`;
+  prompt += `   \`\`\`bash\n`;
+  prompt += `   gh run list --repo ${ghRepo} --branch ${p.headRef} --status failure --limit 5\n`;
+  prompt += `   \`\`\`\n`;
+  prompt += `3. Download and read the failed job logs:\n`;
+  prompt += `   \`\`\`bash\n`;
+  prompt += `   gh run view <run-id> --repo ${ghRepo} --log-failed\n`;
+  prompt += `   \`\`\`\n`;
+  prompt += `4. Analyze the log output to understand the root cause.\n\n`;
+
+  prompt += `### Step 4: Fix the issue\n\n`;
+  prompt += `- Read the relevant source files and make the necessary code changes.\n`;
+  prompt += `- Focus only on files changed in this PR — don't fix unrelated issues.\n`;
+  prompt += `- If the repo has slash commands or skills relevant to the failure type, use them.\n\n`;
+
+  prompt += `### Step 5: Commit and push\n\n`;
+  prompt += `\`\`\`bash\n`;
+  prompt += `git add -A\n`;
+  prompt += `git commit -m "fix: address CI failure in <check-name>"\n`;
+  prompt += `git push\n`;
+  prompt += `\`\`\`\n\n`;
+  prompt += `Then go back to Step 1 and wait for the new CI run.\n\n`;
+
+  prompt += `## Additional Responsibilities\n\n`;
+  prompt += `While monitoring, also check for and handle:\n`;
+  prompt += `- **Review comments**: Run \`gh pr view ${p.number} --repo ${ghRepo} --comments\` to check for new review feedback. Address any actionable comments.\n`;
+  prompt += `- **Merge conflicts**: If the PR has conflicts, fetch the base branch and resolve them:\n`;
+  prompt += `  \`\`\`bash\n`;
+  prompt += `  git fetch origin ${p.baseRef}\n`;
+  prompt += `  git merge origin/${p.baseRef}\n`;
+  prompt += `  # resolve conflicts, then commit and push\n`;
+  prompt += `  \`\`\`\n\n`;
+
+  prompt += `## Rules\n\n`;
+  prompt += `- Maximum 5 fix-and-push cycles. If checks still fail after 5 attempts, stop and summarize what you tried.\n`;
+  prompt += `- Do not force-push or rewrite history.\n`;
+  prompt += `- Keep commits small and focused — one commit per fix attempt.\n`;
+  prompt += `- If you're unsure about a fix, prefer a minimal safe change over a large refactor.\n`;
+
+  if (repoSettings.fixPromptTemplate) {
+    prompt += `\n## Repo-Specific Instructions\n\n${repoSettings.fixPromptTemplate}\n`;
+  }
 
   return prompt;
 }

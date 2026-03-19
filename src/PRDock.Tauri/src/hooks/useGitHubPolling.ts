@@ -62,12 +62,20 @@ export function useGitHubPolling(settings: AppSettings) {
         try {
           const prs = await getOpenPRs(c, repo.owner, repo.name);
 
-          for (const pr of prs) {
-            try {
+          // Fetch check runs for all PRs in parallel
+          const results = await Promise.allSettled(
+            prs.map(async (pr) => {
               const checks = await getCheckRunsForRef(c, repo.owner, repo.name, pr.headRef);
-              allPrs.push(aggregatePrWithChecks(pr, checks));
-            } catch {
-              allPrs.push(aggregatePrWithChecks(pr, []));
+              return aggregatePrWithChecks(pr, checks);
+            }),
+          );
+
+          for (let j = 0; j < results.length; j++) {
+            const result = results[j]!;
+            if (result.status === 'fulfilled') {
+              allPrs.push(result.value);
+            } else {
+              allPrs.push(aggregatePrWithChecks(prs[j]!, []));
             }
           }
         } catch (err) {

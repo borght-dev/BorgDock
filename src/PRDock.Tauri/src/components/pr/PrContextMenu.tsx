@@ -6,6 +6,7 @@ import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { rerunWorkflow } from '@/services/github/checks';
 import { bypassMergePullRequest, mergePullRequest, toggleDraft } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -48,6 +49,7 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr } = useClaudeActions();
+  const showNotification = useNotificationStore((s) => s.show);
 
   // Close on click outside
   useEffect(() => {
@@ -89,13 +91,21 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
   );
 
   const handleAction = useCallback(
-    (action: () => Promise<void>) => {
+    (action: () => Promise<void>, errorTitle?: string) => {
       return () => {
-        action().catch((err) => console.error('Context menu action failed:', err));
+        action().catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          showNotification({
+            title: errorTitle ?? 'Action failed',
+            message,
+            severity: 'error',
+            actions: [],
+          });
+        });
         onClose();
       };
     },
-    [onClose],
+    [onClose, showNotification],
   );
 
   const handleOpenInGitHub = handleAction(async () => {
@@ -136,26 +146,26 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
     const client = getClient();
     if (!client || !failedCheck) return;
     await rerunWorkflow(client, owner, repo, failedCheck.checkSuiteId);
-  });
+  }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
     const firstFailedName = failedCheckNames[0] ?? 'unknown';
     await fixWithClaude(pr, firstFailedName, [], [], '');
-  });
+  }, 'Fix with Claude failed');
 
   const handleMonitorWithClaude = handleAction(async () => {
     await monitorPr(pr);
-  });
+  }, 'Monitor with Claude failed');
 
   const handleMerge = handleAction(async () => {
     const client = getClient();
     if (!client) return;
     await mergePullRequest(client, owner, repo, pullRequest.number);
-  });
+  }, 'Merge failed');
 
   const handleBypassMerge = handleAction(async () => {
     await bypassMergePullRequest(owner, repo, pullRequest.number);
-  });
+  }, 'Bypass merge failed');
 
   const handleOpenInDetailWindow = handleAction(async () => {
     const { invoke } = await import('@tauri-apps/api/core');

@@ -31,54 +31,58 @@ pub struct DiscoveredRepo {
 }
 
 #[tauri::command]
-pub fn discover_repos() -> Result<Vec<DiscoveredRepo>, String> {
-    let mut repos = Vec::new();
-    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
+pub async fn discover_repos() -> Result<Vec<DiscoveredRepo>, String> {
+    tokio::task::spawn_blocking(move || {
+        let mut repos = Vec::new();
+        let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
 
-    // Common directories to scan
-    let search_dirs = [
-        home.join("source").join("repos"),
-        home.join("repos"),
-        home.join("projects"),
-        home.join("dev"),
-        home.join("code"),
-        home.join("git"),
-        home.join("Documents").join("GitHub"),
-    ];
+        // Common directories to scan
+        let search_dirs = [
+            home.join("source").join("repos"),
+            home.join("repos"),
+            home.join("projects"),
+            home.join("dev"),
+            home.join("code"),
+            home.join("git"),
+            home.join("Documents").join("GitHub"),
+        ];
 
-    for search_dir in &search_dirs {
-        if !search_dir.is_dir() {
-            continue;
-        }
-        // Scan 2 levels deep
-        if let Ok(entries) = std::fs::read_dir(search_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    try_add_repo(&path, &mut repos);
-                    // One level deeper
-                    if let Ok(sub_entries) = std::fs::read_dir(&path) {
-                        for sub_entry in sub_entries.flatten() {
-                            let sub_path = sub_entry.path();
-                            if sub_path.is_dir() {
-                                try_add_repo(&sub_path, &mut repos);
+        for search_dir in &search_dirs {
+            if !search_dir.is_dir() {
+                continue;
+            }
+            // Scan 2 levels deep
+            if let Ok(entries) = std::fs::read_dir(search_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        try_add_repo(&path, &mut repos);
+                        // One level deeper
+                        if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                            for sub_entry in sub_entries.flatten() {
+                                let sub_path = sub_entry.path();
+                                if sub_path.is_dir() {
+                                    try_add_repo(&sub_path, &mut repos);
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
-    // Deduplicate by owner/name
-    repos.sort_by(|a, b| {
-        let key_a = format!("{}/{}", a.owner, a.name);
-        let key_b = format!("{}/{}", b.owner, b.name);
-        key_a.cmp(&key_b)
-    });
-    repos.dedup_by(|a, b| a.owner == b.owner && a.name == b.name);
+        // Deduplicate by owner/name
+        repos.sort_by(|a, b| {
+            let key_a = format!("{}/{}", a.owner, a.name);
+            let key_b = format!("{}/{}", b.owner, b.name);
+            key_a.cmp(&key_b)
+        });
+        repos.dedup_by(|a, b| a.owner == b.owner && a.name == b.name);
 
-    Ok(repos)
+        Ok(repos)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 fn try_add_repo(path: &Path, repos: &mut Vec<DiscoveredRepo>) {
@@ -127,55 +131,73 @@ fn parse_github_remote(url: &str) -> Option<(String, String)> {
 }
 
 #[tauri::command]
-pub fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
-    let p = Path::new(&path);
-    if !p.join(".git").exists() {
-        return Err("Not a git repository".into());
-    }
-    let remote_url = run_git(&path, &["remote", "get-url", "origin"])?;
-    let (owner, name) =
-        parse_github_remote(&remote_url).ok_or("Could not parse GitHub remote from origin URL")?;
-    Ok(DiscoveredRepo {
-        owner,
-        name,
-        local_path: path,
+pub async fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
+    tokio::task::spawn_blocking(move || {
+        let p = Path::new(&path);
+        if !p.join(".git").exists() {
+            return Err("Not a git repository".into());
+        }
+        let remote_url = run_git(&path, &["remote", "get-url", "origin"])?;
+        let (owner, name) = parse_github_remote(&remote_url)
+            .ok_or("Could not parse GitHub remote from origin URL")?;
+        Ok(DiscoveredRepo {
+            owner,
+            name,
+            local_path: path,
+        })
     })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn git_fetch(repo_path: String, remote: Option<String>) -> Result<(), String> {
-    let remote = remote.unwrap_or_else(|| "origin".to_string());
-    run_git(&repo_path, &["fetch", &remote])?;
-    Ok(())
+pub async fn git_fetch(repo_path: String, remote: Option<String>) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let remote = remote.unwrap_or_else(|| "origin".to_string());
+        run_git(&repo_path, &["fetch", &remote])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn git_checkout(repo_path: String, branch: String) -> Result<(), String> {
-    run_git(&repo_path, &["checkout", &branch])?;
-    Ok(())
+pub async fn git_checkout(repo_path: String, branch: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        run_git(&repo_path, &["checkout", &branch])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn git_current_branch(repo_path: String) -> Result<String, String> {
-    run_git(&repo_path, &["rev-parse", "--abbrev-ref", "HEAD"])
+pub async fn git_current_branch(repo_path: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || run_git(&repo_path, &["rev-parse", "--abbrev-ref", "HEAD"]))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn run_gh_command(args: Vec<String>) -> Result<String, String> {
-    let output = Command::new("gh")
-        .args(&args)
-        .output()
-        .map_err(|e| format!("Failed to run gh: {e}"))?;
+pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let output = Command::new("gh")
+            .args(&args)
+            .output()
+            .map_err(|e| format!("Failed to run gh: {e}"))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!(
-            "gh {} failed (exit {}): {}",
-            args.join(" "),
-            output.status.code().unwrap_or(-1),
-            stderr.trim()
-        ));
-    }
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "gh {} failed (exit {}): {}",
+                args.join(" "),
+                output.status.code().unwrap_or(-1),
+                stderr.trim()
+            ));
+        }
 
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
