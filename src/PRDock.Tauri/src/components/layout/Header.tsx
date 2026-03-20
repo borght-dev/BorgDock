@@ -27,11 +27,19 @@ export function Header() {
   const setActiveSection = useUiStore((s) => s.setActiveSection);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const isPolling = usePrStore((s) => s.isPolling);
+  const getCounts = usePrStore((s) => s.counts);
+  const pullRequests = usePrStore((s) => s.pullRequests);
+  const closedPullRequests = usePrStore((s) => s.closedPullRequests);
+  const username = usePrStore((s) => s.username);
+  void closedPullRequests;
+  void username;
+
+  const counts = getCounts();
+  const hasFailing = counts.failing > 0;
 
   const handleMinimize = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      // Hide sidebar, show badge — badge will request its own data via badge-request-data event
       await invoke('toggle_sidebar');
       await invoke('show_badge', { count: 0 });
     } catch (err) {
@@ -42,30 +50,44 @@ export function Header() {
   return (
     <header
       onMouseDown={handleHeaderDragStart}
-      className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-separator)] cursor-grab active:cursor-grabbing"
+      className="sidebar-header"
     >
-      {/* Logo */}
-      <span
-        className="text-sm font-bold bg-clip-text text-transparent select-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
-        }}
-      >
-        PRDock
-      </span>
+      {/* Left: Logo + open count */}
+      <div className="sidebar-header-left">
+        {/* App icon — pulse line from favicon */}
+        <svg className="sidebar-logo" width="22" height="22" viewBox="0 0 16 16" fill="none">
+          <rect width="16" height="16" rx="4.5" fill="#12161f" />
+          <path
+            d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
+            stroke="url(#hdr-line)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="14" cy="9" r="1.3" fill="var(--color-status-green)" />
+          <defs>
+            <linearGradient id="hdr-line" x1="2" y1="8" x2="14" y2="8">
+              <stop offset="0%" stopColor="var(--color-logo-gradient-start)" />
+              <stop offset="100%" stopColor="var(--color-logo-gradient-end)" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <span className="sidebar-title">PRDock</span>
+        {/* Open count badge */}
+        <span className="sidebar-open-badge">
+          {pullRequests.length} open
+        </span>
+      </div>
 
-      {/* Section switcher */}
-      <div className="flex gap-0.5 rounded-md bg-[var(--color-surface-raised)] p-0.5">
+      {/* Center: Section switcher */}
+      <div className="sidebar-section-switcher">
         {sections.map((s) => (
           <button
             key={s.key}
             onClick={() => setActiveSection(s.key)}
             className={clsx(
-              'rounded-[5px] px-2.5 py-1 text-xs font-medium transition-colors',
-              activeSection === s.key
-                ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]',
+              'sidebar-section-btn',
+              activeSection === s.key && 'sidebar-section-btn--active',
             )}
           >
             {s.label}
@@ -73,31 +95,26 @@ export function Header() {
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-0.5">
+      {/* Right: Status dot + actions */}
+      <div className="sidebar-header-right">
+        {/* Status dot with glow */}
+        <div className={clsx('sidebar-status-dot', hasFailing ? 'sidebar-status-dot--red' : 'sidebar-status-dot--green')}>
+          <span className="sidebar-status-dot-glow" />
+          <span className="sidebar-status-dot-core" />
+        </div>
+
         {/* Polling spinner */}
         {isPolling && (
-          <span
-            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-dashed mr-0.5"
-            style={{ borderColor: 'var(--color-accent)' }}
-          />
+          <span className="sidebar-poll-spinner" />
         )}
+
         <button
           onClick={dispatchRefresh}
-          className="rounded-md p-1.5 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+          className="sidebar-icon-btn"
           aria-label="Refresh"
           title="Poll now"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M1 4v4h4" />
             <path d="M15 12V8h-4" />
             <path d="M2.5 10.5A6 6 0 0 0 14 8" />
@@ -106,39 +123,22 @@ export function Header() {
         </button>
         <button
           onClick={handleMinimize}
-          className="rounded-md p-1.5 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+          className="sidebar-icon-btn"
           aria-label="Minimize to badge"
           title="Minimize to badge"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M4 8h8" />
           </svg>
         </button>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="rounded-md p-1.5 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] active:bg-[var(--color-icon-btn-pressed)] transition-colors"
+          className="sidebar-icon-btn"
           aria-label="Settings"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M6.86 1.45a1.2 1.2 0 0 1 2.28 0l.23.7a1.2 1.2 0 0 0 1.52.72l.67-.27a1.2 1.2 0 0 1 1.61 1.14l-.02.72a1.2 1.2 0 0 0 1.02 1.22l.71.12a1.2 1.2 0 0 1 .57 2.17l-.57.44a1.2 1.2 0 0 0-.36 1.54l.35.63a1.2 1.2 0 0 1-.88 1.77l-.71.08a1.2 1.2 0 0 0-1.07 1.16l-.02.72a1.2 1.2 0 0 1-1.66 1.06l-.64-.3a1.2 1.2 0 0 0-1.55.34l-.43.57a1.2 1.2 0 0 1-1.94 0l-.43-.57a1.2 1.2 0 0 0-1.55-.34l-.64.3a1.2 1.2 0 0 1-1.66-1.06l-.02-.72a1.2 1.2 0 0 0-1.07-1.16l-.71-.08a1.2 1.2 0 0 1-.88-1.77l.35-.63a1.2 1.2 0 0 0-.36-1.54l-.57-.44A1.2 1.2 0 0 1 1.6 4.6l.71-.12a1.2 1.2 0 0 0 1.02-1.22l-.02-.72A1.2 1.2 0 0 1 4.92 1.4l.67.27a1.2 1.2 0 0 0 1.52-.72l.23-.7z" />
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="8" r="2.5" />
+            <path d="M13.5 8a5.5 5.5 0 0 0-.1-1.1l1.5-1.2-1-1.7-1.8.5a5.5 5.5 0 0 0-1-.6L10.7 2H8.7l-.4 1.9a5.5 5.5 0 0 0-1 .6l-1.8-.5-1 1.7 1.5 1.2a5.5 5.5 0 0 0 0 2.2l-1.5 1.2 1 1.7 1.8-.5a5.5 5.5 0 0 0 1 .6L9.3 14h2l.4-1.9a5.5 5.5 0 0 0 1-.6l1.8.5 1-1.7-1.5-1.2a5.5 5.5 0 0 0 .1-1.1z" />
           </svg>
         </button>
       </div>

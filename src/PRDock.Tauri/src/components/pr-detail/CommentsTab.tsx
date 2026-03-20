@@ -62,6 +62,7 @@ function isBot(login: string): boolean {
 export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps) {
   const [comments, setComments] = useState<ClaudeReviewComment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortNewest, setSortNewest] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [posting, setPosting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -133,6 +134,12 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
     );
   }
 
+  const sorted = sortNewest
+    ? [...comments].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+    : comments;
+
   return (
     <div className="flex h-full flex-col">
       {/* Comment list */}
@@ -141,11 +148,35 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
           <p className="p-3 text-xs text-[var(--color-text-muted)]">No comments yet.</p>
         ) : (
           <div className="space-y-2 p-3">
-            {comments.map((comment, idx) => {
+            {/* Sort toggle */}
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setSortNewest((v) => !v)}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  {sortNewest ? (
+                    <path d="M8 3v10M4 7l4-4 4 4" />
+                  ) : (
+                    <path d="M8 3v10M4 9l4 4 4-4" />
+                  )}
+                </svg>
+                {sortNewest ? 'Newest first' : 'Oldest first'}
+              </button>
+            </div>
+            {sorted.map((comment, idx) => {
               const color = authorColor(comment.author);
               const bot = isBot(comment.author);
               // Collapse top margin when same author posts consecutively
-              const prevSameAuthor = idx > 0 && comments[idx - 1]?.author === comment.author;
+              const prevSameAuthor = idx > 0 && sorted[idx - 1]?.author === comment.author;
 
               return (
                 <div

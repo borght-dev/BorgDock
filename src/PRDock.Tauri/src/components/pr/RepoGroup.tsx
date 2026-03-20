@@ -36,15 +36,15 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
   }, [isExpanded]);
 
   return (
-    <div className="mb-1">
+    <div className="mb-0.5">
       {/* Header */}
       <button
         onClick={() => toggleRepoGroup(repoKey)}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[var(--color-surface-hover)] transition-colors"
+        className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
       >
         <svg
-          width="12"
-          height="12"
+          width="10"
+          height="10"
           viewBox="0 0 16 16"
           fill="none"
           stroke="currentColor"
@@ -52,16 +52,22 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
           className={clsx(
-            'shrink-0 transition-transform duration-200',
+            'shrink-0 text-[var(--color-text-ghost)] transition-transform duration-200',
             isExpanded ? 'rotate-90' : 'rotate-0',
           )}
         >
           <path d="m6 4 4 4-4 4" />
         </svg>
-        <span className="truncate text-xs font-medium text-[var(--color-text-secondary)]">
+        <span className="truncate text-[11px] font-semibold tracking-tight text-[var(--color-text-secondary)]">
           {repoKey}
         </span>
-        <span className="rounded-full bg-[var(--color-filter-chip-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-filter-chip-fg)]">
+        <span
+          className="ml-auto rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
+          style={{
+            background: 'var(--color-filter-chip-bg)',
+            color: 'var(--color-text-muted)',
+          }}
+        >
           {prs.length}
         </span>
       </button>
@@ -72,7 +78,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
         className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
         style={{ maxHeight }}
       >
-        <div className="flex flex-col gap-1 pl-1 pt-0.5">
+        <div className="flex flex-col gap-1 pt-0.5 pb-0.5">
           {prs.map((pr) => (
             <PullRequestCard key={pr.pullRequest.number} prWithChecks={pr} />
           ))}

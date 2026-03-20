@@ -69,6 +69,7 @@ export function buildConflictPrompt(pr: PullRequestWithChecks): string {
   prompt += `2. Merge ${p.baseRef} into ${p.headRef}\n`;
   prompt += `3. Resolve any merge conflicts, preserving the intent of both sides\n`;
   prompt += `4. Commit the merge resolution\n`;
+  prompt += `5. Push the resolved branch to the remote\n`;
 
   return prompt;
 }

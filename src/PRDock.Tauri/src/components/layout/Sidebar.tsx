@@ -20,17 +20,16 @@ export function Sidebar({ children }: SidebarProps) {
     : undefined;
 
   return (
-    <div className="flex h-screen w-full flex-col bg-[var(--color-background)]">
+    <div className="sidebar-shell">
       <Header />
       {activeSection === 'prs' && !selectedPr && (
-        <>
+        <div className="sidebar-toolbar">
           <FilterBar />
           <SearchBar />
-        </>
+        </div>
       )}
-      <div className="relative flex-1 overflow-y-auto px-2 py-1">
-        {children}
-        {selectedPr && <PRDetailPanel pr={selectedPr} />}
+      <div className="sidebar-content">
+        {selectedPr ? <PRDetailPanel pr={selectedPr} /> : children}
       </div>
       <StatusBar />
     </div>

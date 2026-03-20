@@ -27,33 +27,52 @@ export function StatusBar() {
 
   return (
     <div
-      className="flex items-center justify-between px-3 py-1 text-[10px] bg-[var(--color-status-bar-bg)] backdrop-blur-sm border-t border-[var(--color-separator)]"
-      style={{ height: 28, fontFamily: 'var(--font-code)' }}
+      className="flex shrink-0 items-center justify-between border-t border-[var(--color-separator)] px-2.5"
+      style={{
+        height: 26,
+        fontFamily: 'var(--font-code)',
+        fontSize: 10,
+        background: 'var(--color-card-background)',
+      }}
     >
-      <div className="flex items-center gap-1.5 text-[var(--color-text-ghost)]">
-        <span>{counts.all} PRs</span>
+      <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+        <span className="font-medium">{counts.all} PRs</span>
         {counts.failing > 0 && (
-          <>
+          <span className="flex items-center gap-1">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: 'var(--color-status-red)' }}
+            />
             <span style={{ color: 'var(--color-status-red)' }}>
-              {'\u25CF'} {counts.failing} failing
+              {counts.failing} failing
             </span>
-          </>
+          </span>
         )}
         {counts.ready > 0 && (
-          <span style={{ color: 'var(--color-status-green)' }}>
-            {'\u25CF'} {counts.ready} ready
+          <span className="flex items-center gap-1">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: 'var(--color-status-green)' }}
+            />
+            <span style={{ color: 'var(--color-status-green)' }}>
+              {counts.ready} ready
+            </span>
           </span>
         )}
       </div>
 
-      <span className="text-[var(--color-text-ghost)]">
+      <div className="flex items-center gap-2 text-[var(--color-text-ghost)]">
         {rateLimit && (
-          <span className="mr-2">
+          <span
+            className="tabular-nums"
+            title={`GitHub API: ${rateLimit.remaining} of ${rateLimit.limit} remaining`}
+          >
             {rateLimit.remaining}/{rateLimit.limit}
           </span>
         )}
-        {formatTimeAgo(lastPollTime)}
-      </span>
+        <span className="inline-block h-0.5 w-0.5 rounded-full bg-[var(--color-text-ghost)]" />
+        <span>{formatTimeAgo(lastPollTime)}</span>
+      </div>
     </div>
   );
 }

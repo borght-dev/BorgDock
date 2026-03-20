@@ -28,6 +28,7 @@ interface GitHubPullRequestDto {
   merged_at: string | null;
   draft: boolean;
   mergeable: boolean | null;
+  mergeable_state?: string; // "clean" | "dirty" | "unstable" | "blocked" | "unknown"
   comments: number;
   review_comments: number;
   additions: number;
@@ -77,12 +78,25 @@ export async function getOpenPRs(
 
   const pullRequests = dtos.map((dto) => mapToPullRequest(dto, owner, repo));
 
-  // Fetch reviews for all PRs in parallel
+  // Fetch individual PR details + reviews in parallel
+  // The list endpoint returns mergeable: null — only individual PR fetches compute it
   await Promise.allSettled(
     pullRequests.map(async (pr, i) => {
-      const reviews = await client.get<GitHubReviewDto[]>(
-        `repos/${owner}/${repo}/pulls/${dtos[i]!.number}/reviews`,
-      );
+      const num = dtos[i]!.number;
+      const [detail, reviews] = await Promise.all([
+        client.get<GitHubPullRequestDto>(`repos/${owner}/${repo}/pulls/${num}`),
+        client.get<GitHubReviewDto[]>(`repos/${owner}/${repo}/pulls/${num}/reviews`),
+      ]);
+      // mergeable can be null if GitHub hasn't computed it yet;
+      // fall back to mergeable_state which is more reliably populated
+      pr.mergeable =
+        detail.mergeable ??
+        mergeableFromState(detail.mergeable_state) ??
+        undefined;
+      pr.additions = detail.additions ?? 0;
+      pr.deletions = detail.deletions ?? 0;
+      pr.changedFiles = detail.changed_files ?? 0;
+      pr.commitCount = detail.commits ?? 0;
       pr.reviewStatus = aggregateReviewStatus(reviews);
     }),
   );
@@ -145,6 +159,19 @@ export async function getPRFiles(
 }
 
 // --- Helpers ---
+
+function mergeableFromState(state?: string): boolean | null {
+  switch (state) {
+    case 'clean':
+    case 'unstable':
+    case 'has_hooks':
+      return true;
+    case 'dirty':
+      return false;
+    default:
+      return null; // "unknown", "blocked", or missing
+  }
+}
 
 export function aggregateReviewStatus(reviews: GitHubReviewDto[]): ReviewStatus {
   if (reviews.length === 0) return 'none';

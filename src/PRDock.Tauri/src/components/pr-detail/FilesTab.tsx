@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { getPRFiles } from '@/services/github';
+import { getClient } from '@/services/github/singleton';
 import type { PullRequestFileChange } from '@/types';
 
 interface FilesTabProps {
@@ -39,12 +41,9 @@ export function FilesTab({ prNumber, repoOwner, repoName }: FilesTabProps) {
     let cancelled = false;
     (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const result = await invoke<PullRequestFileChange[]>('get_pr_files', {
-          owner: repoOwner,
-          repo: repoName,
-          prNumber,
-        });
+        const client = getClient();
+        if (!client) throw new Error('GitHub client not initialized');
+        const result = await getPRFiles(client, repoOwner, repoName, prNumber);
         if (!cancelled) setFiles(result);
       } catch (err) {
         console.error('Failed to load files:', err);

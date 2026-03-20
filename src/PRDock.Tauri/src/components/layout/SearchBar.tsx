@@ -4,6 +4,7 @@ import { usePrStore } from '@/stores/pr-store';
 export function SearchBar() {
   const setSearchQuery = usePrStore((s) => s.setSearchQuery);
   const [value, setValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleChange = useCallback(
@@ -32,13 +33,23 @@ export function SearchBar() {
   }, []);
 
   return (
-    <div className="px-3 py-1.5">
-      <div className="relative flex items-center">
+    <div className="px-2.5 pb-2 pt-1">
+      <div
+        className="relative flex items-center rounded-lg border transition-all duration-200"
+        style={{
+          borderColor: isFocused ? 'var(--color-accent)' : 'var(--color-input-border)',
+          background: 'var(--color-input-bg)',
+          boxShadow: isFocused
+            ? '0 0 0 2px color-mix(in srgb, var(--color-accent) 12%, transparent)'
+            : 'inset 0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
         {/* Search icon */}
         <svg
-          className="pointer-events-none absolute left-2.5 text-[var(--color-text-muted)]"
-          width="14"
-          height="14"
+          className="pointer-events-none absolute left-2.5"
+          style={{ color: isFocused ? 'var(--color-accent)' : 'var(--color-text-ghost)' }}
+          width="13"
+          height="13"
           viewBox="0 0 16 16"
           fill="none"
           stroke="currentColor"
@@ -54,24 +65,26 @@ export function SearchBar() {
           type="text"
           value={value}
           onChange={handleChange}
-          placeholder="Search PRs..."
-          className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] py-1.5 pl-8 pr-7 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors"
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Filter pull requests..."
+          className="w-full bg-transparent py-1.5 pl-8 pr-7 text-[11px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-ghost)] outline-none"
         />
 
         {/* Clear button */}
         {value && (
           <button
             onClick={handleClear}
-            className="absolute right-2 rounded-sm p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+            className="absolute right-1.5 flex h-4 w-4 items-center justify-center rounded text-[var(--color-text-ghost)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] transition-colors"
             aria-label="Clear search"
           >
             <svg
-              width="12"
-              height="12"
+              width="10"
+              height="10"
               viewBox="0 0 16 16"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
             >
               <path d="m4 4 8 8M12 4 4 12" />

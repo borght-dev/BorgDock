@@ -1,12 +1,12 @@
 import clsx from 'clsx';
 import { type PrFilter, usePrStore } from '@/stores/pr-store';
 
-const filters: { key: PrFilter; label: string }[] = [
+const filters: { key: PrFilter; label: string; icon?: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'mine', label: 'My PRs' },
+  { key: 'mine', label: 'Mine' },
   { key: 'failing', label: 'Failing' },
   { key: 'ready', label: 'Ready' },
-  { key: 'reviewing', label: 'Reviewing' },
+  { key: 'reviewing', label: 'Review' },
   { key: 'closed', label: 'Closed' },
 ];
 
@@ -18,30 +18,35 @@ export function FilterBar() {
   const c = counts();
 
   return (
-    <div className="flex gap-1 overflow-x-auto px-3 py-1.5 border-b border-[var(--color-separator)]">
+    <div className="flex items-center gap-1 overflow-x-auto px-2.5 pt-2 pb-1">
       {filters.map((f) => {
         const isActive = filter === f.key;
         const count = c[f.key];
+        const isFailing = f.key === 'failing' && count > 0;
 
         return (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
             className={clsx(
-              'flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium transition-colors',
+              'flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium transition-all duration-150',
               isActive
-                ? 'text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]'
-                : 'text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-filter-chip-bg)]',
+                ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] shadow-sm'
+                : isFailing
+                  ? 'text-[var(--color-status-red)] hover:bg-[var(--color-action-danger-bg)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]',
             )}
           >
             {f.label}
             {count > 0 && (
               <span
                 className={clsx(
-                  'rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium',
+                  'min-w-[16px] rounded-full px-1 text-center text-[9px] font-semibold leading-[16px]',
                   isActive
-                    ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
-                    : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]',
+                    ? 'bg-[rgba(255,255,255,0.2)] text-[var(--color-accent-foreground)]'
+                    : isFailing
+                      ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]'
+                      : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]',
                 )}
               >
                 {count}

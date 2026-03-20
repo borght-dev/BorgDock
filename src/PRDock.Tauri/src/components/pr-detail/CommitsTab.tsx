@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { getPRCommits } from '@/services/github';
+import { getClient } from '@/services/github/singleton';
 import type { PullRequestCommit } from '@/types';
 
 interface CommitsTabProps {
@@ -26,12 +28,9 @@ export function CommitsTab({ prNumber, repoOwner, repoName }: CommitsTabProps) {
     let cancelled = false;
     (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const result = await invoke<PullRequestCommit[]>('get_pr_commits', {
-          owner: repoOwner,
-          repo: repoName,
-          prNumber,
-        });
+        const client = getClient();
+        if (!client) throw new Error('GitHub client not initialized');
+        const result = await getPRCommits(client, repoOwner, repoName, prNumber);
         if (!cancelled) setCommits(result);
       } catch (err) {
         console.error('Failed to load commits:', err);
