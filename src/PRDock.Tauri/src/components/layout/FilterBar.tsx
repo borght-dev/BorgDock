@@ -31,7 +31,7 @@ export function FilterBar() {
             className={clsx(
               'flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium transition-all duration-150',
               isActive
-                ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] shadow-sm'
+                ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)] shadow-sm'
                 : isFailing
                   ? 'text-[var(--color-status-red)] hover:bg-[var(--color-action-danger-bg)]'
                   : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]',
@@ -43,7 +43,7 @@ export function FilterBar() {
                 className={clsx(
                   'min-w-[16px] rounded-full px-1 text-center text-[9px] font-semibold leading-[16px]',
                   isActive
-                    ? 'bg-[rgba(255,255,255,0.2)] text-[var(--color-accent-foreground)]'
+                    ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
                     : isFailing
                       ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]'
                       : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]',

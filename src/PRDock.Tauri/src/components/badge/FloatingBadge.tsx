@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 
 export type StatusColor = 'green' | 'red' | 'yellow';
 
-const BADGE_COLLAPSED = { width: 260, height: 50 };
+const BADGE_COLLAPSED = { width: 540, height: 80 };
 const BADGE_EXPANDED = { width: 340, height: 400 };
 
 export interface BadgePrItem {
@@ -41,6 +41,17 @@ const STATUS_DOT_MAP: Record<StatusColor, string> = {
   yellow: 'var(--color-status-yellow)',
 };
 
+const BADGE_KEYFRAMES = `
+@keyframes badge-ring-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.15); }
+}
+@keyframes badge-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+`;
+
 export function FloatingBadge({
   totalPrCount,
   failingCount,
@@ -70,40 +81,94 @@ export function FloatingBadge({
   );
 
   const glowColor = GLOW_MAP[statusColor];
+  const dotColor = STATUS_DOT_MAP[statusColor];
+  const isFailing = statusColor === 'red';
 
   return (
     <div className="flex flex-col items-center">
-      {/* Main badge pill — outer div is draggable */}
+      <style>{BADGE_KEYFRAMES}</style>
+
+      {/* Main badge pill — Glass Capsule style */}
       <div
         data-tauri-drag-region
         className={clsx(
           'flex items-center rounded-full cursor-grab active:cursor-grabbing',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
-          'animate-[breathe_3s_ease-in-out_infinite]',
+          'backdrop-blur-[20px]',
+          'transition-all duration-300',
+          'hover:-translate-y-0.5 hover:scale-[1.02]',
         )}
         style={{
-          boxShadow: `0 0 20px ${glowColor}, 0 2px 8px rgba(0,0,0,0.08)`,
+          boxShadow: `0 4px 24px ${glowColor}, 0 0 0 1px ${glowColor}, inset 0 1px 0 rgba(255,255,255,0.04)`,
         }}
       >
-        {/* Click target — opens sidebar */}
+        {/* Left section: icon + count + label */}
         <button
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-l-full hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-l-full hover:bg-[var(--color-surface-hover)] transition-colors"
           onClick={onExpandSidebar}
         >
-          {/* Status icon */}
+          {/* Circular icon with animated ring */}
           <div
-            className="h-3 w-3 rounded-full shrink-0"
-            style={{ backgroundColor: STATUS_DOT_MAP[statusColor] }}
-          />
+            className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0"
+            style={{
+              backgroundColor: isFailing ? 'rgba(220,38,38,0.12)' : 'rgba(22,163,74,0.12)',
+            }}
+          >
+            <div
+              className="absolute inset-[-2px] rounded-full"
+              style={{
+                border: `1.5px solid ${dotColor}`,
+                opacity: 0.4,
+                animation: 'badge-ring-pulse 2.5s ease-in-out infinite',
+              }}
+            />
+            {isFailing ? (
+              <svg width={13} height={13} viewBox="0 0 16 16" fill="none">
+                <path d="M4 4L12 12M12 4L4 12" stroke={dotColor} strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width={13} height={13} viewBox="0 0 16 16" fill="none">
+                <path d="M3 8L6.5 11.5L13 4.5" stroke={dotColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
 
           {/* PR count */}
-          <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPrCount}</span>
+          <span className="text-lg font-bold leading-none tracking-tight text-[var(--color-text-primary)]">
+            {totalPrCount}
+          </span>
 
-          {/* Separator */}
-          <div className="h-3 w-px bg-[var(--color-separator)]" />
+          {/* Label */}
+          <span className="text-[11px] font-medium leading-none text-[var(--color-text-secondary)]">
+            PRs
+          </span>
+        </button>
 
-          {/* Status text */}
-          <span className="text-[11px] text-[var(--color-text-tertiary)] whitespace-nowrap">
+        {/* Glass divider */}
+        <div
+          className="w-px h-7 shrink-0"
+          style={{
+            background: 'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
+          }}
+        />
+
+        {/* Right section: status dot + text */}
+        <button
+          className="flex items-center gap-1.5 px-3 py-2 hover:bg-[var(--color-surface-hover)] transition-colors"
+          onClick={onExpandSidebar}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{
+              backgroundColor: dotColor,
+              boxShadow: `0 0 8px ${dotColor}`,
+              animation: isFailing ? 'badge-dot-blink 2s ease-in-out infinite' : 'none',
+            }}
+          />
+          <span
+            className="text-[11px] font-medium whitespace-nowrap"
+            style={{ color: dotColor, opacity: 0.85 }}
+          >
             {statusText}
           </span>
         </button>
@@ -111,7 +176,7 @@ export function FloatingBadge({
         {/* Expand/collapse chevron */}
         <button
           className={clsx(
-            'flex items-center justify-center self-stretch px-2 rounded-r-full',
+            'flex items-center justify-center self-stretch px-2.5 rounded-r-full',
             'border-l border-[var(--color-separator)]',
             'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
             'hover:bg-[var(--color-surface-hover)] transition-colors',
@@ -142,9 +207,7 @@ export function FloatingBadge({
           )}
         >
           <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
-            {/* My PRs */}
             <PrColumn title="MY PRS" items={myPrs} onOpenPr={onOpenPr} />
-            {/* Team PRs */}
             <PrColumn title="TEAM" items={teamPrs} onOpenPr={onOpenPr} />
           </div>
 

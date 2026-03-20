@@ -37,8 +37,8 @@ pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
             let screen_size = monitor.size();
             let screen_pos = monitor.position();
             let scale = badge_win.scale_factor().unwrap_or(1.0);
-            let badge_width = (260.0 * scale) as u32;
-            let badge_height = (50.0 * scale) as u32;
+            let badge_width = (540.0 * scale) as u32;
+            let badge_height = (80.0 * scale) as u32;
             let x = screen_pos.x + (screen_size.width as i32 - badge_width as i32) / 2;
             let y = screen_pos.y + 8;
             let _ = badge_win.set_position(tauri::Position::Physical(

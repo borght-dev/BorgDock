@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -17,61 +17,44 @@ export function SettingsFlyout() {
   const { settings, saveSettings } = useSettingsStore();
   const isSettingsOpen = useUiStore((s) => s.isSettingsOpen);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
-  const closeSettings = useCallback(() => setSettingsOpen(false), [setSettingsOpen]);
-  const [draft, setDraft] = useState<AppSettings>(settings);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const close = useCallback(() => setSettingsOpen(false), [setSettingsOpen]);
   const [isPruneOpen, setIsPruneOpen] = useState(false);
 
-  useEffect(() => {
-    if (isSettingsOpen) setDraft(settings);
-  }, [isSettingsOpen, settings]);
-
-  const updateDraft = useCallback(
-    (partial: Partial<AppSettings>) => setDraft((prev) => ({ ...prev, ...partial })),
-    [],
+  // Debounced auto-save: save 300ms after the last change
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const save = useCallback(
+    (next: AppSettings) => {
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => saveSettings(next), 300);
+    },
+    [saveSettings],
   );
+  // Flush pending save on close
+  useEffect(() => {
+    if (!isSettingsOpen && timerRef.current) {
+      clearTimeout(timerRef.current);
+      // save whatever is current
+      saveSettings(settings);
+    }
+  }, [isSettingsOpen, settings, saveSettings]);
 
-  const validate = useCallback((d: AppSettings): Record<string, string> => {
-    const errors: Record<string, string> = {};
-    if (d.gitHub.authMethod === 'pat' && !d.gitHub.personalAccessToken) {
-      errors.pat = 'PAT is required when using Personal Access Token auth.';
-    }
-    if (
-      d.gitHub.personalAccessToken &&
-      !d.gitHub.personalAccessToken.startsWith('ghp_') &&
-      !d.gitHub.personalAccessToken.startsWith('github_pat_')
-    ) {
-      errors.patFormat = 'PAT should start with ghp_ or github_pat_';
-    }
-    if (d.gitHub.pollIntervalSeconds < 15 || d.gitHub.pollIntervalSeconds > 300) {
-      errors.pollInterval = 'Poll interval must be between 15 and 300 seconds.';
-    }
-    if (d.ui.sidebarWidthPx < 200 || d.ui.sidebarWidthPx > 1200) {
-      errors.sidebarWidth = 'Sidebar width must be between 200 and 1200 pixels.';
-    }
-    return errors;
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    const errors = validate(draft);
-    setValidationErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-    await saveSettings(draft);
-    closeSettings();
-  }, [draft, saveSettings, closeSettings, validate]);
-
-  const handleCancel = useCallback(() => {
-    setDraft(settings);
-    setValidationErrors({});
-    closeSettings();
-  }, [settings, closeSettings]);
+  const update = useCallback(
+    (partial: Partial<AppSettings>) => {
+      const next = { ...settings, ...partial };
+      // Optimistic update in store
+      useSettingsStore.getState().updateSettings(partial);
+      // Debounced persist
+      save(next);
+    },
+    [settings, save],
+  );
 
   if (!isSettingsOpen) return null;
 
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={handleCancel} />
+      <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />
 
       {/* Flyout panel */}
       <div
@@ -86,7 +69,7 @@ export function SettingsFlyout() {
           <span className="text-sm font-semibold text-[var(--color-text-primary)]">Settings</span>
           <button
             className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
-            onClick={handleCancel}
+            onClick={close}
           >
             &#10005;
           </button>
@@ -95,66 +78,46 @@ export function SettingsFlyout() {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <SectionCard title="GitHub">
-            <GitHubSection github={draft.gitHub} onChange={(gitHub) => updateDraft({ gitHub })} />
-            {validationErrors.pat && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">
-                {validationErrors.pat}
-              </p>
-            )}
-            {validationErrors.patFormat && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-yellow)]">
-                {validationErrors.patFormat}
-              </p>
-            )}
-            {validationErrors.pollInterval && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">
-                {validationErrors.pollInterval}
-              </p>
-            )}
+            <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />
           </SectionCard>
 
           <SectionCard title="Repositories">
-            <RepoSection repos={draft.repos} onChange={(repos) => updateDraft({ repos })} />
+            <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />
           </SectionCard>
 
           <SectionCard title="Appearance">
-            <AppearanceSection ui={draft.ui} onChange={(ui) => updateDraft({ ui })} />
-            {validationErrors.sidebarWidth && (
-              <p className="mt-1 text-[10px] text-[var(--color-status-red)]">
-                {validationErrors.sidebarWidth}
-              </p>
-            )}
+            <AppearanceSection ui={settings.ui} onChange={(ui) => update({ ui })} />
           </SectionCard>
 
           <SectionCard title="Notifications">
             <NotificationSection
-              notifications={draft.notifications}
-              onChange={(notifications) => updateDraft({ notifications })}
+              notifications={settings.notifications}
+              onChange={(notifications) => update({ notifications })}
             />
           </SectionCard>
 
           <SectionCard title="Claude Code">
             <ClaudeSection
-              claudeCode={draft.claudeCode}
-              onChange={(claudeCode) => updateDraft({ claudeCode })}
+              claudeCode={settings.claudeCode}
+              onChange={(claudeCode) => update({ claudeCode })}
             />
           </SectionCard>
 
           <SectionCard title="Azure DevOps">
             <AdoSection
-              azureDevOps={draft.azureDevOps}
-              onChange={(azureDevOps) => updateDraft({ azureDevOps })}
+              azureDevOps={settings.azureDevOps}
+              onChange={(azureDevOps) => update({ azureDevOps })}
             />
           </SectionCard>
 
           <SectionCard title="SQL Server">
-            <SqlSection sql={draft.sql} onChange={(sql) => updateDraft({ sql })} />
+            <SqlSection sql={settings.sql} onChange={(sql) => update({ sql })} />
           </SectionCard>
 
           <SectionCard title="Updates">
             <UpdateSection
-              updates={draft.updates}
-              onChange={(updates) => updateDraft({ updates })}
+              updates={settings.updates}
+              onChange={(updates) => update({ updates })}
             />
           </SectionCard>
 
@@ -167,24 +130,6 @@ export function SettingsFlyout() {
               Prune Worktrees
             </button>
           </SectionCard>
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-[var(--color-separator)] px-4 py-3">
-          <div className="flex justify-end gap-2">
-            <button
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] transition-colors"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-            <button
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity"
-              onClick={handleSave}
-            >
-              Save
-            </button>
-          </div>
         </div>
       </div>
 

@@ -26,8 +26,8 @@
       {
         "title": "PRDock Badge",
         "label": "badge",
-        "width": 260,
-        "height": 50,
+        "width": 540,
+        "height": 80,
         "decorations": false,
         "alwaysOnTop": true,
         "resizable": false,
