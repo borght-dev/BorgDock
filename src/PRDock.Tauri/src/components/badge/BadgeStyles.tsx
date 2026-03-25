@@ -490,7 +490,7 @@ function FloatingIsland({
                 key={i}
                 className="w-[5px] rounded-sm"
                 style={{
-                  height: barHeights[i] * 1.4,
+                  height: (barHeights[i] ?? 0) * 1.4,
                   backgroundColor:
                     status === 'pass'
                       ? 'var(--color-status-green)'
