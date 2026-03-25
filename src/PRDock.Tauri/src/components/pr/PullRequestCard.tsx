@@ -284,6 +284,15 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
     [failedCheckNames, pr.number, showNotification, showError],
   );
 
+  const statusAccentColor =
+    overallStatus === 'red'
+      ? 'var(--color-status-red)'
+      : overallStatus === 'green'
+        ? 'var(--color-status-green)'
+        : overallStatus === 'yellow'
+          ? 'var(--color-status-yellow)'
+          : 'var(--color-status-gray)';
+
   return (
     <>
       <button
@@ -291,7 +300,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
         onClick={() => selectPr(pr.number)}
         onContextMenu={handleContextMenu}
         className={clsx(
-          'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors',
+          'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors overflow-hidden',
           isSelected
             ? 'bg-[var(--color-selected-row-bg)] border-[var(--color-accent)]'
             : isMyPr
@@ -301,6 +310,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-background)]',
           'shadow-sm',
         )}
+        style={{ borderLeftWidth: 3, borderLeftColor: statusAccentColor }}
       >
         {/* Status indicator */}
         <div className="mt-1.5">
@@ -352,11 +362,8 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             )}
           </div>
 
-          {/* Meta row */}
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
-            <span className="truncate">
-              {pr.repoOwner}/{pr.repoName}
-            </span>
+          {/* Meta row — author + branch */}
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-[var(--color-text-tertiary)]">
             <span
               className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]"
               title={pr.authorLogin}
@@ -366,35 +373,70 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             <span className="truncate font-mono text-[var(--color-text-muted)]">{pr.headRef}</span>
           </div>
 
-          {/* Labels + check summary */}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {pr.labels.map((label) => (
-              <LabelBadge key={label} label={label} />
-            ))}
-            {totalChecks > 0 && (
-              <span className="text-[10px] text-[var(--color-text-muted)]">
-                {passedCount}/{totalChecks - prWithChecks.skippedCount} checks passed
-                {prWithChecks.skippedCount > 0 && ` (${prWithChecks.skippedCount} skipped)`}
-              </span>
-            )}
-          </div>
+          {/* Labels */}
+          {pr.labels.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {pr.labels.map((label) => (
+                <LabelBadge key={label} label={label} />
+              ))}
+            </div>
+          )}
 
-          {/* Stats row */}
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
-            {pr.commentCount > 0 && (
-              <span title="Comments">
-                {'\uD83D\uDCAC'} {pr.commentCount}
-              </span>
-            )}
+          {/* CI progress bar + stats */}
+          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
+            {totalChecks > 0 && (() => {
+              const relevant = totalChecks - prWithChecks.skippedCount;
+              const failedCount = prWithChecks.failedCheckNames.length;
+              const pendingCount = prWithChecks.pendingCheckNames.length;
+              return (
+                <span className="flex items-center gap-1.5" title={`${passedCount}/${relevant} checks passed${prWithChecks.skippedCount > 0 ? ` (${prWithChecks.skippedCount} skipped)` : ''}`}>
+                  <span className="flex h-[4px] w-16 gap-px overflow-hidden rounded-full">
+                    {passedCount > 0 && (
+                      <span
+                        className="h-full rounded-full"
+                        style={{ flex: passedCount, background: 'var(--color-status-green)' }}
+                      />
+                    )}
+                    {failedCount > 0 && (
+                      <span
+                        className="h-full rounded-full"
+                        style={{ flex: failedCount, background: 'var(--color-status-red)' }}
+                      />
+                    )}
+                    {pendingCount > 0 && (
+                      <span
+                        className="h-full rounded-full"
+                        style={{ flex: pendingCount, background: 'var(--color-status-yellow)' }}
+                      />
+                    )}
+                    {prWithChecks.skippedCount > 0 && (
+                      <span
+                        className="h-full rounded-full"
+                        style={{ flex: prWithChecks.skippedCount, background: 'var(--color-status-gray)', opacity: 0.3 }}
+                      />
+                    )}
+                  </span>
+                  <span className="font-mono tabular-nums text-[9px]">
+                    {passedCount}/{relevant}
+                  </span>
+                </span>
+              );
+            })()}
             {(pr.additions > 0 || pr.deletions > 0) && (
-              <span>
-                <span className="text-green-500">+{pr.additions}</span>{' '}
-                <span className="text-red-500">-{pr.deletions}</span>
+              <span className="font-mono tabular-nums">
+                <span className="text-[var(--color-status-green)]">+{pr.additions}</span>
+                <span className="text-[var(--color-text-ghost)]">/</span>
+                <span className="text-[var(--color-status-red)]">-{pr.deletions}</span>
               </span>
             )}
             {pr.commitCount > 0 && (
-              <span title="Commits">
-                {pr.commitCount} commit{pr.commitCount !== 1 ? 's' : ''}
+              <span className="tabular-nums" title="Commits">
+                {pr.commitCount}c
+              </span>
+            )}
+            {pr.commentCount > 0 && (
+              <span className="tabular-nums" title="Comments">
+                {pr.commentCount}{'\uD83D\uDCAC'}
               </span>
             )}
           </div>

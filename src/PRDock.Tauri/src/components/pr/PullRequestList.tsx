@@ -90,19 +90,24 @@ export function PullRequestList() {
       {showRecentlyClosed && (
         <>
           <div
-            className="mt-3 border-t px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider"
-            style={{
-              borderColor: 'var(--color-separator)',
-              color: 'var(--color-text-muted)',
-            }}
+            className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1"
+            style={{ borderColor: 'var(--color-separator)' }}
           >
-            Recently Closed
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-ghost)' }}>
+              Recently Closed
+            </span>
+            <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
+            <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums" style={{ color: 'var(--color-text-ghost)', background: 'var(--color-surface-raised)' }}>
+              {closedPullRequests.length}
+            </span>
           </div>
-          {closedPullRequests.map((pr) => (
-            <div key={pr.pullRequest.number} className="px-0.5">
-              <PullRequestCard prWithChecks={pr} />
-            </div>
-          ))}
+          <div className="opacity-60">
+            {closedPullRequests.map((pr) => (
+              <div key={pr.pullRequest.number} className="px-0.5">
+                <PullRequestCard prWithChecks={pr} />
+              </div>
+            ))}
+          </div>
         </>
       )}
     </div>

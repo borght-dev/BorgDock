@@ -183,88 +183,77 @@ function StatusIcon({ status }: { status: CheckStatus }) {
   }
 }
 
-function ScoreArc({ score }: { score: number }) {
+function ScoreBadge({ score }: { score: number }) {
   const clamped = Math.max(0, Math.min(100, score));
-  const radius = 28;
-  const circumference = 2 * Math.PI * radius;
-  const arcLength = (clamped / 100) * circumference;
   const color = scoreColor(clamped);
 
   return (
-    <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0">
-      {/* Background track */}
-      <circle
-        cx="36"
-        cy="36"
-        r={radius}
-        fill="none"
-        stroke="var(--color-subtle-border)"
-        strokeWidth="5"
-      />
-      {/* Score arc */}
-      <circle
-        cx="36"
-        cy="36"
-        r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth="5"
-        strokeDasharray={`${arcLength} ${circumference}`}
-        strokeLinecap="round"
-        transform="rotate(-90 36 36)"
-      />
-      {/* Score number */}
-      <text
-        x="36"
-        y="33"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="var(--color-text-primary)"
-        fontSize="18"
-        fontWeight="700"
-      >
-        {clamped}
-      </text>
-      {/* Label */}
-      <text
-        x="36"
-        y="46"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="var(--color-text-muted)"
-        fontSize="8"
-      >
-        score
-      </text>
-    </svg>
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
+      style={{
+        color,
+        background: `color-mix(in srgb, ${color} 10%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${color} 20%, transparent)`,
+      }}
+    >
+      {clamped}
+    </span>
   );
 }
 
 export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
   const items = getCheckItems(pr);
   const score = computeMergeScore(pr);
+  const color = scoreColor(score);
 
   return (
-    <div className="flex items-start gap-4 rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-3">
-      {/* Left side: checklist items */}
-      <div className="flex flex-1 flex-col gap-2">
+    <div className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden">
+      {/* Header with inline score */}
+      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
+          Merge Readiness
+        </span>
+        <ScoreBadge score={score} />
+      </div>
+
+      {/* Compact progress bar */}
+      <div className="mx-3 mb-2 flex h-[3px] gap-px overflow-hidden rounded-full">
         {items.map((item) => (
-          <div key={item.label} className="flex items-start gap-2">
+          <span
+            key={item.label}
+            className="h-full flex-1 rounded-full transition-colors"
+            style={{
+              background:
+                item.status === 'pass'
+                  ? 'var(--color-status-green)'
+                  : item.status === 'fail'
+                    ? 'var(--color-status-red)'
+                    : item.status === 'pending'
+                      ? 'var(--color-status-yellow)'
+                      : 'var(--color-status-gray)',
+              opacity: item.status === 'none' ? 0.3 : 1,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Checklist items */}
+      <div className="flex flex-col gap-0.5 px-3 pb-2.5">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-2 py-0.5">
             <StatusIcon status={item.status} />
-            <div className="min-w-0">
-              <div className="text-xs font-medium text-[var(--color-text-primary)]">
+            <div className="min-w-0 flex-1">
+              <span className="text-[11px] font-medium text-[var(--color-text-primary)]">
                 {item.label}
-              </div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">{item.description}</div>
+              </span>
             </div>
+            <span className="shrink-0 text-[9px] text-[var(--color-text-muted)]">{item.description}</span>
           </div>
         ))}
       </div>
 
-      {/* Right side: score arc */}
-      <div className="flex shrink-0 flex-col items-center">
-        <ScoreArc score={score} />
-      </div>
+      {/* Bottom accent line showing score */}
+      <div className="h-[2px]" style={{ background: `linear-gradient(90deg, ${color} ${score}%, var(--color-subtle-border) ${score}%)` }} />
     </div>
   );
 }

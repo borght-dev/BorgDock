@@ -9,6 +9,10 @@ interface RepoGroupProps {
   prs: PullRequestWithChecks[];
 }
 
+function countFailing(prs: PullRequestWithChecks[]): number {
+  return prs.filter((p) => p.overallStatus === 'red').length;
+}
+
 export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
   const expandedRepoGroups = useUiStore((s) => s.expandedRepoGroups);
   const toggleRepoGroup = useUiStore((s) => s.toggleRepoGroup);
@@ -35,12 +39,14 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
     }
   }, [isExpanded]);
 
+  const failing = countFailing(prs);
+
   return (
     <div className="mb-0.5">
       {/* Header */}
       <button
         onClick={() => toggleRepoGroup(repoKey)}
-        className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
+        className="group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
       >
         <svg
           width="10"
@@ -58,18 +64,48 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
         >
           <path d="m6 4 4 4-4 4" />
         </svg>
+        {/* Repo icon */}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="var(--color-text-ghost)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0"
+        >
+          <path d="M4 2v12M12 8c0-3-2-4-4-4" />
+          <circle cx="4" cy="14" r="1.5" fill="var(--color-text-ghost)" stroke="none" />
+          <circle cx="4" cy="2" r="1.5" fill="var(--color-text-ghost)" stroke="none" />
+          <circle cx="12" cy="8" r="1.5" fill="var(--color-text-ghost)" stroke="none" />
+        </svg>
         <span className="truncate text-[11px] font-semibold tracking-tight text-[var(--color-text-secondary)]">
           {repoKey}
         </span>
-        <span
-          className="ml-auto rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
-          style={{
-            background: 'var(--color-filter-chip-bg)',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          {prs.length}
-        </span>
+        <div className="ml-auto flex items-center gap-1">
+          {failing > 0 && (
+            <span
+              className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
+              style={{
+                background: 'var(--color-action-danger-bg)',
+                color: 'var(--color-status-red)',
+              }}
+            >
+              {failing}{'\u2716'}
+            </span>
+          )}
+          <span
+            className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
+            style={{
+              background: 'var(--color-filter-chip-bg)',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            {prs.length}
+          </span>
+        </div>
       </button>
 
       {/* Content */}

@@ -241,40 +241,40 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       {/* Merge Readiness Checklist */}
       <MergeReadinessChecklist pr={pr} />
 
-      {/* Action buttons */}
+      {/* Action buttons — layered hierarchy: primary > secondary > ghost > danger */}
       <div className="flex flex-wrap gap-2">
+        {isReady && (
+          <button
+            onClick={handleMerge}
+            className="rounded-md bg-[var(--color-status-green)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 active:scale-[0.97] transition-all"
+          >
+            Squash &amp; Merge
+          </button>
+        )}
         <button
           onClick={() => handleOpenInBrowser(p.htmlUrl)}
-          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-action-secondary-fg)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="rounded-md bg-[var(--color-accent-subtle)] border border-[var(--color-purple-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent)] hover:bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] transition-colors"
         >
           Open in Browser
         </button>
         <button
           onClick={() => handleCopyBranch(p.headRef)}
-          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] transition-colors"
         >
           Copy Branch
         </button>
         <button
           onClick={handleCheckout}
-          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] transition-colors"
         >
           Checkout
         </button>
         <button
           onClick={handleToggleDraft}
-          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] transition-colors"
         >
           {p.isDraft ? 'Mark Ready' : 'Mark Draft'}
         </button>
-        {isReady && (
-          <button
-            onClick={handleMerge}
-            className="rounded-md bg-[var(--color-action-success-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-green)] hover:opacity-90 transition-opacity"
-          >
-            Squash &amp; Merge
-          </button>
-        )}
         {p.mergeable === false && (
           <button
             onClick={handleResolveConflicts}
@@ -285,7 +285,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         )}
         <button
           onClick={handleBypassMerge}
-          className="rounded-md bg-[var(--color-action-danger-bg)] border border-[var(--color-error-badge-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-action-danger-fg)] hover:opacity-90 transition-opacity"
+          className="rounded-md border-2 border-[var(--color-status-red)] border-dashed bg-transparent px-3 py-1.5 text-xs font-medium text-[var(--color-action-danger-fg)] hover:bg-[var(--color-action-danger-bg)] transition-colors"
         >
           Bypass Merge
         </button>
