@@ -34,16 +34,16 @@ function avatarInitials(login: string): string {
  * Colors chosen to be vibrant yet legible in both light and dark themes.
  */
 const AUTHOR_PALETTE = [
-  '#0d9488', // teal
-  '#e11d48', // rose
-  '#d97706', // amber
-  '#4f46e5', // indigo
-  '#059669', // emerald
-  '#c026d3', // fuchsia
-  '#0284c7', // sky
-  '#ea580c', // orange
-  '#6d28d9', // violet
-  '#0891b2', // cyan
+  '#7C6AF6', // violet
+  '#E54065', // ruby
+  '#7DD3C0', // aquamarine
+  '#6655D4', // deep violet
+  '#3BA68E', // teal
+  '#B8B0F8', // lavender
+  '#9384F7', // light violet
+  '#C7324F', // deep ruby
+  '#F5B73B', // amber
+  '#5A4ABF', // indigo
 ] as const;
 
 /** Deterministic hash → palette index for a given username. */

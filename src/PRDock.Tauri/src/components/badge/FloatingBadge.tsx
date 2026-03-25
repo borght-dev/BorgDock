@@ -3,8 +3,8 @@ import { useCallback, useState } from 'react';
 
 export type StatusColor = 'green' | 'red' | 'yellow';
 
-const BADGE_COLLAPSED = { width: 540, height: 80 };
-const BADGE_EXPANDED = { width: 340, height: 400 };
+const BADGE_COLLAPSED = { width: 340, height: 48 };
+const BADGE_EXPANDED = { width: 340, height: 380 };
 
 export interface BadgePrItem {
   title: string;
@@ -111,7 +111,7 @@ export function FloatingBadge({
           <div
             className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0"
             style={{
-              backgroundColor: isFailing ? 'rgba(220,38,38,0.12)' : 'rgba(22,163,74,0.12)',
+              backgroundColor: isFailing ? 'rgba(229,64,101,0.12)' : 'rgba(125,211,192,0.12)',
             }}
           >
             <div

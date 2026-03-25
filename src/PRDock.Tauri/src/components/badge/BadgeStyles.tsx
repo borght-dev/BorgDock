@@ -80,22 +80,18 @@ function DragGrip() {
   return (
     <div
       data-testid="badge-drag-handle"
-      className="flex items-center pl-3 py-3 cursor-grab active:cursor-grabbing select-none"
+      className="flex items-center pl-2 py-1 cursor-grab active:cursor-grabbing select-none"
       title="Drag to reposition"
       onMouseDown={handleDragMouseDown}
     >
-      <div className="flex flex-col gap-1 opacity-30 pointer-events-none">
-        <div className="flex gap-1">
-          <div className="w-1 h-1 rounded-full bg-[var(--color-text-tertiary)]" />
-          <div className="w-1 h-1 rounded-full bg-[var(--color-text-tertiary)]" />
+      <div className="flex flex-col gap-[3px] opacity-25 pointer-events-none">
+        <div className="flex gap-[3px]">
+          <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+          <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
         </div>
-        <div className="flex gap-1">
-          <div className="w-1 h-1 rounded-full bg-[var(--color-text-tertiary)]" />
-          <div className="w-1 h-1 rounded-full bg-[var(--color-text-tertiary)]" />
-        </div>
-        <div className="flex gap-1">
-          <div className="w-1 h-1 rounded-full bg-[var(--color-text-tertiary)]" />
-          <div className="w-1 h-1 rounded-full bg-[var(--color-text-tertiary)]" />
+        <div className="flex gap-[3px]">
+          <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
+          <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-text-tertiary)]" />
         </div>
       </div>
     </div>
@@ -114,7 +110,7 @@ function ExpandChevron({
     <button
       data-testid="badge-expand-chevron"
       className={clsx(
-        'flex items-center justify-center self-stretch px-3.5 rounded-r-full',
+        'flex items-center justify-center self-stretch px-2 rounded-r-full',
         'border-l border-[var(--color-separator)]',
         'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
         'hover:bg-[var(--color-surface-hover)] transition-colors',
@@ -123,7 +119,7 @@ function ExpandChevron({
       title={isExpanded ? 'Collapse' : 'Expand PR list'}
     >
       <ChevronIcon
-        size={16}
+        size={10}
         color="currentColor"
       />
     </button>
@@ -206,7 +202,7 @@ function GlassCapsule({
           'hover:-translate-y-0.5 hover:scale-[1.02]',
         )}
         style={{
-          boxShadow: `0 4px 24px ${glowColor}, 0 0 0 1px ${glowColor}, inset 0 1px 0 rgba(255,255,255,0.04)`,
+          boxShadow: `0 2px 16px ${glowColor}, 0 0 0 1px ${glowColor}, inset 0 1px 0 rgba(255,255,255,0.04)`,
         }}
       >
         <DragGrip />
@@ -214,39 +210,39 @@ function GlassCapsule({
         {/* Left section: icon + count + label */}
         <button
           data-testid="badge-open-sidebar"
-          className="flex items-center gap-2.5 px-3 py-3 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
+          className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
           onClick={onClick}
         >
-          {/* Circular icon with animated ring */}
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-full"
-            style={{ backgroundColor: isFailing ? 'rgba(220,38,38,0.12)' : 'rgba(22,163,74,0.12)' }}
+          {/* Compact status icon */}
+          <div className="relative flex items-center justify-center w-5 h-5 rounded-full shrink-0"
+            style={{ backgroundColor: isFailing ? 'rgba(229,64,101,0.12)' : 'rgba(125,211,192,0.12)' }}
           >
             <div
-              className="absolute inset-[-3px] rounded-full"
+              className="absolute inset-[-2px] rounded-full"
               style={{
-                border: `1.5px solid ${dotColor}`,
-                opacity: 0.4,
+                border: `1px solid ${dotColor}`,
+                opacity: 0.35,
                 animation: 'badge-ring-pulse 2.5s ease-in-out infinite',
               }}
             />
             {isFailing ? (
-              <XIcon size={16} color={dotColor} />
+              <XIcon size={9} color={dotColor} />
             ) : (
-              <CheckIcon size={16} color={dotColor} />
+              <CheckIcon size={9} color={dotColor} />
             )}
           </div>
 
-          <span className="text-2xl font-bold leading-none tracking-tight text-[var(--color-text-primary)]">
+          <span className="text-sm font-bold leading-none tracking-tight text-[var(--color-text-primary)]">
             {totalPrCount}
           </span>
-          <span className="text-sm font-medium leading-none text-[var(--color-text-secondary)]">
+          <span className="text-[9px] font-medium leading-none uppercase tracking-wider text-[var(--color-text-secondary)]">
             PRs
           </span>
         </button>
 
         {/* Glass divider */}
         <div
-          className="w-px h-8 shrink-0"
+          className="w-px h-4 shrink-0"
           style={{
             background: 'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
           }}
@@ -254,19 +250,19 @@ function GlassCapsule({
 
         {/* Right section: status dot + text */}
         <button
-          className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
           onClick={onClick}
         >
           <span
-            className="w-2 h-2 rounded-full shrink-0"
+            className="w-[5px] h-[5px] rounded-full shrink-0"
             style={{
               backgroundColor: dotColor,
-              boxShadow: `0 0 8px ${dotColor}`,
+              boxShadow: `0 0 6px ${dotColor}`,
               animation: isFailing ? 'badge-dot-blink 2s ease-in-out infinite' : 'none',
             }}
           />
           <span
-            className="text-sm font-medium whitespace-nowrap"
+            className="text-[11px] font-medium whitespace-nowrap"
             style={{ color: dotColor, opacity: 0.85 }}
           >
             {statusText}
@@ -301,18 +297,18 @@ function MinimalNotch({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-center rounded-[24px] relative overflow-hidden',
+          'flex items-center rounded-[18px] relative overflow-hidden',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-300',
           'hover:-translate-y-0.5',
         )}
         style={{
-          boxShadow: `0 2px 16px rgba(0,0,0,0.15), 0 0 1px ${dotColor}`,
+          boxShadow: `0 2px 12px rgba(0,0,0,0.12), 0 0 1px ${dotColor}`,
         }}
       >
         {/* Left accent bar */}
         <div
-          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[20px]"
+          className="absolute left-0 top-0 bottom-0 w-[2px] rounded-l-[18px]"
           style={{ backgroundColor: dotColor }}
         />
 
@@ -320,38 +316,38 @@ function MinimalNotch({
 
         <button
           data-testid="badge-open-sidebar"
-          className="flex items-center gap-3 pl-2 pr-1.5 py-3 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none relative z-[1]"
+          className="flex items-center gap-2 pl-1.5 pr-1 py-1.5 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none relative z-[1]"
           onClick={onClick}
         >
           {/* PR count */}
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold leading-none tracking-tight text-[var(--color-text-primary)]">
+          <div className="flex items-baseline gap-1">
+            <span className="text-sm font-bold leading-none tracking-tight text-[var(--color-text-primary)]">
               {totalPrCount}
             </span>
-            <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-secondary)]">
+            <span className="text-[9px] font-medium uppercase tracking-wider text-[var(--color-text-secondary)]">
               prs
             </span>
           </div>
 
           {/* Dot separator */}
-          <div className="w-1 h-1 rounded-full bg-[var(--color-separator)]" />
+          <div className="w-[3px] h-[3px] rounded-full bg-[var(--color-separator)]" />
 
           {/* Status icon in circle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <div
-              className="w-6 h-6 rounded-full flex items-center justify-center"
+              className="w-4 h-4 rounded-full flex items-center justify-center"
               style={{
-                backgroundColor: isFailing ? 'rgba(220,38,38,0.15)' : 'rgba(22,163,74,0.15)',
+                backgroundColor: isFailing ? 'rgba(229,64,101,0.15)' : 'rgba(125,211,192,0.15)',
               }}
             >
               {isFailing ? (
-                <XIcon size={11} color={dotColor} />
+                <XIcon size={8} color={dotColor} />
               ) : (
-                <CheckIcon size={11} color={dotColor} />
+                <CheckIcon size={8} color={dotColor} />
               )}
             </div>
             <span
-              className="text-sm font-medium whitespace-nowrap"
+              className="text-[11px] font-medium whitespace-nowrap"
               style={{ color: dotColor }}
             >
               {statusText}
@@ -359,13 +355,13 @@ function MinimalNotch({
           </div>
 
           {/* Check pips */}
-          <div className="flex gap-[3px] ml-1">
+          <div className="flex gap-[2px] ml-0.5">
             {pips.map((status, i) => (
               <div
                 key={i}
-                className="w-[5px] rounded-sm"
+                className="w-[3px] rounded-sm"
                 style={{
-                  height: 18,
+                  height: 12,
                   backgroundColor:
                     status === 'pass'
                       ? 'var(--color-status-green)'
@@ -404,23 +400,23 @@ function FloatingIsland({
 
   // Generate mini chart bars from counts
   const bars = generateCheckPips(totalPrCount, failingCount, pendingCount);
-  const barHeights = bars.map((_, i) => 8 + ((i * 7 + 3) % 12));
+  const barHeights = bars.map((_, i) => 6 + ((i * 7 + 3) % 8));
 
   // PR "avatar" circles (colored placeholders)
-  const prColors = ['#E58912', '#1EAF12', '#204C9C'];
+  const prColors = ['#7C6AF6', '#7DD3C0', '#E54065'];
 
   return (
     <>
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-center rounded-3xl relative overflow-hidden',
+          'flex items-center rounded-2xl relative overflow-hidden',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-[400ms]',
-          'hover:-translate-y-0.5 hover:rounded-[28px]',
+          'hover:-translate-y-0.5 hover:rounded-[18px]',
         )}
         style={{
-          boxShadow: `0 4px 32px rgba(0,0,0,0.2), 0 0 0 0.5px ${glowColor}, 0 0 60px -10px ${glowColor}`,
+          boxShadow: `0 2px 20px rgba(0,0,0,0.15), 0 0 0 0.5px ${glowColor}, 0 0 40px -10px ${glowColor}`,
         }}
       >
         {/* Ambient glow overlay */}
@@ -430,7 +426,7 @@ function FloatingIsland({
             style={{
               background: `radial-gradient(ellipse, ${glowColor}, transparent 70%)`,
               animation: 'badge-glow-drift 6s ease-in-out infinite',
-              opacity: 0.3,
+              opacity: 0.25,
             }}
           />
         </div>
@@ -439,15 +435,15 @@ function FloatingIsland({
 
         <button
           data-testid="badge-open-sidebar"
-          className="flex items-center gap-4 px-2 py-3 pr-4 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none relative z-[1]"
+          className="flex items-center gap-2.5 px-1.5 py-1.5 pr-2.5 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none relative z-[1]"
           onClick={onClick}
         >
           {/* Avatar stack */}
-          <div className="flex -mr-1">
+          <div className="flex -mr-0.5">
             {prColors.map((color, i) => (
               <div
                 key={i}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white -mr-2 border-2 border-[var(--color-badge-glass)]"
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold text-white -mr-1.5 border-[1.5px] border-[var(--color-badge-glass)]"
                 style={{ backgroundColor: color, zIndex: 3 - i }}
               >
                 {['SC', 'KB', 'TB'][i]}
@@ -456,26 +452,26 @@ function FloatingIsland({
           </div>
 
           {/* Center text */}
-          <div className="flex flex-col gap-1">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold leading-none tracking-tighter text-[var(--color-text-primary)]">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm font-bold leading-none tracking-tighter text-[var(--color-text-primary)]">
                 {totalPrCount}
               </span>
-              <span className="text-sm font-medium text-[var(--color-text-secondary)] leading-none">
+              <span className="text-[10px] font-medium text-[var(--color-text-secondary)] leading-none">
                 open PRs
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <span
-                className="w-[7px] h-[7px] rounded-full shrink-0"
+                className="w-[5px] h-[5px] rounded-full shrink-0"
                 style={{
                   backgroundColor: dotColor,
-                  boxShadow: `0 0 6px ${dotColor}`,
+                  boxShadow: `0 0 4px ${dotColor}`,
                   animation: isFailing ? 'badge-dot-blink 2s ease-in-out infinite' : 'none',
                 }}
               />
               <span
-                className="text-xs font-medium tracking-wide"
+                className="text-[9px] font-medium tracking-wide"
                 style={{ color: dotColor, opacity: 0.7 }}
               >
                 {statusText}
@@ -484,13 +480,13 @@ function FloatingIsland({
           </div>
 
           {/* Mini bar chart */}
-          <div className="flex items-end gap-[3px] h-7 px-1">
+          <div className="flex items-end gap-[2px] h-4 px-0.5">
             {bars.map((status, i) => (
               <div
                 key={i}
-                className="w-[5px] rounded-sm"
+                className="w-[3px] rounded-sm"
                 style={{
-                  height: (barHeights[i] ?? 0) * 1.4,
+                  height: (barHeights[i] ?? 0) * 1.2,
                   backgroundColor:
                     status === 'pass'
                       ? 'var(--color-status-green)'
@@ -536,32 +532,32 @@ function LiquidMorph({
           'hover:-translate-y-0.5 hover:scale-[1.03]',
         )}
         style={{
-          boxShadow: `0 4px 32px ${glowColor}`,
+          boxShadow: `0 2px 20px ${glowColor}`,
         }}
       >
         <DragGrip />
 
         <button
           data-testid="badge-open-sidebar"
-          className="flex items-center gap-3 px-1.5 py-2.5 pr-3 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
+          className="flex items-center gap-2 px-1 py-1.5 pr-2 hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
           onClick={onClick}
         >
           {/* Blob circle with count */}
-          <div className="relative flex items-center justify-center w-11 h-11 rounded-full shrink-0"
+          <div className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0"
             style={{
-              background: `radial-gradient(circle at 40% 40%, ${isFailing ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.2)'}, ${isFailing ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)'})`,
+              background: `radial-gradient(circle at 40% 40%, ${isFailing ? 'rgba(229,64,101,0.2)' : 'rgba(125,211,192,0.2)'}, ${isFailing ? 'rgba(229,64,101,0.08)' : 'rgba(125,211,192,0.08)'})`,
             }}
           >
             <div
-              className="absolute inset-[-4px] rounded-full"
+              className="absolute inset-[-3px] rounded-full"
               style={{
-                border: `1.5px solid ${dotColor}`,
+                border: `1px solid ${dotColor}`,
                 opacity: 0.25,
                 animation: 'badge-liquid-morph 4s ease-in-out infinite',
               }}
             />
             <span
-              className="text-lg font-bold leading-none relative z-[1]"
+              className="text-xs font-bold leading-none relative z-[1]"
               style={{ color: dotColor }}
             >
               {totalPrCount}
@@ -569,12 +565,12 @@ function LiquidMorph({
           </div>
 
           {/* Text */}
-          <div className="flex flex-col gap-0.5 pr-1">
-            <span className="text-base font-semibold leading-tight text-[var(--color-text-primary)]">
+          <div className="flex flex-col gap-0">
+            <span className="text-xs font-semibold leading-tight text-[var(--color-text-primary)]">
               Open PRs
             </span>
             <span
-              className="text-xs font-medium"
+              className="text-[10px] font-medium"
               style={{ color: dotColor, opacity: 0.65 }}
             >
               {statusText}
@@ -583,11 +579,11 @@ function LiquidMorph({
 
           {/* FIX / OK tag */}
           <div
-            className="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide shrink-0"
+            className="rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide shrink-0"
             style={{
-              backgroundColor: isFailing ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.1)',
+              backgroundColor: isFailing ? 'rgba(229,64,101,0.1)' : 'rgba(125,211,192,0.1)',
               color: dotColor,
-              border: `1px solid ${isFailing ? 'rgba(220,38,38,0.15)' : 'rgba(22,163,74,0.15)'}`,
+              border: `1px solid ${isFailing ? 'rgba(229,64,101,0.15)' : 'rgba(125,211,192,0.15)'}`,
             }}
           >
             {isFailing ? 'FIX' : 'OK'}
@@ -623,20 +619,20 @@ function SpectralBar({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-stretch rounded-[16px] relative overflow-hidden h-14',
+          'flex items-stretch rounded-xl relative overflow-hidden h-9',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-300',
           'hover:-translate-y-0.5',
         )}
         style={{
-          boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
         }}
       >
         {/* Bottom progress bar */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-0.5"
+          className="absolute bottom-0 left-0 right-0 h-[2px]"
           style={{
-            backgroundColor: isFailing ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)',
+            backgroundColor: isFailing ? 'rgba(229,64,101,0.08)' : 'rgba(125,211,192,0.08)',
           }}
         >
           <div
@@ -655,25 +651,25 @@ function SpectralBar({
         {/* Left: PR icon + count */}
         <button
           data-testid="badge-open-sidebar"
-          className="flex items-center gap-2.5 px-3 relative z-[1] hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
+          className="flex items-center gap-1.5 px-2 relative z-[1] hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
           onClick={onClick}
         >
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            className="w-5 h-5 rounded flex items-center justify-center"
             style={{
-              backgroundColor: isFailing ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.1)',
+              backgroundColor: isFailing ? 'rgba(229,64,101,0.1)' : 'rgba(125,211,192,0.1)',
             }}
           >
-            <PRIcon size={16} color={dotColor} />
+            <PRIcon size={11} color={dotColor} />
           </div>
-          <span className="text-base font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
+          <span className="text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
             {totalPrCount} PRs
           </span>
         </button>
 
         {/* Divider */}
         <div
-          className="w-px self-stretch my-3"
+          className="w-px self-stretch my-2"
           style={{
             background: 'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
           }}
@@ -681,14 +677,14 @@ function SpectralBar({
 
         {/* Right: pips + status */}
         <button
-          className="flex items-center gap-3 px-4 relative z-[1] hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
+          className="flex items-center gap-2 px-2.5 relative z-[1] hover:bg-[var(--color-surface-hover)] transition-colors rounded-none"
           onClick={onClick}
         >
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-[3px] items-center">
             {pips.map((status, i) => (
               <div
                 key={i}
-                className="w-2.5 h-2.5 rounded-full"
+                className="w-[6px] h-[6px] rounded-full"
                 style={{
                   backgroundColor:
                     status === 'pass'
@@ -696,14 +692,14 @@ function SpectralBar({
                       : status === 'fail'
                         ? 'var(--color-status-red)'
                         : 'var(--color-status-yellow)',
-                  boxShadow: status === 'fail' ? `0 0 4px var(--color-status-red)` : 'none',
+                  boxShadow: status === 'fail' ? `0 0 3px var(--color-status-red)` : 'none',
                   opacity: status === 'pass' ? 0.6 : 1,
                 }}
               />
             ))}
           </div>
           <span
-            className="text-sm font-medium whitespace-nowrap"
+            className="text-[11px] font-medium whitespace-nowrap"
             style={{ color: dotColor }}
           >
             {statusText}

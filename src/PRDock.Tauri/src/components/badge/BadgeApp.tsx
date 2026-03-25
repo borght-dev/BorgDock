@@ -75,7 +75,7 @@ export function BadgeApp() {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       // Reset badge window to collapsed size before hiding
-      await invoke('resize_badge', { width: 540, height: 80 });
+      await invoke('resize_badge', { width: 340, height: 48 });
       // Show the main sidebar and hide the badge window directly
       await invoke('toggle_sidebar');
       await invoke('hide_badge');
@@ -110,7 +110,7 @@ export function BadgeApp() {
       const { invoke } = await import('@tauri-apps/api/core');
       if (next) {
         // Expanding: let the backend auto-detect direction
-        const size = { width: 900, height: 500 };
+        const size = { width: 680, height: 380 };
         const dir = await invoke<string>('resize_badge', {
           width: size.width,
           height: size.height,
@@ -119,7 +119,7 @@ export function BadgeApp() {
         setExpandDirection(dir === 'up' ? 'up' : 'down');
       } else {
         // Collapsing: anchor the edge where the pill is so it doesn't jump
-        const size = { width: 540, height: 80 };
+        const size = { width: 340, height: 48 };
         const anchor = expandDirection === 'up' ? 'bottom' : 'top';
         await invoke('resize_badge', { width: size.width, height: size.height, anchor });
       }
@@ -148,7 +148,7 @@ export function BadgeApp() {
   const prPanel = isExpanded && (
     <div
       className={clsx(
-        'w-[880px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
+        'w-[660px] rounded-xl bg-[var(--color-badge-surface)] border border-[var(--color-badge-border)]',
         'shadow-lg overflow-hidden',
         expandUp ? 'mb-1' : 'mt-1',
       )}
@@ -167,15 +167,15 @@ export function BadgeApp() {
           onOpenPr={handleOpenPr}
         />
       </div>
-      <div className="flex items-center justify-center gap-3 border-t border-[var(--color-separator)] px-3 py-2">
-        <span className="text-xs text-[var(--color-text-muted)]">{data.totalPrCount} total</span>
+      <div className="flex items-center justify-center gap-2.5 border-t border-[var(--color-separator)] px-2.5 py-1.5">
+        <span className="text-[10px] text-[var(--color-text-muted)]">{data.totalPrCount} total</span>
         {data.failingCount > 0 && (
-          <span className="text-xs text-[var(--color-status-red)]">
+          <span className="text-[10px] text-[var(--color-status-red)]">
             {data.failingCount} failing
           </span>
         )}
         {data.pendingCount > 0 && (
-          <span className="text-xs text-[var(--color-status-yellow)]">
+          <span className="text-[10px] text-[var(--color-status-yellow)]">
             {data.pendingCount} pending
           </span>
         )}
@@ -237,38 +237,38 @@ function PrColumn({
   onOpenPr: (item: BadgePrItem) => void;
 }) {
   return (
-    <div className="px-2.5 py-2.5">
-      <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-ghost)]">
+    <div className="px-2 py-2">
+      <div className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-ghost)]">
         {title}
       </div>
-      <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
+      <div className="space-y-0.5 max-h-[240px] overflow-y-auto">
         {items.map((item) => (
           <button
             key={`${item.repoOwner}/${item.repoName}#${item.number}`}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[var(--color-surface-hover)] transition-colors"
+            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left hover:bg-[var(--color-surface-hover)] transition-colors"
             onClick={() => onOpenPr(item)}
           >
             <div
-              className="h-2 w-2 rounded-full shrink-0"
+              className="h-1.5 w-1.5 rounded-full shrink-0"
               style={{ backgroundColor: statusDotMap[item.statusColor] }}
             />
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-[var(--color-text-primary)] leading-snug">
+              <div className="text-[11px] text-[var(--color-text-primary)] leading-snug truncate">
                 {item.title}
               </div>
-              <div className="text-[11px] text-[var(--color-text-muted)]">
+              <div className="text-[9px] text-[var(--color-text-muted)]">
                 #{item.number} {item.timeAgo}
               </div>
             </div>
             {item.checksText && (
-              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]">
+              <span className="shrink-0 rounded px-1 py-0.5 text-[8px] bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]">
                 {item.checksText}
               </span>
             )}
           </button>
         ))}
         {items.length === 0 && (
-          <div className="py-3 text-center text-xs text-[var(--color-text-ghost)]">None</div>
+          <div className="py-2 text-center text-[10px] text-[var(--color-text-ghost)]">None</div>
         )}
       </div>
     </div>

@@ -160,7 +160,7 @@ function ExpandedActionButton({
     accent:
       'border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]',
     purple:
-      'border-[var(--color-purple-border,#7c3aed)] text-[var(--color-purple,#a78bfa)] hover:bg-[color-mix(in_srgb,var(--color-purple,#a78bfa)_10%,transparent)]',
+      'border-[var(--color-purple-border,#6655D4)] text-[var(--color-purple,#9384F7)] hover:bg-[color-mix(in_srgb,var(--color-purple,#9384F7)_10%,transparent)]',
     success:
       'border-[var(--color-success-badge-border)] bg-[var(--color-action-success-bg,color-mix(in_srgb,var(--color-status-green)_15%,transparent))] text-[var(--color-status-green)] hover:opacity-90',
     draft:
