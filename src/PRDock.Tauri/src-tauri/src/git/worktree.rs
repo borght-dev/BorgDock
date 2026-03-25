@@ -91,8 +91,8 @@ pub async fn create_worktree(
     branch_name: String,
 ) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
-        // Fetch the remote branch first
-        let _ = run_git(&base_path, &["fetch", "origin", &branch_name]);
+        // Fetch only the specific branch tip (skip tags for speed)
+        let _ = run_git(&base_path, &["fetch", "--no-tags", "--depth", "1", "origin", &branch_name]);
 
         let worktree_dir = std::path::Path::new(&base_path).join(&subfolder);
         std::fs::create_dir_all(&worktree_dir)

@@ -34,25 +34,43 @@ pub async fn launch_claude_code(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "claude".to_string());
 
-    // Launch inside Windows Terminal so the user can see the Claude Code session.
-    // Uses --dangerously-skip-permissions so Claude can run autonomously.
-    // Falls back to cmd.exe if wt.exe is not available.
+    // Launch inside Windows Terminal via PowerShell so the user's default profile
+    // (colors, fonts, etc.) is applied. Running a bare executable via "--" would
+    // skip the shell and use plain black defaults.
+    // Uses -NoExit so the tab stays open after Claude exits.
+    let ps_command = format!(
+        "& '{}' --dangerously-skip-permissions --append-system-prompt-file '{}' '{}'",
+        claude, prompt_file, initial_message
+    );
+    let title = format!("CC: {}", &initial_message);
+
     let child = Command::new("wt.exe")
         .args([
             "-w", "0",
             "new-tab",
-            "--title", &format!("CC: {}", &initial_message),
+            "--title", &title,
             "-d", &worktree_path,
             "--",
-            &claude,
-            "--dangerously-skip-permissions",
-            "--append-system-prompt-file",
-            &prompt_file,
-            &initial_message,
+            "pwsh", "-NoExit", "-Command",
+            &ps_command,
         ])
         .spawn()
         .or_else(|_| {
-            // Fallback: open in cmd.exe if Windows Terminal isn't installed
+            // Fallback: try Windows PowerShell 5.1 if pwsh (7+) isn't installed
+            Command::new("wt.exe")
+                .args([
+                    "-w", "0",
+                    "new-tab",
+                    "--title", &title,
+                    "-d", &worktree_path,
+                    "--",
+                    "powershell", "-NoExit", "-Command",
+                    &ps_command,
+                ])
+                .spawn()
+        })
+        .or_else(|_| {
+            // Last resort: cmd.exe outside Windows Terminal
             let cmd_arg = format!(
                 "cd /d \"{}\" && \"{}\" --dangerously-skip-permissions --append-system-prompt-file \"{}\" \"{}\"",
                 worktree_path, claude, prompt_file, initial_message
