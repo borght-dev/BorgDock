@@ -1,85 +1,84 @@
 import { create } from 'zustand';
 import type { InAppNotification } from '@/types';
 
-interface NotificationState {
-  notifications: InAppNotification[];
-  activeNotification: InAppNotification | null;
-  _dismissTimer: ReturnType<typeof setTimeout> | null;
+let _nextId = 0;
 
-  show: (notification: InAppNotification) => void;
-  dismiss: () => void;
-  clearAll: () => void;
+export interface ActiveNotification {
+  id: number;
+  notification: InAppNotification;
 }
 
-function scheduleAutoDismiss(
-  set: (fn: (state: NotificationState) => Partial<NotificationState>) => void,
-  get: () => NotificationState,
-): ReturnType<typeof setTimeout> {
-  return setTimeout(() => {
-    const { notifications } = get();
-    if (notifications.length > 0) {
-      const [next, ...rest] = notifications;
-      const timer = scheduleAutoDismiss(set, get);
-      set(() => ({
-        activeNotification: next,
-        notifications: rest,
-        _dismissTimer: timer,
-      }));
-    } else {
-      set(() => ({
-        activeNotification: null,
-        _dismissTimer: null,
-      }));
-    }
-  }, 5000);
+const MAX_VISIBLE = 3;
+
+interface NotificationState {
+  /** Visible notifications (up to MAX_VISIBLE, newest last) */
+  active: ActiveNotification[];
+  /** Overflow queue — shown once an active slot opens */
+  queue: InAppNotification[];
+
+  show: (notification: InAppNotification) => void;
+  dismiss: (id: number) => void;
+  clearAll: () => void;
+
+  // Keep legacy selectors working (NotificationOverlay reads these)
+  activeNotification: InAppNotification | null;
+  notifications: InAppNotification[];
 }
 
 export const useNotificationStore = create<NotificationState>()((set, get) => ({
-  notifications: [],
+  active: [],
+  queue: [],
+
+  // Legacy compat — derived from active[]
   activeNotification: null,
-  _dismissTimer: null,
+  notifications: [],
 
   show: (notification) => {
-    const { activeNotification, _dismissTimer: existingTimer } = get();
-    if (existingTimer) clearTimeout(existingTimer);
-    if (activeNotification === null) {
-      const timer = scheduleAutoDismiss(set, get);
-      set({ activeNotification: notification, _dismissTimer: timer });
+    const { active, queue } = get();
+    if (active.length < MAX_VISIBLE) {
+      const entry: ActiveNotification = { id: _nextId++, notification };
+      const newActive = [...active, entry];
+      set({
+        active: newActive,
+        activeNotification: newActive[0]?.notification ?? null,
+        notifications: queue,
+      });
     } else {
-      set((state) => ({
-        notifications: [...state.notifications, notification],
-      }));
+      const newQueue = [...queue, notification];
+      set({ queue: newQueue, notifications: newQueue });
     }
   },
 
-  dismiss: () => {
-    const { _dismissTimer, notifications } = get();
-    if (_dismissTimer) clearTimeout(_dismissTimer);
+  dismiss: (id) => {
+    const { active, queue } = get();
+    const filtered = active.filter((n) => n.id !== id);
 
-    if (notifications.length > 0) {
-      const [next, ...rest] = notifications;
-      const timer = scheduleAutoDismiss(set, get);
+    // Promote from queue if there's room
+    if (queue.length > 0 && filtered.length < MAX_VISIBLE) {
+      const [next, ...restQueue] = queue;
+      const entry: ActiveNotification = { id: _nextId++, notification: next! };
+      const newActive = [...filtered, entry];
       set({
-        activeNotification: next,
-        notifications: rest,
-        _dismissTimer: timer,
+        active: newActive,
+        queue: restQueue,
+        activeNotification: newActive[0]?.notification ?? null,
+        notifications: restQueue,
       });
     } else {
       set({
-        activeNotification: null,
-        notifications: [],
-        _dismissTimer: null,
+        active: filtered,
+        activeNotification: filtered[0]?.notification ?? null,
+        notifications: queue,
       });
     }
   },
 
   clearAll: () => {
-    const { _dismissTimer } = get();
-    if (_dismissTimer) clearTimeout(_dismissTimer);
     set({
-      notifications: [],
+      active: [],
+      queue: [],
       activeNotification: null,
-      _dismissTimer: null,
+      notifications: [],
     });
   },
 }));

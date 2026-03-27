@@ -43,6 +43,7 @@ export interface NotificationSettings {
   toastOnCheckStatusChange: boolean;
   toastOnNewPR: boolean;
   toastOnReviewUpdate: boolean;
+  onlyMyPRs: boolean;
 }
 
 export interface ClaudeCodeSettings {

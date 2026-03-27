@@ -32,6 +32,7 @@ const defaultSettings: AppSettings = {
     toastOnCheckStatusChange: true,
     toastOnNewPR: false,
     toastOnReviewUpdate: true,
+    onlyMyPRs: false,
   },
   claudeCode: {
     defaultPostFixAction: 'commitAndNotify',

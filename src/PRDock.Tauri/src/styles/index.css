@@ -194,6 +194,31 @@
   --color-wizard-step-complete: #3BA68E;
   --color-wizard-step-inactive: #D8D4E3;
   --color-wizard-step-track: rgba(90, 86, 112, 0.08);
+
+  /* Notification toast */
+  --color-toast-bg: rgba(255, 255, 255, 0.96);
+  --color-toast-success-glow: rgba(59, 166, 142, 0.35);
+  --color-toast-error-glow: rgba(199, 50, 79, 0.35);
+  --color-toast-warning-glow: rgba(176, 125, 9, 0.30);
+  --color-toast-info-glow: rgba(102, 85, 212, 0.30);
+  --color-toast-success-stripe: #3BA68E;
+  --color-toast-error-stripe: #C7324F;
+  --color-toast-warning-stripe: #D4960D;
+  --color-toast-info-stripe: #6655D4;
+  --color-toast-success-icon-bg: rgba(59, 166, 142, 0.12);
+  --color-toast-error-icon-bg: rgba(199, 50, 79, 0.12);
+  --color-toast-warning-icon-bg: rgba(176, 125, 9, 0.10);
+  --color-toast-info-icon-bg: rgba(102, 85, 212, 0.10);
+  --color-toast-merged-glow: rgba(130, 80, 223, 0.45);
+  --color-toast-merged-stripe: #8250DF;
+  --color-toast-merged-icon-bg: rgba(130, 80, 223, 0.14);
+  --color-toast-merged-icon-fg: #8250DF;
+  --color-toast-merged-shimmer: linear-gradient(
+    120deg,
+    rgba(130, 80, 223, 0.0) 30%,
+    rgba(130, 80, 223, 0.08) 50%,
+    rgba(130, 80, 223, 0.0) 70%
+  );
 }
 
 /* ---- Dark theme overrides ---- */
@@ -348,6 +373,102 @@
   --color-wizard-step-complete: #7DD3C0;
   --color-wizard-step-inactive: #2A2640;
   --color-wizard-step-track: rgba(138, 133, 160, 0.08);
+
+  /* Notification toast */
+  --color-toast-bg: rgba(26, 23, 38, 0.96);
+  --color-toast-success-glow: rgba(125, 211, 192, 0.40);
+  --color-toast-error-glow: rgba(229, 64, 101, 0.45);
+  --color-toast-warning-glow: rgba(245, 183, 59, 0.35);
+  --color-toast-info-glow: rgba(124, 106, 246, 0.35);
+  --color-toast-success-stripe: #7DD3C0;
+  --color-toast-error-stripe: #E54065;
+  --color-toast-warning-stripe: #F5B73B;
+  --color-toast-info-stripe: #9384F7;
+  --color-toast-success-icon-bg: rgba(125, 211, 192, 0.18);
+  --color-toast-error-icon-bg: rgba(229, 64, 101, 0.18);
+  --color-toast-warning-icon-bg: rgba(245, 183, 59, 0.14);
+  --color-toast-info-icon-bg: rgba(124, 106, 246, 0.14);
+  --color-toast-merged-glow: rgba(163, 113, 247, 0.55);
+  --color-toast-merged-stripe: #A371F7;
+  --color-toast-merged-icon-bg: rgba(163, 113, 247, 0.2);
+  --color-toast-merged-icon-fg: #A371F7;
+  --color-toast-merged-shimmer: linear-gradient(
+    120deg,
+    rgba(163, 113, 247, 0.0) 30%,
+    rgba(163, 113, 247, 0.1) 50%,
+    rgba(163, 113, 247, 0.0) 70%
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   Notification Toast Animations
+   ════════════════════════════════════════════════════════ */
+
+@keyframes toast-slide-in {
+  0% {
+    transform: translateX(120%) scale(0.92);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-4%) scale(1.01);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes toast-icon-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes toast-progress-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@keyframes toast-shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes toast-merged-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-toast-merged-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 /* Base styles */

@@ -1,4 +1,72 @@
-import type { NotificationSettings } from '@/types';
+import { useState } from 'react';
+import { useNotificationStore } from '@/stores/notification-store';
+import type { InAppNotification, NotificationSettings, NotificationSeverity } from '@/types';
+
+const TEST_NOTIFICATIONS: { severity: NotificationSeverity; notification: InAppNotification }[] = [
+  {
+    severity: 'error',
+    notification: {
+      title: 'Check failed: ci/build',
+      message: '#142 Fix auth token refresh (acme/backend)',
+      severity: 'error',
+      launchUrl: '#',
+      prNumber: 142,
+      repoFullName: 'acme/backend',
+      actions: [
+        { label: 'Open in GitHub', url: '#' },
+        { label: 'Fix with Claude', url: '#' },
+      ],
+    },
+  },
+  {
+    severity: 'success',
+    notification: {
+      title: 'All checks passed',
+      message: '#87 Add user profile endpoint (acme/api)',
+      severity: 'success',
+      launchUrl: '#',
+      prNumber: 87,
+      repoFullName: 'acme/api',
+      actions: [{ label: 'Open in GitHub', url: '#' }],
+    },
+  },
+  {
+    severity: 'warning',
+    notification: {
+      title: 'Changes requested',
+      message: '#203 Migrate to new auth middleware (acme/web)',
+      severity: 'warning',
+      launchUrl: '#',
+      prNumber: 203,
+      repoFullName: 'acme/web',
+      actions: [{ label: 'Open in GitHub', url: '#' }],
+    },
+  },
+  {
+    severity: 'info',
+    notification: {
+      title: 'New PR opened',
+      message: '#56 Update dependencies (acme/infra)',
+      severity: 'info',
+      launchUrl: '#',
+      prNumber: 56,
+      repoFullName: 'acme/infra',
+      actions: [{ label: 'Open in GitHub', url: '#' }],
+    },
+  },
+  {
+    severity: 'merged',
+    notification: {
+      title: '🎉 PR #312 merged!',
+      message: 'Redesign notification system (acme/frontend)',
+      severity: 'merged',
+      launchUrl: '#',
+      prNumber: 312,
+      repoFullName: 'acme/frontend',
+      actions: [{ label: 'View on GitHub', url: '#' }],
+    },
+  },
+];
 
 interface NotificationSectionProps {
   notifications: NotificationSettings;
@@ -26,6 +94,18 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
         checked={notifications.toastOnReviewUpdate}
         onChange={(v) => update({ toastOnReviewUpdate: v })}
       />
+
+      <div className="my-2 h-px bg-[var(--color-separator)]" />
+
+      <ToggleRow
+        label="Only notify for my PRs"
+        checked={notifications.onlyMyPRs}
+        onChange={(v) => update({ onlyMyPRs: v })}
+      />
+
+      <div className="my-2 h-px bg-[var(--color-separator)]" />
+
+      <TestNotificationRow />
     </div>
   );
 }
@@ -54,6 +134,52 @@ function ToggleRow({
           }`}
         />
       </button>
+    </div>
+  );
+}
+
+const SEVERITY_COLORS: Record<NotificationSeverity, string> = {
+  error: 'var(--color-status-red)',
+  success: 'var(--color-status-green)',
+  warning: 'var(--color-status-yellow)',
+  info: 'var(--color-accent)',
+  merged: 'var(--color-toast-merged-stripe)',
+};
+
+function TestNotificationRow() {
+  const show = useNotificationStore((s) => s.show);
+  const [lastFired, setLastFired] = useState<NotificationSeverity | null>(null);
+
+  const fire = (entry: (typeof TEST_NOTIFICATIONS)[number]) => {
+    show(entry.notification);
+    setLastFired(entry.severity);
+    setTimeout(() => setLastFired(null), 600);
+  };
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-[var(--color-text-tertiary)]">Test notification</span>
+      <div className="flex gap-1">
+        {TEST_NOTIFICATIONS.map((entry) => (
+          <button
+            key={entry.severity}
+            title={`Send ${entry.severity} notification`}
+            className="h-5 w-5 rounded-md text-[9px] font-bold transition-all duration-150 hover:scale-110"
+            style={{
+              background:
+                lastFired === entry.severity
+                  ? SEVERITY_COLORS[entry.severity]
+                  : 'var(--color-surface-raised)',
+              color:
+                lastFired === entry.severity ? '#fff' : SEVERITY_COLORS[entry.severity],
+              border: `1px solid color-mix(in srgb, ${SEVERITY_COLORS[entry.severity]} 25%, transparent)`,
+            }}
+            onClick={() => fire(entry)}
+          >
+            {entry.severity[0]!.toUpperCase()}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { InAppNotification, PullRequest, PullRequestWithChecks } from '@/types';
 
 export interface StateTransition {
-  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested';
+  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested' | 'merged';
   pr: PullRequest;
   detail?: string;
 }
@@ -61,6 +61,14 @@ export function detectStateTransitions(
     ) {
       transitions.push({
         type: 'reviewChangesRequested',
+        pr: cur.pullRequest,
+      });
+    }
+
+    // Merged transition: was not merged -> now merged
+    if (!prev.pullRequest.mergedAt && cur.pullRequest.mergedAt) {
+      transitions.push({
+        type: 'merged',
         pr: cur.pullRequest,
       });
     }
@@ -137,6 +145,18 @@ export function buildClaudeReviewCriticalNotification(
         url: `prdock://fix/${pr.repoOwner}/${pr.repoName}/${pr.number}`,
       },
     ],
+  };
+}
+
+export function buildPrMergedNotification(pr: PullRequest): InAppNotification {
+  return {
+    title: `🎉 PR #${pr.number} merged!`,
+    message: `${pr.title} (${pr.repoOwner}/${pr.repoName})`,
+    severity: 'merged',
+    launchUrl: pr.htmlUrl,
+    prNumber: pr.number,
+    repoFullName: `${pr.repoOwner}/${pr.repoName}`,
+    actions: [{ label: 'View on GitHub', url: pr.htmlUrl }],
   };
 }
 

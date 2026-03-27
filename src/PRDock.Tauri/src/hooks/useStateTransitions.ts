@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import {
   buildAllChecksPassedNotification,
   buildCheckFailedNotification,
+  buildPrMergedNotification,
   detectStateTransitions,
   sendOsNotification,
 } from '@/services/notification';
@@ -21,7 +22,18 @@ export function useStateTransitions(settings: AppSettings) {
 
       const transitions = detectStateTransitions(oldPrs, newPrs);
 
+      const username = settings.gitHub.username;
+
       for (const transition of transitions) {
+        // Filter to only the user's own PRs when enabled
+        if (
+          settings.notifications.onlyMyPRs &&
+          username &&
+          !transition.pr.authorLogin.toLowerCase().includes(username.toLowerCase())
+        ) {
+          continue;
+        }
+
         let notification: InAppNotification | undefined;
 
         switch (transition.type) {
@@ -48,6 +60,9 @@ export function useStateTransitions(settings: AppSettings) {
               actions: [{ label: 'Open in GitHub', url: transition.pr.htmlUrl }],
             };
             break;
+          case 'merged':
+            notification = buildPrMergedNotification(transition.pr);
+            break;
         }
 
         if (notification) {
@@ -58,7 +73,7 @@ export function useStateTransitions(settings: AppSettings) {
         }
       }
     },
-    [settings.notifications],
+    [settings.notifications, settings.gitHub.username],
   );
 
   return { processTransitions };
