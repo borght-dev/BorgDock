@@ -11,18 +11,20 @@ permissions:
 jobs:
   build:
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Verify toolchain
+        run: |
+          rustc --version
+          cargo --version
+          node --version
+          npm --version
 
       - name: Install frontend dependencies
         run: npm ci
