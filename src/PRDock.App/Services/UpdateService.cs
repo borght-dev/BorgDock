@@ -12,13 +12,17 @@ namespace PRDock.App.Services;
 
 /// <summary>
 /// Update service that migrates from the WPF app to the Tauri app.
-/// Fetches the Tauri updater's latest.json from GitHub releases,
-/// downloads the NSIS/MSI installer, and launches it.
+/// Fetches the Tauri updater's latest.json from GitHub releases to detect
+/// new versions, then downloads the standalone NSIS installer from the
+/// release assets and launches it.
 /// </summary>
 public sealed class UpdateService : IUpdateService
 {
     private const string TauriLatestJsonUrl =
         "https://github.com/borght-dev/PRDock/releases/latest/download/latest.json";
+
+    private const string GitHubLatestReleaseApi =
+        "https://api.github.com/repos/borght-dev/PRDock/releases/latest";
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(4);
 
@@ -91,13 +95,22 @@ public sealed class UpdateService : IUpdateService
                 return null;
             }
 
-            // Find the Windows platform entry
+            // Find the Windows platform entry (used to confirm a Windows build exists)
             var platform = release.GetWindowsPlatform();
             if (platform is null)
             {
                 _logger.LogDebug("No windows-x86_64 platform in latest.json");
                 return null;
             }
+
+            // Find the standalone NSIS installer URL from the GitHub release assets.
+            // The latest.json url points to the .nsis.zip (for Tauri's delta updater),
+            // but we need the full _x64-setup.exe for a fresh WPF→Tauri migration.
+            var installerUrl = await FindInstallerAssetUrlAsync(token, ct);
+            if (!string.IsNullOrEmpty(installerUrl))
+                release.InstallerUrl = installerUrl;
+            else
+                _logger.LogDebug("No standalone installer found in release assets, falling back to platform URL");
 
             // Always offer the Tauri version as an "update" since it's a migration
             _pendingRelease = release;
@@ -131,13 +144,14 @@ public sealed class UpdateService : IUpdateService
             return;
 
         var platform = _pendingRelease.GetWindowsPlatform();
-        if (platform is null || string.IsNullOrEmpty(platform.Url))
+        // Prefer standalone installer URL over the .nsis.zip updater bundle
+        var downloadUrl = _pendingRelease.InstallerUrl ?? platform?.Url;
+        if (string.IsNullOrEmpty(downloadUrl))
             return;
 
         try
         {
             var token = await _authService.GetTokenAsync(ct);
-            var downloadUrl = platform.Url;
 
             _logger.LogInformation("Downloading Tauri installer from {Url}", downloadUrl);
 
@@ -308,6 +322,46 @@ public sealed class UpdateService : IUpdateService
 
     // ── Tauri latest.json model ────────────────────────
 
+    /// <summary>
+    /// Queries the GitHub Releases API to find the standalone NSIS installer
+    /// (.exe ending in x64-setup.exe) from the latest release assets.
+    /// </summary>
+    private async Task<string?> FindInstallerAssetUrlAsync(string? token, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, GitHubLatestReleaseApi);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+            if (!string.IsNullOrEmpty(token))
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            var assets = doc.RootElement.GetProperty("assets");
+
+            foreach (var asset in assets.EnumerateArray())
+            {
+                var name = asset.GetProperty("name").GetString() ?? "";
+                // Match the standalone NSIS installer: PRDock_<version>_x64-setup.exe
+                if (name.EndsWith("x64-setup.exe", StringComparison.OrdinalIgnoreCase) ||
+                    name.EndsWith("x64_en-US.msi", StringComparison.OrdinalIgnoreCase))
+                {
+                    return asset.GetProperty("browser_download_url").GetString();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to query release assets for installer URL");
+        }
+
+        return null;
+    }
+
     private sealed class TauriRelease
     {
         [JsonPropertyName("version")]
@@ -321,6 +375,13 @@ public sealed class UpdateService : IUpdateService
 
         [JsonPropertyName("platforms")]
         public Dictionary<string, TauriPlatform>? Platforms { get; set; }
+
+        /// <summary>
+        /// Standalone installer URL discovered from GitHub release assets.
+        /// Not part of the JSON — populated after checking the Releases API.
+        /// </summary>
+        [JsonIgnore]
+        public string? InstallerUrl { get; set; }
 
         public TauriPlatform? GetWindowsPlatform()
         {

@@ -174,7 +174,16 @@ public partial class App : System.Windows.Application
         updateService.UpdateAvailable += info =>
         {
             Dispatcher.InvokeAsync(() =>
-                _floatingBadgeVm?.ShowToast($"PRDock {info.Version} available \u2014 open Settings to update."));
+                _floatingBadgeVm?.ShowToast($"PRDock {info.Version} available \u2014 downloading..."));
+        };
+        updateService.UpdateReady += () =>
+        {
+            Dispatcher.InvokeAsync(async () =>
+            {
+                _floatingBadgeVm?.ShowToast("Installing PRDock update in 5 seconds...");
+                await Task.Delay(5000);
+                updateService.ApplyUpdateAndRestart();
+            });
         };
         if (settingsService.CurrentSettings.Updates.AutoCheckEnabled)
             updateService.StartPeriodicChecks();
