@@ -14,6 +14,19 @@ export async function mergePullRequest(
   });
 }
 
+// --- Close a pull request ---
+
+export async function closePullRequest(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<void> {
+  await client.patch(`repos/${owner}/${repo}/pulls/${prNumber}`, {
+    state: 'closed',
+  });
+}
+
 // --- Toggle draft status using GraphQL ---
 
 interface PrNodeIdResponse {

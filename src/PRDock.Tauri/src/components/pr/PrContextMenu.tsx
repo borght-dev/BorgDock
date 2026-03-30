@@ -4,7 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { rerunWorkflow } from '@/services/github/checks';
-import { bypassMergePullRequest, mergePullRequest, toggleDraft } from '@/services/github/mutations';
+import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -14,6 +14,7 @@ interface PrContextMenuProps {
   pr: PullRequestWithChecks;
   position: { x: number; y: number };
   onClose: () => void;
+  onConfirmAction?: (action: 'close' | 'bypass' | 'draft') => void;
 }
 
 function Separator() {
@@ -45,7 +46,7 @@ function MenuItem({ label, disabled, onClick }: MenuItemProps) {
   );
 }
 
-export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
+export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr } = useClaudeActions();
@@ -136,11 +137,10 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
     await invoke('git_checkout', { repoPath, branch: pullRequest.headRef });
   });
 
-  const handleToggleDraft = handleAction(async () => {
-    const client = getClient();
-    if (!client) return;
-    await toggleDraft(client, owner, repo, pullRequest.number, !pullRequest.isDraft);
-  });
+  const handleToggleDraft = useCallback(() => {
+    onClose();
+    onConfirmAction?.('draft');
+  }, [onClose, onConfirmAction]);
 
   const handleRerunFailed = handleAction(async () => {
     const client = getClient();
@@ -149,8 +149,7 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
   }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
-    const firstFailedName = failedCheckNames[0] ?? 'unknown';
-    await fixWithClaude(pr, firstFailedName, [], [], '');
+    await fixWithClaude(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '');
   }, 'Fix with Claude failed');
 
   const handleMonitorWithClaude = handleAction(async () => {
@@ -163,9 +162,15 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
     await mergePullRequest(client, owner, repo, pullRequest.number);
   }, 'Merge failed');
 
-  const handleBypassMerge = handleAction(async () => {
-    await bypassMergePullRequest(owner, repo, pullRequest.number);
-  }, 'Bypass merge failed');
+  const handleBypassMerge = useCallback(() => {
+    onClose();
+    onConfirmAction?.('bypass');
+  }, [onClose, onConfirmAction]);
+
+  const handleClose = useCallback(() => {
+    onClose();
+    onConfirmAction?.('close');
+  }, [onClose, onConfirmAction]);
 
   const handleOpenInDetailWindow = handleAction(async () => {
     const { invoke } = await import('@tauri-apps/api/core');
@@ -221,6 +226,11 @@ export function PrContextMenu({ pr, position, onClose }: PrContextMenuProps) {
       <MenuItem
         label="Bypass merge (admin)"
         onClick={handleBypassMerge}
+        disabled={pullRequest.state !== 'open'}
+      />
+      <MenuItem
+        label="Close PR"
+        onClick={handleClose}
         disabled={pullRequest.state !== 'open'}
       />
     </div>

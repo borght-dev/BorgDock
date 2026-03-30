@@ -62,25 +62,28 @@ export function useClaudeActions() {
   const fixWithClaude = useCallback(
     async (
       pr: PullRequestWithChecks,
-      checkName: string,
+      failedCheckNames: string[],
       errors: ParsedError[],
       changedFiles: string[],
       rawLog: string,
     ) => {
       const p = pr.pullRequest;
-      log('fixWithClaude', `PR #${p.number} check=${checkName}`);
+      log('fixWithClaude', `PR #${p.number} checks=${failedCheckNames.join(', ')}`);
 
       const repo = findRepoSettings(p.repoOwner, p.repoName);
       if (!repo) throw new Error(`Repo ${p.repoOwner}/${p.repoName} not found in settings`);
 
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       log('building fix prompt');
-      const prompt = buildFixPrompt(pr, checkName, errors, changedFiles, rawLog, repo);
+      const prompt = buildFixPrompt(pr, failedCheckNames, errors, changedFiles, rawLog, repo);
       log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
       log('launching claude');
-      await launchClaude(worktreePath, promptFile, `Fix failing check: ${checkName}`);
+      const checksLabel = failedCheckNames.length === 1
+        ? failedCheckNames[0]
+        : `${failedCheckNames.length} failing checks`;
+      await launchClaude(worktreePath, promptFile, `Fix ${checksLabel}`);
       log('claude launched');
     },
     [findRepoSettings, getOrCreateWorktree],

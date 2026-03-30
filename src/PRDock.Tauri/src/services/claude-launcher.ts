@@ -3,18 +3,22 @@ import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
 // Build a fix prompt for Claude Code when checks are failing
 export function buildFixPrompt(
   pr: PullRequestWithChecks,
-  checkName: string,
+  failedCheckNames: string[],
   errors: ParsedError[],
   changedFiles: string[],
   rawLog: string,
   repoSettings: RepoSettings,
 ): string {
   const p = pr.pullRequest;
-  let prompt = `# Fix Failing Check: ${checkName}\n\n`;
+  const checksLabel = failedCheckNames.length === 1
+    ? failedCheckNames[0]
+    : `${failedCheckNames.length} checks`;
+  let prompt = `# Fix Failing ${failedCheckNames.length === 1 ? 'Check' : 'Checks'}: ${checksLabel}\n\n`;
   prompt += `## PR Context\n`;
   prompt += `- **PR:** #${p.number} ${p.title}\n`;
   prompt += `- **Branch:** ${p.headRef} → ${p.baseRef}\n`;
-  prompt += `- **Author:** ${p.authorLogin}\n\n`;
+  prompt += `- **Author:** ${p.authorLogin}\n`;
+  prompt += `- **Failed checks:** ${failedCheckNames.join(', ')}\n\n`;
 
   if (errors.length > 0) {
     prompt += `## Parsed Errors\n\n`;
@@ -48,9 +52,53 @@ export function buildFixPrompt(
     prompt += `## Additional Instructions\n\n${repoSettings.fixPromptTemplate}\n\n`;
   }
 
+  const ghRepo = `${p.repoOwner}/${p.repoName}`;
+
   prompt += `## Task\n\n`;
-  prompt += `Fix the failing check "${checkName}" by analyzing the errors above and making the necessary code changes. `;
-  prompt += `Focus only on errors that are relevant to the files changed in this PR.\n`;
+  prompt += `Fix the failing ${failedCheckNames.length === 1 ? 'check' : 'checks'} (${failedCheckNames.join(', ')}) by analyzing the errors above and making the necessary code changes. `;
+  prompt += `Focus only on errors that are relevant to the files changed in this PR.\n\n`;
+
+  prompt += `## After Fixing: Commit, Push & Monitor\n\n`;
+  prompt += `Once your fix is ready, commit and push:\n\n`;
+  prompt += `\`\`\`bash\n`;
+  prompt += `git add -A\n`;
+  prompt += `git commit -m "fix: address CI failure in ${failedCheckNames.join(', ')}"\n`;
+  prompt += `git push\n`;
+  prompt += `\`\`\`\n\n`;
+  prompt += `Then monitor CI until all checks pass (max 5 fix cycles):\n\n`;
+
+  prompt += `### Step 1: Check CI status\n`;
+  prompt += `\`\`\`bash\n`;
+  prompt += `gh pr checks ${p.number} --repo ${ghRepo}\n`;
+  prompt += `\`\`\`\n\n`;
+
+  prompt += `### Step 2: Evaluate results\n\n`;
+  prompt += `- **All checks pass** → Print a success summary and stop.\n`;
+  prompt += `- **Checks still in progress** → Wait 60 seconds, then go to Step 1.\n`;
+  prompt += `- **One or more checks failed** → Continue to Step 3.\n\n`;
+
+  prompt += `### Step 3: Diagnose the failure\n\n`;
+  prompt += `1. Identify which check(s) failed from the output above.\n`;
+  prompt += `2. Get the run ID of the failed check:\n`;
+  prompt += `   \`\`\`bash\n`;
+  prompt += `   gh run list --repo ${ghRepo} --branch ${p.headRef} --status failure --limit 5\n`;
+  prompt += `   \`\`\`\n`;
+  prompt += `3. Download and read the failed job logs:\n`;
+  prompt += `   \`\`\`bash\n`;
+  prompt += `   gh run view <run-id> --repo ${ghRepo} --log-failed\n`;
+  prompt += `   \`\`\`\n`;
+  prompt += `4. Analyze the log output to understand the root cause.\n\n`;
+
+  prompt += `### Step 4: Fix, commit and push\n\n`;
+  prompt += `- Read the relevant source files and make the necessary code changes.\n`;
+  prompt += `- Focus only on files changed in this PR — don't fix unrelated issues.\n`;
+  prompt += `- Commit and push, then go back to Step 1.\n\n`;
+
+  prompt += `## Rules\n\n`;
+  prompt += `- Maximum 5 fix-and-push cycles. If checks still fail after 5 attempts, stop and summarize what you tried.\n`;
+  prompt += `- Do not force-push or rewrite history.\n`;
+  prompt += `- Keep commits small and focused — one commit per fix attempt.\n`;
+  prompt += `- If you're unsure about a fix, prefer a minimal safe change over a large refactor.\n`;
 
   return prompt;
 }

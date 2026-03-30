@@ -1,4 +1,6 @@
+import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -6,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { MergeReadinessChecklist } from '@/components/pr-detail/MergeReadinessChecklist';
 import { rerunWorkflow } from '@/services/github/checks';
+import { bypassMergePullRequest, closePullRequest, mergePullRequest, toggleDraft } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -14,43 +17,13 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { LabelBadge } from './LabelBadge';
 import { MergeScoreBadge } from './MergeScoreBadge';
-import { MultiSignalIndicator } from './MultiSignalIndicator';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { PrContextMenu } from './PrContextMenu';
 import { StatusIndicator } from './StatusIndicator';
 
 interface PullRequestCardProps {
   prWithChecks: PullRequestWithChecks;
   isFocused?: boolean;
-}
-
-function reviewStatusLabel(status: string): string {
-  switch (status) {
-    case 'approved':
-      return 'Approved';
-    case 'changesRequested':
-      return 'Changes Requested';
-    case 'pending':
-      return 'Review Pending';
-    case 'commented':
-      return 'Commented';
-    default:
-      return '';
-  }
-}
-
-function reviewStatusColor(status: string): string {
-  switch (status) {
-    case 'approved':
-      return 'var(--color-review-approved)';
-    case 'changesRequested':
-      return 'var(--color-review-changes-requested)';
-    case 'pending':
-      return 'var(--color-review-required)';
-    case 'commented':
-      return 'var(--color-review-commented)';
-    default:
-      return 'var(--color-text-muted)';
-  }
 }
 
 function computeMergeScore(pr: PullRequestWithChecks): number {
@@ -82,7 +55,6 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-
 function ExpandedContent({
   prWithChecks,
 }: {
@@ -92,31 +64,38 @@ function ExpandedContent({
 
   return (
     <div
-      className="border-t border-[var(--color-separator)] bg-[var(--color-expanded-row-bg,var(--color-surface-raised))] rounded-b-lg pt-3 mt-2 space-y-3 -mx-2.5 -mb-2.5 px-2.5 pb-2.5"
+      className="border-t border-[var(--color-separator)] mt-4 pt-4 space-y-4 -mx-5 -mb-4 px-5 pb-4"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Branch info */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-        <span className="rounded border border-[var(--color-branch-badge-border)] bg-[var(--color-branch-badge-bg)] px-1.5 py-0.5 font-mono text-[var(--color-accent)]">
+      {/* Branch flow */}
+      <div className="flex items-center gap-2 text-xs">
+        <span className="rounded bg-[var(--color-surface-raised)] px-2 py-0.5 font-mono text-[var(--color-text-primary)]">
           {pr.headRef}
         </span>
-        <span className="text-[var(--color-text-ghost)]">{'\u2192'}</span>
-        <span className="rounded border border-[var(--color-target-badge-border)] bg-[var(--color-target-badge-bg)] px-1.5 py-0.5 font-mono text-[var(--color-text-tertiary)]">
+        <span className="text-[var(--color-text-muted)]">{'\u2192'}</span>
+        <span className="rounded bg-[var(--color-surface-raised)] px-2 py-0.5 font-mono text-[var(--color-text-primary)]">
           {pr.baseRef}
         </span>
-        <span className="text-[var(--color-text-ghost)]">{'\u00B7'}</span>
-        <span className="font-mono text-[var(--color-text-faint)]">
-          {pr.commitCount} commit{pr.commitCount !== 1 ? 's' : ''}
+      </div>
+
+      {/* Stat chips */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1 text-[var(--color-text-secondary)]">
+          <strong className="font-medium text-[var(--color-text-primary)]">{pr.commitCount}</strong>{' '}
+          commit{pr.commitCount !== 1 ? 's' : ''}
         </span>
-        <span className="text-[var(--color-text-ghost)]">{'\u00B7'}</span>
-        <span className="font-mono">
-          <span className="text-[var(--color-status-green)]">+{pr.additions}</span>
-          <span className="text-[var(--color-text-ghost)]"> / </span>
-          <span className="text-[var(--color-status-red)]">-{pr.deletions}</span>
+        <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1">
+          <span className="font-medium text-[var(--color-status-green)]">
+            +{pr.additions.toLocaleString()}
+          </span>
+          <span className="text-[var(--color-text-muted)]"> / </span>
+          <span className="font-medium text-[var(--color-status-red)]">
+            {'\u2212'}{pr.deletions.toLocaleString()}
+          </span>
         </span>
-        <span className="text-[var(--color-text-ghost)]">{'\u00B7'}</span>
-        <span className="font-mono text-[var(--color-text-faint)]">
-          {pr.changedFiles} file{pr.changedFiles !== 1 ? 's' : ''}
+        <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1 text-[var(--color-text-secondary)]">
+          <strong className="font-medium text-[var(--color-text-primary)]">{pr.changedFiles}</strong>{' '}
+          file{pr.changedFiles !== 1 ? 's' : ''} changed
         </span>
       </div>
 
@@ -125,25 +104,20 @@ function ExpandedContent({
 
       {/* PR body - markdown rendered */}
       {pr.body && (
-        <div className="markdown-body max-h-[200px] overflow-y-auto text-[11px]">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{pr.body}</ReactMarkdown>
-        </div>
-      )}
-
-      {/* Review summary */}
-      {pr.reviewStatus !== 'none' && (
-        <div className="text-[11px] text-[var(--color-text-secondary)]">
-          {pr.reviewStatus === 'approved' && '\u2705 Approved'}
-          {pr.reviewStatus === 'changesRequested' && '\u274C Changes Requested'}
-          {pr.reviewStatus === 'pending' && '\u23F3 Review Pending'}
-          {pr.reviewStatus === 'commented' && '\uD83D\uDCAC Commented'}
+        <div className="border-t border-[var(--color-separator)] pt-4">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
+            Summary
+          </div>
+          <div className="markdown-body max-h-[300px] overflow-y-auto text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{pr.body}</ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function ExpandedActionButton({
+function ActionButton({
   label,
   icon,
   onClick,
@@ -152,7 +126,7 @@ function ExpandedActionButton({
   label: string;
   icon?: string;
   onClick: (e: React.MouseEvent) => void;
-  variant?: 'default' | 'accent' | 'purple' | 'success' | 'draft';
+  variant?: 'default' | 'accent' | 'purple' | 'success' | 'draft' | 'danger';
 }) {
   const variantClasses = {
     default:
@@ -165,6 +139,8 @@ function ExpandedActionButton({
       'border-[var(--color-success-badge-border)] bg-[var(--color-action-success-bg,color-mix(in_srgb,var(--color-status-green)_15%,transparent))] text-[var(--color-status-green)] hover:opacity-90',
     draft:
       'border-[var(--color-draft-badge-border)] text-[var(--color-draft-badge-fg)] hover:bg-[color-mix(in_srgb,var(--color-draft-badge-fg)_10%,transparent)]',
+    danger:
+      'border-[var(--color-error-badge-border)] text-[var(--color-error-badge-fg)] hover:bg-[color-mix(in_srgb,var(--color-status-red)_10%,transparent)]',
   };
 
   return (
@@ -191,16 +167,21 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const togglePrExpanded = useUiStore((s) => s.togglePrExpanded);
   const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
   const username = usePrStore((s) => s.username);
-  const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
   const showNotification = useNotificationStore((s) => s.show);
+  const settings = useSettingsStore((s) => s.settings);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'close' | 'bypass' | 'draft' | null>(null);
 
   const isMyPr = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
   const isSelected = selectedPrNumber === pr.number;
   const totalChecks = checks.length;
   const mergeScore = computeMergeScore(prWithChecks);
+  const isOpen = pr.state === 'open';
+  const canMerge = isOpen && !pr.isDraft && overallStatus === 'green';
+  const repoConfig = settings.repos.find((r) => r.owner === pr.repoOwner && r.name === pr.repoName);
+  const repoPath = repoConfig?.worktreeBasePath || '';
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -235,8 +216,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const handleFix = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const firstFailedName = failedCheckNames[0] ?? 'unknown';
-      fixWithClaude(prWithChecks, firstFailedName, [], [], '').catch((err) =>
+      fixWithClaude(prWithChecks, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '').catch((err) =>
         showError('Fix with Claude failed', err),
       );
     },
@@ -261,6 +241,97 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
     [prWithChecks, resolveConflicts, showError],
   );
 
+  const handleOpenInBrowser = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      openUrl(pr.htmlUrl).catch((err) => showError('Failed to open URL', err));
+    },
+    [pr.htmlUrl, showError],
+  );
+
+  const handleCopyBranch = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      writeText(pr.headRef)
+        .then(() => showNotification({ title: 'Copied', message: pr.headRef, severity: 'success', actions: [] }))
+        .catch((err) => showError('Failed to copy branch', err));
+    },
+    [pr.headRef, showNotification, showError],
+  );
+
+  const handleCheckout = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!repoPath) return;
+      invoke('git_fetch', { repoPath, remote: 'origin' })
+        .then(() => invoke('git_checkout', { repoPath, branch: pr.headRef }))
+        .then(() => showNotification({ title: 'Checked out', message: pr.headRef, severity: 'success', actions: [] }))
+        .catch((err) => showError('Checkout failed', err));
+    },
+    [repoPath, pr.headRef, showNotification, showError],
+  );
+
+  const handleToggleDraft = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setConfirmAction('draft');
+    },
+    [],
+  );
+
+  const executeToggleDraft = useCallback(() => {
+    const client = getClient();
+    if (!client) return;
+    toggleDraft(client, pr.repoOwner, pr.repoName, pr.number, !pr.isDraft).catch((err) =>
+      showError('Failed to toggle draft', err),
+    );
+    setConfirmAction(null);
+  }, [pr.repoOwner, pr.repoName, pr.number, pr.isDraft, showError]);
+
+  const handleMerge = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const client = getClient();
+      if (!client) return;
+      mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch((err) =>
+        showError('Merge failed', err),
+      );
+    },
+    [pr.repoOwner, pr.repoName, pr.number, showError],
+  );
+
+  const handleBypassMerge = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setConfirmAction('bypass');
+    },
+    [],
+  );
+
+  const executeBypassMerge = useCallback(() => {
+    bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number).catch((err) =>
+      showError('Bypass merge failed', err),
+    );
+    setConfirmAction(null);
+  }, [pr.repoOwner, pr.repoName, pr.number, showError]);
+
+  const handleClose = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setConfirmAction('close');
+    },
+    [],
+  );
+
+  const executeClose = useCallback(() => {
+    const client = getClient();
+    if (!client) return;
+    closePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch((err) =>
+      showError('Close PR failed', err),
+    );
+    setConfirmAction(null);
+  }, [pr.repoOwner, pr.repoName, pr.number, showError]);
+
   const handleCopyErrors = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -284,15 +355,6 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
     [failedCheckNames, pr.number, showNotification, showError],
   );
 
-  const statusAccentColor =
-    overallStatus === 'red'
-      ? 'var(--color-status-red)'
-      : overallStatus === 'green'
-        ? 'var(--color-status-green)'
-        : overallStatus === 'yellow'
-          ? 'var(--color-status-yellow)'
-          : 'var(--color-status-gray)';
-
   return (
     <>
       <button
@@ -300,97 +362,91 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
         onClick={() => selectPr(pr.number)}
         onContextMenu={handleContextMenu}
         className={clsx(
-          'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors overflow-hidden',
+          'group flex w-full items-start gap-3 rounded-lg border p-4 px-5 text-left transition-colors',
           isSelected
             ? 'bg-[var(--color-selected-row-bg)] border-[var(--color-accent)]'
             : isMyPr
-              ? 'bg-[var(--color-card-background)] border-[var(--color-card-border-my-pr)] hover:bg-[var(--color-surface-hover)]'
-              : 'bg-[var(--color-card-background)] border-[var(--color-card-border)] hover:bg-[var(--color-surface-hover)]',
+              ? 'bg-[var(--color-card-background)] border-[var(--color-card-border-my-pr)] hover:border-[var(--color-text-ghost)]'
+              : 'bg-[var(--color-card-background)] border-[var(--color-card-border)] hover:border-[var(--color-text-ghost)]',
           isFocused &&
             'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-background)]',
-          'shadow-sm',
         )}
-        style={{ borderLeftWidth: 3, borderLeftColor: statusAccentColor }}
       >
-        {/* Status indicator */}
-        <div className="mt-1.5">
-          {settings.ui.indicatorStyle === 'SegmentRing' ||
-          settings.ui.indicatorStyle === 'SignalDots' ? (
-            <MultiSignalIndicator pr={prWithChecks} size={20} style={settings.ui.indicatorStyle} />
-          ) : (
-            <StatusIndicator status={overallStatus} />
-          )}
+        {/* Status dot */}
+        <div className="mt-1.5 shrink-0">
+          <StatusIndicator status={overallStatus} />
         </div>
 
-        {/* Content */}
+        {/* Body */}
         <div className="min-w-0 flex-1">
-          {/* Title row */}
-          <div className="flex items-start gap-1.5">
-            <span className="truncate text-xs font-medium text-[var(--color-text-primary)]">
-              {pr.title}
+          {/* Title */}
+          <div className="text-sm font-medium leading-snug text-[var(--color-text-primary)]">
+            {pr.title}
+          </div>
+
+          {/* Meta row: avatar + branch + badges */}
+          <div className="mt-1.5 flex items-center gap-3 flex-wrap">
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium text-white"
+              style={{ backgroundColor: isMyPr ? '#1D9E75' : '#534AB7' }}
+              title={pr.authorLogin}
+            >
+              {avatarInitials(pr.authorLogin)}
             </span>
-            <span className="shrink-0 rounded bg-[var(--color-pr-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-pr-badge-fg)]">
-              #{pr.number}
+            <span className="rounded bg-[var(--color-branch-badge-bg,var(--color-surface-raised))] px-2 py-0.5 font-mono text-xs text-[var(--color-text-secondary)]">
+              {pr.headRef}
             </span>
-            {pr.isDraft && (
-              <span className="shrink-0 rounded bg-[var(--color-draft-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-draft-badge-fg)] border border-[var(--color-draft-badge-border)]">
-                Draft
-              </span>
-            )}
-            {pr.mergedAt && (
-              <span className="shrink-0 rounded bg-[var(--color-success-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-success-badge-fg)] border border-[var(--color-success-badge-border)]">
-                Merged
-              </span>
-            )}
-            {pr.closedAt && !pr.mergedAt && (
-              <span className="shrink-0 rounded bg-[var(--color-surface-raised)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
-                Closed
-              </span>
-            )}
-            {pr.mergeable === false && (
-              <span className="shrink-0 rounded bg-[var(--color-error-badge-bg)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-error-badge-fg)] border border-[var(--color-error-badge-border)] animate-pulse">
-                {'\u26A1'} Conflicts
-              </span>
-            )}
             {prWithChecks.pendingCheckNames.length > 0 && (
-              <span className="shrink-0 flex items-center gap-1 rounded bg-[var(--color-warning-badge-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-badge-fg)] border border-[var(--color-warning-badge-border)]">
+              <span className="flex items-center gap-1 rounded-full bg-[var(--color-warning-badge-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-warning-badge-fg)] border border-[var(--color-warning-badge-border)]">
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="animate-spin">
                   <path d="M6 1a5 5 0 1 0 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
                 in progress
               </span>
             )}
-          </div>
-
-          {/* Meta row — author + branch */}
-          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-[var(--color-text-tertiary)]">
-            <span
-              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]"
-              title={pr.authorLogin}
-            >
-              {avatarInitials(pr.authorLogin)}
-            </span>
-            <span className="truncate font-mono text-[var(--color-text-muted)]">{pr.headRef}</span>
+            {pr.mergeable === false && (
+              <span className="rounded-full bg-[var(--color-error-badge-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-error-badge-fg)] border border-[var(--color-error-badge-border)]">
+                conflicts
+              </span>
+            )}
+            {pr.isDraft && (
+              <span className="rounded-full bg-[var(--color-draft-badge-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-draft-badge-fg)] border border-[var(--color-draft-badge-border)]">
+                draft
+              </span>
+            )}
+            {pr.mergedAt && (
+              <span className="rounded-full bg-[var(--color-success-badge-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-success-badge-fg)] border border-[var(--color-success-badge-border)]">
+                merged
+              </span>
+            )}
+            {pr.closedAt && !pr.mergedAt && (
+              <span className="rounded-full bg-[var(--color-surface-raised)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-text-muted)]">
+                closed
+              </span>
+            )}
           </div>
 
           {/* Labels */}
           {pr.labels.length > 0 && (
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {pr.labels.map((label) => (
                 <LabelBadge key={label} label={label} />
               ))}
             </div>
           )}
 
-          {/* CI progress bar + stats */}
-          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
+          {/* Stats row */}
+          <div className="mt-2.5 flex items-center gap-4 text-xs text-[var(--color-text-tertiary)]">
             {totalChecks > 0 && (() => {
               const relevant = totalChecks - prWithChecks.skippedCount;
               const failedCount = prWithChecks.failedCheckNames.length;
               const pendingCount = prWithChecks.pendingCheckNames.length;
               return (
-                <span className="flex items-center gap-1.5" title={`${passedCount}/${relevant} checks passed${prWithChecks.skippedCount > 0 ? ` (${prWithChecks.skippedCount} skipped)` : ''}`}>
-                  <span className="flex h-[4px] w-16 gap-px overflow-hidden rounded-full">
+                <span
+                  className="flex items-center gap-2"
+                  title={`${passedCount}/${relevant} checks passed${prWithChecks.skippedCount > 0 ? ` (${prWithChecks.skippedCount} skipped)` : ''}`}
+                >
+                  <span className="flex h-[4px] w-20 gap-0.5 overflow-hidden rounded-full">
                     {passedCount > 0 && (
                       <span
                         className="h-full rounded-full"
@@ -416,22 +472,21 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
                       />
                     )}
                   </span>
-                  <span className="font-mono tabular-nums text-[9px]">
-                    {passedCount}/{relevant}
-                  </span>
+                  <span className="font-mono tabular-nums">{passedCount}/{relevant}</span>
                 </span>
               );
             })()}
             {(pr.additions > 0 || pr.deletions > 0) && (
               <span className="font-mono tabular-nums">
-                <span className="text-[var(--color-status-green)]">+{pr.additions}</span>
-                <span className="text-[var(--color-text-ghost)]">/</span>
-                <span className="text-[var(--color-status-red)]">-{pr.deletions}</span>
+                <span className="font-medium text-[var(--color-status-green)]">+{pr.additions.toLocaleString()}</span>
+                <span className="text-[var(--color-text-ghost)]"> </span>
+                <span className="font-medium text-[var(--color-status-red)]">{'\u2212'}{pr.deletions.toLocaleString()}</span>
               </span>
             )}
             {pr.commitCount > 0 && (
-              <span className="tabular-nums" title="Commits">
+              <span className="tabular-nums">
                 {pr.commitCount}c
+                {pr.changedFiles > 0 && <>{' \u00B7 '}{pr.changedFiles} files</>}
               </span>
             )}
             {pr.commentCount > 0 && (
@@ -443,22 +498,39 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
 
           {/* Conflict resolve button - always visible when conflicts */}
           {pr.mergeable === false && (
-            <div className="mt-1.5">
-              <ExpandedActionButton label="Resolve Conflicts" icon={'\u2726'} onClick={handleResolveConflicts} variant="accent" />
+            <div className="mt-2">
+              <ActionButton label="Resolve Conflicts" icon={'\u2726'} onClick={handleResolveConflicts} variant="accent" />
             </div>
           )}
 
           {/* Action buttons - visible on hover */}
-          <div className="mt-1.5 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="mt-2 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {overallStatus === 'red' && failedCheck && (
-              <ExpandedActionButton label="Re-run" icon={'\u21BB'} onClick={handleRerun} variant="accent" />
+              <ActionButton label="Re-run" icon={'\u21BB'} onClick={handleRerun} variant="accent" />
             )}
             {overallStatus === 'red' && (
-              <ExpandedActionButton label="Fix" icon={'\u2726'} onClick={handleFix} variant="purple" />
+              <ActionButton label="Fix" icon={'\u2726'} onClick={handleFix} variant="purple" />
             )}
-            <ExpandedActionButton label="Monitor" icon={'\u25B6'} onClick={handleMonitor} variant="purple" />
+            <ActionButton label="Monitor" icon={'\u25B6'} onClick={handleMonitor} variant="purple" />
             {failedCheckNames.length > 0 && (
-              <ExpandedActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={handleCopyErrors} variant="default" />
+              <ActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={handleCopyErrors} variant="default" />
+            )}
+            <ActionButton label="Open in Browser" onClick={handleOpenInBrowser} variant="default" />
+            <ActionButton label="Copy Branch" onClick={handleCopyBranch} variant="default" />
+            {repoPath && (
+              <ActionButton label="Checkout" onClick={handleCheckout} variant="default" />
+            )}
+            {isOpen && (
+              <ActionButton label={pr.isDraft ? 'Mark Ready' : 'Mark Draft'} onClick={handleToggleDraft} variant="draft" />
+            )}
+            {canMerge && (
+              <ActionButton label="Merge" onClick={handleMerge} variant="success" />
+            )}
+            {isOpen && (
+              <ActionButton label="Bypass Merge" onClick={handleBypassMerge} variant="danger" />
+            )}
+            {isOpen && (
+              <ActionButton label="Close PR" onClick={handleClose} variant="danger" />
             )}
             <button
               data-expand-toggle
@@ -484,24 +556,12 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
           </div>
 
           {/* Inline expansion */}
-          {isExpanded && (
-            <ExpandedContent prWithChecks={prWithChecks} />
-          )}
+          {isExpanded && <ExpandedContent prWithChecks={prWithChecks} />}
         </div>
 
-        {/* Right side: review status + merge score */}
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {pr.reviewStatus !== 'none' && (
-            <span
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              style={{
-                color: reviewStatusColor(pr.reviewStatus),
-                backgroundColor: `color-mix(in srgb, ${reviewStatusColor(pr.reviewStatus)} 10%, transparent)`,
-              }}
-            >
-              {reviewStatusLabel(pr.reviewStatus)}
-            </span>
-          )}
+        {/* Right column: PR number + merge score */}
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span className="font-mono text-xs text-[var(--color-text-muted)]">#{pr.number}</span>
           <MergeScoreBadge score={mergeScore} />
         </div>
       </button>
@@ -512,8 +572,42 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
           pr={prWithChecks}
           position={contextMenu}
           onClose={() => setContextMenu(null)}
+          onConfirmAction={setConfirmAction}
         />
       )}
+
+      {/* Confirm dialogs */}
+      <ConfirmDialog
+        isOpen={confirmAction === 'close'}
+        title="Close pull request?"
+        message={`This will close PR #${pr.number} without merging. You can reopen it later.`}
+        confirmLabel="Close PR"
+        variant="danger"
+        onConfirm={executeClose}
+        onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmDialog
+        isOpen={confirmAction === 'bypass'}
+        title="Bypass merge?"
+        message={`This will merge PR #${pr.number} using admin privileges, bypassing branch protection rules.`}
+        confirmLabel="Bypass Merge"
+        variant="danger"
+        onConfirm={executeBypassMerge}
+        onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmDialog
+        isOpen={confirmAction === 'draft'}
+        title={pr.isDraft ? 'Mark as ready for review?' : 'Convert to draft?'}
+        message={
+          pr.isDraft
+            ? `This will mark PR #${pr.number} as ready for review and request reviewers.`
+            : `This will convert PR #${pr.number} to a draft. Reviewers will not be requested.`
+        }
+        confirmLabel={pr.isDraft ? 'Mark Ready' : 'Convert to Draft'}
+        variant="default"
+        onConfirm={executeToggleDraft}
+        onCancel={() => setConfirmAction(null)}
+      />
     </>
   );
 }

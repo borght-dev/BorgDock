@@ -10,40 +10,15 @@ function scoreColor(score: number): string {
 
 export function MergeScoreBadge({ score }: MergeScoreBadgeProps) {
   const clamped = Math.max(0, Math.min(100, score));
-  const radius = 9;
-  const circumference = 2 * Math.PI * radius;
-  const arcLength = (clamped / 100) * circumference;
   const color = scoreColor(clamped);
 
   return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      className="shrink-0"
+    <div
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-medium"
+      style={{ border: `2px solid ${color}`, color }}
       aria-label={`Merge score: ${clamped}%`}
     >
-      {/* Background track */}
-      <circle
-        cx="12"
-        cy="12"
-        r={radius}
-        fill="none"
-        stroke="var(--color-subtle-border)"
-        strokeWidth="2.5"
-      />
-      {/* Score arc */}
-      <circle
-        cx="12"
-        cy="12"
-        r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeDasharray={`${arcLength} ${circumference}`}
-        strokeLinecap="round"
-        transform="rotate(-90 12 12)"
-      />
-    </svg>
+      {clamped}
+    </div>
   );
 }

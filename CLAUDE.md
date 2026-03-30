@@ -1,8 +1,12 @@
 # PRDock — Developer Guide for Claude
 
+## IMPORTANT: Active Development Target
+
+**All new development happens in `src/PRDock.Tauri/` (the Tauri + React rewrite). Do NOT modify files in `src/PRDock.App/` (the legacy WPF app) unless explicitly asked.** When the working directory is `src/PRDock.Tauri`, all features, fixes, and improvements go there.
+
 ## What is this?
 
-A WPF desktop app that monitors GitHub PRs as a docked sidebar on Windows. Built with .NET 10, WPF, CommunityToolkit.Mvvm, and Microsoft.Extensions.DI.
+A desktop app that monitors GitHub PRs as a docked sidebar on Windows. The legacy version is built with .NET 10/WPF; the active version is in `src/PRDock.Tauri/` using Tauri + React + TypeScript.
 
 ## Quick Commands
 

@@ -130,6 +130,33 @@ export class GitHubClient {
     return (await response.json()) as T;
   }
 
+  async patch<T>(path: string, body: unknown): Promise<T> {
+    const url = `https://api.github.com/${path}`;
+    const token = await this.getToken();
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'PRDock',
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    this.parseRateLimitHeaders(response);
+
+    if (!response.ok) {
+      throw new GitHubApiError(
+        `GitHub API error: ${response.status} ${response.statusText}`,
+        response.status,
+      );
+    }
+
+    return (await response.json()) as T;
+  }
+
   async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     const token = await this.getToken();
 

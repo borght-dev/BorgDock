@@ -70,20 +70,27 @@ function makeErrors(): ParsedError[] {
 }
 
 describe('buildFixPrompt', () => {
-  it('includes the check name in the title', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), 'ci/build', [], [], '', makeRepoSettings());
+  it('includes the check name in the title for single check', () => {
+    const prompt = buildFixPrompt(makePrWithChecks(), ['ci/build'], [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('# Fix Failing Check: ci/build');
   });
 
+  it('includes all check names in the title for multiple checks', () => {
+    const prompt = buildFixPrompt(makePrWithChecks(), ['ci/build', 'ci/test'], [], [], '', makeRepoSettings());
+
+    expect(prompt).toContain('# Fix Failing Checks: 2 checks');
+    expect(prompt).toContain('ci/build, ci/test');
+  });
+
   it('includes PR number and title', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('#42 Fix login flow');
   });
 
   it('includes branch names', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('fix/login');
     expect(prompt).toContain('main');
@@ -92,7 +99,7 @@ describe('buildFixPrompt', () => {
 
   it('includes parsed errors with file paths and line numbers', () => {
     const errors = makeErrors();
-    const prompt = buildFixPrompt(makePrWithChecks(), 'build', errors, [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], errors, [], '', makeRepoSettings());
 
     expect(prompt).toContain('src/auth.ts:42');
     expect(prompt).toContain('Property does not exist on type');
@@ -106,7 +113,7 @@ describe('buildFixPrompt', () => {
     const changedFiles = ['src/auth.ts', 'src/components/Login.tsx'];
     const prompt = buildFixPrompt(
       makePrWithChecks(),
-      'build',
+      ['build'],
       [],
       changedFiles,
       '',
@@ -122,7 +129,7 @@ describe('buildFixPrompt', () => {
     const logLines = Array.from({ length: 300 }, (_, i) => `log line ${i + 1}`);
     const rawLog = logLines.join('\n');
 
-    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], rawLog, makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], rawLog, makeRepoSettings());
 
     expect(prompt).toContain('## Raw Log (last 200 lines)');
     expect(prompt).toContain('log line 101');
@@ -135,20 +142,37 @@ describe('buildFixPrompt', () => {
       fixPromptTemplate: 'Always run `npm test` after making changes.',
     });
 
-    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', repoSettings);
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', repoSettings);
 
     expect(prompt).toContain('## Additional Instructions');
     expect(prompt).toContain('Always run `npm test` after making changes.');
   });
 
-  it('includes task instructions', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), 'build', [], [], '', makeRepoSettings());
+  it('includes task instructions with single check', () => {
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
 
     expect(prompt).toContain('## Task');
-    expect(prompt).toContain('Fix the failing check "build"');
+    expect(prompt).toContain('Fix the failing check (build)');
     expect(prompt).toContain(
       'Focus only on errors that are relevant to the files changed in this PR',
     );
+  });
+
+  it('includes task instructions with multiple checks', () => {
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build', 'test'], [], [], '', makeRepoSettings());
+
+    expect(prompt).toContain('## Task');
+    expect(prompt).toContain('Fix the failing checks (build, test)');
+  });
+
+  it('includes commit, push and monitoring instructions', () => {
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
+
+    expect(prompt).toContain('## After Fixing: Commit, Push & Monitor');
+    expect(prompt).toContain('git commit');
+    expect(prompt).toContain('git push');
+    expect(prompt).toContain('gh pr checks 42');
+    expect(prompt).toContain('Maximum 5 fix-and-push cycles');
   });
 });
 
