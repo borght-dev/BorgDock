@@ -30,16 +30,76 @@ jobs:
         run: npm ci
         working-directory: src/PRDock.Tauri
 
-      - name: Build and release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri app
+        run: npx tauri build
+        working-directory: src/PRDock.Tauri
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: src/PRDock.Tauri
-          tagName: ${{ github.ref_name }}
-          releaseName: "PRDock ${{ github.ref_name }}"
-          releaseBody: "See the assets to download and install this version."
-          releaseDraft: false
-          updaterJsonKeepUniversal: true
+
+      - name: Create GitHub release and upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $bundleDir = "src/PRDock.Tauri/src-tauri/target/release/bundle"
+
+          # Collect release assets
+          $assets = @(
+            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.exe"
+            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.exe.sig"
+            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.nsis.zip"
+            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.nsis.zip.sig"
+            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi"
+            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi.sig"
+            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi.zip"
+            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi.zip.sig"
+          )
+
+          # Filter to existing files
+          $existing = $assets | Where-Object { Test-Path $_ }
+          Write-Host "Found $($existing.Count) assets to upload:"
+          $existing | ForEach-Object { Write-Host "  $_" }
+
+          # Create release (or update if exists)
+          gh release create $tag $existing `
+            --title "PRDock $tag" `
+            --notes "See the assets to download and install this version." `
+            --latest 2>$null
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Release already exists, uploading assets..."
+            $existing | ForEach-Object { gh release upload $tag $_ --clobber }
+          }
+
+      - name: Generate and upload updater latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          $repo = "${{ github.repository }}"
+          $bundleDir = "src/PRDock.Tauri/src-tauri/target/release/bundle"
+
+          # Read signatures
+          $nsisZipSig = Get-Content "$bundleDir/nsis/PRDock_${version}_x64-setup.nsis.zip.sig" -Raw
+          $msiZipSig = Get-Content "$bundleDir/msi/PRDock_${version}_x64_en-US.msi.zip.sig" -Raw
+
+          # Build latest.json for the Tauri updater
+          $latest = @{
+            version = $version
+            notes = "PRDock $version"
+            pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $nsisZipSig.Trim()
+                url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.nsis.zip"
+              }
+            }
+          } | ConvertTo-Json -Depth 4
+
+          $latest | Out-File -FilePath "latest.json" -Encoding utf8NoBOM
+          Write-Host "Generated latest.json:"
+          Get-Content latest.json
+
+          gh release upload $tag latest.json --clobber
