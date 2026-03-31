@@ -110,18 +110,21 @@ function ExpandChevron({
     <button
       data-testid="badge-expand-chevron"
       className={clsx(
-        'flex items-center justify-center self-stretch px-2 rounded-r-full',
+        'flex items-center justify-center self-stretch px-2 ml-auto',
+        isExpanded ? 'rounded-r-xl' : 'rounded-r-full',
         'border-l border-[var(--color-separator)]',
         'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]',
-        'hover:bg-[var(--color-surface-hover)] transition-colors',
+        'hover:bg-[var(--color-surface-hover)] transition-all',
       )}
       onClick={onToggleExpand}
       title={isExpanded ? 'Collapse' : 'Expand PR list'}
     >
-      <ChevronIcon
-        size={10}
-        color="currentColor"
-      />
+      <div className={clsx('transition-transform duration-200', isExpanded && 'rotate-180')}>
+        <ChevronIcon
+          size={10}
+          color="currentColor"
+        />
+      </div>
     </button>
   );
 }
@@ -195,11 +198,12 @@ function GlassCapsule({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-center rounded-full',
+          'flex items-center w-full',
+          isExpanded ? 'rounded-xl' : 'rounded-full',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'backdrop-blur-[20px]',
           'transition-all duration-300',
-          'hover:-translate-y-0.5 hover:scale-[1.02]',
+          !isExpanded && 'hover:-translate-y-0.5 hover:scale-[1.02]',
         )}
         style={{
           boxShadow: `0 2px 16px ${glowColor}, 0 0 0 1px ${glowColor}, inset 0 1px 0 rgba(255,255,255,0.04)`,
@@ -297,10 +301,11 @@ function MinimalNotch({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-center rounded-[18px] relative overflow-hidden',
+          'flex items-center relative overflow-hidden w-full',
+          isExpanded ? 'rounded-xl' : 'rounded-[18px]',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-300',
-          'hover:-translate-y-0.5',
+          !isExpanded && 'hover:-translate-y-0.5',
         )}
         style={{
           boxShadow: `0 2px 12px rgba(0,0,0,0.12), 0 0 1px ${dotColor}`,
@@ -410,10 +415,11 @@ function FloatingIsland({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-center rounded-2xl relative overflow-hidden',
+          'flex items-center relative overflow-hidden w-full',
+          isExpanded ? 'rounded-xl' : 'rounded-2xl',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-[400ms]',
-          'hover:-translate-y-0.5 hover:rounded-[18px]',
+          !isExpanded && 'hover:-translate-y-0.5 hover:rounded-[18px]',
         )}
         style={{
           boxShadow: `0 2px 20px rgba(0,0,0,0.15), 0 0 0 0.5px ${glowColor}, 0 0 40px -10px ${glowColor}`,
@@ -526,10 +532,11 @@ function LiquidMorph({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-center rounded-full relative',
+          'flex items-center relative w-full',
+          isExpanded ? 'rounded-xl' : 'rounded-full',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-[400ms]',
-          'hover:-translate-y-0.5 hover:scale-[1.03]',
+          !isExpanded && 'hover:-translate-y-0.5 hover:scale-[1.03]',
         )}
         style={{
           boxShadow: `0 2px 20px ${glowColor}`,
@@ -619,10 +626,10 @@ function SpectralBar({
       <style>{BADGE_KEYFRAMES}</style>
       <div
         className={clsx(
-          'flex items-stretch rounded-xl relative overflow-hidden h-9',
+          'flex items-stretch rounded-xl relative overflow-hidden h-9 w-full',
           'bg-[var(--color-badge-glass)] border border-[var(--color-badge-border)]',
           'transition-all duration-300',
-          'hover:-translate-y-0.5',
+          !isExpanded && 'hover:-translate-y-0.5',
         )}
         style={{
           boxShadow: '0 2px 16px rgba(0,0,0,0.12)',

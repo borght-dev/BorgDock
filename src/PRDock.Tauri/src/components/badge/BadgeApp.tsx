@@ -193,7 +193,13 @@ export function BadgeApp() {
     >
       <div className="flex flex-col items-center">
         {expandUp && prPanel}
-        <div className="relative">
+        <div
+          className="relative"
+          style={{
+            minWidth: isExpanded ? 660 : 0,
+            transition: 'min-width 250ms ease-out',
+          }}
+        >
           <BadgeStyleComponent
             totalPrCount={data.totalPrCount}
             failingCount={data.failingCount}
