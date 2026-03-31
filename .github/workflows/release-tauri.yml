@@ -84,13 +84,18 @@ jobs:
           $ws = "${{ github.workspace }}"
           $nsisDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
 
+          # Check for .nsis.zip.sig (only exists if TAURI_SIGNING_PRIVATE_KEY is set)
           $sigFile = Join-Path $nsisDir "PRDock_${version}_x64-setup.nsis.zip.sig"
-          if (-not (Test-Path $sigFile)) {
-            Write-Error "Signature file not found: $sigFile"
-            exit 1
-          }
+          $zipFile = Join-Path $nsisDir "PRDock_${version}_x64-setup.nsis.zip"
 
-          $nsisZipSig = (Get-Content $sigFile -Raw).Trim()
+          if (Test-Path $sigFile) {
+            $signature = (Get-Content $sigFile -Raw).Trim()
+            $url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.nsis.zip"
+          } else {
+            Write-Host "No .sig file found — generating latest.json without signature (updater won't work, but WPF migration will)"
+            $signature = ""
+            $url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.exe"
+          }
 
           $latest = @{
             version = $version
@@ -98,8 +103,8 @@ jobs:
             pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
               "windows-x86_64" = @{
-                signature = $nsisZipSig
-                url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.nsis.zip"
+                signature = $signature
+                url = $url
               }
             }
           } | ConvertTo-Json -Depth 4
