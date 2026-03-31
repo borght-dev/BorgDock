@@ -34,7 +34,7 @@ jobs:
         run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Build Tauri app
-        run: npx tauri build --bundles nsis,msi
+        run: npx tauri build --bundles nsis
         working-directory: src/PRDock.Tauri
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -49,18 +49,13 @@ jobs:
           $version = $tag -replace '^v', ''
           $ws = "${{ github.workspace }}"
           $nsisDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
-          $msiDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "msi"
 
-          Write-Host "Looking for assets in:"
-          Write-Host "  NSIS: $nsisDir"
-          Write-Host "  MSI:  $msiDir"
+          Write-Host "Looking for assets in: $nsisDir"
           Get-ChildItem $nsisDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
-          Get-ChildItem $msiDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
 
           # Collect all bundle files
           $assets = @()
           Get-ChildItem $nsisDir -File -ErrorAction SilentlyContinue | ForEach-Object { $assets += $_.FullName }
-          Get-ChildItem $msiDir -File -ErrorAction SilentlyContinue | ForEach-Object { $assets += $_.FullName }
 
           if ($assets.Count -eq 0) {
             Write-Error "No assets found!"
