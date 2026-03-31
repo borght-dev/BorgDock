@@ -30,6 +30,9 @@ jobs:
         run: npm ci
         working-directory: src/PRDock.Tauri
 
+      - name: Add NSIS to PATH
+        run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
       - name: Build Tauri app
         run: npx tauri build
         working-directory: src/PRDock.Tauri
@@ -44,8 +47,9 @@ jobs:
           $ErrorActionPreference = "Continue"
           $tag = "${{ github.ref_name }}"
           $version = $tag -replace '^v', ''
-          $nsisDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
-          $msiDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "msi"
+          $ws = "${{ github.workspace }}"
+          $nsisDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
+          $msiDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "msi"
 
           Write-Host "Looking for assets in:"
           Write-Host "  NSIS: $nsisDir"
@@ -82,7 +86,8 @@ jobs:
           $tag = "${{ github.ref_name }}"
           $version = $tag -replace '^v', ''
           $repo = "${{ github.repository }}"
-          $nsisDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
+          $ws = "${{ github.workspace }}"
+          $nsisDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
 
           $sigFile = Join-Path $nsisDir "PRDock_${version}_x64-setup.nsis.zip.sig"
           if (-not (Test-Path $sigFile)) {
