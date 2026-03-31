@@ -41,58 +41,64 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $ErrorActionPreference = "Continue"
           $tag = "${{ github.ref_name }}"
-          $bundleDir = "src/PRDock.Tauri/src-tauri/target/release/bundle"
+          $version = $tag -replace '^v', ''
+          $nsisDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
+          $msiDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "msi"
 
-          # Collect release assets
-          $assets = @(
-            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.exe"
-            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.exe.sig"
-            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.nsis.zip"
-            "$bundleDir/nsis/PRDock_$($tag -replace '^v','')_x64-setup.nsis.zip.sig"
-            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi"
-            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi.sig"
-            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi.zip"
-            "$bundleDir/msi/PRDock_$($tag -replace '^v','')_x64_en-US.msi.zip.sig"
-          )
+          Write-Host "Looking for assets in:"
+          Write-Host "  NSIS: $nsisDir"
+          Write-Host "  MSI:  $msiDir"
+          Get-ChildItem $nsisDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
+          Get-ChildItem $msiDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
 
-          # Filter to existing files
-          $existing = $assets | Where-Object { Test-Path $_ }
-          Write-Host "Found $($existing.Count) assets to upload:"
-          $existing | ForEach-Object { Write-Host "  $_" }
+          # Collect all bundle files
+          $assets = @()
+          Get-ChildItem $nsisDir -File -ErrorAction SilentlyContinue | ForEach-Object { $assets += $_.FullName }
+          Get-ChildItem $msiDir -File -ErrorAction SilentlyContinue | ForEach-Object { $assets += $_.FullName }
 
-          # Create release (or update if exists)
-          gh release create $tag $existing `
-            --title "PRDock $tag" `
-            --notes "See the assets to download and install this version." `
-            --latest 2>$null
+          if ($assets.Count -eq 0) {
+            Write-Error "No assets found!"
+            exit 1
+          }
 
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Release already exists, uploading assets..."
-            $existing | ForEach-Object { gh release upload $tag $_ --clobber }
+          Write-Host "Uploading $($assets.Count) assets..."
+
+          # Create release (ignore error if exists)
+          gh release create $tag --title "PRDock $tag" --notes "See the assets to download and install this version." --latest 2>$null
+
+          # Upload all assets
+          foreach ($asset in $assets) {
+            Write-Host "  Uploading: $(Split-Path $asset -Leaf)"
+            gh release upload $tag $asset --clobber
           }
 
       - name: Generate and upload updater latest.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $ErrorActionPreference = "Continue"
           $tag = "${{ github.ref_name }}"
           $version = $tag -replace '^v', ''
           $repo = "${{ github.repository }}"
-          $bundleDir = "src/PRDock.Tauri/src-tauri/target/release/bundle"
+          $nsisDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
 
-          # Read signatures
-          $nsisZipSig = Get-Content "$bundleDir/nsis/PRDock_${version}_x64-setup.nsis.zip.sig" -Raw
-          $msiZipSig = Get-Content "$bundleDir/msi/PRDock_${version}_x64_en-US.msi.zip.sig" -Raw
+          $sigFile = Join-Path $nsisDir "PRDock_${version}_x64-setup.nsis.zip.sig"
+          if (-not (Test-Path $sigFile)) {
+            Write-Error "Signature file not found: $sigFile"
+            exit 1
+          }
 
-          # Build latest.json for the Tauri updater
+          $nsisZipSig = (Get-Content $sigFile -Raw).Trim()
+
           $latest = @{
             version = $version
             notes = "PRDock $version"
             pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
               "windows-x86_64" = @{
-                signature = $nsisZipSig.Trim()
+                signature = $nsisZipSig
                 url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.nsis.zip"
               }
             }
