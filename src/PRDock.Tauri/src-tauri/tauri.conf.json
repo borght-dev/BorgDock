@@ -47,6 +47,9 @@
       "csp": null
     }
   },
+  "bundle": {
+    "createUpdaterArtifacts": "v1Compatible"
+  },
   "plugins": {
     "updater": {
       "endpoints": [
