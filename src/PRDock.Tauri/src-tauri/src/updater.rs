@@ -33,7 +33,7 @@ fn resolve_github_token() -> Option<String> {
     None
 }
 
-/// Build an authenticated reqwest client.
+/// Build an authenticated reqwest client for the GitHub API.
 fn api_client(token: &Option<String>) -> Result<reqwest::Client, String> {
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert("User-Agent", "PRDock-Updater".parse().unwrap());
@@ -55,12 +55,11 @@ fn api_client(token: &Option<String>) -> Result<reqwest::Client, String> {
 
 /// Fetch the latest.json content by finding the newest Tauri release (v* tag,
 /// not wpf-v*) via the GitHub API, then downloading the latest.json asset.
-/// Also rewrites the platform download URL from the github.com convenience URL
-/// to the API asset URL so the updater can download from a private repo.
+/// Also rewrites the platform download URL to a pre-signed CDN URL so the
+/// updater can download from a private repo without auth headers.
 async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
     let client = api_client(token)?;
 
-    // List releases and find the first Tauri release
     let releases: serde_json::Value = client
         .get(format!("{GITHUB_RELEASES_API}?per_page=20"))
         .send()
@@ -76,9 +75,7 @@ async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
         .as_array()
         .ok_or("Releases response is not an array")?;
 
-    // Find the first release with a v* tag (not wpf-v*)
     let mut latest_json_api_url: Option<String> = None;
-    // Map browser_download_url → API url for .nsis.zip assets
     let mut url_rewrites: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
 
@@ -93,7 +90,6 @@ async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
                 if name.eq_ignore_ascii_case("latest.json") {
                     latest_json_api_url = asset["url"].as_str().map(String::from);
                 }
-                // Collect API URLs for .nsis.zip so we can rewrite the download URL
                 if let (Some(browser_url), Some(api_url)) = (
                     asset["browser_download_url"].as_str(),
                     asset["url"].as_str(),
@@ -108,12 +104,9 @@ async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
     }
 
     let asset_url = latest_json_api_url.ok_or("No Tauri release with latest.json found")?;
-
-    // Download the latest.json asset binary content
     let body = download_asset(token, &asset_url).await?;
 
-    // Rewrite platform download URLs: resolve each github.com URL to a
-    // pre-signed CDN URL via the API so the updater can download without auth.
+    // Rewrite platform download URLs to pre-signed CDN URLs
     let mut json: serde_json::Value =
         serde_json::from_str(&body).map_err(|e| format!("Invalid latest.json: {e}"))?;
     if let Some(platforms) = json.get_mut("platforms").and_then(|p| p.as_object_mut()) {
@@ -121,7 +114,6 @@ async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
             if let Some(url_val) = platform.get_mut("url") {
                 if let Some(url_str) = url_val.as_str() {
                     if let Some(api_url) = url_rewrites.get(url_str) {
-                        // Resolve the API asset URL to a pre-signed CDN URL
                         if let Ok(cdn_url) = resolve_cdn_url(token, api_url).await {
                             *url_val = serde_json::Value::String(cdn_url);
                         }
@@ -135,8 +127,7 @@ async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
 }
 
 /// Resolve a GitHub API asset URL to a pre-signed CDN URL by following the
-/// 302 redirect without actually downloading the file. The CDN URL works
-/// without any auth headers, which is what the updater plugin needs.
+/// 302 redirect. The CDN URL works without any auth headers.
 async fn resolve_cdn_url(token: &Option<String>, api_url: &str) -> Result<String, String> {
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert("Accept", "application/octet-stream".parse().unwrap());
@@ -147,7 +138,6 @@ async fn resolve_cdn_url(token: &Option<String>, api_url: &str) -> Result<String
         );
     }
 
-    // Disable automatic redirects so we can capture the Location header
     let client = reqwest::Client::builder()
         .default_headers(headers)
         .user_agent("PRDock-Updater")
@@ -170,13 +160,10 @@ async fn resolve_cdn_url(token: &Option<String>, api_url: &str) -> Result<String
         }
     }
 
-    Err(format!(
-        "Expected 302 redirect, got {}",
-        resp.status()
-    ))
+    Err(format!("Expected 302 redirect, got {}", resp.status()))
 }
 
-/// Download a GitHub release asset via the API.
+/// Download a GitHub release asset via the API (text content).
 async fn download_asset(token: &Option<String>, api_url: &str) -> Result<String, String> {
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert("Accept", "application/octet-stream".parse().unwrap());
@@ -203,33 +190,49 @@ async fn download_asset(token: &Option<String>, api_url: &str) -> Result<String,
         .map_err(|e| format!("Failed to read asset body: {e}"))
 }
 
-/// Spin up a one-shot local HTTP server that serves the given body, then
-/// return the URL. The server shuts down after the first request.
-async fn serve_once(body: String) -> Result<(String, tokio::task::JoinHandle<()>), String> {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
+/// Spin up a local HTTP server on a dedicated OS thread (not tokio) that serves
+/// the given body. Returns the URL and a handle to stop the server.
+/// Uses std::net to avoid tokio runtime issues on Windows.
+fn serve_local(body: String) -> Result<(String, std::thread::JoinHandle<()>), String> {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("Failed to bind local server: {e}"))?;
-    let port = listener
-        .local_addr()
-        .map_err(|e| e.to_string())?
-        .port();
+    let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    // Short timeout so the thread doesn't hang forever
+    listener
+        .set_nonblocking(false)
+        .map_err(|e| e.to_string())?;
     let url = format!("http://127.0.0.1:{port}/latest.json");
 
-    let handle = tokio::spawn(async move {
-        // Accept one connection
-        if let Ok((mut stream, _)) = listener.accept().await {
-            use tokio::io::AsyncWriteExt;
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                body.len(),
-                body
-            );
-            let _ = stream.write_all(response.as_bytes()).await;
-            let _ = stream.shutdown().await;
+    let handle = std::thread::spawn(move || {
+        // Serve up to 3 requests (the updater may make retries)
+        for _ in 0..3 {
+            if let Ok((mut stream, _)) = listener.accept() {
+                use std::io::{Read, Write};
+                // Read the request (we don't care about the content)
+                let mut buf = [0u8; 1024];
+                let _ = stream.read(&mut buf);
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                let _ = stream.write_all(response.as_bytes());
+                let _ = stream.flush();
+            }
         }
     });
 
     Ok((url, handle))
+}
+
+/// Simple semver comparison: returns true if `a` is newer than `b`.
+fn is_newer(a: &str, b: &str) -> bool {
+    let parse = |v: &str| -> Vec<u64> {
+        v.split('.').filter_map(|s| s.parse().ok()).collect()
+    };
+    let va = parse(a);
+    let vb = parse(b);
+    va > vb
 }
 
 #[tauri::command]
@@ -240,14 +243,13 @@ pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, Stri
     let latest: TauriLatestJson =
         serde_json::from_str(&json_str).map_err(|e| format!("Invalid latest.json: {e}"))?;
 
-    // Compare with current version
     let current = app
         .config()
         .version
         .clone()
         .unwrap_or_else(|| "0.0.0".to_string());
 
-    if latest.version == current {
+    if !is_newer(&latest.version, &current) {
         return Ok(None);
     }
 
@@ -262,14 +264,14 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
     let token = resolve_github_token();
     let json_str = fetch_latest_json(&token).await?;
 
-    // Serve latest.json from a local one-shot server so the updater plugin
-    // can fetch it (the github.com URL doesn't support token auth).
-    let (local_url, server_handle) = serve_once(json_str).await?;
+    // Serve latest.json from a local server (blocking std::net on a separate
+    // thread) so the updater plugin can fetch it.
+    let (local_url, _server_handle) = serve_local(json_str)?;
 
-    let mut builder = app.updater_builder();
-    // Override the endpoint to our local server
-    builder = builder.endpoints(vec![local_url.parse().map_err(|e| format!("{e}"))?]).map_err(|e| e.to_string())?;
-    // No extra auth needed — the download URL is a pre-signed CDN URL
+    let builder = app
+        .updater_builder()
+        .endpoints(vec![local_url.parse().map_err(|e| format!("{e}"))?])
+        .map_err(|e| e.to_string())?;
 
     let updater = builder.build().map_err(|e| e.to_string())?;
     let update = updater
@@ -277,9 +279,6 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?
         .ok_or("No update available")?;
-
-    // Clean up the one-shot server
-    server_handle.abort();
 
     let handle = app.clone();
     let on_finish = {
