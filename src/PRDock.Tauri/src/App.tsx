@@ -110,21 +110,12 @@ export default function App() {
     };
   }, [settings.ui.globalHotkey]);
 
-  // Position sidebar and reserve work area so other windows don't overlap
+  // Position sidebar on the screen edge
   useEffect(() => {
     invoke('position_sidebar', {
       edge: settings.ui.sidebarEdge,
       width: settings.ui.sidebarWidthPx,
     }).catch((err) => console.error('Failed to position sidebar:', err));
-
-    invoke('reserve_work_area', {
-      width: settings.ui.sidebarWidthPx,
-      edge: settings.ui.sidebarEdge,
-    }).catch((err) => console.error('Failed to reserve work area:', err));
-
-    return () => {
-      invoke('restore_work_area').catch(() => {});
-    };
   }, [settings.ui.sidebarEdge, settings.ui.sidebarWidthPx]);
 
   // Listen for open-settings event from tray
