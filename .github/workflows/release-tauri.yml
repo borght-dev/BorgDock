@@ -19,10 +19,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Exclude workspace from Windows Defender
+      - name: Mitigate Windows Defender file locks
         run: |
-          Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction SilentlyContinue
-          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.cargo" -ErrorAction SilentlyContinue
+          # Try to add exclusions (requires admin — silently skip if not available)
+          try { Add-MpPreference -ExclusionPath "${{ github.workspace }}" } catch {}
+          try { Add-MpPreference -ExclusionPath "$env:USERPROFILE\.cargo" } catch {}
+          # Try to disable real-time monitoring for the build duration
+          try { Set-MpPreference -DisableRealtimeMonitoring $true } catch {}
+
+      - name: Kill stale processes
+        run: |
+          # Kill any lingering prdock.exe from previous builds
+          Get-Process -Name prdock -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          # Kill any lingering NSIS processes
+          Get-Process -Name makensis -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
 
       - name: Verify toolchain
         run: |
@@ -38,17 +49,43 @@ jobs:
       - name: Add NSIS to PATH
         run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
-      - name: Clean stale bundle artifacts
+      - name: Clean stale build artifacts
         run: |
-          $bundleDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle"
+          $releaseDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release"
+          # Clean bundle output
+          $bundleDir = Join-Path $releaseDir "bundle"
           if (Test-Path $bundleDir) { Remove-Item $bundleDir -Recurse -Force -ErrorAction SilentlyContinue }
+          # Clean the exe that NSIS bundles (prevents Defender from holding a stale memory-map)
+          $exe = Join-Path $releaseDir "prdock.exe"
+          if (Test-Path $exe) { Remove-Item $exe -Force -ErrorAction SilentlyContinue }
 
       - name: Build Tauri app
-        run: npx tauri build --bundles nsis
+        run: |
+          $maxAttempts = 2
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            Write-Host "Build attempt $i of $maxAttempts..."
+            npx tauri build --bundles nsis 2>&1 | Tee-Object -Variable buildOutput
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Build succeeded on attempt $i"
+              break
+            }
+            if ($i -lt $maxAttempts) {
+              Write-Host "Build failed — waiting 15s before retry..."
+              Start-Sleep -Seconds 15
+            } else {
+              Write-Host "Build failed on all attempts"
+              exit 1
+            }
+          }
         working-directory: src/PRDock.Tauri
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Re-enable Windows Defender
+        if: always()
+        run: |
+          try { Set-MpPreference -DisableRealtimeMonitoring $false } catch {}
 
       - name: Create GitHub release and upload assets
         env:
