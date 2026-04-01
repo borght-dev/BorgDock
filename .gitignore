@@ -21,3 +21,6 @@ Desktop.ini
 
 ## Dev settings (contains credentials — never commit)
 settings.dev.json
+
+## Marketing assets (separate repo: prdock-marketing)
+promo-video/
