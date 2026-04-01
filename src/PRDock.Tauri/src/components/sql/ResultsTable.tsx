@@ -15,7 +15,7 @@ export function ResultsTable({
   onSelectionChange,
 }: ResultsTableProps) {
   const [lastClickedRow, setLastClickedRow] = useState<number | null>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const handleRowClick = useCallback(
     (index: number, e: React.MouseEvent) => {
@@ -47,41 +47,39 @@ export function ResultsTable({
   if (columns.length === 0) return null;
 
   return (
-    <div ref={tableRef} className="sql-results-container">
-      <table className="sql-results-table">
-        <thead>
-          <tr>
-            <th className="sql-row-num-header">#</th>
-            {columns.map((col, i) => (
-              <th key={i} className="sql-col-header">
-                <span className="sql-col-name">{col}</span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIdx) => {
-            const isSelected = selectedRows.has(rowIdx);
-            return (
-              <tr
-                key={rowIdx}
-                className={clsx('sql-data-row', isSelected && 'sql-data-row--selected')}
-                onClick={(e) => handleRowClick(rowIdx, e)}
-              >
-                <td className="sql-row-num">{rowIdx + 1}</td>
-                {row.map((cell, colIdx) => (
-                  <td
-                    key={colIdx}
-                    className={clsx('sql-cell', cell === null && 'sql-cell--null')}
-                  >
-                    {cell === null ? 'NULL' : cell}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <table ref={tableRef} className="sql-results-table">
+      <thead>
+        <tr>
+          <th className="sql-row-num-header">#</th>
+          {columns.map((col, i) => (
+            <th key={i} className="sql-col-header">
+              <span className="sql-col-name">{col}</span>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, rowIdx) => {
+          const isSelected = selectedRows.has(rowIdx);
+          return (
+            <tr
+              key={rowIdx}
+              className={clsx('sql-data-row', isSelected && 'sql-data-row--selected')}
+              onClick={(e) => handleRowClick(rowIdx, e)}
+            >
+              <td className="sql-row-num">{rowIdx + 1}</td>
+              {row.map((cell, colIdx) => (
+                <td
+                  key={colIdx}
+                  className={clsx('sql-cell', cell === null && 'sql-cell--null')}
+                >
+                  {cell === null ? 'NULL' : cell}
+                </td>
+              ))}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }

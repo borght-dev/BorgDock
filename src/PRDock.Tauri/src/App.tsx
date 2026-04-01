@@ -14,6 +14,7 @@ import { useBadgeSync } from '@/hooks/useBadgeSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
+import { useNotificationActions } from '@/hooks/useNotificationActions';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
 import { useTheme } from '@/hooks/useTheme';
@@ -80,6 +81,9 @@ export default function App() {
 
   // Keyboard navigation
   useKeyboardNav();
+
+  // OS toast notification click/button actions
+  useNotificationActions();
 
   // Auto-update
   useAutoUpdate(settings);

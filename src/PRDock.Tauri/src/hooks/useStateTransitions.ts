@@ -6,8 +6,16 @@ import {
   detectStateTransitions,
   sendOsNotification,
 } from '@/services/notification';
+import type { OsNotificationButton } from '@/services/notification';
 import { useNotificationStore } from '@/stores/notification-store';
 import type { AppSettings, InAppNotification, PullRequestWithChecks } from '@/types';
+
+/** Action buttons shown on OS toast notifications (except merged) */
+const PR_ACTION_BUTTONS: OsNotificationButton[] = [
+  { label: 'Merge', action: 'merge' },
+  { label: 'Approve changes', action: 'approve' },
+  { label: 'Bypass Merge', action: 'bypass' },
+];
 
 export function useStateTransitions(settings: AppSettings) {
   const previousPrsRef = useRef<PullRequestWithChecks[]>([]);
@@ -68,8 +76,16 @@ export function useStateTransitions(settings: AppSettings) {
         if (notification) {
           useNotificationStore.getState().show(notification);
 
-          // Also fire OS notification
-          sendOsNotification(notification.title, notification.message).catch(() => {});
+          // Fire OS notification with PR context and action buttons
+          const isMerged = transition.type === 'merged';
+          sendOsNotification({
+            title: notification.title,
+            body: notification.message,
+            prOwner: transition.pr.repoOwner,
+            prRepo: transition.pr.repoName,
+            prNumber: transition.pr.number,
+            buttons: isMerged ? undefined : PR_ACTION_BUTTONS,
+          }).catch(() => {});
         }
       }
     },

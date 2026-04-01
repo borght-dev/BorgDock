@@ -7,12 +7,17 @@ import type { AppSettings, SqlSettings } from '@/types/settings';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { ResultsTable } from './ResultsTable';
 
-interface QueryResult {
+interface ResultSet {
   columns: string[];
   rows: (string | null)[][];
-  executionTimeMs: number;
   rowCount: number;
   truncated: boolean;
+}
+
+interface QueryResult {
+  resultSets: ResultSet[];
+  executionTimeMs: number;
+  totalRowCount: number;
 }
 
 const POSITION_KEY = 'prdock-sql-position';
@@ -128,7 +133,7 @@ export function SqlApp() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [selectedRowsMap, setSelectedRowsMap] = useState<Map<number, Set<number>>>(new Map());
   const [copyFlash, setCopyFlash] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [editorHeight, setEditorHeight] = useState(140);
@@ -231,7 +236,7 @@ export function SqlApp() {
     setIsRunning(true);
     setError('');
     setResult(null);
-    setSelectedRows(new Set());
+    setSelectedRowsMap(new Map());
 
     try {
       const res = await invoke<QueryResult>('execute_sql_query', {
@@ -261,39 +266,54 @@ export function SqlApp() {
     setTimeout(() => setCopyFlash(null), 1500);
   }, []);
 
-  const getRowsForCopy = useCallback(() => {
+  const getResultSetParts = useCallback(() => {
     if (!result) return [];
-    if (selectedRows.size === 0) return result.rows;
-    return result.rows.filter((_, i) => selectedRows.has(i));
-  }, [result, selectedRows]);
+    return result.resultSets.map((rs, idx) => {
+      const sel = selectedRowsMap.get(idx);
+      const rows = sel && sel.size > 0 ? rs.rows.filter((_, i) => sel.has(i)) : rs.rows;
+      return { columns: rs.columns, rows };
+    });
+  }, [result, selectedRowsMap]);
 
   const copyValues = useCallback(async () => {
-    const rows = getRowsForCopy();
-    const text = rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
+    const parts = getResultSetParts();
+    const text = parts
+      .map((p) => p.rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n'))
+      .join('\n\n');
     await writeText(text);
     flash('Copied!');
-  }, [getRowsForCopy, flash]);
+  }, [getResultSetParts, flash]);
 
   const copyWithHeaders = useCallback(async () => {
-    if (!result) return;
-    const rows = getRowsForCopy();
-    const header = result.columns.join('\t');
-    const body = rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
-    await writeText(header + '\n' + body);
+    const parts = getResultSetParts();
+    const text = parts
+      .map((p) => {
+        const header = p.columns.join('\t');
+        const body = p.rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
+        return header + '\n' + body;
+      })
+      .join('\n\n');
+    await writeText(text);
     flash('Copied!');
-  }, [result, getRowsForCopy, flash]);
+  }, [getResultSetParts, flash]);
 
   const copyAll = useCallback(async () => {
-    if (!result) return;
-    const rows = getRowsForCopy();
-    const header = result.columns.join('\t');
-    const body = rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
-    await writeText(query.trim() + '\n\n' + header + '\n' + body);
+    const parts = getResultSetParts();
+    const text = parts
+      .map((p) => {
+        const header = p.columns.join('\t');
+        const body = p.rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
+        return header + '\n' + body;
+      })
+      .join('\n\n');
+    await writeText(query.trim() + '\n\n' + text);
     flash('Copied!');
-  }, [result, query, getRowsForCopy, flash]);
+  }, [query, getResultSetParts, flash]);
 
   const hasConnections = sqlSettings && sqlSettings.connections.length > 0;
-  const hasResults = result && result.columns.length > 0;
+  const hasResults = result && result.resultSets.some((rs) => rs.columns.length > 0);
+  const totalSelectedRows = Array.from(selectedRowsMap.values()).reduce((sum, s) => sum + s.size, 0);
+  const totalRows = result ? result.resultSets.reduce((sum, rs) => sum + rs.rows.length, 0) : 0;
   const lineCount = query.split('\n').length;
 
   return (
@@ -398,16 +418,38 @@ export function SqlApp() {
 
       {/* ── Results ─────────────────────────────────────── */}
       {hasResults && (
-        <ResultsTable
-          columns={result.columns}
-          rows={result.rows}
-          selectedRows={selectedRows}
-          onSelectionChange={setSelectedRows}
-        />
+        <div className="sql-results-container">
+          {result.resultSets
+            .filter((rs) => rs.columns.length > 0)
+            .map((rs, idx) => (
+              <div key={idx}>
+                {result.resultSets.filter((r) => r.columns.length > 0).length > 1 && (
+                  <div className="sql-resultset-header">
+                    Result {idx + 1}
+                    <span className="sql-resultset-count">
+                      {rs.rowCount} row{rs.rowCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
+                <ResultsTable
+                  columns={rs.columns}
+                  rows={rs.rows}
+                  selectedRows={selectedRowsMap.get(idx) ?? new Set()}
+                  onSelectionChange={(sel) =>
+                    setSelectedRowsMap((prev) => {
+                      const next = new Map(prev);
+                      next.set(idx, sel);
+                      return next;
+                    })
+                  }
+                />
+              </div>
+            ))}
+        </div>
       )}
 
       {/* Empty results */}
-      {result && result.columns.length === 0 && !error && (
+      {result && !hasResults && !error && (
         <div className="sql-empty-results">
           <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
             <path d="m3 8.5 3.5 3.5 6.5-8" />
@@ -422,15 +464,18 @@ export function SqlApp() {
           {result && (
             <>
               <span className="sql-status-rows">
-                {result.rowCount.toLocaleString()} row{result.rowCount !== 1 ? 's' : ''}
-                {result.truncated && <span className="sql-status-truncated"> (truncated)</span>}
+                {result.totalRowCount.toLocaleString()} row{result.totalRowCount !== 1 ? 's' : ''}
+                {result.resultSets.length > 1 && (
+                  <span className="sql-status-sets"> · {result.resultSets.filter((rs) => rs.columns.length > 0).length} results</span>
+                )}
+                {result.resultSets.some((rs) => rs.truncated) && <span className="sql-status-truncated"> (truncated)</span>}
               </span>
               <span className="sql-status-dot" />
               <span className="sql-status-time">{result.executionTimeMs}ms</span>
-              {selectedRows.size > 0 && (
+              {totalSelectedRows > 0 && (
                 <>
                   <span className="sql-status-dot" />
-                  <span className="sql-status-selected">{selectedRows.size} selected</span>
+                  <span className="sql-status-selected">{totalSelectedRows} selected</span>
                 </>
               )}
             </>
@@ -444,7 +489,7 @@ export function SqlApp() {
               {copyFlash}
             </span>
           )}
-          {result && result.rows.length > 0 && (
+          {result && totalRows > 0 && (
             <div className="sql-copy-group">
               <CopyIcon />
               <button className="sql-copy-btn" onClick={copyValues}>

@@ -174,9 +174,30 @@ export function buildFixCommittedNotification(pr: PullRequest): InAppNotificatio
 
 // --- OS notification ---
 
-export async function sendOsNotification(title: string, body: string): Promise<void> {
+export interface OsNotificationButton {
+  label: string;
+  action: string;
+}
+
+export interface OsNotificationOptions {
+  title: string;
+  body: string;
+  prOwner?: string;
+  prRepo?: string;
+  prNumber?: number;
+  buttons?: OsNotificationButton[];
+}
+
+export async function sendOsNotification(options: OsNotificationOptions): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
-  await invoke('send_notification', { title, body });
+  await invoke('send_notification', {
+    title: options.title,
+    body: options.body,
+    prOwner: options.prOwner,
+    prRepo: options.prRepo,
+    prNumber: options.prNumber,
+    buttons: options.buttons,
+  });
 }
 
 // --- Helpers ---

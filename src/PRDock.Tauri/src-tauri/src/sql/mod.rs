@@ -7,12 +7,19 @@ use crate::settings;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct QueryResult {
+pub struct ResultSet {
     pub columns: Vec<String>,
     pub rows: Vec<Vec<Option<String>>>,
-    pub execution_time_ms: u64,
     pub row_count: usize,
     pub truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryResult {
+    pub result_sets: Vec<ResultSet>,
+    pub execution_time_ms: u64,
+    pub total_row_count: usize,
 }
 
 const MAX_ROWS: usize = 10_000;
@@ -180,47 +187,47 @@ pub async fn execute_sql_query(
 
     let execution_time_ms = start.elapsed().as_millis() as u64;
 
-    // Take the first result set
-    if let Some(rows) = results.into_iter().next() {
-        let mut columns = Vec::new();
+    let mut result_sets = Vec::new();
+    let mut total_row_count = 0;
+
+    for rows in results {
+        if rows.is_empty() {
+            continue;
+        }
+
+        let columns: Vec<String> = rows[0]
+            .columns()
+            .iter()
+            .map(|c| c.name().to_string())
+            .collect();
+
         let mut data_rows: Vec<Vec<Option<String>>> = Vec::new();
         let mut truncated = false;
 
         for (i, row) in rows.iter().enumerate() {
-            if i == 0 {
-                columns = row
-                    .columns()
-                    .iter()
-                    .map(|c| c.name().to_string())
-                    .collect();
-            }
-
             if i >= MAX_ROWS {
                 truncated = true;
                 break;
             }
-
             data_rows.push(row_to_strings(row));
         }
 
         let row_count = data_rows.len();
+        total_row_count += row_count;
 
-        Ok(QueryResult {
+        result_sets.push(ResultSet {
             columns,
             rows: data_rows,
-            execution_time_ms,
             row_count,
             truncated,
-        })
-    } else {
-        Ok(QueryResult {
-            columns: Vec::new(),
-            rows: Vec::new(),
-            execution_time_ms,
-            row_count: 0,
-            truncated: false,
-        })
+        });
     }
+
+    Ok(QueryResult {
+        result_sets,
+        execution_time_ms,
+        total_row_count,
+    })
 }
 
 #[tauri::command]

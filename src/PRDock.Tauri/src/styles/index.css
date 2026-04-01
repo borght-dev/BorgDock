@@ -1568,6 +1568,27 @@ select.field-input option {
   background: var(--color-card-background);
 }
 
+.sql-resultset-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-raised);
+  border-top: 1px solid var(--color-separator);
+  border-bottom: 1px solid var(--color-separator);
+  user-select: none;
+}
+.sql-resultset-header:first-child {
+  border-top: none;
+}
+.sql-resultset-count {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
 .sql-results-table {
   width: 100%;
   border-collapse: collapse;
