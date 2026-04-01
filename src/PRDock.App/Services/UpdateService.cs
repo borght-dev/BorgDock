@@ -24,6 +24,10 @@ public sealed class UpdateService : IUpdateService
     private const string GitHubLatestReleaseApi =
         "https://api.github.com/repos/borght-dev/PRDock/releases/latest";
 
+    /// Lists all releases — used to find the latest Tauri release by tag pattern.
+    private const string GitHubReleasesApi =
+        "https://api.github.com/repos/borght-dev/PRDock/releases";
+
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(4);
 
     private readonly IGitHubAuthService _authService;
@@ -350,13 +354,15 @@ public sealed class UpdateService : IUpdateService
 
     /// <summary>
     /// Fetch latest.json via the GitHub Releases API (works for private repos with a token).
-    /// Finds the latest.json asset in the release and downloads it.
+    /// Lists all releases, finds the newest Tauri release (tag v* not wpf-v*),
+    /// then downloads its latest.json asset.
     /// </summary>
     private async Task<TauriRelease?> FetchLatestJsonViaApi(string? token, CancellationToken ct)
     {
         try
         {
-            using var listRequest = new HttpRequestMessage(HttpMethod.Get, GitHubLatestReleaseApi);
+            // List releases (newest first) and find the first Tauri release
+            using var listRequest = new HttpRequestMessage(HttpMethod.Get, GitHubReleasesApi + "?per_page=20");
             listRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
             if (!string.IsNullOrEmpty(token))
                 listRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -364,29 +370,40 @@ public sealed class UpdateService : IUpdateService
             using var listResponse = await _httpClient.SendAsync(listRequest, ct);
             if (!listResponse.IsSuccessStatusCode)
             {
-                _logger.LogDebug("GitHub API latest release fetch failed: {Status}", listResponse.StatusCode);
+                _logger.LogDebug("GitHub API releases list failed: {Status}", listResponse.StatusCode);
                 return null;
             }
 
             var listJson = await listResponse.Content.ReadAsStringAsync(ct);
             using var doc = JsonDocument.Parse(listJson);
-            var assets = doc.RootElement.GetProperty("assets");
 
-            // Find the latest.json asset
+            // Find the first release whose tag starts with "v" but not "wpf-v"
             string? assetApiUrl = null;
-            foreach (var asset in assets.EnumerateArray())
+            foreach (var release in doc.RootElement.EnumerateArray())
             {
-                var name = asset.GetProperty("name").GetString() ?? "";
-                if (name.Equals("latest.json", StringComparison.OrdinalIgnoreCase))
+                var tag = release.GetProperty("tag_name").GetString() ?? "";
+                if (!tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ||
+                    tag.StartsWith("wpf-", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Found a Tauri release — look for its latest.json asset
+                foreach (var asset in release.GetProperty("assets").EnumerateArray())
                 {
-                    assetApiUrl = asset.GetProperty("url").GetString();
-                    break;
+                    var name = asset.GetProperty("name").GetString() ?? "";
+                    if (name.Equals("latest.json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        assetApiUrl = asset.GetProperty("url").GetString();
+                        break;
+                    }
                 }
+
+                if (assetApiUrl is not null)
+                    break;
             }
 
             if (string.IsNullOrEmpty(assetApiUrl))
             {
-                _logger.LogDebug("No latest.json asset found in release");
+                _logger.LogDebug("No Tauri release with latest.json found");
                 return null;
             }
 
@@ -404,12 +421,12 @@ public sealed class UpdateService : IUpdateService
             }
 
             var assetJson = await assetResponse.Content.ReadAsStringAsync(ct);
-            var release = JsonSerializer.Deserialize<TauriRelease>(assetJson);
-            if (release is null || string.IsNullOrEmpty(release.Version))
+            var tauriRelease = JsonSerializer.Deserialize<TauriRelease>(assetJson);
+            if (tauriRelease is null || string.IsNullOrEmpty(tauriRelease.Version))
                 return null;
 
-            _logger.LogDebug("Fetched latest.json via GitHub API: v{Version}", release.Version);
-            return release;
+            _logger.LogDebug("Fetched latest.json via GitHub API: v{Version}", tauriRelease.Version);
+            return tauriRelease;
         }
         catch (Exception ex)
         {
@@ -420,13 +437,13 @@ public sealed class UpdateService : IUpdateService
 
     /// <summary>
     /// Queries the GitHub Releases API to find the standalone NSIS installer
-    /// (.exe ending in x64-setup.exe) from the latest release assets.
+    /// (.exe ending in x64-setup.exe) from the latest Tauri release assets.
     /// </summary>
     private async Task<string?> FindInstallerAssetUrlAsync(string? token, CancellationToken ct)
     {
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, GitHubLatestReleaseApi);
+            using var request = new HttpRequestMessage(HttpMethod.Get, GitHubReleasesApi + "?per_page=20");
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
             if (!string.IsNullOrEmpty(token))
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -437,19 +454,29 @@ public sealed class UpdateService : IUpdateService
 
             var json = await response.Content.ReadAsStringAsync(ct);
             using var doc = JsonDocument.Parse(json);
-            var assets = doc.RootElement.GetProperty("assets");
 
-            foreach (var asset in assets.EnumerateArray())
+            foreach (var release in doc.RootElement.EnumerateArray())
             {
-                var name = asset.GetProperty("name").GetString() ?? "";
-                // Match the standalone NSIS installer: PRDock_<version>_x64-setup.exe
-                if (name.EndsWith("x64-setup.exe", StringComparison.OrdinalIgnoreCase) ||
-                    name.EndsWith("x64_en-US.msi", StringComparison.OrdinalIgnoreCase))
+                var tag = release.GetProperty("tag_name").GetString() ?? "";
+                if (!tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ||
+                    tag.StartsWith("wpf-", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                foreach (var asset in release.GetProperty("assets").EnumerateArray())
                 {
-                    // Use the API URL for private repo compatibility.
-                    // Download with Accept: application/octet-stream to get the binary.
-                    return asset.GetProperty("url").GetString();
+                    var name = asset.GetProperty("name").GetString() ?? "";
+                    // Match the standalone NSIS installer: PRDock_<version>_x64-setup.exe
+                    if (name.EndsWith("x64-setup.exe", StringComparison.OrdinalIgnoreCase) ||
+                        name.EndsWith("x64_en-US.msi", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Use the API URL for private repo compatibility.
+                        // Download with Accept: application/octet-stream to get the binary.
+                        return asset.GetProperty("url").GetString();
+                    }
                 }
+
+                // Only check the first Tauri release
+                break;
             }
         }
         catch (Exception ex)

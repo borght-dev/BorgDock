@@ -60,6 +60,11 @@ jobs:
           --tag ${{ github.ref_name }}
           --publish
 
+      - name: Demote WPF release so Tauri keeps the "Latest" badge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit ${{ github.ref_name }} --latest=false
+
       - name: Extract changelog for this version and update release
         shell: pwsh
         env:
