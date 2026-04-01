@@ -49,52 +49,16 @@ jobs:
       - name: Add NSIS to PATH
         run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
-      - name: Clean stale build artifacts
+      - name: Clean target directory
         run: |
-          $releaseDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release"
-          # Clean bundle output
-          $bundleDir = Join-Path $releaseDir "bundle"
-          if (Test-Path $bundleDir) { Remove-Item $bundleDir -Recurse -Force -ErrorAction SilentlyContinue }
-          # Clean the exe that NSIS bundles (prevents Defender from holding a stale memory-map)
-          $exe = Join-Path $releaseDir "prdock.exe"
-          if (Test-Path $exe) { Remove-Item $exe -Force -ErrorAction SilentlyContinue }
-          # Clean build-script outputs (ring crate .o files get locked by Defender)
-          $buildDir = Join-Path $releaseDir "build"
-          if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force -ErrorAction SilentlyContinue }
+          $targetDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target"
+          if (Test-Path $targetDir) {
+            Write-Host "Removing $targetDir to ensure clean build..."
+            Remove-Item $targetDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Build Tauri app
-        run: |
-          $exe = Join-Path $PWD "src-tauri" "target" "release" "prdock.exe"
-
-          $maxAttempts = 3
-          for ($i = 1; $i -le $maxAttempts; $i++) {
-            Write-Host "Build attempt $i of $maxAttempts..."
-            npx tauri build --bundles nsis 2>&1 | Tee-Object -Variable buildOutput
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Build succeeded on attempt $i"
-              break
-            }
-            if ($i -lt $maxAttempts) {
-              # Wait until Defender releases the exe (poll every 5s, up to 2 min)
-              Write-Host "Build failed — waiting for file lock to release..."
-              $waited = 0
-              while ($waited -lt 120) {
-                Start-Sleep -Seconds 5
-                $waited += 5
-                try {
-                  $stream = [System.IO.File]::Open($exe, 'Open', 'ReadWrite', 'None')
-                  $stream.Close()
-                  Write-Host "File unlocked after ${waited}s"
-                  break
-                } catch {
-                  Write-Host "  Still locked (${waited}s)..."
-                }
-              }
-            } else {
-              Write-Host "Build failed on all attempts"
-              exit 1
-            }
-          }
+        run: npx tauri build --bundles nsis
         working-directory: src/PRDock.Tauri
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
