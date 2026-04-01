@@ -74,24 +74,13 @@ public sealed class UpdateService : IUpdateService
         {
             var token = await _authService.GetTokenAsync(ct);
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, TauriLatestJsonUrl);
-            if (!string.IsNullOrEmpty(token))
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            // Follow redirects to the actual asset URL (GitHub redirects to S3)
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+            // Try the direct URL first; fall back to the GitHub API for private repos
+            var release = await FetchLatestJsonDirect(token, ct)
+                       ?? await FetchLatestJsonViaApi(token, ct);
 
-            using var response = await _httpClient.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode)
+            if (release is null)
             {
-                _logger.LogDebug("Failed to fetch latest.json: {Status}", response.StatusCode);
-                return null;
-            }
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var release = JsonSerializer.Deserialize<TauriRelease>(json);
-            if (release is null || string.IsNullOrEmpty(release.Version))
-            {
-                _logger.LogDebug("latest.json was empty or malformed");
+                _logger.LogDebug("Could not fetch latest.json (direct or API)");
                 return null;
             }
 
@@ -158,15 +147,19 @@ public sealed class UpdateService : IUpdateService
             using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
             if (!string.IsNullOrEmpty(token))
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            // Required for GitHub API asset downloads on private repos
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
 
-            // Determine file extension from URL
-            var fileName = Path.GetFileName(new Uri(downloadUrl).LocalPath);
-            if (string.IsNullOrEmpty(fileName))
+            // The API URL path doesn't contain the real filename; use the
+            // Content-Disposition header or fall back to a default name.
+            var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                ?? Path.GetFileName(new Uri(downloadUrl).LocalPath);
+            if (string.IsNullOrEmpty(fileName) || !Path.HasExtension(fileName))
                 fileName = $"PRDock-{_pendingRelease.Version}-setup.exe";
 
             var tempDir = Path.Combine(Path.GetTempPath(), "PRDock-update");
@@ -323,6 +316,109 @@ public sealed class UpdateService : IUpdateService
     // ── Tauri latest.json model ────────────────────────
 
     /// <summary>
+    /// Try fetching latest.json from the direct GitHub release URL (works for public repos).
+    /// </summary>
+    private async Task<TauriRelease?> FetchLatestJsonDirect(string? token, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, TauriLatestJsonUrl);
+            if (!string.IsNullOrEmpty(token))
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogDebug("Direct latest.json fetch failed: {Status}", response.StatusCode);
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var release = JsonSerializer.Deserialize<TauriRelease>(json);
+            if (release is null || string.IsNullOrEmpty(release.Version))
+                return null;
+
+            return release;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Direct latest.json fetch threw");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Fetch latest.json via the GitHub Releases API (works for private repos with a token).
+    /// Finds the latest.json asset in the release and downloads it.
+    /// </summary>
+    private async Task<TauriRelease?> FetchLatestJsonViaApi(string? token, CancellationToken ct)
+    {
+        try
+        {
+            using var listRequest = new HttpRequestMessage(HttpMethod.Get, GitHubLatestReleaseApi);
+            listRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+            if (!string.IsNullOrEmpty(token))
+                listRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using var listResponse = await _httpClient.SendAsync(listRequest, ct);
+            if (!listResponse.IsSuccessStatusCode)
+            {
+                _logger.LogDebug("GitHub API latest release fetch failed: {Status}", listResponse.StatusCode);
+                return null;
+            }
+
+            var listJson = await listResponse.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(listJson);
+            var assets = doc.RootElement.GetProperty("assets");
+
+            // Find the latest.json asset
+            string? assetApiUrl = null;
+            foreach (var asset in assets.EnumerateArray())
+            {
+                var name = asset.GetProperty("name").GetString() ?? "";
+                if (name.Equals("latest.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    assetApiUrl = asset.GetProperty("url").GetString();
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(assetApiUrl))
+            {
+                _logger.LogDebug("No latest.json asset found in release");
+                return null;
+            }
+
+            // Download the asset content via the API
+            using var assetRequest = new HttpRequestMessage(HttpMethod.Get, assetApiUrl);
+            assetRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+            if (!string.IsNullOrEmpty(token))
+                assetRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using var assetResponse = await _httpClient.SendAsync(assetRequest, ct);
+            if (!assetResponse.IsSuccessStatusCode)
+            {
+                _logger.LogDebug("Failed to download latest.json asset: {Status}", assetResponse.StatusCode);
+                return null;
+            }
+
+            var assetJson = await assetResponse.Content.ReadAsStringAsync(ct);
+            var release = JsonSerializer.Deserialize<TauriRelease>(assetJson);
+            if (release is null || string.IsNullOrEmpty(release.Version))
+                return null;
+
+            _logger.LogDebug("Fetched latest.json via GitHub API: v{Version}", release.Version);
+            return release;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "GitHub API latest.json fetch threw");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Queries the GitHub Releases API to find the standalone NSIS installer
     /// (.exe ending in x64-setup.exe) from the latest release assets.
     /// </summary>
@@ -350,7 +446,9 @@ public sealed class UpdateService : IUpdateService
                 if (name.EndsWith("x64-setup.exe", StringComparison.OrdinalIgnoreCase) ||
                     name.EndsWith("x64_en-US.msi", StringComparison.OrdinalIgnoreCase))
                 {
-                    return asset.GetProperty("browser_download_url").GetString();
+                    // Use the API URL for private repo compatibility.
+                    // Download with Accept: application/octet-stream to get the binary.
+                    return asset.GetProperty("url").GetString();
                 }
             }
         }
