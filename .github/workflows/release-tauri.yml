@@ -64,6 +64,8 @@ jobs:
 
       - name: Build Tauri app
         run: |
+          $exe = Join-Path $PWD "src-tauri" "target" "release" "prdock.exe"
+
           $maxAttempts = 3
           for ($i = 1; $i -le $maxAttempts; $i++) {
             Write-Host "Build attempt $i of $maxAttempts..."
@@ -73,8 +75,21 @@ jobs:
               break
             }
             if ($i -lt $maxAttempts) {
-              Write-Host "Build failed — waiting 30s before retry..."
-              Start-Sleep -Seconds 30
+              # Wait until Defender releases the exe (poll every 5s, up to 2 min)
+              Write-Host "Build failed — waiting for file lock to release..."
+              $waited = 0
+              while ($waited -lt 120) {
+                Start-Sleep -Seconds 5
+                $waited += 5
+                try {
+                  $stream = [System.IO.File]::Open($exe, 'Open', 'ReadWrite', 'None')
+                  $stream.Close()
+                  Write-Host "File unlocked after ${waited}s"
+                  break
+                } catch {
+                  Write-Host "  Still locked (${waited}s)..."
+                }
+              }
             } else {
               Write-Host "Build failed on all attempts"
               exit 1
