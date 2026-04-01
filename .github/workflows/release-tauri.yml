@@ -58,10 +58,13 @@ jobs:
           # Clean the exe that NSIS bundles (prevents Defender from holding a stale memory-map)
           $exe = Join-Path $releaseDir "prdock.exe"
           if (Test-Path $exe) { Remove-Item $exe -Force -ErrorAction SilentlyContinue }
+          # Clean build-script outputs (ring crate .o files get locked by Defender)
+          $buildDir = Join-Path $releaseDir "build"
+          if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force -ErrorAction SilentlyContinue }
 
       - name: Build Tauri app
         run: |
-          $maxAttempts = 2
+          $maxAttempts = 3
           for ($i = 1; $i -le $maxAttempts; $i++) {
             Write-Host "Build attempt $i of $maxAttempts..."
             npx tauri build --bundles nsis 2>&1 | Tee-Object -Variable buildOutput
@@ -70,8 +73,8 @@ jobs:
               break
             }
             if ($i -lt $maxAttempts) {
-              Write-Host "Build failed — waiting 15s before retry..."
-              Start-Sleep -Seconds 15
+              Write-Host "Build failed — waiting 30s before retry..."
+              Start-Sleep -Seconds 30
             } else {
               Write-Host "Build failed on all attempts"
               exit 1
