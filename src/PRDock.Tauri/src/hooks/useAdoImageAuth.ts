@@ -22,7 +22,8 @@ export function useAdoImageAuth(containerRef: RefObject<HTMLElement | null>, htm
 
     for (const img of imgs) {
       const src = img.getAttribute('src') ?? '';
-      if (!src.includes('dev.azure.com') && !src.includes('visualstudio.com')) continue;
+      // All images in ADO HTML content require auth — skip only data: URIs and blob: URIs
+      if (!src.startsWith('http')) continue;
 
       // Hide broken image while loading
       img.style.opacity = '0';
