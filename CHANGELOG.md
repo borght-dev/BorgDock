@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.10 — 2026-04-01
+
+### New Features
+
+- **Actionable OS notifications** — Toast notifications now include **Merge**, **Approve changes**, and **Bypass Merge** buttons so you can act on PRs directly from the notification without opening the app.
+- **Click notifications to open PR details** — Clicking any OS toast notification now opens the PR detail window for that pull request.
+
+### Improvements
+
+- **SQL runner shows all result sets** — Running multiple SQL statements now displays all result sets as labeled, stacked sections instead of only the first one. Selection and copy work across all result sets.
+
 ## 1.0.3 — 2026-03-10
 
 ### Improvements
