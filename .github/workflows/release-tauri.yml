@@ -19,6 +19,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Exclude workspace from Windows Defender
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.cargo" -ErrorAction SilentlyContinue
+
       - name: Verify toolchain
         run: |
           rustc --version
@@ -32,6 +37,11 @@ jobs:
 
       - name: Add NSIS to PATH
         run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      - name: Clean stale bundle artifacts
+        run: |
+          $bundleDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle"
+          if (Test-Path $bundleDir) { Remove-Item $bundleDir -Recurse -Force -ErrorAction SilentlyContinue }
 
       - name: Build Tauri app
         run: npx tauri build --bundles nsis
