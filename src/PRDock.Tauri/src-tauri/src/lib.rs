@@ -5,6 +5,7 @@ pub mod notification;
 pub mod platform;
 pub mod settings;
 pub mod sql;
+pub mod updater;
 
 use cache::PrCache;
 use git::process::ProcessState;
@@ -100,6 +101,9 @@ pub fn run() {
             sql::test_sql_connection,
             // Notification
             notification::send_notification,
+            // Updater
+            updater::check_for_update,
+            updater::download_and_install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useUpdateStore } from '@/stores/update-store';
 import type { AppSettings } from '@/types';
 
 const INITIAL_CHECK_DELAY_MS = 10_000;
 const PERIODIC_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+interface UpdateInfo {
+  version: string;
+  body: string | null;
+}
+
+interface DownloadProgressPayload {
+  event: 'Progress' | 'Finished';
+  data?: { contentLength?: number | null; chunkLength?: number };
+}
 
 export function useAutoUpdate(settings: AppSettings) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -29,33 +41,30 @@ export function useAutoUpdate(settings: AppSettings) {
       useUpdateStore.getState().setProgress(0);
       useUpdateStore.getState().setStatusText('Downloading update...');
 
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
-      if (!update) return;
-
       let downloaded = 0;
-      let contentLength = 0;
 
-      await update.downloadAndInstall((event) => {
-        switch (event.event) {
-          case 'Started':
-            contentLength = event.data.contentLength ?? 0;
-            break;
-          case 'Progress':
-            downloaded += event.data.chunkLength;
-            if (contentLength > 0) {
+      const unlisten = await listen<DownloadProgressPayload>(
+        'update-download-progress',
+        (event) => {
+          const payload = event.payload;
+          if (payload.event === 'Progress') {
+            downloaded += payload.data?.chunkLength ?? 0;
+            const contentLength = payload.data?.contentLength ?? 0;
+            if (contentLength && contentLength > 0) {
               const pct = Math.round((downloaded / contentLength) * 100);
               useUpdateStore.getState().setProgress(pct);
               useUpdateStore.getState().setStatusText(`Downloading... ${pct}%`);
             }
-            break;
-          case 'Finished':
+          } else if (payload.event === 'Finished') {
             useUpdateStore.getState().setProgress(100);
             useUpdateStore.getState().setDownloading(false);
             useUpdateStore.getState().setStatusText('Update ready — restart to apply');
-            break;
-        }
-      });
+          }
+        },
+      );
+
+      await invoke('download_and_install_update');
+      unlisten();
 
       useNotificationStore.getState().show({
         title: 'Update ready',
@@ -78,15 +87,14 @@ export function useAutoUpdate(settings: AppSettings) {
     useUpdateStore.getState().setStatusText('Checking for updates...');
 
     try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
+      const updateInfo = await invoke<UpdateInfo | null>('check_for_update');
 
-      if (update) {
-        useUpdateStore.getState().setAvailable(update.version);
-        useUpdateStore.getState().setStatusText(`Update available: v${update.version}`);
+      if (updateInfo) {
+        useUpdateStore.getState().setAvailable(updateInfo.version);
+        useUpdateStore.getState().setStatusText(`Update available: v${updateInfo.version}`);
 
         useNotificationStore.getState().show({
-          title: `Update available: v${update.version}`,
+          title: `Update available: v${updateInfo.version}`,
           message: 'A new version of PRDock is available.',
           severity: 'info',
           actions: [],
