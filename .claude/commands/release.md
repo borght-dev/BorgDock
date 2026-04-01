@@ -1,10 +1,10 @@
 # Release PRDock
 
-Create a new release: generate changelog, build locally to verify, bump version, tag, and push. The GitHub Actions workflow handles packaging, uploading, and publishing.
+Create a new release: generate changelog, bump versions, tag, and push. The GitHub Actions workflow handles packaging, uploading, and publishing.
 
 ## Arguments
 
-- `$ARGUMENTS` — The version to release (e.g. `1.0.0`). Required.
+- `$ARGUMENTS` — The version to release (e.g. `1.0.5`). Required.
 
 ## Steps
 
@@ -22,44 +22,51 @@ Create a new release: generate changelog, build locally to verify, bump version,
    - Prepend a new `## <VERSION> — <DATE>` section to `CHANGELOG.md`. Create the file if it doesn't exist. Keep all previous entries intact.
    - Show the generated changelog section to the user for review before continuing.
 
-3. **Update the version** in `src/PRDock.App/PRDock.App.csproj` to the provided version.
+3. **Bump versions** in ALL of these files (they must all match):
+   - `src/PRDock.Tauri/src-tauri/tauri.conf.json` — `"version": "<VERSION>"`
+   - `src/PRDock.Tauri/package.json` — `"version": "<VERSION>"`
+   - `src/PRDock.Tauri/src-tauri/Cargo.toml` — `version = "<VERSION>"`
 
-4. **Build and publish** the app (local verification only):
-   ```
-   dotnet publish src/PRDock.App -c Release -r win-x64 --self-contained -o publish
-   ```
+   **Why all three?** The Tauri build uses `tauri.conf.json` to name the installer (e.g. `PRDock_1.0.5_x64-setup.exe`). The CI generates `latest.json` from the git tag. If the tag says `v1.0.5` but `tauri.conf.json` says `1.0.4`, the installer is named `1.0.4` but `latest.json` points to `1.0.5` — causing a 404 and breaking auto-updates.
 
-5. **Install vpk** if not already available:
+4. **Commit** the version bump and changelog:
    ```
-   dotnet tool install -g vpk
-   ```
-   (ignore errors if already installed)
-
-6. **Pack with Velopack** to verify Setup.exe generation:
-   ```
-   vpk pack --packId PRDock --packVersion <VERSION> --packDir publish --mainExe PRDock.App.exe --icon src/PRDock.App/Assets/tray-icon.ico
-   ```
-
-7. **Verify** that `Releases/PRDock-Setup.exe` was created. List the `Releases/` directory and confirm. Abort if not found.
-
-8. **Commit** the version bump and changelog:
-   ```
-   git add src/PRDock.App/PRDock.App.csproj CHANGELOG.md
+   git add src/PRDock.Tauri/src-tauri/tauri.conf.json src/PRDock.Tauri/package.json src/PRDock.Tauri/src-tauri/Cargo.toml CHANGELOG.md
    git commit -m "chore: release <VERSION>"
    ```
 
-9. **Tag and push**:
+5. **Tag and push**:
    ```
    git tag v<VERSION>
    git push && git push origin v<VERSION>
    ```
 
-10. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow will automatically build, upload assets, and publish the release. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
+6. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
 
-11. **Clean up** the `publish/` and `Releases/` directories.
+7. **Verify signing key**: Remind the user that the `TAURI_SIGNING_PRIVATE_KEY` GitHub secret must be set for auto-updates to work. Without it, the CI generates `latest.json` with an empty signature and the Tauri updater rejects the update. The public key is already configured in `src/PRDock.Tauri/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+
+   To generate a key pair (one-time): `npx tauri signer generate -w ~/.tauri/prdock.key`
+   Then add the private key as `TAURI_SIGNING_PRIVATE_KEY` and optionally the password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in GitHub repo settings > Secrets.
+
+## How the CI release works (`release-tauri.yml`)
+
+- Triggered by `v*` tags (not `wpf-v*`)
+- Runs on self-hosted Windows runner
+- Builds with `npx tauri build --bundles nsis`
+- Signs the installer if `TAURI_SIGNING_PRIVATE_KEY` is set (produces `.nsis.zip` + `.nsis.zip.sig`)
+- Uploads all NSIS bundle files to a GitHub release
+- Generates `latest.json` for the Tauri updater:
+  - `version` and asset URL are derived from the **git tag** (not tauri.conf.json)
+  - `signature` comes from the `.sig` file (empty if signing key is missing)
+  - The updater endpoint is: `https://github.com/<repo>/releases/latest/download/latest.json`
+
+## WPF release (legacy)
+
+For WPF releases, use the `wpf-v*` tag prefix (e.g. `wpf-v1.0.4`). The WPF version is in `src/PRDock.App/PRDock.App.csproj`. The separate `release.yml` workflow handles WPF builds with Velopack.
 
 ## Important
 
-- This command must be run on a Windows machine (Setup.exe generation requires Windows).
+- This command must be run on a Windows machine.
 - If any step fails, stop and report the error — do not continue with partial state.
-- The GitHub Actions workflow handles everything after the tag push: building, packing (with delta generation), uploading to GitHub Releases, and publishing the release (not draft). It uses the CHANGELOG.md content for release notes.
+- **Version mismatch is the #1 cause of broken releases.** Always bump all three Tauri config files before tagging.
+- The `latest.json` URL pattern is `PRDock_<VERSION>_x64-setup.nsis.zip` (signed) or `PRDock_<VERSION>_x64-setup.exe` (unsigned). The version in the filename comes from `tauri.conf.json`, NOT the git tag.

@@ -1,5 +1,6 @@
 use serde::Serialize;
-use std::process::Command;
+
+use super::hidden_command;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,7 +11,7 @@ pub struct WorktreeInfo {
 }
 
 fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+    let output = hidden_command("git")
         .args(args)
         .current_dir(working_dir)
         .output()

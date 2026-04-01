@@ -27,14 +27,18 @@ pub fn get_system_theme() -> Result<String, String> {
     {
         // Check registry: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
         // 0 = dark, 1 = light
-        let output = std::process::Command::new("reg")
-            .args([
-                "query",
-                r"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-                "/v",
-                "AppsUseLightTheme",
-            ])
-            .output();
+        let mut cmd = std::process::Command::new("reg");
+        cmd.args([
+            "query",
+            r"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+            "/v",
+            "AppsUseLightTheme",
+        ]);
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+        let output = cmd.output();
 
         match output {
             Ok(out) if out.status.success() => {

@@ -1,9 +1,10 @@
 use serde::Serialize;
 use std::path::Path;
-use std::process::Command;
+
+use super::hidden_command;
 
 fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+    let output = hidden_command("git")
         .args(args)
         .current_dir(working_dir)
         .output()
@@ -181,7 +182,7 @@ pub async fn git_current_branch(repo_path: String) -> Result<String, String> {
 #[tauri::command]
 pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
-        let output = Command::new("gh")
+        let output = hidden_command("gh")
             .args(&args)
             .output()
             .map_err(|e| format!("Failed to run gh: {e}"))?;

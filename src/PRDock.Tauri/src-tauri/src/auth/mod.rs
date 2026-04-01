@@ -1,8 +1,8 @@
-use std::process::Command;
+use crate::git::hidden_command;
 
 #[tauri::command]
 pub fn gh_cli_token() -> Result<String, String> {
-    let output = Command::new("gh")
+    let output = hidden_command("gh")
         .args(["auth", "token"])
         .output()
         .map_err(|e| format!("Failed to run `gh auth token`: {e}"))?;
