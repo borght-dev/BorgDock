@@ -105,6 +105,39 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
 
       <div className="my-2 h-px bg-[var(--color-separator)]" />
 
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)] mb-1">
+        Review Reminders
+      </div>
+      <ToggleRow
+        label="Nudge for pending reviews"
+        checked={notifications.reviewNudgeEnabled}
+        onChange={(v) => update({ reviewNudgeEnabled: v })}
+      />
+      {notifications.reviewNudgeEnabled && (
+        <>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--color-text-primary)]">Remind every</span>
+            <select
+              value={notifications.reviewNudgeIntervalMinutes}
+              onChange={(e) => update({ reviewNudgeIntervalMinutes: Number(e.target.value) })}
+              className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-2 py-0.5 text-xs text-[var(--color-text-primary)]"
+            >
+              <option value={30}>30 min</option>
+              <option value={60}>1 hour</option>
+              <option value={120}>2 hours</option>
+              <option value={240}>4 hours</option>
+            </select>
+          </div>
+          <ToggleRow
+            label="Escalate urgency over time"
+            checked={notifications.reviewNudgeEscalation}
+            onChange={(v) => update({ reviewNudgeEscalation: v })}
+          />
+        </>
+      )}
+
+      <div className="my-2 h-px bg-[var(--color-separator)]" />
+
       <TestNotificationRow />
     </div>
   );

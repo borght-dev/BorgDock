@@ -1,7 +1,8 @@
+import type { ReviewSlaTier } from '@/services/review-sla';
 import type { InAppNotification, PullRequest, PullRequestWithChecks } from '@/types';
 
 export interface StateTransition {
-  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested' | 'merged';
+  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested' | 'reviewRequested' | 'merged';
   pr: PullRequest;
   detail?: string;
 }
@@ -11,6 +12,7 @@ export interface StateTransition {
 export function detectStateTransitions(
   oldPrs: PullRequestWithChecks[],
   newPrs: PullRequestWithChecks[],
+  username?: string,
 ): StateTransition[] {
   const transitions: StateTransition[] = [];
   const oldByKey = new Map(oldPrs.map((p) => [prKey(p.pullRequest), p]));
@@ -71,6 +73,24 @@ export function detectStateTransitions(
         type: 'merged',
         pr: cur.pullRequest,
       });
+    }
+
+    // Review requested transition: user is now a requested reviewer but wasn't before
+    if (username) {
+      const uLower = username.toLowerCase();
+      const wasPending = prev.pullRequest.requestedReviewers.some(
+        (r) => r.toLowerCase() === uLower,
+      );
+      const isPending = cur.pullRequest.requestedReviewers.some(
+        (r) => r.toLowerCase() === uLower,
+      );
+      if (!wasPending && isPending) {
+        transitions.push({
+          type: 'reviewRequested',
+          pr: cur.pullRequest,
+          detail: username,
+        });
+      }
     }
   }
 
@@ -169,6 +189,26 @@ export function buildFixCommittedNotification(pr: PullRequest): InAppNotificatio
     prNumber: pr.number,
     repoFullName: `${pr.repoOwner}/${pr.repoName}`,
     actions: [{ label: 'Open in GitHub', url: pr.htmlUrl }],
+  };
+}
+
+export function buildReviewNudgeNotification(
+  pr: PullRequest,
+  waitTime: string,
+  tier: ReviewSlaTier,
+): InAppNotification {
+  const severity = tier === 'stale' ? 'error' : tier === 'aging' ? 'warning' : 'info';
+  const urgency = tier === 'stale' ? 'Urgent: ' : '';
+  return {
+    title: `${urgency}Review waiting ${waitTime}`,
+    message: `#${pr.number} ${pr.title} (${pr.repoOwner}/${pr.repoName})`,
+    severity,
+    launchUrl: `${pr.htmlUrl}/files`,
+    prNumber: pr.number,
+    repoFullName: `${pr.repoOwner}/${pr.repoName}`,
+    actions: [
+      { label: 'Start Review', url: `${pr.htmlUrl}/files` },
+    ],
   };
 }
 

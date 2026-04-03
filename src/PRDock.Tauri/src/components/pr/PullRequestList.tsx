@@ -1,6 +1,9 @@
+import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
 import { PullRequestCard } from './PullRequestCard';
 import { RepoGroup } from './RepoGroup';
+import { ReviewSlaIndicator } from './ReviewSlaIndicator';
+import { TeamReviewLoad } from './TeamReviewLoad';
 
 function SkeletonCard() {
   return (
@@ -30,6 +33,8 @@ export function PullRequestList() {
   const sortBy = usePrStore((s) => s.sortBy);
   const username = usePrStore((s) => s.username);
 
+  const needsMyReview = usePrStore((s) => s.needsMyReview);
+  const reviewRequestTimestamps = usePrStore((s) => s.reviewRequestTimestamps);
   const groupedByRepo = usePrStore((s) => s.groupedByRepo);
   const filteredPrs = usePrStore((s) => s.filteredPrs);
 
@@ -41,9 +46,11 @@ export function PullRequestList() {
   void searchQuery;
   void sortBy;
   void username;
+  void reviewRequestTimestamps;
 
   const groups = groupedByRepo();
   const prs = filteredPrs();
+  const reviewQueue = needsMyReview();
   const isFirstLoad = !lastPollTime && isPolling;
 
   if (isFirstLoad) {
@@ -80,12 +87,50 @@ export function PullRequestList() {
 
   // Show recently closed section at the bottom (unless already filtering to closed)
   const showRecentlyClosed = filter !== 'closed' && closedPullRequests.length > 0;
+  // Show "Needs Your Review" pinned section in "All" view when there are items
+  const showReviewQueue = filter === 'all' && reviewQueue.length > 0;
 
   return (
     <div className="flex flex-col gap-0.5">
+      {showReviewQueue && (
+        <>
+          <div
+            className="flex items-center gap-2 px-3 pt-2 pb-1"
+            style={{ borderColor: 'var(--color-separator)' }}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-status-yellow)' }}>
+              Needs Your Review
+            </span>
+            <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
+            <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums" style={{ color: 'var(--color-status-yellow)', background: 'color-mix(in srgb, var(--color-status-yellow) 15%, transparent)' }}>
+              {reviewQueue.length}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 pb-1">
+            {reviewQueue.map((pr) => {
+              const prk = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`;
+              const requestedAt = usePrStore.getState().getReviewRequestedAt(prk, username);
+              const tier = requestedAt ? getReviewSlaTier(requestedAt) : 'fresh';
+              const waitTime = requestedAt ? formatReviewWaitTime(requestedAt) : '<1h';
+              return (
+                <div key={`review-${pr.pullRequest.number}`} className="relative">
+                  <div className="absolute right-3 top-3 z-10">
+                    <ReviewSlaIndicator tier={tier} waitTime={waitTime} />
+                  </div>
+                  <PullRequestCard prWithChecks={pr} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mb-1 h-px mx-3" style={{ background: 'var(--color-separator)' }} />
+        </>
+      )}
+
       {[...groups.entries()].map(([repoKey, repoPrs]) => (
         <RepoGroup key={repoKey} repoKey={repoKey} prs={repoPrs} />
       ))}
+
+      {filter !== 'closed' && <TeamReviewLoad />}
 
       {showRecentlyClosed && (
         <>

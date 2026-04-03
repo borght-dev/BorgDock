@@ -3,6 +3,7 @@ import {
   buildAllChecksPassedNotification,
   buildCheckFailedNotification,
   buildPrMergedNotification,
+  buildReviewRequestedNotification,
   detectStateTransitions,
   sendOsNotification,
 } from '@/services/notification';
@@ -28,9 +29,8 @@ export function useStateTransitions(settings: AppSettings) {
       // Skip first poll (no previous data to compare)
       if (oldPrs.length === 0) return;
 
-      const transitions = detectStateTransitions(oldPrs, newPrs);
-
       const username = settings.gitHub.username;
+      const transitions = detectStateTransitions(oldPrs, newPrs, username);
 
       for (const transition of transitions) {
         // Filter to only the user's own PRs when enabled
@@ -67,6 +67,13 @@ export function useStateTransitions(settings: AppSettings) {
               repoFullName: `${transition.pr.repoOwner}/${transition.pr.repoName}`,
               actions: [{ label: 'Open in GitHub', url: transition.pr.htmlUrl }],
             };
+            break;
+          case 'reviewRequested':
+            if (!settings.notifications.toastOnReviewUpdate) continue;
+            notification = buildReviewRequestedNotification(
+              transition.pr,
+              transition.detail ?? username,
+            );
             break;
           case 'merged':
             notification = buildPrMergedNotification(transition.pr);

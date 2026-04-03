@@ -15,9 +15,11 @@ import { useCacheInit } from '@/hooks/useCacheInit';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
 import { useNotificationActions } from '@/hooks/useNotificationActions';
+import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
 import { useTheme } from '@/hooks/useTheme';
+import { useWorktreeMap } from '@/hooks/useWorktreeMap';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -73,6 +75,9 @@ export default function App() {
     }
   }, [pullRequests, processTransitions]);
 
+  // Review nudge notifications
+  useReviewNudges(settings);
+
   // Badge sync
   useBadgeSync();
 
@@ -84,6 +89,9 @@ export default function App() {
 
   // OS toast notification click/button actions
   useNotificationActions();
+
+  // Worktree branch mapping (for PR card badges)
+  useWorktreeMap(settings);
 
   // Auto-update
   useAutoUpdate(settings);

@@ -3,6 +3,7 @@ import { type PrFilter, usePrStore } from '@/stores/pr-store';
 
 const filters: { key: PrFilter; label: string; icon?: string }[] = [
   { key: 'all', label: 'All' },
+  { key: 'needsReview', label: 'Needs Review' },
   { key: 'mine', label: 'Mine' },
   { key: 'failing', label: 'Failing' },
   { key: 'ready', label: 'Ready' },
@@ -23,6 +24,7 @@ export function FilterBar() {
         const isActive = filter === f.key;
         const count = c[f.key];
         const isFailing = f.key === 'failing' && count > 0;
+        const isNeedsReview = f.key === 'needsReview' && count > 0;
 
         return (
           <button
@@ -34,7 +36,9 @@ export function FilterBar() {
                 ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)] shadow-sm'
                 : isFailing
                   ? 'text-[var(--color-status-red)] hover:bg-[var(--color-action-danger-bg)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]',
+                  : isNeedsReview
+                    ? 'text-[var(--color-status-yellow)] hover:bg-[color-mix(in_srgb,var(--color-status-yellow)_10%,transparent)]'
+                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]',
             )}
           >
             {f.label}
@@ -46,7 +50,9 @@ export function FilterBar() {
                     ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
                     : isFailing
                       ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]'
-                      : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]',
+                      : isNeedsReview
+                        ? 'bg-[color-mix(in_srgb,var(--color-status-yellow)_15%,transparent)] text-[var(--color-status-yellow)]'
+                        : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]',
                 )}
               >
                 {count}
