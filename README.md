@@ -1,6 +1,6 @@
 # PRDock
 
-A lightweight Windows desktop application that monitors GitHub pull requests as a docked sidebar overlay. PRDock surfaces CI check status, review state, and Claude Code review findings at a glance — and lets you launch automated fixes with one click.
+A lightweight desktop application that monitors GitHub pull requests as a docked sidebar overlay. PRDock surfaces CI check status, review state, and Claude Code review findings at a glance — and lets you launch automated fixes with one click.
 
 ## Screenshots
 
@@ -51,8 +51,9 @@ The Reviews tab renders full Claude Code review comments with Markdown formattin
 
 ## Requirements
 
-- Windows 10 or 11
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- Windows 10 or 11 / macOS / Linux
+- [Node.js](https://nodejs.org/) (LTS)
+- [Rust](https://www.rust-lang.org/tools/install) (for Tauri)
 - [GitHub CLI (`gh`)](https://cli.github.com/) (recommended) or a GitHub Personal Access Token
 
 ## Getting Started
@@ -60,75 +61,28 @@ The Reviews tab renders full Claude Code review comments with Markdown formattin
 ```bash
 # Clone the repository
 git clone https://github.com/your-org/PRDock.git
-cd PRDock
+cd PRDock/src/PRDock.Tauri
 
-# Build
-dotnet build
+# Install dependencies
+npm install
 
-# Run
-dotnet run --project src/PRDock.App
+# Run in dev mode
+npm run tauri dev
 ```
 
 On first launch, the setup wizard will guide you through authentication and repository configuration.
 
-## Configuration
-
-Settings are stored in `%APPDATA%\PRDock\settings.json`. You can edit them through the in-app settings flyout (gear icon) or directly in the JSON file.
-
-### Key settings
-
-| Section | Options |
-|---------|---------|
-| **GitHub** | Auth method (`ghCli` or `pat`), poll interval (15–300s), username |
-| **Repositories** | Owner/name pairs, worktree base paths, per-repo fix prompt templates |
-| **UI** | Sidebar edge (left/right), mode (pinned/auto-hide), width, theme, editor command |
-| **Notifications** | Toast toggles for check changes, new PRs, review updates |
-| **Claude Code** | Post-fix action (auto-push, commit & notify, ask each time), path override |
-
-## Authentication
-
-PRDock supports two authentication methods:
-
-1. **GitHub CLI (recommended)** — If `gh` is installed and authenticated, PRDock retrieves the token automatically via `gh auth token`.
-2. **Personal Access Token** — Enter a PAT with `repo`, `read:org`, and `workflow` scopes. Note: the token is stored in plain text in the settings file.
-
 ## Project Structure
 
 ```
-src/PRDock.App/
-  Models/           Data models (PR, checks, settings, reviews)
-  ViewModels/       MVVM view models (CommunityToolkit.Mvvm)
-  Views/            WPF views (sidebar, cards, panels, dialogs)
-  Services/         Business logic (GitHub API, polling, parsing, worktrees)
-  Infrastructure/   Cross-cutting (HTTP client, themes, hotkeys, retry)
-  Converters/       WPF value converters
-  Resources/Themes/ Light and dark theme resource dictionaries
-
-tests/PRDock.Tests/             Unit tests (xUnit + NSubstitute + FluentAssertions)
-tests/PRDock.IntegrationTests/  Integration tests
-```
-
-## Running Tests
-
-```bash
-# All tests
-dotnet test
-
-# Unit tests only
-dotnet test tests/PRDock.Tests
-
-# Integration tests only
-dotnet test tests/PRDock.IntegrationTests
+src/PRDock.Tauri/         # Tauri + React + TypeScript application
 ```
 
 ## Tech Stack
 
-- **.NET 10** / **WPF** with WinUI-inspired styling
-- **CommunityToolkit.Mvvm** for source-generated MVVM
-- **Microsoft.Extensions.DependencyInjection** for DI
-- **Serilog** for structured logging
-- **Markdig** for Markdown rendering
-- **System.Text.Json** for GitHub API communication (no Octokit dependency)
+- **Tauri** for native desktop shell
+- **React** + **TypeScript** for UI
+- **Rust** for backend/system operations
 
 ## License
 

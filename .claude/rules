@@ -8,80 +8,46 @@ Follow TDD for all new code — no exceptions:
 2. **Green**: Write the minimum code to make the test pass.
 3. **Refactor**: Clean up the code while keeping tests green.
 
-When implementing a new feature or fixing a bug:
-- Start by writing the test(s) that describe the desired behavior.
-- Run `dotnet test` to confirm they fail for the right reason.
-- Implement the code to make them pass.
-- Run `dotnet test` again to confirm all tests pass (old and new).
-- Never consider a task complete until all tests pass.
-
-When modifying existing code:
-- Run `dotnet test` before making changes to establish a baseline.
-- Add or update tests to cover the change.
-- Run `dotnet test` after to confirm nothing regressed.
-
-## C# Style Guide
+## TypeScript / React Style Guide
 
 ### Naming
-- PascalCase for public members, types, namespaces, methods, properties, events.
-- camelCase for local variables, parameters.
-- `_camelCase` with underscore prefix for private fields.
-- Prefix interfaces with `I` (e.g., `ISettingsService`).
-- Use meaningful names — no abbreviations except well-known ones (e.g., `Dto`, `PR`, `UI`).
+- PascalCase for components, types, interfaces, enums.
+- camelCase for variables, functions, parameters, props.
+- UPPER_SNAKE_CASE for constants.
+- Prefix interfaces with `I` only when it aids clarity.
+- Use meaningful names — no abbreviations except well-known ones (e.g., `PR`, `UI`, `CI`).
 
 ### Code Organization
-- File-scoped namespaces (`namespace PRDock.App.Services;`).
-- One type per file (except small related DTOs/records that belong together).
-- Order within a class: constants, static fields, instance fields, constructors, public properties, public methods, private methods.
-- `sealed` classes by default — only unseal when inheritance is needed.
+- One component per file.
+- Co-locate tests next to source files or in a `__tests__/` directory.
+- Keep components small and focused.
 
-### Modern C# Features (use them)
-- Collection expressions (`[]` instead of `new List<T>()`).
-- Pattern matching (`is not null`, `is { Prop: value }`).
-- Raw string literals for multi-line strings.
-- `ArgumentNullException.ThrowIfNull()` and `ObjectDisposedException.ThrowIf()`.
-- Target-typed `new()` where the type is obvious.
-- Null-conditional and null-coalescing operators.
+### Modern TypeScript Features (use them)
+- Strict mode enabled.
+- Prefer `const` over `let`, never use `var`.
+- Use optional chaining (`?.`) and nullish coalescing (`??`).
+- Prefer discriminated unions over enums where appropriate.
 
 ### Async
-- All I/O-bound operations must be async (`Task`/`ValueTask`).
-- Never block async code with `.Result` or `.Wait()`.
-- Accept `CancellationToken` where appropriate.
-- Suffix async methods with `Async`.
+- All I/O-bound operations must be async.
+- Handle errors with try/catch, don't swallow exceptions.
+- Use AbortController for cancellable requests where appropriate.
 
 ### Error Handling
 - Don't swallow exceptions silently — at minimum log them.
-- Use specific exception types, not bare `catch (Exception)` unless at the top-level boundary.
 - Validate at system boundaries (user input, external APIs), trust internal code.
-
-## WPF / MVVM Conventions
-
-- ViewModels use CommunityToolkit.Mvvm source generators (`[ObservableProperty]`, `[RelayCommand]`).
-- ViewModels must be `partial` classes extending `ObservableObject`.
-- All color/brush references in XAML use `{DynamicResource BrushName}` — never hardcode colors.
-- Services are injected via constructor DI, registered in `App.xaml.cs`.
-- Always qualify `System.Windows.Application` to avoid WinForms ambiguity (project has both UseWPF and UseWindowsForms enabled).
 
 ## Architecture Rules
 
-- Interface-first for services (`IFoo` + `Foo` implementation).
-- Register services in `App.xaml.cs` `ConfigureServices()` method.
-- P/Invoke wrappers go in `Infrastructure/` and should expose testable pure-logic methods alongside the native calls.
-- Settings model properties: `GitHub`, `UI` (uppercase), `Repos`, `Notifications`, `ClaudeCode`, `ClaudeReview`.
-
-## Testing Conventions
-
-- xUnit for test framework, NSubstitute for mocks, FluentAssertions for assertions.
-- Test file location mirrors source: `tests/PRDock.Tests/{SubFolder}/{TypeName}Tests.cs`.
-- Test method naming: `MethodUnderTest_Scenario_ExpectedBehavior`.
-- One logical assertion per test (FluentAssertions chains are fine).
-- Use temp directories for file I/O tests — never touch real `%APPDATA%` paths in tests.
+- Tauri commands for system-level operations (filesystem, shell, etc.).
+- React for UI rendering and state management.
+- Keep Rust backend and TypeScript frontend concerns separated.
 
 ## Build & Quality Gates
 
-- `dotnet build` must produce 0 errors and 0 warnings before any commit.
-- `dotnet test` must have all tests passing before any commit.
-- Don't commit `bin/`, `obj/`, or any build artifacts (`.gitignore` handles this).
+- Build must produce 0 errors and 0 warnings before any commit.
+- All tests must pass before any commit.
+- Don't commit `node_modules/`, `dist/`, `target/`, or any build artifacts.
 
 ## Spec Reference
 
