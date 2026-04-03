@@ -26,6 +26,7 @@ function makePrWithChecks(overrides: Partial<PullRequestWithChecks> = {}): PullR
       deletions: 5,
       changedFiles: 2,
       commitCount: 1,
+      requestedReviewers: [],
     },
     checks: [],
     overallStatus: 'red',

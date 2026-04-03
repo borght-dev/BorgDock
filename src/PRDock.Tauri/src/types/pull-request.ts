@@ -29,6 +29,7 @@ export interface PullRequest {
   commitCount: number;
   mergedAt?: string;
   closedAt?: string;
+  requestedReviewers: string[];
 }
 
 export interface PullRequestWithChecks {

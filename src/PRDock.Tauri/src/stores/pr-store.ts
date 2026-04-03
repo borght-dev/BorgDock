@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
 import type { PullRequestWithChecks } from '@/types';
 
-export type PrFilter = 'all' | 'mine' | 'failing' | 'ready' | 'reviewing' | 'closed';
+export type PrFilter = 'all' | 'mine' | 'failing' | 'ready' | 'reviewing' | 'needsReview' | 'closed';
 export type SortBy = 'updated' | 'created' | 'title';
 
 interface RateLimit {
@@ -20,10 +21,18 @@ interface PrState {
   isPolling: boolean;
   lastPollTime: Date | null;
   rateLimit: RateLimit | null;
+  /** Maps "owner/repo#number:reviewerLogin" → ISO timestamp of first detection */
+  reviewRequestTimestamps: Record<string, string>;
 
   filteredPrs: () => PullRequestWithChecks[];
   groupedByRepo: () => Map<string, PullRequestWithChecks[]>;
   counts: () => Record<PrFilter, number>;
+  /** PRs where the current user is a requested reviewer, sorted longest-waiting first */
+  needsMyReview: () => PullRequestWithChecks[];
+  /** Get the review request timestamp for a specific PR + reviewer */
+  getReviewRequestedAt: (prKey: string, reviewer: string) => string | undefined;
+  /** Team review load — aggregate pending reviews per reviewer */
+  teamReviewLoad: () => ReviewerLoad[];
 
   setPullRequests: (prs: PullRequestWithChecks[]) => void;
   setClosedPullRequests: (prs: PullRequestWithChecks[]) => void;
@@ -71,6 +80,13 @@ function isReviewing(pr: PullRequestWithChecks): boolean {
   return status !== 'none' && status !== 'approved';
 }
 
+function needsReviewFrom(pr: PullRequestWithChecks, username: string): boolean {
+  if (!username) return false;
+  return pr.pullRequest.requestedReviewers.some(
+    (r) => r.toLowerCase() === username.toLowerCase(),
+  );
+}
+
 function applyFilter(
   prs: PullRequestWithChecks[],
   closedPrs: PullRequestWithChecks[],
@@ -88,6 +104,8 @@ function applyFilter(
       return prs.filter(isReady);
     case 'reviewing':
       return prs.filter(isReviewing);
+    case 'needsReview':
+      return prs.filter((pr) => needsReviewFrom(pr, username));
     case 'closed':
       return closedPrs;
   }
@@ -153,6 +171,14 @@ function groupByRepo(
   return new Map(sortedEntries);
 }
 
+function prKey(pr: { repoOwner: string; repoName: string; number: number }): string {
+  return `${pr.repoOwner}/${pr.repoName}#${pr.number}`;
+}
+
+function reviewKey(pr: { repoOwner: string; repoName: string; number: number }, reviewer: string): string {
+  return `${prKey(pr)}:${reviewer.toLowerCase()}`;
+}
+
 export const usePrStore = create<PrState>()((set, get) => ({
   pullRequests: [],
   closedPullRequests: [],
@@ -163,6 +189,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
   isPolling: false,
   lastPollTime: null,
   rateLimit: null,
+  reviewRequestTimestamps: {},
 
   filteredPrs: () => {
     const { pullRequests, closedPullRequests, filter, searchQuery, sortBy, username } = get();
@@ -184,11 +211,60 @@ export const usePrStore = create<PrState>()((set, get) => ({
       failing: pullRequests.filter(isFailing).length,
       ready: pullRequests.filter(isReady).length,
       reviewing: pullRequests.filter(isReviewing).length,
+      needsReview: pullRequests.filter((pr) => needsReviewFrom(pr, username)).length,
       closed: closedPullRequests.length,
     };
   },
 
-  setPullRequests: (prs) => set({ pullRequests: prs }),
+  needsMyReview: () => {
+    const { pullRequests, username, reviewRequestTimestamps } = get();
+    if (!username) return [];
+    return pullRequests
+      .filter((pr) => needsReviewFrom(pr, username))
+      .sort((a, b) => {
+        const aKey = reviewKey(a.pullRequest, username);
+        const bKey = reviewKey(b.pullRequest, username);
+        const aTime = reviewRequestTimestamps[aKey] ?? a.pullRequest.updatedAt;
+        const bTime = reviewRequestTimestamps[bKey] ?? b.pullRequest.updatedAt;
+        // Longest waiting first
+        return new Date(aTime).getTime() - new Date(bTime).getTime();
+      });
+  },
+
+  getReviewRequestedAt: (prKeyStr, reviewer) => {
+    const key = `${prKeyStr}:${reviewer.toLowerCase()}`;
+    return get().reviewRequestTimestamps[key];
+  },
+
+  teamReviewLoad: () => {
+    const { pullRequests, reviewRequestTimestamps } = get();
+    return computeTeamReviewLoad(pullRequests, reviewRequestTimestamps);
+  },
+
+  setPullRequests: (prs) => {
+    const prev = get().reviewRequestTimestamps;
+    const next = { ...prev };
+    const activeKeys = new Set<string>();
+
+    for (const pr of prs) {
+      for (const reviewer of pr.pullRequest.requestedReviewers) {
+        const key = reviewKey(pr.pullRequest, reviewer);
+        activeKeys.add(key);
+        if (!next[key]) {
+          next[key] = new Date().toISOString();
+        }
+      }
+    }
+
+    // Clean up timestamps for reviewers no longer requested
+    for (const key of Object.keys(next)) {
+      if (!activeKeys.has(key)) {
+        delete next[key];
+      }
+    }
+
+    set({ pullRequests: prs, reviewRequestTimestamps: next });
+  },
   setClosedPullRequests: (prs) => set({ closedPullRequests: prs }),
   setFilter: (filter) => set({ filter }),
   setSearchQuery: (query) => set({ searchQuery: query }),

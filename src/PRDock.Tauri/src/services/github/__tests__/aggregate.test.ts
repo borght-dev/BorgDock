@@ -37,6 +37,7 @@ function makePullRequest(overrides: Partial<PullRequest> = {}): PullRequest {
     deletions: 5,
     changedFiles: 2,
     commitCount: 1,
+    requestedReviewers: [],
     ...overrides,
   };
 }

@@ -42,6 +42,7 @@ function makePr(overrides: {
       deletions: 5,
       changedFiles: 2,
       commitCount: 1,
+      requestedReviewers: [],
     },
     checks: [],
     overallStatus: overrides.overallStatus ?? 'green',

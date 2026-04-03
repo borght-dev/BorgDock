@@ -39,6 +39,7 @@ interface GitHubPullRequestDto {
   head: GitHubRefDto | null;
   base: GitHubRefDto | null;
   labels: GitHubLabelDto[] | null;
+  requested_reviewers: GitHubUserDto[] | null;
 }
 
 interface GitHubReviewDto {
@@ -98,6 +99,7 @@ export async function getOpenPRs(
       pr.changedFiles = detail.changed_files ?? 0;
       pr.commitCount = detail.commits ?? 0;
       pr.reviewStatus = aggregateReviewStatus(reviews);
+      pr.requestedReviewers = detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
     }),
   );
 
@@ -224,5 +226,6 @@ function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string
     commitCount: dto.commits,
     mergedAt: dto.merged_at ?? undefined,
     closedAt: dto.closed_at ?? undefined,
+    requestedReviewers: dto.requested_reviewers?.map((u) => u.login) ?? [],
   };
 }

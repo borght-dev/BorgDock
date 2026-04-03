@@ -44,6 +44,9 @@ export interface NotificationSettings {
   toastOnNewPR: boolean;
   toastOnReviewUpdate: boolean;
   onlyMyPRs: boolean;
+  reviewNudgeEnabled: boolean;
+  reviewNudgeIntervalMinutes: number;
+  reviewNudgeEscalation: boolean;
 }
 
 export interface ClaudeCodeSettings {

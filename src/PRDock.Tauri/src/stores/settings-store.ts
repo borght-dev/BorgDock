@@ -33,6 +33,9 @@ const defaultSettings: AppSettings = {
     toastOnNewPR: false,
     toastOnReviewUpdate: true,
     onlyMyPRs: false,
+    reviewNudgeEnabled: true,
+    reviewNudgeIntervalMinutes: 60,
+    reviewNudgeEscalation: true,
   },
   claudeCode: {
     defaultPostFixAction: 'commitAndNotify',
