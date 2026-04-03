@@ -1,0 +1,12 @@
+{
+  "identifier": "worktree-capability",
+  "description": "Permissions for the worktree palette window",
+  "windows": ["worktree-palette"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:event:default"
+  ]
+}

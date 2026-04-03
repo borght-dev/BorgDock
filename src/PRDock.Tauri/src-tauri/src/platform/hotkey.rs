@@ -75,6 +75,44 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
 
+    // Register worktree palette shortcut (Ctrl+F7)
+    let app_worktree = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F7", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+
+            // If worktree palette already exists, focus it
+            if let Some(win) = app_worktree.get_webview_window("worktree-palette") {
+                let _ = win.set_focus();
+                return;
+            }
+
+            // Create a new worktree palette window
+            if let Ok(win) = WebviewWindowBuilder::new(
+                &app_worktree,
+                "worktree-palette",
+                tauri::WebviewUrl::App("worktree.html".into()),
+            )
+            .title("PRDock Worktrees")
+            .inner_size(520.0, 420.0)
+            .decorations(false)
+            .always_on_top(true)
+            .resizable(false)
+            .skip_taskbar(true)
+            .center()
+            .focused(true)
+            .build()
+            {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    let _ = win.set_focus();
+                });
+            }
+        })
+        .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
+
     // Register SQL window shortcut (Ctrl+F10)
     let app_sql = app.clone();
     app.global_shortcut()

@@ -167,6 +167,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const togglePrExpanded = useUiStore((s) => s.togglePrExpanded);
   const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
   const username = usePrStore((s) => s.username);
+  const worktreeBranchMap = useUiStore((s) => s.worktreeBranchMap);
   const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
   const showNotification = useNotificationStore((s) => s.show);
   const settings = useSettingsStore((s) => s.settings);
@@ -175,6 +176,7 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
   const [confirmAction, setConfirmAction] = useState<'close' | 'bypass' | 'draft' | null>(null);
 
   const isMyPr = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
+  const worktreeMatch = worktreeBranchMap.get(pr.headRef.toLowerCase());
   const isSelected = selectedPrNumber === pr.number;
   const totalChecks = checks.length;
   const mergeScore = computeMergeScore(prWithChecks);
@@ -396,6 +398,22 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             <span className="rounded bg-[var(--color-branch-badge-bg,var(--color-surface-raised))] px-2 py-0.5 font-mono text-xs text-[var(--color-text-secondary)]">
               {pr.headRef}
             </span>
+            {worktreeMatch && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold font-mono"
+                style={{
+                  color: 'var(--color-accent)',
+                  background: 'var(--color-accent-subtle)',
+                  borderColor: 'rgba(124, 106, 246, 0.15)',
+                }}
+                title={`Checked out in ${worktreeMatch.fullPath}`}
+              >
+                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M4 2v12M12 8c0-3-2-4-4-4" />
+                </svg>
+                {worktreeMatch.slotName}
+              </span>
+            )}
             {prWithChecks.pendingCheckNames.length > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-[var(--color-warning-badge-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-warning-badge-fg)] border border-[var(--color-warning-badge-border)]">
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="animate-spin">

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 
 export type ActiveSection = 'prs' | 'workitems';
 
@@ -12,6 +13,8 @@ interface UiState {
   isCommandPaletteOpen: boolean;
   isDragging: boolean;
   pendingWorkItemId: number | null;
+  /** Maps branch name (lowercase) → worktree slot info */
+  worktreeBranchMap: Map<string, WorktreeBranchMapping>;
 
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
@@ -25,6 +28,7 @@ interface UiState {
   setCommandPaletteOpen: (open: boolean) => void;
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
+  setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -37,6 +41,7 @@ export const useUiStore = create<UiState>()((set) => ({
   isCommandPaletteOpen: false,
   isDragging: false,
   pendingWorkItemId: null,
+  worktreeBranchMap: new Map(),
 
   toggleSidebar: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
 
@@ -79,4 +84,6 @@ export const useUiStore = create<UiState>()((set) => ({
   setDragging: (dragging) => set({ isDragging: dragging }),
 
   setPendingWorkItemId: (id) => set({ pendingWorkItemId: id }),
+
+  setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 }));
