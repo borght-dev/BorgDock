@@ -101,13 +101,19 @@ export function useAutoHide(settings: AppSettings) {
               focusLostTimer = null;
             }
 
-            // Sidebar regained focus (e.g. taskbar click) — hide badge
-            setSidebarVisible(true);
-            try {
-              const { invoke } = await import('@tauri-apps/api/core');
-              await invoke('hide_badge');
-            } catch {
-              /* ignore */
+            // Only hide badge if the sidebar window is actually visible.
+            // Without this check, a spurious focus event on the hidden
+            // main window would hide the badge while the sidebar stays
+            // invisible — leaving the user with nothing on screen.
+            const isVisible = await win.isVisible();
+            if (isVisible) {
+              setSidebarVisible(true);
+              try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                await invoke('hide_badge');
+              } catch {
+                /* ignore */
+              }
             }
           }
         });

@@ -19,9 +19,18 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 let visible = win.is_visible().unwrap_or(false);
                 if visible {
                     let _ = win.hide();
+                    // Show badge when sidebar is hidden via hotkey
+                    if let Some(badge) = app_toggle.get_webview_window("badge") {
+                        let _ = badge.show();
+                        let _ = badge.set_always_on_top(true);
+                    }
                 } else {
                     let _ = win.show();
                     let _ = win.set_focus();
+                    // Hide badge when sidebar is shown
+                    if let Some(badge) = app_toggle.get_webview_window("badge") {
+                        let _ = badge.hide();
+                    }
                 }
             }
         })

@@ -364,6 +364,7 @@ export function PaletteApp() {
           decorations: false,
           resizable: true,
           focus: true,
+          skipTaskbar: true,
         });
       } catch (err) {
         console.error('Failed to open detail window:', err);
