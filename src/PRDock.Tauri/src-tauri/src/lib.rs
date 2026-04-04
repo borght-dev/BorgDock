@@ -79,6 +79,8 @@ pub fn run() {
             git::worktree::list_worktrees,
             git::worktree::create_worktree,
             git::worktree::remove_worktree,
+            git::worktree::open_in_terminal,
+            git::worktree::open_in_editor,
             git::commands::git_fetch,
             git::commands::git_checkout,
             git::commands::git_current_branch,
