@@ -102,6 +102,16 @@ function WorktreeSlot({
       <div className={`wt-slot-actions ${isSelected ? 'wt-slot-actions-visible' : ''}`}>
         <button
           className="wt-action-btn"
+          onClick={(e) => { e.stopPropagation(); onOpenTerminal(); }}
+          title="Open terminal here"
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 5l4 3-4 3" />
+            <path d="M9 12h4" />
+          </svg>
+        </button>
+        <button
+          className="wt-action-btn"
           onClick={(e) => { e.stopPropagation(); onOpenFolder(); }}
           title="Open folder"
         >
