@@ -66,6 +66,7 @@ interface GitHubFileChangeDto {
   deletions: number;
   patch?: string;
   previous_filename?: string;
+  sha?: string;
 }
 
 // --- Public API ---
@@ -146,17 +147,51 @@ export async function getPRFiles(
   repo: string,
   prNumber: number,
 ): Promise<PullRequestFileChange[]> {
-  const dtos = await client.get<GitHubFileChangeDto[]>(
-    `repos/${owner}/${repo}/pulls/${prNumber}/files`,
+  const allFiles: PullRequestFileChange[] = [];
+  let page = 1;
+
+  while (true) {
+    const dtos = await client.get<GitHubFileChangeDto[]>(
+      `repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100&page=${page}`,
+    );
+
+    for (const d of dtos) {
+      allFiles.push({
+        filename: d.filename ?? '',
+        status: d.status ?? '',
+        additions: d.additions,
+        deletions: d.deletions,
+        patch: d.patch,
+        previousFilename: d.previous_filename,
+        sha: d.sha,
+      });
+    }
+
+    if (dtos.length < 100) break;
+    page++;
+  }
+
+  return allFiles;
+}
+
+export async function getCommitFiles(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  commitSha: string,
+): Promise<PullRequestFileChange[]> {
+  const dto = await client.get<{ files?: GitHubFileChangeDto[] }>(
+    `repos/${owner}/${repo}/commits/${commitSha}`,
   );
 
-  return dtos.map((d) => ({
+  return (dto.files ?? []).map((d) => ({
     filename: d.filename ?? '',
     status: d.status ?? '',
     additions: d.additions,
     deletions: d.deletions,
     patch: d.patch,
     previousFilename: d.previous_filename,
+    sha: d.sha,
   }));
 }
 

@@ -55,3 +55,15 @@ export type {
   WorkItemRelation,
 } from './work-item';
 export type { WorktreeInfo } from './worktree';
+export type {
+  DiffFile,
+  DiffHunk,
+  DiffLine,
+  DiffLineType,
+  DiffViewMode,
+  FileStatus,
+  FileStatusFilter,
+  HighlightCategory,
+  HighlightSpan,
+  InlineChange,
+} from './diff';

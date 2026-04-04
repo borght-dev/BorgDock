@@ -1,0 +1,101 @@
+import { useMemo } from 'react';
+import type { DiffHunk, HighlightSpan, InlineChange } from '@/types';
+import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
+import { DiffLineContent } from './DiffLineContent';
+
+interface UnifiedDiffViewProps {
+  hunks: DiffHunk[];
+  syntaxHighlights?: Map<number, HighlightSpan[]> | null;
+}
+
+export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProps) {
+  const allLines = useMemo(() => hunks.flatMap((h) => h.lines), [hunks]);
+
+  const inlineMap = useMemo(() => {
+    const pairs = findLinePairs(allLines);
+    const map = new Map<number, { deleted: InlineChange[]; added: InlineChange[] }>();
+
+    for (const [delIdx, addIdx] of pairs) {
+      const delLine = allLines[delIdx]!;
+      const addLine = allLines[addIdx]!;
+      const result = computeInlineChanges(delLine.content, addLine.content);
+      if (result) {
+        map.set(delIdx, result);
+        map.set(addIdx, result);
+      }
+    }
+    return map;
+  }, [allLines]);
+
+  return (
+    <table className="w-full border-collapse" style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}>
+      <colgroup>
+        <col style={{ width: '44px' }} />
+        <col style={{ width: '44px' }} />
+        <col />
+      </colgroup>
+      <tbody>
+        {allLines.map((line, i) => {
+          if (line.type === 'hunk-header') {
+            return (
+              <tr key={i} style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)' }}>
+                <td colSpan={3} className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none" style={{ height: '28px' }}>
+                  {line.content}
+                </td>
+              </tr>
+            );
+          }
+
+          const bgColor =
+            line.type === 'add'
+              ? 'var(--color-diff-added-bg)'
+              : line.type === 'delete'
+                ? 'var(--color-diff-deleted-bg)'
+                : 'var(--color-diff-context-bg)';
+
+          const gutterBg =
+            line.type === 'add'
+              ? 'var(--color-diff-added-gutter-bg)'
+              : line.type === 'delete'
+                ? 'var(--color-diff-deleted-gutter-bg)'
+                : 'transparent';
+
+          const prefix = line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' ';
+
+          const inlineData = inlineMap.get(i);
+          const inlineChanges: InlineChange[] | undefined =
+            inlineData
+              ? line.type === 'delete'
+                ? inlineData.deleted
+                : line.type === 'add'
+                  ? inlineData.added
+                  : undefined
+              : undefined;
+
+          const syntaxSpans = syntaxHighlights?.get(i);
+
+          return (
+            <tr key={i} style={{ backgroundColor: bgColor }}>
+              <td
+                className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                style={{ backgroundColor: gutterBg, userSelect: 'none' }}
+              >
+                {line.oldLineNumber ?? ''}
+              </td>
+              <td
+                className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                style={{ backgroundColor: gutterBg, userSelect: 'none' }}
+              >
+                {line.newLineNumber ?? ''}
+              </td>
+              <td className="pl-2 whitespace-pre overflow-x-auto">
+                <span className="select-none text-[var(--color-diff-line-number)] mr-1">{prefix}</span>
+                <DiffLineContent content={line.content} inlineChanges={inlineChanges} syntaxSpans={syntaxSpans} />
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}

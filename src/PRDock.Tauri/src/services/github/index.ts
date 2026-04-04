@@ -9,7 +9,7 @@ export {
 export type { RateLimit } from './client';
 export { GitHubApiError, GitHubAuthError, GitHubClient } from './client';
 export { mergePullRequest, postComment, submitReview, toggleDraft } from './mutations';
-export { aggregateReviewStatus, getClosedPRs, getOpenPRs, getPRCommits, getPRFiles } from './pulls';
+export { aggregateReviewStatus, getClosedPRs, getCommitFiles, getOpenPRs, getPRCommits, getPRFiles } from './pulls';
 export {
   detectSeverity,
   getAllComments,

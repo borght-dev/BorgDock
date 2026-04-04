@@ -118,7 +118,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
       </div>
 
       {/* Tab content — all tabs rendered eagerly for instant switching */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
         <div className={activeTab === 'Overview' ? '' : 'hidden'}>
           <OverviewTab pr={pr} />
         </div>
@@ -129,11 +129,12 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
             repoName={pr.pullRequest.repoName}
           />
         </div>
-        <div className={activeTab === 'Files' ? '' : 'hidden'}>
+        <div className={activeTab === 'Files' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
           <FilesTab
             prNumber={pr.pullRequest.number}
             repoOwner={pr.pullRequest.repoOwner}
             repoName={pr.pullRequest.repoName}
+            htmlUrl={pr.pullRequest.htmlUrl}
           />
         </div>
         <div className={activeTab === 'Checks' ? '' : 'hidden'}>

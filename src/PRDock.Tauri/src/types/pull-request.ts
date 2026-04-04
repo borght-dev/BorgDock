@@ -57,4 +57,5 @@ export interface PullRequestFileChange {
   deletions: number;
   patch?: string;
   previousFilename?: string;
+  sha?: string;
 }

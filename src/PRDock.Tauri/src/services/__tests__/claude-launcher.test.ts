@@ -206,7 +206,8 @@ describe('buildMonitorPrompt', () => {
   it('includes PR number and title', () => {
     const prompt = buildMonitorPrompt(makePrWithChecks(), makeRepoSettings());
 
-    expect(prompt).toContain('#42 Fix login flow');
+    expect(prompt).toContain('#42');
+    expect(prompt).toContain('Fix login flow');
   });
 
   it('includes current status', () => {
@@ -215,16 +216,16 @@ describe('buildMonitorPrompt', () => {
       makeRepoSettings(),
     );
 
-    expect(prompt).toContain('**Status:** red');
+    expect(prompt).toContain('**Current status:** red');
   });
 
   it('includes monitoring instructions', () => {
     const prompt = buildMonitorPrompt(makePrWithChecks(), makeRepoSettings());
 
-    expect(prompt).toContain('Monitor this PR for any issues');
-    expect(prompt).toContain('New check failures');
-    expect(prompt).toContain('Review comments that need addressing');
+    expect(prompt).toContain('monitoring this PR');
+    expect(prompt).toContain('Check CI status');
+    expect(prompt).toContain('Review comments');
     expect(prompt).toContain('Merge conflicts');
-    expect(prompt).toContain('fix them automatically');
+    expect(prompt).toContain('fix cycles');
   });
 });

@@ -172,7 +172,18 @@
 
   /* Diff */
   --color-diff-added-bg: rgba(59, 166, 142, 0.07);
+  --color-diff-added-bg-highlight: rgba(59, 166, 142, 0.20);
+  --color-diff-added-gutter-bg: rgba(59, 166, 142, 0.05);
   --color-diff-deleted-bg: rgba(199, 50, 79, 0.06);
+  --color-diff-deleted-bg-highlight: rgba(199, 50, 79, 0.18);
+  --color-diff-deleted-gutter-bg: rgba(199, 50, 79, 0.04);
+  --color-diff-context-bg: transparent;
+  --color-diff-hunk-header-bg: rgba(90, 86, 112, 0.04);
+  --color-diff-hunk-header-text: #8A85A0;
+  --color-diff-line-number: #B8B0C8;
+  --color-diff-file-header-bg: rgba(90, 86, 112, 0.03);
+  --color-diff-file-header-border: rgba(90, 86, 112, 0.08);
+  --color-diff-border: rgba(90, 86, 112, 0.08);
   --color-diff-hunk-header: rgba(90, 86, 112, 0.04);
   --color-tab-active: #6655D4;
   --color-tab-inactive: #5A5670;
@@ -184,6 +195,14 @@
   --color-syntax-comment: #8A85A0;
   --color-syntax-number: #B07D09;
   --color-syntax-type: #C7324F;
+  --color-syntax-function: #3A3550;
+  --color-syntax-variable: #1A1726;
+  --color-syntax-operator: #5A5670;
+  --color-syntax-punctuation: #8A85A0;
+  --color-syntax-constant: #6655D4;
+  --color-syntax-property: #3A3550;
+  --color-syntax-tag: #C7324F;
+  --color-syntax-attribute: #B07D09;
   --color-syntax-plain: #1A1726;
 
   /* Code font */
@@ -356,7 +375,18 @@
   --color-badge-progress-track: rgba(255, 255, 255, 0.06);
 
   --color-diff-added-bg: rgba(125, 211, 192, 0.1);
+  --color-diff-added-bg-highlight: rgba(125, 211, 192, 0.25);
+  --color-diff-added-gutter-bg: rgba(125, 211, 192, 0.06);
   --color-diff-deleted-bg: rgba(229, 64, 101, 0.1);
+  --color-diff-deleted-bg-highlight: rgba(229, 64, 101, 0.22);
+  --color-diff-deleted-gutter-bg: rgba(229, 64, 101, 0.06);
+  --color-diff-context-bg: transparent;
+  --color-diff-hunk-header-bg: rgba(138, 133, 160, 0.06);
+  --color-diff-hunk-header-text: #5A5670;
+  --color-diff-line-number: #3A3650;
+  --color-diff-file-header-bg: rgba(138, 133, 160, 0.04);
+  --color-diff-file-header-border: rgba(138, 133, 160, 0.08);
+  --color-diff-border: rgba(138, 133, 160, 0.08);
   --color-diff-hunk-header: rgba(138, 133, 160, 0.06);
   --color-tab-active: #9384F7;
   --color-tab-inactive: #8A85A0;
@@ -367,6 +397,14 @@
   --color-syntax-comment: #5A5670;
   --color-syntax-number: #F5B73B;
   --color-syntax-type: #E54065;
+  --color-syntax-function: #C8C4D6;
+  --color-syntax-variable: #EDEAF4;
+  --color-syntax-operator: #8A85A0;
+  --color-syntax-punctuation: #5A5670;
+  --color-syntax-constant: #B8B0F8;
+  --color-syntax-property: #C8C4D6;
+  --color-syntax-tag: #E54065;
+  --color-syntax-attribute: #F5B73B;
   --color-syntax-plain: #EDEAF4;
 
   --color-wizard-step-active: #9384F7;

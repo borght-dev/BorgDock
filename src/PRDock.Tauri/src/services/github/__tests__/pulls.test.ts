@@ -50,7 +50,8 @@ describe('getOpenPRs', () => {
 
     // First call: PR list
     getSpy.mockResolvedValueOnce([fakePrDto]);
-    // Second call: reviews for PR #42
+    // Second + third call (parallel): individual PR detail + reviews for PR #42
+    getSpy.mockResolvedValueOnce({ ...fakePrDto, mergeable: true, requested_reviewers: [] });
     getSpy.mockResolvedValueOnce([{ state: 'APPROVED', user: { login: 'bob', avatar_url: '' } }]);
 
     const result = await getOpenPRs(client, 'owner', 'repo');
@@ -71,6 +72,7 @@ describe('getOpenPRs', () => {
     expect(pr.repoName).toBe('repo');
 
     expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls?state=open');
+    expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls/42');
     expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls/42/reviews');
   });
 
@@ -78,6 +80,9 @@ describe('getOpenPRs', () => {
     const getSpy = vi.mocked(client.get);
 
     getSpy.mockResolvedValueOnce([fakePrDto]);
+    // Detail + reviews are fetched in parallel via Promise.all inside Promise.allSettled.
+    // If either rejects, the whole per-PR Promise.all rejects, and allSettled catches it.
+    getSpy.mockRejectedValueOnce(new Error('Network error'));
     getSpy.mockRejectedValueOnce(new Error('Network error'));
 
     const result = await getOpenPRs(client, 'owner', 'repo');

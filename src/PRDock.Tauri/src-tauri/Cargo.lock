@@ -3471,7 +3471,7 @@ dependencies = [
 
 [[package]]
 name = "prdock"
-version = "1.0.6"
+version = "1.0.10"
 dependencies = [
  "chrono",
  "dirs 6.0.0",
