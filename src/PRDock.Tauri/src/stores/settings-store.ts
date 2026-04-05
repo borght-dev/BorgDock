@@ -32,13 +32,19 @@ const defaultSettings: AppSettings = {
     toastOnCheckStatusChange: true,
     toastOnNewPR: false,
     toastOnReviewUpdate: true,
+    toastOnMergeable: true,
     onlyMyPRs: false,
     reviewNudgeEnabled: true,
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
+    deduplicationWindowSeconds: 60,
   },
   claudeCode: {
     defaultPostFixAction: 'commitAndNotify',
+  },
+  claudeApi: {
+    model: 'claude-sonnet-4-6',
+    maxTokens: 1024,
   },
   claudeReview: {
     botUsername: 'claude[bot]',
@@ -60,6 +66,7 @@ const defaultSettings: AppSettings = {
   sql: {
     connections: [],
   },
+  repoPriority: {},
 };
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({

@@ -2,9 +2,18 @@ import type { ReviewSlaTier } from '@/services/review-sla';
 import type { InAppNotification, PullRequest, PullRequestWithChecks } from '@/types';
 
 export interface StateTransition {
-  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested' | 'reviewRequested' | 'merged';
+  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested' | 'reviewRequested' | 'merged' | 'becameMergeable';
   pr: PullRequest;
   detail?: string;
+}
+
+export function isReadyToMerge(pr: PullRequestWithChecks): boolean {
+  return (
+    pr.overallStatus === 'green' &&
+    !pr.pullRequest.isDraft &&
+    pr.pullRequest.mergeable !== false &&
+    pr.pullRequest.reviewStatus === 'approved'
+  );
 }
 
 // --- State transition detection ---
@@ -71,6 +80,14 @@ export function detectStateTransitions(
     if (!prev.pullRequest.mergedAt && cur.pullRequest.mergedAt) {
       transitions.push({
         type: 'merged',
+        pr: cur.pullRequest,
+      });
+    }
+
+    // Became mergeable transition: was not ready → now ready
+    if (!isReadyToMerge(prev) && isReadyToMerge(cur)) {
+      transitions.push({
+        type: 'becameMergeable',
         pr: cur.pullRequest,
       });
     }
@@ -208,6 +225,21 @@ export function buildReviewNudgeNotification(
     repoFullName: `${pr.repoOwner}/${pr.repoName}`,
     actions: [
       { label: 'Start Review', url: `${pr.htmlUrl}/files` },
+    ],
+  };
+}
+
+export function buildBecameMergeableNotification(pr: PullRequest): InAppNotification {
+  return {
+    title: 'PR ready to merge',
+    message: `#${pr.number} ${pr.title} (${pr.repoOwner}/${pr.repoName})`,
+    severity: 'success',
+    launchUrl: pr.htmlUrl,
+    prNumber: pr.number,
+    repoFullName: `${pr.repoOwner}/${pr.repoName}`,
+    actions: [
+      { label: 'Merge', url: `prdock://merge/${pr.repoOwner}/${pr.repoName}/${pr.number}` },
+      { label: 'Open in GitHub', url: pr.htmlUrl },
     ],
   };
 }

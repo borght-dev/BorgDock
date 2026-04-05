@@ -18,6 +18,7 @@ function dispatchRefresh() {
 }
 
 const sections: { key: ActiveSection; label: string }[] = [
+  { key: 'focus', label: 'Focus' },
   { key: 'prs', label: 'PRs' },
   { key: 'workitems', label: 'Work Items' },
 ];
@@ -35,6 +36,7 @@ export function Header() {
   void username;
 
   const counts = getCounts();
+  const focusCount = usePrStore((s) => s.focusCount)();
   const hasFailing = counts.failing > 0;
 
   const handleMinimize = useCallback(async () => {
@@ -91,6 +93,11 @@ export function Header() {
             )}
           >
             {s.label}
+            {s.key === 'focus' && focusCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-1.5 text-[9px] font-bold leading-none text-white min-w-[16px] h-[14px]">
+                {focusCount}
+              </span>
+            )}
           </button>
         ))}
       </div>

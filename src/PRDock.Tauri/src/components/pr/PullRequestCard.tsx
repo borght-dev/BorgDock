@@ -15,6 +15,10 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
+import type { PriorityFactor } from '@/services/priority-scoring';
+import { detectWorkItemIds } from '@/services/work-item-linker';
+import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
+import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { LabelBadge } from './LabelBadge';
 import { MergeScoreBadge } from './MergeScoreBadge';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
@@ -24,6 +28,8 @@ import { StatusIndicator } from './StatusIndicator';
 interface PullRequestCardProps {
   prWithChecks: PullRequestWithChecks;
   isFocused?: boolean;
+  focusMode?: boolean;
+  priorityFactors?: PriorityFactor[];
 }
 
 function computeMergeScore(pr: PullRequestWithChecks): number {
@@ -160,7 +166,7 @@ function ActionButton({
   );
 }
 
-export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProps) {
+export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFactors }: PullRequestCardProps) {
   const { pullRequest: pr, overallStatus, passedCount, checks, failedCheckNames } = prWithChecks;
   const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
@@ -381,6 +387,16 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
 
         {/* Body */}
         <div className="min-w-0 flex-1">
+          {/* Focus mode: repo chip + priority reason */}
+          {focusMode && (
+            <div className="flex items-center gap-2 mb-1">
+              <span className="rounded bg-[var(--color-surface-raised)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-text-muted)]">
+                {pr.repoOwner}/{pr.repoName}
+              </span>
+              {priorityFactors && <PriorityReasonLabel factors={priorityFactors} />}
+            </div>
+          )}
+
           {/* Title */}
           <div className="text-sm font-medium leading-snug text-[var(--color-text-primary)]">
             {pr.title}
@@ -444,11 +460,14 @@ export function PullRequestCard({ prWithChecks, isFocused }: PullRequestCardProp
             )}
           </div>
 
-          {/* Labels */}
-          {pr.labels.length > 0 && (
+          {/* Labels + Work Item Links */}
+          {(pr.labels.length > 0 || detectWorkItemIds(pr).length > 0) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {pr.labels.map((label) => (
                 <LabelBadge key={label} label={label} />
+              ))}
+              {detectWorkItemIds(pr).map((id) => (
+                <LinkedWorkItemBadge key={id} workItemId={id} compact />
               ))}
             </div>
           )}

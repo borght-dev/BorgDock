@@ -18,6 +18,8 @@ export interface GitHubSettings {
   username: string;
 }
 
+export type RepoPriority = 'high' | 'normal' | 'low';
+
 export interface RepoSettings {
   owner: string;
   name: string;
@@ -26,6 +28,7 @@ export interface RepoSettings {
   worktreeSubfolder: string;
   fixPromptTemplate?: string;
 }
+
 
 export interface UiSettings {
   sidebarEdge: SidebarEdge;
@@ -43,15 +46,23 @@ export interface NotificationSettings {
   toastOnCheckStatusChange: boolean;
   toastOnNewPR: boolean;
   toastOnReviewUpdate: boolean;
+  toastOnMergeable: boolean;
   onlyMyPRs: boolean;
   reviewNudgeEnabled: boolean;
   reviewNudgeIntervalMinutes: number;
   reviewNudgeEscalation: boolean;
+  deduplicationWindowSeconds: number;
 }
 
 export interface ClaudeCodeSettings {
   defaultPostFixAction: PostFixAction;
   claudeCodePath?: string;
+}
+
+export interface ClaudeApiSettings {
+  apiKey?: string;
+  model: string;
+  maxTokens: number;
 }
 
 export interface ClaudeReviewSettings {
@@ -99,8 +110,10 @@ export interface AppSettings {
   ui: UiSettings;
   notifications: NotificationSettings;
   claudeCode: ClaudeCodeSettings;
+  claudeApi: ClaudeApiSettings;
   claudeReview: ClaudeReviewSettings;
   updates: UpdateSettings;
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
+  repoPriority: Record<string, RepoPriority>;
 }

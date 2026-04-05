@@ -23,6 +23,10 @@ pub struct AppSettings {
     pub azure_dev_ops: AzureDevOpsSettings,
     #[serde(default)]
     pub sql: SqlSettings,
+    #[serde(default)]
+    pub claude_api: ClaudeApiSettings,
+    #[serde(default)]
+    pub repo_priority: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,6 +164,26 @@ pub struct NotificationSettings {
     pub toast_on_new_pr: bool,
     #[serde(default = "default_true")]
     pub toast_on_review_update: bool,
+    #[serde(default = "default_true")]
+    pub toast_on_mergeable: bool,
+    #[serde(default)]
+    pub only_my_prs: bool,
+    #[serde(default = "default_true")]
+    pub review_nudge_enabled: bool,
+    #[serde(default = "default_nudge_interval")]
+    pub review_nudge_interval_minutes: u32,
+    #[serde(default = "default_true")]
+    pub review_nudge_escalation: bool,
+    #[serde(default = "default_dedup_window")]
+    pub deduplication_window_seconds: u32,
+}
+
+fn default_nudge_interval() -> u32 {
+    60
+}
+
+fn default_dedup_window() -> u32 {
+    60
 }
 
 impl Default for NotificationSettings {
@@ -168,6 +192,12 @@ impl Default for NotificationSettings {
             toast_on_check_status_change: true,
             toast_on_new_pr: false,
             toast_on_review_update: true,
+            toast_on_mergeable: true,
+            only_my_prs: false,
+            review_nudge_enabled: true,
+            review_nudge_interval_minutes: 60,
+            review_nudge_escalation: true,
+            deduplication_window_seconds: 60,
         }
     }
 }
@@ -189,6 +219,34 @@ impl Default for ClaudeCodeSettings {
         Self {
             default_post_fix_action: "commitAndNotify".to_string(),
             claude_code_path: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeApiSettings {
+    pub api_key: Option<String>,
+    #[serde(default = "default_claude_model")]
+    pub model: String,
+    #[serde(default = "default_claude_max_tokens")]
+    pub max_tokens: u32,
+}
+
+fn default_claude_model() -> String {
+    "claude-sonnet-4-6".to_string()
+}
+
+fn default_claude_max_tokens() -> u32 {
+    1024
+}
+
+impl Default for ClaudeApiSettings {
+    fn default() -> Self {
+        Self {
+            api_key: None,
+            model: "claude-sonnet-4-6".to_string(),
+            max_tokens: 1024,
         }
     }
 }

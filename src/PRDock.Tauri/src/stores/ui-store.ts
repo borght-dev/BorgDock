@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 
-export type ActiveSection = 'prs' | 'workitems';
+export type ActiveSection = 'prs' | 'focus' | 'workitems';
 
 interface UiState {
   isSidebarVisible: boolean;
@@ -29,12 +29,13 @@ interface UiState {
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
+  restorePersistedSection: () => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
   isSidebarVisible: true,
   isSettingsOpen: false,
-  activeSection: 'prs',
+  activeSection: 'focus',
   selectedPrNumber: null,
   expandedRepoGroups: new Set<string>(),
   expandedPrNumbers: new Set<number>(),
@@ -49,7 +50,16 @@ export const useUiStore = create<UiState>()((set) => ({
 
   setSettingsOpen: (open) => set({ isSettingsOpen: open }),
 
-  setActiveSection: (section) => set({ activeSection: section }),
+  setActiveSection: (section) => {
+    set({ activeSection: section });
+    // Persist last active section
+    import('@tauri-apps/plugin-store').then(({ load }) => {
+      load('ui-state.json').then((store) => {
+        store.set('activeSection', section);
+        store.save();
+      });
+    }).catch(() => {});
+  },
 
   selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),
 
@@ -86,4 +96,15 @@ export const useUiStore = create<UiState>()((set) => ({
   setPendingWorkItemId: (id) => set({ pendingWorkItemId: id }),
 
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
+
+  restorePersistedSection: () => {
+    import('@tauri-apps/plugin-store').then(({ load }) => {
+      load('ui-state.json').then(async (store) => {
+        const section = await store.get<ActiveSection>('activeSection');
+        if (section && (section === 'prs' || section === 'focus' || section === 'workitems')) {
+          set({ activeSection: section });
+        }
+      });
+    }).catch(() => {});
+  },
 }));

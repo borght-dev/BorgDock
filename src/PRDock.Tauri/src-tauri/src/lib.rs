@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod cache;
+pub mod claude_api;
 pub mod git;
 pub mod notification;
 pub mod platform;
@@ -106,6 +107,8 @@ pub fn run() {
             // Updater
             updater::check_for_update,
             updater::download_and_install_update,
+            // Claude API
+            claude_api::generate_pr_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

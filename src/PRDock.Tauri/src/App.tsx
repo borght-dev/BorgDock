@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useCallback, useEffect, useMemo } from 'react';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
+import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
 import { PullRequestList } from '@/components/pr/PullRequestList';
@@ -14,6 +15,7 @@ import { useBadgeSync } from '@/hooks/useBadgeSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
+import { useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useNotificationActions } from '@/hooks/useNotificationActions';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
@@ -87,6 +89,9 @@ export default function App() {
   // Keyboard navigation
   useKeyboardNav();
 
+  // Quick Review keyboard shortcuts
+  useQuickReviewKeyboard();
+
   // OS toast notification click/button actions
   useNotificationActions();
 
@@ -98,6 +103,11 @@ export default function App() {
 
   // Run at startup sync
   useRunAtStartup(settings);
+
+  // Restore persisted active section on mount
+  useEffect(() => {
+    useUiStore.getState().restorePersistedSection();
+  }, []);
 
   // Command palette: select a work item → switch to work items section and open detail
   const handlePaletteSelectWorkItem = useCallback((id: number) => {
@@ -163,11 +173,14 @@ export default function App() {
   return (
     <>
       <Sidebar>
+        {activeSection === 'focus' && <FocusList />}
         {activeSection === 'prs' && <PullRequestList />}
         {activeSection === 'workitems' && <WorkItemsSection />}
       </Sidebar>
       <SettingsFlyout />
       <NotificationOverlay />
+      <MergeToast />
+      <QuickReviewOverlay />
       <CommandPalette onSelectWorkItem={handlePaletteSelectWorkItem} />
     </>
   );

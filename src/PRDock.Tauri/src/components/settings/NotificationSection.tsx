@@ -94,6 +94,11 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
         checked={notifications.toastOnReviewUpdate}
         onChange={(v) => update({ toastOnReviewUpdate: v })}
       />
+      <ToggleRow
+        label="PR becomes mergeable"
+        checked={notifications.toastOnMergeable}
+        onChange={(v) => update({ toastOnMergeable: v })}
+      />
 
       <div className="my-2 h-px bg-[var(--color-separator)]" />
 

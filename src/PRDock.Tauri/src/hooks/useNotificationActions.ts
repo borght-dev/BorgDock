@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { performFixWithClaude } from '@/services/claude-launcher';
 import { bypassMergePullRequest, mergePullRequest, submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
+import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 
 interface NotificationActionPayload {
   action: string;
@@ -58,6 +61,14 @@ async function handleNotificationAction(payload: NotificationActionPayload) {
       await performBypassMerge(owner, repo, number);
       break;
 
+    case 'fix-with-claude':
+      await performFix(owner, repo, number);
+      break;
+
+    case 'rerun':
+      await performRerun(owner, repo, number);
+      break;
+
     default:
       console.warn('Unknown notification action:', action);
   }
@@ -97,6 +108,63 @@ async function performBypassMerge(owner: string, repo: string, number: number) {
     showSuccess(`PR #${number} bypass-merged`);
   } catch (err) {
     showError(`Failed to bypass merge PR #${number}: ${err}`);
+  }
+}
+
+async function performFix(owner: string, repo: string, number: number) {
+  // Find the PR's branch name from the store
+  const prs = usePrStore.getState().pullRequests;
+  const pr = prs.find(
+    (p) =>
+      p.pullRequest.repoOwner === owner &&
+      p.pullRequest.repoName === repo &&
+      p.pullRequest.number === number,
+  );
+  const branch = pr?.pullRequest.headRef ?? `pr-${number}`;
+  const settings = useSettingsStore.getState().settings;
+
+  try {
+    await performFixWithClaude(owner, repo, number, branch, settings);
+    showSuccess(`Claude is fixing PR #${number}`);
+  } catch (err) {
+    showError(`Failed to fix PR #${number}: ${err}`);
+  }
+}
+
+async function performRerun(owner: string, repo: string, number: number) {
+  // Find a failed check to rerun
+  const prs = usePrStore.getState().pullRequests;
+  const pr = prs.find(
+    (p) =>
+      p.pullRequest.repoOwner === owner &&
+      p.pullRequest.repoName === repo &&
+      p.pullRequest.number === number,
+  );
+  if (!pr) {
+    showError(`PR #${number} not found`);
+    return;
+  }
+
+  const failedCheck = pr.checks.find(
+    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
+  );
+  if (!failedCheck) {
+    showError('No failed checks to re-run');
+    return;
+  }
+
+  const client = getClient();
+  if (!client) {
+    showError('GitHub client not initialized');
+    return;
+  }
+
+  try {
+    const { rerunWorkflow } = await import('@/services/github/checks');
+    await rerunWorkflow(client, owner, repo, failedCheck.checkSuiteId);
+    showSuccess(`Re-running checks for PR #${number}`);
+  } catch (err) {
+    showError(`Failed to re-run checks: ${err}`);
   }
 }
 

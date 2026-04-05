@@ -2,6 +2,9 @@ import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
+import { useSettingsStore } from '@/stores/settings-store';
+import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import {
   bypassMergePullRequest,
   mergePullRequest,
@@ -11,6 +14,7 @@ import {
 } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import type { PullRequestWithChecks } from '@/types';
+import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
 interface OverviewTabProps {
@@ -66,6 +70,34 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   );
   const [commentBody, setCommentBody] = useState('');
   const { resolveConflicts } = useClaudeActions();
+  const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
+  const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
+  const sKey = summaryKey(p.repoOwner, p.repoName, p.number);
+  const cachedSummary = useSummaryStore((s) => s.getSummary(sKey, p.updatedAt));
+  const summaryLoading = useSummaryStore((s) => s.isLoading(sKey));
+  const [summaryError, setSummaryError] = useState('');
+  const [summaryExpanded, setSummaryExpanded] = useState(true);
+
+  const handleGenerateSummary = useCallback(async () => {
+    setSummaryError('');
+    useSummaryStore.getState().setLoading(sKey, true);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const text = await invoke<string>('generate_pr_summary', {
+        title: p.title,
+        body: p.body,
+        changedFiles: [], // v1: no file list from this view
+        branchName: p.headRef,
+        labels: p.labels,
+        additions: p.additions,
+        deletions: p.deletions,
+      });
+      useSummaryStore.getState().setSummary(sKey, text, p.updatedAt);
+    } catch (err) {
+      useSummaryStore.getState().setLoading(sKey, false);
+      setSummaryError(String(err));
+    }
+  }, [sKey, p]);
 
   const handleResolveConflicts = useCallback(async () => {
     setActionStatus('Launching Claude to resolve conflicts...');
@@ -240,6 +272,97 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Merge Readiness Checklist */}
       <MergeReadinessChecklist pr={pr} />
+
+      {/* AI Summary */}
+      {claudeApiKey ? (
+        <div className="space-y-2">
+          {!cachedSummary && !summaryLoading && (
+            <button
+              onClick={handleGenerateSummary}
+              className="w-full rounded-md border border-[var(--color-purple-border,#6655D4)] bg-[var(--color-purple-soft,color-mix(in_srgb,#9384F7_8%,transparent))] px-3 py-1.5 text-xs font-medium text-[var(--color-purple,#9384F7)] hover:opacity-80 transition-opacity"
+            >
+              Summarize with AI
+            </button>
+          )}
+          {summaryLoading && (
+            <div className="flex items-center gap-2 rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+              Generating summary...
+            </div>
+          )}
+          {summaryError && (
+            <div className="rounded-md border border-[var(--color-error-badge-border)] bg-[var(--color-error-badge-bg)] px-3 py-2 text-xs text-[var(--color-error-badge-fg)]">
+              {summaryError}
+              <button
+                onClick={handleGenerateSummary}
+                className="ml-2 text-[var(--color-accent)] hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {cachedSummary && (
+            <div className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]">
+              <button
+                onClick={() => setSummaryExpanded(!summaryExpanded)}
+                className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]"
+              >
+                AI Summary
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  {summaryExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
+                </svg>
+              </button>
+              {summaryExpanded && (
+                <div className="border-t border-[var(--color-separator)] px-3 py-2">
+                  <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{cachedSummary}</ReactMarkdown>
+                  </div>
+                  <button
+                    onClick={() => {
+                      useSummaryStore.getState().invalidate(sKey);
+                      handleGenerateSummary();
+                    }}
+                    className="mt-2 text-[10px] text-[var(--color-accent)] hover:underline"
+                  >
+                    Regenerate
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-[10px] text-[var(--color-text-ghost)]">
+          Configure an API key in Settings to enable AI summaries
+        </div>
+      )}
+
+      {/* Linked Work Items */}
+      {workItemIds.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
+            Linked Work Items
+          </div>
+          {workItemIds.map((id) => (
+            <LinkedWorkItemBadge
+              key={id}
+              workItemId={id}
+              workItem={workItems.find((w) => w.id === id)}
+            />
+          ))}
+          {workItemsLoading && (
+            <div className="text-[10px] text-[var(--color-text-muted)]">Loading work items...</div>
+          )}
+        </div>
+      )}
 
       {/* Action buttons — layered hierarchy: primary > secondary > ghost > danger */}
       <div className="flex flex-wrap gap-2">

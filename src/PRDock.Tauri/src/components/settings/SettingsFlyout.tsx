@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { AppSettings } from '@/types';
 import { AdoSection } from './AdoSection';
 import { AppearanceSection } from './AppearanceSection';
+import { ClaudeApiSection } from './ClaudeApiSection';
 import { ClaudeSection } from './ClaudeSection';
 import { GitHubSection } from './GitHubSection';
 import { NotificationSection } from './NotificationSection';
@@ -100,6 +101,13 @@ export function SettingsFlyout() {
             <ClaudeSection
               claudeCode={settings.claudeCode}
               onChange={(claudeCode) => update({ claudeCode })}
+            />
+          </SectionCard>
+
+          <SectionCard title="Claude API (PR Summary)">
+            <ClaudeApiSection
+              claudeApi={settings.claudeApi}
+              onChange={(claudeApi) => update({ claudeApi })}
             />
           </SectionCard>
 

@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import {
+  computePriorityScores,
+  sortByPriority,
+  type PriorityScore,
+} from '@/services/priority-scoring';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -33,6 +38,12 @@ interface PrState {
   getReviewRequestedAt: (prKey: string, reviewer: string) => string | undefined;
   /** Team review load — aggregate pending reviews per reviewer */
   teamReviewLoad: () => ReviewerLoad[];
+  /** Priority scores for Focus Mode */
+  priorityScores: () => Map<number, PriorityScore>;
+  /** PRs sorted by priority for Focus Mode */
+  focusPrs: () => PullRequestWithChecks[];
+  /** Count of non-zero-score PRs for Focus badge */
+  focusCount: () => number;
 
   setPullRequests: (prs: PullRequestWithChecks[]) => void;
   setClosedPullRequests: (prs: PullRequestWithChecks[]) => void;
@@ -239,6 +250,28 @@ export const usePrStore = create<PrState>()((set, get) => ({
   teamReviewLoad: () => {
     const { pullRequests, reviewRequestTimestamps } = get();
     return computeTeamReviewLoad(pullRequests, reviewRequestTimestamps);
+  },
+
+  priorityScores: () => {
+    const { pullRequests, username, reviewRequestTimestamps } = get();
+    return computePriorityScores(pullRequests, username, reviewRequestTimestamps);
+  },
+
+  focusPrs: () => {
+    const { pullRequests } = get();
+    const scores = get().priorityScores();
+    return sortByPriority(pullRequests, scores).filter(
+      (pr) => (scores.get(pr.pullRequest.number)?.total ?? 0) > 0,
+    );
+  },
+
+  focusCount: () => {
+    const scores = get().priorityScores();
+    let count = 0;
+    for (const score of scores.values()) {
+      if (score.total > 0) count++;
+    }
+    return count;
   },
 
   setPullRequests: (prs) => {

@@ -196,6 +196,42 @@ export function buildMonitorPrompt(pr: PullRequestWithChecks, repoSettings: Repo
   return prompt;
 }
 
+// Standalone fix launcher — callable from non-hook context (e.g., notification actions)
+export async function performFixWithClaude(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  branch: string,
+  settings: { repos: RepoSettings[] },
+): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  const repoConfig = settings.repos.find((r) => r.owner === owner && r.name === repo);
+  if (!repoConfig?.worktreeBasePath) {
+    throw new Error(`No worktree path configured for ${owner}/${repo}`);
+  }
+
+  // List worktrees to find or create one
+  const worktrees = await invoke<Array<{ path: string; branchName: string; isMainWorktree: boolean }>>(
+    'list_worktrees',
+    { basePath: repoConfig.worktreeBasePath },
+  );
+  const existing = worktrees.find(
+    (w) => w.branchName === branch || w.branchName === `refs/heads/${branch}`,
+  );
+  const worktreePath = existing
+    ? existing.path
+    : await invoke<string>('create_worktree', {
+        basePath: repoConfig.worktreeBasePath,
+        subfolder: repoConfig.worktreeSubfolder || '.worktrees',
+        branchName: branch,
+      });
+
+  // Build a minimal fix prompt
+  const prompt = `# Fix CI Failures\n\nPR #${prNumber} in ${owner}/${repo} on branch ${branch} has failing checks. Diagnose and fix them.\n`;
+  const promptFile = await writePromptFile(prompt);
+  await launchClaude(worktreePath, promptFile, `Fix PR #${prNumber}`);
+}
+
 // Write prompt content to a temp file
 export async function writePromptFile(content: string): Promise<string> {
   const { writeTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
