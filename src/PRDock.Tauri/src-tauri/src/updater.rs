@@ -3,7 +3,7 @@ use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
 const GITHUB_RELEASES_API: &str =
-    "https://api.github.com/repos/AKvanderBorght/PRDock/releases";
+    "https://api.github.com/repos/borght-dev/PRDock/releases";
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
