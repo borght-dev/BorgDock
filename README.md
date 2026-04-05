@@ -84,6 +84,12 @@ src/PRDock.Tauri/         # Tauri + React + TypeScript application
 - **React** + **TypeScript** for UI
 - **Rust** for backend/system operations
 
+## Security Notes
+
+- **Content Security Policy** — The Tauri CSP restricts network access to the GitHub API, Azure DevOps, and GitHub avatar CDN. All other external requests are blocked.
+- **Updater transport** — The auto-updater fetches release metadata from the GitHub API (over HTTPS), then serves it to the Tauri updater plugin via a short-lived local HTTP server on `127.0.0.1`. The `dangerousInsecureTransportProtocol` setting is required for this loopback-only server; no data is sent over the network unencrypted.
+- **Credentials** — GitHub tokens are stored in the OS-level Tauri store (per-user, not in the repo). No secrets are hardcoded in the source.
+
 ## License
 
-This is a personal developer tool. See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE).

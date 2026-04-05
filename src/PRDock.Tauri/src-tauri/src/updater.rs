@@ -3,7 +3,7 @@ use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
 const GITHUB_RELEASES_API: &str =
-    "https://api.github.com/repos/borght-dev/PRDock/releases";
+    "https://api.github.com/repos/AKvanderBorght/PRDock/releases";
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -193,6 +193,13 @@ async fn download_asset(token: &Option<String>, api_url: &str) -> Result<String,
 /// Spin up a local HTTP server on a dedicated OS thread (not tokio) that serves
 /// the given body. Returns the URL and a handle to stop the server.
 /// Uses std::net to avoid tokio runtime issues on Windows.
+///
+/// # Security note
+/// This serves on `127.0.0.1` only (loopback — not reachable from the network).
+/// The `dangerousInsecureTransportProtocol` setting in tauri.conf.json is required
+/// because the Tauri updater plugin refuses `http://` URLs by default. This is safe
+/// here because the server is local-only, ephemeral, and serves pre-authenticated
+/// content fetched from the GitHub API — no secrets are exposed over the wire.
 fn serve_local(body: String) -> Result<(String, std::thread::JoinHandle<()>), String> {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("Failed to bind local server: {e}"))?;
