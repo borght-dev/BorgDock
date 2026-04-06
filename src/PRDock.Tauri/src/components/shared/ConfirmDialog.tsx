@@ -1,3 +1,4 @@
+import FocusTrap from 'focus-trap-react';
 import { useCallback, useEffect } from 'react';
 
 interface ConfirmDialogProps {
@@ -55,13 +56,17 @@ export function ConfirmDialog({
       : 'bg-[var(--color-accent)] text-white hover:opacity-90';
 
   return (
-    <>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+      <div>
       {/* Overlay */}
       <div className="fixed inset-0 z-50 bg-black/50" onClick={handleCancel} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
           className="pointer-events-auto w-full max-w-sm rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-xl p-5"
           onClick={(e) => e.stopPropagation()}
         >
@@ -85,6 +90,7 @@ export function ConfirmDialog({
           </div>
         </div>
       </div>
-    </>
+      </div>
+    </FocusTrap>
   );
 }

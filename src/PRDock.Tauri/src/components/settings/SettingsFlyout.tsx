@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import FocusTrap from 'focus-trap-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import { useOnboardingStore } from '@/stores/onboarding-store';
@@ -51,15 +52,29 @@ export function SettingsFlyout() {
     [settings, save],
   );
 
+  // Close on Escape
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isSettingsOpen, close]);
+
   if (!isSettingsOpen) return null;
 
   return (
-    <>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+      <div>
       {/* Overlay */}
       <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />
 
       {/* Flyout panel */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
         className={clsx(
           'fixed right-0 top-0 z-50 flex h-full w-[360px] flex-col',
           'bg-[var(--color-modal-bg)] border-l border-[var(--color-modal-border)]',
@@ -152,7 +167,8 @@ export function SettingsFlyout() {
 
       {/* Worktree Prune Dialog */}
       <WorktreePruneDialog isOpen={isPruneOpen} onClose={() => setIsPruneOpen(false)} />
-    </>
+      </div>
+    </FocusTrap>
   );
 }
 
