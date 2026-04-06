@@ -1,0 +1,203 @@
+import { describe, expect, it, vi, afterEach } from 'vitest';
+import { render, cleanup } from '@testing-library/react';
+import { SplitDiffView } from '../SplitDiffView';
+import type { DiffHunk, DiffLine, HighlightSpan } from '@/types';
+
+vi.mock('@/services/diff-parser', () => ({
+  findLinePairs: vi.fn(() => new Map()),
+  computeInlineChanges: vi.fn(() => null),
+}));
+
+vi.mock('@/services/syntax-highlighter', () => ({
+  getHighlightClass: (category: string) => `--color-syntax-${category}`,
+}));
+
+function makeHunk(lines: DiffLine[], header = '@@ -1,3 +1,3 @@'): DiffHunk {
+  return {
+    header,
+    oldStart: 1,
+    oldCount: 3,
+    newStart: 1,
+    newCount: 3,
+    lines,
+  };
+}
+
+describe('SplitDiffView', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders a table with 4 columns', () => {
+    const lines: DiffLine[] = [
+      { type: 'context', content: 'same', oldLineNumber: 1, newLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const cols = container.querySelectorAll('col');
+    expect(cols.length).toBe(4);
+  });
+
+  it('renders context lines on both sides', () => {
+    const lines: DiffLine[] = [
+      { type: 'context', content: 'same line', oldLineNumber: 5, newLineNumber: 5 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const cells = container.querySelectorAll('td');
+    // 4 cells: left gutter, left content, right gutter, right content
+    expect(cells.length).toBe(4);
+    expect(cells[0]?.textContent).toBe('5');
+    expect(cells[2]?.textContent).toBe('5');
+  });
+
+  it('renders deleted lines only on the left side', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'old line', oldLineNumber: 3 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const cells = container.querySelectorAll('td');
+    expect(cells[0]?.textContent).toBe('3');
+    // Right gutter should be empty
+    expect(cells[2]?.textContent).toBe('');
+  });
+
+  it('renders added lines only on the right side', () => {
+    const lines: DiffLine[] = [
+      { type: 'add', content: 'new line', newLineNumber: 4 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const cells = container.querySelectorAll('td');
+    // Left gutter should be empty
+    expect(cells[0]?.textContent).toBe('');
+    // Right gutter should have number
+    expect(cells[2]?.textContent).toBe('4');
+  });
+
+  it('pairs delete+add lines side by side', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'old', oldLineNumber: 1 },
+      { type: 'add', content: 'new', newLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const rows = container.querySelectorAll('tr');
+    // Should be 1 row with both sides filled
+    expect(rows.length).toBe(1);
+    const cells = rows[0]!.querySelectorAll('td');
+    expect(cells[0]?.textContent).toBe('1');
+    expect(cells[2]?.textContent).toBe('1');
+  });
+
+  it('handles more deletes than adds', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'del1', oldLineNumber: 1 },
+      { type: 'delete', content: 'del2', oldLineNumber: 2 },
+      { type: 'add', content: 'add1', newLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const rows = container.querySelectorAll('tr');
+    // 2 rows: first paired, second delete-only
+    expect(rows.length).toBe(2);
+  });
+
+  it('handles more adds than deletes', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'del1', oldLineNumber: 1 },
+      { type: 'add', content: 'add1', newLineNumber: 1 },
+      { type: 'add', content: 'add2', newLineNumber: 2 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const rows = container.querySelectorAll('tr');
+    expect(rows.length).toBe(2);
+  });
+
+  it('renders hunk headers spanning all 4 columns', () => {
+    const lines: DiffLine[] = [
+      { type: 'hunk-header', content: '@@ -1,3 +1,5 @@ module' },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const td = container.querySelector('td[colspan="4"]');
+    expect(td).not.toBeNull();
+    expect(td?.textContent).toContain('@@ -1,3 +1,5 @@ module');
+  });
+
+  it('applies correct background for deleted left side', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'removed', oldLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const contentCells = container.querySelectorAll('td');
+    // Left content cell (index 1) should have deleted bg
+    expect(contentCells[1]?.getAttribute('style')).toContain('var(--color-diff-deleted-bg)');
+  });
+
+  it('applies correct background for added right side', () => {
+    const lines: DiffLine[] = [
+      { type: 'add', content: 'added', newLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const contentCells = container.querySelectorAll('td');
+    // Right content cell (index 3) should have added bg
+    expect(contentCells[3]?.getAttribute('style')).toContain('var(--color-diff-added-bg)');
+  });
+
+  it('renders empty hunks without error', () => {
+    const { container } = render(<SplitDiffView hunks={[]} />);
+    const rows = container.querySelectorAll('tr');
+    expect(rows.length).toBe(0);
+  });
+
+  it('renders multiple hunks', () => {
+    const hunk1 = makeHunk([
+      { type: 'context', content: 'line1', oldLineNumber: 1, newLineNumber: 1 },
+    ]);
+    const hunk2 = makeHunk([
+      { type: 'context', content: 'line2', oldLineNumber: 10, newLineNumber: 10 },
+    ]);
+    const { container } = render(<SplitDiffView hunks={[hunk1, hunk2]} />);
+    const rows = container.querySelectorAll('tr');
+    expect(rows.length).toBe(2);
+  });
+
+  it('passes syntax highlights to DiffLineContent', () => {
+    const lines: DiffLine[] = [
+      { type: 'context', content: 'const x', oldLineNumber: 1, newLineNumber: 1 },
+    ];
+    const highlights = new Map<number, HighlightSpan[]>();
+    highlights.set(0, [{ start: 0, end: 5, category: 'keyword' }]);
+
+    const { container } = render(
+      <SplitDiffView hunks={[makeHunk(lines)]} syntaxHighlights={highlights} />,
+    );
+    const highlighted = container.querySelectorAll('span[style*="--color-syntax-keyword"]');
+    // Both left and right side should show the syntax highlight for context lines
+    expect(highlighted.length).toBe(2);
+  });
+
+  it('handles null syntaxHighlights', () => {
+    const lines: DiffLine[] = [
+      { type: 'context', content: 'hello', oldLineNumber: 1, newLineNumber: 1 },
+    ];
+    const { container } = render(
+      <SplitDiffView hunks={[makeHunk(lines)]} syntaxHighlights={null} />,
+    );
+    expect(container.querySelector('table')).not.toBeNull();
+  });
+
+  it('applies gutter background for deleted lines on left', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'removed', oldLineNumber: 2 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const firstGutter = container.querySelector('td');
+    expect(firstGutter?.getAttribute('style')).toContain('var(--color-diff-deleted-gutter-bg)');
+  });
+
+  it('applies gutter background for added lines on right', () => {
+    const lines: DiffLine[] = [
+      { type: 'add', content: 'added', newLineNumber: 2 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const gutterCells = container.querySelectorAll('td');
+    // Right gutter cell (index 2)
+    expect(gutterCells[2]?.getAttribute('style')).toContain('var(--color-diff-added-gutter-bg)');
+  });
+});
