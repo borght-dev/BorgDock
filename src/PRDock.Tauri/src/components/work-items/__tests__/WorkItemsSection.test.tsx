@@ -231,4 +231,195 @@ describe('WorkItemsSection', () => {
     render(<WorkItemsSection />);
     expect(screen.getByText('Loading work items...')).toBeDefined();
   });
+
+  // ---- Detail panel ----
+
+  it('opens detail panel when a work item is selected', async () => {
+    const { getWorkItem, getWorkItemComments, getWorkItemTypeStates } = await import(
+      '@/services/ado/workitems'
+    );
+    const fullItem = makeWorkItem(1, {
+      'System.Description': '<p>Description here</p>',
+    });
+    vi.mocked(getWorkItem).mockResolvedValue(fullItem);
+    vi.mocked(getWorkItemComments).mockResolvedValue([]);
+    vi.mocked(getWorkItemTypeStates).mockResolvedValue(['New', 'Active', 'Resolved']);
+
+    const items = [makeWorkItem(1)];
+    setupStores({ configured: true, items, queryId: 'q-1' });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+
+    // Click on the work item card
+    fireEvent.click(screen.getByText('Item 1'));
+
+    await waitFor(() => {
+      expect(getWorkItem).toHaveBeenCalledWith(expect.anything(), 1);
+    });
+  });
+
+  it('handles detail load failure gracefully', async () => {
+    const { getWorkItem } = await import('@/services/ado/workitems');
+    vi.mocked(getWorkItem).mockRejectedValue(new Error('Load failed'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const items = [makeWorkItem(1)];
+    setupStores({ configured: true, items, queryId: 'q-1' });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+
+    fireEvent.click(screen.getByText('Item 1'));
+
+    await waitFor(() => {
+      expect(getWorkItem).toHaveBeenCalled();
+    });
+    consoleSpy.mockRestore();
+  });
+
+  // ---- Filter bar interactions ----
+
+  it('changes state filter when filter bar state changes', () => {
+    const items = [
+      makeWorkItem(1, { 'System.State': 'Active' }),
+      makeWorkItem(2, { 'System.State': 'New' }),
+    ];
+    setupStores({ configured: true, items, queryId: 'q-1' });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+    // The All filter should be visible
+    expect(screen.getByText('All')).toBeDefined();
+  });
+
+  // ---- Refresh ----
+
+  it('triggers refresh when refresh button clicked', async () => {
+    const { executeQuery } = await import('@/services/ado/queries');
+    vi.mocked(executeQuery).mockResolvedValue([]);
+
+    setupStores({ configured: true, queryId: 'q-1' });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+
+    fireEvent.click(screen.getByTitle('Refresh'));
+
+    await waitFor(() => {
+      expect(executeQuery).toHaveBeenCalledWith(expect.anything(), 'q-1');
+    });
+  });
+
+  // ---- Query browser interaction ----
+
+  it('closes query browser when a query is selected', async () => {
+    setupStores({ configured: true });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'My Query',
+          path: 'Shared/My Query',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+
+    // Open the query browser
+    fireEvent.click(screen.getByText('Select a query...'));
+    expect(screen.getByText('Saved Queries')).toBeDefined();
+  });
+
+  // ---- Identity field edge cases ----
+
+  it('handles identity fields with uniqueName fallback', () => {
+    const item = makeWorkItem(7, {
+      'System.AssignedTo': { uniqueName: 'john@example.com' },
+    });
+    setupStores({ configured: true, items: [item], queryId: 'q-1' });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+    expect(screen.getAllByText('john@example.com').length).toBeGreaterThanOrEqual(1);
+  });
+
+  // ---- Age formatting ----
+
+  it('displays age for work items', () => {
+    const items = [
+      makeWorkItem(1, {
+        'System.CreatedDate': new Date(Date.now() - 86400000 * 400).toISOString(),
+      }),
+    ];
+    setupStores({ configured: true, items, queryId: 'q-1' });
+    useWorkItemsStore.setState({
+      queryTree: [
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
+      ],
+    });
+    render(<WorkItemsSection />);
+    // Should render the work item (the age appears in the card)
+    expect(screen.getByText('Item 1')).toBeDefined();
+  });
 });

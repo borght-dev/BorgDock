@@ -329,4 +329,124 @@ describe('PrContextMenu', () => {
     fireEvent.click(screen.getByText('Copy PR URL'));
     expect(writeText).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
   });
+
+  it('copies errors for Claude when there are failing checks', async () => {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+    render(
+      <PrContextMenu
+        pr={makePr({ failedCheckNames: ['build', 'lint'] })}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Copy errors for Claude'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('- build'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('- lint'));
+  });
+
+  it('calls checkout with correct params', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Checkout branch'));
+    expect(invoke).toHaveBeenCalledWith('git_fetch', { repoPath: '/code/repo', remote: 'origin' });
+  });
+
+  it('calls fixWithClaude when "Fix with Claude" is clicked', () => {
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Fix with Claude'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls monitorPr when "Monitor with Claude" is clicked', () => {
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Monitor with Claude'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls open_pr_detail_window when "Open in detail window" is clicked', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Open in detail window'));
+    // invoke is called async, so just check onClose was called
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('disables Merge for draft PRs', () => {
+    render(
+      <PrContextMenu
+        pr={makePr({ pullRequest: { isDraft: true } as PullRequestWithChecks['pullRequest'] })}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    expect(screen.getByText('Merge')).toBeDisabled();
+  });
+
+  it('enables "Rerun failed checks" when a failed check exists', () => {
+    render(
+      <PrContextMenu
+        pr={makePr({
+          failedCheckNames: ['build'],
+          checks: [
+            {
+              name: 'build',
+              conclusion: 'failure',
+              status: 'completed',
+              checkSuiteId: 123,
+              checkRunId: 456,
+              htmlUrl: '',
+              detailsUrl: '',
+            },
+          ],
+        })}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    expect(screen.getByText('Rerun failed checks')).not.toBeDisabled();
+  });
+
+  it('works without onConfirmAction prop', () => {
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+      />,
+    );
+    // Should not throw when clicking draft toggle without onConfirmAction
+    fireEvent.click(screen.getByText('Mark as draft'));
+    expect(onClose).toHaveBeenCalled();
+  });
 });

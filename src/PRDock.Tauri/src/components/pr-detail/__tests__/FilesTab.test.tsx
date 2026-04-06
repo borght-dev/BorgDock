@@ -176,4 +176,96 @@ describe('FilesTab', () => {
     });
     expect(screen.queryByText(/Large PRs may be slow/)).toBeNull();
   });
+
+  it('renders multiple file types', async () => {
+    mockGetPRFiles.mockResolvedValue([
+      makeFile({ filename: 'src/added.ts', status: 'added', additions: 20, deletions: 0 }),
+      makeFile({ filename: 'src/removed.ts', status: 'removed', additions: 0, deletions: 15 }),
+      makeFile({ filename: 'src/renamed.ts', status: 'renamed', additions: 1, deletions: 1, previousFilename: 'src/old.ts' }),
+      makeFile({ filename: 'src/copied.ts', status: 'copied', additions: 0, deletions: 0 }),
+    ]);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('diff-section-src/added.ts')).toBeTruthy();
+      expect(screen.getByTestId('diff-section-src/removed.ts')).toBeTruthy();
+      expect(screen.getByTestId('diff-section-src/renamed.ts')).toBeTruthy();
+      expect(screen.getByTestId('diff-section-src/copied.ts')).toBeTruthy();
+    });
+  });
+
+  it('fetches commits for the scope selector', async () => {
+    mockGetPRFiles.mockResolvedValue([makeFile()]);
+    mockGetPRCommits.mockResolvedValue([
+      { sha: 'abc', message: 'First commit', author: 'dev', date: '2026-01-01' },
+    ]);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    await waitFor(() => {
+      expect(mockGetPRCommits).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', 1);
+    });
+  });
+
+  it('persists view mode to localStorage', async () => {
+    mockGetPRFiles.mockResolvedValue([makeFile()]);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('diff-toolbar')).toBeTruthy();
+    });
+    // Default view mode should be saved
+    expect(localStorage.getItem('prdock:diff-view-mode')).toBe('unified');
+  });
+});
+
+// ---- toDiffFile helper tests ----
+
+import { toDiffFile } from '../FilesTab';
+
+describe('toDiffFile', () => {
+  it('maps added file correctly', () => {
+    const result = toDiffFile(makeFile({ status: 'added', additions: 10, deletions: 0, patch: '+new' }));
+    expect(result.status).toBe('added');
+    expect(result.isBinary).toBe(false);
+  });
+
+  it('maps removed file correctly', () => {
+    const result = toDiffFile(makeFile({ status: 'removed', additions: 0, deletions: 5, patch: '-old' }));
+    expect(result.status).toBe('removed');
+  });
+
+  it('maps renamed file correctly', () => {
+    const result = toDiffFile(makeFile({ status: 'renamed', previousFilename: 'old.ts' }));
+    expect(result.status).toBe('renamed');
+    expect(result.previousFilename).toBe('old.ts');
+  });
+
+  it('maps copied file correctly', () => {
+    const result = toDiffFile(makeFile({ status: 'copied' }));
+    expect(result.status).toBe('copied');
+  });
+
+  it('maps unknown status to "modified"', () => {
+    const result = toDiffFile(makeFile({ status: 'changed' as PullRequestFileChange['status'] }));
+    expect(result.status).toBe('modified');
+  });
+
+  it('detects binary files (no patch, not renamed/removed, zero additions/deletions)', () => {
+    const result = toDiffFile({
+      filename: 'image.png',
+      status: 'added',
+      additions: 0,
+      deletions: 0,
+      sha: 'abc',
+    });
+    expect(result.isBinary).toBe(true);
+  });
+
+  it('does not mark as binary when additions > 0', () => {
+    const result = toDiffFile({
+      filename: 'file.ts',
+      status: 'modified',
+      additions: 5,
+      deletions: 0,
+      sha: 'abc',
+    });
+    expect(result.isBinary).toBe(false);
+  });
 });

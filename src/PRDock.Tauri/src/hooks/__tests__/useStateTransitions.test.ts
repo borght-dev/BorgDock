@@ -1,6 +1,34 @@
-import { describe, expect, it } from 'vitest';
-import type { PullRequest, PullRequestWithChecks } from '@/types';
-import { detectStateTransitions } from '../../services/notification';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
+
+// --- Mocks ---
+
+const mockShow = vi.fn();
+const mockSendOsNotification = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/stores/notification-store', () => ({
+  useNotificationStore: Object.assign(
+    () => ({}),
+    { getState: () => ({ show: mockShow }) },
+  ),
+}));
+
+vi.mock('@/services/notification', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/services/notification')>();
+  return {
+    ...original,
+    sendOsNotification: (...args: unknown[]) => mockSendOsNotification(...args),
+  };
+});
+
+import { useStateTransitions } from '../useStateTransitions';
+
+// --- Helpers ---
 
 function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
@@ -46,117 +74,707 @@ function makePrWithChecks(
   };
 }
 
-describe('detectStateTransitions', () => {
-  it('returns empty array when both old and new are empty', () => {
-    const transitions = detectStateTransitions([], []);
-    expect(transitions).toEqual([]);
+function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
+  return {
+    setupComplete: true,
+    gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'alice', ...overrides.gitHub },
+    repos: [],
+    ui: {
+      sidebarEdge: 'right',
+      sidebarMode: 'pinned',
+      sidebarWidthPx: 800,
+      theme: 'system',
+      globalHotkey: '',
+      editorCommand: 'code',
+      runAtStartup: false,
+      badgeStyle: 'GlassCapsule',
+      indicatorStyle: 'SegmentRing',
+    },
+    notifications: {
+      toastOnCheckStatusChange: true,
+      toastOnNewPR: true,
+      toastOnReviewUpdate: true,
+      toastOnMergeable: true,
+      onlyMyPRs: false,
+      reviewNudgeEnabled: false,
+      reviewNudgeIntervalMinutes: 30,
+      reviewNudgeEscalation: false,
+      deduplicationWindowSeconds: 60,
+      ...overrides.notifications,
+    },
+    claudeCode: { defaultPostFixAction: 'none' },
+    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096 },
+    claudeReview: { botUsername: '' },
+    updates: { autoCheckEnabled: true, autoDownload: false },
+    azureDevOps: {
+      organization: '',
+      project: '',
+      pollIntervalSeconds: 60,
+      favoriteQueryIds: [],
+      trackedWorkItemIds: [],
+      workingOnWorkItemIds: [],
+      workItemWorktreePaths: {},
+      recentWorkItemIds: [],
+    },
+    sql: { connections: [] },
+    repoPriority: {},
+    ...overrides,
+  };
+}
+
+function makeNotificationSettings(
+  overrides: Partial<AppSettings['notifications']> = {},
+): AppSettings['notifications'] {
+  return {
+    toastOnCheckStatusChange: true,
+    toastOnNewPR: true,
+    toastOnReviewUpdate: true,
+    toastOnMergeable: true,
+    onlyMyPRs: false,
+    reviewNudgeEnabled: false,
+    reviewNudgeIntervalMinutes: 30,
+    reviewNudgeEscalation: false,
+    deduplicationWindowSeconds: 60,
+    ...overrides,
+  };
+}
+
+// --- Tests ---
+
+describe('useStateTransitions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
-  it('returns empty array when no state changes', () => {
-    const prs = [makePrWithChecks({ overallStatus: 'green' })];
-    const transitions = detectStateTransitions(prs, prs);
-    expect(transitions).toEqual([]);
+  afterAll(() => {
+    vi.useRealTimers();
   });
 
-  it('detects check failure transition (green -> red)', () => {
-    const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
+  it('returns a processTransitions function', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+    expect(typeof result.current.processTransitions).toBe('function');
+  });
+
+  it('does not fire notifications on first poll (no previous data)', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
     const newPrs = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build'],
-      }),
+      makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
     ];
 
-    const transitions = detectStateTransitions(oldPrs, newPrs);
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
 
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('checkFailed');
-    expect(transitions[0]!.pr.number).toBe(42);
+    expect(mockShow).not.toHaveBeenCalled();
   });
 
-  it('detects all checks passed transition (red -> green)', () => {
-    const oldPrs = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build'],
+  it('fires notification when check fails (green -> red)', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+    const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
+    const newPrs = [
+      makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
+    ];
+
+    act(() => {
+      result.current.processTransitions(oldPrs);
+    });
+
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
+
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringContaining('Check failed'),
+        severity: 'error',
       }),
+    );
+  });
+
+  it('fires notification when all checks pass (red -> green)', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+    const oldPrs = [
+      makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
     ];
     const newPrs = [makePrWithChecks({ overallStatus: 'green' })];
 
-    const transitions = detectStateTransitions(oldPrs, newPrs);
+    act(() => {
+      result.current.processTransitions(oldPrs);
+    });
 
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('allChecksPassed');
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
+
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'All checks passed',
+        severity: 'success',
+      }),
+    );
   });
 
-  it('detects review changes requested transition', () => {
+  it('fires notification when review changes are requested', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
     const oldPrs = [makePrWithChecks({ pr: { reviewStatus: 'approved' } })];
     const newPrs = [makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } })];
 
-    const transitions = detectStateTransitions(oldPrs, newPrs);
+    act(() => {
+      result.current.processTransitions(oldPrs);
+    });
 
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('reviewChangesRequested');
-  });
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
 
-  it('does not report transitions for new PRs (only in newPrs, not in oldPrs)', () => {
-    const oldPrs: PullRequestWithChecks[] = [];
-    const newPrs = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build'],
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Changes requested',
+        severity: 'warning',
       }),
-    ];
-
-    const transitions = detectStateTransitions(oldPrs, newPrs);
-
-    expect(transitions).toEqual([]);
+    );
   });
 
-  it('detects multiple transitions in a single poll', () => {
+  it('fires notification when PR is merged', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+    const oldPrs = [makePrWithChecks()];
+    const newPrs = [makePrWithChecks({ pr: { mergedAt: '2025-01-17T10:00:00Z' } })];
+
+    act(() => {
+      result.current.processTransitions(oldPrs);
+    });
+
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
+
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: 'merged',
+      }),
+    );
+  });
+
+  it('fires notification when PR becomes mergeable', () => {
+    const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
     const oldPrs = [
       makePrWithChecks({
-        pr: { number: 1, reviewStatus: 'none' },
-        overallStatus: 'yellow',
-      }),
-      makePrWithChecks({
-        pr: { number: 2 },
-        overallStatus: 'green',
+        overallStatus: 'red',
+        pr: { reviewStatus: 'none' },
       }),
     ];
     const newPrs = [
       makePrWithChecks({
-        pr: { number: 1, reviewStatus: 'changesRequested' },
         overallStatus: 'green',
-      }),
-      makePrWithChecks({
-        pr: { number: 2 },
-        overallStatus: 'red',
-        failedCheckNames: ['test'],
+        pr: { reviewStatus: 'approved', isDraft: false, mergeable: true },
       }),
     ];
 
-    const transitions = detectStateTransitions(oldPrs, newPrs);
+    act(() => {
+      result.current.processTransitions(oldPrs);
+    });
 
-    const types = transitions.map((t) => t.type).sort();
-    expect(types).toEqual(['allChecksPassed', 'checkFailed', 'reviewChangesRequested']);
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
+
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'PR ready to merge',
+        severity: 'success',
+      }),
+    );
   });
 
-  it('reports the specific failed check name in the detail field', () => {
-    const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
-    const newPrs = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['ci/lint', 'ci/test'],
+  it('fires notification when review is requested for current user', () => {
+    const settings = makeSettings({
+      gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'alice' },
+    });
+    const { result } = renderHook(() => useStateTransitions(settings));
+
+    const oldPrs = [makePrWithChecks({ pr: { requestedReviewers: [] } })];
+    const newPrs = [makePrWithChecks({ pr: { requestedReviewers: ['alice'] } })];
+
+    act(() => {
+      result.current.processTransitions(oldPrs);
+    });
+
+    act(() => {
+      result.current.processTransitions(newPrs);
+    });
+
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringContaining('Review requested'),
       }),
-    ];
+    );
+  });
 
-    const transitions = detectStateTransitions(oldPrs, newPrs);
+  describe('notification filtering', () => {
+    it('skips check status notifications when toastOnCheckStatusChange is false', () => {
+      const settings = makeSettings({
+        notifications: makeNotificationSettings({ toastOnCheckStatusChange: false }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
 
-    const checkFailedTransitions = transitions.filter((t) => t.type === 'checkFailed');
-    expect(checkFailedTransitions).toHaveLength(2);
-    const details = checkFailedTransitions.map((t) => t.detail);
-    expect(details).toContain('ci/lint');
-    expect(details).toContain('ci/test');
+      const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
+      const newPrs = [
+        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockShow).not.toHaveBeenCalled();
+    });
+
+    it('skips allChecksPassed notifications when toastOnCheckStatusChange is false', () => {
+      const settings = makeSettings({
+        notifications: makeNotificationSettings({ toastOnCheckStatusChange: false }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      const oldPrs = [
+        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
+      ];
+      const newPrs = [makePrWithChecks({ overallStatus: 'green' })];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockShow).not.toHaveBeenCalled();
+    });
+
+    it('skips review notifications when toastOnReviewUpdate is false', () => {
+      const settings = makeSettings({
+        notifications: makeNotificationSettings({ toastOnReviewUpdate: false }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      const oldPrs = [makePrWithChecks({ pr: { reviewStatus: 'approved' } })];
+      const newPrs = [makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } })];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockShow).not.toHaveBeenCalled();
+    });
+
+    it('skips reviewRequested notifications when toastOnReviewUpdate is false', () => {
+      const settings = makeSettings({
+        gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'alice' },
+        notifications: makeNotificationSettings({ toastOnReviewUpdate: false }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      const oldPrs = [makePrWithChecks({ pr: { requestedReviewers: [] } })];
+      const newPrs = [makePrWithChecks({ pr: { requestedReviewers: ['alice'] } })];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockShow).not.toHaveBeenCalled();
+    });
+
+    it('skips mergeable notifications when toastOnMergeable is false', () => {
+      const settings = makeSettings({
+        notifications: makeNotificationSettings({ toastOnMergeable: false }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      const oldPrs = [
+        makePrWithChecks({
+          overallStatus: 'red',
+          pr: { reviewStatus: 'none' },
+        }),
+      ];
+      const newPrs = [
+        makePrWithChecks({
+          overallStatus: 'green',
+          pr: { reviewStatus: 'approved', isDraft: false, mergeable: true },
+        }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      // allChecksPassed will still fire, but becameMergeable should not
+      const mergeableCalls = mockShow.mock.calls.filter(
+        (c: unknown[]) => (c[0] as { title: string }).title === 'PR ready to merge',
+      );
+      expect(mergeableCalls).toHaveLength(0);
+    });
+
+    it('filters to only my PRs when onlyMyPRs is enabled', () => {
+      const settings = makeSettings({
+        gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'alice' },
+        notifications: makeNotificationSettings({ onlyMyPRs: true }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      // Other user's PR fails
+      const oldPrs = [
+        makePrWithChecks({
+          overallStatus: 'green',
+          pr: { authorLogin: 'bob', number: 10 },
+        }),
+      ];
+      const newPrs = [
+        makePrWithChecks({
+          overallStatus: 'red',
+          failedCheckNames: ['build'],
+          pr: { authorLogin: 'bob', number: 10 },
+        }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      // Should NOT fire because it's bob's PR, not alice's
+      expect(mockShow).not.toHaveBeenCalled();
+    });
+
+    it('allows my own PRs when onlyMyPRs is enabled', () => {
+      const settings = makeSettings({
+        gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'alice' },
+        notifications: makeNotificationSettings({ onlyMyPRs: true }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      const oldPrs = [
+        makePrWithChecks({
+          overallStatus: 'green',
+          pr: { authorLogin: 'alice', number: 10 },
+        }),
+      ];
+      const newPrs = [
+        makePrWithChecks({
+          overallStatus: 'red',
+          failedCheckNames: ['build'],
+          pr: { authorLogin: 'alice', number: 10 },
+        }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockShow).toHaveBeenCalled();
+    });
+  });
+
+  describe('deduplication', () => {
+    it('deduplicates identical transitions within the window', () => {
+      const settings = makeSettings({
+        notifications: makeNotificationSettings({ deduplicationWindowSeconds: 60 }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      // Use two different PRs so we can trigger the same type of transition
+      // without the intermediate state causing a different transition type
+      const greenPr1 = makePrWithChecks({ overallStatus: 'green', pr: { number: 1 } });
+      const redPr1 = makePrWithChecks({
+        overallStatus: 'red',
+        failedCheckNames: ['build'],
+        pr: { number: 1 },
+      });
+
+      // First poll: set baseline as green
+      act(() => {
+        result.current.processTransitions([greenPr1]);
+      });
+
+      // Second poll: green -> red (fires checkFailed)
+      act(() => {
+        result.current.processTransitions([redPr1]);
+      });
+
+      expect(mockShow).toHaveBeenCalledTimes(1);
+
+      // Third poll: PR stays red (no transition, nothing to dedup)
+      // To trigger the SAME transition again within dedup window,
+      // the underlying detectStateTransitions would need not-red -> red.
+      // But since previousPrsRef is now redPr1, sending redPr1 again won't trigger.
+      // The dedup logic prevents the SAME key from firing within the window.
+      // Let's verify by simulating: not-red -> red for same PR again quickly
+      act(() => {
+        result.current.processTransitions([greenPr1]);
+      });
+      // This is now a red->green transition (allChecksPassed), separate type
+      // The allChecksPassed triggers, but checkFailed:owner/repo#1 is deduped
+      mockShow.mockClear();
+
+      act(() => {
+        result.current.processTransitions([redPr1]);
+      });
+
+      // The checkFailed for PR#1 should be deduplicated (same key within window)
+      const checkFailedCalls = mockShow.mock.calls.filter(
+        (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
+      );
+      expect(checkFailedCalls).toHaveLength(0);
+    });
+
+    it('allows same transition after deduplication window expires', () => {
+      const settings = makeSettings({
+        notifications: makeNotificationSettings({ deduplicationWindowSeconds: 60 }),
+      });
+      const { result } = renderHook(() => useStateTransitions(settings));
+
+      const greenPr = makePrWithChecks({ overallStatus: 'green', pr: { number: 1 } });
+      const redPr = makePrWithChecks({
+        overallStatus: 'red',
+        failedCheckNames: ['build'],
+        pr: { number: 1 },
+      });
+
+      // First cycle: green -> red
+      act(() => {
+        result.current.processTransitions([greenPr]);
+      });
+      act(() => {
+        result.current.processTransitions([redPr]);
+      });
+
+      const firstCheckFailedCalls = mockShow.mock.calls.filter(
+        (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
+      );
+      expect(firstCheckFailedCalls).toHaveLength(1);
+
+      // Advance past the dedup window (60s)
+      vi.advanceTimersByTime(61_000);
+
+      // Reset to green, then back to red
+      act(() => {
+        result.current.processTransitions([greenPr]);
+      });
+      mockShow.mockClear();
+      act(() => {
+        result.current.processTransitions([redPr]);
+      });
+
+      // Should fire again since the window expired
+      const secondCheckFailedCalls = mockShow.mock.calls.filter(
+        (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
+      );
+      expect(secondCheckFailedCalls).toHaveLength(1);
+    });
+  });
+
+  describe('OS notification', () => {
+    it('sends OS notification for checkFailed with CI failure buttons', () => {
+      const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+      const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
+      const newPrs = [
+        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockSendOsNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining('Check failed'),
+          buttons: expect.arrayContaining([
+            expect.objectContaining({ label: 'Fix with Claude', action: 'fix-with-claude' }),
+            expect.objectContaining({ label: 'Re-run', action: 'rerun' }),
+          ]),
+        }),
+      );
+    });
+
+    it('sends OS notification with merge buttons for becameMergeable', () => {
+      const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+      const oldPrs = [
+        makePrWithChecks({
+          overallStatus: 'red',
+          pr: { reviewStatus: 'none' },
+        }),
+      ];
+      const newPrs = [
+        makePrWithChecks({
+          overallStatus: 'green',
+          pr: { reviewStatus: 'approved', isDraft: false, mergeable: true },
+        }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      const mergeableCall = mockSendOsNotification.mock.calls.find(
+        (c: unknown[]) => (c[0] as { title: string }).title === 'PR ready to merge',
+      );
+      expect(mergeableCall).toBeDefined();
+      expect(mergeableCall![0]).toEqual(
+        expect.objectContaining({
+          buttons: expect.arrayContaining([
+            expect.objectContaining({ label: 'Merge', action: 'merge' }),
+            expect.objectContaining({ label: 'Open in GitHub', action: 'open' }),
+          ]),
+        }),
+      );
+    });
+
+    it('sends OS notification with no buttons for merged', () => {
+      const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+      const oldPrs = [makePrWithChecks()];
+      const newPrs = [makePrWithChecks({ pr: { mergedAt: '2025-01-17T10:00:00Z' } })];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      const mergedCall = mockSendOsNotification.mock.calls.find(
+        (c: unknown[]) => (c[0] as { title: string }).title.includes('merged'),
+      );
+      expect(mergedCall).toBeDefined();
+      expect(mergedCall![0]).toEqual(
+        expect.objectContaining({ buttons: undefined }),
+      );
+    });
+
+    it('sends OS notification with default PR buttons for allChecksPassed', () => {
+      const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+      const oldPrs = [
+        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
+      ];
+      const newPrs = [makePrWithChecks({ overallStatus: 'green' })];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      const passedCall = mockSendOsNotification.mock.calls.find(
+        (c: unknown[]) => (c[0] as { title: string }).title === 'All checks passed',
+      );
+      expect(passedCall).toBeDefined();
+      expect(passedCall![0]).toEqual(
+        expect.objectContaining({
+          buttons: expect.arrayContaining([
+            expect.objectContaining({ label: 'Merge', action: 'merge' }),
+            expect.objectContaining({ label: 'Approve changes', action: 'approve' }),
+            expect.objectContaining({ label: 'Bypass Merge', action: 'bypass' }),
+          ]),
+        }),
+      );
+    });
+
+    it('includes PR details in OS notification payload', () => {
+      const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+      const oldPrs = [makePrWithChecks({ overallStatus: 'green', pr: { number: 99, repoOwner: 'org', repoName: 'myrepo' } })];
+      const newPrs = [
+        makePrWithChecks({
+          overallStatus: 'red',
+          failedCheckNames: ['build'],
+          pr: { number: 99, repoOwner: 'org', repoName: 'myrepo' },
+        }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      expect(mockSendOsNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prOwner: 'org',
+          prRepo: 'myrepo',
+          prNumber: 99,
+        }),
+      );
+    });
+  });
+
+  describe('multiple transitions', () => {
+    it('handles multiple transitions in a single poll', () => {
+      const { result } = renderHook(() => useStateTransitions(makeSettings()));
+
+      const oldPrs = [
+        makePrWithChecks({
+          pr: { number: 1, reviewStatus: 'none' },
+          overallStatus: 'green',
+        }),
+        makePrWithChecks({
+          pr: { number: 2 },
+          overallStatus: 'green',
+        }),
+      ];
+      const newPrs = [
+        makePrWithChecks({
+          pr: { number: 1, reviewStatus: 'changesRequested' },
+          overallStatus: 'green',
+        }),
+        makePrWithChecks({
+          pr: { number: 2 },
+          overallStatus: 'red',
+          failedCheckNames: ['test'],
+        }),
+      ];
+
+      act(() => {
+        result.current.processTransitions(oldPrs);
+      });
+      act(() => {
+        result.current.processTransitions(newPrs);
+      });
+
+      // Should have at least 2 notifications
+      expect(mockShow.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
   });
 });

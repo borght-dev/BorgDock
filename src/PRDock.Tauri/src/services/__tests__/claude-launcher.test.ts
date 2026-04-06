@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
 import { buildConflictPrompt, buildFixPrompt, buildMonitorPrompt } from '../claude-launcher';
 
@@ -227,5 +227,288 @@ describe('buildMonitorPrompt', () => {
     expect(prompt).toContain('Review comments');
     expect(prompt).toContain('Merge conflicts');
     expect(prompt).toContain('fix cycles');
+  });
+
+  it('includes repo-specific instructions when fixPromptTemplate is set', () => {
+    const settings = makeRepoSettings({
+      fixPromptTemplate: 'Always run the linter first.',
+    });
+    const prompt = buildMonitorPrompt(makePrWithChecks(), settings);
+
+    expect(prompt).toContain('## Repo-Specific Instructions');
+    expect(prompt).toContain('Always run the linter first.');
+  });
+
+  it('does not include repo-specific instructions when fixPromptTemplate is absent', () => {
+    const prompt = buildMonitorPrompt(makePrWithChecks(), makeRepoSettings());
+
+    expect(prompt).not.toContain('## Repo-Specific Instructions');
+  });
+});
+
+describe('writePromptFile', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('writes content to a temp file and returns path', async () => {
+    const mockWriteTextFile = vi.fn().mockResolvedValue(undefined);
+    const mockTempDir = vi.fn().mockResolvedValue('/tmp/');
+
+    vi.doMock('@tauri-apps/plugin-fs', () => ({
+      writeTextFile: mockWriteTextFile,
+      BaseDirectory: { Temp: 'Temp' },
+    }));
+    vi.doMock('@tauri-apps/api/path', () => ({
+      tempDir: mockTempDir,
+    }));
+
+    const { writePromptFile } = await import('../claude-launcher');
+    const result = await writePromptFile('# Test prompt');
+
+    expect(mockWriteTextFile).toHaveBeenCalledWith(
+      expect.stringMatching(/^claude-prompt-\d+\.md$/),
+      '# Test prompt',
+      { baseDir: 'Temp' },
+    );
+    expect(result).toMatch(/^\/tmp\/claude-prompt-\d+\.md$/);
+  });
+});
+
+describe('launchClaude', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('invokes launch_claude_code with correct parameters', async () => {
+    const mockInvoke = vi.fn().mockResolvedValue(undefined);
+    vi.doMock('@tauri-apps/api/core', () => ({
+      invoke: mockInvoke,
+    }));
+
+    const { launchClaude } = await import('../claude-launcher');
+    await launchClaude('/path/to/worktree', '/tmp/prompt.md', 'Fix PR #42');
+
+    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', {
+      worktreePath: '/path/to/worktree',
+      promptFile: '/tmp/prompt.md',
+      initialMessage: 'Fix PR #42',
+      claudeCodePath: '',
+    });
+  });
+
+  it('uses empty string for message when not provided', async () => {
+    const mockInvoke = vi.fn().mockResolvedValue(undefined);
+    vi.doMock('@tauri-apps/api/core', () => ({
+      invoke: mockInvoke,
+    }));
+
+    const { launchClaude } = await import('../claude-launcher');
+    await launchClaude('/path/to/worktree', '/tmp/prompt.md');
+
+    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', {
+      worktreePath: '/path/to/worktree',
+      promptFile: '/tmp/prompt.md',
+      initialMessage: '',
+      claudeCodePath: '',
+    });
+  });
+});
+
+describe('performFixWithClaude', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('throws when no worktree path is configured', async () => {
+    vi.doMock('@tauri-apps/api/core', () => ({
+      invoke: vi.fn(),
+    }));
+
+    const { performFixWithClaude } = await import('../claude-launcher');
+
+    await expect(
+      performFixWithClaude('owner', 'repo', 42, 'fix/branch', {
+        repos: [],
+      }),
+    ).rejects.toThrow('No worktree path configured for owner/repo');
+  });
+
+  it('uses existing worktree if branch matches', async () => {
+    const mockInvoke = vi.fn();
+    // list_worktrees returns existing worktree
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'list_worktrees') {
+        return Promise.resolve([
+          { path: '/worktrees/fix-branch', branchName: 'fix/branch', isMainWorktree: false },
+        ]);
+      }
+      if (cmd === 'launch_claude_code') {
+        return Promise.resolve(undefined);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    const mockWriteTextFile = vi.fn().mockResolvedValue(undefined);
+    const mockTempDir = vi.fn().mockResolvedValue('/tmp/');
+
+    vi.doMock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }));
+    vi.doMock('@tauri-apps/plugin-fs', () => ({
+      writeTextFile: mockWriteTextFile,
+      BaseDirectory: { Temp: 'Temp' },
+    }));
+    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir }));
+
+    const { performFixWithClaude } = await import('../claude-launcher');
+
+    await performFixWithClaude('owner', 'repo', 42, 'fix/branch', {
+      repos: [
+        {
+          owner: 'owner',
+          name: 'repo',
+          enabled: true,
+          worktreeBasePath: '/worktrees',
+          worktreeSubfolder: '',
+        },
+      ],
+    });
+
+    // Should have called launch_claude_code with existing worktree path
+    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', expect.objectContaining({
+      worktreePath: '/worktrees/fix-branch',
+    }));
+  });
+
+  it('creates new worktree when branch does not exist', async () => {
+    const mockInvoke = vi.fn();
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'list_worktrees') {
+        return Promise.resolve([]);
+      }
+      if (cmd === 'create_worktree') {
+        return Promise.resolve('/worktrees/.worktrees/fix-branch');
+      }
+      if (cmd === 'launch_claude_code') {
+        return Promise.resolve(undefined);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    const mockWriteTextFile = vi.fn().mockResolvedValue(undefined);
+    const mockTempDir = vi.fn().mockResolvedValue('/tmp/');
+
+    vi.doMock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }));
+    vi.doMock('@tauri-apps/plugin-fs', () => ({
+      writeTextFile: mockWriteTextFile,
+      BaseDirectory: { Temp: 'Temp' },
+    }));
+    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir }));
+
+    const { performFixWithClaude } = await import('../claude-launcher');
+
+    await performFixWithClaude('owner', 'repo', 42, 'fix/branch', {
+      repos: [
+        {
+          owner: 'owner',
+          name: 'repo',
+          enabled: true,
+          worktreeBasePath: '/worktrees',
+          worktreeSubfolder: '.trees',
+        },
+      ],
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith('create_worktree', {
+      basePath: '/worktrees',
+      subfolder: '.trees',
+      branchName: 'fix/branch',
+    });
+    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', expect.objectContaining({
+      worktreePath: '/worktrees/.worktrees/fix-branch',
+    }));
+  });
+
+  it('matches worktree by refs/heads/ prefixed branch name', async () => {
+    const mockInvoke = vi.fn();
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'list_worktrees') {
+        return Promise.resolve([
+          { path: '/worktrees/my-branch', branchName: 'refs/heads/my-branch', isMainWorktree: false },
+        ]);
+      }
+      if (cmd === 'launch_claude_code') {
+        return Promise.resolve(undefined);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    const mockWriteTextFile = vi.fn().mockResolvedValue(undefined);
+    const mockTempDir = vi.fn().mockResolvedValue('/tmp/');
+
+    vi.doMock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }));
+    vi.doMock('@tauri-apps/plugin-fs', () => ({
+      writeTextFile: mockWriteTextFile,
+      BaseDirectory: { Temp: 'Temp' },
+    }));
+    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir }));
+
+    const { performFixWithClaude } = await import('../claude-launcher');
+
+    await performFixWithClaude('owner', 'repo', 42, 'my-branch', {
+      repos: [
+        {
+          owner: 'owner',
+          name: 'repo',
+          enabled: true,
+          worktreeBasePath: '/worktrees',
+          worktreeSubfolder: '',
+        },
+      ],
+    });
+
+    // Should use the existing worktree, not create a new one
+    expect(mockInvoke).not.toHaveBeenCalledWith('create_worktree', expect.anything());
+    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', expect.objectContaining({
+      worktreePath: '/worktrees/my-branch',
+    }));
+  });
+
+  it('uses empty string for worktreeSubfolder when not set', async () => {
+    const mockInvoke = vi.fn();
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'list_worktrees') return Promise.resolve([]);
+      if (cmd === 'create_worktree') return Promise.resolve('/worktrees/.worktrees/branch');
+      if (cmd === 'launch_claude_code') return Promise.resolve(undefined);
+      return Promise.resolve(undefined);
+    });
+
+    vi.doMock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }));
+    vi.doMock('@tauri-apps/plugin-fs', () => ({
+      writeTextFile: vi.fn().mockResolvedValue(undefined),
+      BaseDirectory: { Temp: 'Temp' },
+    }));
+    vi.doMock('@tauri-apps/api/path', () => ({
+      tempDir: vi.fn().mockResolvedValue('/tmp/'),
+    }));
+
+    const { performFixWithClaude } = await import('../claude-launcher');
+
+    await performFixWithClaude('owner', 'repo', 42, 'branch', {
+      repos: [
+        {
+          owner: 'owner',
+          name: 'repo',
+          enabled: true,
+          worktreeBasePath: '/worktrees',
+          worktreeSubfolder: '',
+        },
+      ],
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith('create_worktree', {
+      basePath: '/worktrees',
+      subfolder: '.worktrees',
+      branchName: 'branch',
+    });
   });
 });

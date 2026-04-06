@@ -7,6 +7,10 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 
+vi.mock('@tauri-apps/plugin-store', () => ({
+  load: vi.fn(() => Promise.resolve({ set: vi.fn(), save: vi.fn(), get: vi.fn() })),
+}));
+
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn().mockResolvedValue(undefined),
 }));
@@ -342,5 +346,121 @@ describe('OverviewTab', () => {
     });
     render(<OverviewTab pr={makePr()} />);
     expect(screen.getByText('Summarize with AI')).toBeTruthy();
+  });
+
+  // ---- Action handlers ----
+
+  it('calls mergePullRequest when "Squash & Merge" is clicked', async () => {
+    const { mergePullRequest } = await import('@/services/github/mutations');
+    const pr = makePr({
+      overallStatus: 'green',
+      pullRequest: {
+        ...makePr().pullRequest,
+        isDraft: false,
+        mergeable: true,
+        reviewStatus: 'approved',
+      },
+    });
+    render(<OverviewTab pr={pr} />);
+    fireEvent.click(screen.getByText('Squash & Merge'));
+    expect(mergePullRequest).toHaveBeenCalled();
+  });
+
+  it('calls toggleDraft when "Mark Draft" is clicked', async () => {
+    const { toggleDraft } = await import('@/services/github/mutations');
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Mark Draft'));
+    expect(toggleDraft).toHaveBeenCalled();
+  });
+
+  it('calls submitReview when Submit button is clicked', async () => {
+    const { submitReview } = await import('@/services/github/mutations');
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Submit'));
+    expect(submitReview).toHaveBeenCalled();
+  });
+
+  it('calls postComment on Enter in comment input', async () => {
+    const { postComment } = await import('@/services/github/mutations');
+    render(<OverviewTab pr={makePr()} />);
+    const input = screen.getByPlaceholderText('Write a comment...');
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(postComment).toHaveBeenCalled();
+  });
+
+  it('does not post comment on Shift+Enter', async () => {
+    const { postComment } = await import('@/services/github/mutations');
+    vi.mocked(postComment).mockClear();
+    render(<OverviewTab pr={makePr()} />);
+    const input = screen.getByPlaceholderText('Write a comment...');
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    expect(postComment).not.toHaveBeenCalled();
+  });
+
+  it('calls postComment when Post button is clicked', async () => {
+    const { postComment } = await import('@/services/github/mutations');
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.change(screen.getByPlaceholderText('Write a comment...'), {
+      target: { value: 'test comment' },
+    });
+    fireEvent.click(screen.getByText('Post'));
+    expect(postComment).toHaveBeenCalled();
+  });
+
+  it('calls bypassMergePullRequest when "Bypass Merge" is clicked', async () => {
+    const { bypassMergePullRequest } = await import('@/services/github/mutations');
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Bypass Merge'));
+    expect(bypassMergePullRequest).toHaveBeenCalled();
+  });
+
+  it('changes review event when select is changed', () => {
+    render(<OverviewTab pr={makePr()} />);
+    const select = screen.getByDisplayValue('Comment');
+    fireEvent.change(select, { target: { value: 'APPROVE' } });
+    expect((select as HTMLSelectElement).value).toBe('APPROVE');
+  });
+
+  it('shows "Summarize with AI" button when API key is configured and can be clicked', () => {
+    useSettingsStore.setState({
+      settings: {
+        ...useSettingsStore.getState().settings,
+        claudeApi: { apiKey: 'sk-test', model: 'claude-sonnet-4-6', maxTokens: 1024 },
+      },
+    });
+
+    render(<OverviewTab pr={makePr()} />);
+    const btn = screen.getByText('Summarize with AI');
+    expect(btn).toBeTruthy();
+    // Click should not throw
+    fireEvent.click(btn);
+  });
+
+  it('renders Checkout button', () => {
+    render(<OverviewTab pr={makePr()} />);
+    expect(screen.getByText('Checkout')).toBeTruthy();
+  });
+
+  it('renders merge celebration after successful merge', async () => {
+    const { mergePullRequest } = await import('@/services/github/mutations');
+    vi.mocked(mergePullRequest).mockResolvedValue(undefined);
+
+    const pr = makePr({
+      overallStatus: 'green',
+      pullRequest: {
+        ...makePr().pullRequest,
+        isDraft: false,
+        mergeable: true,
+        reviewStatus: 'approved',
+      },
+    });
+    render(<OverviewTab pr={pr} />);
+    fireEvent.click(screen.getByText('Squash & Merge'));
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/PR #42 merged!/)).toBeTruthy();
+    });
   });
 });

@@ -10,12 +10,22 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
+// Capture the onFocusChanged callback so we can invoke it in tests
+let focusChangedCallback: ((event: { payload: boolean }) => void) | null = null;
+const mockUnlistenFocus = vi.fn();
+const mockIsFocused = vi.fn().mockResolvedValue(false);
+const mockIsMinimized = vi.fn().mockResolvedValue(false);
+const mockIsVisible = vi.fn().mockResolvedValue(true);
+
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: vi.fn(() => ({
-    onFocusChanged: vi.fn().mockResolvedValue(vi.fn()),
-    isFocused: vi.fn().mockResolvedValue(false),
-    isMinimized: vi.fn().mockResolvedValue(false),
-    isVisible: vi.fn().mockResolvedValue(true),
+    onFocusChanged: vi.fn((cb: (event: { payload: boolean }) => void) => {
+      focusChangedCallback = cb;
+      return Promise.resolve(mockUnlistenFocus);
+    }),
+    isFocused: (...args: unknown[]) => mockIsFocused(...args),
+    isMinimized: (...args: unknown[]) => mockIsMinimized(...args),
+    isVisible: (...args: unknown[]) => mockIsVisible(...args),
   })),
 }));
 
@@ -82,6 +92,10 @@ describe('useAutoHide', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     mockIsDragging = false;
+    focusChangedCallback = null;
+    mockIsFocused.mockResolvedValue(false);
+    mockIsMinimized.mockResolvedValue(false);
+    mockIsVisible.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -235,5 +249,247 @@ describe('useAutoHide', () => {
     });
 
     expect(mockSetSidebarVisible).not.toHaveBeenCalled();
+  });
+
+  describe('focus-based auto-hide (onFocusChanged)', () => {
+    it('hides sidebar when window loses focus after debounce', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      // Window stays unfocused, not minimized, not dragging
+      mockIsFocused.mockResolvedValue(false);
+      mockIsMinimized.mockResolvedValue(false);
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      // Wait for the async listener registration
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      // Simulate focus lost
+      await act(async () => {
+        focusChangedCallback!({ payload: false });
+      });
+
+      // Advance past the debounce period (200ms)
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Flush pending promises
+      await vi.waitFor(() => {
+        expect(mockSetSidebarVisible).toHaveBeenCalledWith(false);
+      });
+
+      expect(mockInvoke).toHaveBeenCalledWith('hide_sidebar');
+      expect(mockInvoke).toHaveBeenCalledWith('show_badge', { count: 0 });
+    });
+
+    it('does not hide when window regains focus during debounce', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      mockIsFocused.mockResolvedValue(true);
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      // Simulate focus lost
+      await act(async () => {
+        focusChangedCallback!({ payload: false });
+      });
+
+      // Advance partially (before debounce completes)
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      // Focus regained — should cancel the pending hide
+      await act(async () => {
+        focusChangedCallback!({ payload: true });
+      });
+
+      // Advance past original debounce
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // setSidebarVisible(false) should NOT have been called
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
+        (c: unknown[]) => c[0] === false,
+      );
+      expect(falseCalls).toHaveLength(0);
+    });
+
+    it('does not hide when window is minimized', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      mockIsFocused.mockResolvedValue(false);
+      mockIsMinimized.mockResolvedValue(true); // minimized
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      await act(async () => {
+        focusChangedCallback!({ payload: false });
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Wait for promises to resolve
+      await vi.waitFor(() => {
+        expect(mockIsMinimized).toHaveBeenCalled();
+      });
+
+      // Should NOT hide because the window is minimized
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
+        (c: unknown[]) => c[0] === false,
+      );
+      expect(falseCalls).toHaveLength(0);
+    });
+
+    it('does not hide during a drag operation', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      mockIsFocused.mockResolvedValue(false);
+      mockIsMinimized.mockResolvedValue(false);
+      mockIsDragging = true;
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      await act(async () => {
+        focusChangedCallback!({ payload: false });
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Wait for promises to flush
+      await vi.waitFor(() => {
+        expect(mockIsFocused).toHaveBeenCalled();
+      });
+
+      // Should NOT hide because isDragging is true
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
+        (c: unknown[]) => c[0] === false,
+      );
+      expect(falseCalls).toHaveLength(0);
+    });
+
+    it('shows sidebar and hides badge when focus is regained and window is visible', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      mockIsVisible.mockResolvedValue(true);
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      await act(async () => {
+        focusChangedCallback!({ payload: true });
+      });
+
+      await vi.waitFor(() => {
+        expect(mockSetSidebarVisible).toHaveBeenCalledWith(true);
+      });
+
+      expect(mockInvoke).toHaveBeenCalledWith('hide_badge');
+    });
+
+    it('does not show sidebar when focus is regained but window is not visible', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      mockIsVisible.mockResolvedValue(false);
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      await act(async () => {
+        focusChangedCallback!({ payload: true });
+      });
+
+      // Give promises time to settle
+      await vi.waitFor(() => {
+        expect(mockIsVisible).toHaveBeenCalled();
+      });
+
+      // setSidebarVisible(true) should NOT have been called
+      const trueCalls = mockSetSidebarVisible.mock.calls.filter(
+        (c: unknown[]) => c[0] === true,
+      );
+      expect(trueCalls).toHaveLength(0);
+    });
+
+    it('cleans up focus listener on unmount', async () => {
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+    });
+
+    it('does not hide if window regained focus before debounce completes', async () => {
+      // isFocused returns true (re-focused during debounce delay)
+      mockIsFocused.mockResolvedValue(true);
+      mockIsMinimized.mockResolvedValue(false);
+
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      await vi.waitFor(() => {
+        expect(focusChangedCallback).not.toBeNull();
+      });
+
+      await act(async () => {
+        focusChangedCallback!({ payload: false });
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Wait for async checks
+      await vi.waitFor(() => {
+        expect(mockIsFocused).toHaveBeenCalled();
+      });
+
+      // stillUnfocused check: isFocused() returns true, so !true = false, early return
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
+        (c: unknown[]) => c[0] === false,
+      );
+      expect(falseCalls).toHaveLength(0);
+    });
+  });
+
+  describe('hideSidebarShowBadge', () => {
+    it('calls hide_sidebar and show_badge when timer fires', async () => {
+      mockInvoke.mockResolvedValue(undefined);
+      renderHook(() => useAutoHide(makeSettings('floating')));
+
+      // Trigger mouseleave to start the hide timer
+      act(() => {
+        document.documentElement.dispatchEvent(new MouseEvent('mouseleave'));
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      // The hideSidebarShowBadge function should have been called
+      await vi.waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('hide_sidebar');
+        expect(mockInvoke).toHaveBeenCalledWith('show_badge', { count: 0 });
+      });
+    });
   });
 });

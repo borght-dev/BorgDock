@@ -232,4 +232,111 @@ describe('SetupWizard', () => {
       expect(screen.getByText('Authentication failed')).toBeTruthy();
     });
   });
+
+  it('saves settings on Finish when repos are selected', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { owner: 'test', name: 'repo', localPath: '/path/repo', isSelected: true },
+    ]);
+
+    render(<SetupWizard />);
+
+    // Go to Repos step with PAT auth
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_test' },
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Finish')).toBeTruthy();
+    });
+
+    // Click Finish
+    fireEvent.click(screen.getByText('Finish'));
+
+    const { saveSettings } = useSettingsStore.getState();
+    await waitFor(() => {
+      expect(saveSettings).toHaveBeenCalled();
+    });
+  });
+
+  it('disables Finish when no repos are selected', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_test' },
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      const finishBtn = screen.getByText('Finish');
+      expect((finishBtn as HTMLButtonElement).disabled).toBe(true);
+    });
+  });
+
+  it('validates PAT auth with correct method', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce('testuser');
+
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_mytoken' },
+    });
+    fireEvent.click(screen.getByText('Verify Connection'));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith('check_github_auth', {
+        method: 'pat',
+        pat: 'ghp_mytoken',
+      });
+    });
+  });
+
+  it('enables Next when ghCli auth is validated', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce('testuser');
+
+    render(<SetupWizard />);
+
+    // Default is ghCli, so just click verify
+    fireEvent.click(screen.getByText('Verify Connection'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Authenticated as testuser')).toBeTruthy();
+    });
+
+    const nextBtn = screen.getByText('Next');
+    expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('does not show Back button on first step', () => {
+    render(<SetupWizard />);
+    expect(screen.queryByText('Back')).toBeNull();
+  });
+
+  it('displays discovered repos on Repos step', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { owner: 'myorg', name: 'myrepo', localPath: '/home/dev/myrepo', isSelected: false },
+    ]);
+
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_test' },
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('myorg/myrepo')).toBeTruthy();
+    });
+  });
 });

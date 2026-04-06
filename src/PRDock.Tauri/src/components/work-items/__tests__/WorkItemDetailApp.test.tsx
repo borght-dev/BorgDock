@@ -237,4 +237,151 @@ describe('WorkItemDetailApp', () => {
       expect(screen.getByText('Test work item')).toBeDefined();
     });
   });
+
+  it('renders detail panel with work item fields', async () => {
+    const settings = makeSettings();
+    const workItem: WorkItem = {
+      ...makeWorkItem(42),
+      fields: {
+        ...makeWorkItem(42).fields,
+        'System.Description': '<p>Test description</p>',
+        'Microsoft.VSTS.Common.StackRank': '1.5',
+      },
+    };
+    mockInvoke.mockResolvedValueOnce(settings);
+    vi.mocked(getWorkItem).mockResolvedValueOnce(workItem);
+
+    Object.defineProperty(window, 'location', {
+      value: { search: '?id=42', href: 'http://localhost/?id=42' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test work item')).toBeDefined();
+    });
+  });
+
+  it('handles work item with relations/attachments', async () => {
+    const settings = makeSettings();
+    const workItem: WorkItem = {
+      ...makeWorkItem(42),
+      relations: [
+        {
+          rel: 'AttachedFile',
+          url: 'https://dev.azure.com/org/proj/_apis/wit/attachments/abc',
+          attributes: {
+            id: 'abc',
+            name: 'file.txt',
+            resourceSize: 1024,
+          },
+        },
+      ],
+    };
+    mockInvoke.mockResolvedValueOnce(settings);
+    vi.mocked(getWorkItem).mockResolvedValueOnce(workItem);
+
+    Object.defineProperty(window, 'location', {
+      value: { search: '?id=42', href: 'http://localhost/?id=42' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test work item')).toBeDefined();
+    });
+  });
+
+  it('loads available states for the work item type', async () => {
+    const { getWorkItemTypeStates } = await import('@/services/ado/workitems');
+    const settings = makeSettings();
+    const workItem = makeWorkItem(42);
+    mockInvoke.mockResolvedValueOnce(settings);
+    vi.mocked(getWorkItem).mockResolvedValueOnce(workItem);
+    vi.mocked(getWorkItemTypeStates).mockResolvedValueOnce(['New', 'Active', 'Resolved', 'Closed']);
+
+    Object.defineProperty(window, 'location', {
+      value: { search: '?id=42', href: 'http://localhost/?id=42' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+
+    await waitFor(() => {
+      expect(getWorkItemTypeStates).toHaveBeenCalled();
+    });
+  });
+
+  it('falls back to current state when getWorkItemTypeStates fails', async () => {
+    const { getWorkItemTypeStates } = await import('@/services/ado/workitems');
+    const settings = makeSettings();
+    const workItem = makeWorkItem(42);
+    mockInvoke.mockResolvedValueOnce(settings);
+    vi.mocked(getWorkItem).mockResolvedValueOnce(workItem);
+    vi.mocked(getWorkItemTypeStates).mockRejectedValueOnce(new Error('Not found'));
+
+    Object.defineProperty(window, 'location', {
+      value: { search: '?id=42', href: 'http://localhost/?id=42' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test work item')).toBeDefined();
+    });
+  });
+
+  it('loads comments on mount', async () => {
+    const { getWorkItemComments } = await import('@/services/ado/workitems');
+    const settings = makeSettings();
+    const workItem = makeWorkItem(42);
+    mockInvoke.mockResolvedValueOnce(settings);
+    vi.mocked(getWorkItem).mockResolvedValueOnce(workItem);
+    vi.mocked(getWorkItemComments).mockResolvedValueOnce([
+      { id: 1, text: 'Test comment', createdBy: { displayName: 'User' }, createdDate: '2026-01-01' },
+    ]);
+
+    Object.defineProperty(window, 'location', {
+      value: { search: '?id=42', href: 'http://localhost/?id=42' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+
+    await waitFor(() => {
+      expect(getWorkItemComments).toHaveBeenCalledWith(expect.anything(), 42);
+    });
+  });
+
+  it('applies dark theme from settings', async () => {
+    const settings = makeSettings({ ui: { ...makeSettings().ui, theme: 'dark' } });
+    mockInvoke.mockResolvedValueOnce(settings);
+    vi.mocked(getWorkItem).mockResolvedValueOnce(makeWorkItem(42));
+
+    Object.defineProperty(window, 'location', {
+      value: { search: '?id=42', href: 'http://localhost/?id=42' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+  });
+
+  it('shows "Work Item" title when no ID and no detail data', () => {
+    mockInvoke.mockReturnValue(new Promise(() => {}));
+    Object.defineProperty(window, 'location', {
+      value: { search: '', href: 'http://localhost/' },
+      writable: true,
+    });
+
+    render(<WorkItemDetailApp />);
+    // Should render the titlebar with generic title
+    expect(screen.getByText('Work Item')).toBeDefined();
+  });
 });

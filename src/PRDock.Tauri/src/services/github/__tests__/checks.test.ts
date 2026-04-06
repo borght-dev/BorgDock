@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getCheckRuns, getCheckRunsForRef, getCheckSuites } from '../checks';
+import { getCheckRuns, getCheckRunsForRef, getCheckSuites, getJobLog, rerunWorkflow } from '../checks';
 import type { GitHubClient } from '../client';
 
 function createMockClient() {
@@ -38,6 +38,26 @@ describe('getCheckSuites', () => {
     expect(suite.checkRuns).toEqual([]);
 
     expect(client.get).toHaveBeenCalledWith('repos/owner/repo/commits/abc123/check-suites');
+  });
+
+  it('handles null conclusion in check suites', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockResolvedValueOnce({
+      total_count: 1,
+      check_suites: [
+        {
+          id: 200,
+          status: 'in_progress',
+          conclusion: null,
+          head_sha: 'xyz789',
+        },
+      ],
+    });
+
+    const result = await getCheckSuites(client, 'owner', 'repo', 'xyz789');
+
+    expect(result[0]!.conclusion).toBeUndefined();
+    expect(result[0]!.status).toBe('in_progress');
   });
 });
 
@@ -112,6 +132,31 @@ describe('getCheckRuns', () => {
     expect(run.conclusion).toBeUndefined();
     expect(run.completedAt).toBeUndefined();
   });
+
+  it('falls back to checkSuiteId when check_suite is null', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockResolvedValueOnce({
+      total_count: 1,
+      check_runs: [
+        {
+          id: 500,
+          name: 'deploy',
+          status: 'completed',
+          conclusion: 'success',
+          started_at: null,
+          completed_at: null,
+          html_url: 'https://github.com/owner/repo/runs/500',
+          check_suite: null,
+        },
+      ],
+    });
+
+    const result = await getCheckRuns(client, 'owner', 'repo', 200);
+
+    expect(result[0]!.checkSuiteId).toBe(200);
+    expect(result[0]!.startedAt).toBeUndefined();
+    expect(result[0]!.completedAt).toBeUndefined();
+  });
 });
 
 describe('getCheckRunsForRef', () => {
@@ -141,5 +186,54 @@ describe('getCheckRunsForRef', () => {
     expect(run.checkSuiteId).toBe(150);
 
     expect(client.get).toHaveBeenCalledWith('repos/owner/repo/commits/abc123/check-runs');
+  });
+
+  it('falls back to 0 for checkSuiteId when check_suite is null', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockResolvedValueOnce({
+      total_count: 1,
+      check_runs: [
+        {
+          id: 500,
+          name: 'deploy',
+          status: 'completed',
+          conclusion: 'success',
+          started_at: null,
+          completed_at: null,
+          html_url: 'https://github.com/owner/repo/runs/500',
+          check_suite: null,
+        },
+      ],
+    });
+
+    const result = await getCheckRunsForRef(client, 'owner', 'repo', 'abc123');
+
+    expect(result[0]!.checkSuiteId).toBe(0);
+  });
+});
+
+describe('getJobLog', () => {
+  it('fetches raw log content for a job', async () => {
+    const client = createMockClient();
+    vi.mocked(client.getRaw).mockResolvedValueOnce('2025-01-15 Build started\n2025-01-15 Build completed');
+
+    const result = await getJobLog(client, 'owner', 'repo', 12345);
+
+    expect(result).toBe('2025-01-15 Build started\n2025-01-15 Build completed');
+    expect(client.getRaw).toHaveBeenCalledWith('repos/owner/repo/actions/jobs/12345/logs');
+  });
+});
+
+describe('rerunWorkflow', () => {
+  it('triggers a workflow rerun', async () => {
+    const client = createMockClient();
+    vi.mocked(client.post).mockResolvedValueOnce(undefined);
+
+    await rerunWorkflow(client, 'owner', 'repo', 67890);
+
+    expect(client.post).toHaveBeenCalledWith(
+      'repos/owner/repo/actions/runs/67890/rerun',
+      {},
+    );
   });
 });

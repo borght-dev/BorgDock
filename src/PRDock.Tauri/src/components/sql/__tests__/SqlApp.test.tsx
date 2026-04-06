@@ -320,4 +320,278 @@ describe('SqlApp', () => {
     const handle = document.querySelector('.sql-resize-handle');
     expect(handle).toBeTruthy();
   });
+
+  it('displays results after successful query', async () => {
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'SELECT * FROM test' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Status bar should show row count and execution time
+    expect(screen.getByText(/2 rows/)).toBeTruthy();
+    expect(screen.getByText('42ms')).toBeTruthy();
+  });
+
+  it('shows copy buttons after query results', async () => {
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'SELECT 1' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByText('Values')).toBeTruthy();
+    expect(screen.getByText('+ Headers')).toBeTruthy();
+    expect(screen.getByText('All')).toBeTruthy();
+  });
+
+  it('copies values when Values button is clicked', async () => {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'SELECT 1' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Values'));
+    });
+
+    expect(writeText).toHaveBeenCalled();
+  });
+
+  it('copies with headers when + Headers button is clicked', async () => {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'SELECT 1' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('+ Headers'));
+    });
+
+    expect(writeText).toHaveBeenCalled();
+  });
+
+  it('copies all (query + results) when All button is clicked', async () => {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'SELECT 1' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('All'));
+    });
+
+    expect(writeText).toHaveBeenCalled();
+  });
+
+  it('shows empty results message for queries with no rows', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          sql: {
+            connections: [{ name: 'DevDB', server: 'localhost', port: 1433, database: 'test', authentication: 'sql', trustServerCertificate: true }],
+            lastUsedConnection: 'DevDB',
+          },
+          ui: { theme: 'system' },
+        });
+      }
+      if (cmd === 'execute_sql_query') {
+        return Promise.resolve({
+          resultSets: [{ columns: [], rows: [], rowCount: 0, truncated: false }],
+          executionTimeMs: 5,
+          totalRowCount: 0,
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'DELETE FROM test' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByText(/Query executed/)).toBeTruthy();
+  });
+
+  it('does not run query when input is empty', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Leave textarea empty and try to run
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    // execute_sql_query should NOT have been called (only load_settings)
+    const calls = vi.mocked(invoke).mock.calls.filter((c) => c[0] === 'execute_sql_query');
+    expect(calls.length).toBe(0);
+  });
+
+  it('restores saved query from localStorage', async () => {
+    localStorage.setItem('prdock-sql-last-query', 'SELECT * FROM saved');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('SELECT * FROM saved');
+  });
+
+  it('starts resize on mousedown on resize handle', async () => {
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    const handle = document.querySelector('.sql-resize-handle')!;
+    fireEvent.mouseDown(handle);
+    // body cursor should be set
+    expect(document.body.style.cursor).toBe('row-resize');
+
+    // Simulate mouseup to clean up
+    fireEvent.mouseUp(document);
+    expect(document.body.style.cursor).toBe('');
+  });
+
+  it('changes connection selector', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          sql: {
+            connections: [
+              { name: 'DevDB', server: 'localhost', port: 1433, database: 'test', authentication: 'sql', trustServerCertificate: true },
+              { name: 'ProdDB', server: 'prod', port: 1433, database: 'prod', authentication: 'sql', trustServerCertificate: true },
+            ],
+            lastUsedConnection: 'DevDB',
+          },
+          ui: { theme: 'system' },
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const select = document.querySelector('select')!;
+    await act(async () => {
+      fireEvent.change(select, { target: { value: 'ProdDB' } });
+    });
+
+    expect((select as HTMLSelectElement).value).toBe('ProdDB');
+  });
 });

@@ -295,4 +295,168 @@ describe('CommandPalette', () => {
     fireEvent.mouseDown(screen.getByText('#99'));
     expect(onSelectWorkItem).toHaveBeenCalledWith(99);
   });
+
+  it('handles ArrowUp keyboard navigation', () => {
+    useWorkItemsStore.setState({
+      workItems: [
+        {
+          id: 1,
+          rev: 1,
+          url: '',
+          fields: {
+            'System.Title': 'Item A',
+            'System.State': 'Active',
+            'System.WorkItemType': 'Bug',
+            'System.AssignedTo': 'user',
+          },
+        },
+        {
+          id: 2,
+          rev: 1,
+          url: '',
+          fields: {
+            'System.Title': 'Item B',
+            'System.State': 'Active',
+            'System.WorkItemType': 'Bug',
+            'System.AssignedTo': 'user',
+          },
+        },
+      ],
+      workingOnWorkItemIds: new Set([1, 2]),
+    });
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    const container = document.querySelector('.w-\\[460px\\]');
+    if (container) {
+      fireEvent.keyDown(container, { key: 'ArrowUp' });
+    }
+  });
+
+  it('shows Recent section when recent IDs exist', () => {
+    useWorkItemsStore.setState({
+      workItems: [
+        {
+          id: 200,
+          rev: 1,
+          url: '',
+          fields: {
+            'System.Title': 'Recent Item',
+            'System.State': 'Active',
+            'System.WorkItemType': 'Task',
+            'System.AssignedTo': 'user',
+          },
+        },
+      ],
+      workingOnWorkItemIds: new Set(),
+      recentWorkItemIds: [200],
+    });
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    expect(screen.getByText('Recent')).toBeTruthy();
+    expect(screen.getByText('#200')).toBeTruthy();
+  });
+
+  it('does not duplicate items across sections', () => {
+    useWorkItemsStore.setState({
+      workItems: [
+        {
+          id: 300,
+          rev: 1,
+          url: '',
+          fields: {
+            'System.Title': 'Shared Item',
+            'System.State': 'Active',
+            'System.WorkItemType': 'Bug',
+            'System.AssignedTo': 'user',
+          },
+        },
+      ],
+      workingOnWorkItemIds: new Set([300]),
+      recentWorkItemIds: [300],
+    });
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    // Should only show in "Working On", not in "Recent" as well
+    expect(screen.getByText('Working On')).toBeTruthy();
+    expect(screen.queryByText('Recent')).toBeNull();
+  });
+
+  it('fetches missing recent items from ADO', async () => {
+    const { getWorkItems } = await import('@/services/ado/workitems');
+    vi.mocked(getWorkItems).mockResolvedValue([
+      {
+        id: 500,
+        rev: 1,
+        url: '',
+        fields: {
+          'System.Title': 'Fetched Item',
+          'System.State': 'Active',
+          'System.WorkItemType': 'Task',
+          'System.AssignedTo': 'dev',
+        },
+        relations: [],
+        htmlUrl: '',
+      },
+    ]);
+
+    useWorkItemsStore.setState({
+      workItems: [],
+      workingOnWorkItemIds: new Set(),
+      recentWorkItemIds: [500],
+    });
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    await vi.waitFor(() => {
+      expect(getWorkItems).toHaveBeenCalled();
+    });
+  });
+
+  it('shows navigate hint when browse items exist', () => {
+    useWorkItemsStore.setState({
+      workItems: [
+        {
+          id: 1,
+          rev: 1,
+          url: '',
+          fields: {
+            'System.Title': 'Item',
+            'System.State': 'Active',
+            'System.WorkItemType': 'Bug',
+            'System.AssignedTo': 'user',
+          },
+        },
+      ],
+      workingOnWorkItemIds: new Set([1]),
+    });
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    // Status bar should show navigation hint
+    expect(screen.getByText(/navigate/)).toBeTruthy();
+  });
+
+  it('resets search state when palette closes and reopens', () => {
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    const { rerender } = render(
+      <CommandPalette onSelectWorkItem={onSelectWorkItem} />,
+    );
+
+    const input = screen.getByPlaceholderText('Search work item by ID...');
+    fireEvent.change(input, { target: { value: '12' } });
+
+    // Close
+    useUiStore.setState({ isCommandPaletteOpen: false });
+    rerender(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    // Reopen
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    rerender(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+
+    const newInput = screen.getByPlaceholderText('Search work item by ID...');
+    expect((newInput as HTMLInputElement).value).toBe('');
+  });
 });

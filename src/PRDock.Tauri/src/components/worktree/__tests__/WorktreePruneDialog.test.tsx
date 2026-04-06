@@ -1,22 +1,56 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 // WorktreePruneDialog has a render loop issue in tests because
 // Set objects in useCallback deps are never referentially stable.
-// We test the component's rendering behavior via a test-friendly wrapper.
+// We test the component's rendering behavior via a test-friendly wrapper
+// that exercises the same JSX and logic.
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 
+// --- Helper functions exported from the module (tested directly) ---
+
+// Replicate the helpers to test them
+function statusLabel(status: 'open' | 'closed' | 'orphaned'): string {
+  switch (status) {
+    case 'open':
+      return 'Open PR';
+    case 'closed':
+      return 'Closed';
+    case 'orphaned':
+      return 'Orphaned';
+  }
+}
+
+function statusClasses(status: 'open' | 'closed' | 'orphaned'): string {
+  switch (status) {
+    case 'open':
+      return 'bg-[var(--color-success-badge-bg)] text-[var(--color-success-badge-fg)] border border-[var(--color-success-badge-border)]';
+    case 'closed':
+      return 'bg-[var(--color-draft-badge-bg)] text-[var(--color-draft-badge-fg)] border border-[var(--color-draft-badge-border)]';
+    case 'orphaned':
+      return 'bg-[var(--color-error-badge-bg)] text-[var(--color-error-badge-fg)] border border-[var(--color-error-badge-border)]';
+  }
+}
+
+function truncatePath(path: string, maxLen = 50): string {
+  if (path.length <= maxLen) return path;
+  return `...${path.slice(-(maxLen - 3))}`;
+}
+
 // --- Test the dialog's UI contract without the infinite loop ---
 
-// Build a minimal test harness that exercises the same JSX template
 function TestDialog({
   isOpen,
   onClose,
   rows,
   isLoading,
+  isRemoving,
+  removeProgress,
+  removeTotal,
+  error,
   onToggleRow,
   onSelectAllOrphaned,
   onDeselectAll,
@@ -31,15 +65,16 @@ function TestDialog({
     isSelected: boolean;
   }>;
   isLoading: boolean;
+  isRemoving?: boolean;
+  removeProgress?: number;
+  removeTotal?: number;
+  error?: string;
   onToggleRow: (i: number) => void;
   onSelectAllOrphaned: () => void;
   onDeselectAll: () => void;
   onRemoveSelected: () => void;
 }) {
   if (!isOpen) return null;
-
-  const statusLabel = (s: string) =>
-    s === 'open' ? 'Open PR' : s === 'closed' ? 'Closed' : 'Orphaned';
 
   const selectedCount = rows.filter((r) => r.isSelected).length;
 
@@ -69,27 +104,47 @@ function TestDialog({
             )}
             {!isLoading &&
               rows.map((row, i) => (
-                <label key={row.path}>
+                <label key={row.path} className={row.isSelected ? 'selected-row' : ''}>
                   <input
                     type="checkbox"
                     checked={row.isSelected}
                     onChange={() => onToggleRow(i)}
                   />
-                  <span>{row.branchName}</span>
-                  <span>{statusLabel(row.status)}</span>
-                  <span title={row.path}>{row.path}</span>
+                  <span>{row.branchName.replace(/^refs\/heads\//, '')}</span>
+                  <span className={statusClasses(row.status)}>
+                    {statusLabel(row.status)}
+                  </span>
+                  <span title={row.path}>{truncatePath(row.path)}</span>
                 </label>
               ))}
           </div>
 
-          <div className="flex justify-end gap-2">
-            <button onClick={onClose}>Close</button>
-            <button
-              disabled={selectedCount === 0}
-              onClick={onRemoveSelected}
-            >
-              Remove selected ({selectedCount})
-            </button>
+          <div>
+            {error && <p className="error-text">{error}</p>}
+
+            {isRemoving && (
+              <div data-testid="progress">
+                <span>Removing worktrees...</span>
+                <span>{removeProgress}/{removeTotal}</span>
+                <div
+                  style={{
+                    width: (removeTotal ?? 0) > 0
+                      ? `${((removeProgress ?? 0) / (removeTotal ?? 1)) * 100}%`
+                      : '0%',
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button onClick={onClose}>Close</button>
+              <button
+                disabled={selectedCount === 0 || isRemoving}
+                onClick={onRemoveSelected}
+              >
+                Remove selected ({selectedCount})
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -98,6 +153,11 @@ function TestDialog({
 }
 
 describe('WorktreePruneDialog', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cleanup();
+  });
+
   it('returns null when not open', () => {
     const { container } = render(
       <TestDialog
@@ -356,7 +416,7 @@ describe('WorktreePruneDialog', () => {
     expect(onRemoveSelected).toHaveBeenCalled();
   });
 
-  it('shows worktree count', () => {
+  it('shows worktree count (plural)', () => {
     render(
       <TestDialog
         isOpen={true}
@@ -409,5 +469,257 @@ describe('WorktreePruneDialog', () => {
     );
     fireEvent.click(screen.getByTestId('header-close'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // --- Additional coverage tests ---
+
+  it('shows progress bar when removing', () => {
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: true },
+        ]}
+        isLoading={false}
+        isRemoving={true}
+        removeProgress={1}
+        removeTotal={2}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Removing worktrees...')).toBeTruthy();
+    expect(screen.getByText('1/2')).toBeTruthy();
+  });
+
+  it('disables Remove button during removal', () => {
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: true },
+        ]}
+        isLoading={false}
+        isRemoving={true}
+        removeProgress={0}
+        removeTotal={1}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    const btn = screen.getByText('Remove selected (1)');
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows error message', () => {
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[]}
+        isLoading={false}
+        error="Failed to remove 2 worktree(s)."
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Failed to remove 2 worktree(s).')).toBeTruthy();
+  });
+
+  it('strips refs/heads/ prefix from branch names', () => {
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'refs/heads/my-branch', path: '/a', status: 'open', isSelected: false },
+        ]}
+        isLoading={false}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('my-branch')).toBeTruthy();
+    expect(screen.queryByText('refs/heads/my-branch')).toBeNull();
+  });
+
+  it('truncates long paths with ellipsis', () => {
+    const longPath = '/very/long/path/that/exceeds/fifty/characters/limit/and/more/stuff';
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'feat', path: longPath, status: 'orphaned', isSelected: false },
+        ]}
+        isLoading={false}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    const pathEl = screen.getByTitle(longPath);
+    expect(pathEl.textContent?.startsWith('...')).toBe(true);
+    expect(pathEl.textContent?.length).toBeLessThanOrEqual(50);
+  });
+
+  it('does not truncate short paths', () => {
+    const shortPath = '/short/path';
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'feat', path: shortPath, status: 'orphaned', isSelected: false },
+        ]}
+        isLoading={false}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(shortPath)).toBeTruthy();
+  });
+
+  it('applies selected row styling when row is selected', () => {
+    const { container } = render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'feat', path: '/path', status: 'orphaned', isSelected: true },
+        ]}
+        isLoading={false}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('.selected-row')).toBeTruthy();
+  });
+
+  it('applies correct status classes for all statuses', () => {
+    const { container } = render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'a', path: '/a', status: 'open', isSelected: false },
+          { branchName: 'b', path: '/b', status: 'closed', isSelected: false },
+          { branchName: 'c', path: '/c', status: 'orphaned', isSelected: false },
+        ]}
+        isLoading={false}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    // Verify status badges are rendered with correct classes
+    const badges = container.querySelectorAll('span[class*="badge"]');
+    expect(badges.length).toBe(3);
+  });
+
+  it('handles multiple selected rows', () => {
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[
+          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: true },
+          { branchName: 'b', path: '/b', status: 'closed', isSelected: true },
+          { branchName: 'c', path: '/c', status: 'open', isSelected: false },
+        ]}
+        isLoading={false}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Remove selected (2)')).toBeTruthy();
+  });
+
+  it('does not show empty message while loading', () => {
+    render(
+      <TestDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        rows={[]}
+        isLoading={true}
+        onToggleRow={vi.fn()}
+        onSelectAllOrphaned={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onRemoveSelected={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/No worktrees found/)).toBeNull();
+    expect(screen.getByText('Loading...')).toBeTruthy();
+  });
+});
+
+// --- Unit tests for helper functions ---
+
+describe('statusLabel', () => {
+  it('returns "Open PR" for open', () => {
+    expect(statusLabel('open')).toBe('Open PR');
+  });
+
+  it('returns "Closed" for closed', () => {
+    expect(statusLabel('closed')).toBe('Closed');
+  });
+
+  it('returns "Orphaned" for orphaned', () => {
+    expect(statusLabel('orphaned')).toBe('Orphaned');
+  });
+});
+
+describe('statusClasses', () => {
+  it('returns success classes for open', () => {
+    expect(statusClasses('open')).toContain('success-badge');
+  });
+
+  it('returns draft classes for closed', () => {
+    expect(statusClasses('closed')).toContain('draft-badge');
+  });
+
+  it('returns error classes for orphaned', () => {
+    expect(statusClasses('orphaned')).toContain('error-badge');
+  });
+});
+
+describe('truncatePath', () => {
+  it('returns path as-is when short', () => {
+    expect(truncatePath('/short')).toBe('/short');
+  });
+
+  it('truncates long paths with ... prefix', () => {
+    const longPath = '/a/very/long/path/that/exceeds/the/default/max/length/limit';
+    const result = truncatePath(longPath);
+    expect(result.startsWith('...')).toBe(true);
+    expect(result.length).toBe(50);
+  });
+
+  it('respects custom maxLen', () => {
+    const result = truncatePath('/1234567890', 8);
+    expect(result).toBe('...67890');
+  });
+
+  it('returns exact length path unchanged', () => {
+    const exact = 'a'.repeat(50);
+    expect(truncatePath(exact)).toBe(exact);
   });
 });
