@@ -24,6 +24,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { RepoSettings } from '@/types';
 
@@ -104,9 +105,10 @@ export default function App() {
   // Run at startup sync
   useRunAtStartup(settings);
 
-  // Restore persisted active section on mount
+  // Restore persisted active section and onboarding state on mount
   useEffect(() => {
     useUiStore.getState().restorePersistedSection();
+    useOnboardingStore.getState().restoreOnboardingState();
   }, []);
 
   // Command palette: select a work item → switch to work items section and open detail

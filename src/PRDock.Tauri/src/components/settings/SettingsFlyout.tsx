@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { AppSettings } from '@/types';
@@ -131,12 +132,20 @@ export function SettingsFlyout() {
 
           {/* Maintenance */}
           <SectionCard title="Maintenance">
-            <button
-              onClick={() => setIsPruneOpen(true)}
-              className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-            >
-              Prune Worktrees
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setIsPruneOpen(true)}
+                className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+              >
+                Prune Worktrees
+              </button>
+              <button
+                onClick={() => useOnboardingStore.getState().resetAll()}
+                className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+              >
+                Reset Onboarding
+              </button>
+            </div>
           </SectionCard>
         </div>
       </div>

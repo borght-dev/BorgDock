@@ -1,13 +1,11 @@
 import clsx from 'clsx';
 import { useCallback, useMemo, useState } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { AppSettings, RepoSettings, SidebarEdge } from '@/types';
+import type { AppSettings, RepoSettings } from '@/types';
 import { AuthStep } from './AuthStep';
-import { DoneStep } from './DoneStep';
-import { PositionStep } from './PositionStep';
 import { RepoStep } from './RepoStep';
 
-const STEPS = ['Auth', 'Repos', 'Position', 'Done'] as const;
+const STEPS = ['Auth', 'Repos'] as const;
 
 interface DiscoveredRepo {
   owner: string;
@@ -32,24 +30,18 @@ export function SetupWizard() {
   const [repos, setRepos] = useState<DiscoveredRepo[]>([]);
   const [isScanning, setIsScanning] = useState(false);
 
-  // Position state
-  const [sidebarEdge, setSidebarEdge] = useState<SidebarEdge>(settings.ui.sidebarEdge);
-  const [theme, setTheme] = useState(settings.ui.theme);
-
   const canGoNext = useMemo(() => {
     switch (currentStep) {
       case 0:
         return isAuthValid || (authMethod === 'pat' && pat.trim().length > 0);
       case 1:
         return repos.some((r) => r.isSelected);
-      case 2:
-        return true;
       default:
         return false;
     }
   }, [currentStep, isAuthValid, authMethod, pat, repos]);
 
-  const isOnFinalStep = currentStep === 2;
+  const isOnFinalStep = currentStep === 1;
 
   const handleNext = useCallback(async () => {
     if (currentStep === 0) {
@@ -67,10 +59,8 @@ export function SetupWizard() {
       } finally {
         setIsScanning(false);
       }
-    } else if (currentStep === 1) {
-      setCurrentStep(2);
     } else if (isOnFinalStep) {
-      // Finish
+      // Finish — save settings and let App.tsx transition to main UI
       const selectedRepos: RepoSettings[] = repos
         .filter((r) => r.isSelected)
         .map((r) => ({
@@ -91,14 +81,8 @@ export function SetupWizard() {
           username,
         },
         repos: selectedRepos,
-        ui: {
-          ...settings.ui,
-          sidebarEdge,
-          theme,
-        },
       };
       await saveSettings(updated);
-      setCurrentStep(3);
     }
   }, [
     currentStep,
@@ -108,13 +92,11 @@ export function SetupWizard() {
     authMethod,
     pat,
     username,
-    sidebarEdge,
-    theme,
     saveSettings,
   ]);
 
   const handleBack = useCallback(() => {
-    if (currentStep > 0 && currentStep < 3) {
+    if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
     }
   }, [currentStep]);
@@ -199,20 +181,11 @@ export function SetupWizard() {
               }
             />
           )}
-          {currentStep === 2 && (
-            <PositionStep
-              sidebarEdge={sidebarEdge}
-              theme={theme}
-              onEdgeChange={setSidebarEdge}
-              onThemeChange={setTheme}
-            />
-          )}
-          {currentStep === 3 && <DoneStep />}
         </div>
 
         {/* Navigation */}
         <div className="flex items-center justify-between border-t border-[var(--color-separator)] px-6 py-3">
-          {currentStep > 0 && currentStep < 3 ? (
+          {currentStep > 0 ? (
             <button
               className="rounded-lg px-4 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] transition-colors"
               onClick={handleBack}
@@ -223,15 +196,13 @@ export function SetupWizard() {
             <div />
           )}
 
-          {currentStep < 3 && (
-            <button
-              className="rounded-lg px-4 py-1.5 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
-              onClick={handleNext}
-              disabled={!canGoNext}
-            >
-              {isOnFinalStep ? 'Finish' : 'Next'}
-            </button>
-          )}
+          <button
+            className="rounded-lg px-4 py-1.5 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
+            onClick={handleNext}
+            disabled={!canGoNext}
+          >
+            {isOnFinalStep ? 'Finish' : 'Next'}
+          </button>
         </div>
       </div>
     </div>

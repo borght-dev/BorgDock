@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback } from 'react';
+import { FeatureBadge } from '@/components/onboarding';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 
@@ -93,6 +94,7 @@ export function Header() {
             )}
           >
             {s.label}
+            {s.key === 'focus' && <FeatureBadge badgeId="focus-mode" />}
             {s.key === 'focus' && focusCount > 0 && (
               <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-1.5 text-[9px] font-bold leading-none text-white min-w-[16px] h-[14px]">
                 {focusCount}

@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import {
@@ -79,6 +81,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   const [summaryExpanded, setSummaryExpanded] = useState(true);
 
   const handleGenerateSummary = useCallback(async () => {
+    useOnboardingStore.getState().dismissBadge('pr-summary');
     setSummaryError('');
     useSummaryStore.getState().setLoading(sKey, true);
     try {
@@ -277,12 +280,16 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       {claudeApiKey ? (
         <div className="space-y-2">
           {!cachedSummary && !summaryLoading && (
-            <button
-              onClick={handleGenerateSummary}
-              className="w-full rounded-md border border-[var(--color-purple-border,#6655D4)] bg-[var(--color-purple-soft,color-mix(in_srgb,#9384F7_8%,transparent))] px-3 py-1.5 text-xs font-medium text-[var(--color-purple,#9384F7)] hover:opacity-80 transition-opacity"
-            >
-              Summarize with AI
-            </button>
+            <>
+              <InlineHint hintId="pr-summary-generate" text="Generate a quick AI summary of this PR" />
+              <button
+                onClick={handleGenerateSummary}
+                className="w-full rounded-md border border-[var(--color-purple-border,#6655D4)] bg-[var(--color-purple-soft,color-mix(in_srgb,#9384F7_8%,transparent))] px-3 py-1.5 text-xs font-medium text-[var(--color-purple,#9384F7)] hover:opacity-80 transition-opacity"
+              >
+                Summarize with AI
+                <FeatureBadge badgeId="pr-summary" />
+              </button>
+            </>
           )}
           {summaryLoading && (
             <div className="flex items-center gap-2 rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">

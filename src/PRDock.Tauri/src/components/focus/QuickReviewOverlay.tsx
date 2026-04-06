@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { InlineHint } from '@/components/onboarding';
 import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -94,6 +95,9 @@ export function QuickReviewOverlay() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
+          {state === 'reviewing' && (
+            <InlineHint hintId="review-mode-shortcuts" text="Press A to approve, S to skip, C to comment" />
+          )}
           {state === 'complete' ? (
             <QuickReviewSummary queue={queue} decisions={decisions} onClose={endSession} />
           ) : currentPr ? (
