@@ -39,10 +39,12 @@ urlencoding = "2"
 log = "0.4"
 png = "0.17"
 tiberius = { version = "0.12", default-features = false, features = ["tds73", "chrono", "winauth", "rust_decimal"] }
-tauri-winrt-notification = "0.7"
 tokio-util = { version = "0.7", features = ["compat"] }
 rust_decimal = "1"
 chrono = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.7"
 
 [profile.release]
 strip = true

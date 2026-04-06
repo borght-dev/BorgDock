@@ -8,6 +8,7 @@ pub use worktree::{create_worktree, list_worktrees, open_in_editor, open_in_term
 
 /// Create a Command that won't flash a console window on Windows.
 pub fn hidden_command(program: &str) -> std::process::Command {
+    #[allow(unused_mut)]
     let mut cmd = std::process::Command::new(program);
     #[cfg(target_os = "windows")]
     {
