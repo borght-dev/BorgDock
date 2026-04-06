@@ -20,8 +20,19 @@ interface PRDetailPanelProps {
 export function PRDetailPanel({ pr }: PRDetailPanelProps) {
   const selectPr = useUiStore((s) => s.selectPr);
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
+  const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['Overview']));
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const [underline, setUnderline] = useState({ left: 0, width: 0 });
+
+  // Mount tabs lazily on first activation, keep cached afterwards
+  useEffect(() => {
+    setMountedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   const handlePopOut = useCallback(() => {
     invoke('open_pr_detail_window', {
@@ -117,43 +128,53 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
         />
       </div>
 
-      {/* Tab content — all tabs rendered eagerly for instant switching */}
+      {/* Tab content — tabs mount lazily on first activation, cached afterwards */}
       <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
         <div className={activeTab === 'Overview' ? '' : 'hidden'}>
           <OverviewTab pr={pr} />
         </div>
-        <div className={activeTab === 'Commits' ? '' : 'hidden'}>
-          <CommitsTab
-            prNumber={pr.pullRequest.number}
-            repoOwner={pr.pullRequest.repoOwner}
-            repoName={pr.pullRequest.repoName}
-          />
-        </div>
-        <div className={activeTab === 'Files' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
-          <FilesTab
-            prNumber={pr.pullRequest.number}
-            repoOwner={pr.pullRequest.repoOwner}
-            repoName={pr.pullRequest.repoName}
-            htmlUrl={pr.pullRequest.htmlUrl}
-          />
-        </div>
-        <div className={activeTab === 'Checks' ? '' : 'hidden'}>
-          <ChecksTab checks={pr.checks} />
-        </div>
-        <div className={activeTab === 'Reviews' ? '' : 'hidden'}>
-          <ReviewsTab
-            prNumber={pr.pullRequest.number}
-            repoOwner={pr.pullRequest.repoOwner}
-            repoName={pr.pullRequest.repoName}
-          />
-        </div>
-        <div className={activeTab === 'Comments' ? '' : 'hidden'}>
-          <CommentsTab
-            prNumber={pr.pullRequest.number}
-            repoOwner={pr.pullRequest.repoOwner}
-            repoName={pr.pullRequest.repoName}
-          />
-        </div>
+        {mountedTabs.has('Commits') && (
+          <div className={activeTab === 'Commits' ? '' : 'hidden'}>
+            <CommitsTab
+              prNumber={pr.pullRequest.number}
+              repoOwner={pr.pullRequest.repoOwner}
+              repoName={pr.pullRequest.repoName}
+            />
+          </div>
+        )}
+        {mountedTabs.has('Files') && (
+          <div className={activeTab === 'Files' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
+            <FilesTab
+              prNumber={pr.pullRequest.number}
+              repoOwner={pr.pullRequest.repoOwner}
+              repoName={pr.pullRequest.repoName}
+              htmlUrl={pr.pullRequest.htmlUrl}
+            />
+          </div>
+        )}
+        {mountedTabs.has('Checks') && (
+          <div className={activeTab === 'Checks' ? '' : 'hidden'}>
+            <ChecksTab checks={pr.checks} />
+          </div>
+        )}
+        {mountedTabs.has('Reviews') && (
+          <div className={activeTab === 'Reviews' ? '' : 'hidden'}>
+            <ReviewsTab
+              prNumber={pr.pullRequest.number}
+              repoOwner={pr.pullRequest.repoOwner}
+              repoName={pr.pullRequest.repoName}
+            />
+          </div>
+        )}
+        {mountedTabs.has('Comments') && (
+          <div className={activeTab === 'Comments' ? '' : 'hidden'}>
+            <CommentsTab
+              prNumber={pr.pullRequest.number}
+              repoOwner={pr.pullRequest.repoOwner}
+              repoName={pr.pullRequest.repoName}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
