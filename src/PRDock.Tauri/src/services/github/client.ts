@@ -15,9 +15,21 @@ export class GitHubClient {
   private readonly getToken: () => Promise<string>;
   private readonly etagCache = new Map<string, ETagEntry>();
   private rateLimit: RateLimit = { remaining: -1, total: -1, reset: null };
+  private _freshCount = 0;
+  private _pollStartCount = 0;
 
   constructor(getToken: () => Promise<string>) {
     this.getToken = getToken;
+  }
+
+  /** Call before starting a poll cycle to track whether any fresh data arrives. */
+  markPollStart(): void {
+    this._pollStartCount = this._freshCount;
+  }
+
+  /** Returns true if any GET request returned fresh (non-304) data since markPollStart(). */
+  get hadFreshData(): boolean {
+    return this._freshCount > this._pollStartCount;
   }
 
   getRateLimit(): RateLimit {
@@ -51,6 +63,7 @@ export class GitHubClient {
     }
 
     const body = await response.json();
+    this._freshCount++;
 
     const etag = response.headers.get('etag');
     if (etag) {

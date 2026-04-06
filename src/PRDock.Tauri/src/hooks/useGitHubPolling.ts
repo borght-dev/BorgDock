@@ -47,6 +47,7 @@ export function useGitHubPolling(settings: AppSettings) {
     const pollFn = async (): Promise<PullRequestWithChecks[]> => {
       const c = getClient();
       if (!c) throw new Error('GitHub client not initialized');
+      c.markPollStart();
 
       const enabledRepos = settingsRef.current.repos.filter((r) => r.enabled);
       if (enabledRepos.length === 0) return [];
@@ -92,7 +93,11 @@ export function useGitHubPolling(settings: AppSettings) {
     manager.rateLimitChecker = () => client.isRateLimitLow;
 
     manager.onResult = (results) => {
-      usePrStore.getState().setPullRequests(results);
+      // Only update the PR store when GitHub returned fresh data (non-304).
+      // This avoids unnecessary React re-renders when nothing has changed.
+      if (client.hadFreshData) {
+        usePrStore.getState().setPullRequests(results);
+      }
       usePrStore.getState().setPollingState(false, new Date());
 
       const rl = client.getRateLimit();
