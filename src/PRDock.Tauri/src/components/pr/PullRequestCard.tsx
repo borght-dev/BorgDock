@@ -3,6 +3,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback, useState } from 'react';
+import { parseError } from '@/utils/parse-error';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
@@ -198,8 +199,7 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
 
   const showError = useCallback(
     (title: string, err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      showNotification({ title, message, severity: 'error', actions: [] });
+      showNotification({ title, message: parseError(err).message, severity: 'error', actions: [] });
     },
     [showNotification],
   );

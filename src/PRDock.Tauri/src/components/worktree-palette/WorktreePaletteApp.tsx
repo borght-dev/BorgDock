@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parseError } from '@/utils/parse-error';
 import type { AppSettings, RepoSettings } from '@/types/settings';
 import type { WorktreeInfo, WorktreeStatus } from '@/types/worktree';
 
@@ -165,7 +166,7 @@ export function WorktreePaletteApp() {
               if (!wt.isMainWorktree) flat.push({ wt, repo });
             }
           } catch (err) {
-            errs.set(`${repo.owner}/${repo.name}`, err instanceof Error ? err.message : String(err));
+            errs.set(`${repo.owner}/${repo.name}`, parseError(err).message);
           }
         }),
       );
@@ -212,15 +213,15 @@ export function WorktreePaletteApp() {
 
   // ── Actions ──
   const handleOpenTerminal = useCallback((path: string) => {
-    invoke('open_in_terminal', { path }).catch(() => {});
+    invoke('open_in_terminal', { path }).catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenFolder = useCallback((path: string) => {
-    openPath(path).catch(() => {});
+    openPath(path).catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenEditor = useCallback((path: string) => {
-    invoke('open_in_editor', { path }).catch(() => {});
+    invoke('open_in_editor', { path }).catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleRefresh = useCallback(() => {

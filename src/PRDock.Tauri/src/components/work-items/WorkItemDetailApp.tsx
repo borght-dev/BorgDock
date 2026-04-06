@@ -277,7 +277,7 @@ export function WorkItemDetailApp() {
         const title = getField(item, 'System.Title');
         getCurrentWindow()
           .setTitle(`#${workItemId} - ${title}`)
-          .catch(() => {});
+          .catch(console.debug); /* fire-and-forget */
 
         // Load available states
         const itemType = getField(item, 'System.WorkItemType');
@@ -375,7 +375,7 @@ export function WorkItemDetailApp() {
       await deleteWorkItem(client, workItemId);
       getCurrentWindow()
         .close()
-        .catch(() => {});
+        .catch(console.debug); /* fire-and-forget */
     } catch (err) {
       console.error('Failed to delete:', err);
       setStatusText('Delete failed');
@@ -398,7 +398,7 @@ export function WorkItemDetailApp() {
   const handleClose = useCallback(() => {
     getCurrentWindow()
       .close()
-      .catch(() => {});
+      .catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenInBrowser = useCallback(async (url: string) => {

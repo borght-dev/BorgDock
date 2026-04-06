@@ -58,7 +58,7 @@ export const useUiStore = create<UiState>()((set) => ({
         store.set('activeSection', section);
         store.save();
       });
-    }).catch(() => {});
+    }).catch((err) => console.warn('Failed to persist activeSection:', err));
   },
 
   selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),
@@ -105,6 +105,6 @@ export const useUiStore = create<UiState>()((set) => ({
           set({ activeSection: section });
         }
       });
-    }).catch(() => {});
+    }).catch((err) => console.warn('Failed to restore persisted section:', err));
   },
 }));

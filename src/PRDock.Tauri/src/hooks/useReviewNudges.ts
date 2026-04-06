@@ -65,7 +65,7 @@ export function useReviewNudges(settings: AppSettings) {
         prOwner: pr.pullRequest.repoOwner,
         prRepo: pr.pullRequest.repoName,
         prNumber: pr.pullRequest.number,
-      }).catch(() => {});
+      }).catch(console.debug); /* fire-and-forget: OS notification */
 
       lastNudgedRef.current.set(prk, now);
     }

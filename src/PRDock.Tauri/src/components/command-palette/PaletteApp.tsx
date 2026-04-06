@@ -242,7 +242,7 @@ export function PaletteApp() {
     function handleGlobalKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        getCurrentWindow().close().catch(() => {});
+        getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
       }
     }
     document.addEventListener('keydown', handleGlobalKey);
@@ -369,7 +369,7 @@ export function PaletteApp() {
       } catch (err) {
         console.error('Failed to open detail window:', err);
       }
-      getCurrentWindow().close().catch(() => {});
+      getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
     },
     [recentIds],
   );

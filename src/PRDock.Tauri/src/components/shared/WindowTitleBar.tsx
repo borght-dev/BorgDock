@@ -9,20 +9,20 @@ export function WindowTitleBar({ title }: WindowTitleBarProps) {
   const win = getCurrentWindow();
 
   const handleMinimize = useCallback(() => {
-    win.minimize().catch(() => {});
+    win.minimize().catch(console.debug); /* fire-and-forget */
   }, [win]);
 
   const handleMaximize = useCallback(async () => {
     const isMax = await win.isMaximized();
     if (isMax) {
-      win.unmaximize().catch(() => {});
+      win.unmaximize().catch(console.debug); /* fire-and-forget */
     } else {
-      win.maximize().catch(() => {});
+      win.maximize().catch(console.debug); /* fire-and-forget */
     }
   }, [win]);
 
   const handleClose = useCallback(() => {
-    win.close().catch(() => {});
+    win.close().catch(console.debug); /* fire-and-forget */
   }, [win]);
 
   return (

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
+import { parseError } from '@/utils/parse-error';
 
 interface MergeRequest {
   id: string;
@@ -33,7 +34,7 @@ export function MergeToast() {
     } catch (err) {
       useNotificationStore.getState().show({
         title: `Failed to merge PR #${req.prNumber}`,
-        message: `${err}`,
+        message: parseError(err).message,
         severity: 'error',
         actions: [],
       });

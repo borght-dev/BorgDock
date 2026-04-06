@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { parseError } from '@/utils/parse-error';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { ResultsTable } from './ResultsTable';
@@ -200,7 +201,7 @@ export function SqlApp() {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        getCurrentWindow().close().catch(() => {});
+        getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
       }
     }
     document.addEventListener('keydown', handleKey);
@@ -245,7 +246,7 @@ export function SqlApp() {
       });
       setResult(res);
     } catch (err) {
-      setError(String(err));
+      setError(parseError(err).message);
     } finally {
       setIsRunning(false);
     }
