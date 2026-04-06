@@ -143,7 +143,7 @@ function VirtualizedList({
         style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
-          const item = items[virtualRow.index];
+          const item = items[virtualRow.index]!;
           return (
             <div
               key={item.id}

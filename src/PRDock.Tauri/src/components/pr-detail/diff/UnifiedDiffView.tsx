@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef } from 'react';
-import type { DiffHunk, HighlightSpan, InlineChange } from '@/types';
+import type { DiffHunk, DiffLine, HighlightSpan, InlineChange } from '@/types';
 import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
 import { DiffLineContent } from './DiffLineContent';
 
@@ -114,7 +114,7 @@ function VirtualUnifiedDiff({
   inlineMap,
   syntaxHighlights,
 }: {
-  allLines: ReturnType<DiffHunk['lines']['flatMap']>;
+  allLines: DiffLine[];
   inlineMap: Map<number, { deleted: InlineChange[]; added: InlineChange[] }>;
   syntaxHighlights?: Map<number, HighlightSpan[]> | null;
 }) {
