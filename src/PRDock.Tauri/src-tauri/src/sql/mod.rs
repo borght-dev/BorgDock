@@ -49,8 +49,14 @@ fn build_config(
             config.authentication(AuthMethod::sql_server(user, pass));
         }
         _ => {
-            // Windows Integrated auth (SSPI)
-            config.authentication(AuthMethod::Integrated);
+            #[cfg(windows)]
+            {
+                config.authentication(AuthMethod::Integrated);
+            }
+            #[cfg(not(windows))]
+            {
+                return Err("Windows Integrated authentication is only available on Windows".to_string());
+            }
         }
     }
 
