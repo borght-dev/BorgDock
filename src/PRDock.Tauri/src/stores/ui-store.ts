@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
+import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 export type ActiveSection = 'prs' | 'focus' | 'workitems';
 
@@ -52,13 +53,8 @@ export const useUiStore = create<UiState>()((set) => ({
 
   setActiveSection: (section) => {
     set({ activeSection: section });
-    // Persist last active section
-    import('@tauri-apps/plugin-store').then(({ load }) => {
-      load('ui-state.json').then((store) => {
-        store.set('activeSection', section);
-        store.save();
-      });
-    }).catch((err) => console.warn('Failed to persist activeSection:', err));
+    persistToTauriStore('ui-state.json', 'activeSection', section)
+      .catch((err) => console.warn('Failed to persist activeSection:', err));
   },
 
   selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),
@@ -98,13 +94,12 @@ export const useUiStore = create<UiState>()((set) => ({
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 
   restorePersistedSection: () => {
-    import('@tauri-apps/plugin-store').then(({ load }) => {
-      load('ui-state.json').then(async (store) => {
-        const section = await store.get<ActiveSection>('activeSection');
+    readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection')
+      .then((section) => {
         if (section && (section === 'prs' || section === 'focus' || section === 'workitems')) {
           set({ activeSection: section });
         }
-      });
-    }).catch((err) => console.warn('Failed to restore persisted section:', err));
+      })
+      .catch((err) => console.warn('Failed to restore persisted section:', err));
   },
 }));
