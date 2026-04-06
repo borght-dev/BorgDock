@@ -1,9 +1,14 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef } from 'react';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
+import type { PullRequestWithChecks } from '@/types';
 import { PullRequestCard } from './PullRequestCard';
 import { RepoGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { TeamReviewLoad } from './TeamReviewLoad';
+
+const VIRTUALIZE_THRESHOLD = 50;
 
 function SkeletonCard() {
   return (
@@ -147,14 +152,58 @@ export function PullRequestList() {
             </span>
           </div>
           <div className="opacity-60">
-            {closedPullRequests.map((pr) => (
-              <div key={pr.pullRequest.number} className="px-0.5">
-                <PullRequestCard prWithChecks={pr} />
-              </div>
-            ))}
+            {closedPullRequests.length > VIRTUALIZE_THRESHOLD ? (
+              <VirtualizedPrCards prs={closedPullRequests} />
+            ) : (
+              closedPullRequests.map((pr) => (
+                <div key={pr.pullRequest.number} className="px-0.5">
+                  <PullRequestCard prWithChecks={pr} />
+                </div>
+              ))
+            )}
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function VirtualizedPrCards({ prs }: { prs: PullRequestWithChecks[] }) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: prs.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 80,
+    overscan: 10,
+  });
+
+  return (
+    <div ref={parentRef} className="max-h-[400px] overflow-y-auto">
+      <div
+        style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const pr = prs[virtualRow.index];
+          return (
+            <div
+              key={pr.pullRequest.number}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <div className="px-0.5">
+                <PullRequestCard prWithChecks={pr} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
