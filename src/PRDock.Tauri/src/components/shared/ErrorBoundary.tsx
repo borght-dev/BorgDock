@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[var(--color-bg-primary)] p-6 text-center">
           <div className="text-sm font-medium text-[var(--color-text-primary)]">
             Something went wrong
           </div>

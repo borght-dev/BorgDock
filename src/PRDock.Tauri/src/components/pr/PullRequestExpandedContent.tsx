@@ -34,11 +34,11 @@ export function ExpandedContent({
         </span>
         <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1">
           <span className="font-medium text-[var(--color-status-green)]">
-            +{pr.additions.toLocaleString()}
+            +{(pr.additions ?? 0).toLocaleString()}
           </span>
           <span className="text-[var(--color-text-muted)]"> / </span>
           <span className="font-medium text-[var(--color-status-red)]">
-            {'\u2212'}{pr.deletions.toLocaleString()}
+            {'\u2212'}{(pr.deletions ?? 0).toLocaleString()}
           </span>
         </span>
         <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1 text-[var(--color-text-secondary)]">

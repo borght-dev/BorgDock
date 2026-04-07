@@ -198,9 +198,9 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
             })()}
             {(pr.additions > 0 || pr.deletions > 0) && (
               <span className="font-mono tabular-nums">
-                <span className="font-medium text-[var(--color-status-green)]">+{pr.additions.toLocaleString()}</span>
+                <span className="font-medium text-[var(--color-status-green)]">+{(pr.additions ?? 0).toLocaleString()}</span>
                 <span className="text-[var(--color-text-ghost)]"> </span>
-                <span className="font-medium text-[var(--color-status-red)]">{'\u2212'}{pr.deletions.toLocaleString()}</span>
+                <span className="font-medium text-[var(--color-status-red)]">{'\u2212'}{(pr.deletions ?? 0).toLocaleString()}</span>
               </span>
             )}
             {pr.commitCount > 0 && (
