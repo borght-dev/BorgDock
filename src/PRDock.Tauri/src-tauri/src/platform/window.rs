@@ -1,4 +1,24 @@
-use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
+
+/// Get or create the badge window lazily.
+fn get_or_create_badge(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
+    if let Some(win) = app.get_webview_window("badge") {
+        return Ok(win);
+    }
+
+    WebviewWindowBuilder::new(app, "badge", WebviewUrl::App("badge.html".into()))
+        .title("PRDock Badge")
+        .inner_size(340.0, 48.0)
+        .decorations(false)
+        .always_on_top(true)
+        .resizable(false)
+        .transparent(true)
+        .shadow(false)
+        .visible(false)
+        .skip_taskbar(true)
+        .build()
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub fn position_sidebar(app: tauri::AppHandle, edge: String, width: u32) -> Result<(), String> {
@@ -31,29 +51,29 @@ pub fn toggle_sidebar(app: tauri::AppHandle) -> Result<bool, String> {
 
 #[tauri::command]
 pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
-    if let Some(badge_win) = app.get_webview_window("badge") {
-        // Position badge at top-center of primary monitor
-        if let Ok(Some(monitor)) = badge_win.current_monitor() {
-            let screen_size = monitor.size();
-            let screen_pos = monitor.position();
-            let scale = badge_win.scale_factor().unwrap_or(1.0);
-            let badge_width = (340.0 * scale) as u32;
-            let badge_height = (48.0 * scale) as u32;
-            let x = screen_pos.x + (screen_size.width as i32 - badge_width as i32) / 2;
-            let y = screen_pos.y + 8;
-            let _ = badge_win.set_position(tauri::Position::Physical(
-                tauri::PhysicalPosition::new(x, y),
-            ));
-            let _ = badge_win.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-                badge_width,
-                badge_height,
-            )));
-        }
-        badge_win.show().map_err(|e| e.to_string())?;
-        badge_win
-            .set_always_on_top(true)
-            .map_err(|e| e.to_string())?;
+    let badge_win = get_or_create_badge(&app)?;
+
+    // Position badge at top-center of primary monitor
+    if let Ok(Some(monitor)) = badge_win.current_monitor() {
+        let screen_size = monitor.size();
+        let screen_pos = monitor.position();
+        let scale = badge_win.scale_factor().unwrap_or(1.0);
+        let badge_width = (340.0 * scale) as u32;
+        let badge_height = (48.0 * scale) as u32;
+        let x = screen_pos.x + (screen_size.width as i32 - badge_width as i32) / 2;
+        let y = screen_pos.y + 8;
+        let _ = badge_win.set_position(tauri::Position::Physical(
+            PhysicalPosition::new(x, y),
+        ));
+        let _ = badge_win.set_size(tauri::Size::Physical(PhysicalSize::new(
+            badge_width,
+            badge_height,
+        )));
     }
+    badge_win.show().map_err(|e| e.to_string())?;
+    badge_win
+        .set_always_on_top(true)
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }

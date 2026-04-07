@@ -10,7 +10,16 @@
     </script>
   </head>
   <body class="bg-transparent overflow-hidden select-none">
-    <div id="root"></div>
+    <div id="root">
+      <div id="splash" style="display:flex;align-items:center;justify-content:center;height:100vh;width:100%;background:linear-gradient(180deg,#F7F5FB 0%,#EDEAF4 100%)">
+        <div style="width:24px;height:24px;border:2px solid #6655D4;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite"></div>
+      </div>
+      <style>
+        html.dark #splash{background:linear-gradient(180deg,#110F1A 0%,#1A1726 100%)}
+        html.dark #splash>div{border-color:#7C6AF6;border-top-color:transparent}
+        @keyframes sp{to{transform:rotate(360deg)}}
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
