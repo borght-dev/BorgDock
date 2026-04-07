@@ -75,7 +75,7 @@ export function PRDetailApp() {
         // Update window title
         getCurrentWindow()
           .setTitle(`PR #${number} - ${targetPr.title}`)
-          .catch(() => {});
+          .catch(console.debug); /* fire-and-forget */
       } catch (err) {
         console.error('Failed to load PR:', err);
         setError('Failed to load pull request');

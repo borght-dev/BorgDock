@@ -1,24 +1,15 @@
-import { invoke } from '@tauri-apps/api/core';
-import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
-import { useCallback, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { MergeReadinessChecklist } from '@/components/pr-detail/MergeReadinessChecklist';
-import { rerunWorkflow } from '@/services/github/checks';
-import { bypassMergePullRequest, closePullRequest, mergePullRequest, toggleDraft } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
-import { useNotificationStore } from '@/stores/notification-store';
+import { usePrCardActions } from '@/hooks/usePrCardActions';
+import { computeMergeScore } from '@/services/merge-score';
 import { usePrStore } from '@/stores/pr-store';
-import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import type { PriorityFactor } from '@/services/priority-scoring';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
+import { ActionButton } from './ActionButton';
+import { ExpandedContent } from './PullRequestExpandedContent';
 import { LabelBadge } from './LabelBadge';
 import { MergeScoreBadge } from './MergeScoreBadge';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
@@ -32,138 +23,8 @@ interface PullRequestCardProps {
   priorityFactors?: PriorityFactor[];
 }
 
-function computeMergeScore(pr: PullRequestWithChecks): number {
-  let score = 0;
-  const relevant = pr.checks.length - pr.skippedCount;
-
-  // CI checks (25%)
-  if (relevant > 0) {
-    score += (pr.passedCount / relevant) * 25;
-  } else {
-    score += 25; // No checks = full marks
-  }
-
-  // Approvals (25%)
-  if (pr.pullRequest.reviewStatus === 'approved') score += 25;
-  else if (pr.pullRequest.reviewStatus === 'commented') score += 10;
-  else if (pr.pullRequest.reviewStatus === 'pending') score += 5;
-
-  // No conflicts (25%)
-  if (pr.pullRequest.mergeable !== false) score += 25;
-
-  // Not draft (25%)
-  if (!pr.pullRequest.isDraft) score += 25;
-
-  return Math.round(score);
-}
-
 function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
-}
-
-function ExpandedContent({
-  prWithChecks,
-}: {
-  prWithChecks: PullRequestWithChecks;
-}) {
-  const pr = prWithChecks.pullRequest;
-
-  return (
-    <div
-      className="border-t border-[var(--color-separator)] mt-4 pt-4 space-y-4 -mx-5 -mb-4 px-5 pb-4"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Branch flow */}
-      <div className="flex items-center gap-2 text-xs">
-        <span className="rounded bg-[var(--color-surface-raised)] px-2 py-0.5 font-mono text-[var(--color-text-primary)]">
-          {pr.headRef}
-        </span>
-        <span className="text-[var(--color-text-muted)]">{'\u2192'}</span>
-        <span className="rounded bg-[var(--color-surface-raised)] px-2 py-0.5 font-mono text-[var(--color-text-primary)]">
-          {pr.baseRef}
-        </span>
-      </div>
-
-      {/* Stat chips */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1 text-[var(--color-text-secondary)]">
-          <strong className="font-medium text-[var(--color-text-primary)]">{pr.commitCount}</strong>{' '}
-          commit{pr.commitCount !== 1 ? 's' : ''}
-        </span>
-        <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1">
-          <span className="font-medium text-[var(--color-status-green)]">
-            +{pr.additions.toLocaleString()}
-          </span>
-          <span className="text-[var(--color-text-muted)]"> / </span>
-          <span className="font-medium text-[var(--color-status-red)]">
-            {'\u2212'}{pr.deletions.toLocaleString()}
-          </span>
-        </span>
-        <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1 text-[var(--color-text-secondary)]">
-          <strong className="font-medium text-[var(--color-text-primary)]">{pr.changedFiles}</strong>{' '}
-          file{pr.changedFiles !== 1 ? 's' : ''} changed
-        </span>
-      </div>
-
-      {/* Merge readiness checklist */}
-      <MergeReadinessChecklist pr={prWithChecks} />
-
-      {/* PR body - markdown rendered */}
-      {pr.body && (
-        <div className="border-t border-[var(--color-separator)] pt-4">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
-            Summary
-          </div>
-          <div className="markdown-body max-h-[300px] overflow-y-auto text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{pr.body}</ReactMarkdown>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActionButton({
-  label,
-  icon,
-  onClick,
-  variant = 'default',
-}: {
-  label: string;
-  icon?: string;
-  onClick: (e: React.MouseEvent) => void;
-  variant?: 'default' | 'accent' | 'purple' | 'success' | 'draft' | 'danger';
-}) {
-  const variantClasses = {
-    default:
-      'border-[var(--color-subtle-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
-    accent:
-      'border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]',
-    purple:
-      'border-[var(--color-purple-border,#6655D4)] text-[var(--color-purple,#9384F7)] hover:bg-[color-mix(in_srgb,var(--color-purple,#9384F7)_10%,transparent)]',
-    success:
-      'border-[var(--color-success-badge-border)] bg-[var(--color-action-success-bg,color-mix(in_srgb,var(--color-status-green)_15%,transparent))] text-[var(--color-status-green)] hover:opacity-90',
-    draft:
-      'border-[var(--color-draft-badge-border)] text-[var(--color-draft-badge-fg)] hover:bg-[color-mix(in_srgb,var(--color-draft-badge-fg)_10%,transparent)]',
-    danger:
-      'border-[var(--color-error-badge-border)] text-[var(--color-error-badge-fg)] hover:bg-[color-mix(in_srgb,var(--color-status-red)_10%,transparent)]',
-  };
-
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick(e);
-      }}
-      className={clsx(
-        'flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold cursor-pointer transition-colors',
-        variantClasses[variant],
-      )}
-    >
-      {icon && <span className="text-[10px]">{icon}</span>}
-      <span>{label}</span>
-    </button>
-  );
 }
 
 export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFactors }: PullRequestCardProps) {
@@ -174,12 +35,8 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
   const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
   const username = usePrStore((s) => s.username);
   const worktreeBranchMap = useUiStore((s) => s.worktreeBranchMap);
-  const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
-  const showNotification = useNotificationStore((s) => s.show);
-  const settings = useSettingsStore((s) => s.settings);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [confirmAction, setConfirmAction] = useState<'close' | 'bypass' | 'draft' | null>(null);
+  const actions = usePrCardActions(prWithChecks);
 
   const isMyPr = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
   const worktreeMatch = worktreeBranchMap.get(pr.headRef.toLowerCase());
@@ -188,187 +45,13 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
   const mergeScore = computeMergeScore(prWithChecks);
   const isOpen = pr.state === 'open';
   const canMerge = isOpen && !pr.isDraft && overallStatus === 'green';
-  const repoConfig = settings.repos.find((r) => r.owner === pr.repoOwner && r.name === pr.repoName);
-  const repoPath = repoConfig?.worktreeBasePath || '';
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  }, []);
-
-  const showError = useCallback(
-    (title: string, err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      showNotification({ title, message, severity: 'error', actions: [] });
-    },
-    [showNotification],
-  );
-
-  // Find a failed check for rerun
-  const failedCheck = checks.find(
-    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
-  );
-
-  const handleRerun = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const client = getClient();
-      if (!client || !failedCheck) return;
-      rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch((err) =>
-        showError('Failed to re-run checks', err),
-      );
-    },
-    [failedCheck, pr.repoOwner, pr.repoName, showError],
-  );
-
-  const handleFix = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      fixWithClaude(prWithChecks, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '').catch((err) =>
-        showError('Fix with Claude failed', err),
-      );
-    },
-    [prWithChecks, failedCheckNames, fixWithClaude, showError],
-  );
-
-  const handleMonitor = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      monitorPr(prWithChecks).catch((err) => showError('Monitor with Claude failed', err));
-    },
-    [prWithChecks, monitorPr, showError],
-  );
-
-  const handleResolveConflicts = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      resolveConflicts(prWithChecks).catch((err) =>
-        showError('Resolve conflicts failed', err),
-      );
-    },
-    [prWithChecks, resolveConflicts, showError],
-  );
-
-  const handleOpenInBrowser = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      openUrl(pr.htmlUrl).catch((err) => showError('Failed to open URL', err));
-    },
-    [pr.htmlUrl, showError],
-  );
-
-  const handleCopyBranch = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      writeText(pr.headRef)
-        .then(() => showNotification({ title: 'Copied', message: pr.headRef, severity: 'success', actions: [] }))
-        .catch((err) => showError('Failed to copy branch', err));
-    },
-    [pr.headRef, showNotification, showError],
-  );
-
-  const handleCheckout = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!repoPath) return;
-      invoke('git_fetch', { repoPath, remote: 'origin' })
-        .then(() => invoke('git_checkout', { repoPath, branch: pr.headRef }))
-        .then(() => showNotification({ title: 'Checked out', message: pr.headRef, severity: 'success', actions: [] }))
-        .catch((err) => showError('Checkout failed', err));
-    },
-    [repoPath, pr.headRef, showNotification, showError],
-  );
-
-  const handleToggleDraft = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setConfirmAction('draft');
-    },
-    [],
-  );
-
-  const executeToggleDraft = useCallback(() => {
-    const client = getClient();
-    if (!client) return;
-    toggleDraft(client, pr.repoOwner, pr.repoName, pr.number, !pr.isDraft).catch((err) =>
-      showError('Failed to toggle draft', err),
-    );
-    setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, pr.isDraft, showError]);
-
-  const handleMerge = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const client = getClient();
-      if (!client) return;
-      mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch((err) =>
-        showError('Merge failed', err),
-      );
-    },
-    [pr.repoOwner, pr.repoName, pr.number, showError],
-  );
-
-  const handleBypassMerge = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setConfirmAction('bypass');
-    },
-    [],
-  );
-
-  const executeBypassMerge = useCallback(() => {
-    bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number).catch((err) =>
-      showError('Bypass merge failed', err),
-    );
-    setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, showError]);
-
-  const handleClose = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setConfirmAction('close');
-    },
-    [],
-  );
-
-  const executeClose = useCallback(() => {
-    const client = getClient();
-    if (!client) return;
-    closePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch((err) =>
-      showError('Close PR failed', err),
-    );
-    setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, showError]);
-
-  const handleCopyErrors = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (failedCheckNames.length === 0) return;
-      const markdown = [
-        `## Failed checks for PR #${pr.number}`,
-        '',
-        ...failedCheckNames.map((name: string) => `- ${name}`),
-      ].join('\n');
-      writeText(markdown)
-        .then(() =>
-          showNotification({
-            title: 'Copied to clipboard',
-            message: `${failedCheckNames.length} failed check(s) copied`,
-            severity: 'success',
-            actions: [],
-          }),
-        )
-        .catch((err) => showError('Failed to copy errors', err));
-    },
-    [failedCheckNames, pr.number, showNotification, showError],
-  );
 
   return (
     <>
       <button
         data-pr-card
         onClick={() => selectPr(pr.number)}
-        onContextMenu={handleContextMenu}
+        onContextMenu={actions.handleContextMenu}
         className={clsx(
           'group flex w-full items-start gap-3 rounded-lg border p-4 px-5 text-left transition-colors',
           isSelected
@@ -536,38 +219,38 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
           {/* Conflict resolve button - always visible when conflicts */}
           {pr.mergeable === false && (
             <div className="mt-2">
-              <ActionButton label="Resolve Conflicts" icon={'\u2726'} onClick={handleResolveConflicts} variant="accent" />
+              <ActionButton label="Resolve Conflicts" icon={'\u2726'} onClick={actions.handleResolveConflicts} variant="accent" />
             </div>
           )}
 
           {/* Action buttons - visible on hover */}
           <div className="mt-2 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {overallStatus === 'red' && failedCheck && (
-              <ActionButton label="Re-run" icon={'\u21BB'} onClick={handleRerun} variant="accent" />
+            {overallStatus === 'red' && actions.failedCheck && (
+              <ActionButton label="Re-run" icon={'\u21BB'} onClick={actions.handleRerun} variant="accent" />
             )}
             {overallStatus === 'red' && (
-              <ActionButton label="Fix" icon={'\u2726'} onClick={handleFix} variant="purple" />
+              <ActionButton label="Fix" icon={'\u2726'} onClick={actions.handleFix} variant="purple" />
             )}
-            <ActionButton label="Monitor" icon={'\u25B6'} onClick={handleMonitor} variant="purple" />
+            <ActionButton label="Monitor" icon={'\u25B6'} onClick={actions.handleMonitor} variant="purple" />
             {failedCheckNames.length > 0 && (
-              <ActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={handleCopyErrors} variant="default" />
+              <ActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={actions.handleCopyErrors} variant="default" />
             )}
-            <ActionButton label="Open in Browser" onClick={handleOpenInBrowser} variant="default" />
-            <ActionButton label="Copy Branch" onClick={handleCopyBranch} variant="default" />
-            {repoPath && (
-              <ActionButton label="Checkout" onClick={handleCheckout} variant="default" />
+            <ActionButton label="Open in Browser" onClick={actions.handleOpenInBrowser} variant="default" />
+            <ActionButton label="Copy Branch" onClick={actions.handleCopyBranch} variant="default" />
+            {actions.repoPath && (
+              <ActionButton label="Checkout" onClick={actions.handleCheckout} variant="default" />
             )}
             {isOpen && (
-              <ActionButton label={pr.isDraft ? 'Mark Ready' : 'Mark Draft'} onClick={handleToggleDraft} variant="draft" />
+              <ActionButton label={pr.isDraft ? 'Mark Ready' : 'Mark Draft'} onClick={actions.handleToggleDraft} variant="draft" />
             )}
             {canMerge && (
-              <ActionButton label="Merge" onClick={handleMerge} variant="success" />
+              <ActionButton label="Merge" onClick={actions.handleMerge} variant="success" />
             )}
             {isOpen && (
-              <ActionButton label="Bypass Merge" onClick={handleBypassMerge} variant="danger" />
+              <ActionButton label="Bypass Merge" onClick={actions.handleBypassMerge} variant="danger" />
             )}
             {isOpen && (
-              <ActionButton label="Close PR" onClick={handleClose} variant="danger" />
+              <ActionButton label="Close PR" onClick={actions.handleClose} variant="danger" />
             )}
             <button
               data-expand-toggle
@@ -604,36 +287,36 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
       </button>
 
       {/* Context menu */}
-      {contextMenu && (
+      {actions.contextMenu && (
         <PrContextMenu
           pr={prWithChecks}
-          position={contextMenu}
-          onClose={() => setContextMenu(null)}
-          onConfirmAction={setConfirmAction}
+          position={actions.contextMenu}
+          onClose={() => actions.setContextMenu(null)}
+          onConfirmAction={actions.setConfirmAction}
         />
       )}
 
       {/* Confirm dialogs */}
       <ConfirmDialog
-        isOpen={confirmAction === 'close'}
+        isOpen={actions.confirmAction === 'close'}
         title="Close pull request?"
         message={`This will close PR #${pr.number} without merging. You can reopen it later.`}
         confirmLabel="Close PR"
         variant="danger"
-        onConfirm={executeClose}
-        onCancel={() => setConfirmAction(null)}
+        onConfirm={actions.executeClose}
+        onCancel={() => actions.setConfirmAction(null)}
       />
       <ConfirmDialog
-        isOpen={confirmAction === 'bypass'}
+        isOpen={actions.confirmAction === 'bypass'}
         title="Bypass merge?"
         message={`This will merge PR #${pr.number} using admin privileges, bypassing branch protection rules.`}
         confirmLabel="Bypass Merge"
         variant="danger"
-        onConfirm={executeBypassMerge}
-        onCancel={() => setConfirmAction(null)}
+        onConfirm={actions.executeBypassMerge}
+        onCancel={() => actions.setConfirmAction(null)}
       />
       <ConfirmDialog
-        isOpen={confirmAction === 'draft'}
+        isOpen={actions.confirmAction === 'draft'}
         title={pr.isDraft ? 'Mark as ready for review?' : 'Convert to draft?'}
         message={
           pr.isDraft
@@ -642,8 +325,8 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
         }
         confirmLabel={pr.isDraft ? 'Mark Ready' : 'Convert to Draft'}
         variant="default"
-        onConfirm={executeToggleDraft}
-        onCancel={() => setConfirmAction(null)}
+        onConfirm={actions.executeToggleDraft}
+        onCancel={() => actions.setConfirmAction(null)}
       />
     </>
   );

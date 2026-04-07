@@ -76,7 +76,7 @@ export function startDailyRefresh(
   // Refresh every 24 hours
   refreshTimer = setInterval(
     () => {
-      fetchContributorWeights(client, repos, username).catch(() => {});
+      fetchContributorWeights(client, repos, username).catch((err) => console.warn('Contributor weight refresh failed:', err));
     },
     24 * 60 * 60 * 1000,
   );

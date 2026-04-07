@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { parseError } from '@/utils/parse-error';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
@@ -98,7 +99,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       useSummaryStore.getState().setSummary(sKey, text, p.updatedAt);
     } catch (err) {
       useSummaryStore.getState().setLoading(sKey, false);
-      setSummaryError(String(err));
+      setSummaryError(parseError(err).message);
     }
   }, [sKey, p]);
 

@@ -23,7 +23,7 @@ function persist(state: { hasSeenFocusOverlay: boolean; dismissedBadges: Set<Bad
       store.set('dismissedHints', [...state.dismissedHints]);
       store.save();
     });
-  }).catch(() => {});
+  }).catch((err) => console.warn('Failed to persist onboarding state:', err));
 }
 
 export const useOnboardingStore = create<OnboardingState>()((set, get) => ({

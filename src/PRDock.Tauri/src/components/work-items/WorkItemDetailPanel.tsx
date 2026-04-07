@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useCallback, useRef, useState } from 'react';
 import { useAdoImageAuth } from '@/hooks/useAdoImageAuth';
+import { sanitizeHtml } from '@/utils/sanitize-html';
 import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '../../types';
 
 export interface WorkItemDetailData {
@@ -115,7 +116,7 @@ function ReadOnlyField({ field }: { field: DynamicFieldItem }) {
         <div
           ref={htmlRef}
           className="prose-sm rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-2 text-[13px] text-[var(--color-text-secondary)] [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded"
-          dangerouslySetInnerHTML={{ __html: field.htmlContent }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(field.htmlContent) }}
         />
       ) : (
         <div className="text-[13px] text-[var(--color-text-secondary)]">{field.value}</div>
@@ -464,7 +465,7 @@ export function WorkItemDetailPanel({
                     </div>
                     <div
                       className="prose-sm text-[13px] text-[var(--color-text-secondary)] [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_a]:text-[var(--color-accent)] [&_a]:underline"
-                      dangerouslySetInnerHTML={{ __html: c.text }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.text) }}
                     />
                   </div>
                 ))}

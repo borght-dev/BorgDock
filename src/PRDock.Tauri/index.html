@@ -5,6 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/prdock-favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PRDock</title>
+    <script>
+      (function(){try{var s=localStorage.getItem('prdock-theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();
+    </script>
   </head>
   <body class="bg-transparent overflow-hidden select-none">
     <div id="root"></div>

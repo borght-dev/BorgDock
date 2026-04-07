@@ -135,7 +135,7 @@ export function useStateTransitions(settings: AppSettings) {
             prRepo: transition.pr.repoName,
             prNumber: transition.pr.number,
             buttons: osButtons,
-          }).catch(() => {});
+          }).catch(console.debug); /* fire-and-forget: OS notification */
         }
       }
     },

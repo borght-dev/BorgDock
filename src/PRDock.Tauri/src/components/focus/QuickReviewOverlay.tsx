@@ -1,5 +1,7 @@
+import FocusTrap from 'focus-trap-react';
 import { useCallback, useState } from 'react';
 import { InlineHint } from '@/components/onboarding';
+import { parseError } from '@/utils/parse-error';
 import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -34,7 +36,7 @@ export function QuickReviewOverlay() {
       await submitReview(client, p.repoOwner, p.repoName, p.number, 'APPROVE');
       advance('approved');
     } catch (err) {
-      setError(`Approve failed: ${err}`);
+      setError(`Approve failed: ${parseError(err).message}`);
     }
   }, [currentPr, setSubmitting, advance, setError]);
 
@@ -51,7 +53,7 @@ export function QuickReviewOverlay() {
       setCommentMode(null);
       advance('commented');
     } catch (err) {
-      setError(`Submit failed: ${err}`);
+      setError(`Submit failed: ${parseError(err).message}`);
     }
   }, [currentPr, commentBody, commentMode, setSubmitting, advance, setError]);
 
@@ -64,12 +66,13 @@ export function QuickReviewOverlay() {
   if (state === 'idle') return null;
 
   return (
-    <>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+      <div>
       {/* Backdrop */}
       <div className="fixed inset-0 z-[80] bg-[var(--color-overlay-bg)]" onClick={endSession} />
 
       {/* Overlay panel */}
-      <div className="fixed inset-x-4 top-8 bottom-8 z-[81] mx-auto max-w-[600px] flex flex-col rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-2xl overflow-hidden">
+      <div role="dialog" aria-modal="true" aria-label="Quick Review" className="fixed inset-x-4 top-8 bottom-8 z-[81] mx-auto max-w-[600px] flex flex-col rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-2xl overflow-hidden">
         {/* Header bar */}
         <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-2.5">
           <div className="flex items-center gap-2">
@@ -209,6 +212,7 @@ export function QuickReviewOverlay() {
           </div>
         )}
       </div>
-    </>
+      </div>
+    </FocusTrap>
   );
 }

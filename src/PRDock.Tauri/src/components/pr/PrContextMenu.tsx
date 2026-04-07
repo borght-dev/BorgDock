@@ -3,6 +3,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { parseError } from '@/utils/parse-error';
 import { rerunWorkflow } from '@/services/github/checks';
 import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
@@ -95,10 +96,9 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     (action: () => Promise<void>, errorTitle?: string) => {
       return () => {
         action().catch((err) => {
-          const message = err instanceof Error ? err.message : String(err);
           showNotification({
             title: errorTitle ?? 'Action failed',
-            message,
+            message: parseError(err).message,
             severity: 'error',
             actions: [],
           });

@@ -191,17 +191,21 @@ function reviewKey(pr: { repoOwner: string; repoName: string; number: number }, 
 }
 
 export const usePrStore = create<PrState>()((set, get) => ({
+  // ── Data slice ──
   pullRequests: [],
   closedPullRequests: [],
-  filter: 'all',
-  searchQuery: '',
-  sortBy: 'updated',
   username: '',
   isPolling: false,
   lastPollTime: null,
   rateLimit: null,
   reviewRequestTimestamps: {},
 
+  // ── View slice ──
+  filter: 'all',
+  searchQuery: '',
+  sortBy: 'updated',
+
+  // ── Computed selectors ──
   filteredPrs: () => {
     const { pullRequests, closedPullRequests, filter, searchQuery, sortBy, username } = get();
     const filtered = applyFilter(pullRequests, closedPullRequests, filter, username);

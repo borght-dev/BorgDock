@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useState } from 'react';
+import { parseError } from '@/utils/parse-error';
 import type { SqlServerConnection, SqlSettings } from '@/types';
 
 interface SqlSectionProps {
@@ -121,7 +122,7 @@ function ConnectionEditor({
       setTestStatus('success');
     } catch (err) {
       setTestStatus('error');
-      setTestError(String(err));
+      setTestError(parseError(err).message);
     }
   };
 

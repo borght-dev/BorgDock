@@ -1,6 +1,10 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef } from 'react';
 import type { WorktreeInfo } from '../../types';
 import type { WorkItemCardData } from './WorkItemCard';
 import { WorkItemCard } from './WorkItemCard';
+
+const VIRTUALIZE_THRESHOLD = 100;
 
 interface WorkItemListProps {
   items: WorkItemCardData[];
@@ -82,6 +86,20 @@ export function WorkItemList({
     );
   }
 
+  if (items.length > VIRTUALIZE_THRESHOLD) {
+    return (
+      <VirtualizedList
+        items={items}
+        worktrees={worktrees}
+        onSelect={onSelect}
+        onToggleTracked={onToggleTracked}
+        onToggleWorkingOn={onToggleWorkingOn}
+        onAssignWorktree={onAssignWorktree}
+        onOpenInBrowser={onOpenInBrowser}
+      />
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto px-2 py-2">
       <div className="space-y-1.5">
@@ -97,6 +115,62 @@ export function WorkItemList({
             onOpenInBrowser={onOpenInBrowser}
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function VirtualizedList({
+  items,
+  worktrees,
+  onSelect,
+  onToggleTracked,
+  onToggleWorkingOn,
+  onAssignWorktree,
+  onOpenInBrowser,
+}: Omit<WorkItemListProps, 'isLoading' | 'isEmpty' | 'selectedQueryName'>) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    overscan: 10,
+  });
+
+  return (
+    <div ref={parentRef} className="flex-1 overflow-y-auto px-2 py-2">
+      <div
+        style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const item = items[virtualRow.index]!;
+          return (
+            <div
+              key={item.id}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <div className="pb-1.5">
+                <WorkItemCard
+                  item={item}
+                  worktrees={worktrees}
+                  onSelect={onSelect}
+                  onToggleTracked={onToggleTracked}
+                  onToggleWorkingOn={onToggleWorkingOn}
+                  onAssignWorktree={onAssignWorktree}
+                  onOpenInBrowser={onOpenInBrowser}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

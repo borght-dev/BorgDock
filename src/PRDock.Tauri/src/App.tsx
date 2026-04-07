@@ -130,7 +130,7 @@ export default function App() {
       );
     }
     return () => {
-      invoke('unregister_hotkey').catch(() => {});
+      invoke('unregister_hotkey').catch(console.debug); /* fire-and-forget */
     };
   }, [settings.ui.globalHotkey]);
 
