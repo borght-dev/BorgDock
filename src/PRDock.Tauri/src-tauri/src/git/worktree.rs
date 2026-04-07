@@ -139,6 +139,34 @@ fn parse_worktree_list(output: &str) -> Vec<(String, String, bool)> {
     result
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeEntry {
+    pub path: String,
+    pub branch_name: String,
+    pub is_main_worktree: bool,
+}
+
+/// Lightweight worktree list — only path + branch, no per-worktree git status/ahead-behind/sha.
+/// Use this when you only need to find a worktree by branch name (e.g. before launching Claude).
+#[tauri::command]
+pub async fn list_worktrees_bare(base_path: String) -> Result<Vec<WorktreeEntry>, String> {
+    tokio::task::spawn_blocking(move || {
+        let output = run_git(&base_path, &["worktree", "list", "--porcelain"])?;
+        let entries = parse_worktree_list(&output);
+        Ok(entries
+            .into_iter()
+            .map(|(path, branch_name, is_main)| WorktreeEntry {
+                path,
+                branch_name,
+                is_main_worktree: is_main,
+            })
+            .collect())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
 #[tauri::command]
 pub async fn list_worktrees(base_path: String) -> Result<Vec<WorktreeInfo>, String> {
     tokio::task::spawn_blocking(move || {

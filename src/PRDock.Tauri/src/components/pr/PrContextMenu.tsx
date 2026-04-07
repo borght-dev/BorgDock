@@ -50,7 +50,7 @@ function MenuItem({ label, disabled, onClick }: MenuItemProps) {
 export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const settings = useSettingsStore((s) => s.settings);
-  const { fixWithClaude, monitorPr } = useClaudeActions();
+  const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
   const showNotification = useNotificationStore((s) => s.show);
 
   // Close on click outside
@@ -156,6 +156,18 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     await monitorPr(pr);
   }, 'Monitor with Claude failed');
 
+  const handleCopyMonitorPrompt = handleAction(async () => {
+    const prompt = getMonitorPrompt(pr);
+    if (!prompt) throw new Error('Repo not configured in settings');
+    await writeText(prompt);
+  }, 'Failed to copy monitor prompt');
+
+  const handleCopyFixPrompt = handleAction(async () => {
+    const prompt = getFixPrompt(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown']);
+    if (!prompt) throw new Error('Repo not configured in settings');
+    await writeText(prompt);
+  }, 'Failed to copy fix prompt');
+
   const handleMerge = handleAction(async () => {
     const client = getClient();
     if (!client) return;
@@ -199,6 +211,12 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       <MenuItem
         label="Copy errors for Claude"
         onClick={handleCopyErrors}
+        disabled={!hasFailingChecks}
+      />
+      <MenuItem label="Copy monitor prompt" onClick={handleCopyMonitorPrompt} />
+      <MenuItem
+        label="Copy fix prompt"
+        onClick={handleCopyFixPrompt}
         disabled={!hasFailingChecks}
       />
 

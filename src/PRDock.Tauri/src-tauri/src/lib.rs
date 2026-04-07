@@ -12,6 +12,7 @@ use cache::PrCache;
 use git::process::ProcessState;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use tauri::Manager;
 
 pub fn run() {
     let log_plugin = tauri_plugin_log::Builder::new()
@@ -54,6 +55,14 @@ pub fn run() {
         })
         .setup(|app| {
             platform::tray::setup_tray(app)?;
+
+            // Show the main window from Rust to avoid relying on JS IPC
+            // permissions / timing. The window starts hidden (visible: false
+            // in tauri.conf.json) to prevent a blank flash on startup.
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.show();
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -78,6 +87,7 @@ pub fn run() {
             platform::theme::get_system_theme,
             // Git
             git::worktree::list_worktrees,
+            git::worktree::list_worktrees_bare,
             git::worktree::create_worktree,
             git::worktree::remove_worktree,
             git::worktree::open_in_terminal,
