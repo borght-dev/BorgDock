@@ -93,11 +93,7 @@ export function useGitHubPolling(settings: AppSettings) {
     manager.rateLimitChecker = () => client.isRateLimitLow;
 
     manager.onResult = (results) => {
-      // Only update the PR store when GitHub returned fresh data (non-304).
-      // This avoids unnecessary React re-renders when nothing has changed.
-      if (client.hadFreshData) {
-        usePrStore.getState().setPullRequests(results);
-      }
+      usePrStore.getState().setPullRequests(results);
       usePrStore.getState().setPollingState(false, new Date());
 
       const rl = client.getRateLimit();
