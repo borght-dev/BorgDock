@@ -14,24 +14,39 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             if event.state != ShortcutState::Pressed {
                 return;
             }
+            log::info!("hotkey callback invoked (about to dispatch to main thread)");
 
-            if let Some(win) = app_toggle.get_webview_window("main") {
-                let visible = win.is_visible().unwrap_or(false);
-                if visible {
-                    let _ = win.hide();
-                    // Show badge when sidebar is hidden via hotkey
-                    if let Some(badge) = app_toggle.get_webview_window("badge") {
-                        let _ = badge.show();
-                        let _ = badge.set_always_on_top(true);
+            // Marshal onto the main thread — window show/hide on Windows
+            // should run on the thread that owns the window, and
+            // SetForegroundWindow in particular has thread restrictions.
+            let app_cb = app_toggle.clone();
+            match app_toggle.run_on_main_thread(move || {
+                log::info!(
+                    "hotkey toggle running on main thread, sidebar_visible={}",
+                    super::window::sidebar_visible()
+                );
+                // `win.is_visible()` is unreliable for transparent always-on-top
+                // WebView2 windows on Windows (returns false even when visible).
+                // Use the tracked state instead.
+                if super::window::sidebar_visible() {
+                    if let Err(e) = super::window::hide_main_window(&app_cb) {
+                        log::error!("hotkey: hide_main_window failed: {e}");
+                    }
+                    if let Err(e) = super::window::show_badge(app_cb.clone(), 0) {
+                        log::error!("hotkey: show_badge failed: {e}");
                     }
                 } else {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                    // Hide badge when sidebar is shown
-                    if let Some(badge) = app_toggle.get_webview_window("badge") {
-                        let _ = badge.hide();
+                    if let Err(e) = super::window::show_main_window(&app_cb) {
+                        log::error!("hotkey: show_main_window failed: {e}");
+                    }
+                    if let Err(e) = super::window::hide_badge(app_cb.clone()) {
+                        log::error!("hotkey: hide_badge failed: {e}");
                     }
                 }
+                log::info!("hotkey toggle main thread work complete");
+            }) {
+                Ok(()) => log::info!("hotkey: run_on_main_thread dispatch succeeded"),
+                Err(e) => log::error!("hotkey: run_on_main_thread dispatch failed: {e}"),
             }
         })
         .map_err(|e| format!("Failed to register hotkey: {e}"))?;
@@ -127,11 +142,11 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 return;
             }
 
-            // Create a new SQL window
+            // Create a new SQL window (temporarily using test page to isolate crash)
             if let Ok(win) = WebviewWindowBuilder::new(
                 &app_sql,
                 "sql",
-                tauri::WebviewUrl::App("sql.html".into()),
+                tauri::WebviewUrl::App("test-window.html".into()),
             )
             .title("PRDock SQL")
             .inner_size(900.0, 650.0)

@@ -1,11 +1,89 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
 
-/// Get or create the badge window lazily.
-fn get_or_create_badge(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
-    if let Some(win) = app.get_webview_window("badge") {
-        return Ok(win);
+/// Tracks whether the main sidebar window is currently shown.
+///
+/// We can't rely on `WebviewWindow::is_visible()` on Windows: for transparent
+/// always-on-top WebView2 windows it returns `false` even when the window is
+/// actually on screen. Every code path that shows or hides the main window
+/// must update this flag so the hotkey and tray can decide which direction
+/// to toggle.
+static SIDEBAR_VISIBLE: AtomicBool = AtomicBool::new(true);
+
+/// Returns whether the sidebar is currently shown (according to our tracked
+/// state).
+pub(crate) fn sidebar_visible() -> bool {
+    SIDEBAR_VISIBLE.load(Ordering::SeqCst)
+}
+
+/// Show the main sidebar window, focus it, and force a repaint.
+///
+/// Windows + transparent + always-on-top WebView2 windows need aggressive
+/// prodding after `.show()` to actually render — size/position must be
+/// reapplied and the Z-order toggled. This helper exists so every call site
+/// (hotkey, tray, toggle command) goes through the same sequence.
+pub(crate) fn show_main_window(app: &tauri::AppHandle) -> Result<(), String> {
+    log::info!("show_main_window: begin");
+    let win = get_main_window(app)?;
+
+    // If minimized, unminimize first — `show()` alone won't restore it.
+    let _ = win.unminimize();
+
+    win.show().map_err(|e| {
+        log::error!("show_main_window: show() failed: {e}");
+        e.to_string()
+    })?;
+
+    // Toggle always-on-top to force a Z-order refresh. Transparent WebView2
+    // windows sometimes stay behind other windows after a hide→show cycle.
+    let _ = win.set_always_on_top(false);
+    let _ = win.set_always_on_top(true);
+
+    // Reapply position and size to force the compositor to repaint.
+    // A single set_size is sometimes not enough — resize by 1px and back so
+    // the WM_SIZE message definitely fires.
+    if let Ok(size) = win.outer_size() {
+        if size.width > 1 {
+            let shrunk = PhysicalSize::new(size.width - 1, size.height);
+            let _ = win.set_size(tauri::Size::Physical(shrunk));
+        }
+        let _ = win.set_size(tauri::Size::Physical(size));
+    }
+    if let Ok(pos) = win.outer_position() {
+        let _ = win.set_position(tauri::Position::Physical(pos));
     }
 
+    if let Err(e) = win.set_focus() {
+        log::warn!("show_main_window: set_focus() failed: {e}");
+    }
+
+    SIDEBAR_VISIBLE.store(true, Ordering::SeqCst);
+    log::info!("show_main_window: done");
+    Ok(())
+}
+
+/// Hide the main sidebar window. Idempotent.
+pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
+    log::info!("hide_main_window: begin");
+    let win = get_main_window(app)?;
+    win.hide().map_err(|e| {
+        log::error!("hide_main_window: hide() failed: {e}");
+        e.to_string()
+    })?;
+    SIDEBAR_VISIBLE.store(false, Ordering::SeqCst);
+    log::info!("hide_main_window: done");
+    Ok(())
+}
+
+/// Build the badge window (hidden). Must be called from the main thread —
+/// `WebviewWindowBuilder::build()` on Windows deadlocks when called from a
+/// background tokio task because WebView2 window creation needs the main
+/// thread. We call this once at startup so `show_badge` can later just fetch
+/// the existing window via `get_webview_window`.
+pub(crate) fn create_badge_window(app: &tauri::AppHandle) -> Result<(), String> {
+    if app.get_webview_window("badge").is_some() {
+        return Ok(());
+    }
     WebviewWindowBuilder::new(app, "badge", WebviewUrl::App("badge.html".into()))
         .title("PRDock Badge")
         .inner_size(340.0, 48.0)
@@ -17,6 +95,7 @@ fn get_or_create_badge(app: &tauri::AppHandle) -> Result<WebviewWindow, String> 
         .visible(false)
         .skip_taskbar(true)
         .build()
+        .map(|_| ())
         .map_err(|e| e.to_string())
 }
 
@@ -28,30 +107,26 @@ pub fn position_sidebar(app: tauri::AppHandle, edge: String, width: u32) -> Resu
 
 #[tauri::command]
 pub fn toggle_sidebar(app: tauri::AppHandle) -> Result<bool, String> {
-    let win = get_main_window(&app)?;
-
-    let visible = win.is_visible().map_err(|e| e.to_string())?;
-
-    if visible {
-        win.hide().map_err(|e| e.to_string())?;
-    } else {
-        win.show().map_err(|e| e.to_string())?;
-        win.set_focus().map_err(|e| e.to_string())?;
-
-        // Re-apply position after showing to force a proper repaint.
-        // On Windows, transparent webview windows can render as a blank
-        // rectangle if the compositor doesn't get a size/position update.
-        if let Ok(size) = win.outer_size() {
-            let _ = win.set_size(tauri::Size::Physical(size));
-        }
-    }
-
-    Ok(!visible)
+    // Despite the name, this command is only ever invoked from paths that want
+    // to *show* the sidebar (badge expand, etc.). The old implementation
+    // branched on `win.is_visible()`, but on Windows that returns false for
+    // transparent always-on-top WebView2 windows even when they're visible, so
+    // the hide branch never fired and the show branch was a no-op. Callers
+    // that want to hide now invoke `hide_sidebar` directly.
+    show_main_window(&app)?;
+    Ok(true)
 }
 
 #[tauri::command]
 pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
-    let badge_win = get_or_create_badge(&app)?;
+    log::info!("show_badge: begin");
+    // The badge window is created eagerly during setup on the main thread.
+    // Don't try to build it here — Tauri's window builder deadlocks when
+    // called from a tokio task on Windows.
+    let badge_win = app
+        .get_webview_window("badge")
+        .ok_or_else(|| "badge window not found (should be created at startup)".to_string())?;
+    log::info!("show_badge: got badge window");
 
     // Position badge at top-center of primary monitor
     if let Ok(Some(monitor)) = badge_win.current_monitor() {
@@ -70,11 +145,23 @@ pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
             badge_height,
         )));
     }
-    badge_win.show().map_err(|e| e.to_string())?;
-    badge_win
-        .set_always_on_top(true)
-        .map_err(|e| e.to_string())?;
+    badge_win.show().map_err(|e| {
+        log::error!("show_badge: show() failed: {e}");
+        e.to_string()
+    })?;
+    badge_win.set_always_on_top(true).map_err(|e| {
+        log::error!("show_badge: set_always_on_top failed: {e}");
+        e.to_string()
+    })?;
 
+    // Force the compositor to repaint the transparent window.
+    // Without this, WebView2 transparent windows can render as a blank
+    // (fully invisible) rectangle — same workaround used in toggle_sidebar.
+    if let Ok(size) = badge_win.outer_size() {
+        let _ = badge_win.set_size(tauri::Size::Physical(size));
+    }
+
+    log::info!("show_badge: done");
     Ok(())
 }
 
@@ -136,19 +223,20 @@ pub fn resize_badge(
 
 #[tauri::command]
 pub fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
+    log::info!("hide_badge: begin");
     if let Some(badge_win) = app.get_webview_window("badge") {
-        badge_win.hide().map_err(|e| e.to_string())?;
+        badge_win.hide().map_err(|e| {
+            log::error!("hide_badge: hide() failed: {e}");
+            e.to_string()
+        })?;
     }
+    log::info!("hide_badge: done");
     Ok(())
 }
 
 #[tauri::command]
 pub fn hide_sidebar(app: tauri::AppHandle) -> Result<(), String> {
-    let win = get_main_window(&app)?;
-    if win.is_visible().unwrap_or(false) {
-        win.hide().map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    hide_main_window(&app)
 }
 
 #[tauri::command]

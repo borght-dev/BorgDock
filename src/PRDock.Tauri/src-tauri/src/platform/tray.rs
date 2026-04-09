@@ -36,18 +36,23 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     TrayIconBuilder::new()
         .icon(icon)
         .menu(&menu)
+        // Tauri 2.1+ defaults this to false on Windows, so left-clicking the
+        // tray icon silently does nothing. Re-enable it explicitly.
+        .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "show" => {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                }
+                // Use the shared helper so the window actually repaints on
+                // Windows — plain `win.show()` leaves a transparent WebView2
+                // window invisible.
+                let _ = crate::platform::window::show_main_window(app);
+                let _ = crate::platform::window::hide_badge(app.clone());
             }
             "settings" => {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                    let _ = win.emit("open-settings", ());
+                if let Ok(()) = crate::platform::window::show_main_window(app) {
+                    let _ = crate::platform::window::hide_badge(app.clone());
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.emit("open-settings", ());
+                    }
                 }
             }
             "quit" => {
