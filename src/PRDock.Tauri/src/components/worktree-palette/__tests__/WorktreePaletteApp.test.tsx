@@ -3,6 +3,9 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { WorktreePaletteApp } from '../WorktreePaletteApp';
 
 const mockClose = vi.fn(() => Promise.resolve());
+const mockSetSize = vi.fn(() => Promise.resolve());
+const mockInnerSize = vi.fn(() => Promise.resolve({ width: 520, height: 420 }));
+const mockScaleFactor = vi.fn(() => Promise.resolve(1));
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -11,7 +14,20 @@ vi.mock('@tauri-apps/api/core', () => ({
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: vi.fn(() => ({
     close: mockClose,
+    setSize: mockSetSize,
+    innerSize: mockInnerSize,
+    scaleFactor: mockScaleFactor,
   })),
+  currentMonitor: vi.fn(() => Promise.resolve({ size: { width: 1920, height: 1080 } })),
+}));
+
+vi.mock('@tauri-apps/api/dpi', () => ({
+  LogicalSize: class {
+    constructor(
+      public width: number,
+      public height: number,
+    ) {}
+  },
 }));
 
 vi.mock('@tauri-apps/plugin-opener', () => ({
@@ -38,37 +54,22 @@ describe('WorktreePaletteApp', () => {
           ],
         });
       }
-      if (cmd === 'list_worktrees') {
+      if (cmd === 'list_worktrees_bare') {
         return Promise.resolve([
           {
             path: '/home/user/repo/.worktrees/feature-a',
             branchName: 'feature-a',
             isMainWorktree: false,
-            status: 'clean' as const,
-            uncommittedCount: 0,
-            ahead: 1,
-            behind: 0,
-            commitSha: 'abc123',
           },
           {
             path: '/home/user/repo/.worktrees/feature-b',
             branchName: 'feature-b',
             isMainWorktree: false,
-            status: 'dirty' as const,
-            uncommittedCount: 3,
-            ahead: 0,
-            behind: 2,
-            commitSha: 'def456',
           },
           {
             path: '/home/user/repo',
             branchName: 'main',
             isMainWorktree: true,
-            status: 'clean' as const,
-            uncommittedCount: 0,
-            ahead: 0,
-            behind: 0,
-            commitSha: 'main123',
           },
         ]);
       }
@@ -104,7 +105,7 @@ describe('WorktreePaletteApp', () => {
     expect(screen.getByText('Scanning worktrees...')).toBeTruthy();
   });
 
-  it('displays worktree count', async () => {
+  it('displays worktree count (including main)', async () => {
     await act(async () => {
       render(<WorktreePaletteApp />);
     });
@@ -113,10 +114,10 @@ describe('WorktreePaletteApp', () => {
     });
 
     const countBadge = document.querySelector('.wt-count');
-    expect(countBadge?.textContent).toBe('2');
+    expect(countBadge?.textContent).toBe('3');
   });
 
-  it('renders worktree branches (excludes main)', async () => {
+  it('renders all worktree branches including main as the repo anchor', async () => {
     await act(async () => {
       render(<WorktreePaletteApp />);
     });
@@ -128,7 +129,12 @@ describe('WorktreePaletteApp', () => {
     const branchTexts = Array.from(branches).map((b) => b.textContent);
     expect(branchTexts).toContain('feature-a');
     expect(branchTexts).toContain('feature-b');
-    expect(branchTexts).not.toContain('main');
+    expect(branchTexts).toContain('main');
+
+    // Main should be pinned to the top of the repo group
+    expect(branchTexts[0]).toBe('main');
+    // And flagged with the MAIN badge
+    expect(document.querySelector('.wt-main-badge')).toBeTruthy();
   });
 
   it('renders repo group header', async () => {
@@ -140,22 +146,6 @@ describe('WorktreePaletteApp', () => {
     });
 
     expect(screen.getByText('org/repo')).toBeTruthy();
-  });
-
-  it('renders sync badges for ahead/behind/dirty', async () => {
-    await act(async () => {
-      render(<WorktreePaletteApp />);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(100);
-    });
-
-    // feature-a has ahead: 1
-    expect(screen.getByText(/\u21911/)).toBeTruthy();
-    // feature-b has behind: 2
-    expect(screen.getByText(/\u21932/)).toBeTruthy();
-    // feature-b has uncommittedCount: 3
-    expect(screen.getByText('3M')).toBeTruthy();
   });
 
   it('shows search input after loading', async () => {
@@ -260,7 +250,7 @@ describe('WorktreePaletteApp', () => {
     }
   });
 
-  it('opens terminal on Enter key', async () => {
+  it('opens terminal on Enter key (on main worktree, since it sorts first)', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
 
     await act(async () => {
@@ -278,7 +268,7 @@ describe('WorktreePaletteApp', () => {
     }
 
     expect(invoke).toHaveBeenCalledWith('open_in_terminal', {
-      path: '/home/user/repo/.worktrees/feature-a',
+      path: '/home/user/repo',
     });
   });
 
@@ -327,7 +317,7 @@ describe('WorktreePaletteApp', () => {
     }
 
     const listCalls = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
-      (c: string[]) => c[0] === 'list_worktrees',
+      (c: string[]) => c[0] === 'list_worktrees_bare',
     );
     expect(listCalls.length).toBeGreaterThanOrEqual(2);
   });
@@ -376,7 +366,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    expect(screen.getByText('No repos with worktree paths configured')).toBeTruthy();
+    expect(screen.getByText('No worktrees configured')).toBeTruthy();
   });
 
   it('opens folder via openPath', async () => {
@@ -389,6 +379,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
+    // First folder button corresponds to main (which sorts first).
     const folderBtns = document.querySelectorAll('[title="Open folder"]');
     if (folderBtns[0]) {
       await act(async () => {
@@ -396,7 +387,7 @@ describe('WorktreePaletteApp', () => {
       });
     }
 
-    expect(openPath).toHaveBeenCalledWith('/home/user/repo/.worktrees/feature-a');
+    expect(openPath).toHaveBeenCalledWith('/home/user/repo');
   });
 
   it('opens editor via invoke', async () => {
@@ -409,6 +400,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
+    // First editor button corresponds to main (which sorts first).
     const editorBtns = document.querySelectorAll('[title="Open in editor"]');
     if (editorBtns[0]) {
       await act(async () => {
@@ -417,7 +409,109 @@ describe('WorktreePaletteApp', () => {
     }
 
     expect(invoke).toHaveBeenCalledWith('open_in_editor', {
-      path: '/home/user/repo/.worktrees/feature-a',
+      path: '/home/user/repo',
     });
+  });
+
+  it('renders a star button on non-main rows and hides it on main rows', async () => {
+    await act(async () => {
+      render(<WorktreePaletteApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // 2 non-main rows → 2 star buttons; main gets a placeholder instead.
+    const stars = document.querySelectorAll('.wt-star-btn');
+    expect(stars.length).toBe(2);
+    const placeholders = document.querySelectorAll('.wt-star-placeholder');
+    expect(placeholders.length).toBe(1);
+  });
+
+  it('toggling a star saves the updated favoriteWorktreePaths to settings', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const invokeMock = invoke as ReturnType<typeof vi.fn>;
+
+    await act(async () => {
+      render(<WorktreePaletteApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Click the first non-main star (belongs to feature-a since it sorts alphabetically first).
+    const firstStar = document.querySelector('.wt-star-btn') as HTMLElement | null;
+    expect(firstStar).toBeTruthy();
+    await act(async () => {
+      if (firstStar) fireEvent.click(firstStar);
+    });
+    // Give the async save_settings a tick to run
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const saveCall = invokeMock.mock.calls.find((c) => c[0] === 'save_settings');
+    expect(saveCall).toBeTruthy();
+    const savedRepos = (saveCall![1] as { settings: { repos: Array<{ favoriteWorktreePaths: string[] }> } })
+      .settings.repos;
+    expect(savedRepos[0]!.favoriteWorktreePaths).toContain(
+      '/home/user/repo/.worktrees/feature-a',
+    );
+  });
+
+  it('"Favorites only" toggle hides non-favorites but keeps the main worktree visible', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          repos: [
+            {
+              owner: 'org',
+              name: 'repo',
+              enabled: true,
+              worktreeBasePath: '/home/user/repo',
+              worktreeSubfolder: '.worktrees',
+              favoriteWorktreePaths: ['/home/user/repo/.worktrees/feature-a'],
+            },
+          ],
+          ui: { worktreePaletteFavoritesOnly: true },
+        });
+      }
+      if (cmd === 'list_worktrees_bare') {
+        return Promise.resolve([
+          {
+            path: '/home/user/repo/.worktrees/feature-a',
+            branchName: 'feature-a',
+            isMainWorktree: false,
+          },
+          {
+            path: '/home/user/repo/.worktrees/feature-b',
+            branchName: 'feature-b',
+            isMainWorktree: false,
+          },
+          {
+            path: '/home/user/repo',
+            branchName: 'main',
+            isMainWorktree: true,
+          },
+        ]);
+      }
+      return Promise.resolve();
+    });
+
+    await act(async () => {
+      render(<WorktreePaletteApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const branchTexts = Array.from(document.querySelectorAll('.wt-branch')).map(
+      (b) => b.textContent,
+    );
+    // feature-a is starred, main is always visible, feature-b is hidden.
+    expect(branchTexts).toContain('feature-a');
+    expect(branchTexts).toContain('main');
+    expect(branchTexts).not.toContain('feature-b');
   });
 });

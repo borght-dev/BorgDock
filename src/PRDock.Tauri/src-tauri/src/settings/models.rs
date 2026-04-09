@@ -74,6 +74,8 @@ pub struct RepoSettings {
     #[serde(default = "default_worktree_subfolder")]
     pub worktree_subfolder: String,
     pub fix_prompt_template: Option<String>,
+    #[serde(default)]
+    pub favorite_worktree_paths: Vec<String>,
 }
 
 fn default_true() -> bool {
@@ -105,6 +107,8 @@ pub struct UiSettings {
     pub badge_style: String,
     #[serde(default = "default_indicator_style")]
     pub indicator_style: String,
+    #[serde(default)]
+    pub worktree_palette_favorites_only: bool,
 }
 
 fn default_sidebar_edge() -> String {
@@ -151,6 +155,7 @@ impl Default for UiSettings {
             run_at_startup: false,
             badge_style: "GlassCapsule".to_string(),
             indicator_style: "SegmentRing".to_string(),
+            worktree_palette_favorites_only: false,
         }
     }
 }

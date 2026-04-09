@@ -27,6 +27,7 @@ export interface RepoSettings {
   worktreeBasePath: string;
   worktreeSubfolder: string;
   fixPromptTemplate?: string;
+  favoriteWorktreePaths?: string[];
 }
 
 
@@ -40,6 +41,7 @@ export interface UiSettings {
   runAtStartup: boolean;
   badgeStyle: BadgeStyle;
   indicatorStyle: IndicatorStyle;
+  worktreePaletteFavoritesOnly?: boolean;
 }
 
 export interface NotificationSettings {

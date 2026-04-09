@@ -1,21 +1,40 @@
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { LogicalSize } from '@tauri-apps/api/dpi';
+import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseError } from '@/utils/parse-error';
 import type { AppSettings, RepoSettings } from '@/types/settings';
-import type { WorktreeInfo, WorktreeStatus } from '@/types/worktree';
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// Minimum window height so a small worktree list doesn't leave a cramped window.
+const MIN_PALETTE_HEIGHT = 420;
+// Margin below the window so it doesn't overlap the OS taskbar / dock.
+const MONITOR_BOTTOM_MARGIN = 60;
+
+// ── Types ────────────────────────────────────────────────────────────
+
+interface WorktreeEntry {
+  path: string;
+  branchName: string;
+  isMainWorktree: boolean;
+}
 
 interface FlatEntry {
-  wt: WorktreeInfo;
+  wt: WorktreeEntry;
   repo: RepoSettings;
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────
 
 function folderName(fullPath: string): string {
   const parts = fullPath.replace(/\\/g, '/').split('/');
   return parts[parts.length - 1] ?? fullPath;
+}
+
+function parentFolder(fullPath: string): string {
+  const normalized = fullPath.replace(/\\/g, '/');
+  const idx = normalized.lastIndexOf('/');
+  return idx >= 0 ? normalized.slice(0, idx) : '';
 }
 
 function matchesQuery(entry: FlatEntry, q: string): boolean {
@@ -40,92 +59,141 @@ function groupByRepo(entries: FlatEntry[]): Map<string, FlatEntry[]> {
 
 // ── Sub-components ───────────────────────────────────────────────────
 
-function StatusDot({ status }: { status: WorktreeStatus }) {
-  const color = status === 'clean' ? 'var(--wt-green)' : status === 'dirty' ? 'var(--wt-amber)' : 'var(--wt-red)';
-  return (
-    <span className="wt-status-dot-wrap">
-      <span className="wt-status-dot" style={{ background: color }} />
-      {status === 'conflict' && <span className="wt-status-dot-ring" style={{ borderColor: color }} />}
-    </span>
-  );
-}
-
-function SyncBadge({ ahead, behind, uncommittedCount }: { ahead: number; behind: number; uncommittedCount: number }) {
-  return (
-    <span className="wt-sync-badges">
-      {ahead > 0 && <span className="wt-badge wt-badge-ahead">{'\u2191'}{ahead}</span>}
-      {behind > 0 && <span className="wt-badge wt-badge-behind">{'\u2193'}{behind}</span>}
-      {uncommittedCount > 0 && <span className="wt-badge wt-badge-dirty">{uncommittedCount}M</span>}
-    </span>
-  );
-}
-
-function WorktreeSlot({
+function WorktreeRow({
   entry,
   isSelected,
+  isFavorite,
   onSelect,
   onOpenTerminal,
   onOpenFolder,
   onOpenEditor,
-  slotRef,
+  onToggleFavorite,
+  rowRef,
 }: {
   entry: FlatEntry;
   isSelected: boolean;
+  isFavorite: boolean;
   onSelect: () => void;
   onOpenTerminal: () => void;
   onOpenFolder: () => void;
   onOpenEditor: () => void;
-  slotRef: (el: HTMLDivElement | null) => void;
+  onToggleFavorite: () => void;
+  rowRef: (el: HTMLDivElement | null) => void;
 }) {
   const { wt } = entry;
   const hasBranch = wt.branchName.length > 0;
+  const folder = folderName(wt.path);
+  const parent = parentFolder(wt.path);
+  const isMain = wt.isMainWorktree;
 
   return (
     <div
-      ref={slotRef}
-      className={`wt-slot ${isSelected ? 'wt-slot-selected' : ''}`}
+      ref={rowRef}
+      data-palette-row
+      className={`wt-row${isSelected ? ' wt-row--selected' : ''}${isMain ? ' wt-row--main' : ''}`}
       onClick={onOpenTerminal}
       onMouseEnter={onSelect}
     >
-      <StatusDot status={wt.status} />
-      <div className="wt-slot-body">
-        <div className="wt-slot-primary">
-          <span className={`wt-branch ${!hasBranch ? 'wt-branch-detached' : ''}`}>
+      {isMain ? (
+        <span className="wt-star-placeholder" aria-hidden />
+      ) : (
+        <button
+          className={`wt-star-btn${isFavorite ? ' wt-star-btn--active' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          title={isFavorite ? 'Unmark as favorite' : 'Mark as favorite'}
+          aria-pressed={isFavorite}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill={isFavorite ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
+          </svg>
+        </button>
+      )}
+      <div className="wt-row-body">
+        <div className="wt-row-primary">
+          <span className={`wt-branch${hasBranch ? '' : ' wt-branch--detached'}`}>
             {hasBranch ? wt.branchName : '(detached)'}
           </span>
-          {!hasBranch && wt.commitSha && (
-            <code className="wt-sha">{wt.commitSha}</code>
-          )}
-          <SyncBadge ahead={wt.ahead} behind={wt.behind} uncommittedCount={wt.uncommittedCount} />
+          {isMain && <span className="wt-main-badge">main</span>}
         </div>
-        <div className="wt-slot-secondary">{folderName(wt.path)}</div>
+        <div className="wt-row-secondary">
+          <span className="wt-folder">{folder}</span>
+          {parent && <span className="wt-parent" title={parent}>{parent}</span>}
+        </div>
       </div>
-      <div className={`wt-slot-actions ${isSelected ? 'wt-slot-actions-visible' : ''}`}>
+      <div className="wt-row-actions">
         <button
           className="wt-action-btn"
-          onClick={(e) => { e.stopPropagation(); onOpenTerminal(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenTerminal();
+          }}
           title="Open terminal here"
         >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M3 5l4 3-4 3" />
             <path d="M9 12h4" />
           </svg>
         </button>
         <button
           className="wt-action-btn"
-          onClick={(e) => { e.stopPropagation(); onOpenFolder(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenFolder();
+          }}
           title="Open folder"
         >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5H3A1 1 0 002 4.5z" />
           </svg>
         </button>
         <button
           className="wt-action-btn"
-          onClick={(e) => { e.stopPropagation(); onOpenEditor(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenEditor();
+          }}
           title="Open in editor"
         >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
             <path d="M9.5 3.5l3 3" />
           </svg>
@@ -139,6 +207,8 @@ function WorktreeSlot({
 
 export function WorktreePaletteApp() {
   const [allEntries, setAllEntries] = useState<FlatEntry[]>([]);
+  const [favoritePaths, setFavoritePaths] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,7 +216,7 @@ export function WorktreePaletteApp() {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const searchRef = useRef<HTMLInputElement>(null);
-  const slotRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
+  const rowRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
   // ── Data fetching ──
   const loadWorktrees = useCallback(async () => {
@@ -155,15 +225,20 @@ export function WorktreePaletteApp() {
       const repos = settings.repos.filter((r) => r.enabled && r.worktreeBasePath);
       const flat: FlatEntry[] = [];
       const errs = new Map<string, string>();
+      const favs = new Set<string>();
+      for (const r of settings.repos) {
+        for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
+      }
 
       await Promise.allSettled(
         repos.map(async (repo) => {
           try {
-            const worktrees = await invoke<WorktreeInfo[]>('list_worktrees', {
+            // Fast path: only fetch path + branch. No per-worktree status scanning.
+            const worktrees = await invoke<WorktreeEntry[]>('list_worktrees_bare', {
               basePath: repo.worktreeBasePath,
             });
             for (const wt of worktrees) {
-              if (!wt.isMainWorktree) flat.push({ wt, repo });
+              flat.push({ wt, repo });
             }
           } catch (err) {
             errs.set(`${repo.owner}/${repo.name}`, parseError(err).message);
@@ -172,6 +247,8 @@ export function WorktreePaletteApp() {
       );
 
       setAllEntries(flat);
+      setFavoritePaths(favs);
+      setFavoritesOnly(settings.ui?.worktreePaletteFavoritesOnly ?? false);
       setErrors(errs);
     } catch {
       // Settings load failed
@@ -192,11 +269,87 @@ export function WorktreePaletteApp() {
     }
   }, [loading]);
 
-  // ── Filtered + grouped data ──
-  const filtered = useMemo(
-    () => allEntries.filter((e) => matchesQuery(e, query)),
-    [allEntries, query],
-  );
+  // Auto-resize window to fit the worktree list, capped at the monitor height.
+  // Re-runs when the number of loaded worktrees or the favorites-only filter changes,
+  // but intentionally NOT on every keystroke of the search query (would feel janky).
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+
+    const resize = async () => {
+      // Wait for layout to paint the new rows.
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      if (cancelled) return;
+
+      try {
+        const contentEl = document.querySelector('.wt-content') as HTMLElement | null;
+        if (!contentEl) return;
+
+        const win = getCurrentWindow();
+        const [physSize, scale, monitor] = await Promise.all([
+          win.innerSize(),
+          win.scaleFactor(),
+          currentMonitor(),
+        ]);
+
+        const currentLogicalW = physSize.width / scale;
+        const currentLogicalH = physSize.height / scale;
+
+        const overflow = contentEl.scrollHeight - contentEl.clientHeight;
+        const maxLogicalH =
+          (monitor ? monitor.size.height / scale : 900) - MONITOR_BOTTOM_MARGIN;
+
+        let targetH: number;
+        if (overflow > 0) {
+          // Content is taller than visible — grow to fit, capped by the monitor.
+          targetH = Math.min(currentLogicalH + overflow, maxLogicalH);
+        } else if (overflow < -24) {
+          // Meaningful empty space — shrink, but never below the minimum.
+          targetH = Math.max(currentLogicalH + overflow, MIN_PALETTE_HEIGHT);
+        } else {
+          return;
+        }
+
+        // Skip micro-adjustments that would just thrash the window.
+        if (Math.abs(targetH - currentLogicalH) < 4) return;
+
+        await win.setSize(new LogicalSize(currentLogicalW, targetH));
+      } catch (err) {
+        // Ignore: tests don't mock these APIs, and on failure we fall back to the
+        // initial window size which is still usable (scrollable).
+        console.debug('Palette auto-resize failed:', err);
+      }
+    };
+
+    resize();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, allEntries.length, favoritesOnly]);
+
+  // ── Filtered + sorted + grouped data ──
+  const filtered = useMemo(() => {
+    const isFav = (e: FlatEntry) => favoritePaths.has(e.wt.path);
+    const visible = allEntries.filter((e) => {
+      if (!matchesQuery(e, query)) return false;
+      // Main worktree is the repo anchor — always visible, even in favorites-only mode.
+      if (favoritesOnly && !isFav(e) && !e.wt.isMainWorktree) return false;
+      return true;
+    });
+    // Sort within each repo: main first, then favorites, then everything else by branch.
+    visible.sort((a, b) => {
+      const repoCmp = `${a.repo.owner}/${a.repo.name}`.localeCompare(
+        `${b.repo.owner}/${b.repo.name}`,
+      );
+      if (repoCmp !== 0) return repoCmp;
+      const mainCmp = Number(b.wt.isMainWorktree) - Number(a.wt.isMainWorktree);
+      if (mainCmp !== 0) return mainCmp;
+      const favCmp = Number(isFav(b)) - Number(isFav(a));
+      if (favCmp !== 0) return favCmp;
+      return a.wt.branchName.localeCompare(b.wt.branchName);
+    });
+    return visible;
+  }, [allEntries, query, favoritePaths, favoritesOnly]);
 
   const grouped = useMemo(() => groupByRepo(filtered), [filtered]);
 
@@ -207,7 +360,7 @@ export function WorktreePaletteApp() {
 
   // Scroll selected into view
   useEffect(() => {
-    const el = slotRefs.current.get(selectedIndex);
+    const el = rowRefs.current.get(selectedIndex);
     el?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
@@ -228,6 +381,61 @@ export function WorktreePaletteApp() {
     setRefreshing(true);
     loadWorktrees();
   }, [loadWorktrees]);
+
+  const handleToggleFavorite = useCallback(
+    async (entry: FlatEntry) => {
+      const path = entry.wt.path;
+      const wasFav = favoritePaths.has(path);
+
+      // Optimistic local update
+      setFavoritePaths((prev) => {
+        const next = new Set(prev);
+        if (wasFav) next.delete(path);
+        else next.add(path);
+        return next;
+      });
+
+      try {
+        const settings = await invoke<AppSettings>('load_settings');
+        const updatedRepos = settings.repos.map((r) => {
+          if (r.owner !== entry.repo.owner || r.name !== entry.repo.name) return r;
+          const existing = r.favoriteWorktreePaths ?? [];
+          const favoriteWorktreePaths = wasFav
+            ? existing.filter((p) => p !== path)
+            : existing.includes(path)
+              ? existing
+              : [...existing, path];
+          return { ...r, favoriteWorktreePaths };
+        });
+        await invoke('save_settings', { settings: { ...settings, repos: updatedRepos } });
+      } catch {
+        // Roll back on failure
+        setFavoritePaths((prev) => {
+          const next = new Set(prev);
+          if (wasFav) next.add(path);
+          else next.delete(path);
+          return next;
+        });
+      }
+    },
+    [favoritePaths],
+  );
+
+  const handleToggleFavoritesOnly = useCallback(async () => {
+    const next = !favoritesOnly;
+    setFavoritesOnly(next);
+    try {
+      const settings = await invoke<AppSettings>('load_settings');
+      await invoke('save_settings', {
+        settings: {
+          ...settings,
+          ui: { ...settings.ui, worktreePaletteFavoritesOnly: next },
+        },
+      });
+    } catch {
+      setFavoritesOnly(!next); // roll back
+    }
+  }, [favoritesOnly]);
 
   // ── Keyboard ──
   const handleKeyDown = useCallback(
@@ -265,17 +473,20 @@ export function WorktreePaletteApp() {
 
   return (
     <div className="wt-palette" onKeyDown={handleKeyDown}>
-      <div className="wt-scanlines" />
-
       {/* Titlebar */}
       <div className="wt-titlebar" data-tauri-drag-region>
         <div className="wt-titlebar-left">
           <div className="wt-logo">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M4 2v12M12 8c0-3-2-4-4-4" />
-              <circle cx="4" cy="14" r="1.5" fill="currentColor" stroke="none" />
-              <circle cx="4" cy="2" r="1.5" fill="currentColor" stroke="none" />
-              <circle cx="12" cy="8" r="1.5" fill="currentColor" stroke="none" />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path
+                d="M4 2v12M12 8c0-3-2-4-4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <circle cx="4" cy="14" r="1.6" fill="currentColor" />
+              <circle cx="4" cy="2" r="1.6" fill="currentColor" />
+              <circle cx="12" cy="8" r="1.6" fill="currentColor" />
             </svg>
           </div>
           <span className="wt-title">WORKTREES</span>
@@ -283,11 +494,39 @@ export function WorktreePaletteApp() {
         </div>
         <div className="wt-titlebar-right">
           <button
-            className={`wt-btn-icon ${refreshing ? 'wt-spin' : ''}`}
+            className={`wt-btn-icon${favoritesOnly ? ' wt-btn-icon--active' : ''}`}
+            onClick={handleToggleFavoritesOnly}
+            title={favoritesOnly ? 'Showing favorites only' : 'Show favorites only'}
+            aria-pressed={favoritesOnly}
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill={favoritesOnly ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
+            </svg>
+          </button>
+          <button
+            className={`wt-btn-icon${refreshing ? ' wt-spin' : ''}`}
             onClick={handleRefresh}
             title="Refresh"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" />
               <path d="M12.5 1v3.5H9M3.5 15v-3.5H7" />
             </svg>
@@ -297,7 +536,15 @@ export function WorktreePaletteApp() {
             onClick={() => getCurrentWindow().close()}
             title="Close (Esc)"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            >
               <path d="m4 4 8 8M12 4l-8 8" />
             </svg>
           </button>
@@ -305,74 +552,105 @@ export function WorktreePaletteApp() {
       </div>
 
       {/* Search */}
-      {!loading && (
-        <div className="wt-search-wrap">
-          <svg className="wt-search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <circle cx="7" cy="7" r="4.5" />
-            <path d="m10.5 10.5 3 3" />
-          </svg>
-          <input
-            ref={searchRef}
-            className="wt-search"
-            placeholder="Filter by branch, folder, or repo..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {query && (
-            <button className="wt-search-clear" onClick={() => { setQuery(''); searchRef.current?.focus(); }}>
-              {'\u2715'}
-            </button>
-          )}
-        </div>
-      )}
+      <div className="wt-search-wrap">
+        <svg
+          className="wt-search-icon"
+          width="13"
+          height="13"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        >
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3 3" />
+        </svg>
+        <input
+          ref={searchRef}
+          className="wt-search"
+          placeholder="Filter by branch, folder, or repo..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          disabled={loading}
+        />
+        {query && (
+          <button
+            className="wt-search-clear"
+            onClick={() => {
+              setQuery('');
+              searchRef.current?.focus();
+            }}
+            title="Clear"
+          >
+            {'\u2715'}
+          </button>
+        )}
+      </div>
 
       {/* Content */}
       <div className="wt-content">
         {loading && (
           <div className="wt-loading">
-            <div className="wt-loading-bar" />
+            <span className="wt-spinner" />
             <span>Scanning worktrees...</span>
           </div>
         )}
 
         {!loading && allEntries.length === 0 && errors.size === 0 && (
           <div className="wt-empty">
-            <span className="wt-empty-icon">&gt;_</span>
-            <span>No repos with worktree paths configured</span>
+            <span className="wt-empty-title">No worktrees configured</span>
+            <span className="wt-empty-detail">
+              Set a worktree base path under Settings &rarr; Repos
+            </span>
           </div>
         )}
 
         {!loading && allEntries.length > 0 && filtered.length === 0 && query && (
           <div className="wt-empty">
-            <span className="wt-empty-icon">{'\u2205'}</span>
-            <span>No worktrees matching '<strong>{query}</strong>'</span>
+            <span className="wt-empty-title">
+              No worktrees matching &lsquo;<strong>{query}</strong>&rsquo;
+            </span>
+          </div>
+        )}
+
+        {!loading && allEntries.length > 0 && filtered.length === 0 && !query && favoritesOnly && (
+          <div className="wt-empty">
+            <span className="wt-empty-title">No favorite worktrees</span>
+            <span className="wt-empty-detail">
+              Click the star on any worktree to mark it as a favorite
+            </span>
           </div>
         )}
 
         {!loading &&
-          [...grouped.entries()].map(([repoKey, entries], groupIdx) => (
-            <div key={repoKey} className={`wt-repo-section ${groupIdx > 0 ? 'wt-repo-section-divider' : ''}`}>
-              <div className="wt-repo-header">
-                <span className="wt-repo-name">{repoKey}</span>
-                <span className="wt-repo-count">{entries.length}</span>
-                {errors.has(repoKey) && <span className="wt-repo-error">err</span>}
+          [...grouped.entries()].map(([repoKey, entries]) => (
+            <div key={repoKey} className="wt-group">
+              <div className="wt-group-header">
+                <span className="wt-group-name">{repoKey}</span>
+                <span className="wt-group-count">{entries.length}</span>
+                {errors.has(repoKey) && <span className="wt-group-error">error</span>}
               </div>
               {errors.has(repoKey) && (
                 <div className="wt-error-detail">{errors.get(repoKey)}</div>
               )}
-              <div className="wt-grid">
+              <div className="wt-list">
                 {entries.map((entry) => {
                   const idx = flatIndex++;
                   return (
-                    <WorktreeSlot
+                    <WorktreeRow
                       key={entry.wt.path}
                       entry={entry}
                       isSelected={idx === selectedIndex}
+                      isFavorite={favoritePaths.has(entry.wt.path)}
                       onSelect={() => setSelectedIndex(idx)}
                       onOpenTerminal={() => handleOpenTerminal(entry.wt.path)}
                       onOpenFolder={() => handleOpenFolder(entry.wt.path)}
                       onOpenEditor={() => handleOpenEditor(entry.wt.path)}
-                      slotRef={(el) => { slotRefs.current.set(idx, el); }}
+                      onToggleFavorite={() => handleToggleFavorite(entry)}
+                      rowRef={(el) => {
+                        rowRefs.current.set(idx, el);
+                      }}
                     />
                   );
                 })}
@@ -381,16 +659,22 @@ export function WorktreePaletteApp() {
           ))}
       </div>
 
-      {/* Footer — pinned outside scroll */}
+      {/* Footer */}
       <div className="wt-footer">
-        <span className="wt-kbd">{'\u2191\u2193'}</span>
-        <span>navigate</span>
+        <span className="wt-hint">
+          <kbd className="wt-kbd">{'\u2191\u2193'}</kbd>
+          navigate
+        </span>
         <span className="wt-sep">{'\u00B7'}</span>
-        <span className="wt-kbd">{'\u23CE'}</span>
-        <span>open</span>
+        <span className="wt-hint">
+          <kbd className="wt-kbd">{'\u23CE'}</kbd>
+          open
+        </span>
         <span className="wt-sep">{'\u00B7'}</span>
-        <span className="wt-kbd">esc</span>
-        <span>close</span>
+        <span className="wt-hint">
+          <kbd className="wt-kbd">esc</kbd>
+          close
+        </span>
       </div>
 
       <style>{STYLES}</style>
@@ -399,410 +683,506 @@ export function WorktreePaletteApp() {
 }
 
 // ── Styles ───────────────────────────────────────────────────────────
+// All colors come from the global theme tokens in src/styles/index.css
+// so dark/light mode + accent changes apply automatically.
 
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Overpass:wght@400;600;700&display=swap');
-
 .wt-palette {
-  --wt-bg: #F7F5FB;
-  --wt-bg-gradient: linear-gradient(174deg, #F7F5FB 0%, #EDEAF4 100%);
-  --wt-card: rgba(0,0,0, 0.018);
-  --wt-card-hover: rgba(124, 106, 246, 0.06);
-  --wt-card-selected: rgba(124, 106, 246, 0.10);
-  --wt-border: rgba(90, 86, 112, 0.08);
-  --wt-border-accent: rgba(124, 106, 246, 0.30);
-  --wt-border-strong: rgba(90, 86, 112, 0.12);
-  --wt-surface: rgba(90, 86, 112, 0.04);
-  --wt-text-1: #1A1726;
-  --wt-text-2: #3A3550;
-  --wt-text-3: #8A85A0;
-  --wt-text-4: #B8B0C8;
-  --wt-accent: #6655D4;
-  --wt-accent-dim: rgba(124, 106, 246, 0.10);
-  --wt-red: #C7324F;
-  --wt-amber: #B07D09;
-  --wt-green: #3BA68E;
-
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: var(--wt-bg-gradient);
-  border: 1px solid var(--wt-border-strong);
-  border-radius: 14px;
+  background: var(--color-card-background);
+  border: 1px solid var(--color-subtle-border);
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  font-family: 'Overpass', sans-serif;
   outline: none;
+  color: var(--color-text-primary);
 }
 
-.dark .wt-palette {
-  --wt-bg: #0F0D15;
-  --wt-bg-gradient: linear-gradient(174deg, #141220 0%, #0C0A14 100%);
-  --wt-card: rgba(255,255,255, 0.022);
-  --wt-card-hover: rgba(124, 106, 246, 0.05);
-  --wt-card-selected: rgba(124, 106, 246, 0.08);
-  --wt-border: rgba(255,255,255, 0.04);
-  --wt-border-accent: rgba(124, 106, 246, 0.25);
-  --wt-border-strong: rgba(124, 106, 246, 0.12);
-  --wt-surface: rgba(255,255,255, 0.035);
-  --wt-text-1: #e8e4f4;
-  --wt-text-2: #9a94b8;
-  --wt-text-3: #5f5980;
-  --wt-text-4: #3d3758;
-  --wt-accent: #7C6AF6;
-  --wt-accent-dim: rgba(124, 106, 246, 0.12);
-  --wt-red: #f87171;
-  --wt-amber: #fbbf24;
-  --wt-green: #34d399;
-
-  background: var(--wt-bg-gradient);
-  border-color: var(--wt-border-strong);
-}
-
-/* Scanlines */
-.wt-scanlines {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.012) 2px, rgba(0,0,0,0.012) 4px);
-}
-.dark .wt-scanlines {
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.008) 2px, rgba(255,255,255,0.008) 4px);
-}
-
-/* Titlebar */
+/* ── Titlebar ─────────────────────────────────────── */
 .wt-titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--wt-border);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-separator);
   cursor: grab;
   user-select: none;
+  flex-shrink: 0;
   position: relative;
-  z-index: 10;
 }
+.wt-titlebar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 20%, transparent),
+    transparent
+  );
+}
+.wt-titlebar:active { cursor: grabbing; }
+
 .wt-titlebar-left { display: flex; align-items: center; gap: 8px; }
-.wt-titlebar-right { display: flex; align-items: center; gap: 4px; }
-.wt-logo { color: var(--wt-accent); display: flex; }
-.wt-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--wt-text-2);
+.wt-titlebar-right { display: flex; align-items: center; gap: 2px; }
+
+.wt-logo {
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.wt-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
 .wt-count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; font-weight: 600;
-  color: var(--wt-accent);
-  background: var(--wt-accent-dim);
-  border: 1px solid rgba(124,106,246,0.15);
-  border-radius: 4px;
-  padding: 1px 6px; line-height: 1.4;
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-purple-border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.4;
+  min-width: 18px;
+  text-align: center;
 }
 
 .wt-btn-icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px;
-  border: none; background: transparent;
-  color: var(--wt-text-3);
-  border-radius: 6px; cursor: pointer;
-  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--color-icon-btn-bg);
+  color: var(--color-icon-btn-fg);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
 }
-.wt-btn-icon:hover { background: var(--wt-surface); color: var(--wt-text-1); }
+.wt-btn-icon:hover {
+  background: var(--color-icon-btn-hover);
+  color: var(--color-text-primary);
+}
+.wt-btn-icon:active {
+  background: var(--color-icon-btn-pressed);
+}
+.wt-btn-icon--active {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+.wt-btn-icon--active:hover {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
 
 @keyframes wt-spin-anim { to { transform: rotate(360deg); } }
-.wt-spin svg { animation: wt-spin-anim 0.8s linear infinite; }
+.wt-spin svg { animation: wt-spin-anim 800ms linear infinite; }
 
-/* Search */
+/* ── Search ──────────────────────────────────────── */
 .wt-search-wrap {
   position: relative;
-  margin: 10px 14px 0;
-  z-index: 10;
+  margin: 10px 12px 4px;
+  flex-shrink: 0;
 }
 .wt-search-icon {
   position: absolute;
-  left: 10px; top: 50%; transform: translateY(-50%);
-  color: var(--wt-text-3);
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
   pointer-events: none;
 }
 .wt-search {
   width: 100%;
   box-sizing: border-box;
-  padding: 7px 30px 7px 32px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--wt-text-1);
-  background: var(--wt-surface);
-  border: 1px solid var(--wt-border);
+  padding: 8px 30px 8px 33px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
   border-radius: 8px;
   outline: none;
-  transition: all 0.15s;
+  caret-color: var(--color-accent);
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
-.wt-search::placeholder { color: var(--wt-text-4); }
+.wt-search::placeholder { color: var(--color-text-faint); }
 .wt-search:focus {
-  border-color: var(--wt-border-accent);
-  background: color-mix(in srgb, var(--wt-accent) 3%, var(--wt-surface));
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-input-border));
+  background: color-mix(in srgb, var(--color-accent) 3%, var(--color-input-bg));
+}
+.wt-search:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .wt-search-clear {
   position: absolute;
-  right: 6px; top: 50%; transform: translateY(-50%);
-  width: 20px; height: 20px;
-  display: flex; align-items: center; justify-content: center;
-  border: none; background: transparent;
-  color: var(--wt-text-3);
-  font-size: 11px; cursor: pointer;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
   border-radius: 4px;
-  transition: all 0.12s;
+  transition: background-color 120ms ease, color 120ms ease;
 }
-.wt-search-clear:hover { background: var(--wt-surface); color: var(--wt-text-1); }
+.wt-search-clear:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
 
-/* Content */
+/* ── Content ─────────────────────────────────────── */
 .wt-content {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 14px;
-  position: relative;
-  z-index: 10;
+  overflow-x: hidden;
+  padding: 6px 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
-.wt-content::-webkit-scrollbar { width: 4px; }
+.wt-content::-webkit-scrollbar { width: 6px; }
 .wt-content::-webkit-scrollbar-track { background: transparent; }
-.wt-content::-webkit-scrollbar-thumb { background: var(--wt-border); border-radius: 2px; }
+.wt-content::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: 3px;
+}
+.wt-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}
 
-/* Loading */
+/* ── Loading / empty ─────────────────────────────── */
 .wt-loading {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 10px; padding: 40px 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; color: var(--wt-text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
-.wt-loading-bar {
-  width: 120px; height: 2px;
-  background: var(--wt-surface);
-  border-radius: 1px; overflow: hidden; position: relative;
+.wt-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-top-color: var(--color-accent);
+  animation: wt-spin-anim 700ms linear infinite;
 }
-.wt-loading-bar::after {
-  content: ''; position: absolute;
-  width: 40px; height: 100%;
-  background: var(--wt-accent); border-radius: 1px;
-  animation: wt-loading-slide 1s ease-in-out infinite;
-}
-@keyframes wt-loading-slide { 0% { left: -40px; } 100% { left: 120px; } }
 
-/* Empty */
 .wt-empty {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 8px; padding: 40px 0;
-  color: var(--wt-text-4); font-size: 12px; text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 48px 16px;
+  text-align: center;
 }
-.wt-empty-icon {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 20px; opacity: 0.4;
+.wt-empty-title {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
 }
-.wt-empty strong { color: var(--wt-text-2); }
+.wt-empty-title strong {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.wt-empty-detail {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
 
-/* Repo section */
-.wt-repo-section {
-  display: flex; flex-direction: column; gap: 6px;
+/* ── Group header ────────────────────────────────── */
+.wt-group {
+  display: flex;
+  flex-direction: column;
 }
-.wt-repo-section-divider {
-  border-top: 1px solid var(--wt-border);
-  padding-top: 10px;
+.wt-group + .wt-group { margin-top: 6px; }
+
+.wt-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 4px;
 }
-.wt-repo-header {
-  display: flex; align-items: center; gap: 8px;
-}
-.wt-repo-name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--wt-text-3);
+.wt-group-name {
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
   text-transform: uppercase;
 }
-.wt-repo-count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; font-weight: 600;
-  color: var(--wt-text-4);
-  background: var(--wt-surface);
-  border-radius: 3px;
-  padding: 0 5px; line-height: 1.6;
+.wt-group-count {
+  font-family: var(--font-code);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-filter-chip-bg);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.6;
 }
-.wt-repo-error {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; font-weight: 600;
-  color: var(--wt-red);
-  background: color-mix(in srgb, var(--wt-red) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--wt-red) 15%, transparent);
-  border-radius: 3px;
-  padding: 0 5px; line-height: 1.6;
+.wt-group-error {
+  font-family: var(--font-code);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-error-badge-fg);
+  background: var(--color-error-badge-bg);
+  border: 1px solid var(--color-error-badge-border);
+  border-radius: 4px;
+  padding: 0 5px;
+  line-height: 1.6;
 }
 .wt-error-detail {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--wt-red); opacity: 0.7;
-  padding: 4px 8px;
-  background: color-mix(in srgb, var(--wt-red) 6%, transparent);
-  border-radius: 4px;
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--color-error-badge-fg);
+  padding: 4px 10px;
+  margin: 0 2px 4px;
+  background: var(--color-error-badge-bg);
+  border: 1px solid var(--color-error-badge-border);
+  border-radius: 6px;
 }
 
-/* Grid */
-.wt-grid { display: flex; flex-direction: column; gap: 3px; }
+/* ── List ────────────────────────────────────────── */
+.wt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
 
-/* Slot */
-.wt-slot {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px;
+/* ── Row ─────────────────────────────────────────── */
+.wt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  transition: all 0.12s;
+  border-radius: 7px;
   cursor: pointer;
   position: relative;
+  transition: background-color 100ms ease;
 }
-.wt-slot:hover {
-  background: var(--wt-card-hover);
-  border-color: var(--wt-border);
-}
-.wt-slot-selected {
-  background: var(--wt-card-selected);
-  border-color: var(--wt-border-accent);
-}
-.wt-slot-selected::before {
+.wt-row::before {
   content: '';
   position: absolute;
-  left: 0; top: 4px; bottom: 4px;
-  width: 3px;
+  left: 2px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
   border-radius: 0 2px 2px 0;
-  background: var(--wt-accent);
+  background: transparent;
+  transition: background-color 100ms ease;
+}
+.wt-row:hover {
+  background: var(--color-surface-hover);
+}
+.wt-row--selected {
+  background: var(--color-selected-row-bg);
+}
+.wt-row--selected::before {
+  background: var(--color-accent);
 }
 
-/* Status dot */
-.wt-status-dot-wrap {
-  position: relative;
-  width: 10px; height: 10px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+.wt-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 4px;
 }
-.wt-status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
+.wt-row-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
-.wt-status-dot-ring {
-  position: absolute;
-  inset: -2px;
-  border: 1.5px solid;
-  border-radius: 50%;
-  animation: wt-pulse 2s ease-in-out infinite;
-}
-@keyframes wt-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.5); opacity: 0; }
-}
-
-/* Slot body */
-.wt-slot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.wt-slot-primary { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.wt-slot-secondary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--wt-text-4);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.wt-row-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--color-text-muted);
 }
 
 .wt-branch {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 600;
-  color: var(--wt-text-1);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  flex-shrink: 1; min-width: 0;
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
-.wt-branch-detached {
-  color: var(--wt-text-4);
-  font-style: italic; font-weight: 400;
+.wt-branch--detached {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-weight: 500;
 }
 
-.wt-sha {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; font-weight: 500;
-  color: var(--wt-amber);
-  background: color-mix(in srgb, var(--wt-amber) 10%, transparent);
-  border-radius: 3px;
-  padding: 0 4px; line-height: 1.5;
+.wt-folder {
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   flex-shrink: 0;
 }
-
-/* Sync badges */
-.wt-sync-badges { display: flex; gap: 3px; flex-shrink: 0; }
-.wt-badge {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; font-weight: 600;
-  border-radius: 3px;
-  padding: 0 4px; line-height: 1.6;
-}
-.wt-badge-ahead {
-  color: var(--wt-green);
-  background: color-mix(in srgb, var(--wt-green) 10%, transparent);
-}
-.wt-badge-behind {
-  color: var(--wt-red);
-  background: color-mix(in srgb, var(--wt-red) 10%, transparent);
-}
-.wt-badge-dirty {
-  color: var(--wt-amber);
-  background: color-mix(in srgb, var(--wt-amber) 10%, transparent);
+.wt-parent {
+  color: var(--color-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  min-width: 0;
 }
 
-/* Slot actions */
-.wt-slot-actions {
-  display: flex; gap: 3px;
-  opacity: 0.3;
-  transition: opacity 0.12s;
+/* ── Row actions ─────────────────────────────────── */
+.wt-row-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  flex-shrink: 0;
 }
-.wt-slot:hover .wt-slot-actions,
-.wt-slot-actions-visible {
+.wt-row:hover .wt-row-actions,
+.wt-row--selected .wt-row-actions {
   opacity: 1;
 }
 
 .wt-action-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px;
-  border: 1px solid var(--wt-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--wt-text-3);
-  border-radius: 5px; cursor: pointer;
-  transition: all 0.12s;
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .wt-action-btn:hover {
-  background: var(--wt-surface);
-  color: var(--wt-accent);
-  border-color: var(--wt-accent);
+  background: var(--color-surface-hover);
+  color: var(--color-accent);
+  border-color: var(--color-purple-border);
 }
 
-/* Footer */
+/* ── Star button (always visible so favorites are legible at a glance) ── */
+.wt-star-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-faint);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+.wt-star-btn:hover {
+  color: var(--color-accent);
+  background: var(--color-surface-hover);
+}
+.wt-star-btn:active {
+  transform: scale(0.9);
+}
+.wt-star-btn--active {
+  color: var(--color-accent);
+}
+.wt-star-btn--active:hover {
+  color: var(--color-accent);
+}
+
+/* Keeps main rows visually aligned with rows that have a star button. */
+.wt-star-placeholder {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* ── Main worktree row ── */
+.wt-row--main::before {
+  background: color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+.wt-main-badge {
+  font-family: var(--font-code);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-purple-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+/* ── Footer ──────────────────────────────────────── */
 .wt-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-top: 1px solid var(--wt-border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--wt-text-4);
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-separator);
+  font-size: 10.5px;
+  color: var(--color-text-muted);
   flex-shrink: 0;
-  position: relative;
-  z-index: 10;
+  background: var(--color-surface-raised);
+}
+.wt-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .wt-kbd {
-  font-size: 9px; font-weight: 600;
-  color: var(--wt-text-3);
-  background: var(--wt-surface);
-  border: 1px solid var(--wt-border);
-  border-radius: 3px;
+  font-family: var(--font-code);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  background: var(--color-card-background);
+  border: 1px solid var(--color-subtle-border);
+  border-bottom-width: 1.5px;
+  border-radius: 4px;
   padding: 1px 5px;
+  line-height: 1.3;
+  min-width: 16px;
+  text-align: center;
 }
-.wt-sep { opacity: 0.3; }
+.wt-sep { opacity: 0.35; }
 `;
