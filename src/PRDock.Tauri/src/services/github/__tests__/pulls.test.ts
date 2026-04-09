@@ -104,6 +104,19 @@ describe('getOpenPRs', () => {
     const result = await getOpenPRs(client, 'owner', 'repo');
     expect(result).toEqual([]);
   });
+
+  it('skips detail and review fetches when hydrateDetails is false', async () => {
+    const getSpy = vi.mocked(client.get);
+    getSpy.mockResolvedValueOnce([fakePrDto]);
+
+    const result = await getOpenPRs(client, 'owner', 'repo', { hydrateDetails: false });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.number).toBe(42);
+    // Only the list endpoint should have been called — no detail, no reviews
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls?state=open');
+  });
 });
 
 describe('getClosedPRs', () => {

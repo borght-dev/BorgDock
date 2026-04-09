@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::path::Path;
+use std::process::Stdio;
 
 use super::hidden_command;
 
@@ -184,6 +185,9 @@ pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
         let output = hidden_command("gh")
             .args(&args)
+            .env("GH_PROMPT_DISABLED", "1")
+            .env("GH_FORCE_TTY", "0")
+            .stdin(Stdio::null())
             .output()
             .map_err(|e| format!("Failed to run gh: {e}"))?;
 

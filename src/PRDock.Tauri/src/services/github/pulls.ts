@@ -1,5 +1,8 @@
+import { createLogger } from '@/services/logger';
 import type { PullRequest, PullRequestCommit, PullRequestFileChange, ReviewStatus } from '@/types';
 import type { GitHubClient } from './client';
+
+const log = createLogger('github:pulls');
 
 // --- GitHub API DTOs (snake_case) ---
 
@@ -75,10 +78,20 @@ export async function getOpenPRs(
   client: GitHubClient,
   owner: string,
   repo: string,
+  options: { hydrateDetails?: boolean } = {},
 ): Promise<PullRequest[]> {
+  const { hydrateDetails = true } = options;
   const dtos = await client.get<GitHubPullRequestDto[]>(`repos/${owner}/${repo}/pulls?state=open`);
 
   const pullRequests = dtos.map((dto) => mapToPullRequest(dto, owner, repo));
+
+  // Skip the per-PR detail+reviews hydration when the caller only needs the list.
+  // This avoids 2*N extra API requests on startup, which can trip GitHub's secondary
+  // rate limit and make the splash screen feel hung. The normal polling loop fills
+  // these fields in on the next tick.
+  if (!hydrateDetails) {
+    return pullRequests;
+  }
 
   // Fetch individual PR details + reviews in parallel
   // The list endpoint returns mergeable: null — only individual PR fetches compute it
@@ -147,13 +160,22 @@ export async function getPRFiles(
   repo: string,
   prNumber: number,
 ): Promise<PullRequestFileChange[]> {
+  log.info('getPRFiles start', { owner, repo, prNumber });
   const allFiles: PullRequestFileChange[] = [];
   let page = 1;
 
   while (true) {
+    log.info('getPRFiles fetching page', { owner, repo, prNumber, page });
     const dtos = await client.get<GitHubFileChangeDto[]>(
       `repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100&page=${page}`,
     );
+    log.info('getPRFiles page fetched', {
+      owner,
+      repo,
+      prNumber,
+      page,
+      count: dtos.length,
+    });
 
     for (const d of dtos) {
       allFiles.push({

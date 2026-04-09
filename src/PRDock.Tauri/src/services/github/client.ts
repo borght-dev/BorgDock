@@ -1,3 +1,6 @@
+import { invalidateGitHubTokenCache } from '@/services/github/auth';
+import { createLogger } from '@/services/logger';
+
 export interface RateLimit {
   remaining: number;
   total: number;
@@ -10,6 +13,9 @@ interface ETagEntry {
 }
 
 const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503]);
+const GITHUB_REQUEST_TIMEOUT_MS = 10_000;
+
+const log = createLogger('github');
 
 export class GitHubClient {
   private readonly getToken: () => Promise<string>;
@@ -42,20 +48,38 @@ export class GitHubClient {
 
   async get<T>(path: string): Promise<T> {
     const url = `https://api.github.com/${path}`;
+    const start = performance.now();
+    log.info('GET start', { path });
     const response = await this.fetchWithRetry(url);
+    const durationMs = Math.round(performance.now() - start);
 
     if (response.status === 304) {
       const cached = this.etagCache.get(url);
       if (cached) {
+        log.info('GET 304 cached', { path, durationMs });
         return cached.data as T;
       }
+      log.warn('GET 304 with no cached entry', { path, durationMs });
     }
 
     if (response.status === 401 || response.status === 403) {
+      log.error('GET auth error — invalidating token cache', {
+        path,
+        status: response.status,
+        durationMs,
+        rateLimitRemaining: this.rateLimit.remaining,
+      });
+      invalidateGitHubTokenCache();
       throw new GitHubAuthError(`GitHub API authentication failed (${response.status}).`);
     }
 
     if (!response.ok) {
+      log.error('GET failed', {
+        path,
+        status: response.status,
+        statusText: response.statusText,
+        durationMs,
+      });
       throw new GitHubApiError(
         `GitHub API error: ${response.status} ${response.statusText}`,
         response.status,
@@ -69,6 +93,14 @@ export class GitHubClient {
     if (etag) {
       this.etagCache.set(url, { etag, data: body });
     }
+
+    log.info('GET ok', {
+      path,
+      status: response.status,
+      durationMs,
+      rateLimitRemaining: this.rateLimit.remaining,
+      cached: !!etag,
+    });
 
     return body as T;
   }
@@ -93,7 +125,7 @@ export class GitHubClient {
     const url = `https://api.github.com/${path}`;
     const token = await this.getToken();
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -120,7 +152,7 @@ export class GitHubClient {
     const url = `https://api.github.com/${path}`;
     const token = await this.getToken();
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -147,7 +179,7 @@ export class GitHubClient {
     const url = `https://api.github.com/${path}`;
     const token = await this.getToken();
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -173,7 +205,7 @@ export class GitHubClient {
   async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     const token = await this.getToken();
 
-    const response = await fetch('https://api.github.com/graphql', {
+    const response = await this.fetchWithTimeout('https://api.github.com/graphql', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -223,7 +255,7 @@ export class GitHubClient {
           headers['If-None-Match'] = cached.etag;
         }
 
-        const response = await fetch(url, { headers });
+        const response = await this.fetchWithTimeout(url, { headers });
         this.parseRateLimitHeaders(response);
 
         // Handle rate limit exhaustion
@@ -232,29 +264,76 @@ export class GitHubClient {
           if (resetTime && attempt < maxRetries) {
             const waitMs = Math.max(0, resetTime.getTime() - Date.now());
             const cappedWait = Math.min(waitMs, 120_000);
+            log.warn('rate limit exhausted — waiting for reset', {
+              url,
+              attempt,
+              waitMs: cappedWait,
+              resetAt: resetTime.toISOString(),
+            });
             await sleep(cappedWait);
             continue;
           }
+          log.error('rate limit exhausted — giving up', {
+            url,
+            attempt,
+            resetAt: resetTime?.toISOString(),
+          });
         }
 
         if (!isTransient(response.status) || attempt === maxRetries) {
+          if (attempt > 0) {
+            log.info('fetch succeeded after retries', {
+              url,
+              attempts: attempt + 1,
+              status: response.status,
+            });
+          }
           return response;
         }
 
         lastResponse = response;
 
         const delay = getRetryDelay(attempt, response, baseDelay);
+        log.warn('transient failure — retrying', {
+          url,
+          attempt,
+          status: response.status,
+          delayMs: delay,
+        });
         await sleep(delay);
       } catch (error) {
         if (attempt === maxRetries) {
+          log.error('fetch exhausted retries', error, { url, attempts: attempt + 1 });
           throw error;
         }
         const delay = baseDelay * 2 ** attempt;
+        log.warn('network error — retrying', {
+          url,
+          attempt,
+          error: error instanceof Error ? error.message : String(error),
+          delayMs: delay,
+        });
         await sleep(delay);
       }
     }
 
     return lastResponse!;
+  }
+
+  private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GITHUB_REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw new Error(`GitHub request timed out after ${GITHUB_REQUEST_TIMEOUT_MS}ms: ${url}`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private parseRateLimitHeaders(response: Response): void {
@@ -316,4 +395,12 @@ function getRetryDelay(attempt: number, response: Response, baseDelay: number): 
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof DOMException
+      ? error.name === 'AbortError'
+      : error instanceof Error && error.name === 'AbortError'
+  );
 }

@@ -20,6 +20,31 @@ function mockResponse(
   } as unknown as Response;
 }
 
+function createAbortError(): Error {
+  const error = new Error('The operation was aborted.');
+  error.name = 'AbortError';
+  return error;
+}
+
+function mockHangingFetchWithAbort() {
+  return vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+    const signal = init?.signal as AbortSignal | undefined;
+    return new Promise((_resolve, reject) => {
+      if (signal?.aborted) {
+        reject(createAbortError());
+        return;
+      }
+      signal?.addEventListener(
+        'abort',
+        () => {
+          reject(createAbortError());
+        },
+        { once: true },
+      );
+    });
+  });
+}
+
 describe('GitHubClient', () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
 
@@ -85,12 +110,17 @@ describe('GitHubClient', () => {
       const result = await client.get<{ id: number }>('repos/owner/repo');
 
       expect(result).toEqual({ id: 1 });
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.github.com/repos/owner/repo', {
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-          'User-Agent': 'PRDock',
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0]![0]).toBe('https://api.github.com/repos/owner/repo');
+      expect(fetchSpy.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'User-Agent': 'PRDock',
+          }),
+          signal: expect.any(AbortSignal),
         }),
-      });
+      );
     });
 
     it('caches responses with etag and sends If-None-Match on subsequent requests', async () => {
@@ -186,14 +216,19 @@ describe('GitHubClient', () => {
       const result = await client.post<{ id: number }>('repos/owner/repo', { name: 'test' });
 
       expect(result).toEqual(responseBody);
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.github.com/repos/owner/repo', {
-        method: 'POST',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-          'Content-Type': 'application/json',
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0]![0]).toBe('https://api.github.com/repos/owner/repo');
+      expect(fetchSpy.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ name: 'test' }),
+          signal: expect.any(AbortSignal),
         }),
-        body: JSON.stringify({ name: 'test' }),
-      });
+      );
     });
 
     it('throws GitHubApiError on non-OK status', async () => {
@@ -225,14 +260,19 @@ describe('GitHubClient', () => {
       });
 
       expect(result).toEqual({ merged: true });
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.github.com/repos/owner/repo/merge', {
-        method: 'PUT',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-          'Content-Type': 'application/json',
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0]![0]).toBe('https://api.github.com/repos/owner/repo/merge');
+      expect(fetchSpy.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ merge_method: 'squash' }),
+          signal: expect.any(AbortSignal),
         }),
-        body: JSON.stringify({ merge_method: 'squash' }),
-      });
+      );
     });
 
     it('throws GitHubApiError on non-OK status', async () => {
@@ -253,16 +293,18 @@ describe('GitHubClient', () => {
       });
 
       expect(result).toEqual({ state: 'closed' });
-      expect(fetchSpy).toHaveBeenCalledWith(
-        'https://api.github.com/repos/owner/repo/pulls/1',
-        {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0]![0]).toBe('https://api.github.com/repos/owner/repo/pulls/1');
+      expect(fetchSpy.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
           method: 'PATCH',
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
           }),
           body: JSON.stringify({ state: 'closed' }),
-        },
+          signal: expect.any(AbortSignal),
+        }),
       );
     });
 
@@ -286,17 +328,22 @@ describe('GitHubClient', () => {
       );
 
       expect(result).toEqual(data);
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.github.com/graphql', {
-        method: 'POST',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-          'Content-Type': 'application/json',
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0]![0]).toBe('https://api.github.com/graphql');
+      expect(fetchSpy.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            query: 'query { repository { id } }',
+            variables: { owner: 'test' },
+          }),
+          signal: expect.any(AbortSignal),
         }),
-        body: JSON.stringify({
-          query: 'query { repository { id } }',
-          variables: { owner: 'test' },
-        }),
-      });
+      );
     });
 
     it('throws GitHubApiError on non-OK status', async () => {
@@ -427,6 +474,21 @@ describe('GitHubClient', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(4);
     });
 
+    it('times out hung GET requests instead of hanging forever', async () => {
+      const client = createClient();
+      fetchSpy = mockHangingFetchWithAbort();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const promise = client.get('repos/test').catch((e: unknown) => e);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      const error = await promise;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('GitHub request timed out after 10000ms');
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+    });
+
     it('uses Retry-After header (seconds) for delay', async () => {
       const client = createClient();
 
@@ -523,6 +585,23 @@ describe('GitHubClient', () => {
       expect(rl.remaining).toBe(-1);
       expect(rl.total).toBe(-1);
       expect(rl.reset).toBeNull();
+    });
+  });
+
+  describe('non-GET timeouts', () => {
+    it('times out hung POST requests', async () => {
+      const client = createClient();
+      fetchSpy = mockHangingFetchWithAbort();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const promise = client.post('repos/test', {}).catch((e: unknown) => e);
+
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      const error = await promise;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('GitHub request timed out after 10000ms');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
   });
 
