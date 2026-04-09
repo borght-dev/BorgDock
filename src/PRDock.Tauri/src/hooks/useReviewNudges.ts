@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { buildReviewNudgeNotification, sendOsNotification } from '@/services/notification';
+import { buildReviewNudgeNotification } from '@/services/notification';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import type { ReviewSlaTier } from '@/services/review-sla';
 import { useNotificationStore } from '@/stores/notification-store';
@@ -59,14 +59,6 @@ export function useReviewNudges(settings: AppSettings) {
       const notification = buildReviewNudgeNotification(pr.pullRequest, waitTime, tier);
 
       useNotificationStore.getState().show(notification);
-      sendOsNotification({
-        title: notification.title,
-        body: notification.message,
-        prOwner: pr.pullRequest.repoOwner,
-        prRepo: pr.pullRequest.repoName,
-        prNumber: pr.pullRequest.number,
-      }).catch(console.debug); /* fire-and-forget: OS notification */
-
       lastNudgedRef.current.set(prk, now);
     }
 

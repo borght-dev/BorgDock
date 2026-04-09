@@ -6,28 +6,9 @@ import {
   buildPrMergedNotification,
   buildReviewRequestedNotification,
   detectStateTransitions,
-  sendOsNotification,
 } from '@/services/notification';
-import type { OsNotificationButton } from '@/services/notification';
 import { useNotificationStore } from '@/stores/notification-store';
 import type { AppSettings, InAppNotification, PullRequestWithChecks } from '@/types';
-
-/** Context-aware OS buttons per transition type */
-const CI_FAILURE_BUTTONS: OsNotificationButton[] = [
-  { label: 'Fix with Claude', action: 'fix-with-claude' },
-  { label: 'Re-run', action: 'rerun' },
-];
-
-const MERGEABLE_BUTTONS: OsNotificationButton[] = [
-  { label: 'Merge', action: 'merge' },
-  { label: 'Open in GitHub', action: 'open' },
-];
-
-const DEFAULT_PR_BUTTONS: OsNotificationButton[] = [
-  { label: 'Merge', action: 'merge' },
-  { label: 'Approve changes', action: 'approve' },
-  { label: 'Bypass Merge', action: 'bypass' },
-];
 
 export function useStateTransitions(settings: AppSettings) {
   const previousPrsRef = useRef<PullRequestWithChecks[]>([]);
@@ -80,7 +61,6 @@ export function useStateTransitions(settings: AppSettings) {
         if (isDuplicate(transition.type, transition.pr)) continue;
 
         let notification: InAppNotification | undefined;
-        let osButtons: OsNotificationButton[] | undefined = DEFAULT_PR_BUTTONS;
 
         switch (transition.type) {
           case 'checkFailed':
@@ -89,7 +69,6 @@ export function useStateTransitions(settings: AppSettings) {
               transition.pr,
               transition.detail ?? 'Unknown check',
             );
-            osButtons = CI_FAILURE_BUTTONS;
             break;
           case 'allChecksPassed':
             if (!settings.notifications.toastOnCheckStatusChange) continue;
@@ -117,25 +96,14 @@ export function useStateTransitions(settings: AppSettings) {
           case 'becameMergeable':
             if (!settings.notifications.toastOnMergeable) continue;
             notification = buildBecameMergeableNotification(transition.pr);
-            osButtons = MERGEABLE_BUTTONS;
             break;
           case 'merged':
             notification = buildPrMergedNotification(transition.pr);
-            osButtons = undefined; // no buttons for merged
             break;
         }
 
         if (notification) {
           useNotificationStore.getState().show(notification);
-
-          sendOsNotification({
-            title: notification.title,
-            body: notification.message,
-            prOwner: transition.pr.repoOwner,
-            prRepo: transition.pr.repoName,
-            prNumber: transition.pr.number,
-            buttons: osButtons,
-          }).catch(console.debug); /* fire-and-forget: OS notification */
         }
       }
     },

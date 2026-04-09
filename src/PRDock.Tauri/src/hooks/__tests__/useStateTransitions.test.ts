@@ -5,7 +5,6 @@ import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 // --- Mocks ---
 
 const mockShow = vi.fn();
-const mockSendOsNotification = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockResolvedValue(undefined),
@@ -17,14 +16,6 @@ vi.mock('@/stores/notification-store', () => ({
     { getState: () => ({ show: mockShow }) },
   ),
 }));
-
-vi.mock('@/services/notification', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/services/notification')>();
-  return {
-    ...original,
-    sendOsNotification: (...args: unknown[]) => mockSendOsNotification(...args),
-  };
-});
 
 import { useStateTransitions } from '../useStateTransitions';
 
@@ -592,151 +583,6 @@ describe('useStateTransitions', () => {
         (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(secondCheckFailedCalls).toHaveLength(1);
-    });
-  });
-
-  describe('OS notification', () => {
-    it('sends OS notification for checkFailed with CI failure buttons', () => {
-      const { result } = renderHook(() => useStateTransitions(makeSettings()));
-
-      const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
-      const newPrs = [
-        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-      ];
-
-      act(() => {
-        result.current.processTransitions(oldPrs);
-      });
-      act(() => {
-        result.current.processTransitions(newPrs);
-      });
-
-      expect(mockSendOsNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: expect.stringContaining('Check failed'),
-          buttons: expect.arrayContaining([
-            expect.objectContaining({ label: 'Fix with Claude', action: 'fix-with-claude' }),
-            expect.objectContaining({ label: 'Re-run', action: 'rerun' }),
-          ]),
-        }),
-      );
-    });
-
-    it('sends OS notification with merge buttons for becameMergeable', () => {
-      const { result } = renderHook(() => useStateTransitions(makeSettings()));
-
-      const oldPrs = [
-        makePrWithChecks({
-          overallStatus: 'red',
-          pr: { reviewStatus: 'none' },
-        }),
-      ];
-      const newPrs = [
-        makePrWithChecks({
-          overallStatus: 'green',
-          pr: { reviewStatus: 'approved', isDraft: false, mergeable: true },
-        }),
-      ];
-
-      act(() => {
-        result.current.processTransitions(oldPrs);
-      });
-      act(() => {
-        result.current.processTransitions(newPrs);
-      });
-
-      const mergeableCall = mockSendOsNotification.mock.calls.find(
-        (c: unknown[]) => (c[0] as { title: string }).title === 'PR ready to merge',
-      );
-      expect(mergeableCall).toBeDefined();
-      expect(mergeableCall![0]).toEqual(
-        expect.objectContaining({
-          buttons: expect.arrayContaining([
-            expect.objectContaining({ label: 'Merge', action: 'merge' }),
-            expect.objectContaining({ label: 'Open in GitHub', action: 'open' }),
-          ]),
-        }),
-      );
-    });
-
-    it('sends OS notification with no buttons for merged', () => {
-      const { result } = renderHook(() => useStateTransitions(makeSettings()));
-
-      const oldPrs = [makePrWithChecks()];
-      const newPrs = [makePrWithChecks({ pr: { mergedAt: '2025-01-17T10:00:00Z' } })];
-
-      act(() => {
-        result.current.processTransitions(oldPrs);
-      });
-      act(() => {
-        result.current.processTransitions(newPrs);
-      });
-
-      const mergedCall = mockSendOsNotification.mock.calls.find(
-        (c: unknown[]) => (c[0] as { title: string }).title.includes('merged'),
-      );
-      expect(mergedCall).toBeDefined();
-      expect(mergedCall![0]).toEqual(
-        expect.objectContaining({ buttons: undefined }),
-      );
-    });
-
-    it('sends OS notification with default PR buttons for allChecksPassed', () => {
-      const { result } = renderHook(() => useStateTransitions(makeSettings()));
-
-      const oldPrs = [
-        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-      ];
-      const newPrs = [makePrWithChecks({ overallStatus: 'green' })];
-
-      act(() => {
-        result.current.processTransitions(oldPrs);
-      });
-      act(() => {
-        result.current.processTransitions(newPrs);
-      });
-
-      const passedCall = mockSendOsNotification.mock.calls.find(
-        (c: unknown[]) => (c[0] as { title: string }).title === 'All checks passed',
-      );
-      expect(passedCall).toBeDefined();
-      expect(passedCall![0]).toEqual(
-        expect.objectContaining({
-          buttons: expect.arrayContaining([
-            expect.objectContaining({ label: 'Merge', action: 'merge' }),
-            expect.objectContaining({ label: 'Approve changes', action: 'approve' }),
-            expect.objectContaining({ label: 'Bypass Merge', action: 'bypass' }),
-          ]),
-        }),
-      );
-    });
-
-    it('includes PR details in OS notification payload', () => {
-      const { result } = renderHook(() => useStateTransitions(makeSettings()));
-
-      const oldPrs = [makePrWithChecks({ overallStatus: 'green', pr: { number: 99, repoOwner: 'org', repoName: 'myrepo' } })];
-      const newPrs = [
-        makePrWithChecks({
-          overallStatus: 'red',
-          failedCheckNames: ['build'],
-          pr: { number: 99, repoOwner: 'org', repoName: 'myrepo' },
-        }),
-      ];
-
-      act(() => {
-        result.current.processTransitions(oldPrs);
-      });
-      act(() => {
-        result.current.processTransitions(newPrs);
-      });
-
-      expect(mockSendOsNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          prOwner: 'org',
-          prRepo: 'myrepo',
-          prNumber: 99,
-        }),
-      );
     });
   });
 

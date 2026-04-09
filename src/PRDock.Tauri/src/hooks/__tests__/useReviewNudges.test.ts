@@ -3,7 +3,6 @@ import { renderHook } from '@testing-library/react';
 import type { AppSettings, PullRequestWithChecks } from '@/types';
 
 const mockShow = vi.fn();
-const mockSendOsNotification = vi.fn();
 const mockBuildReviewNudgeNotification = vi.fn();
 const mockGetReviewSlaTier = vi.fn();
 const mockFormatReviewWaitTime = vi.fn();
@@ -33,7 +32,6 @@ vi.mock('@/stores/pr-store', () => ({
 
 vi.mock('@/services/notification', () => ({
   buildReviewNudgeNotification: (...args: unknown[]) => mockBuildReviewNudgeNotification(...args),
-  sendOsNotification: (...args: unknown[]) => mockSendOsNotification(...args),
 }));
 
 vi.mock('@/services/review-sla', () => ({
@@ -148,7 +146,6 @@ describe('useReviewNudges', () => {
       severity: 'info',
       actions: [],
     });
-    mockSendOsNotification.mockResolvedValue(undefined);
 
     // Make document hidden so nudges fire
     Object.defineProperty(document, 'visibilityState', {
@@ -199,7 +196,6 @@ describe('useReviewNudges', () => {
     rerender({ prs: [pr, pr] }); // trigger re-render with different array ref
 
     expect(mockShow).toHaveBeenCalled();
-    expect(mockSendOsNotification).toHaveBeenCalled();
   });
 
   it('does not nudge when reviewNudgeEnabled is false', () => {
