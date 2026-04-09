@@ -1,10 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
-import App from '../App';
-import { useSettingsStore } from '@/stores/settings-store';
-import { useUiStore } from '@/stores/ui-store';
+import { act, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
+import App from '../App';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(() => Promise.resolve()),
@@ -30,9 +31,7 @@ vi.mock('@tauri-apps/api/window', () => ({
 }));
 
 vi.mock('@tauri-apps/plugin-store', () => ({
-  load: vi.fn(() =>
-    Promise.resolve({ set: vi.fn(), save: vi.fn(), get: vi.fn(() => null) }),
-  ),
+  load: vi.fn(() => Promise.resolve({ set: vi.fn(), save: vi.fn(), get: vi.fn(() => null) })),
 }));
 
 vi.mock('@tauri-apps/plugin-notification', () => ({
@@ -105,6 +104,14 @@ vi.mock('@/hooks/useWorktreeMap', () => ({
 
 vi.mock('@/hooks/useAutoUpdate', () => ({
   useAutoUpdate: vi.fn(),
+}));
+
+vi.mock('@/hooks/useInitSequence', () => ({
+  useInitSequence: vi.fn(),
+}));
+
+vi.mock('@/components/SplashScreen', () => ({
+  SplashScreen: () => <div data-testid="splash-screen" />,
 }));
 
 vi.mock('@/components/layout/Sidebar', () => ({
@@ -204,18 +211,32 @@ describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     usePrStore.setState({ pullRequests: [], closedPullRequests: [] });
+    // Default: init complete so main UI renders
+    useInitStore.setState({ isComplete: true });
   });
 
-  it('shows loading spinner when isLoading is true', () => {
+  it('shows splash screen when isLoading is true', () => {
+    useInitStore.setState({ isComplete: false });
     useSettingsStore.setState({
       isLoading: true,
       settings: fullSettings,
       loadSettings: vi.fn(),
     });
 
-    const { container } = render(<App />);
-    const spinner = container.querySelector('.animate-spin');
-    expect(spinner).toBeTruthy();
+    render(<App />);
+    expect(screen.getByTestId('splash-screen')).toBeTruthy();
+  });
+
+  it('shows splash screen when init is not complete', () => {
+    useInitStore.setState({ isComplete: false });
+    useSettingsStore.setState({
+      isLoading: false,
+      settings: fullSettings,
+      loadSettings: vi.fn(),
+    });
+
+    render(<App />);
+    expect(screen.getByTestId('splash-screen')).toBeTruthy();
   });
 
   it('shows setup wizard when setup is not complete', () => {

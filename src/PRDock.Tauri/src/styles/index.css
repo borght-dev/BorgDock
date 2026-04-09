@@ -214,6 +214,9 @@
   --color-wizard-step-inactive: #D8D4E3;
   --color-wizard-step-track: rgba(90, 86, 112, 0.08);
 
+  /* Splash screen */
+  --color-splash-gradient-end: #9384F7;
+
   /* Notification toast */
   --color-toast-bg: rgba(255, 255, 255, 0.96);
   --color-toast-success-glow: rgba(59, 166, 142, 0.35);
@@ -412,6 +415,9 @@
   --color-wizard-step-inactive: #2A2640;
   --color-wizard-step-track: rgba(138, 133, 160, 0.08);
 
+  /* Splash screen */
+  --color-splash-gradient-end: #B8B0F8;
+
   /* Notification toast */
   --color-toast-bg: rgba(26, 23, 38, 0.96);
   --color-toast-success-glow: rgba(125, 211, 192, 0.40);
@@ -507,6 +513,30 @@
   100% {
     box-shadow: 0 0 0 0 transparent;
   }
+}
+
+/* ════════════════════════════════════════════════════════
+   Splash Screen Animations
+   ════════════════════════════════════════════════════════ */
+
+@keyframes splash-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.92; }
+}
+
+@keyframes splash-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes splash-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes splash-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* Base styles */
