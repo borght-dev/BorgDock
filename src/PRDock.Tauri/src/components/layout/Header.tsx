@@ -43,7 +43,11 @@ export function Header() {
   const handleMinimize = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('toggle_sidebar');
+      // Hide explicitly rather than via toggle_sidebar — the toggle path used
+      // to rely on win.is_visible(), which is unreliable for transparent
+      // always-on-top WebView2 windows on Windows.
+      useUiStore.getState().setSidebarVisible(false);
+      await invoke('hide_sidebar');
       await invoke('show_badge', { count: 0 });
     } catch (err) {
       console.error('Failed to minimize:', err);
@@ -51,35 +55,30 @@ export function Header() {
   }, []);
 
   return (
-    <header
-      onMouseDown={handleHeaderDragStart}
-      className="sidebar-header"
-    >
+    <header onMouseDown={handleHeaderDragStart} className="sidebar-header">
       {/* Left: Logo + open count */}
       <div className="sidebar-header-left">
-        {/* App icon — pulse line from favicon */}
+        {/* App icon — purple gradient tile with white pulse line */}
         <svg className="sidebar-logo" width="22" height="22" viewBox="0 0 16 16" fill="none">
-          <rect width="16" height="16" rx="4.5" fill="#12161f" />
-          <path
-            d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
-            stroke="url(#hdr-line)"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <circle cx="14" cy="9" r="1.3" fill="var(--color-status-green)" />
           <defs>
-            <linearGradient id="hdr-line" x1="2" y1="8" x2="14" y2="8">
+            <linearGradient id="hdr-tile" x1="0" y1="0" x2="16" y2="16">
               <stop offset="0%" stopColor="var(--color-logo-gradient-start)" />
               <stop offset="100%" stopColor="var(--color-logo-gradient-end)" />
             </linearGradient>
           </defs>
+          <rect width="16" height="16" rx="4.5" fill="url(#hdr-tile)" />
+          <path
+            d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
+            stroke="white"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
         </svg>
         <span className="sidebar-title">PRDock</span>
         {/* Open count badge */}
-        <span className="sidebar-open-badge">
-          {pullRequests.length} open
-        </span>
+        <span className="sidebar-open-badge">{pullRequests.length} open</span>
       </div>
 
       {/* Center: Section switcher */}
@@ -107,15 +106,18 @@ export function Header() {
       {/* Right: Status dot + actions */}
       <div className="sidebar-header-right">
         {/* Status dot with glow */}
-        <div className={clsx('sidebar-status-dot', hasFailing ? 'sidebar-status-dot--red' : 'sidebar-status-dot--green')}>
+        <div
+          className={clsx(
+            'sidebar-status-dot',
+            hasFailing ? 'sidebar-status-dot--red' : 'sidebar-status-dot--green',
+          )}
+        >
           <span className="sidebar-status-dot-glow" />
           <span className="sidebar-status-dot-core" />
         </div>
 
         {/* Polling spinner */}
-        {isPolling && (
-          <span className="sidebar-poll-spinner" />
-        )}
+        {isPolling && <span className="sidebar-poll-spinner" />}
 
         <button
           onClick={dispatchRefresh}
@@ -123,7 +125,16 @@ export function Header() {
           aria-label="Refresh"
           title="Poll now"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M1 4v4h4" />
             <path d="M15 12V8h-4" />
             <path d="M2.5 10.5A6 6 0 0 0 14 8" />
@@ -136,7 +147,15 @@ export function Header() {
           aria-label="Minimize to badge"
           title="Minimize to badge"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
             <path d="M4 8h8" />
           </svg>
         </button>
@@ -145,7 +164,16 @@ export function Header() {
           className="sidebar-icon-btn"
           aria-label="Settings"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="8" cy="8" r="2.5" />
             <path d="M13.5 8a5.5 5.5 0 0 0-.1-1.1l1.5-1.2-1-1.7-1.8.5a5.5 5.5 0 0 0-1-.6L10.7 2H8.7l-.4 1.9a5.5 5.5 0 0 0-1 .6l-1.8-.5-1 1.7 1.5 1.2a5.5 5.5 0 0 0 0 2.2l-1.5 1.2 1 1.7 1.8-.5a5.5 5.5 0 0 0 1 .6L9.3 14h2l.4-1.9a5.5 5.5 0 0 0 1-.6l1.8.5 1-1.7-1.5-1.2a5.5 5.5 0 0 0 .1-1.1z" />
           </svg>
