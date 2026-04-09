@@ -1,12 +1,33 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "path";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    viteStaticCopy({
+      targets: [
+        {
+          // Tree-sitter runtime — served at /web-tree-sitter.wasm
+          src: "node_modules/web-tree-sitter/web-tree-sitter.wasm",
+          dest: ".",
+          rename: { stripBase: true },
+        },
+        {
+          // Prebuilt language grammars — served at /grammars/tree-sitter-*.wasm
+          // (SQL grammar is built manually and lives in public/grammars/)
+          src: "node_modules/tree-sitter-wasms/out/*.wasm",
+          dest: "grammars",
+          rename: { stripBase: true },
+        },
+      ],
+    }),
+  ],
   test: {
     environment: "jsdom",
     exclude: ["tests/e2e/**", "node_modules/**"],

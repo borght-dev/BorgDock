@@ -25,7 +25,6 @@ const EXT_TO_GRAMMAR: Record<string, string> = {
   css: 'css',
   scss: 'css',
   html: 'html',
-  md: 'markdown',
   toml: 'toml',
 };
 
@@ -94,7 +93,7 @@ async function initTreeSitter(): Promise<boolean> {
       const mod = await import('web-tree-sitter');
       const Parser = mod.default ?? mod;
       await (Parser as unknown as { init: (opts?: object) => Promise<void> }).init({
-        locateFile: () => '/node_modules/web-tree-sitter/web-tree-sitter.wasm',
+        locateFile: () => '/web-tree-sitter.wasm',
       });
       ParserClass = Parser as unknown as typeof ParserClass;
       return true;
