@@ -16,18 +16,27 @@ use tauri::Manager;
 
 pub fn run() {
     let log_plugin = tauri_plugin_log::Builder::new()
-        .target(tauri_plugin_log::Target::new(
-            tauri_plugin_log::TargetKind::Folder {
+        .targets([
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
                 path: dirs::config_dir()
                     .unwrap_or_else(|| std::path::PathBuf::from("."))
                     .join("PRDock")
                     .join("logs"),
                 file_name: Some("prdock".into()),
-            },
-        ))
+            }),
+            // Also stream to stdout so `cargo tauri dev` shows live logs,
+            // and to the webview console so frontend DevTools sees them.
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+        ])
         .max_file_size(5_000_000)
         .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
-        .level(log::LevelFilter::Info)
+        .level(log::LevelFilter::Debug)
+        // Silence noisy third-party crates that drown out our own logs.
+        .level_for("hyper", log::LevelFilter::Info)
+        .level_for("reqwest", log::LevelFilter::Info)
+        .level_for("tao", log::LevelFilter::Info)
+        .level_for("wry", log::LevelFilter::Info)
         .build();
 
     tauri::Builder::default()
@@ -56,11 +65,22 @@ pub fn run() {
         .setup(|app| {
             platform::tray::setup_tray(app)?;
 
+            // Create the badge window eagerly here on the main thread.
+            // Building a WebView2 window from a tokio IPC task on Windows
+            // deadlocks, which was wedging show_badge when auto-hide fired.
+            if let Err(e) = platform::window::create_badge_window(&app.handle()) {
+                log::error!("failed to create badge window at startup: {e}");
+            }
+
             // Show the main window from Rust to avoid relying on JS IPC
             // permissions / timing. The window starts hidden (visible: false
             // in tauri.conf.json) to prevent a blank flash on startup.
+            // set_focus() is required so Windows registers focus tracking —
+            // without it onFocusChanged never fires and clicking outside
+            // won't trigger the badge.
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
+                let _ = win.set_focus();
             }
 
             Ok(())
@@ -85,6 +105,8 @@ pub fn run() {
             platform::hotkey::register_hotkey,
             platform::hotkey::unregister_hotkey,
             platform::theme::get_system_theme,
+            platform::logs::get_log_folder,
+            platform::logs::open_log_folder,
             // Git
             git::worktree::list_worktrees,
             git::worktree::list_worktrees_bare,

@@ -1,10 +1,12 @@
 pub mod hotkey;
+pub mod logs;
 pub mod theme;
 pub mod tray;
 pub mod window;
 pub mod work_area;
 
 pub use hotkey::{register_hotkey, unregister_hotkey};
+pub use logs::{get_log_folder, open_log_folder};
 pub use theme::get_system_theme;
 pub use tray::setup_tray;
 pub use window::{hide_badge, position_sidebar, show_badge, toggle_sidebar};
