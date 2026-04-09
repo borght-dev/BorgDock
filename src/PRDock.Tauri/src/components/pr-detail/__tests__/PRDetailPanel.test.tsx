@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
 import { useUiStore } from '@/stores/ui-store';
@@ -105,10 +105,9 @@ describe('PRDetailPanel', () => {
     expect(overviewTab.closest('.hidden')).toBeNull();
   });
 
-  it('hides non-active tab content', () => {
+  it('does not mount inactive tabs until first activation', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    const commitsTab = screen.getByTestId('commits-tab');
-    expect(commitsTab.closest('.hidden')).toBeTruthy();
+    expect(screen.queryByTestId('commits-tab')).toBeNull();
   });
 
   it('switches to Commits tab on click', () => {
@@ -164,7 +163,26 @@ describe('PRDetailPanel', () => {
       repo: 'repo',
       number: 42,
     });
+    await Promise.resolve();
     expect(selectPrSpy).toHaveBeenCalledWith(null);
+  });
+
+  it('keeps the inline panel open when pop-out fails', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const mockInvoke = invoke as ReturnType<typeof vi.fn>;
+    mockInvoke.mockRejectedValue(new Error('window open failed'));
+    const selectPrSpy = vi.fn();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    useUiStore.setState({ selectPr: selectPrSpy });
+
+    render(<PRDetailPanel pr={makePr()} />);
+    fireEvent.click(screen.getByLabelText('Pop out'));
+
+    await waitFor(() => {
+      expect(selectPrSpy).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith('Pop-out failed:', expect.any(Error));
+    });
+    consoleSpy.mockRestore();
   });
 
   it('renders animated underline element', () => {
@@ -173,14 +191,15 @@ describe('PRDetailPanel', () => {
     expect(underline).toBeTruthy();
   });
 
-  it('eagerly renders all tabs (not lazy-loaded)', () => {
+  it('mounts tabs lazily and keeps them cached after activation', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    // All tab test IDs should be present even if hidden
     expect(screen.getByTestId('overview-tab')).toBeTruthy();
+    expect(screen.queryByTestId('commits-tab')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Commits' }));
     expect(screen.getByTestId('commits-tab')).toBeTruthy();
-    expect(screen.getByTestId('files-tab')).toBeTruthy();
-    expect(screen.getByTestId('checks-tab')).toBeTruthy();
-    expect(screen.getByTestId('reviews-tab')).toBeTruthy();
-    expect(screen.getByTestId('comments-tab')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+    expect(screen.getByTestId('commits-tab')).toBeTruthy();
   });
 });

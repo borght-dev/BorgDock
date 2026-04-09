@@ -56,8 +56,10 @@ vi.mock('@/services/github/checks', () => ({
   getCheckRunsForRef: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('@/services/github/client', () => ({
-  GitHubClient: vi.fn(),
+const mockInitClient = vi.fn(() => ({ markPollStart: vi.fn() }));
+
+vi.mock('@/services/github/singleton', () => ({
+  initClient: (...args: unknown[]) => mockInitClient(...args),
 }));
 
 vi.mock('@/services/github/pulls', () => ({
@@ -182,6 +184,7 @@ describe('PRDetailApp', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pr-detail-panel')).toBeTruthy();
     });
+    expect(mockInitClient).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('shows generic "Pull Request" title when no number', async () => {

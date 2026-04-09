@@ -39,8 +39,9 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
       owner: pr.pullRequest.repoOwner,
       repo: pr.pullRequest.repoName,
       number: pr.pullRequest.number,
-    }).catch((err) => console.error('Pop-out failed:', err));
-    selectPr(null);
+    })
+      .then(() => selectPr(null))
+      .catch((err) => console.error('Pop-out failed:', err));
   }, [pr, selectPr]);
 
   useEffect(() => {

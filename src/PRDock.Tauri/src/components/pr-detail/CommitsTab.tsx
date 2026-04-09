@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getPRCommits } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
 import type { PullRequestCommit } from '@/types';
+
+const log = createLogger('commitsTab');
 
 interface CommitsTabProps {
   prNumber: number;
@@ -26,14 +29,29 @@ export function CommitsTab({ prNumber, repoOwner, repoName }: CommitsTabProps) {
 
   useEffect(() => {
     let cancelled = false;
+    const fetchStart = performance.now();
+    log.info('fetch commits start', { repo: `${repoOwner}/${repoName}`, prNumber });
     (async () => {
       try {
         const client = getClient();
+        log.info('fetch commits: got client', { hasClient: !!client });
         if (!client) throw new Error('GitHub client not initialized');
         const result = await getPRCommits(client, repoOwner, repoName, prNumber);
-        if (!cancelled) setCommits(result);
+        if (!cancelled) {
+          setCommits(result);
+          log.info('fetch commits done', {
+            prNumber,
+            count: result.length,
+            durationMs: Math.round(performance.now() - fetchStart),
+          });
+        } else {
+          log.debug('fetch commits resolved after cancel', { prNumber });
+        }
       } catch (err) {
-        console.error('Failed to load commits:', err);
+        log.error('fetch commits failed', err, {
+          prNumber,
+          durationMs: Math.round(performance.now() - fetchStart),
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }

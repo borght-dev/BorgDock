@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
-import { GitHubClient } from '@/services/github/client';
 import { getOpenPRs } from '@/services/github/pulls';
+import { initClient } from '@/services/github/singleton';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
@@ -49,7 +49,7 @@ export function PRDetailApp() {
         // Initialize GitHub client
         const pat = settings.gitHub.personalAccessToken;
         const tokenGetter = () => getGitHubToken(pat);
-        const client = new GitHubClient(tokenGetter);
+        const client = initClient(tokenGetter);
 
         // Fetch the specific PR
         const prs = await getOpenPRs(client, owner, repo);

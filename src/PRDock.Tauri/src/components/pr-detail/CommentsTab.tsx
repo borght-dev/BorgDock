@@ -3,7 +3,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getAllComments, postComment } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
 import type { ClaudeReviewComment } from '@/types';
+
+const log = createLogger('commentsTab');
 
 interface CommentsTabProps {
   prNumber: number;
@@ -68,13 +71,26 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadComments = useCallback(async () => {
+    const fetchStart = performance.now();
+    log.info('fetch comments start', { repo: `${repoOwner}/${repoName}`, prNumber });
     try {
       const client = getClient();
-      if (!client) return;
+      if (!client) {
+        log.warn('fetch comments: no GitHub client — skipping');
+        return;
+      }
       const result = await getAllComments(client, repoOwner, repoName, prNumber);
       setComments(result);
+      log.info('fetch comments done', {
+        prNumber,
+        count: result.length,
+        durationMs: Math.round(performance.now() - fetchStart),
+      });
     } catch (err) {
-      console.error('Failed to load comments:', err);
+      log.error('fetch comments failed', err, {
+        prNumber,
+        durationMs: Math.round(performance.now() - fetchStart),
+      });
     } finally {
       setLoading(false);
     }
@@ -99,12 +115,13 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
 
     setPosting(true);
     try {
+      log.info('posting comment', { prNumber, length: text.length });
       await postComment(client, repoOwner, repoName, prNumber, text);
       setNewComment('');
       await loadComments();
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
-      console.error('Failed to post comment:', err);
+      log.error('post comment failed', err, { prNumber });
     } finally {
       setPosting(false);
     }

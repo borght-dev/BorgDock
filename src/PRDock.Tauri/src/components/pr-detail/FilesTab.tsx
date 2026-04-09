@@ -2,10 +2,13 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
 import type { DiffFile, DiffViewMode, FileStatusFilter, PullRequestCommit, PullRequestFileChange } from '@/types';
 import { DiffFileSection } from './diff/DiffFileSection';
 import { DiffFileTree } from './diff/DiffFileTree';
 import { DiffToolbar } from './diff/DiffToolbar';
+
+const log = createLogger('filesTab');
 
 interface FilesTabProps {
   prNumber: number;
@@ -79,31 +82,58 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabPro
     let cancelled = false;
     setLoading(true);
     setError(null);
+    const fetchStart = performance.now();
+    const fetchKey = selectedCommit ? `commit ${selectedCommit.slice(0, 7)}` : 'PR';
+    log.info('fetch files start', {
+      repo: `${repoOwner}/${repoName}`,
+      prNumber,
+      scope: fetchKey,
+    });
 
     (async () => {
       try {
+        log.info('fetch files: IIFE entered');
         const client = getClient();
-        if (!client) throw new Error('GitHub client not initialized');
+        log.info('fetch files: got client', { hasClient: !!client });
+        if (!client) {
+          log.error('fetch files: GitHub client not initialized');
+          throw new Error('GitHub client not initialized');
+        }
 
         let result: PullRequestFileChange[];
         if (selectedCommit) {
+          log.info('fetch files: calling getCommitFiles');
           result = await getCommitFiles(client, repoOwner, repoName, selectedCommit);
         } else {
+          log.info('fetch files: calling getPRFiles');
           result = await getPRFiles(client, repoOwner, repoName, prNumber);
         }
+        log.info('fetch files: fetch returned', { count: result.length });
 
         if (!cancelled) {
           setFiles(result.map(toDiffFile));
+          log.info('fetch files done', {
+            prNumber,
+            count: result.length,
+            durationMs: Math.round(performance.now() - fetchStart),
+          });
+        } else {
+          log.debug('fetch files resolved after cancel', { prNumber });
         }
       } catch (err) {
-        console.error('Failed to load files:', err);
+        log.error('fetch files failed', err, {
+          prNumber,
+          durationMs: Math.round(performance.now() - fetchStart),
+        });
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load files');
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [prNumber, repoOwner, repoName, selectedCommit]);
 
   // Fetch commits for scope selector
@@ -112,14 +142,25 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabPro
     (async () => {
       try {
         const client = getClient();
-        if (!client) return;
+        if (!client) {
+          log.warn('fetch commits: GitHub client not initialized');
+          return;
+        }
         const result = await getPRCommits(client, repoOwner, repoName, prNumber);
-        if (!cancelled) setCommits(result);
-      } catch {
-        // Commits are optional — don't error
+        if (!cancelled) {
+          setCommits(result);
+          log.debug('fetched PR commits', { prNumber, count: result.length });
+        }
+      } catch (err) {
+        log.warn('fetch commits failed (non-fatal)', {
+          prNumber,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [prNumber, repoOwner, repoName]);
 
   // Filtered files

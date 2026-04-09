@@ -4,6 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getReviews } from '@/services/github/reviews';
 import { getClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
+
+const log = createLogger('reviewsTab');
 
 interface Review {
   id: number;
@@ -90,10 +93,13 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
 
   useEffect(() => {
     let cancelled = false;
+    const fetchStart = performance.now();
+    log.info('fetch reviews start', { repo: `${repoOwner}/${repoName}`, prNumber });
     (async () => {
       try {
         const client = getClient();
         if (!client) {
+          log.warn('fetch reviews: no GitHub client — skipping');
           if (!cancelled) setLoading(false);
           return;
         }
@@ -108,9 +114,17 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
               submittedAt: r.submitted_at ?? '',
             })),
           );
+          log.info('fetch reviews done', {
+            prNumber,
+            count: result.length,
+            durationMs: Math.round(performance.now() - fetchStart),
+          });
         }
       } catch (err) {
-        console.error('Failed to load reviews:', err);
+        log.error('fetch reviews failed', err, {
+          prNumber,
+          durationMs: Math.round(performance.now() - fetchStart),
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }

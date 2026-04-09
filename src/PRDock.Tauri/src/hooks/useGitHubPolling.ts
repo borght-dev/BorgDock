@@ -4,9 +4,12 @@ import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
 import { getClosedPRs, getOpenPRs } from '@/services/github/pulls';
 import { getClient, initClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
 import { PollingManager } from '@/services/polling';
 import { usePrStore } from '@/stores/pr-store';
 import type { AppSettings, PullRequestWithChecks } from '@/types';
+
+const log = createLogger('polling');
 
 export function useGitHubPolling(settings: AppSettings) {
   const pollingRef = useRef<PollingManager<PullRequestWithChecks[]> | null>(null);
@@ -46,12 +49,20 @@ export function useGitHubPolling(settings: AppSettings) {
     // The poll function reads from the ref so it always uses current repos
     const pollFn = async (): Promise<PullRequestWithChecks[]> => {
       const c = getClient();
-      if (!c) throw new Error('GitHub client not initialized');
+      if (!c) {
+        log.error('poll skipped — GitHub client not initialized');
+        throw new Error('GitHub client not initialized');
+      }
       c.markPollStart();
 
       const enabledRepos = settingsRef.current.repos.filter((r) => r.enabled);
-      if (enabledRepos.length === 0) return [];
+      if (enabledRepos.length === 0) {
+        log.debug('poll skipped — no enabled repos');
+        return [];
+      }
 
+      const pollStart = performance.now();
+      log.info('poll cycle start', { repoCount: enabledRepos.length });
       const allPrs: PullRequestWithChecks[] = [];
 
       for (let i = 0; i < enabledRepos.length; i++) {
@@ -60,7 +71,9 @@ export function useGitHubPolling(settings: AppSettings) {
           await new Promise((r) => setTimeout(r, 500));
         }
         const repo = enabledRepos[i]!;
+        const repoLabel = `${repo.owner}/${repo.name}`;
         try {
+          const repoStart = performance.now();
           const prs = await getOpenPRs(c, repo.owner, repo.name);
 
           // Fetch check runs for all PRs in parallel
@@ -71,18 +84,33 @@ export function useGitHubPolling(settings: AppSettings) {
             }),
           );
 
+          let failedCheckFetches = 0;
           for (let j = 0; j < results.length; j++) {
             const result = results[j]!;
             if (result.status === 'fulfilled') {
               allPrs.push(result.value);
             } else {
+              failedCheckFetches++;
               allPrs.push(aggregatePrWithChecks(prs[j]!, []));
             }
           }
+
+          log.debug('poll: repo fetched', {
+            repo: repoLabel,
+            prs: prs.length,
+            failedCheckFetches,
+            durationMs: Math.round(performance.now() - repoStart),
+          });
         } catch (err) {
-          console.error(`Failed to fetch PRs for ${repo.owner}/${repo.name}:`, err);
+          log.error('poll: repo failed', err, { repo: repoLabel });
         }
       }
+
+      log.info('poll cycle done', {
+        totalPrs: allPrs.length,
+        durationMs: Math.round(performance.now() - pollStart),
+        rateLimitRemaining: c.getRateLimit().remaining,
+      });
 
       return allPrs;
     };
@@ -107,7 +135,7 @@ export function useGitHubPolling(settings: AppSettings) {
     };
 
     manager.onError = (error) => {
-      console.error('Polling error:', error);
+      log.error('polling manager error', error);
       usePrStore.getState().setPollingState(false);
     };
 
@@ -135,8 +163,10 @@ export function useGitHubPolling(settings: AppSettings) {
     usePrStore.getState().setPollingState(true);
     pollingRef.current = manager;
     manager.start();
+    log.info('polling manager started', { intervalMs });
 
     return () => {
+      log.info('polling manager stopping');
       manager.stop();
       pollingRef.current = null;
     };
