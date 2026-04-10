@@ -90,13 +90,12 @@ pub(crate) fn create_badge_window(app: &tauri::AppHandle) -> Result<(), String> 
         .decorations(false)
         .always_on_top(true)
         .resizable(false)
-        .transparent(true)
         .shadow(false)
         .visible(false)
         .skip_taskbar(true)
         .build()
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(|e: tauri::Error| e.to_string())
 }
 
 #[tauri::command]

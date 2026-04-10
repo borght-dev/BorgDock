@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { getPRCommits } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
-import { createLogger } from '@/services/logger';
+import { useCachedTabData } from '@/hooks/useCachedTabData';
 import type { PullRequestCommit } from '@/types';
-
-const log = createLogger('commitsTab');
 
 interface CommitsTabProps {
   prNumber: number;
   repoOwner: string;
   repoName: string;
+  prUpdatedAt: string;
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -23,43 +22,21 @@ function formatRelativeDate(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export function CommitsTab({ prNumber, repoOwner, repoName }: CommitsTabProps) {
-  const [commits, setCommits] = useState<PullRequestCommit[]>([]);
-  const [loading, setLoading] = useState(true);
+export function CommitsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: CommitsTabProps) {
+  const fetchFn = useCallback(async () => {
+    const client = getClient();
+    if (!client) throw new Error('GitHub client not initialized');
+    return getPRCommits(client, repoOwner, repoName, prNumber);
+  }, [repoOwner, repoName, prNumber]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchStart = performance.now();
-    log.info('fetch commits start', { repo: `${repoOwner}/${repoName}`, prNumber });
-    (async () => {
-      try {
-        const client = getClient();
-        log.info('fetch commits: got client', { hasClient: !!client });
-        if (!client) throw new Error('GitHub client not initialized');
-        const result = await getPRCommits(client, repoOwner, repoName, prNumber);
-        if (!cancelled) {
-          setCommits(result);
-          log.info('fetch commits done', {
-            prNumber,
-            count: result.length,
-            durationMs: Math.round(performance.now() - fetchStart),
-          });
-        } else {
-          log.debug('fetch commits resolved after cancel', { prNumber });
-        }
-      } catch (err) {
-        log.error('fetch commits failed', err, {
-          prNumber,
-          durationMs: Math.round(performance.now() - fetchStart),
-        });
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [prNumber, repoOwner, repoName]);
+  const { data: commits, isLoading: loading } = useCachedTabData<PullRequestCommit[]>(
+    repoOwner,
+    repoName,
+    prNumber,
+    'commits',
+    prUpdatedAt,
+    fetchFn,
+  );
 
   if (loading) {
     return (
@@ -77,7 +54,7 @@ export function CommitsTab({ prNumber, repoOwner, repoName }: CommitsTabProps) {
     );
   }
 
-  if (commits.length === 0) {
+  if (!commits || commits.length === 0) {
     return <p className="p-3 text-xs text-[var(--color-text-muted)]">No commits found.</p>;
   }
 

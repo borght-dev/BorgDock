@@ -1,12 +1,10 @@
 import clsx from 'clsx';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getReviews } from '@/services/github/reviews';
 import { getClient } from '@/services/github/singleton';
-import { createLogger } from '@/services/logger';
-
-const log = createLogger('reviewsTab');
 
 interface Review {
   id: number;
@@ -20,6 +18,7 @@ interface ReviewsTabProps {
   prNumber: number;
   repoOwner: string;
   repoName: string;
+  prUpdatedAt: string;
 }
 
 function stateLabel(state: string): { label: string; color: string } {
@@ -86,53 +85,30 @@ export function sortReviews(reviews: Review[], mode: SortMode | string): Review[
 
 const SORT_MODES: SortMode[] = ['newest', 'oldest', 'severity', 'file'];
 
-export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
+export function ReviewsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: ReviewsTabProps) {
   const [sortMode, setSortMode] = useState<SortMode>('newest');
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchStart = performance.now();
-    log.info('fetch reviews start', { repo: `${repoOwner}/${repoName}`, prNumber });
-    (async () => {
-      try {
-        const client = getClient();
-        if (!client) {
-          log.warn('fetch reviews: no GitHub client — skipping');
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        const result = await getReviews(client, repoOwner, repoName, prNumber);
-        if (!cancelled) {
-          setReviews(
-            result.map((r) => ({
-              id: r.id,
-              user: r.user?.login ?? '',
-              state: r.state ?? '',
-              body: r.body ?? '',
-              submittedAt: r.submitted_at ?? '',
-            })),
-          );
-          log.info('fetch reviews done', {
-            prNumber,
-            count: result.length,
-            durationMs: Math.round(performance.now() - fetchStart),
-          });
-        }
-      } catch (err) {
-        log.error('fetch reviews failed', err, {
-          prNumber,
-          durationMs: Math.round(performance.now() - fetchStart),
-        });
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [prNumber, repoOwner, repoName]);
+  const fetchFn = useCallback(async (): Promise<Review[]> => {
+    const client = getClient();
+    if (!client) return [];
+    const result = await getReviews(client, repoOwner, repoName, prNumber);
+    return result.map((r) => ({
+      id: r.id,
+      user: r.user?.login ?? '',
+      state: r.state ?? '',
+      body: r.body ?? '',
+      submittedAt: r.submitted_at ?? '',
+    }));
+  }, [repoOwner, repoName, prNumber]);
+
+  const { data: reviews, isLoading: loading } = useCachedTabData<Review[]>(
+    repoOwner,
+    repoName,
+    prNumber,
+    'reviews',
+    prUpdatedAt,
+    fetchFn,
+  );
 
   if (loading) {
     return (
@@ -150,7 +126,7 @@ export function ReviewsTab({ prNumber, repoOwner, repoName }: ReviewsTabProps) {
     );
   }
 
-  if (reviews.length === 0) {
+  if (!reviews || reviews.length === 0) {
     return <p className="p-3 text-xs text-[var(--color-text-muted)]">No reviews yet.</p>;
   }
 

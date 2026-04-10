@@ -2,19 +2,18 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
-import { createLogger } from '@/services/logger';
+import { useCachedTabData } from '@/hooks/useCachedTabData';
 import type { DiffFile, DiffViewMode, FileStatusFilter, PullRequestCommit, PullRequestFileChange } from '@/types';
 import { DiffFileSection } from './diff/DiffFileSection';
 import { DiffFileTree } from './diff/DiffFileTree';
 import { DiffToolbar } from './diff/DiffToolbar';
-
-const log = createLogger('filesTab');
 
 interface FilesTabProps {
   prNumber: number;
   repoOwner: string;
   repoName: string;
   htmlUrl?: string;
+  prUpdatedAt: string;
 }
 
 const STORAGE_KEY_VIEW_MODE = 'prdock:diff-view-mode';
@@ -38,9 +37,9 @@ export function toDiffFile(fc: PullRequestFileChange): DiffFile {
   };
 }
 
-export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabProps) {
-  const [files, setFiles] = useState<DiffFile[]>([]);
-  const [loading, setLoading] = useState(true);
+export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }: FilesTabProps) {
+  const [commitFiles, setCommitFiles] = useState<DiffFile[] | null>(null);
+  const [commitFilesLoading, setCommitFilesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commits, setCommits] = useState<PullRequestCommit[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
@@ -66,6 +65,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabPro
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [expandKey, setExpandKey] = useState(0);
 
+  const [retryKey, setRetryKey] = useState(0);
   const diffPaneRef = useRef<HTMLDivElement>(null);
   const fileSectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -77,64 +77,51 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabPro
     try { localStorage.setItem(STORAGE_KEY_FILE_TREE, String(showFileTree)); } catch { /* noop */ }
   }, [showFileTree]);
 
-  // Fetch files
+  // Cached fetch for PR-level files
+  const fetchPrFiles = useCallback(async () => {
+    const client = getClient();
+    if (!client) throw new Error('GitHub client not initialized');
+    const result = await getPRFiles(client, repoOwner, repoName, prNumber);
+    return result.map(toDiffFile);
+  }, [repoOwner, repoName, prNumber]);
+
+  const { data: cachedFiles, isLoading: prFilesLoading } = useCachedTabData<DiffFile[]>(
+    repoOwner,
+    repoName,
+    prNumber,
+    'files',
+    prUpdatedAt,
+    fetchPrFiles,
+  );
+
+  // When a specific commit is selected, fetch its files directly (not cached)
   useEffect(() => {
+    if (!selectedCommit) {
+      setCommitFiles(null);
+      return;
+    }
+
     let cancelled = false;
-    setLoading(true);
+    setCommitFilesLoading(true);
     setError(null);
-    const fetchStart = performance.now();
-    const fetchKey = selectedCommit ? `commit ${selectedCommit.slice(0, 7)}` : 'PR';
-    log.info('fetch files start', {
-      repo: `${repoOwner}/${repoName}`,
-      prNumber,
-      scope: fetchKey,
-    });
 
     (async () => {
       try {
-        log.info('fetch files: IIFE entered');
         const client = getClient();
-        log.info('fetch files: got client', { hasClient: !!client });
-        if (!client) {
-          log.error('fetch files: GitHub client not initialized');
-          throw new Error('GitHub client not initialized');
-        }
-
-        let result: PullRequestFileChange[];
-        if (selectedCommit) {
-          log.info('fetch files: calling getCommitFiles');
-          result = await getCommitFiles(client, repoOwner, repoName, selectedCommit);
-        } else {
-          log.info('fetch files: calling getPRFiles');
-          result = await getPRFiles(client, repoOwner, repoName, prNumber);
-        }
-        log.info('fetch files: fetch returned', { count: result.length });
-
+        if (!client) throw new Error('GitHub client not initialized');
+        const result = await getCommitFiles(client, repoOwner, repoName, selectedCommit);
         if (!cancelled) {
-          setFiles(result.map(toDiffFile));
-          log.info('fetch files done', {
-            prNumber,
-            count: result.length,
-            durationMs: Math.round(performance.now() - fetchStart),
-          });
-        } else {
-          log.debug('fetch files resolved after cancel', { prNumber });
+          setCommitFiles(result.map(toDiffFile));
         }
       } catch (err) {
-        log.error('fetch files failed', err, {
-          prNumber,
-          durationMs: Math.round(performance.now() - fetchStart),
-        });
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load files');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setCommitFilesLoading(false);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [prNumber, repoOwner, repoName, selectedCommit]);
+    return () => { cancelled = true; };
+  }, [selectedCommit, repoOwner, repoName, retryKey]);
 
   // Fetch commits for scope selector
   useEffect(() => {
@@ -142,26 +129,19 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabPro
     (async () => {
       try {
         const client = getClient();
-        if (!client) {
-          log.warn('fetch commits: GitHub client not initialized');
-          return;
-        }
+        if (!client) return;
         const result = await getPRCommits(client, repoOwner, repoName, prNumber);
-        if (!cancelled) {
-          setCommits(result);
-          log.debug('fetched PR commits', { prNumber, count: result.length });
-        }
-      } catch (err) {
-        log.warn('fetch commits failed (non-fatal)', {
-          prNumber,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        if (!cancelled) setCommits(result);
+      } catch {
+        // Non-fatal
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [prNumber, repoOwner, repoName]);
+
+  // Resolve which files to display
+  const files = selectedCommit ? (commitFiles ?? []) : (cachedFiles ?? []);
+  const loading = selectedCommit ? commitFilesLoading : prFilesLoading;
 
   // Filtered files
   const filteredFiles = useMemo(() => {
@@ -287,7 +267,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl }: FilesTabPro
       <div className="p-4 text-center">
         <p className="text-xs text-[var(--color-status-red)] mb-2">{error}</p>
         <button
-          onClick={() => { setError(null); setLoading(true); }}
+          onClick={() => { setError(null); setRetryKey((k) => k + 1); }}
           className="px-3 py-1 text-[10px] rounded bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
         >
           Retry

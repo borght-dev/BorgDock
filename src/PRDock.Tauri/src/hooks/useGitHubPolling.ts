@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { saveCachedEtags, saveCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
@@ -132,6 +133,20 @@ export function useGitHubPolling(settings: AppSettings) {
           resetAt: rl.reset ?? new Date(),
         });
       }
+
+      // Persist PRs and ETags to SQLite cache (fire-and-forget)
+      const enabledRepos = settingsRef.current.repos.filter((r) => r.enabled);
+      for (const repo of enabledRepos) {
+        const repoPrs = results.filter(
+          (r) =>
+            r.pullRequest.repoOwner === repo.owner &&
+            r.pullRequest.repoName === repo.name,
+        );
+        if (repoPrs.length > 0) {
+          saveCachedPRs(repo.owner, repo.name, repoPrs);
+        }
+      }
+      saveCachedEtags(client.getEtagEntries());
     };
 
     manager.onError = (error) => {

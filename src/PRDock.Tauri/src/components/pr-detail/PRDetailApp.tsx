@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useMemo, useState } from 'react';
+import { loadCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
@@ -46,18 +47,38 @@ export function PRDetailApp() {
           (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', isDark);
 
+        // Try loading from cache first for instant display
+        try {
+          await invoke('cache_init');
+          const cached = await loadCachedPRs(owner, repo);
+          const cachedPr = cached.find(
+            (raw) => (raw as PullRequestWithChecks).pullRequest?.number === number,
+          ) as PullRequestWithChecks | undefined;
+          if (cachedPr) {
+            setPr(cachedPr);
+            setIsLoading(false);
+            getCurrentWindow()
+              .setTitle(`PR #${number} - ${cachedPr.pullRequest.title}`)
+              .catch(console.debug);
+          }
+        } catch {
+          // Cache load is best-effort
+        }
+
         // Initialize GitHub client
         const pat = settings.gitHub.personalAccessToken;
         const tokenGetter = () => getGitHubToken(pat);
         const client = initClient(tokenGetter);
 
-        // Fetch the specific PR
+        // Fetch the specific PR (refreshes cached data)
         const prs = await getOpenPRs(client, owner, repo);
         const targetPr = prs.find((p) => p.number === number);
 
         if (!targetPr) {
-          setError(`PR #${number} not found in ${owner}/${repo}`);
-          setIsLoading(false);
+          if (!pr) {
+            setError(`PR #${number} not found in ${owner}/${repo}`);
+            setIsLoading(false);
+          }
           return;
         }
 
@@ -78,7 +99,7 @@ export function PRDetailApp() {
           .catch(console.debug); /* fire-and-forget */
       } catch (err) {
         console.error('Failed to load PR:', err);
-        setError('Failed to load pull request');
+        if (!pr) setError('Failed to load pull request');
       } finally {
         setIsLoading(false);
       }

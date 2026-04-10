@@ -46,6 +46,22 @@ export class GitHubClient {
     return this.rateLimit.remaining >= 0 && this.rateLimit.remaining < 500;
   }
 
+  /** Populate the in-memory ETag cache from persisted entries (call on startup). */
+  seedEtagCache(entries: Array<{ url: string; etag: string; data: unknown }>): void {
+    for (const entry of entries) {
+      this.etagCache.set(entry.url, { etag: entry.etag, data: entry.data });
+    }
+  }
+
+  /** Export current ETag cache entries for persistence to SQLite. */
+  getEtagEntries(): Array<{ url: string; etag: string; jsonData: unknown }> {
+    const entries: Array<{ url: string; etag: string; jsonData: unknown }> = [];
+    for (const [url, entry] of this.etagCache) {
+      entries.push({ url, etag: entry.etag, jsonData: entry.data });
+    }
+    return entries;
+  }
+
   async get<T>(path: string): Promise<T> {
     const url = `https://api.github.com/${path}`;
     const start = performance.now();

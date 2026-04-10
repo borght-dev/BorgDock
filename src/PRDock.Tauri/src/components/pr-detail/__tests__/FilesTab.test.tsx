@@ -29,6 +29,11 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
   writeText: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/services/cache', () => ({
+  loadTabData: vi.fn().mockResolvedValue(null),
+  saveTabData: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../diff/DiffFileSection', () => ({
   DiffFileSection: vi.fn(({ file }: { file: { filename: string } }) => (
     <div data-testid={`diff-section-${file.filename}`}>{file.filename}</div>
@@ -71,7 +76,7 @@ describe('FilesTab', () => {
   it('shows loading skeleton initially', () => {
     mockGetPRFiles.mockImplementation(() => new Promise(() => {}));
     const { container } = render(
-      <FilesTab prNumber={1} repoOwner="owner" repoName="repo" />,
+      <FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />,
     );
     const pulseEls = container.querySelectorAll('.animate-pulse');
     expect(pulseEls.length).toBeGreaterThan(0);
@@ -79,7 +84,7 @@ describe('FilesTab', () => {
 
   it('shows empty state when no files', async () => {
     mockGetPRFiles.mockResolvedValue([]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('No files changed in this pull request.')).toBeTruthy();
     });
@@ -90,7 +95,7 @@ describe('FilesTab', () => {
       makeFile({ filename: 'src/app.ts' }),
       makeFile({ filename: 'src/utils.ts' }),
     ]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByTestId('diff-section-src/app.ts')).toBeTruthy();
       expect(screen.getByTestId('diff-section-src/utils.ts')).toBeTruthy();
@@ -99,7 +104,7 @@ describe('FilesTab', () => {
 
   it('renders toolbar', async () => {
     mockGetPRFiles.mockResolvedValue([makeFile()]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByTestId('diff-toolbar')).toBeTruthy();
     });
@@ -107,36 +112,32 @@ describe('FilesTab', () => {
 
   it('renders file tree', async () => {
     mockGetPRFiles.mockResolvedValue([makeFile()]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByTestId('diff-file-tree')).toBeTruthy();
     });
   });
 
-  it('shows error state with retry button', async () => {
+  it('shows empty state on fetch error (cache hook absorbs errors)', async () => {
     mockGetPRFiles.mockRejectedValue(new Error('Network error'));
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    // useCachedTabData catches the error; component shows empty state
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeTruthy();
-      expect(screen.getByText('Retry')).toBeTruthy();
+      expect(screen.getByText('No files changed in this pull request.')).toBeTruthy();
     });
-    consoleSpy.mockRestore();
   });
 
-  it('shows generic error when error is not an Error instance', async () => {
+  it('shows empty state on non-Error rejection (cache hook absorbs errors)', async () => {
     mockGetPRFiles.mockRejectedValue('string error');
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load files')).toBeTruthy();
+      expect(screen.getByText('No files changed in this pull request.')).toBeTruthy();
     });
-    consoleSpy.mockRestore();
   });
 
   it('passes correct params to getPRFiles', async () => {
     mockGetPRFiles.mockResolvedValue([]);
-    render(<FilesTab prNumber={42} repoOwner="myorg" repoName="myrepo" />);
+    render(<FilesTab prNumber={42} repoOwner="myorg" repoName="myrepo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(mockGetPRFiles).toHaveBeenCalledWith(
         expect.anything(),
@@ -148,13 +149,12 @@ describe('FilesTab', () => {
   });
 
   it('handles null client gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockGetClient.mockReturnValue(null);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    // fetchFn throws, useCachedTabData catches it; component shows empty state
     await waitFor(() => {
-      expect(screen.getByText('GitHub client not initialized')).toBeTruthy();
+      expect(screen.getByText('No files changed in this pull request.')).toBeTruthy();
     });
-    consoleSpy.mockRestore();
   });
 
   it('shows large PR warning for 300+ files', async () => {
@@ -162,7 +162,7 @@ describe('FilesTab', () => {
       makeFile({ filename: `file${i}.ts` }),
     );
     mockGetPRFiles.mockResolvedValue(files);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText(/This PR has 301 changed files/)).toBeTruthy();
     });
@@ -170,7 +170,7 @@ describe('FilesTab', () => {
 
   it('does not show large PR warning for fewer than 300 files', async () => {
     mockGetPRFiles.mockResolvedValue([makeFile()]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByTestId('diff-section-src/app.ts')).toBeTruthy();
     });
@@ -184,7 +184,7 @@ describe('FilesTab', () => {
       makeFile({ filename: 'src/renamed.ts', status: 'renamed', additions: 1, deletions: 1, previousFilename: 'src/old.ts' }),
       makeFile({ filename: 'src/copied.ts', status: 'copied', additions: 0, deletions: 0 }),
     ]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByTestId('diff-section-src/added.ts')).toBeTruthy();
       expect(screen.getByTestId('diff-section-src/removed.ts')).toBeTruthy();
@@ -198,7 +198,7 @@ describe('FilesTab', () => {
     mockGetPRCommits.mockResolvedValue([
       { sha: 'abc', message: 'First commit', author: 'dev', date: '2026-01-01' },
     ]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(mockGetPRCommits).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', 1);
     });
@@ -206,7 +206,7 @@ describe('FilesTab', () => {
 
   it('persists view mode to localStorage', async () => {
     mockGetPRFiles.mockResolvedValue([makeFile()]);
-    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<FilesTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByTestId('diff-toolbar')).toBeTruthy();
     });

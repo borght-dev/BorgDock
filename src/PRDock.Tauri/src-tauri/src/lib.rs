@@ -131,6 +131,10 @@ pub fn run() {
             cache::cache_load_prs,
             cache::cache_save_prs,
             cache::cache_cleanup,
+            cache::cache_save_tab_data,
+            cache::cache_load_tab_data,
+            cache::cache_save_etags,
+            cache::cache_load_etags,
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,

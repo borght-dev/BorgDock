@@ -14,6 +14,11 @@ vi.mock('@/services/github', () => ({
   postComment: vi.fn(),
 }));
 
+vi.mock('@/services/cache', () => ({
+  loadTabData: vi.fn().mockResolvedValue(null),
+  saveTabData: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { CommentsTab } from '../CommentsTab';
 
 function makeComment(overrides: Partial<ClaudeReviewComment> = {}): ClaudeReviewComment {
@@ -41,7 +46,7 @@ describe('CommentsTab', () => {
   it('shows loading skeleton initially', () => {
     mockGetAllComments.mockImplementation(() => new Promise(() => {}));
     const { container } = render(
-      <CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />,
+      <CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />,
     );
     const pulseEls = container.querySelectorAll('.animate-pulse');
     expect(pulseEls.length).toBeGreaterThan(0);
@@ -49,7 +54,7 @@ describe('CommentsTab', () => {
 
   it('shows empty state when no comments', async () => {
     mockGetAllComments.mockResolvedValue([]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('No comments yet.')).toBeTruthy();
     });
@@ -59,7 +64,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ body: 'This is a great change!' }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('This is a great change!')).toBeTruthy();
     });
@@ -69,7 +74,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ author: 'bob' }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('bob')).toBeTruthy();
     });
@@ -79,7 +84,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ author: 'alice' }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('AL')).toBeTruthy();
     });
@@ -89,7 +94,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ author: 'dependabot[bot]' }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('bot')).toBeTruthy();
     });
@@ -99,7 +104,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ author: 'release-bot' }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('bot')).toBeTruthy();
     });
@@ -109,7 +114,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ filePath: 'src/app.ts', lineNumber: 42 }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('src/app.ts:42')).toBeTruthy();
     });
@@ -119,7 +124,7 @@ describe('CommentsTab', () => {
     mockGetAllComments.mockResolvedValue([
       makeComment({ filePath: 'src/app.ts', lineNumber: undefined }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('src/app.ts')).toBeTruthy();
     });
@@ -127,7 +132,7 @@ describe('CommentsTab', () => {
 
   it('shows sort toggle button', async () => {
     mockGetAllComments.mockResolvedValue([makeComment()]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('Newest first')).toBeTruthy();
     });
@@ -135,7 +140,7 @@ describe('CommentsTab', () => {
 
   it('toggles sort order on click', async () => {
     mockGetAllComments.mockResolvedValue([makeComment()]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('Newest first')).toBeTruthy();
     });
@@ -145,7 +150,7 @@ describe('CommentsTab', () => {
 
   it('renders comment input textarea', async () => {
     mockGetAllComments.mockResolvedValue([]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Leave a comment...')).toBeTruthy();
     });
@@ -153,7 +158,7 @@ describe('CommentsTab', () => {
 
   it('renders Comment button disabled when input is empty', async () => {
     mockGetAllComments.mockResolvedValue([]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       const btn = screen.getByText('Comment');
       expect(btn.closest('button')?.disabled).toBe(true);
@@ -162,7 +167,7 @@ describe('CommentsTab', () => {
 
   it('enables Comment button when text is entered', async () => {
     mockGetAllComments.mockResolvedValue([]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Leave a comment...')).toBeTruthy();
     });
@@ -175,7 +180,7 @@ describe('CommentsTab', () => {
 
   it('shows "Ctrl+Enter to submit" hint', async () => {
     mockGetAllComments.mockResolvedValue([]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('Ctrl+Enter to submit')).toBeTruthy();
     });
@@ -186,7 +191,7 @@ describe('CommentsTab', () => {
       makeComment({ id: '1', author: 'alice', body: 'First' }),
       makeComment({ id: '2', author: 'bob', body: 'Second' }),
     ]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     await waitFor(() => {
       expect(screen.getByText('First')).toBeTruthy();
       expect(screen.getByText('Second')).toBeTruthy();
@@ -194,19 +199,18 @@ describe('CommentsTab', () => {
   });
 
   it('handles error gracefully during load', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockGetAllComments.mockRejectedValue(new Error('Network'));
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    // useCachedTabData catches the error; component shows empty state
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to load comments:', expect.any(Error));
+      expect(screen.getByText('No comments yet.')).toBeTruthy();
     });
-    consoleSpy.mockRestore();
   });
 
   it('does not load when client is null', async () => {
     mockGetClient.mockReturnValue(null);
     mockGetAllComments.mockResolvedValue([]);
-    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" />);
+    render(<CommentsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
     // Should eventually stop loading without calling getAllComments
     await waitFor(() => {
       expect(mockGetAllComments).not.toHaveBeenCalled();

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useCachedTabData } from '@/hooks/useCachedTabData';
+import { saveTabData } from '@/services/cache';
 import { getAllComments, postComment } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
@@ -12,6 +14,7 @@ interface CommentsTabProps {
   prNumber: number;
   repoOwner: string;
   repoName: string;
+  prUpdatedAt: string;
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -62,50 +65,30 @@ function isBot(login: string): boolean {
   return login.endsWith('[bot]') || login.endsWith('-bot');
 }
 
-export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps) {
-  const [comments, setComments] = useState<ClaudeReviewComment[]>([]);
-  const [loading, setLoading] = useState(true);
+export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: CommentsTabProps) {
+  const [postedComments, setPostedComments] = useState<ClaudeReviewComment[] | null>(null);
   const [sortNewest, setSortNewest] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [posting, setPosting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const loadComments = useCallback(async () => {
-    const fetchStart = performance.now();
-    log.info('fetch comments start', { repo: `${repoOwner}/${repoName}`, prNumber });
-    try {
-      const client = getClient();
-      if (!client) {
-        log.warn('fetch comments: no GitHub client — skipping');
-        return;
-      }
-      const result = await getAllComments(client, repoOwner, repoName, prNumber);
-      setComments(result);
-      log.info('fetch comments done', {
-        prNumber,
-        count: result.length,
-        durationMs: Math.round(performance.now() - fetchStart),
-      });
-    } catch (err) {
-      log.error('fetch comments failed', err, {
-        prNumber,
-        durationMs: Math.round(performance.now() - fetchStart),
-      });
-    } finally {
-      setLoading(false);
-    }
+  const fetchFn = useCallback(async () => {
+    const client = getClient();
+    if (!client) return [];
+    return getAllComments(client, repoOwner, repoName, prNumber);
   }, [repoOwner, repoName, prNumber]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      await loadComments();
-      if (cancelled) return;
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadComments]);
+  const { data: cachedComments, isLoading: loading } = useCachedTabData<ClaudeReviewComment[]>(
+    repoOwner,
+    repoName,
+    prNumber,
+    'comments',
+    prUpdatedAt,
+    fetchFn,
+  );
+
+  // Use posted comments (after user posts) if available, otherwise cached/fetched
+  const comments = postedComments ?? cachedComments ?? [];
 
   const handlePost = async () => {
     const text = newComment.trim();
@@ -118,7 +101,10 @@ export function CommentsTab({ prNumber, repoOwner, repoName }: CommentsTabProps)
       log.info('posting comment', { prNumber, length: text.length });
       await postComment(client, repoOwner, repoName, prNumber, text);
       setNewComment('');
-      await loadComments();
+      // Reload comments after posting
+      const fresh = await getAllComments(client, repoOwner, repoName, prNumber);
+      setPostedComments(fresh);
+      saveTabData(repoOwner, repoName, prNumber, 'comments', fresh, prUpdatedAt);
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
       log.error('post comment failed', err, { prNumber });

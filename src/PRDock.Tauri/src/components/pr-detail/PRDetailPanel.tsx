@@ -140,6 +140,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}
               repoName={pr.pullRequest.repoName}
+              prUpdatedAt={pr.pullRequest.updatedAt}
             />
           </div>
         )}
@@ -150,6 +151,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
               repoOwner={pr.pullRequest.repoOwner}
               repoName={pr.pullRequest.repoName}
               htmlUrl={pr.pullRequest.htmlUrl}
+              prUpdatedAt={pr.pullRequest.updatedAt}
             />
           </div>
         )}
@@ -164,6 +166,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}
               repoName={pr.pullRequest.repoName}
+              prUpdatedAt={pr.pullRequest.updatedAt}
             />
           </div>
         )}
@@ -173,6 +176,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}
               repoName={pr.pullRequest.repoName}
+              prUpdatedAt={pr.pullRequest.updatedAt}
             />
           </div>
         )}
