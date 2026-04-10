@@ -5,13 +5,14 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 import { invoke } from '@tauri-apps/api/core';
-import { getGitHubToken } from '../auth';
+import { getGitHubToken, invalidateGitHubTokenCache } from '../auth';
 
 const mockedInvoke = vi.mocked(invoke);
 
 describe('getGitHubToken', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    invalidateGitHubTokenCache();
   });
 
   it('returns gh CLI token when available', async () => {

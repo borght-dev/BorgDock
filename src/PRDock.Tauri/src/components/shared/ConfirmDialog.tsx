@@ -56,7 +56,7 @@ export function ConfirmDialog({
       : 'bg-[var(--color-accent)] text-white hover:opacity-90';
 
   return (
-    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false, tabbableOptions: { displayCheck: 'none' } }}>
       <div>
       {/* Overlay */}
       <div className="fixed inset-0 z-50 bg-black/50" onClick={handleCancel} />

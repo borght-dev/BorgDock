@@ -106,7 +106,7 @@ describe('useClaudeActions', () => {
         'raw log text',
       );
 
-      expect(mockInvoke).toHaveBeenCalledWith('list_worktrees', { basePath: '/path/to/repo' });
+      expect(mockInvoke).toHaveBeenCalledWith('list_worktrees_bare', { basePath: '/path/to/repo' });
       expect(mockBuildFixPrompt).toHaveBeenCalled();
       expect(mockWritePromptFile).toHaveBeenCalledWith('fix prompt');
       expect(mockLaunchClaude).toHaveBeenCalledWith(

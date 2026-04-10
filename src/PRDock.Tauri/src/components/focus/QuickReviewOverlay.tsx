@@ -66,7 +66,7 @@ export function QuickReviewOverlay() {
   if (state === 'idle') return null;
 
   return (
-    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false, tabbableOptions: { displayCheck: 'none' } }}>
       <div>
       {/* Backdrop */}
       <div className="fixed inset-0 z-[80] bg-[var(--color-overlay-bg)]" onClick={endSession} />

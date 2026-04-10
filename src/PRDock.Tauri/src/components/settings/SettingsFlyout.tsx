@@ -65,7 +65,7 @@ export function SettingsFlyout() {
   if (!isSettingsOpen) return null;
 
   return (
-    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false, tabbableOptions: { displayCheck: 'none' } }}>
       <div>
       {/* Overlay */}
       <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />
