@@ -34,3 +34,6 @@ node_modules/
 
 ## Marketing assets (separate repo: prdock-marketing)
 promo-video/
+
+## Claude Code worktrees (temporary agent workspaces)
+.claude/worktrees/
