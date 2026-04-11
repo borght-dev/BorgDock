@@ -1,5 +1,12 @@
 import DOMPurify from 'dompurify';
 
+// Enforce rel="noopener noreferrer" on all links to prevent reverse tabnabbing
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A') {
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
+
 export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
@@ -8,7 +15,7 @@ export function sanitizeHtml(dirty: string): string {
       'tbody', 'tr', 'td', 'th', 'pre', 'code', 'blockquote', 'div',
       'span', 'hr', 'dl', 'dt', 'dd', 'sup', 'sub', 's', 'u',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class', 'width', 'height'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'width', 'height'],
     ALLOW_DATA_ATTR: false,
   });
 }

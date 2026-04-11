@@ -95,7 +95,7 @@ export async function getOpenPRs(
 
   // Fetch individual PR details + reviews in parallel
   // The list endpoint returns mergeable: null — only individual PR fetches compute it
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     pullRequests.map(async (pr, i) => {
       const num = dtos[i]!.number;
       const [detail, reviews] = await Promise.all([
@@ -116,6 +116,12 @@ export async function getOpenPRs(
       pr.requestedReviewers = detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
     }),
   );
+
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      log.warn('PR hydration failed for one PR', { error: String(result.reason) });
+    }
+  }
 
   return pullRequests;
 }

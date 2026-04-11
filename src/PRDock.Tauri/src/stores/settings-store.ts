@@ -160,7 +160,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     } catch (error) {
       console.error('Failed to save settings:', error);
       // Revert on failure by reloading
-      await get().loadSettings();
+      try {
+        await get().loadSettings();
+      } catch (revertError) {
+        console.error('Failed to revert settings after save failure:', revertError);
+      }
     }
   },
 

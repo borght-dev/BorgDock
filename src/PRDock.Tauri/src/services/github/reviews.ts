@@ -1,5 +1,8 @@
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
+import { createLogger } from '@/services/logger';
 import type { GitHubClient } from './client';
+
+const log = createLogger('github:reviews');
 
 // --- GitHub API DTOs ---
 
@@ -94,8 +97,8 @@ export async function getBotReviewComments(
         htmlUrl: dto.html_url ?? '',
       });
     }
-  } catch {
-    // Silently skip on failure
+  } catch (err) {
+    log.warn('failed to fetch bot PR review comments', { owner, repo, prNumber, error: String(err) });
   }
 
   // 2. Issue comments (top-level PR comments)
@@ -125,8 +128,8 @@ export async function getBotReviewComments(
         comments.push(comment);
       }
     }
-  } catch {
-    // Silently skip on failure
+  } catch (err) {
+    log.warn('failed to fetch bot issue comments', { owner, repo, prNumber, error: String(err) });
   }
 
   return comments;
@@ -158,8 +161,8 @@ export async function getAllComments(
         htmlUrl: dto.html_url ?? '',
       });
     }
-  } catch {
-    // Skip on failure
+  } catch (err) {
+    log.warn('failed to fetch PR review comments', { owner, repo, prNumber, error: String(err) });
   }
 
   // Issue comments
@@ -178,8 +181,8 @@ export async function getAllComments(
         htmlUrl: dto.html_url ?? '',
       });
     }
-  } catch {
-    // Skip on failure
+  } catch (err) {
+    log.warn('failed to fetch issue comments', { owner, repo, prNumber, error: String(err) });
   }
 
   return comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());

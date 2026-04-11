@@ -205,12 +205,14 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
         // Cache was used — fetch API in background, don't block init
         apiFetch()
           .then(() => {
+            if (cancelled()) return;
             const freshPrs = rawPrs.map(({ pr }) => aggregatePrWithChecks(pr, []));
             usePrStore.getState().setPullRequests(freshPrs);
             usePrStore.getState().setPollingState(false, new Date());
             log.info('background API refresh done', { count: freshPrs.length });
           })
           .catch((err) => {
+            if (cancelled()) return;
             log.warn('background API refresh failed (using cached data)', { error: String(err) });
           });
       } else {

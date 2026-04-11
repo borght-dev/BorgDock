@@ -6,6 +6,8 @@ interface SummaryCacheEntry {
   prUpdatedAt: string;
 }
 
+const MAX_CACHE_ENTRIES = 100;
+
 interface SummaryStoreState {
   cache: Map<string, SummaryCacheEntry>;
   loading: Set<string>;
@@ -53,6 +55,18 @@ export const useSummaryStore = create<SummaryStoreState>()((set, get) => ({
     set((state) => {
       const next = new Map(state.cache);
       next.set(key, { text, generatedAt: Date.now(), prUpdatedAt });
+      // Evict oldest entries when cache exceeds limit
+      if (next.size > MAX_CACHE_ENTRIES) {
+        let oldest: string | undefined;
+        let oldestTime = Infinity;
+        for (const [k, v] of next) {
+          if (v.generatedAt < oldestTime) {
+            oldestTime = v.generatedAt;
+            oldest = k;
+          }
+        }
+        if (oldest) next.delete(oldest);
+      }
       const loading = new Set(state.loading);
       loading.delete(key);
       return { cache: next, loading };

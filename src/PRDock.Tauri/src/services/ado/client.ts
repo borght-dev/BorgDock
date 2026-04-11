@@ -21,7 +21,8 @@ export class AdoClient {
         return response;
       }
       const retryAfter = response.headers.get('Retry-After');
-      const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 || 1000 : 1000 * 2 ** attempt;
+      const rawDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 || 1000 : 1000 * 2 ** attempt;
+      const delay = Math.min(rawDelay, 120_000);
       await new Promise((r) => setTimeout(r, delay));
     }
     throw new Error('Retry loop exhausted');
@@ -137,12 +138,13 @@ export class AdoClient {
   async testConnection(organization: string, project: string, pat: string): Promise<string | null> {
     try {
       const url = `https://dev.azure.com/${encodeURIComponent(organization)}/_apis/projects/${encodeURIComponent(project)}?api-version=7.1`;
-      const response = await fetch(url, {
+      const init: RequestInit = {
         headers: {
           Authorization: `Basic ${btoa(`:${pat}`)}`,
           'Content-Type': 'application/json',
         },
-      });
+      };
+      const response = await this.fetchWithRetry(url, init);
 
       if (response.status === 401) return 'Invalid Personal Access Token.';
       if (response.status === 404) return 'Organization or project not found.';

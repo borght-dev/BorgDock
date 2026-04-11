@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadTabData, saveTabData, type TabDataType } from '@/services/cache';
 import { createLogger } from '@/services/logger';
 
@@ -30,10 +30,8 @@ export function useCachedTabData<T>(
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    cancelledRef.current = false;
     let cancelled = false;
 
     const run = async () => {
@@ -108,7 +106,6 @@ export function useCachedTabData<T>(
 
     return () => {
       cancelled = true;
-      cancelledRef.current = true;
     };
   }, [repoOwner, repoName, prNumber, dataType, prUpdatedAt, fetchFn]);
 

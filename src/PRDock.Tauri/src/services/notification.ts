@@ -131,7 +131,7 @@ export function buildCheckFailedNotification(
       { label: 'Open in GitHub', url: pr.htmlUrl },
       {
         label: 'Fix with Claude',
-        url: `prdock://fix/${pr.repoOwner}/${pr.repoName}/${pr.number}`,
+        url: `prdock://fix/${encodeURIComponent(pr.repoOwner)}/${encodeURIComponent(pr.repoName)}/${pr.number}`,
       },
     ],
   };
@@ -179,7 +179,7 @@ export function buildClaudeReviewCriticalNotification(
       { label: 'Open in GitHub', url: pr.htmlUrl },
       {
         label: 'Fix with Claude',
-        url: `prdock://fix/${pr.repoOwner}/${pr.repoName}/${pr.number}`,
+        url: `prdock://fix/${encodeURIComponent(pr.repoOwner)}/${encodeURIComponent(pr.repoName)}/${pr.number}`,
       },
     ],
   };
@@ -238,7 +238,7 @@ export function buildBecameMergeableNotification(pr: PullRequest): InAppNotifica
     prNumber: pr.number,
     repoFullName: `${pr.repoOwner}/${pr.repoName}`,
     actions: [
-      { label: 'Merge', url: `prdock://merge/${pr.repoOwner}/${pr.repoName}/${pr.number}` },
+      { label: 'Merge', url: `prdock://merge/${encodeURIComponent(pr.repoOwner)}/${encodeURIComponent(pr.repoName)}/${pr.number}` },
       { label: 'Open in GitHub', url: pr.htmlUrl },
     ],
   };

@@ -225,12 +225,12 @@ describe('AdoClient.testConnection', () => {
   });
 
   it('returns error message on other non-OK status', async () => {
-    fetchSpy.mockResolvedValueOnce(new Response('', { status: 500, statusText: 'Internal Server Error' }));
+    fetchSpy.mockResolvedValueOnce(new Response('', { status: 409, statusText: 'Conflict' }));
 
     const client = new AdoClient('org', 'project', 'pat');
     const result = await client.testConnection('org', 'project', 'pat');
 
-    expect(result).toBe('Connection failed: 500 Internal Server Error');
+    expect(result).toBe('Connection failed: 409 Conflict');
   });
 
   it('returns error message on AbortError', async () => {
