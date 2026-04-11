@@ -1,20 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface LogViewerProps {
   log: string;
 }
 
+const LINE_HEIGHT = 18; // px — matches text-[10px] + padding
+
 export function LogViewer({ log }: LogViewerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const lines = log.split('\n');
+
+  const lines = useMemo(() => log.split('\n'), [log]);
+
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => LINE_HEIGHT,
+    overscan: 30,
+  });
 
   useEffect(() => {
-    if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    if (autoScroll && lines.length > 0) {
+      virtualizer.scrollToIndex(lines.length - 1, { align: 'end' });
     }
-  }, [autoScroll]);
+  }, [autoScroll, lines.length, virtualizer]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -23,20 +34,23 @@ export function LogViewer({ log }: LogViewerProps) {
     setAutoScroll(atBottom);
   }, []);
 
-  const highlightMatch = (line: string): React.ReactNode => {
-    if (!searchQuery) return line;
-    const idx = line.toLowerCase().indexOf(searchQuery.toLowerCase());
-    if (idx === -1) return line;
-    return (
-      <>
-        {line.slice(0, idx)}
-        <mark className="bg-[var(--color-status-yellow)] text-[var(--color-text-primary)] rounded-sm px-0.5">
-          {line.slice(idx, idx + searchQuery.length)}
-        </mark>
-        {line.slice(idx + searchQuery.length)}
-      </>
-    );
-  };
+  const highlightMatch = useCallback(
+    (line: string): React.ReactNode => {
+      if (!searchQuery) return line;
+      const idx = line.toLowerCase().indexOf(searchQuery.toLowerCase());
+      if (idx === -1) return line;
+      return (
+        <>
+          {line.slice(0, idx)}
+          <mark className="bg-[var(--color-status-yellow)] text-[var(--color-text-primary)] rounded-sm px-0.5">
+            {line.slice(idx, idx + searchQuery.length)}
+          </mark>
+          {line.slice(idx + searchQuery.length)}
+        </>
+      );
+    },
+    [searchQuery],
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -60,26 +74,40 @@ export function LogViewer({ log }: LogViewerProps) {
         </label>
       </div>
 
-      {/* Log content */}
+      {/* Log content — virtualized */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-auto bg-[var(--color-code-block-bg)] p-2"
       >
-        <table className="w-full border-collapse">
-          <tbody>
-            {lines.map((line, i) => (
-              <tr key={i} className="hover:bg-[var(--color-surface-hover)]">
-                <td className="select-none pr-3 text-right align-top font-[var(--font-code)] text-[10px] text-[var(--color-text-muted)] w-8">
-                  {i + 1}
-                </td>
-                <td className="whitespace-pre-wrap break-all font-[var(--font-code)] text-[10px] text-[var(--color-text-secondary)]">
+        <div
+          style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const line = lines[virtualRow.index]!;
+            return (
+              <div
+                key={virtualRow.index}
+                className="flex hover:bg-[var(--color-surface-hover)]"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: virtualRow.size,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <span className="select-none pr-3 text-right align-top font-[var(--font-code)] text-[10px] text-[var(--color-text-muted)] w-8 shrink-0">
+                  {virtualRow.index + 1}
+                </span>
+                <span className="whitespace-pre-wrap break-all font-[var(--font-code)] text-[10px] text-[var(--color-text-secondary)]">
                   {highlightMatch(line)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

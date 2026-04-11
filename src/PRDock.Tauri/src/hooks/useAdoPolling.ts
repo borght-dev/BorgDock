@@ -3,8 +3,9 @@ import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { AdoClient } from '@/services/ado/client';
 import { executeQuery, getQueryTree } from '@/services/ado/queries';
 import { getCurrentUserDisplayName } from '@/services/ado/workitems';
+import { PollingManager } from '@/services/polling';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type { AdoQuery, AppSettings } from '@/types';
+import type { AdoQuery, AppSettings, WorkItem } from '@/types';
 
 function mapQueryToTreeNode(query: AdoQuery, favoriteIds: string[]): AdoQueryTreeNode {
   return {
@@ -17,7 +18,7 @@ function mapQueryToTreeNode(query: AdoQuery, favoriteIds: string[]): AdoQueryTre
 
 export function useAdoPolling(settings: AppSettings) {
   const clientRef = useRef<AdoClient | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef = useRef<PollingManager<WorkItem[]> | null>(null);
   const prevQueryIdRef = useRef<string | null>(null);
 
   const isConfigured =
@@ -161,46 +162,48 @@ export function useAdoPolling(settings: AppSettings) {
     return () => unsubscribe();
   }, [isConfigured]);
 
-  // Polling loop
+  // Polling loop — uses PollingManager for adaptive intervals
   useEffect(() => {
     if (!isConfigured) return;
 
     const intervalMs = (settings.azureDevOps.pollIntervalSeconds || 120) * 1000;
 
-    intervalRef.current = setInterval(() => {
+    const pollFn = async (): Promise<WorkItem[]> => {
       const queryId = useWorkItemsStore.getState().selectedQueryId;
-      if (!queryId || !clientRef.current) return;
+      if (!queryId || !clientRef.current) return [];
+      return executeQuery(clientRef.current, queryId);
+    };
 
-      executeQuery(clientRef.current, queryId)
-        .then((items) => {
-          useWorkItemsStore.getState().setWorkItems(items);
-        })
-        .catch((err) => {
-          console.error('ADO polling error:', err);
-        });
-    }, intervalMs);
+    const manager = new PollingManager(pollFn, intervalMs);
+
+    manager.onResult = (items) => {
+      useWorkItemsStore.getState().setWorkItems(items);
+    };
+
+    manager.onError = (err) => {
+      console.error('ADO polling error:', err);
+    };
+
+    pollingRef.current = manager;
+    // Skip immediate first poll — the subscription handler above already
+    // fetches on query selection. Start with the full interval delay.
+    manager.startDeferred();
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      manager.stop();
+      pollingRef.current = null;
     };
   }, [isConfigured, settings.azureDevOps.pollIntervalSeconds]);
 
   // Manual refresh
   const refreshNow = useCallback(async () => {
-    const queryId = useWorkItemsStore.getState().selectedQueryId;
-    if (!queryId || !clientRef.current) return;
-
-    useWorkItemsStore.getState().setIsLoading(true);
-    try {
-      const items = await executeQuery(clientRef.current, queryId);
-      useWorkItemsStore.getState().setWorkItems(items);
-    } catch (err) {
-      console.error('ADO manual refresh error:', err);
-    } finally {
-      useWorkItemsStore.getState().setIsLoading(false);
+    if (pollingRef.current) {
+      useWorkItemsStore.getState().setIsLoading(true);
+      try {
+        await pollingRef.current.pollNow();
+      } finally {
+        useWorkItemsStore.getState().setIsLoading(false);
+      }
     }
   }, []);
 

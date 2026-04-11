@@ -16,7 +16,15 @@ interface RateLimit {
   resetAt: Date;
 }
 
-interface PrState {
+interface DerivedCache {
+  /** Cache key: changes when pullRequests, username, or reviewRequestTimestamps change */
+  _cacheKey: string;
+  _cachedPriorityScores: Map<number, PriorityScore> | null;
+  _cachedTeamReviewLoad: ReviewerLoad[] | null;
+  _cachedCounts: Record<PrFilter, number> | null;
+}
+
+interface PrState extends DerivedCache {
   pullRequests: PullRequestWithChecks[];
   closedPullRequests: PullRequestWithChecks[];
   filter: PrFilter;
@@ -190,6 +198,10 @@ function reviewKey(pr: { repoOwner: string; repoName: string; number: number }, 
   return `${prKey(pr)}:${reviewer.toLowerCase()}`;
 }
 
+function makeCacheKey(prs: PullRequestWithChecks[], username: string, timestamps: Record<string, string>): string {
+  return `${prs.length}:${username}:${Object.keys(timestamps).length}`;
+}
+
 export const usePrStore = create<PrState>()((set, get) => ({
   // ── Data slice ──
   pullRequests: [],
@@ -199,6 +211,12 @@ export const usePrStore = create<PrState>()((set, get) => ({
   lastPollTime: null,
   rateLimit: null,
   reviewRequestTimestamps: {},
+
+  // ── Derived cache ──
+  _cacheKey: '',
+  _cachedPriorityScores: null,
+  _cachedTeamReviewLoad: null,
+  _cachedCounts: null,
 
   // ── View slice ──
   filter: 'all',
@@ -219,8 +237,11 @@ export const usePrStore = create<PrState>()((set, get) => ({
   },
 
   counts: () => {
-    const { pullRequests, closedPullRequests, username } = get();
-    return {
+    const state = get();
+    const { pullRequests, closedPullRequests, username } = state;
+    const key = makeCacheKey(pullRequests, username, state.reviewRequestTimestamps);
+    if (state._cachedCounts && state._cacheKey === key) return state._cachedCounts;
+    const counts = {
       all: pullRequests.length,
       mine: pullRequests.filter((pr) => isMyPr(pr, username)).length,
       failing: pullRequests.filter(isFailing).length,
@@ -229,6 +250,8 @@ export const usePrStore = create<PrState>()((set, get) => ({
       needsReview: pullRequests.filter((pr) => needsReviewFrom(pr, username)).length,
       closed: closedPullRequests.length,
     };
+    state._cachedCounts = counts;
+    return counts;
   },
 
   needsMyReview: () => {
@@ -252,13 +275,23 @@ export const usePrStore = create<PrState>()((set, get) => ({
   },
 
   teamReviewLoad: () => {
-    const { pullRequests, reviewRequestTimestamps } = get();
-    return computeTeamReviewLoad(pullRequests, reviewRequestTimestamps);
+    const state = get();
+    const { pullRequests, reviewRequestTimestamps, username } = state;
+    const key = makeCacheKey(pullRequests, username, reviewRequestTimestamps);
+    if (state._cachedTeamReviewLoad && state._cacheKey === key) return state._cachedTeamReviewLoad;
+    const result = computeTeamReviewLoad(pullRequests, reviewRequestTimestamps);
+    state._cachedTeamReviewLoad = result;
+    return result;
   },
 
   priorityScores: () => {
-    const { pullRequests, username, reviewRequestTimestamps } = get();
-    return computePriorityScores(pullRequests, username, reviewRequestTimestamps);
+    const state = get();
+    const { pullRequests, username, reviewRequestTimestamps } = state;
+    const key = makeCacheKey(pullRequests, username, reviewRequestTimestamps);
+    if (state._cachedPriorityScores && state._cacheKey === key) return state._cachedPriorityScores;
+    const scores = computePriorityScores(pullRequests, username, reviewRequestTimestamps);
+    state._cachedPriorityScores = scores;
+    return scores;
   },
 
   focusPrs: () => {
@@ -300,13 +333,25 @@ export const usePrStore = create<PrState>()((set, get) => ({
       }
     }
 
-    set({ pullRequests: prs, reviewRequestTimestamps: next });
+    const newKey = makeCacheKey(prs, get().username, next);
+    set({
+      pullRequests: prs,
+      reviewRequestTimestamps: next,
+      _cacheKey: newKey,
+      _cachedPriorityScores: null,
+      _cachedTeamReviewLoad: null,
+      _cachedCounts: null,
+    });
   },
-  setClosedPullRequests: (prs) => set({ closedPullRequests: prs }),
+  setClosedPullRequests: (prs) => set({ closedPullRequests: prs, _cachedCounts: null }),
   setFilter: (filter) => set({ filter }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSortBy: (sort) => set({ sortBy: sort }),
-  setUsername: (username) => set({ username }),
+  setUsername: (username) => {
+    const state = get();
+    const newKey = makeCacheKey(state.pullRequests, username, state.reviewRequestTimestamps);
+    set({ username, _cacheKey: newKey, _cachedPriorityScores: null, _cachedTeamReviewLoad: null, _cachedCounts: null });
+  },
   setPollingState: (isPolling, lastPollTime) =>
     set({ isPolling, ...(lastPollTime ? { lastPollTime } : {}) }),
   setRateLimit: (rateLimit) => set({ rateLimit }),

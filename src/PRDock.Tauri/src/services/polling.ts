@@ -47,6 +47,12 @@ export class PollingManager<T> {
     this.scheduleNext(0);
   }
 
+  /** Start polling but wait a full interval before the first poll. */
+  startDeferred(): void {
+    if (this.timerId !== null) return;
+    this.scheduleNext();
+  }
+
   stop(): void {
     if (this.timerId !== null) {
       clearTimeout(this.timerId);

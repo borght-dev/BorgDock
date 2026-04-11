@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { memo, useMemo } from 'react';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { computeMergeScore } from '@/services/merge-score';
 import { usePrStore } from '@/stores/pr-store';
@@ -27,7 +28,7 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFactors }: PullRequestCardProps) {
+export const PullRequestCard = memo(function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFactors }: PullRequestCardProps) {
   const { pullRequest: pr, overallStatus, passedCount, checks, failedCheckNames } = prWithChecks;
   const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
@@ -42,7 +43,8 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
   const worktreeMatch = worktreeBranchMap.get(pr.headRef.toLowerCase());
   const isSelected = selectedPrNumber === pr.number;
   const totalChecks = checks.length;
-  const mergeScore = computeMergeScore(prWithChecks);
+  const mergeScore = useMemo(() => computeMergeScore(prWithChecks), [prWithChecks]);
+  const workItemIds = useMemo(() => detectWorkItemIds(pr), [pr]);
   const isOpen = pr.state === 'open';
   const canMerge = isOpen && !pr.isDraft && overallStatus === 'green';
 
@@ -144,12 +146,12 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
           </div>
 
           {/* Labels + Work Item Links */}
-          {(pr.labels.length > 0 || detectWorkItemIds(pr).length > 0) && (
+          {(pr.labels.length > 0 || workItemIds.length > 0) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {pr.labels.map((label) => (
                 <LabelBadge key={label} label={label} />
               ))}
-              {detectWorkItemIds(pr).map((id) => (
+              {workItemIds.map((id) => (
                 <LinkedWorkItemBadge key={id} workItemId={id} compact />
               ))}
             </div>
@@ -330,4 +332,4 @@ export function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFa
       />
     </>
   );
-}
+});

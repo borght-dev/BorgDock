@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { BadgePrItem, StatusColor } from '@/components/badge/FloatingBadge';
 import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -111,10 +111,25 @@ export function useBadgeSync() {
   const notificationCount =
     queuedNotifications.length + (activeNotification ? 1 : 0);
 
-  // Emit badge data whenever PRs, username, badge style, theme, or notifications change
+  // Debounced badge sync — skip emits when counts haven't changed
+  const prevHashRef = useRef('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme, notificationCount);
-    sendToBadge(payload);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(() => {
+      const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme, notificationCount);
+      // Cheap hash: skip IPC if aggregate counts are identical
+      const hash = `${payload.totalPrCount}:${payload.failingCount}:${payload.pendingCount}:${payload.notificationCount}:${payload.badgeStyle}:${payload.theme}`;
+      if (hash === prevHashRef.current) return;
+      prevHashRef.current = hash;
+      sendToBadge(payload);
+    }, 200);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [pullRequests, username, badgeStyle, theme, notificationCount]);
 
   // Respond to badge-request-data: re-send current payload
