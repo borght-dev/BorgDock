@@ -69,6 +69,25 @@ const defaultSettings: AppSettings = {
   repoPriority: {},
 };
 
+function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+  const result = { ...target } as Record<string, unknown>;
+  for (const key of Object.keys(source)) {
+    const srcVal = (source as Record<string, unknown>)[key];
+    const tgtVal = result[key];
+    if (
+      srcVal && typeof srcVal === 'object' && !Array.isArray(srcVal) &&
+      tgtVal && typeof tgtVal === 'object' && !Array.isArray(tgtVal)
+    ) {
+      result[key] = deepMerge(tgtVal as Record<string, unknown>, srcVal as Record<string, unknown>);
+    } else if (srcVal !== undefined) {
+      result[key] = srcVal;
+    }
+  }
+  return result as T;
+}
+
+let _saveTimer: ReturnType<typeof setTimeout> | undefined;
+
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: defaultSettings,
   isLoading: false,
@@ -78,6 +97,24 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const settings = await invoke<AppSettings>('load_settings');
+
+      // Hydrate credentials from OS keychain
+      const ghPat = await invoke<string | null>('get_credential', { service: 'prdock:github' });
+      if (ghPat) settings.gitHub.personalAccessToken = ghPat;
+
+      const adoPat = await invoke<string | null>('get_credential', { service: 'prdock:azure_devops' });
+      if (adoPat) settings.azureDevOps.personalAccessToken = adoPat;
+
+      const claudeKey = await invoke<string | null>('get_credential', { service: 'prdock:claude_api' });
+      if (claudeKey) settings.claudeApi.apiKey = claudeKey;
+
+      if (settings.sql?.connections) {
+        for (const conn of settings.sql.connections) {
+          const pw = await invoke<string | null>('get_credential', { service: `prdock:sql:${conn.name}` });
+          if (pw) conn.password = pw;
+        }
+      }
+
       set({ settings, isLoading: false });
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -89,7 +126,37 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ settings });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('save_settings', { settings });
+
+      // Store credentials in OS keychain before saving
+      if (settings.gitHub.personalAccessToken) {
+        await invoke('set_credential', { service: 'prdock:github', secret: settings.gitHub.personalAccessToken });
+      }
+      if (settings.azureDevOps.personalAccessToken) {
+        await invoke('set_credential', { service: 'prdock:azure_devops', secret: settings.azureDevOps.personalAccessToken });
+      }
+      if (settings.claudeApi.apiKey) {
+        await invoke('set_credential', { service: 'prdock:claude_api', secret: settings.claudeApi.apiKey });
+      }
+      if (settings.sql?.connections) {
+        for (const conn of settings.sql.connections) {
+          if (conn.password) {
+            await invoke('set_credential', { service: `prdock:sql:${conn.name}`, secret: conn.password });
+          }
+        }
+      }
+
+      // Strip credentials from the settings object before persisting to disk
+      const stripped = JSON.parse(JSON.stringify(settings)) as AppSettings;
+      delete stripped.gitHub.personalAccessToken;
+      delete stripped.azureDevOps.personalAccessToken;
+      delete stripped.claudeApi.apiKey;
+      if (stripped.sql?.connections) {
+        for (const conn of stripped.sql.connections) {
+          delete conn.password;
+        }
+      }
+
+      await invoke('save_settings', { settings: stripped });
     } catch (error) {
       console.error('Failed to save settings:', error);
       // Revert on failure by reloading
@@ -99,7 +166,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   updateSettings: (partial: Partial<AppSettings>) => {
     set((state) => ({
-      settings: { ...state.settings, ...partial },
+      settings: deepMerge(state.settings, partial),
     }));
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      const current = get().settings;
+      get().saveSettings(current);
+    }, 500);
   },
 }));

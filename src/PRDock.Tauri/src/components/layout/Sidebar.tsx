@@ -29,7 +29,7 @@ export function Sidebar({ children }: SidebarProps) {
         </div>
       )}
       <div className="sidebar-content">
-        {selectedPr ? <PRDetailPanel pr={selectedPr} /> : children}
+        {selectedPr ? <PRDetailPanel key={selectedPr.pullRequest.number} pr={selectedPr} /> : children}
       </div>
       <StatusBar />
     </div>

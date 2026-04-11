@@ -38,6 +38,7 @@ export function SettingsFlyout() {
       clearTimeout(timerRef.current);
       // save whatever is current
       saveSettings(settings);
+      timerRef.current = undefined;
     }
   }, [isSettingsOpen, settings, saveSettings]);
 
@@ -65,7 +66,7 @@ export function SettingsFlyout() {
   if (!isSettingsOpen) return null;
 
   return (
-    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false, tabbableOptions: { displayCheck: 'none' } }}>
+    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
       <div>
       {/* Overlay */}
       <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />

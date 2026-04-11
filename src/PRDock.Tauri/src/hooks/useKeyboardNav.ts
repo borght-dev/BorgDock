@@ -9,6 +9,8 @@ export function useKeyboardNav() {
   const focusedIndexRef = useRef(0);
   const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
+  const pullRequests = usePrStore((s) => s.pullRequests);
+  const filter = usePrStore((s) => s.filter);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -134,7 +136,7 @@ export function useKeyboardNav() {
     if (focusedIndexRef.current >= filteredPrs.length) {
       focusedIndexRef.current = Math.max(0, filteredPrs.length - 1);
     }
-  });
+  }, [pullRequests, filter]);
 
   return { focusedIndex: focusedIndexRef };
 }

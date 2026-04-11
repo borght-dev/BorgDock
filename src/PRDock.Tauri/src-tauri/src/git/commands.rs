@@ -180,8 +180,20 @@ pub async fn git_current_branch(repo_path: String) -> Result<String, String> {
         .map_err(|e| format!("Task join error: {e}"))?
 }
 
+const ALLOWED_SUBCOMMANDS: &[&str] = &["pr", "auth"];
+
 #[tauri::command]
 pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
+    if args.is_empty() {
+        return Err("No arguments provided to gh command".to_string());
+    }
+    if !ALLOWED_SUBCOMMANDS.contains(&args[0].as_str()) {
+        return Err(format!(
+            "Subcommand '{}' is not allowed. Allowed subcommands: {:?}",
+            args[0], ALLOWED_SUBCOMMANDS
+        ));
+    }
+
     tokio::task::spawn_blocking(move || {
         let output = hidden_command("gh")
             .args(&args)

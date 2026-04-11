@@ -29,7 +29,15 @@ export async function getQueryTree(client: AdoClient): Promise<AdoQuery[]> {
 export async function executeQuery(client: AdoClient, queryId: string): Promise<WorkItem[]> {
   const response = await client.get<AdoQueryExecuteResponse>(`wit/wiql/${queryId}`);
 
-  const ids = (response.workItems ?? []).map((w) => w.id);
+  let ids: number[];
+  if (response.queryType === 'tree' || response.queryType === 'oneHop') {
+    const relations = (response as any).workItemRelations ?? [];
+    ids = [...new Set(
+      relations.flatMap((r: any) => [r.target?.id, r.source?.id].filter(Boolean) as number[])
+    )];
+  } else {
+    ids = (response.workItems ?? []).map((w) => w.id);
+  }
   if (ids.length === 0) return [];
 
   return getWorkItems(client, ids);

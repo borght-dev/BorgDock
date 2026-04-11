@@ -2,6 +2,7 @@ pub mod auth;
 pub mod cache;
 pub mod claude_api;
 pub mod git;
+pub mod keychain;
 pub mod notification;
 pub mod platform;
 pub mod settings;
@@ -30,7 +31,7 @@ pub fn run() {
             tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
         ])
         .max_file_size(5_000_000)
-        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
         .level(log::LevelFilter::Debug)
         // Silence noisy third-party crates that drown out our own logs.
         .level_for("hyper", log::LevelFilter::Info)
@@ -138,6 +139,10 @@ pub fn run() {
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,
+            // Keychain
+            keychain::get_credential,
+            keychain::set_credential,
+            keychain::delete_credential,
             // Notification
             notification::send_notification,
             // Updater

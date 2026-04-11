@@ -34,6 +34,7 @@ pub struct AppSettings {
 pub struct GitHubSettings {
     #[serde(default = "default_gh_cli")]
     pub auth_method: String,
+    #[serde(skip_serializing)]
     pub personal_access_token: Option<String>,
     #[serde(default = "default_poll_interval")]
     pub poll_interval_seconds: u32,
@@ -231,6 +232,7 @@ impl Default for ClaudeCodeSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeApiSettings {
+    #[serde(skip_serializing)]
     pub api_key: Option<String>,
     #[serde(default = "default_claude_model")]
     pub model: String,
@@ -300,6 +302,7 @@ pub struct AzureDevOpsSettings {
     pub organization: String,
     #[serde(default)]
     pub project: String,
+    #[serde(skip_serializing)]
     pub personal_access_token: Option<String>,
     #[serde(default = "default_ado_poll_interval")]
     pub poll_interval_seconds: u32,
@@ -359,6 +362,7 @@ pub struct SqlServerConnection {
     #[serde(default = "default_sql_auth")]
     pub authentication: String,
     pub username: Option<String>,
+    #[serde(skip_serializing)]
     pub password: Option<String>,
     #[serde(default = "default_true")]
     pub trust_server_certificate: bool,

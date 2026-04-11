@@ -95,7 +95,7 @@ pub(crate) fn create_badge_window(app: &tauri::AppHandle) -> Result<(), String> 
         .skip_taskbar(true)
         .build()
         .map(|_| ())
-        .map_err(|e: tauri::Error| e.to_string())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -185,7 +185,7 @@ pub fn resize_badge(
 
         if let (Ok(cur_pos), Ok(cur_size)) = (badge_win.outer_position(), badge_win.outer_size()) {
             let mid_x = cur_pos.x + cur_size.width as i32 / 2;
-            let new_x = mid_x - pw as i32 / 2;
+            let new_x = mid_x - (pw as i32) / 2;
             let cur_bottom = cur_pos.y + cur_size.height as i32;
 
             let new_y = if anchor == "bottom" {

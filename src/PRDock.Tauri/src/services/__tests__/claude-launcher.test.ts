@@ -261,6 +261,7 @@ describe('writePromptFile', () => {
     }));
     vi.doMock('@tauri-apps/api/path', () => ({
       tempDir: mockTempDir,
+      join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')),
     }));
 
     const { writePromptFile } = await import('../claude-launcher');
@@ -357,7 +358,7 @@ describe('performFixWithClaude', () => {
       writeTextFile: mockWriteTextFile,
       BaseDirectory: { Temp: 'Temp' },
     }));
-    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir }));
+    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir, join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')) }));
 
     const { performFixWithClaude } = await import('../claude-launcher');
 
@@ -402,7 +403,7 @@ describe('performFixWithClaude', () => {
       writeTextFile: mockWriteTextFile,
       BaseDirectory: { Temp: 'Temp' },
     }));
-    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir }));
+    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir, join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')) }));
 
     const { performFixWithClaude } = await import('../claude-launcher');
 
@@ -450,7 +451,7 @@ describe('performFixWithClaude', () => {
       writeTextFile: mockWriteTextFile,
       BaseDirectory: { Temp: 'Temp' },
     }));
-    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir }));
+    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir, join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')) }));
 
     const { performFixWithClaude } = await import('../claude-launcher');
 
@@ -489,6 +490,7 @@ describe('performFixWithClaude', () => {
     }));
     vi.doMock('@tauri-apps/api/path', () => ({
       tempDir: vi.fn().mockResolvedValue('/tmp/'),
+      join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')),
     }));
 
     const { performFixWithClaude } = await import('../claude-launcher');

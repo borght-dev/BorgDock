@@ -149,9 +149,14 @@ fn row_to_strings(row: &Row) -> Vec<Option<String>> {
 
 #[tauri::command]
 pub async fn execute_sql_query(
+    window: tauri::Window,
     connection_name: String,
     query: String,
 ) -> Result<QueryResult, String> {
+    if window.label() != "sql" {
+        return Err("SQL commands can only be executed from the SQL window".to_string());
+    }
+    log::info!("SQL query executed on connection '{}': {}", connection_name, query.chars().take(200).collect::<String>());
     let settings = settings::load_settings_internal()
         .map_err(|e| format!("Failed to load settings: {e}"))?;
 
@@ -238,6 +243,7 @@ pub async fn execute_sql_query(
 
 #[tauri::command]
 pub async fn test_sql_connection(
+    window: tauri::Window,
     server: String,
     port: u16,
     database: String,
@@ -246,6 +252,11 @@ pub async fn test_sql_connection(
     password: Option<String>,
     trust_server_certificate: bool,
 ) -> Result<String, String> {
+    if window.label() != "sql" {
+        return Err("SQL commands can only be executed from the SQL window".to_string());
+    }
+    log::info!("SQL connection test for server '{}:{}'", server, port);
+
     let config = build_config(
         &server,
         port,

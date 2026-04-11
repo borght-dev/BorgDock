@@ -20,6 +20,11 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn().mockResolvedValue(() => {}),
 }));
 
+// Mock FocusTrap to avoid tabbable-node requirement in test DOM
+vi.mock('focus-trap-react', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 // Mock child components that have complex dependencies
 vi.mock('@/components/worktree/WorktreePruneDialog', () => ({
   WorktreePruneDialog: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>

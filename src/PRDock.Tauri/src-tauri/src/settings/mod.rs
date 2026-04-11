@@ -5,6 +5,60 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
+/// Migrate plaintext credentials from settings.json into the OS keychain.
+/// If any credential field is Some, store it in the keychain, clear the field,
+/// and re-save settings to strip credentials from disk.
+fn migrate_credentials_to_keychain(settings: &mut AppSettings) {
+    let mut migrated = false;
+
+    if let Some(ref pat) = settings.git_hub.personal_access_token {
+        if let Ok(entry) = keyring::Entry::new("prdock", "prdock:github") {
+            let _ = entry.set_password(pat);
+        }
+        settings.git_hub.personal_access_token = None;
+        migrated = true;
+    }
+
+    if let Some(ref pat) = settings.azure_dev_ops.personal_access_token {
+        if let Ok(entry) = keyring::Entry::new("prdock", "prdock:azure_devops") {
+            let _ = entry.set_password(pat);
+        }
+        settings.azure_dev_ops.personal_access_token = None;
+        migrated = true;
+    }
+
+    if let Some(ref key) = settings.claude_api.api_key {
+        if let Ok(entry) = keyring::Entry::new("prdock", "prdock:claude_api") {
+            let _ = entry.set_password(key);
+        }
+        settings.claude_api.api_key = None;
+        migrated = true;
+    }
+
+    for conn in &mut settings.sql.connections {
+        if let Some(ref pw) = conn.password {
+            let service = format!("prdock:sql:{}", conn.name);
+            if let Ok(entry) = keyring::Entry::new("prdock", &service) {
+                let _ = entry.set_password(pw);
+            }
+            conn.password = None;
+            migrated = true;
+        }
+    }
+
+    if migrated {
+        log::info!("Migrated plaintext credentials to OS keychain");
+        let path = settings_path();
+        let _ = atomic_write(&path, settings);
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
+        }
+    }
+}
+
 /// Recursively merge `overlay` into `base`. Objects are deep-merged;
 /// scalars and arrays in overlay replace those in base.
 pub fn merge_json(base: &mut Value, overlay: &Value) {
@@ -91,7 +145,9 @@ pub fn load_settings_internal() -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn load_settings() -> Result<AppSettings, String> {
-    load_settings_internal()
+    let mut settings = load_settings_internal()?;
+    migrate_credentials_to_keychain(&mut settings);
+    Ok(settings)
 }
 
 #[cfg(test)]
@@ -155,6 +211,14 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
 
     // Write backup first, then main
     atomic_write(&backup_path(), &settings)?;
-    atomic_write(&settings_path(), &settings)?;
+    let path = settings_path();
+    atomic_write(&path, &settings)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
+    }
+
     Ok(())
 }

@@ -99,6 +99,7 @@ async function initTreeSitter(): Promise<boolean> {
       return true;
     } catch (err) {
       console.warn('Tree-sitter init failed:', err);
+      initPromise = null;
       return false;
     }
   })();

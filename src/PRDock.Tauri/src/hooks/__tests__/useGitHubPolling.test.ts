@@ -477,7 +477,6 @@ describe('useGitHubPolling', () => {
         mockClientInstance,
         'test',
         'repo',
-        expect.any(String),
       );
     });
 

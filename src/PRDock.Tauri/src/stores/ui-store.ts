@@ -16,6 +16,7 @@ interface UiState {
   pendingWorkItemId: number | null;
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
+  _hasUserNavigated: boolean;
 
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
@@ -33,7 +34,7 @@ interface UiState {
   restorePersistedSection: () => void;
 }
 
-export const useUiStore = create<UiState>()((set) => ({
+export const useUiStore = create<UiState>()((set, get) => ({
   isSidebarVisible: true,
   isSettingsOpen: false,
   activeSection: 'focus',
@@ -44,6 +45,7 @@ export const useUiStore = create<UiState>()((set) => ({
   isDragging: false,
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
+  _hasUserNavigated: false,
 
   toggleSidebar: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
 
@@ -52,7 +54,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setSettingsOpen: (open) => set({ isSettingsOpen: open }),
 
   setActiveSection: (section) => {
-    set({ activeSection: section });
+    set({ activeSection: section, _hasUserNavigated: true });
     persistToTauriStore('ui-state.json', 'activeSection', section)
       .catch((err) => console.warn('Failed to persist activeSection:', err));
   },
@@ -94,8 +96,10 @@ export const useUiStore = create<UiState>()((set) => ({
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 
   restorePersistedSection: () => {
+    if (get()._hasUserNavigated) return;
     readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection')
       .then((section) => {
+        if (get()._hasUserNavigated) return;
         if (section && (section === 'prs' || section === 'focus' || section === 'workitems')) {
           set({ activeSection: section });
         }

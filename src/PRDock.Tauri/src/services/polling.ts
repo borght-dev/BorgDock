@@ -3,6 +3,7 @@ export class PollingManager<T> {
   private readonly baseIntervalMs: number;
   private timerId: ReturnType<typeof setTimeout> | null = null;
   private _isPolling = false;
+  private _stopped = false;
   private _lastPollTime: Date | null = null;
   private _error: Error | null = null;
   private _onResult: ((result: T) => void) | null = null;
@@ -43,22 +44,24 @@ export class PollingManager<T> {
   }
 
   start(): void {
+    this._stopped = false;
     if (this.timerId !== null) return;
     this.scheduleNext(0);
   }
 
   /** Start polling but wait a full interval before the first poll. */
   startDeferred(): void {
+    this._stopped = false;
     if (this.timerId !== null) return;
     this.scheduleNext();
   }
 
   stop(): void {
+    this._stopped = true;
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
       this.timerId = null;
     }
-    this._isPolling = false;
   }
 
   async pollNow(): Promise<void> {
@@ -67,6 +70,7 @@ export class PollingManager<T> {
   }
 
   private scheduleNext(delayMs?: number): void {
+    if (this._stopped) return;
     const delay = delayMs ?? this.getAdaptiveInterval();
     this.timerId = setTimeout(() => {
       this.executePoll().then(() => {
@@ -78,6 +82,7 @@ export class PollingManager<T> {
   }
 
   private async executePoll(): Promise<void> {
+    if (this._stopped) return;
     this._isPolling = true;
     this._error = null;
 

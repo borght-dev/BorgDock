@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export type StatusColor = 'green' | 'red' | 'yellow';
 
@@ -64,10 +64,12 @@ export function FloatingBadge({
   onOpenPr,
 }: FloatingBadgeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const isExpandedRef = useRef(isExpanded);
+  isExpandedRef.current = isExpanded;
 
   const toggleExpanded = useCallback(
     async (expand?: boolean) => {
-      const next = expand ?? !isExpanded;
+      const next = expand ?? !isExpandedRef.current;
       setIsExpanded(next);
       try {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -77,7 +79,7 @@ export function FloatingBadge({
         // ignore
       }
     },
-    [isExpanded],
+    [],
   );
 
   const glowColor = GLOW_MAP[statusColor];

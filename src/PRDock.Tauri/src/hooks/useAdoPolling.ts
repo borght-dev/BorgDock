@@ -20,6 +20,10 @@ export function useAdoPolling(settings: AppSettings) {
   const clientRef = useRef<AdoClient | null>(null);
   const pollingRef = useRef<PollingManager<WorkItem[]> | null>(null);
   const prevQueryIdRef = useRef<string | null>(null);
+  // Keep settings in a ref so the init effect always reads the latest
+  // without re-running when array/object references change.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const isConfigured =
     !!settings.azureDevOps.organization && !!settings.azureDevOps.personalAccessToken;
@@ -57,6 +61,9 @@ export function useAdoPolling(settings: AppSettings) {
     const store = useWorkItemsStore.getState();
 
     (async () => {
+      // Read from the ref so array/object settings don't cause re-runs
+      const currentSettings = settingsRef.current;
+
       // Resolve current user display name
       try {
         const name = await getCurrentUserDisplayName(client);
@@ -70,7 +77,7 @@ export function useAdoPolling(settings: AppSettings) {
       // Load query tree
       try {
         const rawTree = await getQueryTree(client);
-        const favoriteIds = settings.azureDevOps.favoriteQueryIds;
+        const favoriteIds = currentSettings.azureDevOps.favoriteQueryIds;
         const tree: AdoQueryTreeNode[] = rawTree.map((q) => mapQueryToTreeNode(q, favoriteIds));
         useWorkItemsStore.getState().setQueryTree(tree);
       } catch (err) {
@@ -79,16 +86,16 @@ export function useAdoPolling(settings: AppSettings) {
 
       // Set favorite query IDs from settings
       const currentFavorites = useWorkItemsStore.getState().favoriteQueryIds;
-      for (const id of settings.azureDevOps.favoriteQueryIds) {
+      for (const id of currentSettings.azureDevOps.favoriteQueryIds) {
         if (!currentFavorites.includes(id)) {
           useWorkItemsStore.getState().toggleFavorite(id);
         }
       }
 
       // Restore tracked/workingOn IDs from settings
-      const trackedIds = new Set(settings.azureDevOps.trackedWorkItemIds);
-      const workingOnIds = new Set(settings.azureDevOps.workingOnWorkItemIds);
-      const worktreePaths = settings.azureDevOps.workItemWorktreePaths;
+      const trackedIds = new Set(currentSettings.azureDevOps.trackedWorkItemIds);
+      const workingOnIds = new Set(currentSettings.azureDevOps.workingOnWorkItemIds);
+      const worktreePaths = currentSettings.azureDevOps.workItemWorktreePaths;
 
       // Sync tracked IDs
       for (const id of trackedIds) {
@@ -105,7 +112,7 @@ export function useAdoPolling(settings: AppSettings) {
       }
 
       // Restore recent work item IDs
-      const recentIds = settings.azureDevOps.recentWorkItemIds ?? [];
+      const recentIds = currentSettings.azureDevOps.recentWorkItemIds ?? [];
       if (recentIds.length > 0) {
         useWorkItemsStore.getState().setRecentWorkItemIds(recentIds);
       }
@@ -116,23 +123,20 @@ export function useAdoPolling(settings: AppSettings) {
       }
 
       // Auto-select last selected query
-      if (settings.azureDevOps.lastSelectedQueryId) {
-        useWorkItemsStore.getState().selectQuery(settings.azureDevOps.lastSelectedQueryId);
+      if (currentSettings.azureDevOps.lastSelectedQueryId) {
+        useWorkItemsStore.getState().selectQuery(currentSettings.azureDevOps.lastSelectedQueryId);
       }
     })();
 
+    // Only restart when auth or connection settings change.
+    // Array/object settings (favoriteQueryIds, trackedWorkItemIds, etc.)
+    // are read from settingsRef inside the async IIFE.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isConfigured,
-    settings.azureDevOps.favoriteQueryIds,
-    settings.azureDevOps.lastSelectedQueryId,
     settings.azureDevOps.organization,
     settings.azureDevOps.personalAccessToken,
     settings.azureDevOps.project,
-    settings.azureDevOps.recentWorkItemIds,
-    settings.azureDevOps.trackedWorkItemIds,
-    settings.azureDevOps.workItemWorktreePaths,
-    settings.azureDevOps.workingOnWorkItemIds,
   ]);
 
   // Subscribe to selectedQueryId changes and fetch work items

@@ -12,7 +12,7 @@ export function computeTeamReviewLoad(
   prs: PullRequestWithChecks[],
   reviewRequestTimestamps: Record<string, string>,
 ): ReviewerLoad[] {
-  const byReviewer = new Map<string, { pending: number; stale: number; totalWaitMs: number }>();
+  const byReviewer = new Map<string, { pending: number; stale: number; totalWaitMs: number; timestampCount: number }>();
 
   for (const pr of prs) {
     for (const reviewer of pr.pullRequest.requestedReviewers) {
@@ -22,7 +22,7 @@ export function computeTeamReviewLoad(
 
       let entry = byReviewer.get(login);
       if (!entry) {
-        entry = { pending: 0, stale: 0, totalWaitMs: 0 };
+        entry = { pending: 0, stale: 0, totalWaitMs: 0, timestampCount: 0 };
         byReviewer.set(login, entry);
       }
 
@@ -32,6 +32,7 @@ export function computeTeamReviewLoad(
         const tier = getReviewSlaTier(requestedAt);
         if (tier === 'stale') entry.stale++;
         entry.totalWaitMs += Date.now() - new Date(requestedAt).getTime();
+        entry.timestampCount++;
       }
     }
   }
@@ -42,8 +43,8 @@ export function computeTeamReviewLoad(
       login,
       pendingReviewCount: entry.pending,
       stalePrCount: entry.stale,
-      avgWaitHours: entry.pending > 0
-        ? Math.round(entry.totalWaitMs / entry.pending / (1000 * 60 * 60))
+      avgWaitHours: entry.timestampCount > 0
+        ? Math.round(entry.totalWaitMs / entry.timestampCount / (1000 * 60 * 60))
         : 0,
     });
   }

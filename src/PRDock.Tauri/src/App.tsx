@@ -192,17 +192,26 @@ export default function App() {
   // Listen for open-settings event from tray
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        unlisten = await listen('open-settings', () => {
+        const fn = await listen('open-settings', () => {
           useUiStore.getState().setSettingsOpen(true);
         });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
       } catch {
         // ignore
       }
     })();
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // Show wizard when setup is needed (skip splash)

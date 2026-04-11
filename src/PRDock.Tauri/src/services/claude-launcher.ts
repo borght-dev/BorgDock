@@ -238,9 +238,10 @@ export async function writePromptFile(content: string): Promise<string> {
   const fileName = `claude-prompt-${Date.now()}.md`;
   await writeTextFile(fileName, content, { baseDir: BaseDirectory.Temp });
   // Return the path - on Windows this would be in the temp directory
-  const { tempDir } = await import('@tauri-apps/api/path');
+  const { tempDir, join } = await import('@tauri-apps/api/path');
   const tmp = await tempDir();
-  return `${tmp}${fileName}`;
+  const filePath = await join(tmp, fileName);
+  return filePath;
 }
 
 // Launch Claude Code with the given prompt

@@ -109,14 +109,20 @@ pub fn cache_save_prs(
         .map_err(|e| format!("Lock poisoned: {e}"))?;
     let conn = lock.as_ref().ok_or("Cache not initialized")?;
 
+    let now = chrono_now();
+
+    conn.execute_batch("BEGIN TRANSACTION")
+        .map_err(|e| format!("Failed to begin transaction: {e}"))?;
+
     // Clear existing entries for this repo
     conn.execute(
         "DELETE FROM cached_prs WHERE repo_owner = ?1 AND repo_name = ?2",
         rusqlite::params![repo_owner, repo_name],
     )
-    .map_err(|e| format!("Failed to clear old cache: {e}"))?;
-
-    let now = chrono_now();
+    .map_err(|e| {
+        let _ = conn.execute_batch("ROLLBACK");
+        format!("Failed to clear old cache: {e}")
+    })?;
 
     for pr in &prs {
         let pr_number = pr.get("number").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
@@ -128,8 +134,14 @@ pub fn cache_save_prs(
              VALUES (?1, ?2, ?3, ?4, ?5)",
             rusqlite::params![repo_owner, repo_name, pr_number, json_data, now],
         )
-        .map_err(|e| format!("Failed to insert cache entry: {e}"))?;
+        .map_err(|e| {
+            let _ = conn.execute_batch("ROLLBACK");
+            format!("Failed to insert cache entry: {e}")
+        })?;
     }
+
+    conn.execute_batch("COMMIT")
+        .map_err(|e| format!("Failed to commit transaction: {e}"))?;
 
     Ok(())
 }

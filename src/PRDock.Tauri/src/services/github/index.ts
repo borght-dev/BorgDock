@@ -7,7 +7,7 @@ export {
   rerunWorkflow,
 } from './checks';
 export type { RateLimit } from './client';
-export { GitHubApiError, GitHubAuthError, GitHubClient } from './client';
+export { GitHubApiError, GitHubAuthError, GitHubClient, GitHubRateLimitError } from './client';
 export { mergePullRequest, postComment, submitReview, toggleDraft } from './mutations';
 export { aggregateReviewStatus, getClosedPRs, getCommitFiles, getOpenPRs, getPRCommits, getPRFiles } from './pulls';
 export {

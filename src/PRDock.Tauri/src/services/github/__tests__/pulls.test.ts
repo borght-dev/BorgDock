@@ -136,14 +136,14 @@ describe('getClosedPRs', () => {
     );
   });
 
-  it('includes since parameter when provided', async () => {
+  it('does not include a since parameter (GitHub Pulls API does not support it)', async () => {
     const client = createMockClient();
     vi.mocked(client.get).mockResolvedValueOnce([]);
 
-    await getClosedPRs(client, 'owner', 'repo', '2025-01-01T00:00:00Z');
+    await getClosedPRs(client, 'owner', 'repo');
 
     expect(client.get).toHaveBeenCalledWith(
-      expect.stringContaining('since=2025-01-01T00%3A00%3A00Z'),
+      'repos/owner/repo/pulls?state=closed&sort=updated&direction=desc&per_page=30',
     );
   });
 });

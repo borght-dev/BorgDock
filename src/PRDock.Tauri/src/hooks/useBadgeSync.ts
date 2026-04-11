@@ -135,10 +135,11 @@ export function useBadgeSync() {
   // Respond to badge-request-data: re-send current payload
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        unlisten = await listen('badge-request-data', () => {
+        const fn = await listen('badge-request-data', () => {
           const prs = usePrStore.getState().pullRequests;
           const user = usePrStore.getState().username;
           const st = useSettingsStore.getState().settings;
@@ -153,20 +154,29 @@ export function useBadgeSync() {
           const payload = buildBadgePayload(prs, user, st.ui.badgeStyle, st.ui.theme, nc);
           sendToBadge(payload);
         });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
       } catch {
         // ignore
       }
     })();
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // Listen for expand-sidebar events from badge
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        unlisten = await listen('expand-sidebar', async () => {
+        const fn = await listen('expand-sidebar', async () => {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('toggle_sidebar');
@@ -175,27 +185,44 @@ export function useBadgeSync() {
             // ignore
           }
         });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
       } catch {
         // ignore
       }
     })();
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // Listen for open-pr-detail events from badge
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        unlisten = await listen<{ number: number }>('open-pr-detail', (event) => {
+        const fn = await listen<{ number: number }>('open-pr-detail', (event) => {
           useUiStore.getState().selectPr(event.payload.number);
           useUiStore.getState().setSidebarVisible(true);
         });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
       } catch {
         // ignore
       }
     })();
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 }

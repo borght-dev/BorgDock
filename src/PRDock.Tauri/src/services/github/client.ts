@@ -76,18 +76,22 @@ export class GitHubClient {
         return cached.data as T;
       }
       log.warn('GET 304 with no cached entry', { path, durationMs });
+      this.etagCache.delete(url);
+      const retryResponse = await this.fetchWithRetry(url);
+      this.parseRateLimitHeaders(retryResponse);
+      if (!retryResponse.ok) {
+        throw new GitHubApiError(`GitHub API error: ${retryResponse.status} ${retryResponse.statusText}`, retryResponse.status);
+      }
+      const retryBody = await retryResponse.json();
+      this._freshCount++;
+      const retryEtag = retryResponse.headers.get('etag');
+      if (retryEtag) {
+        this.etagCache.set(url, { etag: retryEtag, data: retryBody });
+      }
+      return retryBody as T;
     }
 
-    if (response.status === 401 || response.status === 403) {
-      log.error('GET auth error — invalidating token cache', {
-        path,
-        status: response.status,
-        durationMs,
-        rateLimitRemaining: this.rateLimit.remaining,
-      });
-      invalidateGitHubTokenCache();
-      throw new GitHubAuthError(`GitHub API authentication failed (${response.status}).`);
-    }
+    this.checkResponseForAuthErrors(response, 'GET', path);
 
     if (!response.ok) {
       log.error('GET failed', {
@@ -108,6 +112,10 @@ export class GitHubClient {
     const etag = response.headers.get('etag');
     if (etag) {
       this.etagCache.set(url, { etag, data: body });
+      if (this.etagCache.size > 500) {
+        const oldest = this.etagCache.keys().next().value;
+        if (oldest) this.etagCache.delete(oldest);
+      }
     }
 
     log.info('GET ok', {
@@ -126,6 +134,8 @@ export class GitHubClient {
     const response = await this.fetchWithRetry(url, {
       accept: 'application/vnd.github.v3.raw',
     });
+
+    this.checkResponseForAuthErrors(response, 'GET_RAW', path);
 
     if (!response.ok) {
       throw new GitHubApiError(
@@ -153,6 +163,7 @@ export class GitHubClient {
     });
 
     this.parseRateLimitHeaders(response);
+    this.checkResponseForAuthErrors(response, 'POST', path);
 
     if (!response.ok) {
       throw new GitHubApiError(
@@ -180,6 +191,7 @@ export class GitHubClient {
     });
 
     this.parseRateLimitHeaders(response);
+    this.checkResponseForAuthErrors(response, 'PUT', path);
 
     if (!response.ok) {
       throw new GitHubApiError(
@@ -207,6 +219,7 @@ export class GitHubClient {
     });
 
     this.parseRateLimitHeaders(response);
+    this.checkResponseForAuthErrors(response, 'PATCH', path);
 
     if (!response.ok) {
       throw new GitHubApiError(
@@ -246,6 +259,19 @@ export class GitHubClient {
     }
 
     return result.data as T;
+  }
+
+  private checkResponseForAuthErrors(response: Response, method: string, path: string): void {
+    if (response.status === 403 && this.rateLimit.remaining === 0) {
+      throw new GitHubRateLimitError(
+        `GitHub API rate limit exceeded. Resets at ${this.rateLimit.reset?.toISOString() ?? 'unknown'}.`,
+        this.rateLimit.reset,
+      );
+    }
+    if (response.status === 401 || response.status === 403) {
+      invalidateGitHubTokenCache();
+      throw new GitHubAuthError(`GitHub API authentication failed (${response.status}).`);
+    }
   }
 
   private async fetchWithRetry(
@@ -377,6 +403,15 @@ export class GitHubAuthError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'GitHubAuthError';
+  }
+}
+
+export class GitHubRateLimitError extends Error {
+  readonly resetAt: Date | null;
+  constructor(message: string, resetAt: Date | null) {
+    super(message);
+    this.name = 'GitHubRateLimitError';
+    this.resetAt = resetAt;
   }
 }
 

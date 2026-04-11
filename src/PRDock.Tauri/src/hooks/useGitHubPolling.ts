@@ -163,7 +163,6 @@ export function useGitHubPolling(settings: AppSettings) {
             client,
             repo.owner,
             repo.name,
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
           );
           for (const pr of closedPrs) {
             closedResults.push(aggregatePrWithChecks(pr, []));

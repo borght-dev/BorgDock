@@ -75,6 +75,7 @@ export function useAutoHide(settings: AppSettings) {
   // Debounced so that transient focus loss during window drag doesn't hide.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
     let focusLostTimer: ReturnType<typeof setTimeout> | null = null;
 
     (async () => {
@@ -82,7 +83,7 @@ export function useAutoHide(settings: AppSettings) {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const win = getCurrentWindow();
 
-        unlisten = await win.onFocusChanged(async ({ payload: focused }) => {
+        const fn = await win.onFocusChanged(async ({ payload: focused }) => {
           log.debug('onFocusChanged', { focused });
           if (!focused) {
             // Debounce: wait briefly so a drag-induced focus blip is ignored
@@ -141,6 +142,11 @@ export function useAutoHide(settings: AppSettings) {
             }
           }
         });
+        if (cancelled) {
+          fn();  // cleanup immediately if already unmounted
+          return;
+        }
+        unlisten = fn;
         log.debug('onFocusChanged listener registered');
       } catch (err) {
         log.warn('auto-hide focus handler setup failed (likely non-Tauri env)', {
@@ -150,6 +156,7 @@ export function useAutoHide(settings: AppSettings) {
     })();
 
     return () => {
+      cancelled = true;
       unlisten?.();
       if (focusLostTimer) clearTimeout(focusLostTimer);
     };

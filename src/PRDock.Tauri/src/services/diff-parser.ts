@@ -142,8 +142,8 @@ function longestCommonSubsequence(a: string, b: string): string {
   // Optimize for long strings: use two rows instead of full matrix
   if (m === 0 || n === 0) return '';
 
-  const prev = new Uint16Array(n + 1);
-  const curr = new Uint16Array(n + 1);
+  const prev = new Uint32Array(n + 1);
+  const curr = new Uint32Array(n + 1);
 
   // Build LCS length table
   const directions = new Uint8Array(m * n);
@@ -189,8 +189,8 @@ function computeSimilarity(a: string, b: string): number {
   let common = 0;
   const m = a.length;
   const n = b.length;
-  const prev = new Uint16Array(n + 1);
-  const curr = new Uint16Array(n + 1);
+  const prev = new Uint32Array(n + 1);
+  const curr = new Uint32Array(n + 1);
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {

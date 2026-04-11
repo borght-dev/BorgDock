@@ -4,6 +4,28 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 use tauri::State;
 
+/// Escape a string for interpolation into a PowerShell single-quoted string.
+/// In PowerShell single-quoted strings, the only escape is '' for a literal '.
+fn escape_powershell_single_quote(s: &str) -> String {
+    s.replace('\'', "''")
+}
+
+/// Escape a string for safe interpolation into a cmd.exe argument.
+/// Prefixes special cmd metacharacters with ^.
+fn escape_cmd_arg(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '^' | '"' | '&' | '|' | '<' | '>' => {
+                result.push('^');
+                result.push(c);
+            }
+            _ => result.push(c),
+        }
+    }
+    result
+}
+
 pub struct ProcessState {
     pub processes: Mutex<HashMap<u32, TrackedChild>>,
 }
@@ -40,7 +62,9 @@ pub async fn launch_claude_code(
     // Uses -NoExit so the tab stays open after Claude exits.
     let ps_command = format!(
         "& '{}' --dangerously-skip-permissions --append-system-prompt-file '{}' '{}'",
-        claude, prompt_file, initial_message
+        escape_powershell_single_quote(&claude),
+        escape_powershell_single_quote(&prompt_file),
+        escape_powershell_single_quote(&initial_message)
     );
     let title = format!("CC: {}", &initial_message);
 
@@ -73,7 +97,10 @@ pub async fn launch_claude_code(
             // Last resort: cmd.exe outside Windows Terminal
             let cmd_arg = format!(
                 "cd /d \"{}\" && \"{}\" --dangerously-skip-permissions --append-system-prompt-file \"{}\" \"{}\"",
-                worktree_path, claude, prompt_file, initial_message
+                escape_cmd_arg(&worktree_path),
+                escape_cmd_arg(&claude),
+                escape_cmd_arg(&prompt_file),
+                escape_cmd_arg(&initial_message)
             );
             Command::new("cmd.exe")
                 .args(["/c", "start", "cmd.exe", "/k", &cmd_arg])
@@ -82,6 +109,13 @@ pub async fn launch_claude_code(
         .map_err(|e| format!("Failed to launch claude code: {e}"))?;
 
     let pid = child.id();
+
+    // Clean up the prompt file after Claude Code has had time to read it
+    let pf = prompt_file.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        let _ = std::fs::remove_file(&pf);
+    });
 
     let mut processes = state
         .processes

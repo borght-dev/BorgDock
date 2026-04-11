@@ -41,7 +41,7 @@ export function useSyntaxHighlight(
         if (spans) remapped.set(diffIdx, spans);
       }
       setHighlights(remapped);
-    });
+    }).catch(() => { /* syntax highlighting is best-effort */ });
 
     return () => {
       cancelled = true;

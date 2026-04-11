@@ -34,13 +34,20 @@ vi.mock('@/stores/ui-store', () => ({
 }));
 
 vi.mock('@/stores/pr-store', () => ({
-  usePrStore: {
-    getState: () => ({
-      filteredPrs: mockFilteredPrs,
-      focusPrs: mockFocusPrs,
-      needsMyReview: mockNeedsMyReview,
-    }),
-  },
+  usePrStore: Object.assign(
+    (selector: (s: Record<string, unknown>) => unknown) =>
+      selector({
+        pullRequests: [],
+        filter: '',
+      }),
+    {
+      getState: () => ({
+        filteredPrs: mockFilteredPrs,
+        focusPrs: mockFocusPrs,
+        needsMyReview: mockNeedsMyReview,
+      }),
+    },
+  ),
 }));
 
 vi.mock('@/stores/quick-review-store', () => ({

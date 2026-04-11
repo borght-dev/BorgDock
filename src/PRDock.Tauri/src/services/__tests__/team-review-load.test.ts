@@ -208,9 +208,9 @@ describe('computeTeamReviewLoad', () => {
       // No timestamp for PR #2
     };
     const result = computeTeamReviewLoad(prs, timestamps);
-    // totalWaitMs = 10h only from PR#1, pending = 2
-    // avg = 10h / 2 = 5h
-    expect(result[0].avgWaitHours).toBe(5);
+    // totalWaitMs = 10h only from PR#1, only 1 review has a timestamp
+    // avg = 10h / 1 = 10h
+    expect(result[0].avgWaitHours).toBe(10);
   });
 
   it('sorts results by pendingReviewCount descending', () => {

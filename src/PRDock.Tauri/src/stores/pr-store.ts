@@ -199,7 +199,11 @@ function reviewKey(pr: { repoOwner: string; repoName: string; number: number }, 
 }
 
 function makeCacheKey(prs: PullRequestWithChecks[], username: string, timestamps: Record<string, string>): string {
-  return `${prs.length}:${username}:${Object.keys(timestamps).length}`;
+  const prFingerprint = prs.map(p =>
+    `${p.pullRequest.number}:${p.overallStatus}:${p.pullRequest.reviewStatus}`
+  ).join(',');
+  const tsKeys = Object.keys(timestamps).sort().join(',');
+  return `${prFingerprint}|${username}|${tsKeys}`;
 }
 
 export const usePrStore = create<PrState>()((set, get) => ({

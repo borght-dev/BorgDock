@@ -124,13 +124,8 @@ export async function getClosedPRs(
   client: GitHubClient,
   owner: string,
   repo: string,
-  since?: string,
 ): Promise<PullRequest[]> {
-  let url = `repos/${owner}/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`;
-  if (since) {
-    url += `&since=${encodeURIComponent(since)}`;
-  }
-
+  const url = `repos/${owner}/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`;
   const dtos = await client.get<GitHubPullRequestDto[]>(url);
   return dtos.map((dto) => mapToPullRequest(dto, owner, repo));
 }

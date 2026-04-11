@@ -7,12 +7,19 @@ interface ContributorStat {
 
 let cache: Map<string, number> = new Map();
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let _cacheFingerprint = '';
 
 export async function fetchContributorWeights(
   client: GitHubClient,
   repos: { owner: string; name: string }[],
   username: string,
 ): Promise<Map<string, number>> {
+  const fingerprint = repos.map(r => `${r.owner}/${r.name}`).sort().join(',') + ':' + username;
+  if (fingerprint !== _cacheFingerprint) {
+    cache = new Map();
+    _cacheFingerprint = fingerprint;
+  }
+
   const weights = new Map<string, number>();
   const uLower = username.toLowerCase();
 

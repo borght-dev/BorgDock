@@ -21,19 +21,28 @@ interface NotificationActionPayload {
 export function useNotificationActions() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
 
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        unlisten = await listen<NotificationActionPayload>('notification-action', (event) => {
+        const fn = await listen<NotificationActionPayload>('notification-action', (event) => {
           handleNotificationAction(event.payload);
         });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
       } catch {
         // ignore — not running in Tauri context
       }
     })();
 
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 }
 

@@ -70,6 +70,12 @@ mod platform {
 mod platform {
     use super::*;
 
+    /// Escape a string for safe interpolation into an AppleScript double-quoted string.
+    /// Backslashes must be escaped first, then double quotes.
+    fn escape_applescript(s: &str) -> String {
+        s.replace('\\', "\\\\").replace('"', "\\\"")
+    }
+
     pub fn send(
         _app: tauri::AppHandle,
         title: String,
@@ -82,8 +88,8 @@ mod platform {
         // Use macOS native notification via osascript
         let script = format!(
             "display notification \"{}\" with title \"{}\"",
-            body.replace('\"', "\\\""),
-            title.replace('\"', "\\\""),
+            escape_applescript(&body),
+            escape_applescript(&title),
         );
         std::process::Command::new("osascript")
             .arg("-e")

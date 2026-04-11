@@ -8,7 +8,7 @@ export function sanitizeHtml(dirty: string): string {
       'tbody', 'tr', 'td', 'th', 'pre', 'code', 'blockquote', 'div',
       'span', 'hr', 'dl', 'dt', 'dd', 'sup', 'sub', 's', 'u',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class', 'style', 'width', 'height'],
+    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class', 'width', 'height'],
     ALLOW_DATA_ATTR: false,
   });
 }
