@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import type { InAppNotification, NotificationSeverity } from '@/types';
 
 const SEVERITY_CONFIG: Record<
@@ -244,11 +245,8 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
             {notification.actions.length > 0 && (
               <div className="mt-2 flex gap-1.5">
                 {notification.actions.map((action, i) => (
-                  <a
+                  <button
                     key={i}
-                    href={action.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className={clsx(
                       'rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all duration-150',
                       i === 0
@@ -268,10 +266,13 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
                             border: '1px solid var(--color-subtle-border)',
                           }
                     }
-                    onClick={() => handleDismiss()}
+                    onClick={() => {
+                      openUrl(action.url).catch(console.error);
+                      handleDismiss();
+                    }}
                   >
                     {action.label}
-                  </a>
+                  </button>
                 ))}
               </div>
             )}

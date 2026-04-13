@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { parseError } from '@/utils/parse-error';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
@@ -48,9 +50,7 @@ function handleOpenInBrowser(url: string) {
     .then(({ openUrl }) => {
       openUrl(url).catch(console.error);
     })
-    .catch(() => {
-      window.open(url, '_blank');
-    });
+    .catch(console.error);
 }
 
 function handleCopyBranch(branch: string) {
@@ -331,7 +331,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
               {summaryExpanded && (
                 <div className="border-t border-[var(--color-separator)] px-3 py-2">
                   <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{cachedSummary}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{cachedSummary}</ReactMarkdown>
                   </div>
                   <button
                     onClick={() => {
@@ -438,7 +438,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       {/* Description */}
       {p.body && (
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{p.body}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{p.body}</ReactMarkdown>
         </div>
       )}
 

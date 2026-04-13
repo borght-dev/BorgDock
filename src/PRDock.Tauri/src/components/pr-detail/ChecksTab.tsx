@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import type { CheckRun } from '@/types';
 
 interface ChecksTabProps {
@@ -247,11 +248,9 @@ export function ChecksTab({ checks }: ChecksTabProps) {
                 const duration = formatDuration(run.startedAt, run.completedAt);
 
                 return (
-                  <a
+                  <button
                     key={run.id}
-                    href={run.htmlUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    onClick={() => openUrl(run.htmlUrl).catch(console.error)}
                     className={clsx('checks-run', `checks-run--${state}`)}
                   >
                     <StatusSvg state={state} className="checks-run-icon" />
@@ -272,7 +271,7 @@ export function ChecksTab({ checks }: ChecksTabProps) {
                     >
                       <path d="m6 4 4 4-4 4" />
                     </svg>
-                  </a>
+                  </button>
                 );
               })}
             </div>

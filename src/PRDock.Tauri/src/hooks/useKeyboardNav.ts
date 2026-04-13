@@ -116,7 +116,7 @@ export function useKeyboardNav() {
             e.preventDefault();
             import('@tauri-apps/plugin-opener')
               .then(({ openUrl }) => openUrl(pr.pullRequest.htmlUrl))
-              .catch(() => window.open(pr.pullRequest.htmlUrl, '_blank'));
+              .catch(console.error);
           }
           break;
         }

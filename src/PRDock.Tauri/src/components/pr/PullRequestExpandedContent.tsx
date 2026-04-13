@@ -1,4 +1,6 @@
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { MergeReadinessChecklist } from '@/components/pr-detail/MergeReadinessChecklist';
 import type { PullRequestWithChecks } from '@/types';
@@ -57,7 +59,7 @@ export function ExpandedContent({
             Summary
           </div>
           <div className="markdown-body max-h-[300px] overflow-y-auto text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{pr.body}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{pr.body}</ReactMarkdown>
           </div>
         </div>
       )}

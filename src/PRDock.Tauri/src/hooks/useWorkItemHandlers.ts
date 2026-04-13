@@ -218,13 +218,8 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
   }, []);
 
   const handleOpenInBrowser = useCallback(async (url: string) => {
-    try {
-      const { openUrl } = await import('@tauri-apps/plugin-opener');
-      await openUrl(url);
-    } catch {
-      // Fallback: window.open
-      window.open(url, '_blank');
-    }
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
+    await openUrl(url);
   }, []);
 
   const handleDownloadAttachment = useCallback(

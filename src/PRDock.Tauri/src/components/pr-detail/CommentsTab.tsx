@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { saveTabData } from '@/services/cache';
@@ -287,7 +289,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
 
                     {/* Body */}
                     <div className="markdown-body">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{comment.body}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{comment.body}</ReactMarkdown>
                     </div>
                   </div>
                 </div>

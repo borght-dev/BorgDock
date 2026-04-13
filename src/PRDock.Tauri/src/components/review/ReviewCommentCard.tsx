@@ -1,4 +1,6 @@
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 
@@ -38,7 +40,7 @@ export function ReviewCommentCard({ comment }: ReviewCommentCardProps) {
 
         {/* Body */}
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{comment.body}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{comment.body}</ReactMarkdown>
         </div>
       </div>
     </div>

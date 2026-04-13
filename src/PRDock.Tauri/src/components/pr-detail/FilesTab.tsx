@@ -1,4 +1,5 @@
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
@@ -203,7 +204,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   const handleOpenInGitHub = useCallback((filename: string) => {
     if (htmlUrl) {
       const fileUrl = `${htmlUrl}/files#diff-${filename.replace(/\//g, '-')}`;
-      window.open(fileUrl, '_blank');
+      openUrl(fileUrl).catch(console.error);
     }
   }, [htmlUrl]);
 

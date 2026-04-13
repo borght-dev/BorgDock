@@ -88,6 +88,7 @@ pub(crate) fn create_badge_window(app: &tauri::AppHandle) -> Result<(), String> 
         .title("PRDock Badge")
         .inner_size(340.0, 48.0)
         .decorations(false)
+        .transparent(true)
         .always_on_top(true)
         .resizable(false)
         .shadow(false)

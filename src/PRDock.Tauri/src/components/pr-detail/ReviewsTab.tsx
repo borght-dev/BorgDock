@@ -1,6 +1,8 @@
 import clsx from 'clsx';
 import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getReviews } from '@/services/github/reviews';
@@ -181,7 +183,7 @@ export function ReviewsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Revie
               {/* Body */}
               {review.body && (
                 <div className="markdown-body">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{review.body}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{review.body}</ReactMarkdown>
                 </div>
               )}
             </div>
