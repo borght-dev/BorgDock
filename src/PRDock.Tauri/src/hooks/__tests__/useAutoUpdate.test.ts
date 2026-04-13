@@ -43,6 +43,7 @@ function makeSettings(overrides: Partial<{ autoCheckEnabled: boolean; autoDownlo
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

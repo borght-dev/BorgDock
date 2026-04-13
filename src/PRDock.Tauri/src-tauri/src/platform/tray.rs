@@ -33,8 +33,9 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         decode_png_to_rgba(png_bytes).unwrap_or_else(|| app.default_window_icon().cloned().unwrap())
     };
 
-    TrayIconBuilder::new()
+    TrayIconBuilder::with_id("main")
         .icon(icon)
+        .tooltip("PRDock")
         .menu(&menu)
         // Tauri 2.1+ defaults this to false on Windows, so left-clicking the
         // tray icon silently does nothing. Re-enable it explicitly.
@@ -62,6 +63,14 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         })
         .build(app)?;
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_tray_tooltip(app: tauri::AppHandle, tooltip: String) -> Result<(), String> {
+    if let Some(tray) = app.tray_by_id("main") {
+        tray.set_tooltip(Some(&tooltip)).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 

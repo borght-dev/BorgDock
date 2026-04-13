@@ -30,6 +30,7 @@ function makeSettings(repos: AppSettings['repos'] = []): AppSettings {
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

@@ -175,6 +175,7 @@ const fullSettings = {
     globalHotkey: '',
     editorCommand: 'code',
     runAtStartup: false,
+    badgeEnabled: true,
     badgeStyle: 'GlassCapsule' as const,
     indicatorStyle: 'SegmentRing' as const,
   },

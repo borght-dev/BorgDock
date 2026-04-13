@@ -12,6 +12,7 @@ function makeUi(overrides?: Partial<UiSettings>): UiSettings {
     globalHotkey: 'Ctrl+Win+Shift+G',
     editorCommand: 'code',
     runAtStartup: false,
+    badgeEnabled: true,
     badgeStyle: 'GlassCapsule',
     indicatorStyle: 'SegmentRing',
     ...overrides,

@@ -23,6 +23,7 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       globalHotkey: 'Ctrl+Win+Shift+G',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

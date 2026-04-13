@@ -98,6 +98,7 @@ function makeSettings(overrides: Partial<{
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

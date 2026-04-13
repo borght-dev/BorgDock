@@ -54,6 +54,7 @@ function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSetti
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

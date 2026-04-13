@@ -42,6 +42,7 @@ function makeSettings(overrides: Partial<AppSettings['azureDevOps']> = {}): AppS
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

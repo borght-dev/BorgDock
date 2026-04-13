@@ -42,15 +42,41 @@ pub(crate) fn show_main_window(app: &tauri::AppHandle) -> Result<(), String> {
     // Reapply position and size to force the compositor to repaint.
     // A single set_size is sometimes not enough — resize by 1px and back so
     // the WM_SIZE message definitely fires.
+    // Also clamp the position so the window is fully on-screen.
     if let Ok(size) = win.outer_size() {
         if size.width > 1 {
             let shrunk = PhysicalSize::new(size.width - 1, size.height);
             let _ = win.set_size(tauri::Size::Physical(shrunk));
         }
         let _ = win.set_size(tauri::Size::Physical(size));
-    }
-    if let Ok(pos) = win.outer_position() {
-        let _ = win.set_position(tauri::Position::Physical(pos));
+
+        // Clamp position to keep the window within the current monitor.
+        if let Ok(pos) = win.outer_position() {
+            let mut x = pos.x;
+            let mut y = pos.y;
+            if let Ok(Some(monitor)) = win.current_monitor() {
+                let mon_pos = monitor.position();
+                let mon_size = monitor.size();
+                let mon_right = mon_pos.x + mon_size.width as i32;
+                let mon_bottom = mon_pos.y + mon_size.height as i32;
+
+                // Clamp right/bottom edge
+                if x + size.width as i32 > mon_right {
+                    x = mon_right - size.width as i32;
+                }
+                if y + size.height as i32 > mon_bottom {
+                    y = mon_bottom - size.height as i32;
+                }
+                // Clamp left/top edge
+                if x < mon_pos.x {
+                    x = mon_pos.x;
+                }
+                if y < mon_pos.y {
+                    y = mon_pos.y;
+                }
+            }
+            let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
+        }
     }
 
     if let Err(e) = win.set_focus() {
@@ -120,6 +146,15 @@ pub fn toggle_sidebar(app: tauri::AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
     log::info!("show_badge: begin");
+
+    // Respect the user's "badge enabled" setting — if disabled, silently no-op.
+    if let Ok(settings) = crate::settings::load_settings_internal() {
+        if !settings.ui.badge_enabled {
+            log::info!("show_badge: badge disabled in settings — skipping");
+            return Ok(());
+        }
+    }
+
     // The badge window is created eagerly during setup on the main thread.
     // Don't try to build it here — Tauri's window builder deadlocks when
     // called from a tokio task on Windows.

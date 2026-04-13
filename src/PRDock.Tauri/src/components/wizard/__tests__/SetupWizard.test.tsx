@@ -31,6 +31,7 @@ describe('SetupWizard', () => {
           globalHotkey: 'Ctrl+Win+Shift+G',
           editorCommand: 'code',
           runAtStartup: false,
+          badgeEnabled: true,
           badgeStyle: 'GlassCapsule',
           indicatorStyle: 'SegmentRing',
         },

@@ -12,7 +12,15 @@ async function hideSidebarShowBadge() {
     const { invoke } = await import('@tauri-apps/api/core');
     log.debug('invoke hide_sidebar + show_badge');
     await invoke('hide_sidebar');
-    await invoke('show_badge', { count: 0 });
+
+    // Only show the badge if the user hasn't disabled it
+    const { useSettingsStore } = await import('@/stores/settings-store');
+    const badgeEnabled = useSettingsStore.getState().settings.ui.badgeEnabled;
+    if (badgeEnabled) {
+      await invoke('show_badge', { count: 0 });
+    } else {
+      log.debug('badge disabled — skipping show_badge');
+    }
     log.debug('hide_sidebar + show_badge done');
   } catch (err) {
     log.error('hideSidebarShowBadge failed', err);

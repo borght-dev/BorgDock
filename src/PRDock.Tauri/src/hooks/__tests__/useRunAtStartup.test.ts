@@ -34,6 +34,7 @@ function makeSettings(runAtStartup: boolean): AppSettings {
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

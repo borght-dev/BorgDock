@@ -44,6 +44,7 @@ describe('CommandPalette', () => {
           globalHotkey: '',
           editorCommand: 'code',
           runAtStartup: false,
+          badgeEnabled: true,
           badgeStyle: 'GlassCapsule',
           indicatorStyle: 'SegmentRing',
         },

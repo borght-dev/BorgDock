@@ -46,6 +46,7 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       globalHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      badgeEnabled: true,
       badgeStyle: 'GlassCapsule',
       indicatorStyle: 'SegmentRing',
     },

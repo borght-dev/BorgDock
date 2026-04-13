@@ -105,6 +105,7 @@ pub fn run() {
             platform::work_area::restore_work_area,
             platform::hotkey::register_hotkey,
             platform::hotkey::unregister_hotkey,
+            platform::tray::update_tray_tooltip,
             platform::theme::get_system_theme,
             platform::logs::get_log_folder,
             platform::logs::open_log_folder,

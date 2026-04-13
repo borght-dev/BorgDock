@@ -101,15 +101,27 @@ async function sendToBadge(payload: BadgeUpdatePayload) {
   }
 }
 
+async function updateTrayTooltip(payload: BadgeUpdatePayload) {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const parts: string[] = [`PRDock — ${payload.totalPrCount} open PRs`];
+    if (payload.failingCount > 0) parts.push(`${payload.failingCount} failing`);
+    if (payload.pendingCount > 0) parts.push(`${payload.pendingCount} pending`);
+    await invoke('update_tray_tooltip', { tooltip: parts.join(' · ') });
+  } catch {
+    // ignore — command may not exist on older builds
+  }
+}
+
 export function useBadgeSync() {
   const pullRequests = usePrStore((s) => s.pullRequests);
   const username = usePrStore((s) => s.username);
+  const badgeEnabled = useSettingsStore((s) => s.settings.ui.badgeEnabled);
   const badgeStyle = useSettingsStore((s) => s.settings.ui.badgeStyle);
   const theme = useSettingsStore((s) => s.settings.ui.theme);
-  const activeNotification = useNotificationStore((s) => s.activeNotification);
-  const queuedNotifications = useNotificationStore((s) => s.notifications);
-  const notificationCount =
-    queuedNotifications.length + (activeNotification ? 1 : 0);
+  const notificationCount = useNotificationStore(
+    (s) => s.notifications.length + (s.activeNotification ? 1 : 0),
+  );
 
   // Debounced badge sync — skip emits when counts haven't changed
   const prevHashRef = useRef('');
@@ -121,16 +133,36 @@ export function useBadgeSync() {
     debounceRef.current = setTimeout(() => {
       const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme, notificationCount);
       // Cheap hash: skip IPC if aggregate counts are identical
-      const hash = `${payload.totalPrCount}:${payload.failingCount}:${payload.pendingCount}:${payload.notificationCount}:${payload.badgeStyle}:${payload.theme}`;
+      const hash = `${payload.totalPrCount}:${payload.failingCount}:${payload.pendingCount}:${payload.notificationCount}:${payload.badgeStyle}:${payload.theme}:${badgeEnabled}`;
       if (hash === prevHashRef.current) return;
       prevHashRef.current = hash;
-      sendToBadge(payload);
+
+      // Always update the tray tooltip with PR counts
+      updateTrayTooltip(payload);
+
+      if (badgeEnabled) {
+        sendToBadge(payload);
+      }
     }, 200);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [pullRequests, username, badgeStyle, theme, notificationCount]);
+  }, [pullRequests, username, badgeEnabled, badgeStyle, theme, notificationCount]);
+
+  // When badge is disabled, immediately hide it
+  useEffect(() => {
+    if (!badgeEnabled) {
+      (async () => {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('hide_badge');
+        } catch {
+          // ignore
+        }
+      })();
+    }
+  }, [badgeEnabled]);
 
   // Respond to badge-request-data: re-send current payload
   useEffect(() => {

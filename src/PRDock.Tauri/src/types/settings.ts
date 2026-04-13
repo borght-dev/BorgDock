@@ -39,6 +39,7 @@ export interface UiSettings {
   globalHotkey: string;
   editorCommand: string;
   runAtStartup: boolean;
+  badgeEnabled: boolean;
   badgeStyle: BadgeStyle;
   indicatorStyle: IndicatorStyle;
   worktreePaletteFavoritesOnly?: boolean;

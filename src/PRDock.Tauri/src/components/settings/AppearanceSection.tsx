@@ -121,11 +121,33 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         </div>
       </FieldLabel>
 
+      {/* Show Badge */}
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
+          Show floating badge
+        </label>
+        <button
+          onClick={() => update({ badgeEnabled: !ui.badgeEnabled })}
+          className={clsx(
+            'relative h-5 w-9 rounded-full transition-colors',
+            ui.badgeEnabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
+          )}
+        >
+          <div
+            className={clsx(
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+              ui.badgeEnabled ? 'translate-x-4' : 'translate-x-0.5',
+            )}
+          />
+        </button>
+      </div>
+
       {/* Badge Style */}
       <FieldLabel label="Badge Style">
         <select
           className="field-input w-full"
           value={ui.badgeStyle}
+          disabled={!ui.badgeEnabled}
           onChange={(e) => update({ badgeStyle: e.target.value as BadgeStyle })}
         >
           {BADGE_STYLES.map((s) => (
