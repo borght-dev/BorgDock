@@ -3,8 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 
 export type StatusColor = 'green' | 'red' | 'yellow';
 
-const BADGE_COLLAPSED = { width: 340, height: 48 };
-const BADGE_EXPANDED = { width: 340, height: 380 };
+const BADGE_COLLAPSED = { width: 380, height: 56 };
+const BADGE_EXPANDED = { width: 380, height: 380 };
 
 export interface BadgePrItem {
   title: string;

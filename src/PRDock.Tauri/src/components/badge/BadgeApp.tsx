@@ -75,7 +75,7 @@ export function BadgeApp() {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       // Reset badge window to collapsed size before hiding
-      await invoke('resize_badge', { width: 340, height: 48 });
+      await invoke('resize_badge', { width: 380, height: 56 });
       // Show the main sidebar and hide the badge window directly
       await invoke('toggle_sidebar');
       await invoke('hide_badge');
@@ -119,7 +119,7 @@ export function BadgeApp() {
         setExpandDirection(dir === 'up' ? 'up' : 'down');
       } else {
         // Collapsing: anchor the edge where the pill is so it doesn't jump
-        const size = { width: 340, height: 48 };
+        const size = { width: 380, height: 56 };
         const anchor = expandDirection === 'up' ? 'bottom' : 'top';
         await invoke('resize_badge', { width: size.width, height: size.height, anchor });
       }
@@ -187,7 +187,7 @@ export function BadgeApp() {
     <div
       className={clsx(
         'flex h-screen w-screen justify-center',
-        expandUp ? 'items-end pb-1' : 'items-start pt-1',
+        expandUp ? 'items-end pb-2' : 'items-start pt-2',
       )}
       style={{ background: 'transparent' }}
     >
