@@ -24,6 +24,7 @@ import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
 import { useTheme } from '@/hooks/useTheme';
+import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
@@ -139,6 +140,9 @@ export default function App() {
 
   // Auto-update
   useAutoUpdate(settings);
+
+  // What's new auto-open
+  useWhatsNew();
 
   // Run at startup sync
   useRunAtStartup(settings);
