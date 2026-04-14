@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -22,6 +22,7 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 vi.mock('@/services/github/mutations', () => ({
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
   bypassMergePullRequest: vi.fn().mockResolvedValue(undefined),
+  closePullRequest: vi.fn().mockResolvedValue(undefined),
   postComment: vi.fn().mockResolvedValue(undefined),
   submitReview: vi.fn().mockResolvedValue(undefined),
   toggleDraft: vi.fn().mockResolvedValue(undefined),
@@ -462,5 +463,46 @@ describe('OverviewTab', () => {
     await vi.waitFor(() => {
       expect(screen.getByText(/PR #42 merged!/)).toBeTruthy();
     });
+  });
+
+  // ---- Close PR ----
+
+  it('renders "Close PR" button when PR is open', () => {
+    render(<OverviewTab pr={makePr()} />);
+    expect(screen.getByText('Close PR')).toBeTruthy();
+  });
+
+  it('does not render "Close PR" button when PR is closed', () => {
+    const pr = makePr({
+      pullRequest: { ...makePr().pullRequest, state: 'closed' },
+    });
+    render(<OverviewTab pr={pr} />);
+    expect(screen.queryByText('Close PR')).toBeNull();
+  });
+
+  it('shows confirm dialog when "Close PR" is clicked', () => {
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Close PR'));
+    expect(screen.getByRole('dialog', { name: 'Close pull request?' })).toBeTruthy();
+  });
+
+  it('calls closePullRequest when dialog confirm is clicked', async () => {
+    const { closePullRequest } = await import('@/services/github/mutations');
+    vi.mocked(closePullRequest).mockClear();
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Close PR'));
+    const dialog = screen.getByRole('dialog', { name: 'Close pull request?' });
+    fireEvent.click(within(dialog).getByText('Close PR'));
+    expect(closePullRequest).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', 42);
+  });
+
+  it('does not call closePullRequest when dialog cancel is clicked', async () => {
+    const { closePullRequest } = await import('@/services/github/mutations');
+    vi.mocked(closePullRequest).mockClear();
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Close PR'));
+    const dialog = screen.getByRole('dialog', { name: 'Close pull request?' });
+    fireEvent.click(within(dialog).getByText('Cancel'));
+    expect(closePullRequest).not.toHaveBeenCalled();
   });
 });

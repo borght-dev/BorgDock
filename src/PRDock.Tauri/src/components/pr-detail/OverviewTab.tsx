@@ -12,6 +12,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import {
   bypassMergePullRequest,
+  closePullRequest,
   mergePullRequest,
   postComment,
   submitReview,
@@ -20,6 +21,7 @@ import {
 import { createLogger } from '@/services/logger';
 import { getClient } from '@/services/github/singleton';
 import type { PullRequestWithChecks } from '@/types';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
@@ -105,6 +107,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     'COMMENT',
   );
   const [commentBody, setCommentBody] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
   const { resolveConflicts } = useClaudeActions();
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
@@ -184,6 +187,22 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       setActionStatus(`Bypass merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
+  }, [p.repoOwner, p.repoName, p.number]);
+
+  const handleCloseConfirm = useCallback(() => setConfirmClose(true), []);
+
+  const handleCloseExecute = useCallback(async () => {
+    setConfirmClose(false);
+    const client = getClient();
+    if (!client) return;
+    setActionStatus('Closing...');
+    try {
+      await closePullRequest(client, p.repoOwner, p.repoName, p.number);
+      setActionStatus('PR closed');
+    } catch (err) {
+      setActionStatus(`Close failed: ${err}`);
+    }
+    setTimeout(() => setActionStatus(''), 3000);
   }, [p.repoOwner, p.repoName, p.number]);
 
   const handleToggleDraft = useCallback(async () => {
@@ -453,6 +472,14 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         >
           Bypass Merge
         </button>
+        {p.state === 'open' && (
+          <button
+            onClick={handleCloseConfirm}
+            className="rounded-md border border-[var(--color-status-red)] bg-transparent px-3 py-1.5 text-xs font-medium text-[var(--color-action-danger-fg)] hover:bg-[var(--color-action-danger-bg)] transition-colors"
+          >
+            Close PR
+          </button>
+        )}
       </div>
 
       {/* Action status */}
@@ -467,6 +494,17 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Merge celebration */}
       {mergeSuccess && <MergeCelebration prNumber={p.number} title={p.title} />}
+
+      {/* Close PR confirm dialog */}
+      <ConfirmDialog
+        isOpen={confirmClose}
+        title="Close pull request?"
+        message={`This will close PR #${p.number} without merging. You can reopen it later.`}
+        confirmLabel="Close PR"
+        variant="danger"
+        onConfirm={handleCloseExecute}
+        onCancel={() => setConfirmClose(false)}
+      />
 
       {/* Description */}
       {p.body && (
