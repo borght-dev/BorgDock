@@ -45,3 +45,6 @@ src/PRDock.Tauri/test-window.html
 
 ## Superpowers brainstorm mockups
 .superpowers/
+
+## "What's new" generated hero images (sources live in docs/whats-new/)
+src/PRDock.Tauri/public/whats-new/
