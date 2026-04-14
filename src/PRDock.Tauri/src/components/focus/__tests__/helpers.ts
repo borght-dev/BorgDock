@@ -9,6 +9,7 @@ export function makePr(overrides: Partial<PullRequestWithChecks['pullRequest']> 
       number: n,
       title: `PR title ${n}`,
       headRef: `feature-${n}`,
+      headSha: `abc${n}def`,
       baseRef: 'main',
       authorLogin: 'testuser',
       authorAvatarUrl: 'https://example.com/avatar.png',

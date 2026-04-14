@@ -1,15 +1,17 @@
 import { useEffect, useRef } from 'react';
-import type { BadgePrItem, StatusColor } from '@/components/badge/FloatingBadge';
-import { useNotificationStore } from '@/stores/notification-store';
+import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 
-function toStatusColor(status: string): StatusColor {
-  if (status === 'red') return 'red';
-  if (status === 'yellow') return 'yellow';
-  return 'green';
+type TrayWorstState = 'failing' | 'pending' | 'passing' | 'idle';
+
+function deriveWorstState(prs: PullRequestWithChecks[]): TrayWorstState {
+  if (prs.length === 0) return 'idle';
+  if (prs.some((p) => p.overallStatus === 'red')) return 'failing';
+  if (prs.some((p) => p.overallStatus === 'yellow')) return 'pending';
+  return 'passing';
 }
 
 function formatTimeAgo(dateStr: string): string {
@@ -23,168 +25,151 @@ function formatTimeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function toBadgePrItem(pr: PullRequestWithChecks): BadgePrItem {
-  const p = pr.pullRequest;
-  const total = pr.checks.length;
-  const passed = pr.passedCount;
-  return {
-    title: p.title,
-    number: p.number,
-    timeAgo: formatTimeAgo(p.updatedAt),
-    statusColor: toStatusColor(pr.overallStatus),
-    checksText: total > 0 ? `${passed}/${total}` : undefined,
-    isInProgress: pr.overallStatus === 'yellow',
-    repoOwner: p.repoOwner,
-    repoName: p.repoName,
-  };
-}
-
-export interface BadgeUpdatePayload {
-  totalPrCount: number;
-  failingCount: number;
-  pendingCount: number;
-  notificationCount: number;
-  myPrs: BadgePrItem[];
-  teamPrs: BadgePrItem[];
-  badgeStyle: string;
-  theme: string;
-}
-
-function buildBadgePayload(
+/** Build the payload for the flyout window */
+function buildFlyoutPayload(
   pullRequests: PullRequestWithChecks[],
   username: string,
-  badgeStyle: string,
   theme: string,
-  notificationCount: number,
-): BadgeUpdatePayload {
+  hotkey: string,
+  lastPollTime: number | null,
+) {
+  const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
   const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
+  const passingCount = pullRequests.filter(
+    (p) => p.overallStatus === 'green',
+  ).length;
 
-  const lowerUser = username.toLowerCase();
-  const myPrs = pullRequests
-    .filter((p) => lowerUser && p.pullRequest.authorLogin.toLowerCase() === lowerUser)
-    .map(toBadgePrItem);
-
-  const teamPrs = pullRequests
-    .filter((p) => !lowerUser || p.pullRequest.authorLogin.toLowerCase() !== lowerUser)
-    .map(toBadgePrItem);
+  const lastSyncAgo = lastPollTime
+    ? formatTimeAgo(new Date(lastPollTime).toISOString())
+    : '...';
 
   return {
-    totalPrCount: pullRequests.length,
+    pullRequests: pullRequests.map((pr) => ({
+      number: pr.pullRequest.number,
+      title: pr.pullRequest.title,
+      repoOwner: pr.pullRequest.repoOwner,
+      repoName: pr.pullRequest.repoName,
+      authorLogin: pr.pullRequest.authorLogin,
+      authorAvatarUrl: pr.pullRequest.authorAvatarUrl,
+      overallStatus: pr.overallStatus,
+      reviewStatus: pr.pullRequest.reviewStatus,
+      failedCount: pr.failedCheckNames.length,
+      failedCheckNames: pr.failedCheckNames,
+      pendingCount: pr.pendingCheckNames.length,
+      passedCount: pr.passedCount,
+      totalChecks: pr.checks.length,
+      commentCount: pr.pullRequest.commentCount,
+      isMine: lowerUser ? pr.pullRequest.authorLogin.toLowerCase() === lowerUser : false,
+    })),
     failingCount,
     pendingCount,
-    notificationCount,
-    myPrs,
-    teamPrs,
-    badgeStyle,
+    passingCount,
+    totalCount: pullRequests.length,
+    username,
     theme,
+    lastSyncAgo,
+    hotkey,
   };
-}
-
-async function sendToBadge(payload: BadgeUpdatePayload) {
-  try {
-    const { emit } = await import('@tauri-apps/api/event');
-    console.log('[BadgeSync] Sending badge-update:', {
-      totalPrCount: payload.totalPrCount,
-      failingCount: payload.failingCount,
-      pendingCount: payload.pendingCount,
-      myPrs: payload.myPrs.length,
-      teamPrs: payload.teamPrs.length,
-      badgeStyle: payload.badgeStyle,
-      theme: payload.theme,
-    });
-    // Broadcast globally — the badge window picks it up via listen()
-    await emit('badge-update', payload);
-    console.log('[BadgeSync] badge-update emitted successfully');
-  } catch (err) {
-    console.error('[BadgeSync] Failed to emit badge-update:', err);
-  }
-}
-
-async function updateTrayTooltip(payload: BadgeUpdatePayload) {
-  try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    const parts: string[] = [`PRDock — ${payload.totalPrCount} open PRs`];
-    if (payload.failingCount > 0) parts.push(`${payload.failingCount} failing`);
-    if (payload.pendingCount > 0) parts.push(`${payload.pendingCount} pending`);
-    await invoke('update_tray_tooltip', { tooltip: parts.join(' · ') });
-  } catch {
-    // ignore — command may not exist on older builds
-  }
 }
 
 export function useBadgeSync() {
   const pullRequests = usePrStore((s) => s.pullRequests);
   const username = usePrStore((s) => s.username);
-  const badgeEnabled = useSettingsStore((s) => s.settings.ui.badgeEnabled);
-  const badgeStyle = useSettingsStore((s) => s.settings.ui.badgeStyle);
+  const lastPollTimeRaw = usePrStore((s) => s.lastPollTime);
+  const lastPollTime = lastPollTimeRaw ? lastPollTimeRaw.getTime() : null;
   const theme = useSettingsStore((s) => s.settings.ui.theme);
-  const notificationCount = useNotificationStore(
-    (s) => s.notifications.length + (s.activeNotification ? 1 : 0),
-  );
+  const hotkey = useSettingsStore((s) => s.settings.ui.globalHotkey);
 
-  // Debounced badge sync — skip emits when counts haven't changed
+  // Debounced sync — skip when nothing has changed
   const prevHashRef = useRef('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    debounceRef.current = setTimeout(() => {
-      const payload = buildBadgePayload(pullRequests, username, badgeStyle, theme, notificationCount);
-      // Cheap hash: skip IPC if aggregate counts are identical
-      const hash = `${payload.totalPrCount}:${payload.failingCount}:${payload.pendingCount}:${payload.notificationCount}:${payload.badgeStyle}:${payload.theme}:${badgeEnabled}`;
+    debounceRef.current = setTimeout(async () => {
+      const count = pullRequests.length;
+      const worstState = deriveWorstState(pullRequests);
+      const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
+      const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
+
+      // Cheap hash to skip redundant IPC
+      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${lastPollTime}`;
       if (hash === prevHashRef.current) return;
       prevHashRef.current = hash;
 
-      // Always update the tray tooltip with PR counts
-      updateTrayTooltip(payload);
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
 
-      if (badgeEnabled) {
-        sendToBadge(payload);
+        // Update tray icon badge
+        await invoke('update_tray_icon', {
+          count: Math.min(count, 255),
+          worstState,
+        });
+
+        // Update tray tooltip
+        const parts: string[] = [`PRDock — ${count} open PRs`];
+        if (failingCount > 0) parts.push(`${failingCount} failing`);
+        if (pendingCount > 0) parts.push(`${pendingCount} pending`);
+        await invoke('update_tray_tooltip', { tooltip: parts.join(' · ') });
+      } catch {
+        // ignore — commands may not exist on older builds
+      }
+
+      // Build the flyout payload and cache it in Rust state so the flyout
+      // can fetch it directly via IPC (hidden WebView2 windows on Windows
+      // have suspended JS and can't relay events).
+      const payload = buildFlyoutPayload(
+        pullRequests,
+        username,
+        theme,
+        hotkey || 'Ctrl+Win+Shift+G',
+        lastPollTime,
+      );
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('cache_flyout_data', { payload: JSON.stringify(payload) });
+      } catch {
+        // ignore
+      }
+
+      // Also emit to the flyout directly if it's open
+      try {
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('flyout', 'flyout-update', payload);
+      } catch {
+        // ignore — flyout window may not exist yet
       }
     }, 200);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [pullRequests, username, badgeEnabled, badgeStyle, theme, notificationCount]);
+  }, [pullRequests, username, theme, hotkey, lastPollTime]);
 
-  // When badge is disabled, immediately hide it
-  useEffect(() => {
-    if (!badgeEnabled) {
-      (async () => {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          await invoke('hide_badge');
-        } catch {
-          // ignore
-        }
-      })();
-    }
-  }, [badgeEnabled]);
-
-  // Respond to badge-request-data: re-send current payload
+  // Respond to flyout-request-data: re-send current payload
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        const fn = await listen('badge-request-data', () => {
+        const fn = await listen('flyout-request-data', async () => {
           const prs = usePrStore.getState().pullRequests;
           const user = usePrStore.getState().username;
+          const pollRaw = usePrStore.getState().lastPollTime;
           const st = useSettingsStore.getState().settings;
-          const ns = useNotificationStore.getState();
-          const nc = ns.notifications.length + (ns.activeNotification ? 1 : 0);
-          console.log(
-            '[BadgeSync] Received badge-request-data, PRs in store:',
-            prs.length,
-            'username:',
+          const payload = buildFlyoutPayload(
+            prs,
             user,
+            st.ui.theme,
+            st.ui.globalHotkey || 'Ctrl+Win+Shift+G',
+            pollRaw ? pollRaw.getTime() : null,
           );
-          const payload = buildBadgePayload(prs, user, st.ui.badgeStyle, st.ui.theme, nc);
-          sendToBadge(payload);
+          console.log('[BadgeSync] Responding to flyout-request-data, PRs:', prs.length);
+          const { emitTo } = await import('@tauri-apps/api/event');
+          await emitTo('flyout', 'flyout-update', payload);
         });
         if (cancelled) {
           fn();
@@ -201,7 +186,7 @@ export function useBadgeSync() {
     };
   }, []);
 
-  // Listen for expand-sidebar events from badge
+  // Listen for expand-sidebar events (from flyout or other windows)
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -212,7 +197,6 @@ export function useBadgeSync() {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('toggle_sidebar');
-            await invoke('hide_badge');
           } catch {
             // ignore
           }
@@ -232,7 +216,7 @@ export function useBadgeSync() {
     };
   }, []);
 
-  // Listen for open-pr-detail events from badge
+  // Listen for open-pr-detail events
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -255,6 +239,67 @@ export function useBadgeSync() {
     return () => {
       cancelled = true;
       unlisten?.();
+    };
+  }, []);
+
+  // Listen for fix/monitor events from flyout window
+  const { fixWithClaude, monitorPr } = useClaudeActions();
+  const fixRef = useRef(fixWithClaude);
+  fixRef.current = fixWithClaude;
+  const monitorRef = useRef(monitorPr);
+  monitorRef.current = monitorPr;
+
+  useEffect(() => {
+    let unlistenFix: (() => void) | undefined;
+    let unlistenMonitor: (() => void) | undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+
+        const fnFix = await listen<{ repoOwner: string; repoName: string; number: number; failedCheckNames: string[] }>(
+          'flyout-fix-pr',
+          (event) => {
+            const { repoOwner, repoName, number, failedCheckNames } = event.payload;
+            const pr = usePrStore.getState().pullRequests.find(
+              (p) => p.pullRequest.repoOwner === repoOwner && p.pullRequest.repoName === repoName && p.pullRequest.number === number,
+            );
+            if (pr) {
+              fixRef.current(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '').catch(console.error);
+            }
+          },
+        );
+
+        const fnMonitor = await listen<{ repoOwner: string; repoName: string; number: number }>(
+          'flyout-monitor-pr',
+          (event) => {
+            const { repoOwner, repoName, number } = event.payload;
+            const pr = usePrStore.getState().pullRequests.find(
+              (p) => p.pullRequest.repoOwner === repoOwner && p.pullRequest.repoName === repoName && p.pullRequest.number === number,
+            );
+            if (pr) {
+              monitorRef.current(pr).catch(console.error);
+            }
+          },
+        );
+
+        if (cancelled) {
+          fnFix();
+          fnMonitor();
+          return;
+        }
+        unlistenFix = fnFix;
+        unlistenMonitor = fnMonitor;
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unlistenFix?.();
+      unlistenMonitor?.();
     };
   }, []);
 }

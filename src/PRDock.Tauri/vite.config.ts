@@ -72,6 +72,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         badge: path.resolve(__dirname, "badge.html"),
+        flyout: path.resolve(__dirname, "flyout.html"),
         palette: path.resolve(__dirname, "palette.html"),
         'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),
         'pr-detail': path.resolve(__dirname, "pr-detail.html"),

@@ -7,23 +7,14 @@ const log = createLogger('autoHide');
 const AUTO_HIDE_DELAY_MS = 3000;
 const FOCUS_LOST_DEBOUNCE_MS = 200;
 
-async function hideSidebarShowBadge() {
+async function hideSidebar() {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    log.debug('invoke hide_sidebar + show_badge');
+    log.debug('invoke hide_sidebar');
     await invoke('hide_sidebar');
-
-    // Only show the badge if the user hasn't disabled it
-    const { useSettingsStore } = await import('@/stores/settings-store');
-    const badgeEnabled = useSettingsStore.getState().settings.ui.badgeEnabled;
-    if (badgeEnabled) {
-      await invoke('show_badge', { count: 0 });
-    } else {
-      log.debug('badge disabled — skipping show_badge');
-    }
-    log.debug('hide_sidebar + show_badge done');
+    log.debug('hide_sidebar done');
   } catch (err) {
-    log.error('hideSidebarShowBadge failed', err);
+    log.error('hideSidebar failed', err);
   }
 }
 
@@ -47,7 +38,7 @@ export function useAutoHide(settings: AppSettings) {
       if (!isHoveredRef.current) {
         log.info('auto-hide timer fired — hiding sidebar');
         setSidebarVisible(false);
-        hideSidebarShowBadge();
+        hideSidebar();
       } else {
         log.debug('auto-hide timer fired but hovered — keeping sidebar');
       }
@@ -78,7 +69,7 @@ export function useAutoHide(settings: AppSettings) {
     };
   }, [settings.ui.sidebarMode, clearTimer, startHideTimer]);
 
-  // Hide sidebar + show badge when window loses focus (click outside)
+  // Hide sidebar when window loses focus (click outside)
   // Skip when minimized so the taskbar icon can still restore the window.
   // Debounced so that transient focus loss during window drag doesn't hide.
   useEffect(() => {
@@ -120,7 +111,7 @@ export function useAutoHide(settings: AppSettings) {
 
               log.info('focus lost — hiding sidebar');
               setSidebarVisible(false);
-              hideSidebarShowBadge();
+              hideSidebar();
             }, FOCUS_LOST_DEBOUNCE_MS);
           } else {
             // Focus regained — cancel any pending hide
@@ -129,22 +120,10 @@ export function useAutoHide(settings: AppSettings) {
               focusLostTimer = null;
             }
 
-            // Only hide badge if the sidebar window is actually visible.
-            // Without this check, a spurious focus event on the hidden
-            // main window would hide the badge while the sidebar stays
-            // invisible — leaving the user with nothing on screen.
             const isVisible = await win.isVisible();
             if (isVisible) {
-              log.info('focus gained — hiding badge, showing sidebar');
+              log.info('focus gained — showing sidebar');
               setSidebarVisible(true);
-              try {
-                const { invoke } = await import('@tauri-apps/api/core');
-                await invoke('hide_badge');
-              } catch (err) {
-                log.warn('hide_badge failed', {
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              }
             } else {
               log.debug('focus gained but sidebar not visible — ignoring');
             }

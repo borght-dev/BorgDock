@@ -25,22 +25,13 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                     "hotkey toggle running on main thread, sidebar_visible={}",
                     super::window::sidebar_visible()
                 );
-                // `win.is_visible()` is unreliable for transparent always-on-top
-                // WebView2 windows on Windows (returns false even when visible).
-                // Use the tracked state instead.
                 if super::window::sidebar_visible() {
                     if let Err(e) = super::window::hide_main_window(&app_cb) {
                         log::error!("hotkey: hide_main_window failed: {e}");
                     }
-                    if let Err(e) = super::window::show_badge(app_cb.clone(), 0) {
-                        log::error!("hotkey: show_badge failed: {e}");
-                    }
                 } else {
                     if let Err(e) = super::window::show_main_window(&app_cb) {
                         log::error!("hotkey: show_main_window failed: {e}");
-                    }
-                    if let Err(e) = super::window::hide_badge(app_cb.clone()) {
-                        log::error!("hotkey: hide_badge failed: {e}");
                     }
                 }
                 log::info!("hotkey toggle main thread work complete");
@@ -59,34 +50,37 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 return;
             }
 
-            // If palette already exists, focus it
-            if let Some(win) = app_palette.get_webview_window("palette") {
-                let _ = win.set_focus();
-                return;
-            }
-
-            // Create a new palette window
-            if let Ok(win) = WebviewWindowBuilder::new(
-                &app_palette,
-                "palette",
-                tauri::WebviewUrl::App("palette.html".into()),
-            )
-            .title("PRDock Command Palette")
-            .inner_size(480.0, 500.0)
-            .decorations(false)
-            .always_on_top(true)
-            .resizable(false)
-            .skip_taskbar(true)
-            .center()
-            .focused(true)
-            .build()
-            {
-                // Re-focus after webview has loaded
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(200));
+            // Marshal onto the main thread — WebView2 window creation on
+            // Windows must happen on the thread that owns the message loop,
+            // otherwise the app hangs with "Not Responding".
+            let app_cb = app_palette.clone();
+            let _ = app_palette.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("palette") {
                     let _ = win.set_focus();
-                });
-            }
+                    return;
+                }
+
+                if let Ok(win) = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "palette",
+                    tauri::WebviewUrl::App("palette.html".into()),
+                )
+                .title("PRDock Command Palette")
+                .inner_size(480.0, 500.0)
+                .decorations(false)
+                .always_on_top(true)
+                .resizable(false)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build()
+                {
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                        let _ = win.set_focus();
+                    });
+                }
+            });
         })
         .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
 
@@ -98,33 +92,34 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 return;
             }
 
-            // If worktree palette already exists, focus it
-            if let Some(win) = app_worktree.get_webview_window("worktree-palette") {
-                let _ = win.set_focus();
-                return;
-            }
-
-            // Create a new worktree palette window
-            if let Ok(win) = WebviewWindowBuilder::new(
-                &app_worktree,
-                "worktree-palette",
-                tauri::WebviewUrl::App("worktree.html".into()),
-            )
-            .title("PRDock Worktrees")
-            .inner_size(520.0, 420.0)
-            .decorations(false)
-            .always_on_top(true)
-            .resizable(false)
-            .skip_taskbar(true)
-            .center()
-            .focused(true)
-            .build()
-            {
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(200));
+            let app_cb = app_worktree.clone();
+            let _ = app_worktree.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("worktree-palette") {
                     let _ = win.set_focus();
-                });
-            }
+                    return;
+                }
+
+                if let Ok(win) = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "worktree-palette",
+                    tauri::WebviewUrl::App("worktree.html".into()),
+                )
+                .title("PRDock Worktrees")
+                .inner_size(520.0, 420.0)
+                .decorations(false)
+                .always_on_top(true)
+                .resizable(false)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build()
+                {
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                        let _ = win.set_focus();
+                    });
+                }
+            });
         })
         .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
 
@@ -136,32 +131,33 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 return;
             }
 
-            // If SQL window already exists, focus it
-            if let Some(win) = app_sql.get_webview_window("sql") {
-                let _ = win.set_focus();
-                return;
-            }
-
-            // Create a new SQL window (temporarily using test page to isolate crash)
-            if let Ok(win) = WebviewWindowBuilder::new(
-                &app_sql,
-                "sql",
-                tauri::WebviewUrl::App("test-window.html".into()),
-            )
-            .title("PRDock SQL")
-            .inner_size(900.0, 650.0)
-            .decorations(false)
-            .resizable(true)
-            .skip_taskbar(true)
-            .center()
-            .focused(true)
-            .build()
-            {
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(200));
+            let app_cb = app_sql.clone();
+            let _ = app_sql.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("sql") {
                     let _ = win.set_focus();
-                });
-            }
+                    return;
+                }
+
+                if let Ok(win) = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "sql",
+                    tauri::WebviewUrl::App("sql.html".into()),
+                )
+                .title("PRDock SQL")
+                .inner_size(900.0, 650.0)
+                .decorations(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build()
+                {
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                        let _ = win.set_focus();
+                    });
+                }
+            });
         })
         .map_err(|e| format!("Failed to register SQL hotkey: {e}"))?;
 

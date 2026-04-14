@@ -1,18 +1,34 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
+import type { Window } from '@tauri-apps/api/window';
 
 interface WindowTitleBarProps {
   title: string;
 }
 
+/** Lazily resolve the Tauri window handle — avoids crashing during render
+ *  when `__TAURI_INTERNALS__` isn't injected yet (race on window creation). */
+function useTauriWindow(): Window | null {
+  const ref = useRef<Window | null | undefined>(undefined);
+  if (ref.current === undefined) {
+    try {
+      ref.current = getCurrentWindow();
+    } catch {
+      ref.current = null;
+    }
+  }
+  return ref.current;
+}
+
 export function WindowTitleBar({ title }: WindowTitleBarProps) {
-  const win = getCurrentWindow();
+  const win = useTauriWindow();
 
   const handleMinimize = useCallback(() => {
-    win.minimize().catch(console.debug); /* fire-and-forget */
+    win?.minimize().catch(console.debug); /* fire-and-forget */
   }, [win]);
 
   const handleMaximize = useCallback(async () => {
+    if (!win) return;
     const isMax = await win.isMaximized();
     if (isMax) {
       win.unmaximize().catch(console.debug); /* fire-and-forget */
@@ -22,7 +38,7 @@ export function WindowTitleBar({ title }: WindowTitleBarProps) {
   }, [win]);
 
   const handleClose = useCallback(() => {
-    win.close().catch(console.debug); /* fire-and-forget */
+    win?.close().catch(console.debug); /* fire-and-forget */
   }, [win]);
 
   return (

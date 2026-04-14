@@ -1,0 +1,20 @@
+{
+  "identifier": "flyout-capability",
+  "description": "Permissions for the tray flyout window",
+  "windows": ["flyout"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-visible",
+    "core:window:allow-start-dragging",
+    "core:webview:allow-create-webview-window",
+    "log:default",
+    "opener:default",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-write-text"
+  ]
+}

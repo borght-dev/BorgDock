@@ -1,3 +1,4 @@
+pub mod ado;
 pub mod auth;
 pub mod cache;
 pub mod claude_api;
@@ -63,22 +64,18 @@ pub fn run() {
         .manage(PrCache {
             conn: Mutex::new(None),
         })
+        .manage(platform::flyout_cache::FlyoutCache {
+            data: Mutex::new(None),
+        })
         .setup(|app| {
             platform::tray::setup_tray(app)?;
-
-            // Create the badge window eagerly here on the main thread.
-            // Building a WebView2 window from a tokio IPC task on Windows
-            // deadlocks, which was wedging show_badge when auto-hide fired.
-            if let Err(e) = platform::window::create_badge_window(&app.handle()) {
-                log::error!("failed to create badge window at startup: {e}");
-            }
 
             // Show the main window from Rust to avoid relying on JS IPC
             // permissions / timing. The window starts hidden (visible: false
             // in tauri.conf.json) to prevent a blank flash on startup.
             // set_focus() is required so Windows registers focus tracking —
             // without it onFocusChanged never fires and clicking outside
-            // won't trigger the badge.
+            // won't trigger auto-hide.
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
                 let _ = win.set_focus();
@@ -98,14 +95,15 @@ pub fn run() {
             platform::window::position_sidebar,
             platform::window::toggle_sidebar,
             platform::window::hide_sidebar,
-            platform::window::show_badge,
-            platform::window::hide_badge,
-            platform::window::resize_badge,
+            platform::window::hide_flyout,
             platform::work_area::reserve_work_area,
             platform::work_area::restore_work_area,
             platform::hotkey::register_hotkey,
             platform::hotkey::unregister_hotkey,
             platform::tray::update_tray_tooltip,
+            platform::tray::update_tray_icon,
+            platform::flyout_cache::cache_flyout_data,
+            platform::flyout_cache::get_flyout_data,
             platform::theme::get_system_theme,
             platform::logs::get_log_folder,
             platform::logs::open_log_folder,
@@ -151,6 +149,8 @@ pub fn run() {
             updater::download_and_install_update,
             // Claude API
             claude_api::generate_pr_summary,
+            // Azure DevOps HTTP proxy (CORS bypass)
+            ado::ado_fetch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

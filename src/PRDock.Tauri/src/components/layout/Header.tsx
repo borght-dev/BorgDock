@@ -48,7 +48,6 @@ export function Header() {
       // always-on-top WebView2 windows on Windows.
       useUiStore.getState().setSidebarVisible(false);
       await invoke('hide_sidebar');
-      await invoke('show_badge', { count: 0 });
     } catch (err) {
       console.error('Failed to minimize:', err);
     }

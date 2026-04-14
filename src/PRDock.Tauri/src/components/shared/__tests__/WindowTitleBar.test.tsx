@@ -107,4 +107,21 @@ describe('WindowTitleBar', () => {
     rerender(<WindowTitleBar title="Second" />);
     expect(screen.getByText('Second')).toBeTruthy();
   });
+
+  it('renders without crashing when getCurrentWindow throws', async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    vi.mocked(getCurrentWindow).mockImplementation(() => {
+      throw new Error('__TAURI_INTERNALS__ not available');
+    });
+
+    // Must not throw — the title bar should still render
+    cleanup();
+    render(<WindowTitleBar title="Fallback" />);
+    expect(screen.getByText('Fallback')).toBeTruthy();
+    expect(screen.getByLabelText('Close')).toBeTruthy();
+
+    // Clicking buttons should not throw even without a window handle
+    fireEvent.click(screen.getByLabelText('Minimize'));
+    fireEvent.click(screen.getByLabelText('Close'));
+  });
 });

@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
 
 /// Tracks whether the main sidebar window is currently shown.
 ///
@@ -101,29 +101,157 @@ pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Build the badge window (hidden). Must be called from the main thread —
-/// `WebviewWindowBuilder::build()` on Windows deadlocks when called from a
-/// background tokio task because WebView2 window creation needs the main
-/// thread. We call this once at startup so `show_badge` can later just fetch
-/// the existing window via `get_webview_window`.
-pub(crate) fn create_badge_window(app: &tauri::AppHandle) -> Result<(), String> {
-    if app.get_webview_window("badge").is_some() {
-        return Ok(());
+// ---------------------------------------------------------------------------
+// Flyout window (replaces the old floating badge)
+// ---------------------------------------------------------------------------
+
+/// Toggle the flyout window: show + focus if hidden/absent, hide if visible.
+/// Called from the tray icon left-click handler.
+pub(crate) fn toggle_flyout(app: &tauri::AppHandle) -> Result<(), String> {
+    // If the mouse hook just hid the flyout (e.g. the tray click itself was
+    // detected as a click-outside), don't immediately re-show it.
+    #[cfg(target_os = "windows")]
+    {
+        if super::click_outside::millis_since_outside_hide() < 300 {
+            log::info!("toggle_flyout: suppressing show (recent click-outside hide)");
+            return Ok(());
+        }
     }
-    WebviewWindowBuilder::new(app, "badge", WebviewUrl::App("badge.html".into()))
-        .title("PRDock Badge")
-        .inner_size(380.0, 56.0)
+    if let Some(win) = app.get_webview_window("flyout") {
+        // Window exists — toggle visibility
+        let visible = win.is_visible().unwrap_or(false);
+        if visible {
+            log::info!("toggle_flyout: hiding");
+            #[cfg(target_os = "windows")]
+            super::click_outside::uninstall_hook();
+            win.hide().map_err(|e| e.to_string())?;
+        } else {
+            log::info!("toggle_flyout: showing existing");
+            position_flyout_above_tray(app, &win)?;
+            win.show().map_err(|e| e.to_string())?;
+            let _ = win.set_always_on_top(true);
+            force_repaint(&win);
+            let _ = win.set_focus();
+            install_click_outside_hook(app, &win);
+            // Nudge the main window to send fresh data to the flyout
+            let _ = app.emit_to("main", "flyout-request-data", ());
+        }
+    } else {
+        // Create lazily on first open
+        log::info!("toggle_flyout: creating new window");
+        let win = WebviewWindowBuilder::new(
+            app,
+            "flyout",
+            WebviewUrl::App("flyout.html".into()),
+        )
+        .title("PRDock")
+        .inner_size(412.0, 512.0)
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
         .resizable(false)
-        .shadow(false)
-        .visible(false)
         .skip_taskbar(true)
+        .shadow(false)
+        .visible(false) // position first, then show
+        .focused(true)
         .build()
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+        position_flyout_above_tray(app, &win)?;
+        let _ = win.show();
+        let _ = win.set_always_on_top(true);
+        force_repaint(&win);
+        let _ = win.set_focus();
+        install_click_outside_hook(app, &win);
+
+        // Auto-hide on focus loss — only on non-Windows.
+        // On Windows Focused(false) fires spuriously during the window's
+        // initial setup (two events before React even mounts), which would
+        // hide the freshly-created flyout before it's usable. The
+        // WH_MOUSE_LL hook is the real click-outside mechanism on Windows.
+        #[cfg(not(target_os = "windows"))]
+        {
+            let app_handle = app.clone();
+            win.on_window_event(move |event| {
+                if let tauri::WindowEvent::Focused(false) = event {
+                    log::info!("flyout lost focus — hiding");
+                    if let Some(fw) = app_handle.get_webview_window("flyout") {
+                        let _ = fw.hide();
+                    }
+                }
+            });
+        }
+    }
+    Ok(())
 }
+
+fn install_click_outside_hook(_app: &tauri::AppHandle, _win: &WebviewWindow) {
+    #[cfg(target_os = "windows")]
+    {
+        match _win.hwnd() {
+            Ok(hwnd) => {
+                let hwnd_val = hwnd.0 as isize;
+                if let Err(e) = super::click_outside::install_hook(_app.clone(), hwnd_val) {
+                    log::error!("click_outside install_hook failed: {e}");
+                }
+            }
+            Err(e) => log::error!("flyout hwnd() failed: {e}"),
+        }
+    }
+}
+
+/// Position the flyout window above the system tray area.
+/// We approximate the tray position: Windows puts it in the bottom-right.
+fn position_flyout_above_tray(app: &tauri::AppHandle, win: &WebviewWindow) -> Result<(), String> {
+    let scale = win.scale_factor().unwrap_or(1.0);
+    // 380px panel + 32px padding (16px each side) for shadow overflow
+    let flyout_w = (412.0 * scale) as i32;
+    let flyout_h = (512.0 * scale) as i32;
+
+    // Try to use the primary monitor's work area
+    let (screen_w, screen_h, screen_x, screen_y) = if let Some(monitor) = app
+        .get_webview_window("main")
+        .and_then(|w| w.current_monitor().ok().flatten())
+    {
+        let s = monitor.size();
+        let p = monitor.position();
+        (s.width as i32, s.height as i32, p.x, p.y)
+    } else {
+        (1920, 1080, 0, 0)
+    };
+
+    // Place it so the panel (380px inner) sits above the taskbar.
+    // The window is 420px wide — the extra 40px is shadow padding.
+    // Anchor the panel's right edge near the tray area.
+    let taskbar_h = (48.0 * scale) as i32;
+    let x = screen_x + screen_w - flyout_w;
+    let y = screen_y + screen_h - taskbar_h - flyout_h;
+
+    win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
+        .map_err(|e| e.to_string())?;
+    win.set_size(tauri::Size::Physical(PhysicalSize::new(
+        flyout_w as u32,
+        flyout_h as u32,
+    )))
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Force a repaint on transparent WebView2 windows (Windows workaround).
+fn force_repaint(win: &WebviewWindow) {
+    if let Ok(size) = win.outer_size() {
+        if size.width > 1 {
+            let shrunk = PhysicalSize::new(size.width - 1, size.height);
+            let _ = win.set_size(tauri::Size::Physical(shrunk));
+        }
+        let _ = win.set_size(tauri::Size::Physical(size));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Existing commands
+// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn position_sidebar(app: tauri::AppHandle, edge: String, width: u32) -> Result<(), String> {
@@ -133,145 +261,23 @@ pub fn position_sidebar(app: tauri::AppHandle, edge: String, width: u32) -> Resu
 
 #[tauri::command]
 pub fn toggle_sidebar(app: tauri::AppHandle) -> Result<bool, String> {
-    // Despite the name, this command is only ever invoked from paths that want
-    // to *show* the sidebar (badge expand, etc.). The old implementation
-    // branched on `win.is_visible()`, but on Windows that returns false for
-    // transparent always-on-top WebView2 windows even when they're visible, so
-    // the hide branch never fired and the show branch was a no-op. Callers
-    // that want to hide now invoke `hide_sidebar` directly.
     show_main_window(&app)?;
     Ok(true)
 }
 
 #[tauri::command]
-pub fn show_badge(app: tauri::AppHandle, _count: u32) -> Result<(), String> {
-    log::info!("show_badge: begin");
-
-    // Respect the user's "badge enabled" setting — if disabled, silently no-op.
-    if let Ok(settings) = crate::settings::load_settings_internal() {
-        if !settings.ui.badge_enabled {
-            log::info!("show_badge: badge disabled in settings — skipping");
-            return Ok(());
-        }
-    }
-
-    // The badge window is created eagerly during setup on the main thread.
-    // Don't try to build it here — Tauri's window builder deadlocks when
-    // called from a tokio task on Windows.
-    let badge_win = app
-        .get_webview_window("badge")
-        .ok_or_else(|| "badge window not found (should be created at startup)".to_string())?;
-    log::info!("show_badge: got badge window");
-
-    // Position badge at top-center of primary monitor
-    if let Ok(Some(monitor)) = badge_win.current_monitor() {
-        let screen_size = monitor.size();
-        let screen_pos = monitor.position();
-        let scale = badge_win.scale_factor().unwrap_or(1.0);
-        let badge_width = (380.0 * scale) as u32;
-        let badge_height = (56.0 * scale) as u32;
-        let x = screen_pos.x + (screen_size.width as i32 - badge_width as i32) / 2;
-        let y = screen_pos.y + 8;
-        let _ = badge_win.set_position(tauri::Position::Physical(
-            PhysicalPosition::new(x, y),
-        ));
-        let _ = badge_win.set_size(tauri::Size::Physical(PhysicalSize::new(
-            badge_width,
-            badge_height,
-        )));
-    }
-    badge_win.show().map_err(|e| {
-        log::error!("show_badge: show() failed: {e}");
-        e.to_string()
-    })?;
-    badge_win.set_always_on_top(true).map_err(|e| {
-        log::error!("show_badge: set_always_on_top failed: {e}");
-        e.to_string()
-    })?;
-
-    // Force the compositor to repaint the transparent window.
-    // Without this, WebView2 transparent windows can render as a blank
-    // (fully invisible) rectangle — same workaround used in toggle_sidebar.
-    if let Ok(size) = badge_win.outer_size() {
-        let _ = badge_win.set_size(tauri::Size::Physical(size));
-    }
-
-    log::info!("show_badge: done");
-    Ok(())
-}
-
-/// Resize the badge window, keeping it centered horizontally.
-/// `anchor`: `"top"` keeps the top edge fixed, `"bottom"` keeps the bottom edge fixed,
-///           `"auto"` grows upward only if the window would go off-screen.
-/// Returns `"up"` if the window grew/anchored upward, `"down"` otherwise.
-#[tauri::command]
-pub fn resize_badge(
-    app: tauri::AppHandle,
-    width: u32,
-    height: u32,
-    anchor: Option<String>,
-) -> Result<String, String> {
-    let mut direction = "down".to_string();
-    let anchor = anchor.unwrap_or_else(|| "auto".to_string());
-
-    if let Some(badge_win) = app.get_webview_window("badge") {
-        let scale = badge_win.scale_factor().unwrap_or(1.0);
-        let pw = (width as f64 * scale) as u32;
-        let ph = (height as f64 * scale) as u32;
-
-        if let (Ok(cur_pos), Ok(cur_size)) = (badge_win.outer_position(), badge_win.outer_size()) {
-            let mid_x = cur_pos.x + cur_size.width as i32 / 2;
-            let new_x = mid_x - (pw as i32) / 2;
-            let cur_bottom = cur_pos.y + cur_size.height as i32;
-
-            let new_y = if anchor == "bottom" {
-                // Keep bottom edge fixed
-                direction = "up".to_string();
-                cur_bottom - ph as i32
-            } else if anchor == "top" {
-                // Keep top edge fixed
-                cur_pos.y
-            } else {
-                // Auto: grow upward only if expanding would go off-screen
-                let mut y = cur_pos.y;
-                if let Ok(Some(monitor)) = badge_win.current_monitor() {
-                    let screen_bottom = monitor.position().y + monitor.size().height as i32;
-                    if cur_pos.y + ph as i32 > screen_bottom {
-                        y = cur_bottom - ph as i32;
-                        direction = "up".to_string();
-                    }
-                }
-                y
-            };
-
-            let _ = badge_win.set_position(tauri::Position::Physical(
-                tauri::PhysicalPosition::new(new_x, new_y),
-            ));
-        }
-
-        badge_win
-            .set_size(tauri::Size::Physical(tauri::PhysicalSize::new(pw, ph)))
-            .map_err(|e| e.to_string())?;
-    }
-    Ok(direction)
-}
-
-#[tauri::command]
-pub fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
-    log::info!("hide_badge: begin");
-    if let Some(badge_win) = app.get_webview_window("badge") {
-        badge_win.hide().map_err(|e| {
-            log::error!("hide_badge: hide() failed: {e}");
-            e.to_string()
-        })?;
-    }
-    log::info!("hide_badge: done");
-    Ok(())
-}
-
-#[tauri::command]
 pub fn hide_sidebar(app: tauri::AppHandle) -> Result<(), String> {
     hide_main_window(&app)
+}
+
+#[tauri::command]
+pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    crate::platform::click_outside::uninstall_hook();
+    if let Some(win) = app.get_webview_window("flyout") {
+        win.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
