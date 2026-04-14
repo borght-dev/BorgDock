@@ -8,6 +8,7 @@ export interface PullRequest {
   number: number;
   title: string;
   headRef: string;
+  headSha?: string;
   baseRef: string;
   authorLogin: string;
   authorAvatarUrl: string;

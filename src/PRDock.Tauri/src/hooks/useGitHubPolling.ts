@@ -92,6 +92,12 @@ export function useGitHubPolling(settings: AppSettings) {
               allPrs.push(result.value);
             } else {
               failedCheckFetches++;
+              log.warn('poll: check-runs fetch failed for PR', {
+                repo: repoLabel,
+                pr: prs[j]!.number,
+                ref: prs[j]!.headRef,
+                error: String(result.reason),
+              });
               allPrs.push(aggregatePrWithChecks(prs[j]!, []));
             }
           }

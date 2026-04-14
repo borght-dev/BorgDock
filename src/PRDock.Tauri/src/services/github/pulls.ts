@@ -13,6 +13,7 @@ interface GitHubUserDto {
 
 interface GitHubRefDto {
   ref: string;
+  sha: string;
 }
 
 interface GitHubLabelDto {
@@ -263,6 +264,7 @@ function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string
     number: dto.number,
     title: dto.title ?? '',
     headRef: dto.head?.ref ?? '',
+    headSha: dto.head?.sha ?? '',
     baseRef: dto.base?.ref ?? '',
     authorLogin: dto.user?.login ?? '',
     authorAvatarUrl: dto.user?.avatar_url ?? '',

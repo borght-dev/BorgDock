@@ -194,8 +194,13 @@ export class GitHubClient {
     this.checkResponseForAuthErrors(response, 'PUT', path);
 
     if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const errorBody = await response.json();
+        if (errorBody?.message) detail = errorBody.message;
+      } catch { /* ignore */ }
       throw new GitHubApiError(
-        `GitHub API error: ${response.status} ${response.statusText}`,
+        `GitHub API error: ${response.status} — ${detail}`,
         response.status,
       );
     }

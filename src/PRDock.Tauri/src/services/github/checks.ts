@@ -39,8 +39,9 @@ export async function getCheckSuites(
   repo: string,
   ref: string,
 ): Promise<CheckSuite[]> {
+  const encodedRef = encodeURIComponent(ref);
   const response = await client.get<GitHubCheckSuitesResponse>(
-    `repos/${owner}/${repo}/commits/${ref}/check-suites`,
+    `repos/${owner}/${repo}/commits/${encodedRef}/check-suites`,
   );
 
   return response.check_suites.map((dto) => ({
@@ -80,20 +81,33 @@ export async function getCheckRunsForRef(
   repo: string,
   ref: string,
 ): Promise<CheckRun[]> {
-  const response = await client.get<GitHubCheckRunsResponse>(
-    `repos/${owner}/${repo}/commits/${ref}/check-runs`,
-  );
+  const encodedRef = encodeURIComponent(ref);
+  const allRuns: CheckRun[] = [];
+  let page = 1;
 
-  return response.check_runs.map((dto) => ({
-    id: dto.id,
-    name: dto.name,
-    status: dto.status,
-    conclusion: dto.conclusion ?? undefined,
-    startedAt: dto.started_at ?? undefined,
-    completedAt: dto.completed_at ?? undefined,
-    htmlUrl: dto.html_url,
-    checkSuiteId: dto.check_suite?.id ?? 0,
-  }));
+  while (true) {
+    const response = await client.get<GitHubCheckRunsResponse>(
+      `repos/${owner}/${repo}/commits/${encodedRef}/check-runs?per_page=100&page=${page}`,
+    );
+
+    for (const dto of response.check_runs) {
+      allRuns.push({
+        id: dto.id,
+        name: dto.name,
+        status: dto.status,
+        conclusion: dto.conclusion ?? undefined,
+        startedAt: dto.started_at ?? undefined,
+        completedAt: dto.completed_at ?? undefined,
+        htmlUrl: dto.html_url,
+        checkSuiteId: dto.check_suite?.id ?? 0,
+      });
+    }
+
+    if (allRuns.length >= response.total_count || response.check_runs.length < 100) break;
+    page++;
+  }
+
+  return allRuns;
 }
 
 export async function getJobLog(
