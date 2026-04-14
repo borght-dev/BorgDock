@@ -37,3 +37,8 @@ promo-video/
 
 ## Claude Code worktrees (temporary agent workspaces)
 .claude/worktrees/
+
+## Transient dev artifacts
+src/PRDock.Tauri/tsc.log
+src/PRDock.Tauri/test-window.html
+.codex/
