@@ -1449,6 +1449,79 @@ select.field-input option {
 }
 
 /* ════════════════════════════════════════════════════════
+   Tactile buttons
+   Tailwind v4 removed the default cursor: pointer on <button>;
+   restore it so interactive controls feel interactive. The press
+   feedback (scale + darker bg) is intentional — 80 ms scale is fast
+   enough to register as "clicked" without feeling rubbery.
+   ════════════════════════════════════════════════════════ */
+
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
+/* Small icon button inside a header (e.g. the X and pop-out icons
+   on the PR detail header). Pairs with Tailwind sizing utilities. */
+.tactile-icon-btn {
+  transition: background 120ms ease, color 120ms ease, transform 80ms ease;
+}
+.tactile-icon-btn:active:not(:disabled) {
+  background: var(--color-icon-btn-pressed);
+  transform: scale(0.9);
+}
+.tactile-icon-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Native-style min/max/close cluster for chromeless windows.
+   Laid out as a no-drag group so clicks reach the button even
+   when the parent is a data-tauri-drag-region. */
+.window-ctrl-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.window-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--color-icon-btn-fg);
+  border-radius: 6px;
+  transition: background 120ms ease, color 120ms ease, transform 80ms ease;
+}
+.window-ctrl-btn:hover {
+  background: var(--color-icon-btn-hover);
+  color: var(--color-text-primary);
+}
+.window-ctrl-btn:active:not(:disabled) {
+  background: var(--color-icon-btn-pressed);
+  transform: scale(0.92);
+}
+.window-ctrl-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.window-ctrl-btn--close:hover {
+  background: #e81123;
+  color: #ffffff;
+}
+.window-ctrl-btn--close:active:not(:disabled) {
+  background: #b40d1b;
+  color: #ffffff;
+  transform: scale(0.92);
+}
+
+/* ════════════════════════════════════════════════════════
    SQL Query Window
    ════════════════════════════════════════════════════════ */
 
