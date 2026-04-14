@@ -12,12 +12,14 @@ static LAST_ICON_STATE: AtomicU64 = AtomicU64::new(u64::MAX);
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItemBuilder::with_id("show", "Show sidebar").build(app)?;
     let settings = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
+    let whats_new = MenuItemBuilder::with_id("whats_new", "What's new…").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
     let menu = MenuBuilder::new(app)
         .item(&show)
         .item(&settings)
+        .item(&whats_new)
         .item(&separator)
         .item(&quit)
         .build()?;
@@ -46,6 +48,19 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         let _ = win.emit("open-settings", ());
                     }
                 }
+            }
+            "whats_new" => {
+                let app_handle = app.clone();
+                let _ = app.run_on_main_thread(move || {
+                    let app_inner = app_handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) =
+                            crate::platform::window::open_whats_new_window(app_inner, None).await
+                        {
+                            log::error!("tray whats_new open failed: {e}");
+                        }
+                    });
+                });
             }
             "quit" => {
                 app.exit(0);
