@@ -241,6 +241,21 @@
     rgba(130, 80, 223, 0.08) 50%,
     rgba(130, 80, 223, 0.0) 70%
   );
+
+  /* "What's new" kind badges */
+  --color-whats-new-new-fg: #2E8E78;
+  --color-whats-new-new-bg: rgba(59, 166, 142, 0.08);
+  --color-whats-new-new-border: rgba(59, 166, 142, 0.22);
+
+  --color-whats-new-improved-fg: #8A5F06;
+  --color-whats-new-improved-bg: rgba(176, 125, 9, 0.08);
+  --color-whats-new-improved-border: rgba(176, 125, 9, 0.22);
+
+  --color-whats-new-fixed-fg: #6655D4;
+  --color-whats-new-fixed-bg: rgba(124, 106, 246, 0.08);
+  --color-whats-new-fixed-border: rgba(124, 106, 246, 0.22);
+
+  --color-whats-new-rail: rgba(124, 106, 246, 0.22);
 }
 
 /* ---- Dark theme overrides ---- */
@@ -442,6 +457,21 @@
     rgba(163, 113, 247, 0.1) 50%,
     rgba(163, 113, 247, 0.0) 70%
   );
+
+  /* "What's new" kind badges — dark */
+  --color-whats-new-new-fg: #7DD3C0;
+  --color-whats-new-new-bg: rgba(125, 211, 192, 0.07);
+  --color-whats-new-new-border: rgba(125, 211, 192, 0.20);
+
+  --color-whats-new-improved-fg: #F5B73B;
+  --color-whats-new-improved-bg: rgba(245, 183, 59, 0.06);
+  --color-whats-new-improved-border: rgba(245, 183, 59, 0.20);
+
+  --color-whats-new-fixed-fg: #B8B0F8;
+  --color-whats-new-fixed-bg: rgba(184, 176, 248, 0.06);
+  --color-whats-new-fixed-border: rgba(184, 176, 248, 0.20);
+
+  --color-whats-new-rail: rgba(124, 106, 246, 0.24);
 }
 
 /* ════════════════════════════════════════════════════════
