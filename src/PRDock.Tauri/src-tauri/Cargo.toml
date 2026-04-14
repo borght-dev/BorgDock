@@ -28,7 +28,10 @@ tauri-plugin-fs = "2"
 tauri-plugin-log = "2"
 tauri-plugin-os = "2"
 
-keyring = "3"
+# keyring 3.x defaults to a mock backend unless a platform feature is enabled.
+# apple-native + windows-native + sync-secret-service give us real OS keychains
+# on macOS, Windows, and Linux respectively.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
@@ -46,6 +49,10 @@ chrono = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 tauri-winrt-notification = "0.7"
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 [profile.release]
 strip = true
