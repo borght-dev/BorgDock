@@ -42,11 +42,14 @@ export function changelogPlugin(options: PluginOptions): Plugin {
         path.join(options.repoRoot, 'docs', 'whats-new'),
       ];
       for (const p of watchPaths) server.watcher.add(p);
+
+      const norm = (p: string) => p.replace(/\\/g, '/');
+      const changelogPath = norm(path.join(options.repoRoot, 'CHANGELOG.md'));
+      const docsPrefix = norm(path.join(options.repoRoot, 'docs', 'whats-new')) + '/';
+
       server.watcher.on('change', (changed) => {
-        if (
-          changed === path.join(options.repoRoot, 'CHANGELOG.md') ||
-          changed.startsWith(path.join(options.repoRoot, 'docs', 'whats-new') + path.sep)
-        ) {
+        const c = norm(changed);
+        if (c === changelogPath || c.startsWith(docsPrefix)) {
           try {
             run(options);
           } catch (err) {
