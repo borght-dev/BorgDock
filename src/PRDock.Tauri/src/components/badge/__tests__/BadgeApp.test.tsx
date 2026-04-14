@@ -80,7 +80,7 @@ describe('BadgeApp', () => {
     fireEvent.click(openBtn);
 
     await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('resize_badge', { width: 340, height: 48 });
+      expect(mockInvoke).toHaveBeenCalledWith('resize_badge', { width: 380, height: 56 });
       expect(mockInvoke).toHaveBeenCalledWith('toggle_sidebar');
       expect(mockInvoke).toHaveBeenCalledWith('hide_badge');
     });
@@ -238,13 +238,19 @@ describe('BadgeApp', () => {
     // Expand
     fireEvent.click(expandBtn);
     await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('resize_badge', expect.objectContaining({ width: 680 }));
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'resize_badge',
+        expect.objectContaining({ width: 680, height: 380, anchor: 'auto' }),
+      );
     });
 
     // Collapse
     fireEvent.click(expandBtn);
     await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('resize_badge', expect.objectContaining({ width: 340, height: 48 }));
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'resize_badge',
+        expect.objectContaining({ width: 380, height: 56 }),
+      );
     });
   });
 
