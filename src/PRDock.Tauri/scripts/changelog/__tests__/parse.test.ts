@@ -71,4 +71,67 @@ describe('parseChangelog', () => {
     expect(releases[0].highlights[0].title).toBe('Title here');
     expect(releases[0].highlights[0].description).toBe('Description with *markdown*.');
   });
+
+  it('lifts the first markdown image out of the bullet as the hero', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### New Features
+
+- **Close PRs** — Some copy. ![Close button](whats-new/1.0.11/close-pr.png) More copy.
+`;
+    const { releases, imageRefs } = parseChangelog(md);
+    const h = releases[0].highlights[0];
+    expect(h.hero).toEqual({ src: 'whats-new/1.0.11/close-pr.png', alt: 'Close button' });
+    expect(h.description).toBe('Some copy. More copy.');
+    expect(imageRefs).toEqual([
+      { version: '1.0.11', relPath: 'whats-new/1.0.11/close-pr.png', lineNumber: 5 },
+    ]);
+  });
+
+  it('uses the highlight title as hero alt when markdown alt is empty', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### Improvements
+
+- **Build integrity** — Copy. ![](whats-new/1.0.11/ci.png)
+`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].highlights[0].hero?.alt).toBe('Build integrity');
+  });
+
+  it('keeps second and later images inline in the description', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### New Features
+
+- **Thing** — Text ![](a.png) more ![](b.png).
+`;
+    const { releases } = parseChangelog(md);
+    const h = releases[0].highlights[0];
+    expect(h.hero?.src).toBe('a.png');
+    expect(h.description).toContain('![](b.png)');
+    expect(h.description).not.toContain('![](a.png)');
+  });
+
+  it('extracts the first kbd-looking backtick span into keyboard', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### New Features
+
+- **Close shortcut** — Hit \`Ctrl+Shift+W\` or \`F4\` to close.
+`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].highlights[0].keyboard).toBe('Ctrl+Shift+W');
+  });
+
+  it('ignores non-shortcut backticks', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### Bug Fixes
+
+- **Fix** — The \`WorktreePruneDialog\` no longer loops.
+`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].highlights[0].keyboard).toBeNull();
+  });
 });

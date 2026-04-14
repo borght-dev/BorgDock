@@ -6,6 +6,10 @@ const SECTION_HEADING = /^###\s+(.+?)\s*$/;
 const TITLE_BULLET = /^-\s+\*\*(.+?)\*\*\s*—\s+(.*)$/;
 const PLAIN_BULLET = /^-\s+(.+)$/;
 
+const MD_IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/;
+const SHORTCUT_TOKEN = /^(?:⌘|⇧|⌃|⌥|Ctrl|Cmd|Command|Alt|Option|Shift|Meta|Super)(?:[+\-](?:⌘|⇧|⌃|⌥|Ctrl|Cmd|Command|Alt|Option|Shift|Meta|Super|[A-Z0-9]|F\d{1,2}))+$|^F\d{1,2}$/;
+const BACKTICK_SPAN = /`([^`]+)`/g;
+
 const SECTION_TO_KIND: Record<string, Kind> = {
   'New Features': 'new',
   Improvements: 'improved',
@@ -20,13 +24,48 @@ function semverCompareDesc(a: string, b: string): number {
   return bPat - aPat;
 }
 
-function makeHighlight(kind: Kind, title: string, body: string): Highlight {
+function extractHero(body: string, fallbackAlt: string): {
+  body: string;
+  hero: Highlight['hero'];
+  heroRel: string | null;
+} {
+  const match = body.match(MD_IMAGE);
+  if (!match) return { body, hero: null, heroRel: null };
+  const [full, alt, src] = match;
+  // Collapse surrounding whitespace: remove the token and any trailing single space.
+  const cleaned = body.replace(full, '').replace(/  +/g, ' ').replace(/ +([.,;:!?])/g, '$1');
   return {
-    kind,
-    title,
-    description: body,
-    hero: null,
-    keyboard: null,
+    body: cleaned,
+    hero: { src, alt: alt.trim() || fallbackAlt },
+    heroRel: src,
+  };
+}
+
+function extractKeyboard(body: string): string | null {
+  let m: RegExpExecArray | null;
+  const re = new RegExp(BACKTICK_SPAN.source, 'g');
+  // eslint-disable-next-line no-cond-assign
+  while ((m = re.exec(body)) !== null) {
+    if (SHORTCUT_TOKEN.test(m[1])) return m[1];
+  }
+  return null;
+}
+
+function makeHighlight(kind: Kind, title: string, rawBody: string): {
+  highlight: Highlight;
+  heroRel: string | null;
+} {
+  const { body: bodyAfterHero, hero, heroRel } = extractHero(rawBody, title);
+  const keyboard = extractKeyboard(bodyAfterHero);
+  return {
+    highlight: {
+      kind,
+      title,
+      description: bodyAfterHero.trim(),
+      hero,
+      keyboard,
+    },
+    heroRel,
   };
 }
 
@@ -73,9 +112,11 @@ export function parseChangelog(md: string): ParsedChangelog {
 
     const titleMatch = line.match(TITLE_BULLET);
     if (titleMatch) {
-      currentRelease.highlights.push(
-        makeHighlight(currentKind, titleMatch[1], titleMatch[2]),
-      );
+      const { highlight, heroRel } = makeHighlight(currentKind, titleMatch[1], titleMatch[2]);
+      currentRelease.highlights.push(highlight);
+      if (heroRel) {
+        imageRefs.push({ version: currentRelease.version, relPath: heroRel, lineNumber: i + 1 });
+      }
       continue;
     }
 
