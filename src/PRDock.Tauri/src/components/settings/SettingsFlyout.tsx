@@ -17,13 +17,24 @@ import { SqlSection } from './SqlSection';
 import { UpdateSection } from './UpdateSection';
 
 export function SettingsFlyout() {
-  const { settings, saveSettings } = useSettingsStore();
+  // Use field selectors — destructuring the whole store (`useSettingsStore()`)
+  // forces a re-render on every unrelated store mutation, and combined with
+  // the old settings-dependent `update` callback it tripped the "Maximum
+  // update depth exceeded" loop.
+  const settings = useSettingsStore((s) => s.settings);
+  const saveSettings = useSettingsStore((s) => s.saveSettings);
   const isSettingsOpen = useUiStore((s) => s.isSettingsOpen);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const close = useCallback(() => setSettingsOpen(false), [setSettingsOpen]);
   const [isPruneOpen, setIsPruneOpen] = useState(false);
 
-  // Debounced auto-save: save 300ms after the last change
+  // Ref-mirror of settings so the debounced save / close-flush can read the
+  // latest value without the outer callbacks/effects depending on `settings`.
+  // This keeps `update` stable across renders so child sections don't receive
+  // fresh onChange props on every keystroke.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const save = useCallback(
     (next: AppSettings) => {
@@ -32,25 +43,24 @@ export function SettingsFlyout() {
     },
     [saveSettings],
   );
-  // Flush pending save on close
+
+  // Flush pending save on close — read `settings` from the ref so the effect
+  // doesn't re-fire on every keystroke.
   useEffect(() => {
     if (!isSettingsOpen && timerRef.current) {
       clearTimeout(timerRef.current);
-      // save whatever is current
-      saveSettings(settings);
+      saveSettings(settingsRef.current);
       timerRef.current = undefined;
     }
-  }, [isSettingsOpen, settings, saveSettings]);
+  }, [isSettingsOpen, saveSettings]);
 
   const update = useCallback(
     (partial: Partial<AppSettings>) => {
-      const next = { ...settings, ...partial };
-      // Optimistic update in store
+      const next = { ...settingsRef.current, ...partial };
       useSettingsStore.getState().updateSettings(partial);
-      // Debounced persist
       save(next);
     },
-    [settings, save],
+    [save],
   );
 
   // Close on Escape

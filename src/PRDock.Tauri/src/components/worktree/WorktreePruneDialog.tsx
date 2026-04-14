@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { WorktreeInfo } from '@/types';
@@ -59,27 +59,39 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   const [removeTotal, setRemoveTotal] = useState(0);
   const [error, setError] = useState('');
 
-  // Collect open PR branch names for comparison
-  const openBranches = new Set(pullRequests.map((pr) => pr.pullRequest.headRef));
-  const closedBranches = new Set(closedPullRequests.map((pr) => pr.pullRequest.headRef));
+  // Refs carry the latest PR + repo data into loadWorktrees without
+  // causing it to recompute on every render — the previous version built
+  // fresh `Set`s at the top of the component, those fed `classifyWorktree`'s
+  // deps, which fed `loadWorktrees`' deps, which fed the effect's deps, and
+  // the effect called setState → re-render → new Sets → infinite loop.
+  // (The dialog is rendered unconditionally inside SettingsFlyout, so this
+  // loop fired for every settings keystroke, preventing password persistence
+  // by continuously resetting the store's debounce timer.)
+  const prsRef = useRef(pullRequests);
+  prsRef.current = pullRequests;
+  const closedRef = useRef(closedPullRequests);
+  closedRef.current = closedPullRequests;
+  const reposRef = useRef(settings.repos);
+  reposRef.current = settings.repos;
 
   const classifyWorktree = useCallback(
-    (branchName: string): WorktreeStatus => {
-      // Strip refs/heads/ prefix if present
+    (branchName: string, openBranches: Set<string>, closedBranches: Set<string>): WorktreeStatus => {
       const shortName = branchName.replace(/^refs\/heads\//, '');
       if (openBranches.has(shortName) || openBranches.has(branchName)) return 'open';
       if (closedBranches.has(shortName) || closedBranches.has(branchName)) return 'closed';
       return 'orphaned';
     },
-    [openBranches, closedBranches],
+    [],
   );
 
   const loadWorktrees = useCallback(async () => {
     setIsLoading(true);
     setError('');
     const allRows: WorktreeRow[] = [];
+    const openBranches = new Set(prsRef.current.map((pr) => pr.pullRequest.headRef));
+    const closedBranches = new Set(closedRef.current.map((pr) => pr.pullRequest.headRef));
 
-    for (const repo of settings.repos) {
+    for (const repo of reposRef.current) {
       if (!repo.worktreeBasePath) continue;
 
       try {
@@ -89,7 +101,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
 
         for (const wt of worktrees) {
           if (wt.isMainWorktree) continue;
-          const status = classifyWorktree(wt.branchName);
+          const status = classifyWorktree(wt.branchName, openBranches, closedBranches);
           allRows.push({
             worktree: wt,
             repoKey: `${repo.owner}/${repo.name}`,
@@ -105,13 +117,16 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
 
     setRows(allRows);
     setIsLoading(false);
-  }, [settings.repos, classifyWorktree]);
+  }, [classifyWorktree]);
 
   useEffect(() => {
     if (isOpen) {
       void loadWorktrees();
     } else {
-      setRows([]);
+      // Only clear state if there's something to clear — setRows([]) with a
+      // fresh array reference would otherwise trigger a re-render even when
+      // the component was already empty.
+      setRows((prev) => (prev.length === 0 ? prev : []));
       setRemoveProgress(0);
       setRemoveTotal(0);
       setError('');
