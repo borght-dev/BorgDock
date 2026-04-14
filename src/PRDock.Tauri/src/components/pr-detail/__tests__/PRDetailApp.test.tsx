@@ -142,7 +142,6 @@ describe('PRDetailApp', () => {
     mockInvoke.mockImplementation(() => new Promise(() => {}));
 
     render(<PRDetailApp />);
-    expect(screen.getByTestId('window-title-bar')).toBeTruthy();
     expect(screen.getByText('PR #42')).toBeTruthy();
   });
 

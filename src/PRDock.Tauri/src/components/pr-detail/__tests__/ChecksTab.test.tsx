@@ -1,7 +1,12 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CheckRun } from '@/types';
 import { ChecksTab } from '../ChecksTab';
+
+const mockOpenUrl = vi.fn().mockResolvedValue(undefined);
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: (...args: unknown[]) => mockOpenUrl(...args),
+}));
 
 vi.mock('@/hooks/useClaudeActions', () => ({
   useClaudeActions: () => ({
@@ -112,15 +117,16 @@ describe('ChecksTab', () => {
     expect(screen.getByText('1 skipped')).toBeTruthy();
   });
 
-  it('renders check links with correct href', () => {
+  it('opens the check URL via the opener plugin on click', () => {
+    mockOpenUrl.mockClear();
     const checks = [
       makeCheck({ id: 1, name: 'build', htmlUrl: 'https://github.com/runs/1' }),
     ];
     render(<ChecksTab checks={checks} />);
-    const link = screen.getByText('build').closest('a');
-    expect(link).toBeTruthy();
-    expect(link?.getAttribute('href')).toBe('https://github.com/runs/1');
-    expect(link?.getAttribute('target')).toBe('_blank');
+    const row = screen.getByText('build').closest('[role="button"]') as HTMLElement | null;
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+    expect(mockOpenUrl).toHaveBeenCalledWith('https://github.com/runs/1');
   });
 
   it('shows "running" label for pending checks', () => {

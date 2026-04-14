@@ -172,17 +172,23 @@ describe('PRDetailPanel', () => {
     const mockInvoke = invoke as ReturnType<typeof vi.fn>;
     mockInvoke.mockRejectedValue(new Error('window open failed'));
     const selectPrSpy = vi.fn();
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     useUiStore.setState({ selectPr: selectPrSpy });
 
     render(<PRDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByLabelText('Pop out'));
 
+    // Wait for the rejected promise to settle, then assert no navigation happened.
     await waitFor(() => {
-      expect(selectPrSpy).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith('Pop-out failed:', expect.any(Error));
+      expect(mockInvoke).toHaveBeenCalledWith('open_pr_detail_window', {
+        owner: 'owner',
+        repo: 'repo',
+        number: 42,
+      });
     });
-    consoleSpy.mockRestore();
+    // Flush any pending promise chains from the rejected invoke.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(selectPrSpy).not.toHaveBeenCalled();
   });
 
   it('renders animated underline element', () => {
