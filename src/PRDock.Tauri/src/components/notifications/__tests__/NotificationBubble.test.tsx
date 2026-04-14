@@ -3,6 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { NotificationBubble } from '../NotificationBubble';
 import type { InAppNotification } from '@/types';
 
+const mockOpenUrl = vi.fn().mockResolvedValue(undefined);
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: (...args: unknown[]) => mockOpenUrl(...args),
+}));
+
 const makeNotification = (overrides: Partial<InAppNotification> = {}): InAppNotification => ({
   title: 'PR Merged',
   message: 'Your PR was merged successfully',
@@ -20,6 +25,7 @@ describe('NotificationBubble', () => {
     // This prevents the rAF-based progress loop from running in tests.
     window.requestAnimationFrame = () => 1;
     window.cancelAnimationFrame = () => {};
+    mockOpenUrl.mockClear();
   });
 
   afterEach(() => {
@@ -80,21 +86,22 @@ describe('NotificationBubble', () => {
     expect(screen.getByText('Details')).toBeDefined();
   });
 
-  it('action buttons are links with correct href', () => {
+  it('clicking an action button opens the url via the opener plugin', () => {
     const notification = makeNotification({
       actions: [{ label: 'View PR', url: 'https://github.com/pr/1' }],
     });
-    render(<NotificationBubble notification={notification} onDismiss={vi.fn()} />);
-    const link = screen.getByText('View PR') as HTMLAnchorElement;
-    expect(link.href).toBe('https://github.com/pr/1');
-    expect(link.target).toBe('_blank');
-    expect(link.rel).toContain('noopener');
+    const onDismiss = vi.fn();
+    render(<NotificationBubble notification={notification} onDismiss={onDismiss} />);
+    const button = screen.getByText('View PR');
+    fireEvent.click(button);
+    expect(mockOpenUrl).toHaveBeenCalledWith('https://github.com/pr/1');
   });
 
   it('does not render action buttons when actions is empty', () => {
     render(<NotificationBubble notification={makeNotification({ actions: [] })} onDismiss={vi.fn()} />);
-    const links = document.querySelectorAll('a');
-    expect(links.length).toBe(0);
+    // Only the dismiss button should be present when there are no actions.
+    const buttons = document.querySelectorAll('button');
+    expect(buttons.length).toBe(1);
   });
 
   it('calls onDismiss when dismiss button is clicked', () => {
