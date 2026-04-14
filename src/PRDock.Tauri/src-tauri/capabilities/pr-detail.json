@@ -15,6 +15,7 @@
     "core:window:allow-is-visible",
     "clipboard-manager:allow-write-text",
     "opener:default",
-    "clipboard-manager:default"
+    "clipboard-manager:default",
+    "log:default"
   ]
 }

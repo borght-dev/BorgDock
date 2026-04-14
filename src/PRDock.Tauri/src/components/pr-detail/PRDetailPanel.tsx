@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createLogger } from '@/services/logger';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ChecksTab } from './ChecksTab';
@@ -10,15 +12,46 @@ import { FilesTab } from './FilesTab';
 import { OverviewTab } from './OverviewTab';
 import { ReviewsTab } from './ReviewsTab';
 
+const log = createLogger('PRDetailPanel');
+
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
 
 interface PRDetailPanelProps {
   pr: PullRequestWithChecks;
+  /** Pop-out mode: the panel is hosting the entire PR detail window.
+   *  Makes the header the window drag region, hides the pop-out button,
+   *  shows native-style min/max/close controls, and routes the × button
+   *  to close the window instead of clearing the sidebar selection. */
+  popOutWindow?: boolean;
 }
 
-export function PRDetailPanel({ pr }: PRDetailPanelProps) {
+export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
   const selectPr = useUiStore((s) => s.selectPr);
+  const handleClose = useCallback(() => {
+    if (popOutWindow) {
+      getCurrentWindow()
+        .close()
+        .catch((err) => log.error('close window failed', err));
+    } else {
+      selectPr(null);
+    }
+  }, [popOutWindow, selectPr]);
+  const handleMinimize = useCallback(() => {
+    getCurrentWindow()
+      .minimize()
+      .catch((err) => log.error('minimize failed', err));
+  }, []);
+  const handleToggleMaximize = useCallback(async () => {
+    try {
+      const win = getCurrentWindow();
+      const isMax = await win.isMaximized();
+      if (isMax) await win.unmaximize();
+      else await win.maximize();
+    } catch (err) {
+      log.error('toggle maximize failed', err);
+    }
+  }, []);
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['Overview']));
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -35,13 +68,16 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
   }, [activeTab]);
 
   const handlePopOut = useCallback(() => {
-    invoke('open_pr_detail_window', {
-      owner: pr.pullRequest.repoOwner,
-      repo: pr.pullRequest.repoName,
-      number: pr.pullRequest.number,
-    })
-      .then(() => selectPr(null))
-      .catch((err) => console.error('Pop-out failed:', err));
+    const owner = pr.pullRequest.repoOwner;
+    const repo = pr.pullRequest.repoName;
+    const number = pr.pullRequest.number;
+    log.info('pop-out clicked', { owner, repo, number });
+    invoke('open_pr_detail_window', { owner, repo, number })
+      .then(() => {
+        log.info('pop-out invoke succeeded', { owner, repo, number });
+        selectPr(null);
+      })
+      .catch((err) => log.error('pop-out invoke failed', err, { owner, repo, number }));
   }, [pr, selectPr]);
 
   useEffect(() => {
@@ -54,51 +90,108 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-[var(--color-background)]">
-      {/* Header */}
-      <div className="flex items-start gap-2 border-b border-[var(--color-separator)] px-3 py-2.5">
-        <button
-          onClick={() => selectPr(null)}
-          className="mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
-          aria-label="Close"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
+      {/* Header — doubles as the window drag region when in pop-out mode */}
+      <div
+        className="flex items-start gap-2 border-b border-[var(--color-separator)] px-3 py-2.5"
+        {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
+      >
+        {!popOutWindow && (
+          <button
+            onClick={handleClose}
+            className="tactile-icon-btn mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)]"
+            aria-label="Close"
           >
-            <path d="m4 4 8 8M12 4 4 12" />
-          </svg>
-        </button>
-        <div className="min-w-0 flex-1">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="m4 4 8 8M12 4 4 12" />
+            </svg>
+          </button>
+        )}
+        <div
+          className="min-w-0 flex-1"
+          {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
+        >
           <h2 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
             {pr.pullRequest.title}
           </h2>
           <span className="text-xs text-[var(--color-text-muted)]">#{pr.pullRequest.number}</span>
         </div>
-        <button
-          onClick={handlePopOut}
-          className="mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
-          aria-label="Pop out"
-          title="Open in new window"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
+        {!popOutWindow && (
+          <button
+            onClick={handlePopOut}
+            className="tactile-icon-btn mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)]"
+            aria-label="Pop out"
+            title="Open in new window"
           >
-            <path d="M9 2h5v5" />
-            <path d="m14 2-7 7" />
-            <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-          </svg>
-        </button>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M9 2h5v5" />
+              <path d="m14 2-7 7" />
+              <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
+            </svg>
+          </button>
+        )}
+        {popOutWindow && (
+          <div className="window-ctrl-group -my-1 -mr-1">
+            <button
+              onClick={handleMinimize}
+              aria-label="Minimize"
+              title="Minimize"
+              className="window-ctrl-btn"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            </button>
+            <button
+              onClick={handleToggleMaximize}
+              aria-label="Maximize"
+              title="Maximize"
+              className="window-ctrl-btn"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <rect
+                  x="1.5"
+                  y="1.5"
+                  width="7"
+                  height="7"
+                  rx="1"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={handleClose}
+              aria-label="Close"
+              title="Close"
+              className="window-ctrl-btn window-ctrl-btn--close"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path
+                  d="M2 2l6 6M8 2l-6 6"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tab bar */}
@@ -157,7 +250,7 @@ export function PRDetailPanel({ pr }: PRDetailPanelProps) {
         )}
         {mountedTabs.has('Checks') && (
           <div className={activeTab === 'Checks' ? '' : 'hidden'}>
-            <ChecksTab checks={pr.checks} />
+            <ChecksTab checks={pr.checks} pr={pr} />
           </div>
         )}
         {mountedTabs.has('Reviews') && (

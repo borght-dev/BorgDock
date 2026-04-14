@@ -9,7 +9,6 @@ import { getOpenPRs } from '@/services/github/pulls';
 import { initClient } from '@/services/github/singleton';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
-import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { PRDetailPanel } from './PRDetailPanel';
 
 export function PRDetailApp() {
@@ -17,8 +16,22 @@ export function PRDetailApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Parse URL params
+  // Read params. Primary source is the global injected by Rust via
+  // initialization_script — URL query strings don't round-trip through
+  // WebviewUrl::App reliably on Windows (the '?' gets percent-encoded).
+  // We still fall back to URLSearchParams so manual dev (e.g. opening
+  // the page in a browser) keeps working.
   const { owner, repo, number } = useMemo(() => {
+    const injected = (window as unknown as {
+      __PRDOCK_PR_DETAIL__?: { owner?: string; repo?: string; number?: number };
+    }).__PRDOCK_PR_DETAIL__;
+    if (injected?.owner && injected.repo && injected.number) {
+      return {
+        owner: injected.owner,
+        repo: injected.repo,
+        number: injected.number,
+      };
+    }
     const params = new URLSearchParams(window.location.search);
     return {
       owner: params.get('owner') ?? '',
@@ -106,11 +119,39 @@ export function PRDetailApp() {
     })();
   }, [owner, repo, number]);
 
-  const titleText = pr
-    ? `PR #${number} — ${pr.pullRequest.title}`
-    : number
-      ? `PR #${number}`
-      : 'Pull Request';
+  // Thin header strip for pre-load states — stays draggable so the window
+  // can be moved even before the PR data has finished loading, and keeps a
+  // close button reachable in case the load hangs.
+  const closeThisWindow = () => {
+    getCurrentWindow()
+      .close()
+      .catch((err) => console.error('close window failed', err));
+  };
+  const preloadHeader = (
+    <div
+      data-tauri-drag-region
+      className="flex h-9 items-center justify-between border-b border-[var(--color-separator)] px-3 text-xs"
+      style={{ color: 'var(--color-text-muted)' }}
+    >
+      <span data-tauri-drag-region className="truncate">
+        {number ? `PR #${number}` : 'Pull Request'}
+      </span>
+      <button
+        onClick={closeThisWindow}
+        aria-label="Close"
+        className="window-ctrl-btn window-ctrl-btn--close"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10">
+          <path
+            d="M2 2l6 6M8 2l-6 6"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+    </div>
+  );
 
   if (error) {
     return (
@@ -118,7 +159,7 @@ export function PRDetailApp() {
         className="flex h-screen flex-col"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <WindowTitleBar title={titleText} />
+        {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
             {error}
@@ -134,7 +175,7 @@ export function PRDetailApp() {
         className="flex h-screen flex-col"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <WindowTitleBar title={titleText} />
+        {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
         </div>
@@ -144,9 +185,8 @@ export function PRDetailApp() {
 
   return (
     <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
-      <WindowTitleBar title={titleText} />
       <div className="relative flex-1 overflow-y-auto">
-        <PRDetailPanel pr={pr} />
+        <PRDetailPanel pr={pr} popOutWindow />
       </div>
     </div>
   );

@@ -281,38 +281,124 @@ pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_pr_detail_window(
+pub async fn open_pr_detail_window(
     app: tauri::AppHandle,
     owner: String,
     repo: String,
     number: u32,
 ) -> Result<(), String> {
-    let label = format!("pr-detail-{}-{}-{}", owner, repo, number);
+    // Sanitize label: replace characters that aren't valid in Tauri window
+    // labels (e.g. '.', '/') so things like "user.name/repo" don't break the
+    // get_webview_window lookup.
+    let safe = |s: &str| s.replace(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_', "_");
+    let label = format!("pr-detail-{}-{}-{}", safe(&owner), safe(&repo), number);
+    log::info!("open_pr_detail_window: entry label={label}, owner={owner}, repo={repo}, number={number}");
 
     // If the window already exists, just show and focus it
     if let Some(existing) = app.get_webview_window(&label) {
-        existing.show().map_err(|e| e.to_string())?;
-        existing.set_focus().map_err(|e| e.to_string())?;
+        log::info!("open_pr_detail_window: reusing existing window {label}");
+        existing.show().map_err(|e| {
+            log::error!("open_pr_detail_window: existing.show() failed: {e}");
+            e.to_string()
+        })?;
+        existing.set_focus().map_err(|e| {
+            log::error!("open_pr_detail_window: existing.set_focus() failed: {e}");
+            e.to_string()
+        })?;
         return Ok(());
     }
 
-    let url_str = format!(
-        "pr-detail.html?owner={}&repo={}&number={}",
-        urlencoding::encode(&owner),
-        urlencoding::encode(&repo),
-        number
+    // We avoid putting params in the URL query string because Tauri routes
+    // WebviewUrl::App through a PathBuf — on Windows '?' is reserved and gets
+    // percent-encoded, so `pr-detail.html?owner=...` becomes
+    // `pr-detail.html%3Fowner=...`, which Vite / the asset resolver 404s on.
+    // Inject params as a global instead; PRDetailApp.tsx reads them.
+    let owner_json = serde_json::to_string(&owner).map_err(|e| e.to_string())?;
+    let repo_json = serde_json::to_string(&repo).map_err(|e| e.to_string())?;
+    let init_script = format!(
+        "window.__PRDOCK_PR_DETAIL__ = {{ owner: {}, repo: {}, number: {} }};",
+        owner_json, repo_json, number
     );
+    log::info!("open_pr_detail_window: init_script built, dispatching to main thread");
 
-    WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url_str.into()))
-        .title(format!("PR #{} - {}/{}", number, owner, repo))
+    // Window creation must happen on the main (GUI) thread. When this command
+    // runs on a worker thread (which async tauri commands do), calling
+    // WebviewWindowBuilder::build() directly can hang because it dispatches to
+    // the main thread synchronously and deadlocks against itself. Using
+    // run_on_main_thread + a oneshot channel lets us wait for the real result.
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_build = app.clone();
+    let label_for_build = label.clone();
+    let title = format!("PR #{} - {}/{}", number, owner, repo);
+
+    app.run_on_main_thread(move || {
+        log::info!("open_pr_detail_window: on main thread, calling WebviewWindowBuilder::build for {label_for_build}");
+        let result = WebviewWindowBuilder::new(
+            &app_for_build,
+            &label_for_build,
+            WebviewUrl::App("pr-detail.html".into()),
+        )
+        .title(title)
         .inner_size(800.0, 900.0)
         .decorations(false)
         .resizable(true)
         .skip_taskbar(true)
-        .build()
-        .map_err(|e| e.to_string())?;
+        .center()
+        .focused(true)
+        .initialization_script(&init_script)
+        .build();
 
-    Ok(())
+        let send_result = match result {
+            Ok(win) => {
+                log::info!("open_pr_detail_window: build succeeded for {label_for_build}");
+                let _ = win.show();
+                let _ = win.set_focus();
+                // Re-apply skip_taskbar — on Windows the builder flag is
+                // sometimes ignored once the window is actually shown, and the
+                // entry shows up in the OS taskbar. Re-applying here forces
+                // the ITaskbarList2 removal to happen after the HWND is real.
+                if let Err(e) = win.set_skip_taskbar(true) {
+                    log::warn!("open_pr_detail_window: set_skip_taskbar failed for {label_for_build}: {e}");
+                }
+
+                // Schedule a delayed repaint so the window doesn't render blank
+                // on Windows if another window held focus at creation time.
+                let win_repaint = win.clone();
+                let label_repaint = label_for_build.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                    let _ = win_repaint.set_focus();
+                    let _ = win_repaint.set_skip_taskbar(true);
+                    force_repaint(&win_repaint);
+                    log::debug!("open_pr_detail_window: post-show repaint done for {label_repaint}");
+                });
+                Ok(())
+            }
+            Err(e) => {
+                log::error!("open_pr_detail_window: build failed for {label_for_build}: {e}");
+                Err(e.to_string())
+            }
+        };
+
+        if tx.send(send_result).is_err() {
+            log::warn!("open_pr_detail_window: receiver for {label_for_build} was dropped before result arrived");
+        }
+    })
+    .map_err(|e| {
+        log::error!("open_pr_detail_window: run_on_main_thread dispatch failed: {e}");
+        e.to_string()
+    })?;
+
+    match rx.await {
+        Ok(inner) => {
+            log::info!("open_pr_detail_window: command returning for {label}, ok={}", inner.is_ok());
+            inner
+        }
+        Err(e) => {
+            log::error!("open_pr_detail_window: oneshot recv failed for {label}: {e}");
+            Err(format!("main-thread build channel closed: {e}"))
+        }
+    }
 }
 
 fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {

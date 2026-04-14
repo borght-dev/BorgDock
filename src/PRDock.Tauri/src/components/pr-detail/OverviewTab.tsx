@@ -17,10 +17,13 @@ import {
   submitReview,
   toggleDraft,
 } from '@/services/github/mutations';
+import { createLogger } from '@/services/logger';
 import { getClient } from '@/services/github/singleton';
 import type { PullRequestWithChecks } from '@/types';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
+
+const log = createLogger('OverviewTab');
 
 interface OverviewTabProps {
   pr: PullRequestWithChecks;
@@ -45,22 +48,52 @@ function formatAge(dateStr: string): string {
   return `${days}d`;
 }
 
-function handleOpenInBrowser(url: string) {
-  import('@tauri-apps/plugin-opener')
-    .then(({ openUrl }) => {
-      openUrl(url).catch(console.error);
-    })
-    .catch(console.error);
+async function handleOpenInBrowser(url: string) {
+  log.info('open-in-browser clicked', { url });
+  try {
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
+    await openUrl(url);
+    log.info('openUrl succeeded', { url });
+  } catch (err) {
+    log.error('openUrl failed', err, { url });
+  }
 }
 
-function handleCopyBranch(branch: string) {
-  import('@tauri-apps/plugin-clipboard-manager')
-    .then(({ writeText }) => {
-      writeText(branch).catch(console.error);
-    })
-    .catch(() => {
-      navigator.clipboard.writeText(branch).catch(console.error);
+async function handleCopyBranch(branch: string) {
+  log.info('copy-branch clicked', { branch });
+  try {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+    await writeText(branch);
+    log.info('clipboard writeText succeeded', { branch });
+    return;
+  } catch (err) {
+    log.warn('tauri clipboard plugin failed, trying navigator.clipboard', {
+      error: String(err),
     });
+  }
+  try {
+    await navigator.clipboard?.writeText(branch);
+    log.info('navigator.clipboard succeeded', { branch });
+    return;
+  } catch (err) {
+    log.warn('navigator.clipboard failed, trying execCommand fallback', {
+      error: String(err),
+    });
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = branch;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (!ok) throw new Error('execCommand returned false');
+    log.info('execCommand copy succeeded', { branch });
+  } catch (err) {
+    log.error('all clipboard strategies failed', err, { branch });
+  }
 }
 
 export function OverviewTab({ pr }: OverviewTabProps) {
