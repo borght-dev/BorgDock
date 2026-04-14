@@ -1,4 +1,5 @@
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { openWhatsNew } from '@/hooks/useWhatsNew';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUpdateStore } from '@/stores/update-store';
 import type { UpdateSettings } from '@/types';
@@ -55,6 +56,12 @@ export function UpdateSection({ updates, onChange }: UpdateSectionProps) {
         {statusText && (
           <span className="text-[10px] text-[var(--color-text-muted)]">{statusText}</span>
         )}
+        <button
+          className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-action-secondary-fg)] bg-[var(--color-action-secondary-bg)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          onClick={() => openWhatsNew(null)}
+        >
+          View release notes
+        </button>
       </div>
 
       {downloading && (
