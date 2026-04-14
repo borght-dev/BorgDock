@@ -126,6 +126,20 @@ export function parseChangelog(md: string): ParsedChangelog {
     }
   }
 
+  for (const r of releases) {
+    r.summary = deriveSummary(r.highlights);
+    r.autoOpenEligible = r.highlights.some((h) => h.kind === 'new' || h.kind === 'improved');
+  }
+
   releases.sort((a, b) => semverCompareDesc(a.version, b.version));
   return { releases, imageRefs };
+}
+
+function deriveSummary(highlights: Highlight[]): string {
+  const titles = highlights.map((h) => h.title);
+  if (titles.length === 0) return '';
+  if (titles.length === 1) return `${titles[0]}.`;
+  if (titles.length === 2) return `${titles[0]} and ${titles[1]}.`;
+  if (titles.length === 3) return `${titles[0]}, ${titles[1]}, and ${titles[2]}.`;
+  return `${titles[0]}, ${titles[1]}, ${titles[2]}, and more.`;
 }

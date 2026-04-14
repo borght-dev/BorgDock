@@ -134,4 +134,45 @@ describe('parseChangelog', () => {
     const { releases } = parseChangelog(md);
     expect(releases[0].highlights[0].keyboard).toBeNull();
   });
+
+  it('summary is empty when there are no highlights', () => {
+    const md = `## 1.0.11 — 2026-04-14\n\n### Bug Fixes\n\n- plain fix.\n`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].summary).toBe('');
+  });
+
+  it('summary with one highlight ends with a period', () => {
+    const md = `## 1.0.11 — 2026-04-14\n\n### New Features\n\n- **Alpha** — desc.\n`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].summary).toBe('Alpha.');
+  });
+
+  it('summary with two highlights joins with "and"', () => {
+    const md = `## 1.0.11 — 2026-04-14\n\n### New Features\n\n- **Alpha** — a.\n- **Beta** — b.\n`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].summary).toBe('Alpha and Beta.');
+  });
+
+  it('summary with three highlights uses Oxford comma', () => {
+    const md = `## 1.0.11 — 2026-04-14\n\n### New Features\n\n- **Alpha** — a.\n- **Beta** — b.\n- **Gamma** — c.\n`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].summary).toBe('Alpha, Beta, and Gamma.');
+  });
+
+  it('summary with more than three truncates and adds "and more"', () => {
+    const md = `## 1.0.11 — 2026-04-14\n\n### New Features\n\n- **A** — a.\n- **B** — b.\n- **C** — c.\n- **D** — d.\n`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].summary).toBe('A, B, C, and more.');
+  });
+
+  it('autoOpenEligible is true when any highlight is new or improved', () => {
+    const mdNew = `## 1.0.11 — 2026-04-14\n\n### New Features\n\n- **A** — a.\n`;
+    const mdImp = `## 1.0.11 — 2026-04-14\n\n### Improvements\n\n- **A** — a.\n`;
+    const mdFixedOnly = `## 1.0.11 — 2026-04-14\n\n### Bug Fixes\n\n- **A** — a.\n`;
+    const mdAlsoOnly = `## 1.0.11 — 2026-04-14\n\n### Bug Fixes\n\n- plain.\n`;
+    expect(parseChangelog(mdNew).releases[0].autoOpenEligible).toBe(true);
+    expect(parseChangelog(mdImp).releases[0].autoOpenEligible).toBe(true);
+    expect(parseChangelog(mdFixedOnly).releases[0].autoOpenEligible).toBe(false);
+    expect(parseChangelog(mdAlsoOnly).releases[0].autoOpenEligible).toBe(false);
+  });
 });
