@@ -1,5 +1,15 @@
+import { invoke } from '@tauri-apps/api/core';
+
 const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503]);
 const MAX_RETRIES = 3;
+
+interface AdoFetchResponse {
+  status: number;
+  status_text: string;
+  body: string;
+  body_base64: string | null;
+  headers: Record<string, string>;
+}
 
 export class AdoClient {
   private readonly org: string;
@@ -14,9 +24,39 @@ export class AdoClient {
     this.authHeader = `Basic ${btoa(`:${pat}`)}`;
   }
 
+  /**
+   * Route all ADO HTTP requests through the Rust backend via Tauri IPC.
+   * Azure DevOps API does not return CORS headers for the Tauri webview
+   * origin, so browser fetch() fails with "Failed to fetch".
+   */
+  private async fetchViaTauri(url: string, init: RequestInit): Promise<Response> {
+    const headers: Record<string, string> = {};
+    if (init.headers) {
+      const h = init.headers as Record<string, string>;
+      for (const [k, v] of Object.entries(h)) {
+        headers[k] = v;
+      }
+    }
+
+    const result = await invoke<AdoFetchResponse>('ado_fetch', {
+      request: {
+        url,
+        method: (init.method ?? 'GET').toUpperCase(),
+        headers,
+        body: init.body ? String(init.body) : null,
+      },
+    });
+
+    return new Response(result.body, {
+      status: result.status,
+      statusText: result.status_text,
+      headers: new Headers(result.headers),
+    });
+  }
+
   private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const response = await fetch(url, init);
+      const response = await this.fetchViaTauri(url, init);
       if (!TRANSIENT_STATUS_CODES.has(response.status) || attempt === MAX_RETRIES) {
         return response;
       }
