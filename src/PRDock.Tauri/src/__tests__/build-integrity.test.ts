@@ -24,6 +24,7 @@ const ENTRY_POINTS = [
   { key: 'sql', html: 'sql.html', script: '/src/sql-main.tsx' },
   { key: 'worktree', html: 'worktree.html', script: '/src/worktree-main.tsx' },
   { key: 'workitem-detail', html: 'workitem-detail.html', script: '/src/workitem-detail-main.tsx' },
+  { key: 'whats-new', html: 'whats-new.html', script: '/src/whats-new-main.tsx' },
 ];
 
 // Rust-side window URLs → expected HTML file (must be a valid entry point)
@@ -39,6 +40,7 @@ const RUST_WINDOW_URLS: Record<string, string> = {
   flyout: 'flyout.html',
   badge: 'badge.html',
   'workitem-detail': 'workitem-detail.html',
+  'whats-new': 'whats-new.html',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────
