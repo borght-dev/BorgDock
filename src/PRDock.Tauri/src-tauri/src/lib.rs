@@ -122,6 +122,7 @@ pub fn run() {
             git::commands::run_gh_command,
             // Window
             platform::window::open_pr_detail_window,
+            platform::window::open_whats_new_window,
             // Process
             git::process::launch_claude_code,
             git::process::get_active_sessions,

@@ -401,6 +401,81 @@ pub async fn open_pr_detail_window(
     }
 }
 
+#[tauri::command]
+pub async fn open_whats_new_window(
+    app: tauri::AppHandle,
+    version: Option<String>,
+) -> Result<(), String> {
+    let label = "whats-new";
+    log::info!("open_whats_new_window: entry version={:?}", version);
+
+    if let Some(existing) = app.get_webview_window(label) {
+        log::info!("open_whats_new_window: reusing existing window");
+        if let Some(ref v) = version {
+            let v_json = serde_json::to_string(v).map_err(|e| e.to_string())?;
+            let _ = existing.eval(&format!(
+                "window.dispatchEvent(new CustomEvent('whats-new:navigate', {{ detail: {} }}))",
+                v_json
+            ));
+        }
+        existing.show().map_err(|e| e.to_string())?;
+        existing.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let version_json = match &version {
+        Some(v) => serde_json::to_string(v).map_err(|e| e.to_string())?,
+        None => "null".to_string(),
+    };
+    let init_script = format!(
+        "window.__PRDOCK_WHATS_NEW__ = {{ version: {} }};",
+        version_json
+    );
+
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_build = app.clone();
+
+    app.run_on_main_thread(move || {
+        let result = WebviewWindowBuilder::new(
+            &app_for_build,
+            label,
+            WebviewUrl::App("whats-new.html".into()),
+        )
+        .title("What's new in PRDock")
+        .inner_size(520.0, 640.0)
+        .min_inner_size(480.0, 480.0)
+        .resizable(true)
+        .skip_taskbar(true)
+        .center()
+        .focused(true)
+        .initialization_script(&init_script)
+        .build();
+
+        let send_result = match result {
+            Ok(win) => {
+                let _ = win.show();
+                let _ = win.set_focus();
+                let _ = win.set_skip_taskbar(true);
+                let win_repaint = win.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    let _ = win_repaint.set_focus();
+                    force_repaint(&win_repaint);
+                });
+                Ok(())
+            }
+            Err(e) => {
+                log::error!("open_whats_new_window: build failed: {e}");
+                Err(e.to_string())
+            }
+        };
+        let _ = tx.send(send_result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.await.map_err(|e| e.to_string())?
+}
+
 fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
     app.get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())
