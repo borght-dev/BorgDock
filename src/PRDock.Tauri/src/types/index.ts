@@ -44,6 +44,7 @@ export type {
   UpdateSettings,
 } from './settings';
 export type { UpdateInfo } from './update';
+export type { Kind, Highlight, Release } from './whats-new';
 export type {
   AdoQuery,
   AdoQueryResult,
