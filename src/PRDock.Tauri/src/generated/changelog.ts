@@ -2,4 +2,569 @@
 // Edit /CHANGELOG.md and re-run `npm run dev` or `npm run build`.
 import type { Release } from '@/types/whats-new';
 
-export const RELEASES: Release[] = [];
+export const RELEASES: Release[] = [
+  {
+    "version": "1.0.10",
+    "date": "2026-04-01",
+    "summary": "Actionable OS notifications, Click notifications to open PR details, and SQL runner shows all result sets.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Actionable OS notifications",
+        "description": "Toast notifications now include **Merge**, **Approve changes**, and **Bypass Merge** buttons so you can act on PRs directly from the notification without opening the app.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Click notifications to open PR details",
+        "description": "Clicking any OS toast notification now opens the PR detail window for that pull request.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "SQL runner shows all result sets",
+        "description": "Running multiple SQL statements now displays all result sets as labeled, stacked sections instead of only the first one. Selection and copy work across all result sets.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "1.0.3",
+    "date": "2026-03-10",
+    "summary": "Notifications now appear at the top-right of your screen.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Notifications now appear at the top-right of your screen",
+        "description": "The notification bubble has moved from the bottom-right to the top-right corner, making it much harder to miss. It's also larger and bolder, with a colored severity accent strip, bigger icons, and a stronger shadow for maximum visibility.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "1.0.2",
+    "date": "2026-03-10",
+    "summary": "Notification windows are no longer transparent.",
+    "highlights": [
+      {
+        "kind": "fixed",
+        "title": "Notification windows are no longer transparent",
+        "description": "Floating notifications and badge toasts now have a solid background instead of being see-through, so they're readable regardless of what's behind them.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": false
+  },
+  {
+    "version": "1.0.1",
+    "date": "2026-03-10",
+    "summary": "Theme-aware tray icon and Full brand icon set.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Theme-aware tray icon",
+        "description": "The system tray icon now automatically switches between light and dark variants to match your current theme, so it always looks right on your taskbar.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Full brand icon set",
+        "description": "Added a complete set of PRDock icons (brand, dark, light, favicon, and transparent mark) in SVG and PNG at multiple sizes for a polished identity across all contexts.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-03-10",
+    "summary": "Multi-signal merge readiness indicators, Squash & merge from the sidebar, Toggle draft / ready for review, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Multi-signal merge readiness indicators",
+        "description": "PR cards now display multiple signal indicators (CI status, reviews, conflicts, draft state) at a glance, replacing the old single-score ring with a richer, more informative view.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Squash & merge from the sidebar",
+        "description": "Merge PRs directly from PRDock with one click. The PR list auto-refreshes after the merge completes.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Toggle draft / ready for review",
+        "description": "Switch a PR between draft and ready-for-review without leaving your desktop.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "In-app notification bubbles",
+        "description": "Notifications now appear as polished in-app bubbles with smooth fade-and-slide animations, replacing the old OS toast popups.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Expandable floating badge",
+        "description": "The floating badge can now expand to show your full PR list, so you can check statuses without opening the sidebar. It also supports upward expansion for bottom-of-screen placement.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Manual refresh button",
+        "description": "A refresh button in the sidebar title bar lets you trigger an immediate data update anytime.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Polished animations throughout",
+        "description": "Sidebar slide-in, PR card expand, dialog entrances, badge fade, tab switching, and status dot pulse all have smooth, consistent motion powered by a centralized animation system.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Better status color contrast",
+        "description": "The yellow/orange status color has been tuned for better visibility next to red indicators.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Customizable indicator style",
+        "description": "Choose between different indicator display styles in Settings, with live preview as you switch.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Crisp SVG readiness icons",
+        "description": "Merge readiness icons now use sharp SVG paths with animated spinners for in-progress states.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Badge showcase mode",
+        "description": "Launch with `--showcase` to preview all floating badge variants side by side.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Fixed floating badge drifting out of position when expanding upward.",
+      "Fixed Markdown pipe tables not rendering correctly in review comments.",
+      "Fixed merge using the wrong strategy — now correctly uses squash merge to match repository settings.",
+      "Removed a redundant \"CHECKS\" section that appeared in expanded PR cards."
+    ],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "0.0.9",
+    "date": "2026-03-09",
+    "summary": "Customizable floating badge styles, Markdown tables in review comments, and Sortable review comments.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Customizable floating badge styles",
+        "description": "Choose from 5 different floating badge designs (minimal, detailed, dot, icon-only, and compact) to match your desktop aesthetic.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Markdown tables in review comments",
+        "description": "AI review comments containing tables now render as proper formatted tables instead of raw Markdown syntax.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Sortable review comments",
+        "description": "Review comments can now be sorted by severity, file, or line number, making it easier to triage code review feedback.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "0.0.8",
+    "date": "2026-03-09",
+    "summary": "Resizable PR detail window, Wider sidebar by default, Faster \"Fix with Claude\" launch, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Resizable PR detail window",
+        "description": "The PR detail panel now defaults to 800px wide and can be resized up to 1200px, giving you more room to review code changes, checks, and comments.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Wider sidebar by default",
+        "description": "The sidebar now starts at 800px wide (up from 420px) and can be expanded up to 1200px via the settings slider, so you can see more PR detail at a glance.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Faster \"Fix with Claude\" launch",
+        "description": "Worktree setup, file fetching, and log fetching now run in parallel, cutting the wait time before Claude Code opens.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Better worktree handling",
+        "description": "Existing worktrees are reused instead of failing, and the branch is always pulled to latest before launching Claude.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "fixed",
+        "title": "\"Fix with Claude\" now works",
+        "description": "Fixed two invalid CLI flags (`--cwd` and `--prompt-file`) that prevented Claude Code from launching. The button now correctly opens a new terminal tab with Claude ready to fix your CI failures.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "fixed",
+        "title": "Auto-update now detects new versions",
+        "description": "Update checks were silently failing because the GitHub token wasn't being passed to the update checker. Private repo releases are now properly authenticated.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "fixed",
+        "title": "No more detached HEAD in worktrees",
+        "description": "Worktrees are now created with a proper local tracking branch instead of a detached HEAD state.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "0.0.7",
+    "date": "2026-03-09",
+    "summary": "Monitor PR with Claude, Closed PRs filter tab, Playwright test failure parsing, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Monitor PR with Claude",
+        "description": "Launch a Claude Code session that watches your PR's CI pipeline, automatically fixes any failures, commits, pushes, and keeps checking until all checks pass. No more babysitting flaky builds.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Closed PRs filter tab",
+        "description": "A dedicated \"Closed\" filter lets you browse recently closed and merged PRs without cluttering your active PR list.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Playwright test failure parsing",
+        "description": "CI logs from Playwright test runs are now parsed and displayed with individual test names, browser info, error context, and a summary of passed/failed/flaky counts.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Smarter PR list ordering",
+        "description": "Your PRs always appear at the top, open PRs sort above drafts, and closed PRs are grouped at the bottom with a clear separator. At a glance, you can tell what's yours and what needs attention.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Visual \"my PR\" indicator",
+        "description": "Your own PRs now have an accent-colored left border so they stand out immediately in the list.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Redesigned PR detail window",
+        "description": "The detail view has been refreshed with improved layout and better AI review classification.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Copy for Claude auto-loads details",
+        "description": "The \"Copy for Claude\" button now automatically loads check details before copying, so you always get the full error context.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "fixed",
+        "title": "Setup wizard no longer reappears after updates",
+        "description": "Previously, the first-run wizard would show again after Velopack auto-updates. This is now fixed.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "0.0.6",
+    "date": "2026-03-09",
+    "summary": "Auto-updates now work correctly.",
+    "highlights": [
+      {
+        "kind": "fixed",
+        "title": "Auto-updates now work correctly",
+        "description": "Fixed an issue where the update checker was pointing to the wrong GitHub repository, preventing automatic updates from being detected and installed.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": false
+  },
+  {
+    "version": "0.0.5",
+    "date": "2026-03-09",
+    "summary": "Customizable global hotkey, Chromeless setup wizard, and Releases are now auto-published.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Customizable global hotkey",
+        "description": "You can now record and assign your own keyboard shortcut to toggle the sidebar, right from the Settings panel.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Chromeless setup wizard",
+        "description": "The first-run setup experience now uses a sleek, borderless window that feels native to the app.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Releases are now auto-published",
+        "description": "Tags pushed to GitHub automatically build, package, and publish a full release with generated changelogs. No more manual uploads.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "0.0.3",
+    "date": "2026-03-09",
+    "summary": "Quick-action shortcut buttons on PR cards and Reliable release pipeline.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Quick-action shortcut buttons on PR cards",
+        "description": "Checkout, open in browser, and other common actions are now just one click away directly on each PR card.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Reliable release pipeline",
+        "description": "The release workflow now runs on a self-hosted Windows runner with Velopack packaging, producing proper delta updates and Setup.exe installers.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Fixed an issue where fetching remote branches could fail silently during checkout.",
+      "Fixed a false \"you're on the latest version\" message that appeared even when updates were available."
+    ],
+    "autoOpenEligible": true
+  },
+  {
+    "version": "0.0.2",
+    "date": "2026-03-09",
+    "summary": "GitHub PR sidebar, Live CI/CD status, Failure log analysis, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "GitHub PR sidebar",
+        "description": "A docked desktop sidebar that monitors your GitHub pull requests in real time, with automatic polling and grouped-by-repo display.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Live CI/CD status",
+        "description": "See check suites and individual check runs directly on each PR card, with color-coded pass/fail indicators.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Failure log analysis",
+        "description": "When a CI check fails, PRDock parses the logs and surfaces the relevant error so you can diagnose issues without leaving your desktop.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Claude Code integration",
+        "description": "Launch Claude Code fix sessions in isolated git worktrees directly from failed checks, with generated prompts and process tracking.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Claude review panel",
+        "description": "View AI-generated code review comments grouped by severity, rendered with full Markdown support.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Floating badge",
+        "description": "A minimal, always-visible status pill shows your PR health at a glance even when the sidebar is hidden.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Desktop notifications",
+        "description": "Get toast notifications when PR statuses change, checks complete, or reviews come in.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Settings flyout",
+        "description": "Configure repos, themes, polling intervals, notifications, and more from an in-app settings panel.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Setup wizard",
+        "description": "A guided first-run experience walks you through GitHub authentication and repository selection.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Light and dark themes",
+        "description": "Switch between carefully designed light and dark color palettes.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Auto-hide sidebar",
+        "description": "The sidebar smoothly animates out of view when not in focus, reclaiming your screen real estate.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Keyboard navigation",
+        "description": "Navigate between PR cards with keyboard shortcuts for a mouse-free workflow.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Worktree management",
+        "description": "Browse, inspect, and prune git worktrees created by Claude Code sessions.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Recently closed PRs",
+        "description": "Merged and closed PRs stay visible briefly so you don't lose track of recent activity.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Merge conflict indicators",
+        "description": "PRs with merge conflicts are clearly flagged so you know what needs attention.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Retry and rate limiting",
+        "description": "Automatic retry with exponential backoff, plus a live display of your GitHub API rate limit usage.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Atomic settings",
+        "description": "Settings are saved atomically with backup recovery, so a crash mid-save won't corrupt your config.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "SQLite PR cache",
+        "description": "Previously fetched PRs load instantly on startup from a local cache while fresh data is fetched in the background.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Rich Markdown rendering",
+        "description": "Full AST-based Markdown rendering for review comments, with syntax highlighting and proper formatting.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "PR detail view",
+        "description": "Drill into any PR to see commits, changed files, comments, and review threads.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Auto-start on login",
+        "description": "Optionally launch PRDock when you sign in to Windows.",
+        "hero": null,
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Auto-update",
+        "description": "Built-in update checking and installation powered by Velopack, with delta updates for fast upgrades.",
+        "hero": null,
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  }
+];

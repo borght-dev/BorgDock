@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "path";
+import { changelogPlugin } from "./scripts/changelog/vite-plugin";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -10,6 +11,10 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    changelogPlugin({
+      packageRoot: __dirname,
+      repoRoot: path.resolve(__dirname, "../.."),
+    }),
     viteStaticCopy({
       targets: [
         {
