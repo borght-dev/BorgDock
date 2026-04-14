@@ -1,9 +1,12 @@
 import clsx from 'clsx';
+import { useCallback } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import type { CheckRun } from '@/types';
+import { useClaudeActions } from '@/hooks/useClaudeActions';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 
 interface ChecksTabProps {
   checks: CheckRun[];
+  pr?: PullRequestWithChecks;
 }
 
 /* ── Helpers ────────────────────────────────────────── */
@@ -204,7 +207,18 @@ function SummaryBar({ checks }: { checks: CheckRun[] }) {
 
 /* ── Main component ────────────────────────────────── */
 
-export function ChecksTab({ checks }: ChecksTabProps) {
+export function ChecksTab({ checks, pr }: ChecksTabProps) {
+  const { fixWithClaude } = useClaudeActions();
+
+  const handleFixCheck = useCallback(
+    (checkName: string) => {
+      if (!pr) return;
+      fixWithClaude(pr, [checkName], [], [], '').catch((err) =>
+        console.error('Fix with Claude failed:', err),
+      );
+    },
+    [pr, fixWithClaude],
+  );
   if (checks.length === 0) {
     return (
       <div className="checks-empty">
@@ -248,10 +262,13 @@ export function ChecksTab({ checks }: ChecksTabProps) {
                 const duration = formatDuration(run.startedAt, run.completedAt);
 
                 return (
-                  <button
+                  <div
                     key={run.id}
-                    onClick={() => openUrl(run.htmlUrl).catch(console.error)}
                     className={clsx('checks-run', `checks-run--${state}`)}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openUrl(run.htmlUrl).catch(console.error)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') openUrl(run.htmlUrl).catch(console.error); }}
                   >
                     <StatusSvg state={state} className="checks-run-icon" />
                     <span className="checks-run-name">{run.name}</span>
@@ -259,6 +276,20 @@ export function ChecksTab({ checks }: ChecksTabProps) {
                       <span className="checks-run-status-label">running</span>
                     )}
                     {duration && <span className="checks-run-duration">{duration}</span>}
+                    {state === 'failed' && pr && (
+                      <button
+                        className="checks-run-fix-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFixCheck(run.name);
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M8 1.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 1.5Z" />
+                        </svg>
+                        Fix
+                      </button>
+                    )}
                     <svg
                       width="10"
                       height="10"
@@ -271,7 +302,7 @@ export function ChecksTab({ checks }: ChecksTabProps) {
                     >
                       <path d="m6 4 4 4-4 4" />
                     </svg>
-                  </button>
+                  </div>
                 );
               })}
             </div>

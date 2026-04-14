@@ -1,7 +1,17 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CheckRun } from '@/types';
 import { ChecksTab } from '../ChecksTab';
+
+vi.mock('@/hooks/useClaudeActions', () => ({
+  useClaudeActions: () => ({
+    fixWithClaude: vi.fn().mockResolvedValue(undefined),
+    resolveConflicts: vi.fn().mockResolvedValue(undefined),
+    monitorPr: vi.fn().mockResolvedValue(undefined),
+    getMonitorPrompt: vi.fn(),
+    getFixPrompt: vi.fn(),
+  }),
+}));
 
 function makeCheck(overrides: Partial<CheckRun> = {}): CheckRun {
   return {
