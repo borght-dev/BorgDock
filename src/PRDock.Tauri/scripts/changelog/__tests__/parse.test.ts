@@ -20,4 +20,55 @@ describe('parseChangelog', () => {
     const md = `# Changelog\n\n## v1.0 — today\n`;
     expect(() => parseChangelog(md)).toThrow(/malformed version heading/i);
   });
+
+  it('maps ### sections to highlight kinds', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### New Features
+
+- **A** — one.
+
+### Improvements
+
+- **B** — two.
+
+### Bug Fixes
+
+- **C** — three.
+- plain fix without title.
+`;
+    const { releases } = parseChangelog(md);
+    const r = releases[0];
+    expect(r.highlights.map((h) => [h.kind, h.title])).toEqual([
+      ['new', 'A'],
+      ['improved', 'B'],
+      ['fixed', 'C'],
+    ]);
+    expect(r.alsoFixed).toEqual(['plain fix without title.']);
+  });
+
+  it('puts bugfix bullets without **title** into alsoFixed, not highlights', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### Bug Fixes
+
+- One plain fix.
+- Another one.
+`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].highlights).toHaveLength(0);
+    expect(releases[0].alsoFixed).toEqual(['One plain fix.', 'Another one.']);
+  });
+
+  it('splits title and description at " — "', () => {
+    const md = `## 1.0.11 — 2026-04-14
+
+### New Features
+
+- **Title here** — Description with *markdown*.
+`;
+    const { releases } = parseChangelog(md);
+    expect(releases[0].highlights[0].title).toBe('Title here');
+    expect(releases[0].highlights[0].description).toBe('Description with *markdown*.');
+  });
 });
