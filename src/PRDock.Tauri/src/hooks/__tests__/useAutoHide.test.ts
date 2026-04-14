@@ -282,7 +282,6 @@ describe('useAutoHide', () => {
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('hide_sidebar');
-      expect(mockInvoke).toHaveBeenCalledWith('show_badge', { count: 0 });
     });
 
     it('does not hide when window regains focus during debounce', async () => {
@@ -385,7 +384,7 @@ describe('useAutoHide', () => {
       expect(falseCalls).toHaveLength(0);
     });
 
-    it('shows sidebar and hides badge when focus is regained and window is visible', async () => {
+    it('shows sidebar when focus is regained and window is visible', async () => {
       mockInvoke.mockResolvedValue(undefined);
       mockIsVisible.mockResolvedValue(true);
 
@@ -402,8 +401,6 @@ describe('useAutoHide', () => {
       await vi.waitFor(() => {
         expect(mockSetSidebarVisible).toHaveBeenCalledWith(true);
       });
-
-      expect(mockInvoke).toHaveBeenCalledWith('hide_badge');
     });
 
     it('does not show sidebar when focus is regained but window is not visible', async () => {
@@ -472,8 +469,8 @@ describe('useAutoHide', () => {
     });
   });
 
-  describe('hideSidebarShowBadge', () => {
-    it('calls hide_sidebar and show_badge when timer fires', async () => {
+  describe('hideSidebar', () => {
+    it('calls hide_sidebar when timer fires', async () => {
       mockInvoke.mockResolvedValue(undefined);
       renderHook(() => useAutoHide(makeSettings('floating')));
 
@@ -486,10 +483,8 @@ describe('useAutoHide', () => {
         vi.advanceTimersByTime(3000);
       });
 
-      // The hideSidebarShowBadge function should have been called
       await vi.waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith('hide_sidebar');
-        expect(mockInvoke).toHaveBeenCalledWith('show_badge', { count: 0 });
       });
     });
   });

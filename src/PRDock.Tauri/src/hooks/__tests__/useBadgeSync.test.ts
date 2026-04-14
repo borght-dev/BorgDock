@@ -4,12 +4,13 @@ import type { PullRequest, PullRequestWithChecks } from '@/types';
 
 // --- Mocks ---
 
-const mockEmit = vi.fn().mockResolvedValue(undefined);
+const mockEmitTo = vi.fn().mockResolvedValue(undefined);
 const mockListen = vi.fn().mockResolvedValue(vi.fn());
 const mockInvoke = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@tauri-apps/api/event', () => ({
-  emit: (...args: unknown[]) => mockEmit(...args),
+  emit: vi.fn().mockResolvedValue(undefined),
+  emitTo: (...args: unknown[]) => mockEmitTo(...args),
   listen: (...args: unknown[]) => mockListen(...args),
 }));
 
@@ -21,17 +22,13 @@ vi.mock('@tauri-apps/api/core', () => ({
 const mockPrStoreState = {
   pullRequests: [] as PullRequestWithChecks[],
   username: 'testuser',
+  lastPollTime: null as Date | null,
 };
 
 const mockSettingsStoreState = {
   settings: {
-    ui: { badgeStyle: 'GlassCapsule', theme: 'dark' },
+    ui: { theme: 'dark', globalHotkey: 'Ctrl+Win+Shift+G' },
   },
-};
-
-const mockNotificationStoreState = {
-  activeNotification: null as unknown,
-  notifications: [] as unknown[],
 };
 
 const mockSelectPr = vi.fn();
@@ -56,19 +53,19 @@ vi.mock('@/stores/settings-store', () => ({
   ),
 }));
 
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: Object.assign(
-    (selector: (s: typeof mockNotificationStoreState) => unknown) =>
-      selector(mockNotificationStoreState),
-    { getState: () => mockNotificationStoreState },
-  ),
-}));
-
 vi.mock('@/stores/ui-store', () => ({
   useUiStore: Object.assign(
     (selector: (s: typeof mockUiStoreState) => unknown) => selector(mockUiStoreState),
     { getState: () => mockUiStoreState },
   ),
+}));
+
+// useClaudeActions pulls a lot of unrelated modules in — stub it.
+vi.mock('@/hooks/useClaudeActions', () => ({
+  useClaudeActions: () => ({
+    fixWithClaude: vi.fn().mockResolvedValue(undefined),
+    monitorPr: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 import { useBadgeSync } from '../useBadgeSync';
@@ -128,6 +125,13 @@ function makePrWithChecks(
   };
 }
 
+function findFlyoutPayload(): Record<string, unknown> | undefined {
+  const call = mockEmitTo.mock.calls.find(
+    (c) => c[0] === 'flyout' && c[1] === 'flyout-update',
+  );
+  return call?.[2];
+}
+
 // --- Tests ---
 
 describe('useBadgeSync', () => {
@@ -135,91 +139,180 @@ describe('useBadgeSync', () => {
     vi.clearAllMocks();
     mockPrStoreState.pullRequests = [];
     mockPrStoreState.username = 'testuser';
-    mockSettingsStoreState.settings.ui.badgeStyle = 'GlassCapsule';
+    mockPrStoreState.lastPollTime = null;
     mockSettingsStoreState.settings.ui.theme = 'dark';
-    mockNotificationStoreState.activeNotification = null;
-    mockNotificationStoreState.notifications = [];
+    mockSettingsStoreState.settings.ui.globalHotkey = 'Ctrl+Win+Shift+G';
     mockListen.mockResolvedValue(vi.fn());
+    mockInvoke.mockResolvedValue(undefined);
   });
 
-  // NOTE: The listener useEffects (badge-request-data, expand-sidebar,
-  // open-pr-detail) use concurrent dynamic `await import()` calls that
-  // are affected by a vitest ESM module mock caching issue — only the
-  // first concurrent dynamic import resolves to the mock. We therefore
-  // test the core payload-building logic thoroughly via the first
-  // useEffect (badge-update emission) which works correctly.
-
-  describe('badge-update emission', () => {
-    it('emits badge-update on mount with empty PR list', async () => {
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith(
-          'badge-update',
-          expect.objectContaining({
-            totalPrCount: 0,
-            failingCount: 0,
-            pendingCount: 0,
-            notificationCount: 0,
-            myPrs: [],
-            teamPrs: [],
-            badgeStyle: 'GlassCapsule',
-            theme: 'dark',
-          }),
-        );
-      });
-    });
-
-    it('emits badge-update with correct counts for mixed PRs', async () => {
+  describe('tray icon + flyout payload', () => {
+    it('updates tray icon with the PR count', async () => {
       mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, authorLogin: 'testuser' }, 'green'),
-        makePrWithChecks({ number: 2, authorLogin: 'testuser' }, 'red'),
-        makePrWithChecks({ number: 3, authorLogin: 'other' }, 'yellow'),
-        makePrWithChecks({ number: 4, authorLogin: 'other' }, 'green'),
+        makePrWithChecks({ number: 1 }, 'green'),
+        makePrWithChecks({ number: 2 }, 'red'),
       ];
 
       renderHook(() => useBadgeSync());
 
       await vi.waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith(
-          'badge-update',
-          expect.objectContaining({
-            totalPrCount: 4,
-            failingCount: 1,
-            pendingCount: 1,
-            myPrs: expect.arrayContaining([
-              expect.objectContaining({ number: 1 }),
-              expect.objectContaining({ number: 2 }),
-            ]),
-            teamPrs: expect.arrayContaining([
-              expect.objectContaining({ number: 3 }),
-              expect.objectContaining({ number: 4 }),
-            ]),
-          }),
-        );
+        expect(mockInvoke).toHaveBeenCalledWith('update_tray_icon', {
+          count: 2,
+          worstState: 'failing',
+        });
       });
     });
 
-    it('separates my PRs from team PRs case-insensitively', async () => {
+    it('derives worstState=idle for an empty list', async () => {
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('update_tray_icon', {
+          count: 0,
+          worstState: 'idle',
+        });
+      });
+    });
+
+    it('derives worstState=pending when only yellow PRs exist', async () => {
+      mockPrStoreState.pullRequests = [
+        makePrWithChecks({ number: 1 }, 'yellow'),
+        makePrWithChecks({ number: 2 }, 'green'),
+      ];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('update_tray_icon', {
+          count: 2,
+          worstState: 'pending',
+        });
+      });
+    });
+
+    it('derives worstState=passing when only green PRs exist', async () => {
+      mockPrStoreState.pullRequests = [
+        makePrWithChecks({ number: 1 }, 'green'),
+        makePrWithChecks({ number: 2 }, 'green'),
+      ];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('update_tray_icon', {
+          count: 2,
+          worstState: 'passing',
+        });
+      });
+    });
+
+    it('updates the tray tooltip with counts', async () => {
+      mockPrStoreState.pullRequests = [
+        makePrWithChecks({ number: 1 }, 'red'),
+        makePrWithChecks({ number: 2 }, 'yellow'),
+        makePrWithChecks({ number: 3 }, 'green'),
+      ];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('update_tray_tooltip', {
+          tooltip: 'PRDock — 3 open PRs · 1 failing · 1 pending',
+        });
+      });
+    });
+
+    it('caches the flyout payload via cache_flyout_data', async () => {
+      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 1 }, 'green')];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        const call = mockInvoke.mock.calls.find((c) => c[0] === 'cache_flyout_data');
+        expect(call).toBeDefined();
+        const payload = JSON.parse(call![1]!.payload as string);
+        expect(payload.totalCount).toBe(1);
+      });
+    });
+
+    it('emits flyout-update to the flyout window', async () => {
+      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 1 }, 'green')];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        const payload = findFlyoutPayload();
+        expect(payload).toBeDefined();
+        expect((payload as { totalCount: number }).totalCount).toBe(1);
+      });
+    });
+
+    it('clamps the tray icon count at 255', async () => {
+      mockPrStoreState.pullRequests = Array.from({ length: 300 }, (_, i) =>
+        makePrWithChecks({ number: i + 1 }, 'green'),
+      );
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('update_tray_icon', {
+          count: 255,
+          worstState: 'passing',
+        });
+      });
+    });
+  });
+
+  describe('flyout PR item formatting', () => {
+    it('sends per-PR fields in the flyout payload', async () => {
+      mockPrStoreState.pullRequests = [
+        makePrWithChecks(
+          { number: 99, title: 'Fix critical bug', repoOwner: 'myorg', repoName: 'myrepo' },
+          'red',
+          3,
+          1,
+        ),
+      ];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        const payload = findFlyoutPayload() as
+          | { pullRequests: Array<Record<string, unknown>> }
+          | undefined;
+        expect(payload).toBeDefined();
+        const pr = payload!.pullRequests[0]!;
+        expect(pr.number).toBe(99);
+        expect(pr.title).toBe('Fix critical bug');
+        expect(pr.repoOwner).toBe('myorg');
+        expect(pr.repoName).toBe('myrepo');
+        expect(pr.overallStatus).toBe('red');
+        expect(pr.totalChecks).toBe(3);
+        expect(pr.passedCount).toBe(1);
+      });
+    });
+
+    it('marks PRs by current user as isMine=true (case-insensitive)', async () => {
       mockPrStoreState.username = 'testuser';
       mockPrStoreState.pullRequests = [
         makePrWithChecks({ number: 1, authorLogin: 'TestUser' }, 'green'),
-        makePrWithChecks({ number: 2, authorLogin: 'TESTUSER' }, 'green'),
-        makePrWithChecks({ number: 3, authorLogin: 'other' }, 'green'),
+        makePrWithChecks({ number: 2, authorLogin: 'other' }, 'green'),
       ];
 
       renderHook(() => useBadgeSync());
 
       await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        expect(call).toBeDefined();
-        const payload = call![1];
-        expect(payload.myPrs).toHaveLength(2);
-        expect(payload.teamPrs).toHaveLength(1);
+        const payload = findFlyoutPayload() as
+          | { pullRequests: Array<{ number: number; isMine: boolean }> }
+          | undefined;
+        expect(payload).toBeDefined();
+        const map = new Map(payload!.pullRequests.map((p) => [p.number, p.isMine]));
+        expect(map.get(1)).toBe(true);
+        expect(map.get(2)).toBe(false);
       });
     });
 
-    it('treats all PRs as team when username is empty', async () => {
+    it('marks every PR as isMine=false when username is empty', async () => {
       mockPrStoreState.username = '';
       mockPrStoreState.pullRequests = [
         makePrWithChecks({ number: 1, authorLogin: 'someone' }, 'green'),
@@ -229,256 +322,78 @@ describe('useBadgeSync', () => {
       renderHook(() => useBadgeSync());
 
       await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        expect(call).toBeDefined();
-        const payload = call![1];
-        expect(payload.myPrs).toHaveLength(0);
-        expect(payload.teamPrs).toHaveLength(2);
+        const payload = findFlyoutPayload() as
+          | { pullRequests: Array<{ isMine: boolean }> }
+          | undefined;
+        expect(payload).toBeDefined();
+        expect(payload!.pullRequests.every((p) => p.isMine === false)).toBe(true);
       });
     });
 
-    it('includes badgeStyle and theme in payload', async () => {
-      mockSettingsStoreState.settings.ui.badgeStyle = 'MinimalNotch';
+    it('includes failing / pending / passing aggregate counts', async () => {
+      mockPrStoreState.pullRequests = [
+        makePrWithChecks({ number: 1 }, 'red'),
+        makePrWithChecks({ number: 2 }, 'red'),
+        makePrWithChecks({ number: 3 }, 'yellow'),
+        makePrWithChecks({ number: 4 }, 'green'),
+      ];
+
+      renderHook(() => useBadgeSync());
+
+      await vi.waitFor(() => {
+        const payload = findFlyoutPayload() as
+          | { failingCount: number; pendingCount: number; passingCount: number; totalCount: number }
+          | undefined;
+        expect(payload).toBeDefined();
+        expect(payload!.failingCount).toBe(2);
+        expect(payload!.pendingCount).toBe(1);
+        expect(payload!.passingCount).toBe(1);
+        expect(payload!.totalCount).toBe(4);
+      });
+    });
+
+    it('includes theme and hotkey in the payload', async () => {
       mockSettingsStoreState.settings.ui.theme = 'light';
+      mockSettingsStoreState.settings.ui.globalHotkey = 'Alt+Space';
 
       renderHook(() => useBadgeSync());
 
       await vi.waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith(
-          'badge-update',
-          expect.objectContaining({
-            badgeStyle: 'MinimalNotch',
-            theme: 'light',
-          }),
-        );
+        const payload = findFlyoutPayload() as
+          | { theme: string; hotkey: string }
+          | undefined;
+        expect(payload).toBeDefined();
+        expect(payload!.theme).toBe('light');
+        expect(payload!.hotkey).toBe('Alt+Space');
       });
     });
 
-    it('includes notification count from queued + active', async () => {
-      mockNotificationStoreState.activeNotification = { title: 'active' };
-      mockNotificationStoreState.notifications = [{ title: 'queued1' }, { title: 'queued2' }];
+    it('falls back to a default hotkey when none is configured', async () => {
+      mockSettingsStoreState.settings.ui.globalHotkey = '';
 
       renderHook(() => useBadgeSync());
 
       await vi.waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith(
-          'badge-update',
-          expect.objectContaining({
-            notificationCount: 3, // 2 queued + 1 active
-          }),
-        );
-      });
-    });
-
-    it('notification count is 0 when no notifications', async () => {
-      mockNotificationStoreState.activeNotification = null;
-      mockNotificationStoreState.notifications = [];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith(
-          'badge-update',
-          expect.objectContaining({ notificationCount: 0 }),
-        );
-      });
-    });
-  });
-
-  describe('badge PR item formatting', () => {
-    it('includes checksText as passed/total when checks exist', async () => {
-      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 1 }, 'green', 3, 2)];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        expect(call).toBeDefined();
-        const payload = call![1];
-        const allPrs = [...payload.myPrs, ...payload.teamPrs];
-        expect(allPrs[0].checksText).toBe('2/3');
-      });
-    });
-
-    it('sets checksText to undefined when no checks', async () => {
-      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 1 }, 'green', 0, 0)];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        expect(call).toBeDefined();
-        const payload = call![1];
-        const allPrs = [...payload.myPrs, ...payload.teamPrs];
-        expect(allPrs[0].checksText).toBeUndefined();
-      });
-    });
-
-    it('sets isInProgress true for yellow status', async () => {
-      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 1 }, 'yellow')];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].isInProgress).toBe(true);
-      });
-    });
-
-    it('sets isInProgress false for non-yellow status', async () => {
-      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 1 }, 'green')];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].isInProgress).toBe(false);
-      });
-    });
-
-    it('maps statusColor correctly for all status values', async () => {
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, authorLogin: 'a' }, 'red'),
-        makePrWithChecks({ number: 2, authorLogin: 'b' }, 'yellow'),
-        makePrWithChecks({ number: 3, authorLogin: 'c' }, 'green'),
-        makePrWithChecks({ number: 4, authorLogin: 'd' }, 'gray'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        const colorsByNumber = new Map(
-          allPrs.map((p: { number: number; statusColor: string }) => [p.number, p.statusColor]),
-        );
-        expect(colorsByNumber.get(1)).toBe('red');
-        expect(colorsByNumber.get(2)).toBe('yellow');
-        expect(colorsByNumber.get(3)).toBe('green');
-        expect(colorsByNumber.get(4)).toBe('green'); // gray maps to green
-      });
-    });
-
-    it('includes repoOwner and repoName in badge items', async () => {
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, repoOwner: 'myorg', repoName: 'myrepo' }, 'green'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].repoOwner).toBe('myorg');
-        expect(allPrs[0].repoName).toBe('myrepo');
-      });
-    });
-
-    it('formats timeAgo as "just now" for < 60 seconds', async () => {
-      const now = new Date('2024-06-15T12:00:00Z').getTime();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, updatedAt: '2024-06-15T11:59:30Z' }, 'green'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].timeAgo).toBe('just now');
-      });
-    });
-
-    it('formats timeAgo as minutes', async () => {
-      const now = new Date('2024-06-15T12:00:00Z').getTime();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, updatedAt: '2024-06-15T11:45:00Z' }, 'green'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].timeAgo).toBe('15m ago');
-      });
-    });
-
-    it('formats timeAgo as hours', async () => {
-      const now = new Date('2024-06-15T12:00:00Z').getTime();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, updatedAt: '2024-06-15T09:00:00Z' }, 'green'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].timeAgo).toBe('3h ago');
-      });
-    });
-
-    it('formats timeAgo as days', async () => {
-      const now = new Date('2024-06-15T12:00:00Z').getTime();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, updatedAt: '2024-06-13T12:00:00Z' }, 'green'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].timeAgo).toBe('2d ago');
-      });
-    });
-
-    it('includes PR title in badge items', async () => {
-      mockPrStoreState.pullRequests = [
-        makePrWithChecks({ number: 1, title: 'Fix critical bug' }, 'green'),
-      ];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].title).toBe('Fix critical bug');
-      });
-    });
-
-    it('includes PR number in badge items', async () => {
-      mockPrStoreState.pullRequests = [makePrWithChecks({ number: 99 }, 'green')];
-
-      renderHook(() => useBadgeSync());
-
-      await vi.waitFor(() => {
-        const call = mockEmit.mock.calls.find((c) => c[0] === 'badge-update');
-        const allPrs = [...call![1].myPrs, ...call![1].teamPrs];
-        expect(allPrs[0].number).toBe(99);
+        const payload = findFlyoutPayload() as { hotkey: string } | undefined;
+        expect(payload).toBeDefined();
+        expect(payload!.hotkey).toBe('Ctrl+Win+Shift+G');
       });
     });
   });
 
   describe('error handling', () => {
-    it('does not throw when emit fails', () => {
-      mockEmit.mockRejectedValueOnce(new Error('emit failed'));
+    it('does not throw when emitTo fails', () => {
+      mockEmitTo.mockRejectedValueOnce(new Error('emit failed'));
       expect(() => renderHook(() => useBadgeSync())).not.toThrow();
     });
 
     it('does not throw when listen fails', () => {
       mockListen.mockRejectedValue(new Error('listen failed'));
+      expect(() => renderHook(() => useBadgeSync())).not.toThrow();
+    });
+
+    it('does not throw when invoke fails', () => {
+      mockInvoke.mockRejectedValue(new Error('invoke failed'));
       expect(() => renderHook(() => useBadgeSync())).not.toThrow();
     });
   });
