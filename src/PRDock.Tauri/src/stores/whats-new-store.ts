@@ -33,7 +33,7 @@ export const useWhatsNewStore = create<State & Actions>((set, get) => ({
       const autoOpenDisabled = (await store.get<boolean>('autoOpenDisabled')) ?? false;
       set({ lastSeenVersion, autoOpenDisabled, hydrated: true });
     } catch (err) {
-      log.warn('hydrate failed — starting with defaults', err);
+      log.error('hydrate failed — starting with defaults', err);
       set({ hydrated: true });
     }
   },
@@ -45,7 +45,7 @@ export const useWhatsNewStore = create<State & Actions>((set, get) => ({
       await store.set('lastSeenVersion', version);
       await store.save();
     } catch (err) {
-      log.warn('setLastSeenVersion persist failed', err);
+      log.error('setLastSeenVersion persist failed', err);
     }
   },
 
@@ -57,7 +57,7 @@ export const useWhatsNewStore = create<State & Actions>((set, get) => ({
       await store.set('lastSeenVersion', currentVersion);
       await store.save();
     } catch (err) {
-      log.warn('disableAutoOpen persist failed', err);
+      log.error('disableAutoOpen persist failed', err);
     }
   },
 }));
