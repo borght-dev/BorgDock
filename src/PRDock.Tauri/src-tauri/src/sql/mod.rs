@@ -1,9 +1,45 @@
+use keyring::Entry;
 use serde::Serialize;
 use tiberius::{AuthMethod, Client, Config, Row};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::settings;
+
+/// Load a SQL connection password from the OS keychain.
+/// The frontend stores them under `prdock:sql:<connection_name>`; the
+/// settings file on disk has passwords stripped (see settings-store.ts), so
+/// any code that needs to actually connect must hydrate from here.
+fn load_sql_password(connection_name: &str) -> Option<String> {
+    let service = format!("prdock:sql:{connection_name}");
+    match Entry::new("prdock", &service) {
+        Ok(entry) => match entry.get_password() {
+            Ok(pw) => {
+                log::info!(
+                    "load_sql_password: hit for '{}' ({} chars)",
+                    service,
+                    pw.len()
+                );
+                Some(pw)
+            }
+            Err(keyring::Error::NoEntry) => {
+                log::warn!("load_sql_password: no keychain entry for '{}'", service);
+                None
+            }
+            Err(e) => {
+                log::error!("load_sql_password: keychain error for '{}': {e}", service);
+                None
+            }
+        },
+        Err(e) => {
+            log::error!(
+                "load_sql_password: Entry::new('prdock', '{}') failed: {e}",
+                service
+            );
+            None
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,6 +196,18 @@ pub async fn execute_sql_query(
     let settings = settings::load_settings_internal()
         .map_err(|e| format!("Failed to load settings: {e}"))?;
 
+    log::info!(
+        "execute_sql_query: requested connection '{}'; available: [{}]",
+        connection_name,
+        settings
+            .sql
+            .connections
+            .iter()
+            .map(|c| format!("'{}' (auth={})", c.name, c.authentication))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
     let conn_config = settings
         .sql
         .connections
@@ -167,13 +215,29 @@ pub async fn execute_sql_query(
         .find(|c| c.name == connection_name)
         .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
 
+    // Settings on disk have passwords stripped; pull from keychain for SQL auth.
+    let hydrated_password = if conn_config.authentication == "sql" {
+        conn_config
+            .password
+            .clone()
+            .or_else(|| load_sql_password(&conn_config.name))
+    } else {
+        None
+    };
+    if conn_config.authentication == "sql" && hydrated_password.is_none() {
+        return Err(format!(
+            "No password stored in keychain for SQL connection '{}'. Open Settings, re-enter the password, and save.",
+            conn_config.name
+        ));
+    }
+
     let config = build_config(
         &conn_config.server,
         conn_config.port,
         &conn_config.database,
         &conn_config.authentication,
         conn_config.username.as_deref(),
-        conn_config.password.as_deref(),
+        hydrated_password.as_deref(),
         conn_config.trust_server_certificate,
     )?;
 
@@ -243,7 +307,6 @@ pub async fn execute_sql_query(
 
 #[tauri::command]
 pub async fn test_sql_connection(
-    window: tauri::Window,
     server: String,
     port: u16,
     database: String,
@@ -252,9 +315,11 @@ pub async fn test_sql_connection(
     password: Option<String>,
     trust_server_certificate: bool,
 ) -> Result<String, String> {
-    if window.label() != "sql" {
-        return Err("SQL commands can only be executed from the SQL window".to_string());
-    }
+    // Credential-probe command — intentionally callable from any window.
+    // The Settings panel (rendered in the main window) needs to verify a
+    // connection before the user ever opens the SQL query window. The sibling
+    // execute_sql_query command still gates arbitrary queries to the SQL
+    // window, which is the actual scope boundary we care about.
     log::info!("SQL connection test for server '{}:{}'", server, port);
 
     let config = build_config(
