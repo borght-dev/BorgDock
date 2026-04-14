@@ -149,15 +149,28 @@ pub fn update_tray_tooltip(app: tauri::AppHandle, tooltip: String) -> Result<(),
     Ok(())
 }
 
+/// Normalized brand waveform points (x: 0..1, y: 0..1). Derived from the
+/// favicon SVG `M2,9 L4,9 L5.5,5 L7.5,12 L9,3 L11,11 L12.5,7 L14,9` in a 16x16
+/// viewBox, rescaled so the bounding box maps to [0,1] × [0,1].
+const BRAND_WAVE: &[(f32, f32)] = &[
+    (0.000, 0.667),
+    (0.167, 0.667),
+    (0.292, 0.222),
+    (0.458, 1.000),
+    (0.583, 0.000),
+    (0.750, 0.889),
+    (0.875, 0.444),
+    (1.000, 0.667),
+];
+
 /// Render a 64x64 RGBA tray icon. Windows downscales this to 16–32 px in the
-/// taskbar, so rendering large gives OS resampling plenty of detail to work with.
+/// taskbar, so rendering large gives OS resampling plenty of detail to work
+/// with.
 ///
-/// Layout:
-/// - Rounded square fills almost the entire canvas (previously only ~40% was
-///   visible after centering + padding).
-/// - When count == 0: brand gradient + heartbeat glyph (idle state).
-/// - When count > 0: status-colored gradient + a large white digit replacing
-///   the heartbeat, so the number is the hero element and readable at 16 px.
+/// The brand waveform is drawn in every state so the icon always reads as
+/// PRDock. When there are open PRs, the background switches to a status-colored
+/// gradient (red / amber / green) for at-a-glance urgency, the waveform shrinks
+/// to a top strip, and the count is rendered large below it.
 fn render_tray_icon(
     count: u8,
     worst: TrayWorstState,
@@ -195,37 +208,92 @@ fn render_tray_icon(
         }
     }
 
+    let ink: [u8; 4] = [255, 255, 255, 255];
+
     if show_count {
-        // Count is the hero: render large centered digits in white.
-        let text = if count > 99 { "99+".to_string() } else { count.to_string() };
-        let scale: i32 = match text.chars().count() {
-            1 => 7, // single digit: ~35x49 px
-            2 => 5, // two digits: ~45x35 px
-            _ => 4, // "99+": ~56x28 px
+        // Compact waveform at the top + large count number below. The waveform
+        // keeps brand identity while the status-colored background signals
+        // urgency at a glance.
+        draw_brand_waveform(&mut buf, SIZE, 8.0, 5.0, 56.0, 24.0, 2.6, &ink);
+
+        let text = if count > 99 {
+            "99+".to_string()
+        } else {
+            count.to_string()
         };
-        draw_scaled_text(
-            &mut buf,
-            SIZE,
-            SIZE as f32 / 2.0,
-            SIZE as f32 / 2.0,
-            &text,
-            scale,
-        );
+        // Digit area is y ≈ 28..58 (30 px tall).
+        let scale: i32 = match text.chars().count() {
+            1 => 4, // 20x28 single digit
+            2 => 3, // ~33x21 two digits
+            _ => 2, // "99+": ~34x14 (rare fallback)
+        };
+        draw_scaled_text(&mut buf, SIZE, SIZE as f32 / 2.0, 43.0, &text, scale);
     } else {
-        // Idle: heartbeat glyph, scaled up for the larger canvas.
-        let icon_color: [u8; 4] = [255, 255, 255, 240];
-        let segments: [(f32, f32, f32, f32); 4] = [
-            (20.0, 32.0, 26.0, 32.0),
-            (26.0, 32.0, 30.0, 22.0),
-            (30.0, 22.0, 34.0, 42.0),
-            (34.0, 42.0, 44.0, 32.0),
-        ];
-        for &(x1, y1, x2, y2) in &segments {
-            draw_line(&mut buf, SIZE, x1, y1, x2, y2, &icon_color, 3.2);
-        }
+        // Idle: waveform uses most of the canvas, matching the app icon.
+        draw_brand_waveform(&mut buf, SIZE, 8.0, 14.0, 56.0, 50.0, 3.6, &ink);
     }
 
     tauri::image::Image::new_owned(buf, SIZE, SIZE)
+}
+
+/// Draw the PRDock brand waveform fitted into the bounding box
+/// (x0, y0) → (x1, y1), plus the small probe dot at the trailing end.
+fn draw_brand_waveform(
+    buf: &mut [u8],
+    stride: u32,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    thickness: f32,
+    color: &[u8; 4],
+) {
+    let w = x1 - x0;
+    let h = y1 - y0;
+    for pair in BRAND_WAVE.windows(2) {
+        let (nx1, ny1) = pair[0];
+        let (nx2, ny2) = pair[1];
+        draw_line(
+            buf,
+            stride,
+            x0 + nx1 * w,
+            y0 + ny1 * h,
+            x0 + nx2 * w,
+            y0 + ny2 * h,
+            color,
+            thickness,
+        );
+    }
+    // Probe dot at the end of the line
+    if let Some(&(nx, ny)) = BRAND_WAVE.last() {
+        let cx = x0 + nx * w;
+        let cy = y0 + ny * h;
+        let r = thickness * 0.9;
+        draw_filled_circle(buf, stride, cx, cy, r, color);
+    }
+}
+
+fn draw_filled_circle(buf: &mut [u8], stride: u32, cx: f32, cy: f32, r: f32, color: &[u8; 4]) {
+    let min_x = (cx - r - 1.0).floor().max(0.0) as u32;
+    let max_x = (cx + r + 1.0).ceil().min(stride as f32 - 1.0) as u32;
+    let min_y = (cy - r - 1.0).floor().max(0.0) as u32;
+    let max_y = (cy + r + 1.0).ceil().min(stride as f32 - 1.0) as u32;
+    for py in min_y..=max_y {
+        for px in min_x..=max_x {
+            let dx = px as f32 + 0.5 - cx;
+            let dy = py as f32 + 0.5 - cy;
+            let dist = (dx * dx + dy * dy).sqrt();
+            if dist <= r + 0.5 {
+                let alpha = if dist > r - 0.5 {
+                    ((r + 0.5 - dist) * color[3] as f32) as u8
+                } else {
+                    color[3]
+                };
+                let i = ((py * stride + px) * 4) as usize;
+                blend_pixel(&mut buf[i..i + 4], color, alpha);
+            }
+        }
+    }
 }
 
 /// Draw text using the 5x7 bitmap font scaled up by `scale`, with one blank
