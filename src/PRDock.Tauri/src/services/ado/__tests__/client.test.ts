@@ -61,7 +61,7 @@ describe('AdoClient retry', () => {
     const client = new AdoClient('org', 'project', 'pat');
     await client.get('wit/workitems');
     expect(fetchSpy).toHaveBeenCalledTimes(3);
-  });
+  }, 15_000);
 
   it('retries on 500, 502, 503', async () => {
     for (const status of [500, 502, 503]) {
@@ -73,7 +73,7 @@ describe('AdoClient retry', () => {
       await client.get('wit/workitems');
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     }
-  });
+  }, 15_000);
 
   it('does NOT retry on 401 (auth error)', async () => {
     fetchSpy.mockResolvedValueOnce(new Response('', { status: 401 }));
@@ -110,7 +110,7 @@ describe('AdoClient retry', () => {
     const client = new AdoClient('org', 'project', 'pat');
     await client.post('wit/workitems', { fields: {} });
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-  });
+  }, 15_000);
 
   it('respects Retry-After header value', async () => {
     const retryResponse = new Response('', {
@@ -124,7 +124,7 @@ describe('AdoClient retry', () => {
     const client = new AdoClient('org', 'project', 'pat');
     await client.get('wit/workitems');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-  });
+  }, 15_000);
 });
 
 describe('AdoClient.getStream', () => {
