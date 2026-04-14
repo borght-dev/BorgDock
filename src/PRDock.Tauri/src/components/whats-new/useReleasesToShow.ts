@@ -29,10 +29,11 @@ export function computeReleasesToShow(input: ComputeInput): ComputeResult {
   let expandedVersion: string | null = null;
   if (targetVersion && allReleases.some((r) => r.version === targetVersion)) {
     expandedVersion = targetVersion;
-  } else if (missed.length > 0) {
-    expandedVersion = missed[0].version; // allReleases is sorted newest-first
-  } else if (allReleases.length > 0) {
-    expandedVersion = allReleases[0].version;
+  } else {
+    // allReleases is sorted newest-first; prefer the newest missed release,
+    // else fall back to the newest overall.
+    const preferred = missed[0] ?? allReleases[0];
+    if (preferred) expandedVersion = preferred.version;
   }
 
   return { releases: allReleases, expandedVersion, countBehind };
