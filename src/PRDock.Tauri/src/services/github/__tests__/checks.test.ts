@@ -185,7 +185,9 @@ describe('getCheckRunsForRef', () => {
     expect(run.id).toBe(400);
     expect(run.checkSuiteId).toBe(150);
 
-    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/commits/abc123/check-runs');
+    expect(client.get).toHaveBeenCalledWith(
+      'repos/owner/repo/commits/abc123/check-runs?per_page=100&page=1',
+    );
   });
 
   it('falls back to 0 for checkSuiteId when check_suite is null', async () => {
