@@ -31,21 +31,32 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
 
    **Why all three?** The Tauri build uses `tauri.conf.json` to name the installer (e.g. `PRDock_1.0.11_x64-setup.exe`). The CI generates `latest.json` from the git tag. If the tag says `v1.0.11` but `tauri.conf.json` says `1.0.10`, the installer is named `1.0.10` but `latest.json` points to `1.0.11` — causing a 404 and breaking auto-updates.
 
-4. **Commit** the version bump and changelog:
+4. **Attach hero images** for any `### New Features`, `### Improvements`, or bulletted `### Bug Fixes` entries that start with `**Bold Title**`:
+   - Drop each hero into `docs/whats-new/<VERSION>/<slug>.png` (or jpg/gif/webp).
+   - Reference it from the bullet: `- **Bold Title** — Description. ![alt](whats-new/<VERSION>/<slug>.png)`.
+   - To demote a bullet that has no image ready, strip the `**Bold Title** — ` prefix so the bullet joins the compact "Also fixed" list and requires no image.
+
+5. **Validate** the release note by running the strict validator:
+   ```
+   cd src/PRDock.Tauri && npm run validate-release -- <VERSION>
+   ```
+   If any highlight is missing a hero image, the validator prints `file:line` with a remediation hint and exits non-zero. Fix and re-run until it prints `OK`.
+
+6. **Commit** the version bump and changelog:
    ```
    git add src/PRDock.Tauri/src-tauri/tauri.conf.json src/PRDock.Tauri/package.json src/PRDock.Tauri/src-tauri/Cargo.toml CHANGELOG.md
    git commit -m "chore: release <VERSION>"
    ```
 
-5. **Tag and push**:
+7. **Tag and push**:
    ```
    git tag v<VERSION>
    git push && git push origin v<VERSION>
    ```
 
-6. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
+8. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
 
-7. **Verify signing key**: Remind the user that the `TAURI_SIGNING_PRIVATE_KEY` GitHub secret must be set for auto-updates to work. Without it, the CI generates `latest.json` with an empty signature and points at the `.exe` URL instead of the signed `.nsis.zip` — the Tauri updater will reject the update. The public key is already configured in `src/PRDock.Tauri/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+9. **Verify signing key**: Remind the user that the `TAURI_SIGNING_PRIVATE_KEY` GitHub secret must be set for auto-updates to work. Without it, the CI generates `latest.json` with an empty signature and points at the `.exe` URL instead of the signed `.nsis.zip` — the Tauri updater will reject the update. The public key is already configured in `src/PRDock.Tauri/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
 
    To generate a key pair (one-time): `npx tauri signer generate -w ~/.tauri/prdock.key`
    Then add the private key as `TAURI_SIGNING_PRIVATE_KEY` and optionally the password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in GitHub repo settings > Secrets.
@@ -70,3 +81,4 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
 - **Version mismatch is the #1 cause of broken releases.** Always bump all three Tauri config files before tagging.
 - The asset filename pattern is `PRDock_<VERSION>_x64-setup.nsis.zip` (signed) or `PRDock_<VERSION>_x64-setup.exe` (unsigned). The version in the filename comes from `tauri.conf.json`, NOT the git tag — so they must match.
 - The self-hosted Windows runner must be online and picked up the job; if the Actions run stays queued, check the runner.
+- **Hero images are required for all current-release highlights.** Running `npm run validate-release -- <VERSION>` before tagging catches missing images. Historical versions are frozen; missing images there render a gradient fallback at runtime.
