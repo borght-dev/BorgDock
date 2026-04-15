@@ -321,7 +321,7 @@ export function SqlApp() {
   }, [query, getResultSetParts, flash]);
 
   const hasConnections = sqlSettings && sqlSettings.connections.length > 0;
-  const hasResults = result?.resultSets.some((rs) => rs.columns.length > 0);
+  const hasResults = !!result && result.resultSets.some((rs) => rs.columns.length > 0);
   const totalSelectedRows = Array.from(selectedRowsMap.values()).reduce(
     (sum, s) => sum + s.size,
     0,

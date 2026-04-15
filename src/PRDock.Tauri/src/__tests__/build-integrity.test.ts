@@ -140,6 +140,7 @@ describe('Build integrity — Rust window URLs', () => {
     const validHtmlFiles = new Set(ENTRY_POINTS.map((e) => e.html));
 
     for (const [, url] of urlMatches) {
+      if (!url) continue;
       expect(
         validHtmlFiles.has(url),
         `hotkey.rs references "${url}" which is not a valid entry point. ` +
