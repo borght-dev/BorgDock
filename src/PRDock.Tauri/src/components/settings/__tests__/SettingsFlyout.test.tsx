@@ -41,7 +41,7 @@ vi.mock('@/hooks/useAutoUpdate', () => ({
   }),
 }));
 vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: vi.fn((selector: any) => {
+  useNotificationStore: vi.fn((selector?: (state: { show: () => void }) => unknown) => {
     const state = { show: vi.fn() };
     return selector ? selector(state) : state;
   }),

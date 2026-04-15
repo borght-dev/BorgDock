@@ -15,14 +15,20 @@ vi.mock('@/hooks/useAutoUpdate', () => ({
 }));
 
 vi.mock('@/stores/settings-store', () => ({
-  useSettingsStore: vi.fn((selector: any) => {
-    const state = {
-      settings: {
-        updates: { autoCheckEnabled: true, autoDownload: true },
-      },
-    };
-    return selector ? selector(state) : state;
-  }),
+  useSettingsStore: vi.fn(
+    (
+      selector?: (state: {
+        settings: { updates: { autoCheckEnabled: boolean; autoDownload: boolean } };
+      }) => unknown,
+    ) => {
+      const state = {
+        settings: {
+          updates: { autoCheckEnabled: true, autoDownload: true },
+        },
+      };
+      return selector ? selector(state) : state;
+    },
+  ),
 }));
 
 function makeUpdates(overrides?: Partial<UpdateSettings>): UpdateSettings {

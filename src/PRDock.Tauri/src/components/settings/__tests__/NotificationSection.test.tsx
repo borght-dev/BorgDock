@@ -4,7 +4,7 @@ import type { NotificationSettings } from '@/types';
 import { NotificationSection } from '../NotificationSection';
 
 vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: vi.fn((selector: any) => {
+  useNotificationStore: vi.fn((selector?: (state: { show: () => void }) => unknown) => {
     const state = { show: vi.fn() };
     return selector ? selector(state) : state;
   }),
@@ -149,10 +149,12 @@ describe('NotificationSection', () => {
   it('fires test notification on click', async () => {
     const { useNotificationStore } = await import('@/stores/notification-store');
     const showMock = vi.fn();
-    vi.mocked(useNotificationStore).mockImplementation((selector: any) => {
-      const state = { show: showMock };
-      return selector ? selector(state) : state;
-    });
+    vi.mocked(useNotificationStore).mockImplementation(
+      ((selector?: (state: { show: () => void }) => unknown) => {
+        const state = { show: showMock };
+        return selector ? selector(state) : state;
+      }) as unknown as typeof useNotificationStore,
+    );
 
     render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
     fireEvent.click(screen.getByTitle('Send error notification'));

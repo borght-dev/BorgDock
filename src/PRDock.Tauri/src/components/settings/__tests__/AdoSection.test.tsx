@@ -124,7 +124,7 @@ describe('AdoSection', () => {
       () =>
         ({
           testConnection: vi.fn().mockResolvedValue('Auth failed'),
-        }) as any,
+        }) as unknown as InstanceType<typeof AdoClient>,
     );
 
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
@@ -141,7 +141,7 @@ describe('AdoSection', () => {
       () =>
         ({
           testConnection: vi.fn().mockRejectedValue(new Error('Network error')),
-        }) as any,
+        }) as unknown as InstanceType<typeof AdoClient>,
     );
 
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
@@ -162,7 +162,7 @@ describe('AdoSection', () => {
       () =>
         ({
           testConnection: vi.fn().mockReturnValue(testPromise),
-        }) as any,
+        }) as unknown as InstanceType<typeof AdoClient>,
     );
 
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
