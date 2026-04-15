@@ -70,8 +70,10 @@ beforeEach(() => {
 describe('WhatsNewApp', () => {
   it('renders release head with current version and count behind', async () => {
     render(<WhatsNewApp />);
+    // `getByText(/what's new in/i)` now matches both the WindowTitleBar's
+    // span and the <h1> heading, so scope the assertion to the heading.
     await waitFor(() => {
-      expect(screen.getByText(/what's new in/i)).toBeTruthy();
+      expect(screen.getByRole('heading', { name: /what's new in/i })).toBeTruthy();
     });
     expect(screen.getByText('1.0.11')).toBeTruthy();
     expect(screen.getByText(/1 version behind|1 versions behind/i)).toBeTruthy();

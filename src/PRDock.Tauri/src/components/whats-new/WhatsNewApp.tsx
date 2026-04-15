@@ -1,5 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect } from 'react';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
@@ -62,6 +63,7 @@ export function WhatsNewApp() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-primary)] font-sans">
+      <WindowTitleBar title="What's new in PRDock" />
       <header className="px-6 pt-6 pb-3.5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10.5px] uppercase tracking-[0.14em] text-[var(--color-text-muted)] inline-flex items-center gap-2 before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[var(--color-status-green)]">

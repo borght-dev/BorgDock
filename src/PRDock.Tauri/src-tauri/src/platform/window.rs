@@ -444,6 +444,7 @@ pub async fn open_whats_new_window(
         .title("What's new in PRDock")
         .inner_size(520.0, 640.0)
         .min_inner_size(480.0, 480.0)
+        .decorations(false)
         .resizable(true)
         .skip_taskbar(true)
         .center()
