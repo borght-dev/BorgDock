@@ -1,6 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect } from 'react';
-import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
@@ -42,6 +41,23 @@ export function WhatsNewApp() {
     }
   }, [ready, currentVersion, setLastSeenVersion]);
 
+  const handleMinimize = useCallback(() => {
+    getCurrentWindow()
+      .minimize()
+      .catch((err) => log.error('minimize failed', err));
+  }, []);
+
+  const handleToggleMaximize = useCallback(async () => {
+    try {
+      const win = getCurrentWindow();
+      const isMax = await win.isMaximized();
+      if (isMax) await win.unmaximize();
+      else await win.maximize();
+    } catch (err) {
+      log.error('toggle maximize failed', err);
+    }
+  }, []);
+
   const handleDisable = useCallback(
     async (checked: boolean) => {
       if (!ready || !checked) return;
@@ -63,7 +79,69 @@ export function WhatsNewApp() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-primary)] font-sans">
-      <WindowTitleBar title="What's new in PRDock" />
+      {/* Title bar — mirrors PRDetailPanel's pop-out header so it feels like
+       *  the same app. Drag region on the parent + title span. The X button
+       *  routes through handleGotIt so closing via the title bar marks
+       *  lastSeenVersion the same way the footer "Got it" button does. */}
+      <div
+        data-tauri-drag-region
+        className="flex items-center justify-between border-b border-[var(--color-separator)] px-3 py-2"
+      >
+        <span
+          data-tauri-drag-region
+          className="truncate text-sm font-semibold text-[var(--color-text-primary)]"
+        >
+          What's new in PRDock
+        </span>
+        <div className="window-ctrl-group -my-1 -mr-1">
+          <button
+            type="button"
+            onClick={handleMinimize}
+            aria-label="Minimize"
+            title="Minimize"
+            className="window-ctrl-btn"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleMaximize}
+            aria-label="Maximize"
+            title="Maximize"
+            className="window-ctrl-btn"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <rect
+                x="1.5"
+                y="1.5"
+                width="7"
+                height="7"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleGotIt}
+            aria-label="Close"
+            title="Close"
+            className="window-ctrl-btn window-ctrl-btn--close"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path
+                d="M2 2l6 6M8 2l-6 6"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
       <header className="px-6 pt-6 pb-3.5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10.5px] uppercase tracking-[0.14em] text-[var(--color-text-muted)] inline-flex items-center gap-2 before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[var(--color-status-green)]">
