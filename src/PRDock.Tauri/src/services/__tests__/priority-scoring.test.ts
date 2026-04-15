@@ -484,8 +484,8 @@ describe('sortByPriority', () => {
 
     const scores = computePriorityScores([pr1, pr2], 'me', {});
     const sorted = sortByPriority([pr1, pr2], scores);
-    expect(sorted[0].pullRequest.number).toBe(2); // higher score (reviewRequested)
-    expect(sorted[1].pullRequest.number).toBe(1);
+    expect(sorted[0]!.pullRequest.number).toBe(2); // higher score (reviewRequested)
+    expect(sorted[1]!.pullRequest.number).toBe(1);
   });
 
   it('tie-breaks by oldest updatedAt first', () => {
@@ -503,7 +503,7 @@ describe('sortByPriority', () => {
     const scores = computePriorityScores([pr1, pr2], 'me', {});
     const sorted = sortByPriority([pr1, pr2], scores);
     // Both have score 0, pr2 is older so comes first
-    expect(sorted[0].pullRequest.number).toBe(2);
+    expect(sorted[0]!.pullRequest.number).toBe(2);
   });
 
   it('tie-breaks by smaller PR size when updatedAt is same', () => {
@@ -525,7 +525,7 @@ describe('sortByPriority', () => {
     const scores = computePriorityScores([pr1, pr2], 'me', {});
     const sorted = sortByPriority([pr1, pr2], scores);
     // Same score and updatedAt, pr2 is smaller
-    expect(sorted[0].pullRequest.number).toBe(2);
+    expect(sorted[0]!.pullRequest.number).toBe(2);
   });
 
   it('filters out PRs without scores', () => {
@@ -535,7 +535,7 @@ describe('sortByPriority', () => {
     const scores = computePriorityScores([pr1, pr2], 'me', {}); // pr2 excluded (other's draft)
     const sorted = sortByPriority([pr1, pr2], scores);
     expect(sorted).toHaveLength(1);
-    expect(sorted[0].pullRequest.number).toBe(1);
+    expect(sorted[0]!.pullRequest.number).toBe(1);
   });
 
   it('returns empty array for empty input', () => {
@@ -550,6 +550,6 @@ describe('sortByPriority', () => {
 
     const scores = computePriorityScores(original, 'me', {});
     sortByPriority(original, scores);
-    expect(original[0].pullRequest.number).toBe(1); // unchanged
+    expect(original[0]!.pullRequest.number).toBe(1); // unchanged
   });
 });

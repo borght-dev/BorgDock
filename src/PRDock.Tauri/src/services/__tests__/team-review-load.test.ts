@@ -87,8 +87,8 @@ describe('computeTeamReviewLoad', () => {
     ];
     const result = computeTeamReviewLoad(prs, {});
     expect(result).toHaveLength(1);
-    expect(result[0].login).toBe('alice');
-    expect(result[0].pendingReviewCount).toBe(2);
+    expect(result[0]!.login).toBe('alice');
+    expect(result[0]!.pendingReviewCount).toBe(2);
   });
 
   it('counts stale reviews using SLA tier', () => {
@@ -107,7 +107,7 @@ describe('computeTeamReviewLoad', () => {
       'org/repo#1:alice': '2025-06-01T00:00:00Z', // 48h ago = stale
     };
     const result = computeTeamReviewLoad(prs, timestamps);
-    expect(result[0].stalePrCount).toBe(1);
+    expect(result[0]!.stalePrCount).toBe(1);
   });
 
   it('does not count fresh reviews as stale', () => {
@@ -126,7 +126,7 @@ describe('computeTeamReviewLoad', () => {
       'org/repo#1:alice': '2025-06-01T00:00:00Z', // 1h ago = fresh
     };
     const result = computeTeamReviewLoad(prs, timestamps);
-    expect(result[0].stalePrCount).toBe(0);
+    expect(result[0]!.stalePrCount).toBe(0);
   });
 
   it('does not count aging reviews as stale', () => {
@@ -145,7 +145,7 @@ describe('computeTeamReviewLoad', () => {
       'org/repo#1:alice': '2025-06-01T00:00:00Z', // 10h ago = aging
     };
     const result = computeTeamReviewLoad(prs, timestamps);
-    expect(result[0].stalePrCount).toBe(0);
+    expect(result[0]!.stalePrCount).toBe(0);
   });
 
   it('computes avgWaitHours correctly', () => {
@@ -172,13 +172,13 @@ describe('computeTeamReviewLoad', () => {
     };
     const result = computeTeamReviewLoad(prs, timestamps);
     // Total wait = 12h + 6h = 18h, avg = 18/2 = 9h
-    expect(result[0].avgWaitHours).toBe(9);
+    expect(result[0]!.avgWaitHours).toBe(9);
   });
 
   it('avgWaitHours is 0 when no timestamps exist', () => {
     const prs = [makePrWithChecks({ number: 1, requestedReviewers: ['alice'] })];
     const result = computeTeamReviewLoad(prs, {});
-    expect(result[0].avgWaitHours).toBe(0);
+    expect(result[0]!.avgWaitHours).toBe(0);
   });
 
   it('avgWaitHours averages across all pending including ones without timestamps', () => {
@@ -206,7 +206,7 @@ describe('computeTeamReviewLoad', () => {
     const result = computeTeamReviewLoad(prs, timestamps);
     // totalWaitMs = 10h only from PR#1, only 1 review has a timestamp
     // avg = 10h / 1 = 10h
-    expect(result[0].avgWaitHours).toBe(10);
+    expect(result[0]!.avgWaitHours).toBe(10);
   });
 
   it('sorts results by pendingReviewCount descending', () => {
@@ -216,10 +216,10 @@ describe('computeTeamReviewLoad', () => {
       makePrWithChecks({ number: 3, requestedReviewers: ['alice', 'bob'] }),
     ];
     const result = computeTeamReviewLoad(prs, {});
-    expect(result[0].login).toBe('bob');
-    expect(result[0].pendingReviewCount).toBe(3);
-    expect(result[1].login).toBe('alice');
-    expect(result[1].pendingReviewCount).toBe(2);
+    expect(result[0]!.login).toBe('bob');
+    expect(result[0]!.pendingReviewCount).toBe(3);
+    expect(result[1]!.login).toBe('alice');
+    expect(result[1]!.pendingReviewCount).toBe(2);
   });
 
   it('handles a reviewer on many PRs', () => {
@@ -227,8 +227,8 @@ describe('computeTeamReviewLoad', () => {
       makePrWithChecks({ number: i + 1, requestedReviewers: ['alice'] }),
     );
     const result = computeTeamReviewLoad(prs, {});
-    expect(result[0].login).toBe('alice');
-    expect(result[0].pendingReviewCount).toBe(10);
+    expect(result[0]!.login).toBe('alice');
+    expect(result[0]!.pendingReviewCount).toBe(10);
   });
 
   it('handles multiple reviewers on same PR', () => {

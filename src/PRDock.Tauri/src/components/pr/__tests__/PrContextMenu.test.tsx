@@ -388,7 +388,6 @@ describe('PrContextMenu', () => {
   });
 
   it('calls open_pr_detail_window when "Open in detail window" is clicked', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
     render(
       <PrContextMenu
         pr={makePr()}
@@ -421,13 +420,12 @@ describe('PrContextMenu', () => {
           failedCheckNames: ['build'],
           checks: [
             {
+              id: 456,
               name: 'build',
               conclusion: 'failure',
               status: 'completed',
               checkSuiteId: 123,
-              checkRunId: 456,
               htmlUrl: '',
-              detailsUrl: '',
             },
           ],
         })}

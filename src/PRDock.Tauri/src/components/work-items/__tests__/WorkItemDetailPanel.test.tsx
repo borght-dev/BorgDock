@@ -61,7 +61,7 @@ function defaultProps(overrides: Partial<WorkItemDetailData> = {}) {
     comments: [] as WorkItemComment[],
     isLoadingComments: false,
     onSave: vi.fn(),
-    onDelete: vi.fn(),
+    onDelete: vi.fn() as ReturnType<typeof vi.fn> | undefined,
     onClose: vi.fn(),
     onOpenInBrowser: vi.fn(),
     onDownloadAttachment: vi.fn(),

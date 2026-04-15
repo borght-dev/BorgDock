@@ -57,7 +57,9 @@ function makeWorkItem(id: number, overrides: Record<string, unknown> = {}): Work
 
 // ---------- store setup ----------
 
-function setupStores(opts: { configured?: boolean; items?: WorkItem[]; queryId?: string } = {}) {
+function setupStores(
+  opts: { configured?: boolean; items?: WorkItem[]; queryId?: string | null } = {},
+) {
   const { configured = true, items = [], queryId = null } = opts;
 
   // Settings store

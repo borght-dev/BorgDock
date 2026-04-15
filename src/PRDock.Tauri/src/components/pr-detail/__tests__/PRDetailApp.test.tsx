@@ -56,7 +56,7 @@ vi.mock('@/services/github/checks', () => ({
   getCheckRunsForRef: vi.fn().mockResolvedValue([]),
 }));
 
-const mockInitClient = vi.fn(() => ({ markPollStart: vi.fn() }));
+const mockInitClient = vi.fn((..._args: unknown[]) => ({ markPollStart: vi.fn() }));
 
 vi.mock('@/services/github/singleton', () => ({
   initClient: (...args: unknown[]) => mockInitClient(...args),

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WorkItemFilterBar } from '../WorkItemFilterBar';
+import { type TrackingFilter, WorkItemFilterBar } from '../WorkItemFilterBar';
 
 function defaultProps() {
   return {
@@ -8,7 +8,7 @@ function defaultProps() {
     assignees: ['Alice', 'Bob'],
     selectedState: 'All',
     selectedAssignee: 'Anyone',
-    trackingFilter: 'all' as const,
+    trackingFilter: 'all' as TrackingFilter,
     trackedCount: 0,
     workingOnCount: 0,
     onStateChange: vi.fn(),

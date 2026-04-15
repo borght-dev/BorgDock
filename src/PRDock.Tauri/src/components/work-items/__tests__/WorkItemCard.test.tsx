@@ -220,11 +220,18 @@ describe('WorkItemCard', () => {
   });
 
   it('context menu shows worktree options when worktrees provided', () => {
+    const wt = {
+      status: 'clean' as const,
+      uncommittedCount: 0,
+      ahead: 0,
+      behind: 0,
+      commitSha: 'abc123',
+    };
     const props = {
       ...defaultProps(),
       worktrees: [
-        { path: '/repos/main', branchName: 'main', isMainWorktree: true },
-        { path: '/repos/feature', branchName: 'feature/x', isMainWorktree: false },
+        { path: '/repos/main', branchName: 'main', isMainWorktree: true, ...wt },
+        { path: '/repos/feature', branchName: 'feature/x', isMainWorktree: false, ...wt },
       ],
     };
     render(<WorkItemCard {...props} />);
@@ -236,9 +243,18 @@ describe('WorkItemCard', () => {
   });
 
   it('clicking a worktree option calls onAssignWorktree', () => {
+    const wt = {
+      status: 'clean' as const,
+      uncommittedCount: 0,
+      ahead: 0,
+      behind: 0,
+      commitSha: 'abc123',
+    };
     const props = {
       ...defaultProps(),
-      worktrees: [{ path: '/repos/feature', branchName: 'feature/x', isMainWorktree: false }],
+      worktrees: [
+        { path: '/repos/feature', branchName: 'feature/x', isMainWorktree: false, ...wt },
+      ],
     };
     render(<WorkItemCard {...props} />);
 

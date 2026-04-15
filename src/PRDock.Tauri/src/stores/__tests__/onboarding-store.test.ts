@@ -17,7 +17,7 @@ vi.mock('@tauri-apps/plugin-store', () => ({
 // window.__TAURI_INTERNALS__.invoke() which doesn't exist in jsdom.
 // Set it up as a noop to prevent unhandled rejections.
 beforeEach(() => {
-  (window as Record<string, unknown>).__TAURI_INTERNALS__ = {
+  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     invoke: vi.fn().mockResolvedValue(undefined),
     metadata: {},
   };

@@ -11,9 +11,10 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 import { useUiStore } from '@/stores/ui-store';
 
-// Mock the ui-store's setWorktreeBranchMap since the full store imports tauri plugin-store
-const _mockSetWorktreeBranchMap = vi.fn();
-const _realGetState = useUiStore.getState;
+// The full ui-store imports tauri plugin-store but we import it directly so
+// tests still see the real in-memory store. Keeping the import here for the
+// side-effect of registering the store.
+void useUiStore;
 
 import { useWorktreeMap } from '../useWorktreeMap';
 

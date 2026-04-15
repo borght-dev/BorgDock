@@ -3,14 +3,22 @@ import type { HighlightCategory } from '@/types';
 import { getHighlightClass } from '../syntax-highlighter';
 
 // Mock tree-sitter node for walkTree testing
+interface MockNode {
+  type: string;
+  startPosition: { row: number; column: number };
+  endPosition: { row: number; column: number };
+  childCount: number;
+  child: (i: number) => MockNode | null;
+}
+
 function makeMockNode(
   type: string,
   startRow: number,
   startCol: number,
   endRow: number,
   endCol: number,
-  children: ReturnType<typeof makeMockNode>[] = [],
-) {
+  children: MockNode[] = [],
+): MockNode {
   return {
     type,
     startPosition: { row: startRow, column: startCol },
@@ -38,10 +46,10 @@ function buildTreeSitterMock(rootNode: ReturnType<typeof makeMockNode> | null = 
   const mockLanguage = { name: 'typescript' };
 
   const MockParserClass = vi.fn().mockImplementation(() => mockParser);
-  (MockParserClass as Record<string, unknown>).Language = {
+  (MockParserClass as unknown as Record<string, unknown>).Language = {
     load: vi.fn().mockResolvedValue(mockLanguage),
   };
-  (MockParserClass as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
+  (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
 
   return { MockParserClass, mockParser, mockLanguage, mockTree };
 }
@@ -131,8 +139,8 @@ describe('highlightLines', () => {
 
   it('returns null when language loading fails', async () => {
     const MockParserClass = vi.fn();
-    (MockParserClass as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
-    (MockParserClass as Record<string, unknown>).Language = {
+    (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
+    (MockParserClass as unknown as Record<string, unknown>).Language = {
       load: vi.fn().mockRejectedValue(new Error('Grammar not found')),
     };
 
@@ -264,8 +272,8 @@ describe('highlightLines', () => {
       }),
       delete: vi.fn(),
     }));
-    (MockParserClass as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
-    (MockParserClass as Record<string, unknown>).Language = {
+    (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
+    (MockParserClass as unknown as Record<string, unknown>).Language = {
       load: vi.fn().mockResolvedValue({ name: 'typescript' }),
     };
 

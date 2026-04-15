@@ -115,6 +115,7 @@ function makePrWithChecks(
       startedAt: '2024-01-01T00:00:00Z',
       completedAt: '2024-01-01T00:00:00Z',
       htmlUrl: '',
+      checkSuiteId: 1,
     })),
     overallStatus: status,
     failedCheckNames: status === 'red' ? ['build'] : [],

@@ -70,9 +70,9 @@ const defaultSettings: AppSettings = {
   repoPriority: {},
 };
 
-function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
-  const result = { ...target } as Record<string, unknown>;
-  for (const key of Object.keys(source)) {
+function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...(target as Record<string, unknown>) };
+  for (const key of Object.keys(source as Record<string, unknown>)) {
     const srcVal = (source as Record<string, unknown>)[key];
     const tgtVal = result[key];
     if (
@@ -83,7 +83,10 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
       typeof tgtVal === 'object' &&
       !Array.isArray(tgtVal)
     ) {
-      result[key] = deepMerge(tgtVal as Record<string, unknown>, srcVal as Record<string, unknown>);
+      result[key] = deepMerge(
+        tgtVal as Record<string, unknown>,
+        srcVal as Partial<Record<string, unknown>>,
+      );
     } else if (srcVal !== undefined) {
       result[key] = srcVal;
     }

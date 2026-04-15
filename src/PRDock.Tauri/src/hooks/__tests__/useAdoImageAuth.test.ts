@@ -54,7 +54,7 @@ describe('useAdoImageAuth', () => {
   it('does nothing when containerRef is null', () => {
     globalThis.fetch = vi.fn();
 
-    const { result } = renderHook(() => {
+    renderHook(() => {
       const ref = useRef<HTMLElement | null>(null);
       useAdoImageAuth(ref, '<img src="https://dev.azure.com/img.png">');
       return ref;
@@ -269,7 +269,6 @@ describe('useAdoImageAuth', () => {
     );
 
     const img = createMockImg('https://dev.azure.com/img.png');
-    const _originalSrc = img.src;
     const container = createContainer([img]);
 
     const { unmount } = renderHook(() => {

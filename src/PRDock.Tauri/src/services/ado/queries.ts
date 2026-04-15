@@ -31,12 +31,15 @@ export async function executeQuery(client: AdoClient, queryId: string): Promise<
 
   let ids: number[];
   if (response.queryType === 'tree' || response.queryType === 'oneHop') {
-    const relations = (response as any).workItemRelations ?? [];
-    ids = [
-      ...new Set(
-        relations.flatMap((r: any) => [r.target?.id, r.source?.id].filter(Boolean) as number[]),
-      ),
-    ];
+    const relations =
+      (response as unknown as { workItemRelations?: Array<{ target?: { id: number }; source?: { id: number } }> })
+        .workItemRelations ?? [];
+    const collected: number[] = [];
+    for (const r of relations) {
+      if (r.target?.id != null) collected.push(r.target.id);
+      if (r.source?.id != null) collected.push(r.source.id);
+    }
+    ids = [...new Set(collected)];
   } else {
     ids = (response.workItems ?? []).map((w) => w.id);
   }

@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ThemeMode } from '@/types';
 import { useTheme } from '../useTheme';
 
 vi.mock('@tauri-apps/api/window', () => ({
@@ -152,12 +153,12 @@ describe('useTheme', () => {
 
   it('syncs when the external initial prop changes', () => {
     const { result, rerender } = renderHook(({ initial }) => useTheme(initial), {
-      initialProps: { initial: 'light' as const },
+      initialProps: { initial: 'light' as ThemeMode },
     });
 
     expect(result.current.theme).toBe('light');
 
-    rerender({ initial: 'dark' as const });
+    rerender({ initial: 'dark' as ThemeMode });
     expect(result.current.theme).toBe('dark');
     expect(result.current.effectiveTheme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
