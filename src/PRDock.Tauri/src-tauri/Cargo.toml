@@ -1,6 +1,6 @@
 [package]
 name = "prdock"
-version = "1.0.10"
+version = "1.0.11"
 description = "PRDock — cross-platform PR monitor sidebar"
 authors = ["PRDock"]
 edition = "2021"
