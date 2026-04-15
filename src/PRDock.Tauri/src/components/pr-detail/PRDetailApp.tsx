@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
@@ -13,8 +13,15 @@ import { PRDetailPanel } from './PRDetailPanel';
 
 export function PRDetailApp() {
   const [pr, setPr] = useState<PullRequestWithChecks | null>(null);
+  const prRef = useRef<PullRequestWithChecks | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Keep a ref alongside the state so the load effect can check the latest
+  // value without taking pr as a dependency (which would cause re-entry).
+  useEffect(() => {
+    prRef.current = pr;
+  }, [pr]);
 
   // Read params. Primary source is the global injected by Rust via
   // initialization_script — URL query strings don't round-trip through
@@ -90,7 +97,7 @@ export function PRDetailApp() {
         const targetPr = prs.find((p) => p.number === number);
 
         if (!targetPr) {
-          if (!pr) {
+          if (!prRef.current) {
             setError(`PR #${number} not found in ${owner}/${repo}`);
             setIsLoading(false);
           }
@@ -114,7 +121,7 @@ export function PRDetailApp() {
           .catch(console.debug); /* fire-and-forget */
       } catch (err) {
         console.error('Failed to load PR:', err);
-        if (!pr) setError('Failed to load pull request');
+        if (!prRef.current) setError('Failed to load pull request');
       } finally {
         setIsLoading(false);
       }

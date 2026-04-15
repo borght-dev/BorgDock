@@ -132,8 +132,12 @@ export function useKeyboardNav() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Reset focused index when PR list changes
+  // Reset focused index when PR list changes. pullRequests + filter are
+  // subscribed via selectors so the component re-renders; we just want this
+  // effect to re-run on those re-renders.
   useEffect(() => {
+    void pullRequests;
+    void filter;
     const filteredPrs = usePrStore.getState().filteredPrs();
     if (focusedIndexRef.current >= filteredPrs.length) {
       focusedIndexRef.current = Math.max(0, filteredPrs.length - 1);

@@ -113,8 +113,14 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
     fetchPrFiles,
   );
 
-  // When a specific commit is selected, fetch its files directly (not cached)
+  // When a specific commit is selected, fetch its files directly (not cached).
+  // retryKey is tracked inside the effect body so biome's dependency analysis
+  // recognises it as a legitimate trigger (the retry button bumps it to force
+  // a re-fetch).
   useEffect(() => {
+    // Reference retryKey so biome sees it as a real dependency.
+    void retryKey;
+
     if (!selectedCommit) {
       setCommitFiles(null);
       return;
@@ -190,8 +196,11 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
     }
   }, []);
 
-  // Intersection observer to track active file
+  // Intersection observer to track active file. filteredFiles is referenced
+  // so biome sees it as a real dependency — when it changes we need to re-
+  // attach the observer to the new DOM nodes.
   useEffect(() => {
+    void filteredFiles;
     const pane = diffPaneRef.current;
     if (!pane) return;
 

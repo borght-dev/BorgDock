@@ -77,6 +77,11 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
   const isMerged = severity === 'merged';
   const dismissMs = isMerged ? MERGED_DISMISS_MS : AUTO_DISMISS_MS;
 
+  const handleDismiss = useCallback(() => {
+    setPhase('exit');
+    setTimeout(onDismiss, 280);
+  }, [onDismiss]);
+
   // Slide-in on mount
   useEffect(() => {
     const t = requestAnimationFrame(() => setPhase('visible'));
@@ -110,12 +115,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
-
-  const handleDismiss = useCallback(() => {
-    setPhase('exit');
-    setTimeout(onDismiss, 280);
-  }, [onDismiss]);
+  }, [dismissMs, handleDismiss]);
 
   const handleMouseEnter = useCallback(() => {
     pausedRef.current = true;

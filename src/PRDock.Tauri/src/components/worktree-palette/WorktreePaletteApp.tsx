@@ -277,6 +277,10 @@ export function WorktreePaletteApp() {
   // Re-runs when the number of loaded worktrees or the favorites-only filter changes,
   // but intentionally NOT on every keystroke of the search query (would feel janky).
   useEffect(() => {
+    // Reference the visible-count signals so biome treats them as real deps;
+    // they are triggers, not values consumed inside the callback body.
+    void allEntries.length;
+    void favoritesOnly;
     if (loading) return;
     let cancelled = false;
 
@@ -358,6 +362,8 @@ export function WorktreePaletteApp() {
 
   // Reset selection when query changes
   useEffect(() => {
+    // `query` is the trigger — we just need to fire when it changes.
+    void query;
     setSelectedIndex(0);
   }, [query]);
 
