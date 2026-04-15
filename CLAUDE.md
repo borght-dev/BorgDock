@@ -45,6 +45,45 @@ The `EXT_TO_GRAMMAR` map in `syntax-highlighter.ts` must only reference grammars
 
 If diffs show up as plain text with no coloring, first check the browser devtools network tab for 404s on `/grammars/tree-sitter-*.wasm` or `/web-tree-sitter.wasm` — that's almost always the symptom of a broken copy pipeline.
 
+## Tauri sync commands and main-thread operations
+
+Tauri 2 invokes both sync and async `#[tauri::command]` functions on a **worker thread**, not the main GUI thread. Any operation that touches a `WebviewWindow` — especially `WebviewWindowBuilder::build()`, and often `show()` / `hide()` / `set_position()` — has to run on the main thread, or the cross-thread marshalling deadlocks against itself on Windows (the main thread waits for the worker that's waiting for the main thread).
+
+Symptoms of the deadlock: the command logs its entry but never returns, and subsequent IPC calls from the frontend hang (e.g. `loadSettings` gets stuck on one of its `invoke()` calls, the splash screen never progresses). You'll see a log like `set_badge_visible: show=true` followed by silence.
+
+**Pattern used by every window-creating command** (`open_pr_detail_window`, `open_whats_new_window`, `set_badge_visible`, `resize_badge`, etc.):
+
+```rust
+#[tauri::command]
+pub async fn my_window_command(app: tauri::AppHandle, /* args */) -> Result<T, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<T, String>>();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<T, String> {
+            // ...window ops happen here, on the main thread...
+            Ok(value)
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+    rx.await.map_err(|e| e.to_string())?
+}
+```
+
+The command has to be `async` so it can `.await` the oneshot. `toggle_flyout` is the one exception — it's a non-command internal helper called synchronously from the tray event handler, which already runs on the main thread via `run_on_main_thread`.
+
+## `cargo check` / `cargo build` hangs in Git Bash on Windows
+
+Git Bash's MSYS path conversion mangles flags like `-Brepro` (MSVC's deterministic-build flag), parsing them as `-B` followed by a path argument. Symptom: `cc-rs` errors like `"C:/Program" "Files/Git/Brepro-"` during `libsqlite3-sys` build.
+
+Workaround: prefix cargo commands with `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`:
+
+```bash
+cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check
+```
+
+Or run cargo from cmd.exe / PowerShell where MSYS isn't involved.
+
 ## Self-Improvement
 
 Whenever you learn something new that is important to remember, run into the same issue twice, or encounter an issue that might happen again — update this CLAUDE.md so the next session avoids the same pitfalls.

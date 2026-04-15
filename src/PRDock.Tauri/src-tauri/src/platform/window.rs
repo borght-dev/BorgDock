@@ -288,13 +288,12 @@ pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
 const BADGE_DEFAULT_W: f64 = 380.0;
 const BADGE_DEFAULT_H: f64 = 56.0;
 
-/// Create the badge window if it doesn't exist. Positions it once at the
-/// top-center of the primary monitor. Subsequent calls reuse the window.
-fn ensure_badge_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
-    if let Some(win) = app.get_webview_window("badge") {
-        return Ok(win);
-    }
-    log::info!("ensure_badge_window: creating");
+/// Create the badge window on the main thread. Called from inside a
+/// `run_on_main_thread` closure so `WebviewWindowBuilder::build()` doesn't
+/// deadlock cross-marshalling to itself. Positions the window at the
+/// top-center of the primary monitor on first creation.
+fn build_badge_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
+    log::info!("build_badge_window: creating");
     let win = WebviewWindowBuilder::new(app, "badge", WebviewUrl::App("badge.html".into()))
         .title("PRDock")
         .inner_size(BADGE_DEFAULT_W, BADGE_DEFAULT_H)
@@ -324,23 +323,42 @@ fn ensure_badge_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> 
     Ok(win)
 }
 
+/// Async because Tauri sync commands run on a worker thread and
+/// `WebviewWindowBuilder::build()` must run on the main (GUI) thread; the
+/// same deadlock the PR detail pop-out already guards against. Dispatch all
+/// window operations via `run_on_main_thread` and a oneshot channel.
 #[tauri::command]
-pub fn set_badge_visible(app: tauri::AppHandle, show: bool) -> Result<(), String> {
+pub async fn set_badge_visible(app: tauri::AppHandle, show: bool) -> Result<(), String> {
     log::info!("set_badge_visible: show={show}");
-    if show {
-        let win = ensure_badge_window(&app)?;
-        win.show().map_err(|e| e.to_string())?;
-        let _ = win.set_always_on_top(true);
-        force_repaint(&win);
-    } else if let Some(win) = app.get_webview_window("badge") {
-        win.hide().map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_build = app.clone();
+
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            if show {
+                let win = if let Some(win) = app_for_build.get_webview_window("badge") {
+                    win
+                } else {
+                    build_badge_window(&app_for_build)?
+                };
+                win.show().map_err(|e| e.to_string())?;
+                let _ = win.set_always_on_top(true);
+                force_repaint(&win);
+            } else if let Some(win) = app_for_build.get_webview_window("badge") {
+                win.hide().map_err(|e| e.to_string())?;
+            }
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
-    set_badge_visible(app, false)
+pub async fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
+    set_badge_visible(app, false).await
 }
 
 /// Resize the badge. The `anchor` parameter controls which edge is pinned:
@@ -352,60 +370,71 @@ pub fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
 /// Returns the direction the badge grew ("up" or "down") so BadgeApp can
 /// render the expanded panel above or below the pill.
 #[tauri::command]
-pub fn resize_badge(
+pub async fn resize_badge(
     app: tauri::AppHandle,
     width: u32,
     height: u32,
     anchor: Option<String>,
 ) -> Result<String, String> {
-    let win = app
-        .get_webview_window("badge")
-        .ok_or_else(|| "badge window not open".to_string())?;
-    let scale = win.scale_factor().unwrap_or(1.0);
-    let new_w = (width as f64 * scale) as i32;
-    let new_h = (height as f64 * scale) as i32;
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<String, String>>();
+    let app_for_run = app.clone();
 
-    let cur_pos = win.outer_position().map_err(|e| e.to_string())?;
-    let cur_size = win.outer_size().map_err(|e| e.to_string())?;
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<String, String> {
+            let win = app_for_run
+                .get_webview_window("badge")
+                .ok_or_else(|| "badge window not open".to_string())?;
+            let scale = win.scale_factor().unwrap_or(1.0);
+            let new_w = (width as f64 * scale) as i32;
+            let new_h = (height as f64 * scale) as i32;
 
-    let anchor = anchor.as_deref().unwrap_or("top");
-    let direction = if anchor == "auto" {
-        // Pick the direction with more room on the current monitor.
-        let (mon_y, mon_h) = win
-            .current_monitor()
-            .ok()
-            .flatten()
-            .map(|m| (m.position().y, m.size().height as i32))
-            .unwrap_or((0, 1080));
-        let space_below = mon_y + mon_h - (cur_pos.y + cur_size.height as i32);
-        let space_above = cur_pos.y - mon_y;
-        if space_below >= new_h || space_below >= space_above {
-            "down"
-        } else {
-            "up"
-        }
-    } else if anchor == "bottom" {
-        "up"
-    } else {
-        "down"
-    };
+            let cur_pos = win.outer_position().map_err(|e| e.to_string())?;
+            let cur_size = win.outer_size().map_err(|e| e.to_string())?;
 
-    let new_x = cur_pos.x;
-    let new_y = if direction == "up" {
-        cur_pos.y + cur_size.height as i32 - new_h
-    } else {
-        cur_pos.y
-    };
+            let anchor = anchor.as_deref().unwrap_or("top");
+            let direction = if anchor == "auto" {
+                // Pick the direction with more room on the current monitor.
+                let (mon_y, mon_h) = win
+                    .current_monitor()
+                    .ok()
+                    .flatten()
+                    .map(|m| (m.position().y, m.size().height as i32))
+                    .unwrap_or((0, 1080));
+                let space_below = mon_y + mon_h - (cur_pos.y + cur_size.height as i32);
+                let space_above = cur_pos.y - mon_y;
+                if space_below >= new_h || space_below >= space_above {
+                    "down"
+                } else {
+                    "up"
+                }
+            } else if anchor == "bottom" {
+                "up"
+            } else {
+                "down"
+            };
 
-    win.set_size(tauri::Size::Physical(PhysicalSize::new(
-        new_w as u32,
-        new_h as u32,
-    )))
+            let new_x = cur_pos.x;
+            let new_y = if direction == "up" {
+                cur_pos.y + cur_size.height as i32 - new_h
+            } else {
+                cur_pos.y
+            };
+
+            win.set_size(tauri::Size::Physical(PhysicalSize::new(
+                new_w as u32,
+                new_h as u32,
+            )))
+            .map_err(|e| e.to_string())?;
+            win.set_position(tauri::Position::Physical(PhysicalPosition::new(new_x, new_y)))
+                .map_err(|e| e.to_string())?;
+
+            Ok(direction.to_string())
+        })();
+        let _ = tx.send(result);
+    })
     .map_err(|e| e.to_string())?;
-    win.set_position(tauri::Position::Physical(PhysicalPosition::new(new_x, new_y)))
-        .map_err(|e| e.to_string())?;
 
-    Ok(direction.to_string())
+    rx.await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
