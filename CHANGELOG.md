@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.0.11 — 2026-04-15
+
+### New Features
+
+- **"What's new?" window** — PRDock now ships a dedicated release notes window that auto-opens the first time you launch a version with user-facing changes. It groups highlights by kind (New / Improved / Fixed), shows all missed releases in a collapsible accordion, and remembers what you've already seen. Reachable any time from the tray menu and Settings → Updates → "View release notes". ![What's new window hero](whats-new/1.0.11/whats-new-window.png)
+- **Close PRs from the detail panel** — Stop hopping to the browser for dead PRs. The PR detail window now has a Close PR button that closes the pull request and auto-refreshes the list so you don't have to re-poll. ![Close PR button](whats-new/1.0.11/close-pr.png)
+- **Inline Fix-with-Claude on failing checks** — Failing check rows in the PR detail window now have a Fix with Claude button right there. One click spins up a worktree, generates a prompt from the check log, and launches Claude Code — no more scrolling up to the global button. ![Inline Fix with Claude](whats-new/1.0.11/fix-with-claude.png)
+- **Tray flyout** — Left-click the system tray icon to pop up a rich flyout panel above the taskbar with your PR list, per-PR status, inline Fix and Monitor actions, and a direct path to expand the sidebar. No more opening the main window just to see what's happening. ![Tray flyout popping up above the system tray](whats-new/1.0.11/tray-flyout.png)
+- **Floating badge is back** — The ambient floating badge is back, now as an optional companion to the tray flyout. Enable it in Settings → Appearance and pick from five styles (Glass Capsule, Minimal Notch, Floating Island, Liquid Morph, Spectral Bar). Drag it anywhere on your screen, click to expand the sidebar, expand it inline to see your full PR list. ![Floating badge glass capsule](whats-new/1.0.11/floating-badge.png)
+- SQLite PR cache with startup hydration — fresh launches now load your last-seen PR list instantly from a local cache while the real data fetches in the background.
+- Tactile button system — every button has pointer-cursor and press-feedback states so clickable vs non-clickable is unmistakable.
+- Azure DevOps HTTP proxy via Rust — ADO calls route through a Rust reqwest proxy so CORS no longer blocks attachments, avatars, or signed queries.
+
+### Improvements
+
+- Keyboard shortcuts toggle their windows — Ctrl+F7 (worktrees), Ctrl+F9 (command palette), and Ctrl+F10 (SQL) now open on first press and close on the second press.
+- Every pop-out window (PR detail, work item detail, What's New, SQL, worktree palette) now uses the same custom draggable title bar with matching minimize / maximize / close controls — the native OS title bar has been retired from every pop-out.
+- Tray tooltip surfaces live open / failing / pending PR counts on hover.
+- Sidebar position clamps to monitor bounds so it never drifts off-screen on multi-monitor setups.
+- GitHub check runs are paginated (>100 checks per ref are now visible) and API errors surface the actual error body instead of a generic "request failed".
+- Virtualized CI log viewer — large Playwright / CI logs no longer lock up the app when scrolled.
+- Debounced badge / flyout updates and memoized PR card selectors cut background CPU usage significantly.
+- Tray icon renders from a single shared brand waveform constant so every state stays pixel-identical.
+
+### Bug Fixes
+
+- **Credentials survive reboots** — GitHub, Azure DevOps, Claude API, and SQL passwords now live in the native OS keyring (Windows Credential Manager / macOS Keychain / libsecret) instead of in-memory only. No more re-authenticating after every restart. ![Credentials in Credential Manager](whats-new/1.0.11/credentials-keyring.png)
+- PR detail pop-out no longer hangs on creation or produces a blank white window on Windows.
+- Settings flyout no longer deadlocks on the worktree-prune dialog ("Maximum update depth exceeded" loop).
+- Notifications fire even when the sidebar is auto-hidden.
+- SQL queries now hydrate their password from the keychain before executing — fixes the "password is null" cold-start error.
+- External links in review comments and PR descriptions open via the system browser and HTML in markdown renders correctly instead of showing as raw source.
+- Floating badge window no longer clips when expanding upward.
+- Settings writes are atomic with backup fallback on crash mid-save.
+- Resolved 45+ pre-existing strict-mode type errors, lint warnings, and flaky tests so `npm run build` and `npm run lint` exit cleanly.
+
 ## 1.0.10 — 2026-04-01
 
 ### New Features

@@ -4,6 +4,84 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.0.11",
+    "date": "2026-04-15",
+    "summary": "\"What's new?\" window, Close PRs from the detail panel, Inline Fix-with-Claude on failing checks, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "\"What's new?\" window",
+        "description": "PRDock now ships a dedicated release notes window that auto-opens the first time you launch a version with user-facing changes. It groups highlights by kind (New / Improved / Fixed), shows all missed releases in a collapsible accordion, and remembers what you've already seen. Reachable any time from the tray menu and Settings → Updates → \"View release notes\".",
+        "hero": {
+          "src": "/whats-new/1.0.11/whats-new-window.png",
+          "alt": "What's new window hero"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Close PRs from the detail panel",
+        "description": "Stop hopping to the browser for dead PRs. The PR detail window now has a Close PR button that closes the pull request and auto-refreshes the list so you don't have to re-poll.",
+        "hero": {
+          "src": "/whats-new/1.0.11/close-pr.png",
+          "alt": "Close PR button"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Inline Fix-with-Claude on failing checks",
+        "description": "Failing check rows in the PR detail window now have a Fix with Claude button right there. One click spins up a worktree, generates a prompt from the check log, and launches Claude Code — no more scrolling up to the global button.",
+        "hero": {
+          "src": "/whats-new/1.0.11/fix-with-claude.png",
+          "alt": "Inline Fix with Claude"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Tray flyout",
+        "description": "Left-click the system tray icon to pop up a rich flyout panel above the taskbar with your PR list, per-PR status, inline Fix and Monitor actions, and a direct path to expand the sidebar. No more opening the main window just to see what's happening.",
+        "hero": {
+          "src": "/whats-new/1.0.11/tray-flyout.png",
+          "alt": "Tray flyout popping up above the system tray"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Floating badge is back",
+        "description": "The ambient floating badge is back, now as an optional companion to the tray flyout. Enable it in Settings → Appearance and pick from five styles (Glass Capsule, Minimal Notch, Floating Island, Liquid Morph, Spectral Bar). Drag it anywhere on your screen, click to expand the sidebar, expand it inline to see your full PR list.",
+        "hero": {
+          "src": "/whats-new/1.0.11/floating-badge.png",
+          "alt": "Floating badge glass capsule"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "fixed",
+        "title": "Credentials survive reboots",
+        "description": "GitHub, Azure DevOps, Claude API, and SQL passwords now live in the native OS keyring (Windows Credential Manager / macOS Keychain / libsecret) instead of in-memory only. No more re-authenticating after every restart.",
+        "hero": {
+          "src": "/whats-new/1.0.11/credentials-keyring.png",
+          "alt": "Credentials in Credential Manager"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "PR detail pop-out no longer hangs on creation or produces a blank white window on Windows.",
+      "Settings flyout no longer deadlocks on the worktree-prune dialog (\"Maximum update depth exceeded\" loop).",
+      "Notifications fire even when the sidebar is auto-hidden.",
+      "SQL queries now hydrate their password from the keychain before executing — fixes the \"password is null\" cold-start error.",
+      "External links in review comments and PR descriptions open via the system browser and HTML in markdown renders correctly instead of showing as raw source.",
+      "Floating badge window no longer clips when expanding upward.",
+      "Settings writes are atomic with backup fallback on crash mid-save.",
+      "Resolved 45+ pre-existing strict-mode type errors, lint warnings, and flaky tests so `npm run build` and `npm run lint` exit cleanly."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "1.0.10",
     "date": "2026-04-01",
     "summary": "Actionable OS notifications, Click notifications to open PR details, and SQL runner shows all result sets.",
