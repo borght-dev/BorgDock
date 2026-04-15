@@ -123,6 +123,9 @@ pub fn run() {
             // Window
             platform::window::open_pr_detail_window,
             platform::window::open_whats_new_window,
+            platform::window::set_badge_visible,
+            platform::window::hide_badge,
+            platform::window::resize_badge,
             // Process
             git::process::launch_claude_code,
             git::process::get_active_sessions,

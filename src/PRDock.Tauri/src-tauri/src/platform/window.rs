@@ -280,6 +280,134 @@ pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// Floating badge window
+// ---------------------------------------------------------------------------
+
+/// Width/height the badge starts at — matches BadgeApp.tsx's BADGE_COLLAPSED.
+const BADGE_DEFAULT_W: f64 = 380.0;
+const BADGE_DEFAULT_H: f64 = 56.0;
+
+/// Create the badge window if it doesn't exist. Positions it once at the
+/// top-center of the primary monitor. Subsequent calls reuse the window.
+fn ensure_badge_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
+    if let Some(win) = app.get_webview_window("badge") {
+        return Ok(win);
+    }
+    log::info!("ensure_badge_window: creating");
+    let win = WebviewWindowBuilder::new(app, "badge", WebviewUrl::App("badge.html".into()))
+        .title("PRDock")
+        .inner_size(BADGE_DEFAULT_W, BADGE_DEFAULT_H)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .resizable(false)
+        .skip_taskbar(true)
+        .shadow(false)
+        .visible(false)
+        .focused(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // Default position: top-center of the primary monitor, 48px from the top.
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let (mon_x, mon_y, mon_w) = app
+        .get_webview_window("main")
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .map(|m| (m.position().x, m.position().y, m.size().width as i32))
+        .unwrap_or((0, 0, 1920));
+    let badge_w = (BADGE_DEFAULT_W * scale) as i32;
+    let x = mon_x + (mon_w - badge_w) / 2;
+    let y = mon_y + (48.0 * scale) as i32;
+    let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
+
+    Ok(win)
+}
+
+#[tauri::command]
+pub fn set_badge_visible(app: tauri::AppHandle, show: bool) -> Result<(), String> {
+    log::info!("set_badge_visible: show={show}");
+    if show {
+        let win = ensure_badge_window(&app)?;
+        win.show().map_err(|e| e.to_string())?;
+        let _ = win.set_always_on_top(true);
+        force_repaint(&win);
+    } else if let Some(win) = app.get_webview_window("badge") {
+        win.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn hide_badge(app: tauri::AppHandle) -> Result<(), String> {
+    set_badge_visible(app, false)
+}
+
+/// Resize the badge. The `anchor` parameter controls which edge is pinned:
+/// - `"top"`: keep top-left position, grow downward (default)
+/// - `"bottom"`: keep bottom-left position, grow upward
+/// - `"auto"`: pick whichever direction has more room; returns the direction
+///   chosen so the frontend can animate accordingly
+///
+/// Returns the direction the badge grew ("up" or "down") so BadgeApp can
+/// render the expanded panel above or below the pill.
+#[tauri::command]
+pub fn resize_badge(
+    app: tauri::AppHandle,
+    width: u32,
+    height: u32,
+    anchor: Option<String>,
+) -> Result<String, String> {
+    let win = app
+        .get_webview_window("badge")
+        .ok_or_else(|| "badge window not open".to_string())?;
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let new_w = (width as f64 * scale) as i32;
+    let new_h = (height as f64 * scale) as i32;
+
+    let cur_pos = win.outer_position().map_err(|e| e.to_string())?;
+    let cur_size = win.outer_size().map_err(|e| e.to_string())?;
+
+    let anchor = anchor.as_deref().unwrap_or("top");
+    let direction = if anchor == "auto" {
+        // Pick the direction with more room on the current monitor.
+        let (mon_y, mon_h) = win
+            .current_monitor()
+            .ok()
+            .flatten()
+            .map(|m| (m.position().y, m.size().height as i32))
+            .unwrap_or((0, 1080));
+        let space_below = mon_y + mon_h - (cur_pos.y + cur_size.height as i32);
+        let space_above = cur_pos.y - mon_y;
+        if space_below >= new_h || space_below >= space_above {
+            "down"
+        } else {
+            "up"
+        }
+    } else if anchor == "bottom" {
+        "up"
+    } else {
+        "down"
+    };
+
+    let new_x = cur_pos.x;
+    let new_y = if direction == "up" {
+        cur_pos.y + cur_size.height as i32 - new_h
+    } else {
+        cur_pos.y
+    };
+
+    win.set_size(tauri::Size::Physical(PhysicalSize::new(
+        new_w as u32,
+        new_h as u32,
+    )))
+    .map_err(|e| e.to_string())?;
+    win.set_position(tauri::Position::Physical(PhysicalPosition::new(new_x, new_y)))
+        .map_err(|e| e.to_string())?;
+
+    Ok(direction.to_string())
+}
+
 #[tauri::command]
 pub async fn open_pr_detail_window(
     app: tauri::AppHandle,
