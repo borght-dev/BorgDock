@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui-org/nicegui/main/nicegui/static/tauri.v2.schema.json",
   "productName": "PRDock",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "identifier": "com.prdock.app",
   "build": {
     "frontendDist": "../dist",
