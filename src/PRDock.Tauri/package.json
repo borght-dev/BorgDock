@@ -14,7 +14,8 @@
     "lint:fix": "biome check --write src",
     "format": "biome format --write src",
     "tauri": "tauri",
-    "validate-release": "tsx scripts/changelog/validate-release.ts"
+    "validate-release": "tsx scripts/changelog/validate-release.ts",
+    "screenshot-heroes": "node scripts/screenshot-heroes.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.23",
