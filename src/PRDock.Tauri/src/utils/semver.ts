@@ -1,5 +1,5 @@
 function parts(v: string): [number, number, number] {
-  const [maj, min, pat] = v.split('.').map(Number);
+  const [maj = 0, min = 0, pat = 0] = v.split('.').map(Number);
   return [maj, min, pat];
 }
 
