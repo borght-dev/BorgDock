@@ -42,7 +42,10 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register hotkey: {e}"))?;
 
-    // Register command palette shortcut (Ctrl+F9)
+    // Register command palette shortcut (Ctrl+F9) — toggles the window:
+    // if it's open, the re-press closes it; otherwise the window is created.
+    // We close (not hide) to match PaletteApp's Escape-to-close behavior so
+    // the re-opened window always starts with fresh state.
     let app_palette = app.clone();
     app.global_shortcut()
         .on_shortcut("Ctrl+F9", move |_app, _shortcut, event| {
@@ -56,7 +59,7 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             let app_cb = app_palette.clone();
             let _ = app_palette.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("palette") {
-                    let _ = win.set_focus();
+                    let _ = win.close();
                     return;
                 }
 
@@ -84,7 +87,8 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
 
-    // Register worktree palette shortcut (Ctrl+F7)
+    // Register worktree palette shortcut (Ctrl+F7) — toggles the same way
+    // as the command palette.
     let app_worktree = app.clone();
     app.global_shortcut()
         .on_shortcut("Ctrl+F7", move |_app, _shortcut, event| {
@@ -95,7 +99,7 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             let app_cb = app_worktree.clone();
             let _ = app_worktree.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("worktree-palette") {
-                    let _ = win.set_focus();
+                    let _ = win.close();
                     return;
                 }
 
@@ -123,7 +127,10 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
 
-    // Register SQL window shortcut (Ctrl+F10)
+    // Register SQL window shortcut (Ctrl+F10) — toggles to match the palette
+    // behavior. The SQL window holds persistent connection + tab state, so
+    // closing it discards in-progress work; users can minimize via the title
+    // bar if they want to preserve state.
     let app_sql = app.clone();
     app.global_shortcut()
         .on_shortcut("Ctrl+F10", move |_app, _shortcut, event| {
@@ -134,7 +141,7 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             let app_cb = app_sql.clone();
             let _ = app_sql.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("sql") {
-                    let _ = win.set_focus();
+                    let _ = win.close();
                     return;
                 }
 
