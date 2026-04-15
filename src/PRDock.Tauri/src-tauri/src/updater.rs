@@ -2,8 +2,16 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
-const GITHUB_RELEASES_API: &str =
-    "https://api.github.com/repos/borght-dev/PRDock/releases";
+/// The canonical "latest release" endpoint — returns the single release
+/// GitHub considers newest (non-draft, non-prerelease). The listing
+/// endpoint (/releases) is NOT reliably sorted by newest-first: duplicate
+/// tags, re-published releases, or create_time vs published_at mismatches
+/// can cause an older release to appear first. The previous version of
+/// this file iterated the listing and broke on the first release with a
+/// latest.json asset, which happened to be v1.0.9 — making auto-updates
+/// silently no-op since v1.0.8.
+const GITHUB_LATEST_RELEASE_API: &str =
+    "https://api.github.com/repos/borght-dev/PRDock/releases/latest";
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -53,57 +61,66 @@ fn api_client(token: &Option<String>) -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
-/// Fetch the latest.json content by finding the newest Tauri release (v* tag,
-/// not wpf-v*) via the GitHub API, then downloading the latest.json asset.
-/// Also rewrites the platform download URL to a pre-signed CDN URL so the
-/// updater can download from a private repo without auth headers.
+/// Fetch the latest.json content from the repository's canonical latest
+/// release via GitHub API, then download the latest.json asset. Also
+/// rewrites the platform download URL to a pre-signed CDN URL so the
+/// updater plugin can download from a private repo without auth headers.
+///
+/// Uses GET /releases/latest (single release) rather than GET /releases
+/// (listing). The listing endpoint is not reliably ordered by newest-first
+/// — in this repo it returned v1.0.9 before v1.0.11, which made the old
+/// "take the first release with a latest.json" loop always pick the wrong
+/// release and silently conclude "current is already latest" since v1.0.8.
+/// The /latest endpoint returns exactly one release, the one GitHub marks
+/// as isLatest, which for us is the newest semver-tagged, non-draft,
+/// non-prerelease release.
 async fn fetch_latest_json(token: &Option<String>) -> Result<String, String> {
     let client = api_client(token)?;
 
-    let releases: serde_json::Value = client
-        .get(format!("{GITHUB_RELEASES_API}?per_page=20"))
+    log::info!("updater: fetching {GITHUB_LATEST_RELEASE_API}");
+
+    let release: serde_json::Value = client
+        .get(GITHUB_LATEST_RELEASE_API)
         .send()
         .await
-        .map_err(|e| format!("Failed to list releases: {e}"))?
+        .map_err(|e| format!("Failed to fetch latest release: {e}"))?
         .error_for_status()
-        .map_err(|e| format!("Releases API error: {e}"))?
+        .map_err(|e| format!("Latest release API error: {e}"))?
         .json()
         .await
-        .map_err(|e| format!("Failed to parse releases: {e}"))?;
+        .map_err(|e| format!("Failed to parse latest release: {e}"))?;
 
-    let releases = releases
-        .as_array()
-        .ok_or("Releases response is not an array")?;
+    let tag = release["tag_name"].as_str().unwrap_or("");
+    log::info!("updater: latest release = {tag}");
+
+    // Defensive: ignore legacy WPF tags just in case they ever land as latest.
+    if !tag.starts_with('v') || tag.starts_with("wpf-") {
+        return Err(format!(
+            "latest release tag '{tag}' is not a Tauri release (expected v*, not wpf-v*)"
+        ));
+    }
 
     let mut latest_json_api_url: Option<String> = None;
     let mut url_rewrites: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
 
-    for release in releases {
-        let tag = release["tag_name"].as_str().unwrap_or("");
-        if !tag.starts_with('v') || tag.starts_with("wpf-") {
-            continue;
-        }
-        if let Some(assets) = release["assets"].as_array() {
-            for asset in assets {
-                let name = asset["name"].as_str().unwrap_or("");
-                if name.eq_ignore_ascii_case("latest.json") {
-                    latest_json_api_url = asset["url"].as_str().map(String::from);
-                }
-                if let (Some(browser_url), Some(api_url)) = (
-                    asset["browser_download_url"].as_str(),
-                    asset["url"].as_str(),
-                ) {
-                    url_rewrites.insert(browser_url.to_string(), api_url.to_string());
-                }
+    if let Some(assets) = release["assets"].as_array() {
+        for asset in assets {
+            let name = asset["name"].as_str().unwrap_or("");
+            if name.eq_ignore_ascii_case("latest.json") {
+                latest_json_api_url = asset["url"].as_str().map(String::from);
             }
-        }
-        if latest_json_api_url.is_some() {
-            break;
+            if let (Some(browser_url), Some(api_url)) = (
+                asset["browser_download_url"].as_str(),
+                asset["url"].as_str(),
+            ) {
+                url_rewrites.insert(browser_url.to_string(), api_url.to_string());
+            }
         }
     }
 
-    let asset_url = latest_json_api_url.ok_or("No Tauri release with latest.json found")?;
+    let asset_url =
+        latest_json_api_url.ok_or_else(|| format!("Release {tag} has no latest.json asset"))?;
     let body = download_asset(token, &asset_url).await?;
 
     // Rewrite platform download URLs to pre-signed CDN URLs
@@ -256,7 +273,13 @@ pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, Stri
         .clone()
         .unwrap_or_else(|| "0.0.0".to_string());
 
-    if !is_newer(&latest.version, &current) {
+    let newer = is_newer(&latest.version, &current);
+    log::info!(
+        "updater: current={current} latest={} newer={newer}",
+        latest.version
+    );
+
+    if !newer {
         return Ok(None);
     }
 
