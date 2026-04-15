@@ -13,6 +13,7 @@ import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoHide } from '@/hooks/useAutoHide';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useBadgeSync } from '@/hooks/useBadgeSync';
+import { useBadgeVisibility } from '@/hooks/useBadgeVisibility';
 import { useCacheInit } from '@/hooks/useCacheInit';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useInitSequence } from '@/hooks/useInitSequence';
@@ -122,6 +123,9 @@ export default function App() {
 
   // Badge sync
   useBadgeSync();
+
+  // Floating badge window visibility — watches settings.ui.badgeEnabled
+  useBadgeVisibility();
 
   // Auto-hide sidebar in floating mode
   useAutoHide(settings);

@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { PullRequestWithChecks } from '@/types';
+import type { BadgeStyle, PullRequestWithChecks } from '@/types';
 
 type TrayWorstState = 'failing' | 'pending' | 'passing' | 'idle';
 
@@ -23,6 +24,64 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function formatShortAgo(dateStr: string): string {
+  return formatTimeAgo(dateStr);
+}
+
+type StatusColor = 'green' | 'red' | 'yellow';
+
+function prItemStatusColor(pr: PullRequestWithChecks): StatusColor {
+  if (pr.overallStatus === 'red') return 'red';
+  if (pr.overallStatus === 'yellow') return 'yellow';
+  return 'green';
+}
+
+/** Build the payload for the floating badge window */
+function buildBadgePayload(
+  pullRequests: PullRequestWithChecks[],
+  username: string,
+  theme: string,
+  badgeStyle: BadgeStyle,
+  notificationCount: number,
+) {
+  const lowerUser = username.toLowerCase();
+  const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
+  const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
+
+  const toBadgeItem = (pr: PullRequestWithChecks) => {
+    const passed = pr.passedCount;
+    const total = pr.checks.length;
+    return {
+      title: pr.pullRequest.title,
+      number: pr.pullRequest.number,
+      timeAgo: formatShortAgo(pr.pullRequest.updatedAt),
+      statusColor: prItemStatusColor(pr),
+      checksText: total > 0 ? `${passed}/${total}` : undefined,
+      isInProgress: pr.overallStatus === 'yellow',
+      repoOwner: pr.pullRequest.repoOwner,
+      repoName: pr.pullRequest.repoName,
+    };
+  };
+
+  const myPrs = pullRequests
+    .filter((pr) => lowerUser && pr.pullRequest.authorLogin.toLowerCase() === lowerUser)
+    .map(toBadgeItem);
+  const teamPrs = pullRequests
+    .filter((pr) => !lowerUser || pr.pullRequest.authorLogin.toLowerCase() !== lowerUser)
+    .map(toBadgeItem);
+
+  return {
+    totalPrCount: pullRequests.length,
+    failingCount,
+    pendingCount,
+    notificationCount,
+    myPrs,
+    teamPrs,
+    badgeStyle,
+    theme,
+  };
 }
 
 /** Build the payload for the flyout window */
@@ -76,6 +135,11 @@ export function useBadgeSync() {
   const lastPollTime = lastPollTimeRaw ? lastPollTimeRaw.getTime() : null;
   const theme = useSettingsStore((s) => s.settings.ui.theme);
   const hotkey = useSettingsStore((s) => s.settings.ui.globalHotkey);
+  const badgeEnabled = useSettingsStore((s) => s.settings.ui.badgeEnabled);
+  const badgeStyle = useSettingsStore((s) => s.settings.ui.badgeStyle);
+  const activeNotifs = useNotificationStore((s) => s.active);
+  const queuedNotifs = useNotificationStore((s) => s.queue);
+  const notificationCount = activeNotifs.length + queuedNotifs.length;
 
   // Debounced sync — skip when nothing has changed
   const prevHashRef = useRef('');
@@ -137,12 +201,32 @@ export function useBadgeSync() {
       } catch {
         // ignore — flyout window may not exist yet
       }
+
+      // Floating badge: emit a badge-update so BadgeApp can redraw. We always
+      // build + emit the payload regardless of badgeEnabled — the badge window
+      // is either hidden or not created when disabled, so the emit is a no-op
+      // in that case and keeps the code path simple.
+      if (badgeEnabled) {
+        try {
+          const badgePayload = buildBadgePayload(
+            pullRequests,
+            username,
+            theme,
+            badgeStyle,
+            notificationCount,
+          );
+          const { emitTo } = await import('@tauri-apps/api/event');
+          await emitTo('badge', 'badge-update', badgePayload);
+        } catch {
+          // ignore — badge window may not exist yet
+        }
+      }
     }, 200);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [pullRequests, username, theme, hotkey, lastPollTime]);
+  }, [pullRequests, username, theme, hotkey, lastPollTime, badgeEnabled, badgeStyle, notificationCount]);
 
   // Respond to flyout-request-data: re-send current payload
   useEffect(() => {
@@ -166,6 +250,44 @@ export function useBadgeSync() {
           console.log('[BadgeSync] Responding to flyout-request-data, PRs:', prs.length);
           const { emitTo } = await import('@tauri-apps/api/event');
           await emitTo('flyout', 'flyout-update', payload);
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Respond to badge-request-data: re-send current payload to the badge window
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const fn = await listen('badge-request-data', async () => {
+          const prs = usePrStore.getState().pullRequests;
+          const user = usePrStore.getState().username;
+          const st = useSettingsStore.getState().settings;
+          const notifs = useNotificationStore.getState();
+          const payload = buildBadgePayload(
+            prs,
+            user,
+            st.ui.theme,
+            st.ui.badgeStyle,
+            notifs.active.length + notifs.queue.length,
+          );
+          console.log('[BadgeSync] Responding to badge-request-data, PRs:', prs.length);
+          const { emitTo } = await import('@tauri-apps/api/event');
+          await emitTo('badge', 'badge-update', payload);
         });
         if (cancelled) {
           fn();
