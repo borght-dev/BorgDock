@@ -4,6 +4,10 @@ import type { AppSettings } from '@/types';
 interface SettingsState {
   settings: AppSettings;
   isLoading: boolean;
+  /** True after loadSettings has successfully completed at least once.
+   *  Consumers that must not act on default settings (e.g. the badge
+   *  visibility hook) should gate on this rather than `!isLoading`. */
+  hasLoaded: boolean;
   loadSettings: () => Promise<void>;
   saveSettings: (settings: AppSettings) => Promise<void>;
   updateSettings: (partial: Partial<AppSettings>) => void;
@@ -99,6 +103,7 @@ let _saveTimer: ReturnType<typeof setTimeout> | undefined;
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: defaultSettings,
   isLoading: false,
+  hasLoaded: false,
 
   loadSettings: async () => {
     set({ isLoading: true });
@@ -129,10 +134,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         }
       }
 
-      set({ settings, isLoading: false });
+      set({ settings, isLoading: false, hasLoaded: true });
     } catch (error) {
       console.error('Failed to load settings:', error);
-      set({ isLoading: false });
+      // Still mark as loaded — downstream hooks need the gate to open even
+      // on error so they can act on defaults rather than waiting forever.
+      set({ isLoading: false, hasLoaded: true });
     }
   },
 
