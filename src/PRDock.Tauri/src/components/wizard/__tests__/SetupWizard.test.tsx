@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { SetupWizard } from '../SetupWizard';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsStore } from '@/stores/settings-store';
+import { SetupWizard } from '../SetupWizard';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),

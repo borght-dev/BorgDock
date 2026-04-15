@@ -100,7 +100,13 @@ describe('parsePatch', () => {
     const lines = hunks[0]!.lines.filter((l) => l.type !== 'hunk-header');
     expect(lines).toHaveLength(7);
     expect(lines.map((l) => l.type)).toEqual([
-      'context', 'delete', 'add', 'add', 'context', 'context', 'context',
+      'context',
+      'delete',
+      'add',
+      'add',
+      'context',
+      'context',
+      'context',
     ]);
   });
 
@@ -352,10 +358,7 @@ describe('computeInlineChanges', () => {
   });
 
   it('returns null for very different lines (below 40% similarity)', () => {
-    const result = computeInlineChanges(
-      'const x = 1;',
-      'function foo() { return bar; }',
-    );
+    const result = computeInlineChanges('const x = 1;', 'function foo() { return bar; }');
     expect(result).toBeNull();
   });
 
@@ -422,10 +425,7 @@ describe('computeInlineChanges', () => {
   });
 
   it('spans have only valid types', () => {
-    const result = computeInlineChanges(
-      'const x = foo();',
-      'const y = bar();',
-    );
+    const result = computeInlineChanges('const x = foo();', 'const y = bar();');
     expect(result).not.toBeNull();
     for (const span of result!.deleted) {
       expect(['unchanged', 'deleted']).toContain(span.type);

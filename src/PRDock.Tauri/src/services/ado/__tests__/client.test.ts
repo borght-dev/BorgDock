@@ -6,30 +6,44 @@ import { AdoApiError, AdoAuthError, AdoClient } from '../client';
 // fetch() — mock invoke() to forward the request to fetch() and reshape
 // the Response into the AdoFetchResponse shape the client expects.
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(async (cmd: string, args?: { request?: { url: string; method: string; headers: Record<string, string>; body: string | null } }) => {
-    if (cmd !== 'ado_fetch' || !args?.request) {
-      throw new Error(`Unexpected invoke call: ${cmd}`);
-    }
-    const { url, method, headers, body } = args.request;
-    const response: Response = await (globalThis.fetch as unknown as (u: string, i: RequestInit) => Promise<Response>)(url, {
-      method,
-      headers,
-      body,
-    });
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-    // Clone before reading so mocks that return the same Response across retries still work.
-    const bodyText = await response.clone().text();
-    return {
-      status: response.status,
-      status_text: response.statusText,
-      body: bodyText,
-      body_base64: null,
-      headers: responseHeaders,
-    };
-  }),
+  invoke: vi.fn(
+    async (
+      cmd: string,
+      args?: {
+        request?: {
+          url: string;
+          method: string;
+          headers: Record<string, string>;
+          body: string | null;
+        };
+      },
+    ) => {
+      if (cmd !== 'ado_fetch' || !args?.request) {
+        throw new Error(`Unexpected invoke call: ${cmd}`);
+      }
+      const { url, method, headers, body } = args.request;
+      const response: Response = await (
+        globalThis.fetch as unknown as (u: string, i: RequestInit) => Promise<Response>
+      )(url, {
+        method,
+        headers,
+        body,
+      });
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+      // Clone before reading so mocks that return the same Response across retries still work.
+      const bodyText = await response.clone().text();
+      return {
+        status: response.status,
+        status_text: response.statusText,
+        body: bodyText,
+        body_base64: null,
+        headers: responseHeaders,
+      };
+    },
+  ),
 }));
 
 describe('AdoClient retry', () => {

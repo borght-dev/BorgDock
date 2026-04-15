@@ -1,10 +1,16 @@
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
-import { useCachedTabData } from '@/hooks/useCachedTabData';
-import type { DiffFile, DiffViewMode, FileStatusFilter, PullRequestCommit, PullRequestFileChange } from '@/types';
+import type {
+  DiffFile,
+  DiffViewMode,
+  FileStatusFilter,
+  PullRequestCommit,
+  PullRequestFileChange,
+} from '@/types';
 import { DiffFileSection } from './diff/DiffFileSection';
 import { DiffFileTree } from './diff/DiffFileTree';
 import { DiffToolbar } from './diff/DiffToolbar';
@@ -26,9 +32,13 @@ export function toDiffFile(fc: PullRequestFileChange): DiffFile {
   return {
     filename: fc.filename,
     previousFilename: fc.previousFilename,
-    status: (fc.status === 'added' || fc.status === 'removed' || fc.status === 'renamed' || fc.status === 'copied')
-      ? fc.status
-      : 'modified',
+    status:
+      fc.status === 'added' ||
+      fc.status === 'removed' ||
+      fc.status === 'renamed' ||
+      fc.status === 'copied'
+        ? fc.status
+        : 'modified',
     additions: fc.additions,
     deletions: fc.deletions,
     patch: fc.patch,
@@ -72,10 +82,18 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
 
   // Persist preferences
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY_VIEW_MODE, viewMode); } catch { /* noop */ }
+    try {
+      localStorage.setItem(STORAGE_KEY_VIEW_MODE, viewMode);
+    } catch {
+      /* noop */
+    }
   }, [viewMode]);
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY_FILE_TREE, String(showFileTree)); } catch { /* noop */ }
+    try {
+      localStorage.setItem(STORAGE_KEY_FILE_TREE, String(showFileTree));
+    } catch {
+      /* noop */
+    }
   }, [showFileTree]);
 
   // Cached fetch for PR-level files
@@ -121,7 +139,9 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCommit, repoOwner, repoName, retryKey]);
 
   // Fetch commits for scope selector
@@ -137,7 +157,9 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
         // Non-fatal
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [prNumber, repoOwner, repoName]);
 
   // Resolve which files to display
@@ -197,16 +219,23 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       await writeText(path);
     } catch {
       // Fallback: navigator.clipboard
-      try { await navigator.clipboard.writeText(path); } catch { /* noop */ }
+      try {
+        await navigator.clipboard.writeText(path);
+      } catch {
+        /* noop */
+      }
     }
   }, []);
 
-  const handleOpenInGitHub = useCallback((filename: string) => {
-    if (htmlUrl) {
-      const fileUrl = `${htmlUrl}/files#diff-${filename.replace(/\//g, '-')}`;
-      openUrl(fileUrl).catch(console.error);
-    }
-  }, [htmlUrl]);
+  const handleOpenInGitHub = useCallback(
+    (filename: string) => {
+      if (htmlUrl) {
+        const fileUrl = `${htmlUrl}/files#diff-${filename.replace(/\//g, '-')}`;
+        openUrl(fileUrl).catch(console.error);
+      }
+    },
+    [htmlUrl],
+  );
 
   const handleToggleAllExpanded = useCallback(() => {
     setAllExpanded((prev) => !prev);
@@ -216,7 +245,12 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      )
+        return;
 
       const fileNames = filteredFiles.map((f) => f.filename);
       const currentIdx = activeFile ? fileNames.indexOf(activeFile) : -1;
@@ -268,7 +302,10 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       <div className="p-4 text-center">
         <p className="text-xs text-[var(--color-status-red)] mb-2">{error}</p>
         <button
-          onClick={() => { setError(null); setRetryKey((k) => k + 1); }}
+          onClick={() => {
+            setError(null);
+            setRetryKey((k) => k + 1);
+          }}
           className="px-3 py-1 text-[10px] rounded bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
         >
           Retry
@@ -316,7 +353,10 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       <div className="flex flex-1 min-h-0">
         {/* File tree sidebar */}
         {showFileTree && (
-          <div className="shrink-0" style={{ width: '220px', minWidth: '160px', maxWidth: '320px' }}>
+          <div
+            className="shrink-0"
+            style={{ width: '220px', minWidth: '160px', maxWidth: '320px' }}
+          >
             <DiffFileTree
               files={files}
               activeFile={activeFile}

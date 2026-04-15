@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { MultiSignalIndicator } from '../MultiSignalIndicator';
 import type { PullRequestWithChecks } from '@/types';
+import { MultiSignalIndicator } from '../MultiSignalIndicator';
 
 afterEach(cleanup);
 
@@ -46,9 +46,22 @@ describe('MultiSignalIndicator', () => {
   describe('SegmentRing style (default)', () => {
     it('renders an SVG with aria-label showing signal colors', () => {
       const pr = makePr({
-        checks: [{ id: 1, name: 'build', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 }],
+        checks: [
+          {
+            id: 1,
+            name: 'build',
+            status: 'completed',
+            conclusion: 'success',
+            htmlUrl: '',
+            checkSuiteId: 1,
+          },
+        ],
         passedCount: 1,
-        pullRequest: { reviewStatus: 'approved', mergeable: true, isDraft: false } as PullRequestWithChecks['pullRequest'],
+        pullRequest: {
+          reviewStatus: 'approved',
+          mergeable: true,
+          isDraft: false,
+        } as PullRequestWithChecks['pullRequest'],
       });
       render(<MultiSignalIndicator pr={pr} />);
       const svg = screen.getByLabelText(/CI:.*Review:.*Conflicts:.*Draft:/);
@@ -57,7 +70,16 @@ describe('MultiSignalIndicator', () => {
 
     it('shows red CI signal when checks fail', () => {
       const pr = makePr({
-        checks: [{ id: 1, name: 'build', status: 'completed', conclusion: 'failure', htmlUrl: '', checkSuiteId: 1 }],
+        checks: [
+          {
+            id: 1,
+            name: 'build',
+            status: 'completed',
+            conclusion: 'failure',
+            htmlUrl: '',
+            checkSuiteId: 1,
+          },
+        ],
         failedCheckNames: ['build'],
       });
       render(<MultiSignalIndicator pr={pr} />);
@@ -159,7 +181,16 @@ describe('MultiSignalIndicator', () => {
 
     it('shows 100% for a fully ready PR', () => {
       const pr = makePr({
-        checks: [{ id: 1, name: 'build', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 }],
+        checks: [
+          {
+            id: 1,
+            name: 'build',
+            status: 'completed',
+            conclusion: 'success',
+            htmlUrl: '',
+            checkSuiteId: 1,
+          },
+        ],
         passedCount: 1,
         skippedCount: 0,
         pullRequest: {

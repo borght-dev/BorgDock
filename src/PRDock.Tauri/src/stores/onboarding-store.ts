@@ -15,15 +15,21 @@ interface OnboardingState {
   restoreOnboardingState: () => Promise<void>;
 }
 
-function persist(state: { hasSeenFocusOverlay: boolean; dismissedBadges: Set<BadgeId>; dismissedHints: Set<HintId> }) {
-  import('@tauri-apps/plugin-store').then(({ load }) => {
-    load('onboarding-state.json').then((store) => {
-      store.set('hasSeenFocusOverlay', state.hasSeenFocusOverlay);
-      store.set('dismissedBadges', [...state.dismissedBadges]);
-      store.set('dismissedHints', [...state.dismissedHints]);
-      store.save();
-    });
-  }).catch((err) => console.warn('Failed to persist onboarding state:', err));
+function persist(state: {
+  hasSeenFocusOverlay: boolean;
+  dismissedBadges: Set<BadgeId>;
+  dismissedHints: Set<HintId>;
+}) {
+  import('@tauri-apps/plugin-store')
+    .then(({ load }) => {
+      load('onboarding-state.json').then((store) => {
+        store.set('hasSeenFocusOverlay', state.hasSeenFocusOverlay);
+        store.set('dismissedBadges', [...state.dismissedBadges]);
+        store.set('dismissedHints', [...state.dismissedHints]);
+        store.save();
+      });
+    })
+    .catch((err) => console.warn('Failed to persist onboarding state:', err));
 }
 
 export const useOnboardingStore = create<OnboardingState>()((set, get) => ({

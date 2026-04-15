@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { HighlightCard } from '../HighlightCard';
+import { describe, expect, it } from 'vitest';
 import type { Highlight } from '@/types/whats-new';
+import { HighlightCard } from '../HighlightCard';
 
 const base: Highlight = {
   kind: 'new',

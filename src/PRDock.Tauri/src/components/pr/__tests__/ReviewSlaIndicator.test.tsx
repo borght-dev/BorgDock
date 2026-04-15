@@ -29,7 +29,9 @@ describe('ReviewSlaIndicator', () => {
   });
 
   it('renders a status dot element for each tier', () => {
-    const { container: freshContainer } = render(<ReviewSlaIndicator tier="fresh" waitTime="<1h" />);
+    const { container: freshContainer } = render(
+      <ReviewSlaIndicator tier="fresh" waitTime="<1h" />,
+    );
     expect(freshContainer.querySelector('.rounded-full')).toBeInTheDocument();
 
     const { container: agingContainer } = render(<ReviewSlaIndicator tier="aging" waitTime="6h" />);

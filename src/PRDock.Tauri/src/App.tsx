@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createLogger } from '@/services/logger';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -26,6 +25,7 @@ import { useStateTransitions } from '@/hooks/useStateTransitions';
 import { useTheme } from '@/hooks/useTheme';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
+import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';

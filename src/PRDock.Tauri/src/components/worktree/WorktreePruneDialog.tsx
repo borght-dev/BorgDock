@@ -75,7 +75,11 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   reposRef.current = settings.repos;
 
   const classifyWorktree = useCallback(
-    (branchName: string, openBranches: Set<string>, closedBranches: Set<string>): WorktreeStatus => {
+    (
+      branchName: string,
+      openBranches: Set<string>,
+      closedBranches: Set<string>,
+    ): WorktreeStatus => {
       const shortName = branchName.replace(/^refs\/heads\//, '');
       if (openBranches.has(shortName) || openBranches.has(branchName)) return 'open';
       if (closedBranches.has(shortName) || closedBranches.has(branchName)) return 'closed';

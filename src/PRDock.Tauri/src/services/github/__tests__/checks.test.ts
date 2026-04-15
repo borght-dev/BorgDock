@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getCheckRuns, getCheckRunsForRef, getCheckSuites, getJobLog, rerunWorkflow } from '../checks';
+import {
+  getCheckRuns,
+  getCheckRunsForRef,
+  getCheckSuites,
+  getJobLog,
+  rerunWorkflow,
+} from '../checks';
 import type { GitHubClient } from '../client';
 
 function createMockClient() {
@@ -217,7 +223,9 @@ describe('getCheckRunsForRef', () => {
 describe('getJobLog', () => {
   it('fetches raw log content for a job', async () => {
     const client = createMockClient();
-    vi.mocked(client.getRaw).mockResolvedValueOnce('2025-01-15 Build started\n2025-01-15 Build completed');
+    vi.mocked(client.getRaw).mockResolvedValueOnce(
+      '2025-01-15 Build started\n2025-01-15 Build completed',
+    );
 
     const result = await getJobLog(client, 'owner', 'repo', 12345);
 
@@ -233,9 +241,6 @@ describe('rerunWorkflow', () => {
 
     await rerunWorkflow(client, 'owner', 'repo', 67890);
 
-    expect(client.post).toHaveBeenCalledWith(
-      'repos/owner/repo/actions/runs/67890/rerun',
-      {},
-    );
+    expect(client.post).toHaveBeenCalledWith('repos/owner/repo/actions/runs/67890/rerun', {});
   });
 });

@@ -168,11 +168,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                   strokeWidth="1.5"
                   strokeLinecap="round"
                 >
-                  {sortNewest ? (
-                    <path d="M8 3v10M4 7l4-4 4 4" />
-                  ) : (
-                    <path d="M8 3v10M4 9l4 4 4-4" />
-                  )}
+                  {sortNewest ? <path d="M8 3v10M4 7l4-4 4 4" /> : <path d="M8 3v10M4 9l4 4 4-4" />}
                 </svg>
                 {sortNewest ? 'Newest first' : 'Oldest first'}
               </button>
@@ -289,7 +285,12 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
 
                     {/* Body */}
                     <div className="markdown-body">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{comment.body}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                      >
+                        {comment.body}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 </div>

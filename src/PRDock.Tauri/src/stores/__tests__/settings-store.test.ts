@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useSettingsStore } from '../settings-store';
 import type { AppSettings } from '@/types';
+import { useSettingsStore } from '../settings-store';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -135,7 +135,10 @@ describe('settings-store', () => {
 
     it('loads settings from Tauri invoke', async () => {
       const { invoke } = await import('@tauri-apps/api/core');
-      const loaded = makeSettings({ setupComplete: true, gitHub: { authMethod: 'pat', pollIntervalSeconds: 120, username: 'loaded-user' } });
+      const loaded = makeSettings({
+        setupComplete: true,
+        gitHub: { authMethod: 'pat', pollIntervalSeconds: 120, username: 'loaded-user' },
+      });
       (invoke as ReturnType<typeof vi.fn>).mockResolvedValue(loaded);
 
       await useSettingsStore.getState().loadSettings();

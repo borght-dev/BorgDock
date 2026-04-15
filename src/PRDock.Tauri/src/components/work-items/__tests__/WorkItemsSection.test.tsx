@@ -28,10 +28,10 @@ vi.mock('@/hooks/useAdoImageAuth', () => ({
   useAdoImageAuth: vi.fn(),
 }));
 
-import { WorkItemsSection } from '../WorkItemsSection';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { WorkItem } from '@/types';
+import { WorkItemsSection } from '../WorkItemsSection';
 
 // ---------- factories ----------
 
@@ -113,9 +113,7 @@ describe('WorkItemsSection', () => {
   it('shows configuration message when ADO not configured', () => {
     setupStores({ configured: false });
     render(<WorkItemsSection />);
-    expect(
-      screen.getByText('Configure Azure DevOps in Settings to see work items'),
-    ).toBeDefined();
+    expect(screen.getByText('Configure Azure DevOps in Settings to see work items')).toBeDefined();
   });
 
   // ---- Configured state ----
@@ -133,7 +131,14 @@ describe('WorkItemsSection', () => {
     // We need the query in the tree so selectedQueryName resolves
     useWorkItemsStore.setState({
       queryTree: [
-        { id: 'q-1', name: 'My Query', path: 'Shared/My Query', isFolder: false, hasChildren: false, children: [] },
+        {
+          id: 'q-1',
+          name: 'My Query',
+          path: 'Shared/My Query',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
       ],
     });
     render(<WorkItemsSection />);
@@ -145,7 +150,14 @@ describe('WorkItemsSection', () => {
     setupStores({ configured: true, queryId: 'q-1' });
     useWorkItemsStore.setState({
       queryTree: [
-        { id: 'q-1', name: 'Active Bugs', path: 'Shared/Active Bugs', isFolder: false, hasChildren: false, children: [] },
+        {
+          id: 'q-1',
+          name: 'Active Bugs',
+          path: 'Shared/Active Bugs',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
       ],
     });
     render(<WorkItemsSection />);
@@ -186,7 +198,14 @@ describe('WorkItemsSection', () => {
     setupStores({ configured: true, items: [item], queryId: 'q-1' });
     useWorkItemsStore.setState({
       queryTree: [
-        { id: 'q-1', name: 'Test', path: 'Test', isFolder: false, hasChildren: false, children: [] },
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
       ],
     });
     render(<WorkItemsSection />);
@@ -202,7 +221,14 @@ describe('WorkItemsSection', () => {
     useWorkItemsStore.setState({
       trackedWorkItemIds: new Set([10]),
       queryTree: [
-        { id: 'q-1', name: 'Test', path: 'Test', isFolder: false, hasChildren: false, children: [] },
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
       ],
     });
     render(<WorkItemsSection />);
@@ -216,7 +242,14 @@ describe('WorkItemsSection', () => {
     useWorkItemsStore.setState({
       workingOnWorkItemIds: new Set([10]),
       queryTree: [
-        { id: 'q-1', name: 'Test', path: 'Test', isFolder: false, hasChildren: false, children: [] },
+        {
+          id: 'q-1',
+          name: 'Test',
+          path: 'Test',
+          isFolder: false,
+          hasChildren: false,
+          children: [],
+        },
       ],
     });
     render(<WorkItemsSection />);

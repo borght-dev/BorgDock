@@ -17,13 +17,7 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
   if (status === 'yellow') {
     return (
       <span className="inline-block h-2.5 w-2.5 shrink-0" aria-label="Status: in progress">
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 12 12"
-          fill="none"
-          className="animate-spin"
-        >
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="animate-spin">
           <path
             d="M6 1a5 5 0 1 0 5 5"
             stroke="var(--color-status-yellow)"

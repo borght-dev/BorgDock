@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { fireEvent, render, screen, act } from '@testing-library/react';
-import { InlineHint } from '../InlineHint';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { InlineHint } from '../InlineHint';
 
 vi.mock('@tauri-apps/plugin-store', () => ({
   load: vi.fn(() => Promise.resolve({ set: vi.fn(), save: vi.fn(), get: vi.fn() })),
@@ -29,9 +29,7 @@ describe('InlineHint', () => {
     useOnboardingStore.setState({
       dismissedHints: new Set(['focus-priority-ranking'] as const),
     });
-    const { container } = render(
-      <InlineHint hintId="focus-priority-ranking" text="Hint text" />,
-    );
+    const { container } = render(<InlineHint hintId="focus-priority-ranking" text="Hint text" />);
     expect(container.innerHTML).toBe('');
   });
 
@@ -81,13 +79,7 @@ describe('InlineHint', () => {
       dismissHint,
     });
 
-    render(
-      <InlineHint
-        hintId="review-mode-shortcuts"
-        text="Fast hint"
-        timeoutMs={3000}
-      />,
-    );
+    render(<InlineHint hintId="review-mode-shortcuts" text="Fast hint" timeoutMs={3000} />);
 
     act(() => {
       vi.advanceTimersByTime(3000);

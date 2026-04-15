@@ -5,9 +5,9 @@ import {
   CheckIcon,
   DragGrip,
   ExpandChevron,
+  generateCheckPips,
   STATUS_DOT_MAP,
   XIcon,
-  generateCheckPips,
 } from './shared';
 
 export function MinimalNotch({
@@ -79,10 +79,7 @@ export function MinimalNotch({
                 <CheckIcon size={8} color={dotColor} />
               )}
             </div>
-            <span
-              className="text-[11px] font-medium whitespace-nowrap"
-              style={{ color: dotColor }}
-            >
+            <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: dotColor }}>
               {statusText}
             </span>
           </div>

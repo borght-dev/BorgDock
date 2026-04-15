@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { buildReviewNudgeNotification, sendOsNotification } from '@/services/notification';
-import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import type { ReviewSlaTier } from '@/services/review-sla';
+import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { AppSettings } from '@/types';
 
-function nudgeIntervalMs(
-  baseMinutes: number,
-  tier: ReviewSlaTier,
-  escalation: boolean,
-): number {
+function nudgeIntervalMs(baseMinutes: number, tier: ReviewSlaTier, escalation: boolean): number {
   if (!escalation) return baseMinutes * 60_000;
   switch (tier) {
     case 'fresh':
@@ -105,8 +101,15 @@ export function useReviewNudges(settings: AppSettings) {
   useEffect(() => {
     if (!settings.notifications.reviewNudgeEnabled) return;
 
-    const intervalMs = Math.min(settings.notifications.reviewNudgeIntervalMinutes * 60_000, 300_000);
+    const intervalMs = Math.min(
+      settings.notifications.reviewNudgeIntervalMinutes * 60_000,
+      300_000,
+    );
     const timer = setInterval(checkNudges, intervalMs);
     return () => clearInterval(timer);
-  }, [settings.notifications.reviewNudgeEnabled, settings.notifications.reviewNudgeIntervalMinutes, checkNudges]);
+  }, [
+    settings.notifications.reviewNudgeEnabled,
+    settings.notifications.reviewNudgeIntervalMinutes,
+    checkNudges,
+  ]);
 }

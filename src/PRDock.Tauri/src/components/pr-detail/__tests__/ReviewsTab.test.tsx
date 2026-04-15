@@ -43,7 +43,12 @@ describe('ReviewsTab', () => {
   it('shows loading skeleton initially', () => {
     mockGetReviews.mockImplementation(() => new Promise(() => {}));
     const { container } = render(
-      <ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />,
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
     );
     const pulseEls = container.querySelectorAll('.animate-pulse');
     expect(pulseEls.length).toBeGreaterThan(0);
@@ -51,7 +56,14 @@ describe('ReviewsTab', () => {
 
   it('shows empty state when no reviews', async () => {
     mockGetReviews.mockResolvedValue([]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('No reviews yet.')).toBeTruthy();
     });
@@ -59,7 +71,14 @@ describe('ReviewsTab', () => {
 
   it('renders review user name', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview()]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('alice')).toBeTruthy();
     });
@@ -67,7 +86,14 @@ describe('ReviewsTab', () => {
 
   it('renders "Approved" state label', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview({ state: 'APPROVED' })]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('Approved')).toBeTruthy();
     });
@@ -75,7 +101,14 @@ describe('ReviewsTab', () => {
 
   it('renders "Changes Requested" state label', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview({ state: 'CHANGES_REQUESTED' })]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('Changes Requested')).toBeTruthy();
     });
@@ -83,17 +116,29 @@ describe('ReviewsTab', () => {
 
   it('renders "Commented" state label', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview({ state: 'COMMENTED' })]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('Commented')).toBeTruthy();
     });
   });
 
   it('renders review body as markdown', async () => {
-    mockGetReviews.mockResolvedValue([
-      makeRawReview({ body: 'Great work on this PR' }),
-    ]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    mockGetReviews.mockResolvedValue([makeRawReview({ body: 'Great work on this PR' })]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('Great work on this PR')).toBeTruthy();
     });
@@ -101,7 +146,14 @@ describe('ReviewsTab', () => {
 
   it('does not render body section when body is empty', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview({ body: '' })]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('alice')).toBeTruthy();
     });
@@ -111,7 +163,14 @@ describe('ReviewsTab', () => {
 
   it('renders avatar initials', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview({ user: { login: 'bob' } })]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('BO')).toBeTruthy();
     });
@@ -122,7 +181,14 @@ describe('ReviewsTab', () => {
       makeRawReview({ id: 1, user: { login: 'alice' }, state: 'APPROVED' }),
       makeRawReview({ id: 2, user: { login: 'bob' }, state: 'CHANGES_REQUESTED' }),
     ]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('alice')).toBeTruthy();
       expect(screen.getByText('bob')).toBeTruthy();
@@ -131,7 +197,14 @@ describe('ReviewsTab', () => {
 
   it('renders sort buttons', async () => {
     mockGetReviews.mockResolvedValue([makeRawReview()]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('Newest')).toBeTruthy();
       expect(screen.getByText('Oldest')).toBeTruthy();
@@ -142,10 +215,27 @@ describe('ReviewsTab', () => {
 
   it('changes sort mode on button click', async () => {
     mockGetReviews.mockResolvedValue([
-      makeRawReview({ id: 1, user: { login: 'alice' }, submitted_at: '2026-01-14T10:00:00Z', state: 'APPROVED' }),
-      makeRawReview({ id: 2, user: { login: 'bob' }, submitted_at: '2026-01-16T10:00:00Z', state: 'CHANGES_REQUESTED' }),
+      makeRawReview({
+        id: 1,
+        user: { login: 'alice' },
+        submitted_at: '2026-01-14T10:00:00Z',
+        state: 'APPROVED',
+      }),
+      makeRawReview({
+        id: 2,
+        user: { login: 'bob' },
+        submitted_at: '2026-01-16T10:00:00Z',
+        state: 'CHANGES_REQUESTED',
+      }),
     ]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('alice')).toBeTruthy();
     });
@@ -157,7 +247,14 @@ describe('ReviewsTab', () => {
 
   it('handles null client gracefully', async () => {
     mockGetClient.mockReturnValue(null);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('No reviews yet.')).toBeTruthy();
     });
@@ -165,7 +262,14 @@ describe('ReviewsTab', () => {
 
   it('handles error gracefully', async () => {
     mockGetReviews.mockRejectedValue(new Error('API error'));
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     // useCachedTabData catches the error; component shows empty state
     await waitFor(() => {
       expect(screen.getByText('No reviews yet.')).toBeTruthy();
@@ -173,10 +277,15 @@ describe('ReviewsTab', () => {
   });
 
   it('handles missing user login gracefully', async () => {
-    mockGetReviews.mockResolvedValue([
-      makeRawReview({ user: null }),
-    ]);
-    render(<ReviewsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    mockGetReviews.mockResolvedValue([makeRawReview({ user: null })]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       // Should render with empty string user
       const container = document.querySelector('.divide-y');
@@ -186,14 +295,16 @@ describe('ReviewsTab', () => {
 
   it('passes correct params to getReviews', async () => {
     mockGetReviews.mockResolvedValue([]);
-    render(<ReviewsTab prNumber={42} repoOwner="myorg" repoName="myrepo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <ReviewsTab
+        prNumber={42}
+        repoOwner="myorg"
+        repoName="myrepo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
-      expect(mockGetReviews).toHaveBeenCalledWith(
-        expect.anything(),
-        'myorg',
-        'myrepo',
-        42,
-      );
+      expect(mockGetReviews).toHaveBeenCalledWith(expect.anything(), 'myorg', 'myrepo', 42);
     });
   });
 });

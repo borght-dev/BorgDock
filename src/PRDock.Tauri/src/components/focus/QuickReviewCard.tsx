@@ -20,7 +20,9 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
             {p.title}
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
-            <span className="font-mono">{p.repoOwner}/{p.repoName}</span>
+            <span className="font-mono">
+              {p.repoOwner}/{p.repoName}
+            </span>
             <span>#{p.number}</span>
             <span>by {p.authorLogin}</span>
           </div>
@@ -45,8 +47,12 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
       <div className="flex flex-wrap items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
         <span className="text-[var(--color-status-green)]">+{p.additions}</span>
         <span className="text-[var(--color-status-red)]">-{p.deletions}</span>
-        <span>{p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}</span>
-        <span>{p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}</span>
+        <span>
+          {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
+        </span>
+        <span>
+          {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* Labels */}
@@ -67,7 +73,9 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
       {p.body && (
         <div className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-3 max-h-[200px] overflow-y-auto">
           <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{p.body}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+              {p.body}
+            </ReactMarkdown>
           </div>
         </div>
       )}

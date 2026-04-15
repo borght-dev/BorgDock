@@ -1,7 +1,7 @@
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
-import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
-import { RepoGroup } from '../RepoGroup';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
+import { RepoGroup } from '../RepoGroup';
 
 afterEach(cleanup);
 
@@ -74,7 +74,10 @@ vi.mock('@/services/work-item-linker', () => ({
   detectWorkItemIds: vi.fn(() => []),
 }));
 
-function makePr(number: number, status: 'green' | 'red' | 'yellow' | 'gray' = 'green'): PullRequestWithChecks {
+function makePr(
+  number: number,
+  status: 'green' | 'red' | 'yellow' | 'gray' = 'green',
+): PullRequestWithChecks {
   return {
     pullRequest: {
       number,
@@ -146,9 +149,7 @@ describe('RepoGroup', () => {
   });
 
   it('does not show failing badge when no PRs are failing', () => {
-    render(
-      <RepoGroup repoKey="test/repo" prs={[makePr(1, 'green')]} />,
-    );
+    render(<RepoGroup repoKey="test/repo" prs={[makePr(1, 'green')]} />);
     // Only one badge: the count badge (1). No failing badge.
     const headerButton = screen.getByText('test/repo').closest('button')!;
     const badges = headerButton.querySelectorAll('[class*="tabular-nums"]');

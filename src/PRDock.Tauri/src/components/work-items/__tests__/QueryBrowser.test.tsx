@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { QueryBrowser, type AdoQueryTreeNode } from '../QueryBrowser';
+import { type AdoQueryTreeNode, QueryBrowser } from '../QueryBrowser';
 
 // ---------- factories ----------
 
@@ -119,7 +119,9 @@ describe('QueryBrowser', () => {
 
   it('renders favorite queries section', () => {
     const props = defaultProps();
-    props.favoriteQueries = [makeQueryNode({ id: 'q-fav', name: 'My Favorites', isFavorite: true })];
+    props.favoriteQueries = [
+      makeQueryNode({ id: 'q-fav', name: 'My Favorites', isFavorite: true }),
+    ];
     render(<QueryBrowser {...props} />);
     expect(screen.getByText('Favorites')).toBeDefined();
     expect(screen.getByText('My Favorites')).toBeDefined();
@@ -159,9 +161,7 @@ describe('QueryBrowser', () => {
   it('renders folder nodes', () => {
     const props = defaultProps();
     props.queryTree = [
-      makeFolderNode('f-1', 'Shared Queries', [
-        makeQueryNode({ id: 'q-1', name: 'Bugs' }),
-      ]),
+      makeFolderNode('f-1', 'Shared Queries', [makeQueryNode({ id: 'q-1', name: 'Bugs' })]),
     ];
     render(<QueryBrowser {...props} />);
     expect(screen.getByText('Shared Queries')).toBeDefined();
@@ -172,9 +172,7 @@ describe('QueryBrowser', () => {
   it('expands folder on click, revealing children', () => {
     const props = defaultProps();
     props.queryTree = [
-      makeFolderNode('f-1', 'Shared Queries', [
-        makeQueryNode({ id: 'q-1', name: 'Bugs' }),
-      ]),
+      makeFolderNode('f-1', 'Shared Queries', [makeQueryNode({ id: 'q-1', name: 'Bugs' })]),
     ];
     render(<QueryBrowser {...props} />);
 
@@ -185,9 +183,7 @@ describe('QueryBrowser', () => {
   it('collapses folder on second click', () => {
     const props = defaultProps();
     props.queryTree = [
-      makeFolderNode('f-1', 'Shared Queries', [
-        makeQueryNode({ id: 'q-1', name: 'Bugs' }),
-      ]),
+      makeFolderNode('f-1', 'Shared Queries', [makeQueryNode({ id: 'q-1', name: 'Bugs' })]),
     ];
     render(<QueryBrowser {...props} />);
 
@@ -245,9 +241,7 @@ describe('QueryBrowser', () => {
     const props = defaultProps();
     props.queryTree = [
       makeFolderNode('f-1', 'Level 1', [
-        makeFolderNode('f-2', 'Level 2', [
-          makeQueryNode({ id: 'q-deep', name: 'Deep Query' }),
-        ]),
+        makeFolderNode('f-2', 'Level 2', [makeQueryNode({ id: 'q-deep', name: 'Deep Query' })]),
       ]),
     ];
     render(<QueryBrowser {...props} />);

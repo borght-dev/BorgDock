@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useKeyboardNav } from '../useKeyboardNav';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
+import { useKeyboardNav } from '../useKeyboardNav';
 
 // Mock the stores
 const mockSelectPr = vi.fn();

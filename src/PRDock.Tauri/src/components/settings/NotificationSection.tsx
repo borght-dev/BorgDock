@@ -208,8 +208,7 @@ function TestNotificationRow() {
                 lastFired === entry.severity
                   ? SEVERITY_COLORS[entry.severity]
                   : 'var(--color-surface-raised)',
-              color:
-                lastFired === entry.severity ? '#fff' : SEVERITY_COLORS[entry.severity],
+              color: lastFired === entry.severity ? '#fff' : SEVERITY_COLORS[entry.severity],
               border: `1px solid color-mix(in srgb, ${SEVERITY_COLORS[entry.severity]} 25%, transparent)`,
             }}
             onClick={() => fire(entry)}

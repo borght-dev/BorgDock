@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { WorkItemFieldUpdates } from '@/components/work-items/WorkItemDetailPanel';
 import { AdoClient } from '@/services/ado/client';
 import { executeQuery } from '@/services/ado/queries';
 import {
@@ -14,7 +15,6 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { JsonPatchOperation, WorkItem, WorkItemAttachment, WorkItemComment } from '@/types';
-import type { WorkItemFieldUpdates } from '@/components/work-items/WorkItemDetailPanel';
 import { getField } from '@/utils/work-item-helpers';
 
 interface UseWorkItemHandlersOptions {

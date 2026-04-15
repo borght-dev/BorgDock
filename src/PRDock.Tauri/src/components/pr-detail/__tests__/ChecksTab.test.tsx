@@ -62,9 +62,7 @@ describe('ChecksTab', () => {
   });
 
   it('shows summary counts for failed checks', () => {
-    const checks = [
-      makeCheck({ id: 1, name: 'build', conclusion: 'failure' }),
-    ];
+    const checks = [makeCheck({ id: 1, name: 'build', conclusion: 'failure' })];
     render(<ChecksTab checks={checks} />);
     expect(screen.getByText('1 failed')).toBeTruthy();
   });
@@ -78,9 +76,7 @@ describe('ChecksTab', () => {
   });
 
   it('shows summary counts for skipped checks', () => {
-    const checks = [
-      makeCheck({ id: 1, name: 'optional', conclusion: 'skipped' }),
-    ];
+    const checks = [makeCheck({ id: 1, name: 'optional', conclusion: 'skipped' })];
     render(<ChecksTab checks={checks} />);
     expect(screen.getByText('1 skipped')).toBeTruthy();
   });
@@ -94,34 +90,26 @@ describe('ChecksTab', () => {
   });
 
   it('classifies timed_out checks as failed', () => {
-    const checks = [
-      makeCheck({ id: 1, name: 'slow-job', conclusion: 'timed_out' }),
-    ];
+    const checks = [makeCheck({ id: 1, name: 'slow-job', conclusion: 'timed_out' })];
     render(<ChecksTab checks={checks} />);
     expect(screen.getByText('1 failed')).toBeTruthy();
   });
 
   it('classifies cancelled checks as skipped', () => {
-    const checks = [
-      makeCheck({ id: 1, name: 'cancelled-job', conclusion: 'cancelled' }),
-    ];
+    const checks = [makeCheck({ id: 1, name: 'cancelled-job', conclusion: 'cancelled' })];
     render(<ChecksTab checks={checks} />);
     expect(screen.getByText('1 skipped')).toBeTruthy();
   });
 
   it('classifies neutral checks as skipped', () => {
-    const checks = [
-      makeCheck({ id: 1, name: 'neutral-job', conclusion: 'neutral' }),
-    ];
+    const checks = [makeCheck({ id: 1, name: 'neutral-job', conclusion: 'neutral' })];
     render(<ChecksTab checks={checks} />);
     expect(screen.getByText('1 skipped')).toBeTruthy();
   });
 
   it('opens the check URL via the opener plugin on click', () => {
     mockOpenUrl.mockClear();
-    const checks = [
-      makeCheck({ id: 1, name: 'build', htmlUrl: 'https://github.com/runs/1' }),
-    ];
+    const checks = [makeCheck({ id: 1, name: 'build', htmlUrl: 'https://github.com/runs/1' })];
     render(<ChecksTab checks={checks} />);
     const row = screen.getByText('build').closest('[role="button"]') as HTMLElement | null;
     expect(row).toBeTruthy();
@@ -200,7 +188,13 @@ describe('ChecksTab', () => {
     const checks = [
       makeCheck({ id: 1, name: 'build', conclusion: 'success', checkSuiteId: 100 }),
       makeCheck({ id: 2, name: 'test', conclusion: 'failure', checkSuiteId: 100 }),
-      makeCheck({ id: 3, name: 'deploy', status: 'in_progress', conclusion: undefined, checkSuiteId: 200 }),
+      makeCheck({
+        id: 3,
+        name: 'deploy',
+        status: 'in_progress',
+        conclusion: undefined,
+        checkSuiteId: 200,
+      }),
     ];
     render(<ChecksTab checks={checks} />);
     expect(screen.getByText('1 passed')).toBeTruthy();

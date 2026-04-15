@@ -23,8 +23,8 @@ beforeEach(() => {
   };
 });
 
-import { useOnboardingStore } from '../onboarding-store';
 import type { BadgeId, HintId } from '../onboarding-store';
+import { useOnboardingStore } from '../onboarding-store';
 
 describe('onboarding-store', () => {
   beforeEach(() => {

@@ -238,9 +238,7 @@ describe('WorkItemCard', () => {
   it('clicking a worktree option calls onAssignWorktree', () => {
     const props = {
       ...defaultProps(),
-      worktrees: [
-        { path: '/repos/feature', branchName: 'feature/x', isMainWorktree: false },
-      ],
+      worktrees: [{ path: '/repos/feature', branchName: 'feature/x', isMainWorktree: false }],
     };
     render(<WorkItemCard {...props} />);
 

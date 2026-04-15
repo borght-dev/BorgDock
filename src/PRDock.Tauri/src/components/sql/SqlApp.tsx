@@ -3,9 +3,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { parseError } from '@/utils/parse-error';
-import type { AppSettings, SqlSettings } from '@/types/settings';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import type { AppSettings, SqlSettings } from '@/types/settings';
+import { parseError } from '@/utils/parse-error';
 import { ResultsTable } from './ResultsTable';
 
 interface ResultSet {
@@ -119,7 +119,16 @@ function CopyIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m3 8.5 3.5 3.5 6.5-8" />
     </svg>
   );
@@ -313,7 +322,10 @@ export function SqlApp() {
 
   const hasConnections = sqlSettings && sqlSettings.connections.length > 0;
   const hasResults = result && result.resultSets.some((rs) => rs.columns.length > 0);
-  const totalSelectedRows = Array.from(selectedRowsMap.values()).reduce((sum, s) => sum + s.size, 0);
+  const totalSelectedRows = Array.from(selectedRowsMap.values()).reduce(
+    (sum, s) => sum + s.size,
+    0,
+  );
   const totalRows = result ? result.resultSets.reduce((sum, rs) => sum + rs.rows.length, 0) : 0;
   const lineCount = query.split('\n').length;
 
@@ -409,7 +421,15 @@ export function SqlApp() {
       {/* ── Error display ───────────────────────────────── */}
       {error && (
         <div className="sql-error">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
             <circle cx="8" cy="8" r="6.5" />
             <path d="M8 5v3.5M8 10.5v.5" />
           </svg>
@@ -452,7 +472,17 @@ export function SqlApp() {
       {/* Empty results */}
       {result && !hasResults && !error && (
         <div className="sql-empty-results">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.4"
+          >
             <path d="m3 8.5 3.5 3.5 6.5-8" />
           </svg>
           <span>Query executed — no results returned</span>
@@ -467,9 +497,14 @@ export function SqlApp() {
               <span className="sql-status-rows">
                 {result.totalRowCount.toLocaleString()} row{result.totalRowCount !== 1 ? 's' : ''}
                 {result.resultSets.length > 1 && (
-                  <span className="sql-status-sets"> · {result.resultSets.filter((rs) => rs.columns.length > 0).length} results</span>
+                  <span className="sql-status-sets">
+                    {' '}
+                    · {result.resultSets.filter((rs) => rs.columns.length > 0).length} results
+                  </span>
                 )}
-                {result.resultSets.some((rs) => rs.truncated) && <span className="sql-status-truncated"> (truncated)</span>}
+                {result.resultSets.some((rs) => rs.truncated) && (
+                  <span className="sql-status-truncated"> (truncated)</span>
+                )}
               </span>
               <span className="sql-status-dot" />
               <span className="sql-status-time">{result.executionTimeMs}ms</span>

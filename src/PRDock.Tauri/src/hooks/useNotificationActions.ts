@@ -1,7 +1,11 @@
-import { useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useEffect } from 'react';
 import { performFixWithClaude } from '@/services/claude-launcher';
-import { bypassMergePullRequest, mergePullRequest, submitReview } from '@/services/github/mutations';
+import {
+  bypassMergePullRequest,
+  mergePullRequest,
+  submitReview,
+} from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';

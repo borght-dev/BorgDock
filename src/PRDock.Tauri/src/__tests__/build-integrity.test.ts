@@ -95,10 +95,9 @@ describe('Build integrity — Vite rollup inputs', () => {
   it('vite.config.ts defines all expected entry points', () => {
     const viteConfig = readFile('vite.config.ts');
     for (const entry of ENTRY_POINTS) {
-      expect(
-        viteConfig,
-        `Missing rollup input for "${entry.key}" → "${entry.html}"`,
-      ).toContain(entry.html);
+      expect(viteConfig, `Missing rollup input for "${entry.key}" → "${entry.html}"`).toContain(
+        entry.html,
+      );
     }
   });
 

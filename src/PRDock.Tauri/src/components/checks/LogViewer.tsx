@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface LogViewerProps {
   log: string;
@@ -80,9 +80,7 @@ export function LogViewer({ log }: LogViewerProps) {
         onScroll={handleScroll}
         className="flex-1 overflow-auto bg-[var(--color-code-block-bg)] p-2"
       >
-        <div
-          style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
-        >
+        <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const line = lines[virtualRow.index]!;
             return (

@@ -31,7 +31,16 @@ export function InlineHint({ hintId, text, timeoutMs = 10000 }: InlineHintProps)
       className="mb-2 flex w-full items-center gap-2 rounded-md border-l-2 border-[var(--color-accent)] bg-[var(--color-accent-subtle)] px-3 py-1.5 text-left text-[10px] text-[var(--color-text-secondary)] transition-opacity duration-200"
       style={{ opacity: fading ? 0 : 1 }}
     >
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0 text-[var(--color-accent)]">
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        className="shrink-0 text-[var(--color-accent)]"
+      >
         <circle cx="8" cy="8" r="7" />
         <path d="M8 5v3M8 10.5v.5" />
       </svg>

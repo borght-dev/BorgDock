@@ -2,14 +2,19 @@ import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useState } from 'react';
-import { parseError } from '@/utils/parse-error';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { rerunWorkflow } from '@/services/github/checks';
-import { bypassMergePullRequest, closePullRequest, mergePullRequest, toggleDraft } from '@/services/github/mutations';
+import {
+  bypassMergePullRequest,
+  closePullRequest,
+  mergePullRequest,
+  toggleDraft,
+} from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
+import { parseError } from '@/utils/parse-error';
 
 export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const { pullRequest: pr, checks, failedCheckNames } = prWithChecks;
@@ -54,9 +59,13 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleFix = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      fixWithClaude(prWithChecks, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '').catch((err) =>
-        showError('Fix with Claude failed', err),
-      );
+      fixWithClaude(
+        prWithChecks,
+        failedCheckNames.length > 0 ? failedCheckNames : ['unknown'],
+        [],
+        [],
+        '',
+      ).catch((err) => showError('Fix with Claude failed', err));
     },
     [prWithChecks, failedCheckNames, fixWithClaude, showError],
   );
@@ -72,9 +81,7 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleResolveConflicts = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      resolveConflicts(prWithChecks).catch((err) =>
-        showError('Resolve conflicts failed', err),
-      );
+      resolveConflicts(prWithChecks).catch((err) => showError('Resolve conflicts failed', err));
     },
     [prWithChecks, resolveConflicts, showError],
   );
@@ -91,7 +98,14 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     (e: React.MouseEvent) => {
       e.stopPropagation();
       writeText(pr.headRef)
-        .then(() => showNotification({ title: 'Copied', message: pr.headRef, severity: 'success', actions: [] }))
+        .then(() =>
+          showNotification({
+            title: 'Copied',
+            message: pr.headRef,
+            severity: 'success',
+            actions: [],
+          }),
+        )
         .catch((err) => showError('Failed to copy branch', err));
     },
     [pr.headRef, showNotification, showError],
@@ -103,19 +117,23 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
       if (!repoPath) return;
       invoke('git_fetch', { repoPath, remote: 'origin' })
         .then(() => invoke('git_checkout', { repoPath, branch: pr.headRef }))
-        .then(() => showNotification({ title: 'Checked out', message: pr.headRef, severity: 'success', actions: [] }))
+        .then(() =>
+          showNotification({
+            title: 'Checked out',
+            message: pr.headRef,
+            severity: 'success',
+            actions: [],
+          }),
+        )
         .catch((err) => showError('Checkout failed', err));
     },
     [repoPath, pr.headRef, showNotification, showError],
   );
 
-  const handleToggleDraft = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setConfirmAction('draft');
-    },
-    [],
-  );
+  const handleToggleDraft = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmAction('draft');
+  }, []);
 
   const executeToggleDraft = useCallback(() => {
     const client = getClient();
@@ -138,13 +156,10 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     [pr.repoOwner, pr.repoName, pr.number, showError],
   );
 
-  const handleBypassMerge = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setConfirmAction('bypass');
-    },
-    [],
-  );
+  const handleBypassMerge = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmAction('bypass');
+  }, []);
 
   const executeBypassMerge = useCallback(() => {
     bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number).catch((err) =>
@@ -153,13 +168,10 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     setConfirmAction(null);
   }, [pr.repoOwner, pr.repoName, pr.number, showError]);
 
-  const handleClose = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setConfirmAction('close');
-    },
-    [],
-  );
+  const handleClose = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmAction('close');
+  }, []);
 
   const executeClose = useCallback(() => {
     const client = getClient();

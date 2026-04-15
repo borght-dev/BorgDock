@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { NotificationOverlay } from '../NotificationOverlay';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useNotificationStore } from '@/stores/notification-store';
 import type { InAppNotification } from '@/types';
+import { NotificationOverlay } from '../NotificationOverlay';
 
 // Mock NotificationBubble
 vi.mock('../NotificationBubble', () => ({

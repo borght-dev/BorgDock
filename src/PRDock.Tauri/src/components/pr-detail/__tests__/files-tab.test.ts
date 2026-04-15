@@ -46,57 +46,69 @@ describe('toDiffFile', () => {
   });
 
   it('preserves previousFilename', () => {
-    const df = toDiffFile(makeFileChange({
-      status: 'renamed',
-      previousFilename: 'old/path.ts',
-    }));
+    const df = toDiffFile(
+      makeFileChange({
+        status: 'renamed',
+        previousFilename: 'old/path.ts',
+      }),
+    );
     expect(df.previousFilename).toBe('old/path.ts');
   });
 
   it('detects binary file (no patch, zero additions/deletions)', () => {
-    const df = toDiffFile(makeFileChange({
-      patch: undefined,
-      additions: 0,
-      deletions: 0,
-      status: 'modified',
-    }));
+    const df = toDiffFile(
+      makeFileChange({
+        patch: undefined,
+        additions: 0,
+        deletions: 0,
+        status: 'modified',
+      }),
+    );
     expect(df.isBinary).toBe(true);
   });
 
   it('does not mark as binary if patch exists', () => {
-    const df = toDiffFile(makeFileChange({
-      additions: 0,
-      deletions: 0,
-    }));
+    const df = toDiffFile(
+      makeFileChange({
+        additions: 0,
+        deletions: 0,
+      }),
+    );
     expect(df.isBinary).toBe(false);
   });
 
   it('does not mark renamed files without patch as binary', () => {
-    const df = toDiffFile(makeFileChange({
-      status: 'renamed',
-      patch: undefined,
-      additions: 0,
-      deletions: 0,
-    }));
+    const df = toDiffFile(
+      makeFileChange({
+        status: 'renamed',
+        patch: undefined,
+        additions: 0,
+        deletions: 0,
+      }),
+    );
     expect(df.isBinary).toBe(false);
   });
 
   it('does not mark removed files without patch as binary', () => {
-    const df = toDiffFile(makeFileChange({
-      status: 'removed',
-      patch: undefined,
-      additions: 0,
-      deletions: 0,
-    }));
+    const df = toDiffFile(
+      makeFileChange({
+        status: 'removed',
+        patch: undefined,
+        additions: 0,
+        deletions: 0,
+      }),
+    );
     expect(df.isBinary).toBe(false);
   });
 
   it('does not mark as binary if additions > 0', () => {
-    const df = toDiffFile(makeFileChange({
-      patch: undefined,
-      additions: 5,
-      deletions: 0,
-    }));
+    const df = toDiffFile(
+      makeFileChange({
+        patch: undefined,
+        additions: 5,
+        deletions: 0,
+      }),
+    );
     expect(df.isBinary).toBe(false);
   });
 

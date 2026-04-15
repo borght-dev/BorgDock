@@ -47,8 +47,11 @@ export function GlassCapsule({
           onClick={onClick}
         >
           {/* Compact status icon */}
-          <div className="relative flex items-center justify-center w-5 h-5 rounded-full shrink-0"
-            style={{ backgroundColor: isFailing ? 'rgba(229,64,101,0.12)' : 'rgba(125,211,192,0.12)' }}
+          <div
+            className="relative flex items-center justify-center w-5 h-5 rounded-full shrink-0"
+            style={{
+              backgroundColor: isFailing ? 'rgba(229,64,101,0.12)' : 'rgba(125,211,192,0.12)',
+            }}
           >
             <div
               className="absolute inset-[-2px] rounded-full"
@@ -77,7 +80,8 @@ export function GlassCapsule({
         <div
           className="w-px h-4 shrink-0"
           style={{
-            background: 'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
+            background:
+              'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
           }}
         />
 

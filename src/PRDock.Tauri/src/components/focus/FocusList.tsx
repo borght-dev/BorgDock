@@ -37,10 +37,16 @@ export function FocusList() {
           onDismiss={markFocusOverlaySeen}
         />
       )}
-      <InlineHint hintId="focus-priority-ranking" text="PRs are ranked by priority — most urgent first" />
+      <InlineHint
+        hintId="focus-priority-ranking"
+        text="PRs are ranked by priority — most urgent first"
+      />
       {needsMyReview.length > 0 && (
         <button
-          onClick={() => { dismissBadge('review-mode'); startSession(needsMyReview); }}
+          onClick={() => {
+            dismissBadge('review-mode');
+            startSession(needsMyReview);
+          }}
           className="mb-1 w-full rounded-md border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] px-3 py-2 text-xs font-medium text-[var(--color-accent)] hover:opacity-80 transition-opacity"
         >
           Start Quick Review ({needsMyReview.length} PR{needsMyReview.length !== 1 ? 's' : ''})
@@ -50,10 +56,7 @@ export function FocusList() {
       {focusPrs.map((pr) => {
         const score = priorityScores.get(pr.pullRequest.number);
         return (
-          <div
-            key={pr.pullRequest.number}
-            className="animate-[fadeSlideIn_0.2s_ease-out]"
-          >
+          <div key={pr.pullRequest.number} className="animate-[fadeSlideIn_0.2s_ease-out]">
             <PullRequestCard
               prWithChecks={pr}
               isFocused={selectedPrNumber === pr.pullRequest.number}

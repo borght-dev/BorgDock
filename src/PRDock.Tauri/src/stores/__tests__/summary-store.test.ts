@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useSummaryStore, summaryKey } from '../summary-store';
+import { summaryKey, useSummaryStore } from '../summary-store';
 
 describe('summary-store', () => {
   beforeEach(() => {

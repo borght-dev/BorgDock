@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getVersionMock = vi.fn();
 vi.mock('@tauri-apps/api/app', () => ({ getVersion: getVersionMock }));
@@ -21,13 +21,16 @@ const storeState = {
   hydrate,
 };
 vi.mock('@/stores/whats-new-store', () => ({
-  useWhatsNewStore: Object.assign((selector?: (s: typeof storeState) => unknown) => {
-    if (selector) return selector(storeState);
-    return storeState;
-  }, {
-    getState: () => storeState,
-    setState: (p: Partial<typeof storeState>) => Object.assign(storeState, p),
-  }),
+  useWhatsNewStore: Object.assign(
+    (selector?: (s: typeof storeState) => unknown) => {
+      if (selector) return selector(storeState);
+      return storeState;
+    },
+    {
+      getState: () => storeState,
+      setState: (p: Partial<typeof storeState>) => Object.assign(storeState, p),
+    },
+  ),
 }));
 
 vi.mock('@/generated/changelog', () => ({
@@ -36,9 +39,7 @@ vi.mock('@/generated/changelog', () => ({
       version: '1.0.11',
       date: '2026-04-14',
       summary: 'A.',
-      highlights: [
-        { kind: 'new', title: 'A', description: 'first', hero: null, keyboard: null },
-      ],
+      highlights: [{ kind: 'new', title: 'A', description: 'first', hero: null, keyboard: null }],
       alsoFixed: [],
       autoOpenEligible: true,
     },

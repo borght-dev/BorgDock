@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ClaudeReviewComment } from '@/types';
 import type { GitHubClient } from '../client';
 import {
   detectSeverity,
@@ -8,7 +9,6 @@ import {
   getReviews,
   splitStructuredReview,
 } from '../reviews';
-import type { ClaudeReviewComment } from '@/types';
 
 function createMockClient() {
   return {
@@ -24,7 +24,13 @@ describe('getReviews', () => {
   it('fetches reviews for a PR', async () => {
     const client = createMockClient();
     const reviews = [
-      { id: 1, state: 'APPROVED', body: 'Looks good', submitted_at: '2025-01-15T10:00:00Z', user: { login: 'alice' } },
+      {
+        id: 1,
+        state: 'APPROVED',
+        body: 'Looks good',
+        submitted_at: '2025-01-15T10:00:00Z',
+        user: { login: 'alice' },
+      },
     ];
     vi.mocked(client.get).mockResolvedValueOnce(reviews);
 

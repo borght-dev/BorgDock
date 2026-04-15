@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { AdoClient } from '@/services/ado/client';
 import {
   addWorkItemComment,
@@ -19,7 +20,6 @@ import type {
   WorkItemComment,
 } from '@/types';
 import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
-import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import {
   type WorkItemDetailData,
   WorkItemDetailPanel,
@@ -373,9 +373,7 @@ export function WorkItemDetailApp() {
     setIsSaving(true);
     try {
       await deleteWorkItem(client, workItemId);
-      getCurrentWindow()
-        .close()
-        .catch(console.debug); /* fire-and-forget */
+      getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
     } catch (err) {
       console.error('Failed to delete:', err);
       setStatusText('Delete failed');
@@ -396,9 +394,7 @@ export function WorkItemDetailApp() {
   );
 
   const handleClose = useCallback(() => {
-    getCurrentWindow()
-      .close()
-      .catch(console.debug); /* fire-and-forget */
+    getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenInBrowser = useCallback(async (url: string) => {
@@ -470,10 +466,7 @@ export function WorkItemDetailApp() {
 
   if (error) {
     return (
-      <div
-        className="flex h-screen flex-col"
-        style={{ backgroundColor: 'var(--color-surface)' }}
-      >
+      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
           <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
@@ -486,10 +479,7 @@ export function WorkItemDetailApp() {
 
   if (!detailData) {
     return (
-      <div
-        className="flex h-screen flex-col"
-        style={{ backgroundColor: 'var(--color-surface)' }}
-      >
+      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
@@ -502,25 +492,25 @@ export function WorkItemDetailApp() {
     <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
       <WindowTitleBar title={titleText} />
       <div className="flex-1 overflow-y-auto">
-      <WorkItemDetailPanel
-        item={detailData}
-        isLoading={isLoading}
-        isSaving={isSaving}
-        statusText={statusText}
-        availableStates={availableStates}
-        richTextFields={processedRichText ?? richText}
-        standardFields={standard}
-        customFields={custom}
-        attachments={attachments}
-        comments={comments}
-        isLoadingComments={isLoadingComments}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onClose={handleClose}
-        onOpenInBrowser={handleOpenInBrowser}
-        onDownloadAttachment={handleDownloadAttachment}
-        onAddComment={handleAddComment}
-      />
+        <WorkItemDetailPanel
+          item={detailData}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          statusText={statusText}
+          availableStates={availableStates}
+          richTextFields={processedRichText ?? richText}
+          standardFields={standard}
+          customFields={custom}
+          attachments={attachments}
+          comments={comments}
+          isLoadingComments={isLoadingComments}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onClose={handleClose}
+          onOpenInBrowser={handleOpenInBrowser}
+          onDownloadAttachment={handleDownloadAttachment}
+          onAddComment={handleAddComment}
+        />
       </div>
     </div>
   );

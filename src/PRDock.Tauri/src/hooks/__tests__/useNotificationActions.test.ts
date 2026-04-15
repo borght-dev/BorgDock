@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
 
 const mockInvoke = vi.fn();
@@ -246,7 +246,10 @@ describe('useNotificationActions', () => {
 
     await vi.waitFor(() => {
       expect(mockShow).toHaveBeenCalledWith(
-        expect.objectContaining({ title: expect.stringContaining('approved'), severity: 'success' }),
+        expect.objectContaining({
+          title: expect.stringContaining('approved'),
+          severity: 'success',
+        }),
       );
     });
   });
@@ -284,11 +287,17 @@ describe('useNotificationActions', () => {
       expect(capturedListener).not.toBeNull();
     });
 
-    capturedListener!({ payload: { action: 'fix-with-claude', owner: 'test', repo: 'repo', number: 42 } });
+    capturedListener!({
+      payload: { action: 'fix-with-claude', owner: 'test', repo: 'repo', number: 42 },
+    });
 
     await vi.waitFor(() => {
       expect(mockPerformFixWithClaude).toHaveBeenCalledWith(
-        'test', 'repo', 42, 'feature', expect.anything(),
+        'test',
+        'repo',
+        42,
+        'feature',
+        expect.anything(),
       );
     });
 
@@ -309,18 +318,33 @@ describe('useNotificationActions', () => {
       expect(capturedListener).not.toBeNull();
     });
 
-    capturedListener!({ payload: { action: 'fix-with-claude', owner: 'test', repo: 'repo', number: 99 } });
+    capturedListener!({
+      payload: { action: 'fix-with-claude', owner: 'test', repo: 'repo', number: 99 },
+    });
 
     await vi.waitFor(() => {
       expect(mockPerformFixWithClaude).toHaveBeenCalledWith(
-        'test', 'repo', 99, 'pr-99', expect.anything(),
+        'test',
+        'repo',
+        99,
+        'pr-99',
+        expect.anything(),
       );
     });
   });
 
   it('handles "rerun" action', async () => {
     const pr = makePr(1);
-    pr.checks = [{ id: 100, name: 'build', status: 'completed', conclusion: 'failure', htmlUrl: '', checkSuiteId: 200 }];
+    pr.checks = [
+      {
+        id: 100,
+        name: 'build',
+        status: 'completed',
+        conclusion: 'failure',
+        htmlUrl: '',
+        checkSuiteId: 200,
+      },
+    ];
     mockPullRequests = [pr];
     const client = { token: 'test' };
     mockGetClient.mockReturnValue(client);
@@ -365,7 +389,16 @@ describe('useNotificationActions', () => {
 
   it('shows error when no failed checks to rerun', async () => {
     const pr = makePr(1);
-    pr.checks = [{ id: 100, name: 'build', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 200 }];
+    pr.checks = [
+      {
+        id: 100,
+        name: 'build',
+        status: 'completed',
+        conclusion: 'success',
+        htmlUrl: '',
+        checkSuiteId: 200,
+      },
+    ];
     mockPullRequests = [pr];
 
     renderHook(() => useNotificationActions());
@@ -378,7 +411,10 @@ describe('useNotificationActions', () => {
 
     await vi.waitFor(() => {
       expect(mockShow).toHaveBeenCalledWith(
-        expect.objectContaining({ title: expect.stringContaining('No failed checks'), severity: 'error' }),
+        expect.objectContaining({
+          title: expect.stringContaining('No failed checks'),
+          severity: 'error',
+        }),
       );
     });
   });
@@ -392,7 +428,9 @@ describe('useNotificationActions', () => {
       expect(capturedListener).not.toBeNull();
     });
 
-    capturedListener!({ payload: { action: 'unknown-action', owner: 'test', repo: 'repo', number: 1 } });
+    capturedListener!({
+      payload: { action: 'unknown-action', owner: 'test', repo: 'repo', number: 1 },
+    });
 
     await vi.waitFor(() => {
       expect(warnSpy).toHaveBeenCalledWith('Unknown notification action:', 'unknown-action');

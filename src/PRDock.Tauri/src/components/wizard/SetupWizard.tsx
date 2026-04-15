@@ -84,16 +84,7 @@ export function SetupWizard() {
       };
       await saveSettings(updated);
     }
-  }, [
-    currentStep,
-    isOnFinalStep,
-    repos,
-    settings,
-    authMethod,
-    pat,
-    username,
-    saveSettings,
-  ]);
+  }, [currentStep, isOnFinalStep, repos, settings, authMethod, pat, username, saveSettings]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) {

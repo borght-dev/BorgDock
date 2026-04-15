@@ -1,6 +1,6 @@
+import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import type { InAppNotification, NotificationSeverity } from '@/types';
 
 const SEVERITY_CONFIG: Record<
@@ -140,10 +140,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
     >
       {/* Outer glow — bigger and more intense for merged */}
       <div
-        className={clsx(
-          'absolute rounded-2xl blur-lg',
-          isMerged ? '-inset-2' : '-inset-1',
-        )}
+        className={clsx('absolute rounded-2xl blur-lg', isMerged ? '-inset-2' : '-inset-1')}
         style={{
           background: config.glow,
           animation: isMerged
@@ -193,9 +190,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
           <div
             className={clsx(
               'flex shrink-0 items-center justify-center font-black',
-              isMerged
-                ? 'h-11 w-11 rounded-xl text-xl'
-                : 'h-9 w-9 rounded-lg text-sm',
+              isMerged ? 'h-11 w-11 rounded-xl text-xl' : 'h-9 w-9 rounded-lg text-sm',
             )}
             style={{
               backgroundColor: config.iconBg,
@@ -249,9 +244,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
                     key={i}
                     className={clsx(
                       'rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all duration-150',
-                      i === 0
-                        ? 'hover:brightness-110 hover:shadow-md'
-                        : 'hover:brightness-110',
+                      i === 0 ? 'hover:brightness-110 hover:shadow-md' : 'hover:brightness-110',
                     )}
                     style={
                       i === 0

@@ -76,8 +76,12 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
     const srcVal = (source as Record<string, unknown>)[key];
     const tgtVal = result[key];
     if (
-      srcVal && typeof srcVal === 'object' && !Array.isArray(srcVal) &&
-      tgtVal && typeof tgtVal === 'object' && !Array.isArray(tgtVal)
+      srcVal &&
+      typeof srcVal === 'object' &&
+      !Array.isArray(srcVal) &&
+      tgtVal &&
+      typeof tgtVal === 'object' &&
+      !Array.isArray(tgtVal)
     ) {
       result[key] = deepMerge(tgtVal as Record<string, unknown>, srcVal as Record<string, unknown>);
     } else if (srcVal !== undefined) {
@@ -103,15 +107,21 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       const ghPat = await invoke<string | null>('get_credential', { service: 'prdock:github' });
       if (ghPat) settings.gitHub.personalAccessToken = ghPat;
 
-      const adoPat = await invoke<string | null>('get_credential', { service: 'prdock:azure_devops' });
+      const adoPat = await invoke<string | null>('get_credential', {
+        service: 'prdock:azure_devops',
+      });
       if (adoPat) settings.azureDevOps.personalAccessToken = adoPat;
 
-      const claudeKey = await invoke<string | null>('get_credential', { service: 'prdock:claude_api' });
+      const claudeKey = await invoke<string | null>('get_credential', {
+        service: 'prdock:claude_api',
+      });
       if (claudeKey) settings.claudeApi.apiKey = claudeKey;
 
       if (settings.sql?.connections) {
         for (const conn of settings.sql.connections) {
-          const pw = await invoke<string | null>('get_credential', { service: `prdock:sql:${conn.name}` });
+          const pw = await invoke<string | null>('get_credential', {
+            service: `prdock:sql:${conn.name}`,
+          });
           if (pw) conn.password = pw;
         }
       }
@@ -130,18 +140,30 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
       // Store credentials in OS keychain before saving
       if (settings.gitHub.personalAccessToken) {
-        await invoke('set_credential', { service: 'prdock:github', secret: settings.gitHub.personalAccessToken });
+        await invoke('set_credential', {
+          service: 'prdock:github',
+          secret: settings.gitHub.personalAccessToken,
+        });
       }
       if (settings.azureDevOps.personalAccessToken) {
-        await invoke('set_credential', { service: 'prdock:azure_devops', secret: settings.azureDevOps.personalAccessToken });
+        await invoke('set_credential', {
+          service: 'prdock:azure_devops',
+          secret: settings.azureDevOps.personalAccessToken,
+        });
       }
       if (settings.claudeApi.apiKey) {
-        await invoke('set_credential', { service: 'prdock:claude_api', secret: settings.claudeApi.apiKey });
+        await invoke('set_credential', {
+          service: 'prdock:claude_api',
+          secret: settings.claudeApi.apiKey,
+        });
       }
       if (settings.sql?.connections) {
         for (const conn of settings.sql.connections) {
           if (conn.password) {
-            await invoke('set_credential', { service: `prdock:sql:${conn.name}`, secret: conn.password });
+            await invoke('set_credential', {
+              service: `prdock:sql:${conn.name}`,
+              secret: conn.password,
+            });
           }
         }
       }

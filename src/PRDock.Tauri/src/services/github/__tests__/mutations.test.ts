@@ -190,9 +190,7 @@ describe('submitReview', () => {
     const client = createMockClient();
     vi.mocked(client.post).mockRejectedValueOnce(new Error('Forbidden'));
 
-    await expect(
-      submitReview(client, 'owner', 'repo', 42, 'APPROVE'),
-    ).rejects.toThrow('Forbidden');
+    await expect(submitReview(client, 'owner', 'repo', 42, 'APPROVE')).rejects.toThrow('Forbidden');
   });
 });
 

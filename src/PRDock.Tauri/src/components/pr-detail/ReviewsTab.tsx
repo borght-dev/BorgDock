@@ -183,7 +183,12 @@ export function ReviewsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Revie
               {/* Body */}
               {review.body && (
                 <div className="markdown-body">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{review.body}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                  >
+                    {review.body}
+                  </ReactMarkdown>
                 </div>
               )}
             </div>

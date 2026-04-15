@@ -80,7 +80,10 @@ export class GitHubClient {
       const retryResponse = await this.fetchWithRetry(url);
       this.parseRateLimitHeaders(retryResponse);
       if (!retryResponse.ok) {
-        throw new GitHubApiError(`GitHub API error: ${retryResponse.status} ${retryResponse.statusText}`, retryResponse.status);
+        throw new GitHubApiError(
+          `GitHub API error: ${retryResponse.status} ${retryResponse.statusText}`,
+          retryResponse.status,
+        );
       }
       const retryBody = await retryResponse.json();
       this._freshCount++;
@@ -198,11 +201,10 @@ export class GitHubClient {
       try {
         const errorBody = await response.json();
         if (errorBody?.message) detail = errorBody.message;
-      } catch { /* ignore */ }
-      throw new GitHubApiError(
-        `GitHub API error: ${response.status} — ${detail}`,
-        response.status,
-      );
+      } catch {
+        /* ignore */
+      }
+      throw new GitHubApiError(`GitHub API error: ${response.status} — ${detail}`, response.status);
     }
 
     return (await response.json()) as T;
@@ -454,9 +456,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof DOMException
-      ? error.name === 'AbortError'
-      : error instanceof Error && error.name === 'AbortError'
-  );
+  return error instanceof DOMException
+    ? error.name === 'AbortError'
+    : error instanceof Error && error.name === 'AbortError';
 }

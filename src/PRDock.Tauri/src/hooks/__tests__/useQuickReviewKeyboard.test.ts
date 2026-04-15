@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useQuickReviewKeyboard } from '../useQuickReviewKeyboard';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
+import { useQuickReviewKeyboard } from '../useQuickReviewKeyboard';
 
 const mockAdvance = vi.fn();
 const mockGoBack = vi.fn();
@@ -17,8 +17,7 @@ let mockIsCommandPaletteOpen = false;
 
 vi.mock('@/stores/quick-review-store', () => ({
   useQuickReviewStore: Object.assign(
-    (selector: (s: Record<string, unknown>) => unknown) =>
-      selector({ state: mockState }),
+    (selector: (s: Record<string, unknown>) => unknown) => selector({ state: mockState }),
     {
       getState: () => ({
         advance: mockAdvance,

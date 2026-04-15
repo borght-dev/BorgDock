@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import { useTheme } from '../useTheme';
 
 vi.mock('@tauri-apps/api/window', () => ({

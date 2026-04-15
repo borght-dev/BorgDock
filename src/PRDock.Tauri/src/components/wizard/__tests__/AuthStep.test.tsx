@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { AuthStep } from '../AuthStep';
 
 describe('AuthStep', () => {
@@ -36,13 +36,7 @@ describe('AuthStep', () => {
 
   it('calls onAuthMethodChange when clicking GitHub CLI button', () => {
     const onAuthMethodChange = vi.fn();
-    render(
-      <AuthStep
-        {...defaultProps}
-        authMethod="pat"
-        onAuthMethodChange={onAuthMethodChange}
-      />,
-    );
+    render(<AuthStep {...defaultProps} authMethod="pat" onAuthMethodChange={onAuthMethodChange} />);
     fireEvent.click(screen.getByText('GitHub CLI'));
     expect(onAuthMethodChange).toHaveBeenCalledWith('ghCli');
   });
@@ -59,9 +53,7 @@ describe('AuthStep', () => {
 
   it('calls onPatChange when typing in PAT input', () => {
     const onPatChange = vi.fn();
-    render(
-      <AuthStep {...defaultProps} authMethod="pat" onPatChange={onPatChange} />,
-    );
+    render(<AuthStep {...defaultProps} authMethod="pat" onPatChange={onPatChange} />);
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test123' },
     });
@@ -94,7 +86,9 @@ describe('AuthStep', () => {
 
   it('does not show auth status when empty', () => {
     const { container } = render(<AuthStep {...defaultProps} authStatus="" />);
-    expect(container.querySelector('.border-\\[var\\(--color-success-badge-border\\)\\]')).toBeNull();
+    expect(
+      container.querySelector('.border-\\[var\\(--color-success-badge-border\\)\\]'),
+    ).toBeNull();
   });
 
   it('shows auth status when provided', () => {
@@ -103,16 +97,12 @@ describe('AuthStep', () => {
   });
 
   it('shows success auth status styling when valid', () => {
-    render(
-      <AuthStep {...defaultProps} authStatus="Authenticated as user" isAuthValid={true} />,
-    );
+    render(<AuthStep {...defaultProps} authStatus="Authenticated as user" isAuthValid={true} />);
     expect(screen.getByText('Authenticated as user')).toBeTruthy();
   });
 
   it('shows failure auth status', () => {
-    render(
-      <AuthStep {...defaultProps} authStatus="Authentication failed" isAuthValid={false} />,
-    );
+    render(<AuthStep {...defaultProps} authStatus="Authentication failed" isAuthValid={false} />);
     expect(screen.getByText('Authentication failed')).toBeTruthy();
   });
 });

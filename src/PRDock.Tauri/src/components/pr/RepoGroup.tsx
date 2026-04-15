@@ -93,7 +93,8 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
                 color: 'var(--color-status-red)',
               }}
             >
-              {failing}{'\u2716'}
+              {failing}
+              {'\u2716'}
             </span>
           )}
           <span

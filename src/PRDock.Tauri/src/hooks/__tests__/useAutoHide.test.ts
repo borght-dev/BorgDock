@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import type { AppSettings } from '@/types';
 
 const mockInvoke = vi.fn();
@@ -315,9 +315,7 @@ describe('useAutoHide', () => {
       });
 
       // setSidebarVisible(false) should NOT have been called
-      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
-        (c: unknown[]) => c[0] === false,
-      );
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter((c: unknown[]) => c[0] === false);
       expect(falseCalls).toHaveLength(0);
     });
 
@@ -346,9 +344,7 @@ describe('useAutoHide', () => {
       });
 
       // Should NOT hide because the window is minimized
-      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
-        (c: unknown[]) => c[0] === false,
-      );
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter((c: unknown[]) => c[0] === false);
       expect(falseCalls).toHaveLength(0);
     });
 
@@ -378,9 +374,7 @@ describe('useAutoHide', () => {
       });
 
       // Should NOT hide because isDragging is true
-      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
-        (c: unknown[]) => c[0] === false,
-      );
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter((c: unknown[]) => c[0] === false);
       expect(falseCalls).toHaveLength(0);
     });
 
@@ -423,9 +417,7 @@ describe('useAutoHide', () => {
       });
 
       // setSidebarVisible(true) should NOT have been called
-      const trueCalls = mockSetSidebarVisible.mock.calls.filter(
-        (c: unknown[]) => c[0] === true,
-      );
+      const trueCalls = mockSetSidebarVisible.mock.calls.filter((c: unknown[]) => c[0] === true);
       expect(trueCalls).toHaveLength(0);
     });
 
@@ -462,9 +454,7 @@ describe('useAutoHide', () => {
       });
 
       // stillUnfocused check: isFocused() returns true, so !true = false, early return
-      const falseCalls = mockSetSidebarVisible.mock.calls.filter(
-        (c: unknown[]) => c[0] === false,
-      );
+      const falseCalls = mockSetSidebarVisible.mock.calls.filter((c: unknown[]) => c[0] === false);
       expect(falseCalls).toHaveLength(0);
     });
   });

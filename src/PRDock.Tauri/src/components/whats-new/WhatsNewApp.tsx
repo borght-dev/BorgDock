@@ -1,8 +1,8 @@
-import { useCallback, useEffect } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useCallback, useEffect } from 'react';
 import { RELEASES } from '@/generated/changelog';
-import { useWhatsNewStore } from '@/stores/whats-new-store';
 import { createLogger } from '@/services/logger';
+import { useWhatsNewStore } from '@/stores/whats-new-store';
 import { ReleaseAccordion } from './ReleaseAccordion';
 import { useReleasesToShow } from './useReleasesToShow';
 
@@ -23,8 +23,7 @@ export function WhatsNewApp() {
     if (!hydrated) void hydrate();
   }, [hydrated, hydrate]);
 
-  const initialTarget =
-    (window as unknown as InjectedWindow).__PRDOCK_WHATS_NEW__?.version ?? null;
+  const initialTarget = (window as unknown as InjectedWindow).__PRDOCK_WHATS_NEW__?.version ?? null;
 
   const { releases, expandedVersion, countBehind, currentVersion, ready } = useReleasesToShow(
     RELEASES,
@@ -59,8 +58,7 @@ export function WhatsNewApp() {
   // between lastSeen and current (exclusive of current), i.e. releases the
   // user never opened before this session.
   const displayBehind = Math.max(0, countBehind - 1);
-  const behindLabel =
-    displayBehind === 1 ? '1 version behind' : `${displayBehind} versions behind`;
+  const behindLabel = displayBehind === 1 ? '1 version behind' : `${displayBehind} versions behind`;
 
   return (
     <div className="h-screen w-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-primary)] font-sans">
@@ -93,9 +91,7 @@ export function WhatsNewApp() {
         <h1 className="text-[22px] font-medium tracking-[-0.015em] mb-1 text-[var(--color-text-primary)]">
           {`What's new in ${headTitle}`}
         </h1>
-        {headSummary && (
-          <p className="text-[13px] text-[var(--color-text-muted)]">{headSummary}</p>
-        )}
+        {headSummary && <p className="text-[13px] text-[var(--color-text-muted)]">{headSummary}</p>}
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 pb-3.5">
@@ -127,9 +123,7 @@ export function WhatsNewApp() {
          * means both paths resolve to the same element; Set() deduplication
          * yields exactly one result.
          */}
-        <label
-          className="flex items-center gap-2 text-[12px] text-[var(--color-text-muted)] cursor-pointer select-none"
-        >
+        <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-muted)] cursor-pointer select-none">
           <input
             type="checkbox"
             aria-label="Don't auto-open again"

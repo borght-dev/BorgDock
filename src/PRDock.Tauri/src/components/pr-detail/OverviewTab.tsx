@@ -1,15 +1,12 @@
 import { useCallback, useState } from 'react';
-import { parseError } from '@/utils/parse-error';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
-import { useOnboardingStore } from '@/stores/onboarding-store';
-import { useSettingsStore } from '@/stores/settings-store';
-import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import {
   bypassMergePullRequest,
   closePullRequest,
@@ -18,10 +15,13 @@ import {
   submitReview,
   toggleDraft,
 } from '@/services/github/mutations';
-import { createLogger } from '@/services/logger';
 import { getClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
+import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { parseError } from '@/utils/parse-error';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
@@ -334,7 +334,10 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         <div className="space-y-2">
           {!cachedSummary && !summaryLoading && (
             <>
-              <InlineHint hintId="pr-summary-generate" text="Generate a quick AI summary of this PR" />
+              <InlineHint
+                hintId="pr-summary-generate"
+                text="Generate a quick AI summary of this PR"
+              />
               <button
                 onClick={handleGenerateSummary}
                 className="w-full rounded-md border border-[var(--color-purple-border,#6655D4)] bg-[var(--color-purple-soft,color-mix(in_srgb,#9384F7_8%,transparent))] px-3 py-1.5 text-xs font-medium text-[var(--color-purple,#9384F7)] hover:opacity-80 transition-opacity"
@@ -383,7 +386,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
               {summaryExpanded && (
                 <div className="border-t border-[var(--color-separator)] px-3 py-2">
                   <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{cachedSummary}</ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                    >
+                      {cachedSummary}
+                    </ReactMarkdown>
                   </div>
                   <button
                     onClick={() => {
@@ -509,7 +517,9 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       {/* Description */}
       {p.body && (
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{p.body}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+            {p.body}
+          </ReactMarkdown>
         </div>
       )}
 
@@ -582,7 +592,14 @@ function MergeCelebration({ prNumber, title }: { prNumber: number; title: string
       <div className="merge-celebration-inner">
         <div className="merge-celebration-icon">
           <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-            <circle cx="20" cy="20" r="19" stroke="var(--color-status-green)" strokeWidth="2" fill="var(--color-action-success-bg)" />
+            <circle
+              cx="20"
+              cy="20"
+              r="19"
+              stroke="var(--color-status-green)"
+              strokeWidth="2"
+              fill="var(--color-action-success-bg)"
+            />
             <path
               d="M12 20.5l5.5 5.5L28 15"
               stroke="var(--color-status-green)"
@@ -593,12 +610,8 @@ function MergeCelebration({ prNumber, title }: { prNumber: number; title: string
             />
           </svg>
         </div>
-        <div className="merge-celebration-title">
-          PR #{prNumber} merged!
-        </div>
-        <div className="merge-celebration-subtitle">
-          {title}
-        </div>
+        <div className="merge-celebration-title">PR #{prNumber} merged!</div>
+        <div className="merge-celebration-subtitle">{title}</div>
       </div>
     </div>
   );

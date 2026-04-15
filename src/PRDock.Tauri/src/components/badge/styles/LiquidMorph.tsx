@@ -1,12 +1,6 @@
 import clsx from 'clsx';
 import type { BadgeStyleProps } from '../BadgeStyles';
-import {
-  BADGE_KEYFRAMES,
-  DragGrip,
-  ExpandChevron,
-  GLOW_MAP,
-  STATUS_DOT_MAP,
-} from './shared';
+import { BADGE_KEYFRAMES, DragGrip, ExpandChevron, GLOW_MAP, STATUS_DOT_MAP } from './shared';
 
 export function LiquidMorph({
   totalPrCount,
@@ -43,7 +37,8 @@ export function LiquidMorph({
           onClick={onClick}
         >
           {/* Blob circle with count */}
-          <div className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0"
+          <div
+            className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0"
             style={{
               background: `radial-gradient(circle at 40% 40%, ${isFailing ? 'rgba(229,64,101,0.2)' : 'rgba(125,211,192,0.2)'}, ${isFailing ? 'rgba(229,64,101,0.08)' : 'rgba(125,211,192,0.08)'})`,
             }}
@@ -69,10 +64,7 @@ export function LiquidMorph({
             <span className="text-xs font-semibold leading-tight text-[var(--color-text-primary)]">
               Open PRs
             </span>
-            <span
-              className="text-[10px] font-medium"
-              style={{ color: dotColor, opacity: 0.65 }}
-            >
+            <span className="text-[10px] font-medium" style={{ color: dotColor, opacity: 0.65 }}>
               {statusText}
             </span>
           </div>

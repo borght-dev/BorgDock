@@ -59,27 +59,21 @@ describe('PriorityReasonLabel', () => {
   });
 
   it('applies yellow styling for staleness factors', () => {
-    const factors: PriorityFactor[] = [
-      { type: 'staleness', points: 10, label: 'Getting stale' },
-    ];
+    const factors: PriorityFactor[] = [{ type: 'staleness', points: 10, label: 'Getting stale' }];
     render(<PriorityReasonLabel factors={factors} />);
     const el = screen.getByText('Getting stale');
     expect(el.className).toContain('text-[var(--color-status-yellow)]');
   });
 
   it('applies yellow styling for reviewStale factor', () => {
-    const factors: PriorityFactor[] = [
-      { type: 'reviewStale', points: 8, label: 'Review stale' },
-    ];
+    const factors: PriorityFactor[] = [{ type: 'reviewStale', points: 8, label: 'Review stale' }];
     render(<PriorityReasonLabel factors={factors} />);
     const el = screen.getByText('Review stale');
     expect(el.className).toContain('text-[var(--color-status-yellow)]');
   });
 
   it('applies no special styling for generic factor types', () => {
-    const factors: PriorityFactor[] = [
-      { type: 'someGeneric', points: 5, label: 'Generic factor' },
-    ];
+    const factors: PriorityFactor[] = [{ type: 'someGeneric', points: 5, label: 'Generic factor' }];
     render(<PriorityReasonLabel factors={factors} />);
     const el = screen.getByText('Generic factor');
     expect(el.className).toBe('');

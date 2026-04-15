@@ -67,20 +67,17 @@ export function FloatingBadge({
   const isExpandedRef = useRef(isExpanded);
   isExpandedRef.current = isExpanded;
 
-  const toggleExpanded = useCallback(
-    async (expand?: boolean) => {
-      const next = expand ?? !isExpandedRef.current;
-      setIsExpanded(next);
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const size = next ? BADGE_EXPANDED : BADGE_COLLAPSED;
-        await invoke('resize_badge', { width: size.width, height: size.height });
-      } catch {
-        // ignore
-      }
-    },
-    [],
-  );
+  const toggleExpanded = useCallback(async (expand?: boolean) => {
+    const next = expand ?? !isExpandedRef.current;
+    setIsExpanded(next);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const size = next ? BADGE_EXPANDED : BADGE_COLLAPSED;
+      await invoke('resize_badge', { width: size.width, height: size.height });
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const glowColor = GLOW_MAP[statusColor];
   const dotColor = STATUS_DOT_MAP[statusColor];
@@ -126,11 +123,22 @@ export function FloatingBadge({
             />
             {isFailing ? (
               <svg width={13} height={13} viewBox="0 0 16 16" fill="none">
-                <path d="M4 4L12 12M12 4L4 12" stroke={dotColor} strokeWidth="2.5" strokeLinecap="round" />
+                <path
+                  d="M4 4L12 12M12 4L4 12"
+                  stroke={dotColor}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
               </svg>
             ) : (
               <svg width={13} height={13} viewBox="0 0 16 16" fill="none">
-                <path d="M3 8L6.5 11.5L13 4.5" stroke={dotColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M3 8L6.5 11.5L13 4.5"
+                  stroke={dotColor}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             )}
           </div>
@@ -150,7 +158,8 @@ export function FloatingBadge({
         <div
           className="w-px h-7 shrink-0"
           style={{
-            background: 'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
+            background:
+              'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
           }}
         />
 

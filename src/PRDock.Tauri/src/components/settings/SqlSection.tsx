@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useState } from 'react';
-import { parseError } from '@/utils/parse-error';
 import type { SqlServerConnection, SqlSettings } from '@/types';
+import { parseError } from '@/utils/parse-error';
 
 interface SqlSectionProps {
   sql: SqlSettings;
@@ -26,9 +26,7 @@ export function SqlSection({ sql, onChange }: SqlSectionProps) {
   };
 
   const updateConnection = (index: number, partial: Partial<SqlServerConnection>) => {
-    const connections = sql.connections.map((c, i) =>
-      i === index ? { ...c, ...partial } : c,
-    );
+    const connections = sql.connections.map((c, i) => (i === index ? { ...c, ...partial } : c));
     onChange({ ...sql, connections });
   };
 
@@ -207,7 +205,10 @@ function ConnectionEditor({
         </>
       )}
 
-      <label className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+      <label
+        className="flex items-center gap-2 text-[11px]"
+        style={{ color: 'var(--color-text-secondary)' }}
+      >
         <input
           type="checkbox"
           checked={conn.trustServerCertificate}

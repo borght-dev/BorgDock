@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
-import { getReviewSlaTier, formatReviewWaitTime } from '@/services/review-sla';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 
 afterEach(() => {
   vi.useRealTimers();

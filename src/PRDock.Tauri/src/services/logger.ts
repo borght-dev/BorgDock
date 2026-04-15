@@ -120,18 +120,10 @@ export function createLogger(namespace: string): Logger {
   const warn = (message: string, fields?: Record<string, unknown>) => {
     emit('warn', formatMessage(namespace, message, fields));
   };
-  const error = (
-    message: string,
-    errOrFields?: unknown,
-    extra?: Record<string, unknown>,
-  ) => {
+  const error = (message: string, errOrFields?: unknown, extra?: Record<string, unknown>) => {
     let fields: Record<string, unknown> | undefined;
     if (errOrFields !== undefined) {
-      if (
-        errOrFields &&
-        typeof errOrFields === 'object' &&
-        !(errOrFields instanceof Error)
-      ) {
+      if (errOrFields && typeof errOrFields === 'object' && !(errOrFields instanceof Error)) {
         fields = { ...(errOrFields as Record<string, unknown>), ...extra };
       } else {
         fields = { ...extractErrorFields(errOrFields), ...extra };

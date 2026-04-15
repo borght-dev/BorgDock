@@ -75,9 +75,7 @@ describe('GitHubSection', () => {
   });
 
   it('updates personal access token', () => {
-    render(
-      <GitHubSection github={makeGitHub({ authMethod: 'pat' })} onChange={onChange} />,
-    );
+    render(<GitHubSection github={makeGitHub({ authMethod: 'pat' })} onChange={onChange} />);
     const input = screen.getByPlaceholderText('ghp_...');
     fireEvent.change(input, { target: { value: 'ghp_newtoken' } });
     expect(onChange).toHaveBeenCalledWith(

@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { CommandPalette } from '../CommandPalette';
-import { useUiStore } from '@/stores/ui-store';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
+import { CommandPalette } from '../CommandPalette';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -88,9 +88,7 @@ describe('CommandPalette', () => {
 
   it('returns null when not open', () => {
     useUiStore.setState({ isCommandPaletteOpen: false });
-    const { container } = render(
-      <CommandPalette onSelectWorkItem={onSelectWorkItem} />,
-    );
+    const { container } = render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
     expect(container.innerHTML).toBe('');
   });
 
@@ -442,9 +440,7 @@ describe('CommandPalette', () => {
 
   it('resets search state when palette closes and reopens', () => {
     useUiStore.setState({ isCommandPaletteOpen: true });
-    const { rerender } = render(
-      <CommandPalette onSelectWorkItem={onSelectWorkItem} />,
-    );
+    const { rerender } = render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
 
     const input = screen.getByPlaceholderText('Search work item by ID...');
     fireEvent.change(input, { target: { value: '12' } });

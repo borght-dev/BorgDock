@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useUpdateStore } from '@/stores/update-store';
 import type { AppSettings } from '@/types';

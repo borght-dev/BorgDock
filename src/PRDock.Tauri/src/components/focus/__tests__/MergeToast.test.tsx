@@ -23,7 +23,9 @@ vi.mock('@/stores/notification-store', () => ({
 afterEach(cleanup);
 
 function getQueueMerge(): (owner: string, repo: string, prNumber: number) => void {
-  return (window as unknown as Record<string, (owner: string, repo: string, prNumber: number) => void>).__prdockQueueMerge;
+  return (
+    window as unknown as Record<string, (owner: string, repo: string, prNumber: number) => void>
+  ).__prdockQueueMerge;
 }
 
 describe('MergeToast', () => {
@@ -57,35 +59,49 @@ describe('MergeToast', () => {
 
   it('shows toast when queueMerge is called', () => {
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
     expect(screen.getByText('Merging PR #42...')).toBeDefined();
   });
 
   it('shows Undo button on toast', () => {
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
     expect(screen.getByText('Undo')).toBeDefined();
   });
 
   it('removes toast when Undo is clicked before timeout', () => {
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
     fireEvent.click(screen.getByText('Undo'));
     expect(screen.queryByText('Merging PR #42...')).toBeNull();
   });
 
   it('does not merge when Undo is clicked before timeout fires', async () => {
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
     fireEvent.click(screen.getByText('Undo'));
-    await act(async () => { vi.advanceTimersByTime(4000); });
+    await act(async () => {
+      vi.advanceTimersByTime(4000);
+    });
     expect(mockMergePullRequest).not.toHaveBeenCalled();
   });
 
   it('executes merge after 3-second timeout', async () => {
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
-    await act(async () => { vi.advanceTimersByTime(3000); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
     expect(mockMergePullRequest).toHaveBeenCalledWith(
       expect.anything(),
       'owner',
@@ -97,8 +113,12 @@ describe('MergeToast', () => {
 
   it('shows success notification after merge', async () => {
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
     expect(mockNotificationShow).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'PR #42 merged!',
@@ -110,8 +130,12 @@ describe('MergeToast', () => {
   it('shows error notification when merge fails', async () => {
     mockMergePullRequest.mockRejectedValueOnce(new Error('Merge conflict'));
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 99); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 99);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
     expect(mockNotificationShow).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Failed to merge PR #99',
@@ -123,8 +147,12 @@ describe('MergeToast', () => {
   it('does not merge when no client is available', async () => {
     mockGetClient.mockReturnValue(null);
     render(<MergeToast />);
-    act(() => { getQueueMerge()('owner', 'repo', 42); });
-    await act(async () => { vi.advanceTimersByTime(3000); });
+    act(() => {
+      getQueueMerge()('owner', 'repo', 42);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
     expect(mockMergePullRequest).not.toHaveBeenCalled();
   });
 

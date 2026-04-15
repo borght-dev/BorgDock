@@ -101,9 +101,7 @@ describe('AdoSection', () => {
   it('updates poll interval', () => {
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
     fireEvent.change(screen.getByRole('slider'), { target: { value: '240' } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ pollIntervalSeconds: 240 }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ pollIntervalSeconds: 240 }));
   });
 
   it('renders Test Connection button', () => {
@@ -182,10 +180,7 @@ describe('AdoSection', () => {
 
   it('handles empty PAT gracefully', () => {
     render(
-      <AdoSection
-        azureDevOps={makeAdo({ personalAccessToken: undefined })}
-        onChange={onChange}
-      />,
+      <AdoSection azureDevOps={makeAdo({ personalAccessToken: undefined })} onChange={onChange} />,
     );
     const input = screen.getByPlaceholderText('ADO PAT') as HTMLInputElement;
     expect(input.value).toBe('');

@@ -90,7 +90,10 @@ export function TeamReviewLoad() {
           Review Load
         </span>
         <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
-        <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums" style={{ color: 'var(--color-text-ghost)', background: 'var(--color-surface-raised)' }}>
+        <span
+          className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
+          style={{ color: 'var(--color-text-ghost)', background: 'var(--color-surface-raised)' }}
+        >
           {reviewers.length}
         </span>
       </button>

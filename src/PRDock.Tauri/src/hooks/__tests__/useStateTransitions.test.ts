@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 
 // --- Mocks ---
@@ -11,10 +11,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: Object.assign(
-    () => ({}),
-    { getState: () => ({ show: mockShow }) },
-  ),
+  useNotificationStore: Object.assign(() => ({}), { getState: () => ({ show: mockShow }) }),
 }));
 
 import { useStateTransitions } from '../useStateTransitions';
@@ -68,7 +65,12 @@ function makePrWithChecks(
 function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
   return {
     setupComplete: true,
-    gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'alice', ...overrides.gitHub },
+    gitHub: {
+      authMethod: 'ghCli',
+      pollIntervalSeconds: 60,
+      username: 'alice',
+      ...overrides.gitHub,
+    },
     repos: [],
     ui: {
       sidebarEdge: 'right',
@@ -151,9 +153,7 @@ describe('useStateTransitions', () => {
   it('does not fire notifications on first poll (no previous data)', () => {
     const { result } = renderHook(() => useStateTransitions(makeSettings()));
 
-    const newPrs = [
-      makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-    ];
+    const newPrs = [makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] })];
 
     act(() => {
       result.current.processTransitions(newPrs);
@@ -166,9 +166,7 @@ describe('useStateTransitions', () => {
     const { result } = renderHook(() => useStateTransitions(makeSettings()));
 
     const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
-    const newPrs = [
-      makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-    ];
+    const newPrs = [makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] })];
 
     act(() => {
       result.current.processTransitions(oldPrs);
@@ -189,9 +187,7 @@ describe('useStateTransitions', () => {
   it('fires notification when all checks pass (red -> green)', () => {
     const { result } = renderHook(() => useStateTransitions(makeSettings()));
 
-    const oldPrs = [
-      makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-    ];
+    const oldPrs = [makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] })];
     const newPrs = [makePrWithChecks({ overallStatus: 'green' })];
 
     act(() => {
@@ -317,9 +313,7 @@ describe('useStateTransitions', () => {
       const { result } = renderHook(() => useStateTransitions(settings));
 
       const oldPrs = [makePrWithChecks({ overallStatus: 'green' })];
-      const newPrs = [
-        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-      ];
+      const newPrs = [makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] })];
 
       act(() => {
         result.current.processTransitions(oldPrs);
@@ -337,9 +331,7 @@ describe('useStateTransitions', () => {
       });
       const { result } = renderHook(() => useStateTransitions(settings));
 
-      const oldPrs = [
-        makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] }),
-      ];
+      const oldPrs = [makePrWithChecks({ overallStatus: 'red', failedCheckNames: ['build'] })];
       const newPrs = [makePrWithChecks({ overallStatus: 'green' })];
 
       act(() => {
@@ -535,8 +527,8 @@ describe('useStateTransitions', () => {
       });
 
       // The checkFailed for PR#1 should be deduplicated (same key within window)
-      const checkFailedCalls = mockShow.mock.calls.filter(
-        (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
+      const checkFailedCalls = mockShow.mock.calls.filter((c: unknown[]) =>
+        (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(checkFailedCalls).toHaveLength(0);
     });
@@ -562,8 +554,8 @@ describe('useStateTransitions', () => {
         result.current.processTransitions([redPr]);
       });
 
-      const firstCheckFailedCalls = mockShow.mock.calls.filter(
-        (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
+      const firstCheckFailedCalls = mockShow.mock.calls.filter((c: unknown[]) =>
+        (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(firstCheckFailedCalls).toHaveLength(1);
 
@@ -580,8 +572,8 @@ describe('useStateTransitions', () => {
       });
 
       // Should fire again since the window expired
-      const secondCheckFailedCalls = mockShow.mock.calls.filter(
-        (c: unknown[]) => (c[0] as { title: string }).title.includes('Check failed'),
+      const secondCheckFailedCalls = mockShow.mock.calls.filter((c: unknown[]) =>
+        (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(secondCheckFailedCalls).toHaveLength(1);
     });

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useSyntaxHighlight } from '../useSyntaxHighlight';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiffHunk, HighlightSpan } from '@/types';
+import { useSyntaxHighlight } from '../useSyntaxHighlight';
 
 vi.mock('@/services/syntax-highlighter', () => ({
   highlightLines: vi.fn(),
@@ -11,7 +11,9 @@ import { highlightLines } from '@/services/syntax-highlighter';
 
 const mockHighlightLines = vi.mocked(highlightLines);
 
-function makeHunk(lines: Array<{ type: 'add' | 'delete' | 'context' | 'hunk-header'; content: string }>): DiffHunk {
+function makeHunk(
+  lines: Array<{ type: 'add' | 'delete' | 'context' | 'hunk-header'; content: string }>,
+): DiffHunk {
   return {
     header: '@@ -1,3 +1,3 @@',
     oldStart: 1,
@@ -127,9 +129,7 @@ describe('useSyntaxHighlight', () => {
     const secondMap = new Map<number, HighlightSpan[]>();
     secondMap.set(0, secondSpans);
 
-    mockHighlightLines
-      .mockReturnValueOnce(firstPromise)
-      .mockResolvedValueOnce(secondMap);
+    mockHighlightLines.mockReturnValueOnce(firstPromise).mockResolvedValueOnce(secondMap);
 
     const hunks1 = [makeHunk([{ type: 'context', content: 'a' }])];
     const hunks2 = [makeHunk([{ type: 'context', content: 'b' }])];

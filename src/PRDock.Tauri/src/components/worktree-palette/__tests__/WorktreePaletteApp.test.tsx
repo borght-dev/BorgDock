@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorktreePaletteApp } from '../WorktreePaletteApp';
 
 const mockClose = vi.fn(() => Promise.resolve());
@@ -452,11 +452,10 @@ describe('WorktreePaletteApp', () => {
 
     const saveCall = invokeMock.mock.calls.find((c) => c[0] === 'save_settings');
     expect(saveCall).toBeTruthy();
-    const savedRepos = (saveCall![1] as { settings: { repos: Array<{ favoriteWorktreePaths: string[] }> } })
-      .settings.repos;
-    expect(savedRepos[0]!.favoriteWorktreePaths).toContain(
-      '/home/user/repo/.worktrees/feature-a',
-    );
+    const savedRepos = (
+      saveCall![1] as { settings: { repos: Array<{ favoriteWorktreePaths: string[] }> } }
+    ).settings.repos;
+    expect(savedRepos[0]!.favoriteWorktreePaths).toContain('/home/user/repo/.worktrees/feature-a');
   });
 
   it('"Favorites only" toggle hides non-favorites but keeps the main worktree visible', async () => {

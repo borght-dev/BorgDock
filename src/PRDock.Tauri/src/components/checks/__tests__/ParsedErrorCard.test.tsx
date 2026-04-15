@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ParsedErrorCard } from '../ParsedErrorCard';
+import { describe, expect, it } from 'vitest';
 import type { ParsedError } from '@/types';
+import { ParsedErrorCard } from '../ParsedErrorCard';
 
 const makeError = (overrides: Partial<ParsedError> = {}): ParsedError => ({
   filePath: 'src/app.ts',
@@ -21,7 +21,9 @@ describe('ParsedErrorCard', () => {
   });
 
   it('renders file path without line number when undefined', () => {
-    render(<ParsedErrorCard error={makeError({ lineNumber: undefined, columnNumber: undefined })} />);
+    render(
+      <ParsedErrorCard error={makeError({ lineNumber: undefined, columnNumber: undefined })} />,
+    );
     expect(screen.getByText('src/app.ts')).toBeDefined();
   });
 

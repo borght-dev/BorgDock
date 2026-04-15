@@ -40,7 +40,9 @@ export function ReviewCommentCard({ comment }: ReviewCommentCardProps) {
 
         {/* Body */}
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{comment.body}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+            {comment.body}
+          </ReactMarkdown>
         </div>
       </div>
     </div>

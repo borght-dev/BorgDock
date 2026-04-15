@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import { UnifiedDiffView } from '../UnifiedDiffView';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DiffHunk, DiffLine, HighlightSpan } from '@/types';
+import { UnifiedDiffView } from '../UnifiedDiffView';
 
 vi.mock('@/services/diff-parser', () => ({
   findLinePairs: vi.fn(() => new Map()),
@@ -55,9 +55,7 @@ describe('UnifiedDiffView', () => {
   });
 
   it('renders added lines with + prefix and only new line number', () => {
-    const lines: DiffLine[] = [
-      { type: 'add', content: 'new line', newLineNumber: 10 },
-    ];
+    const lines: DiffLine[] = [{ type: 'add', content: 'new line', newLineNumber: 10 }];
     const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
     const cells = container.querySelectorAll('td');
     // Old line number should be empty
@@ -69,9 +67,7 @@ describe('UnifiedDiffView', () => {
   });
 
   it('renders deleted lines with - prefix and only old line number', () => {
-    const lines: DiffLine[] = [
-      { type: 'delete', content: 'old line', oldLineNumber: 7 },
-    ];
+    const lines: DiffLine[] = [{ type: 'delete', content: 'old line', oldLineNumber: 7 }];
     const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
     const cells = container.querySelectorAll('td');
     expect(cells[0]?.textContent).toBe('7');
@@ -79,9 +75,7 @@ describe('UnifiedDiffView', () => {
   });
 
   it('renders hunk headers spanning full width', () => {
-    const lines: DiffLine[] = [
-      { type: 'hunk-header', content: '@@ -1,3 +1,3 @@ function test()' },
-    ];
+    const lines: DiffLine[] = [{ type: 'hunk-header', content: '@@ -1,3 +1,3 @@ function test()' }];
     const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
     const td = container.querySelector('td[colspan="3"]');
     expect(td).not.toBeNull();

@@ -1,6 +1,5 @@
 import clsx from 'clsx';
-import type { DiffViewMode, FileStatusFilter } from '@/types';
-import type { PullRequestCommit } from '@/types';
+import type { DiffViewMode, FileStatusFilter, PullRequestCommit } from '@/types';
 
 interface DiffToolbarProps {
   viewMode: DiffViewMode;
@@ -81,7 +80,15 @@ export function DiffToolbar({
         )}
         title={showFileTree ? 'Hide file tree' : 'Show file tree'}
       >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        >
           <path d="M2 3h12M2 8h8M2 13h10" />
         </svg>
       </button>
@@ -92,7 +99,15 @@ export function DiffToolbar({
         className="p-1 rounded-md text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
         title={allExpanded ? 'Collapse all' : 'Expand all'}
       >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        >
           {allExpanded ? (
             <>
               <path d="M4 6l4-4 4 4" />

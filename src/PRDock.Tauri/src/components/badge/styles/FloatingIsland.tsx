@@ -5,8 +5,8 @@ import {
   DragGrip,
   ExpandChevron,
   GLOW_MAP,
-  STATUS_DOT_MAP,
   generateCheckPips,
+  STATUS_DOT_MAP,
 } from './shared';
 
 export function FloatingIsland({

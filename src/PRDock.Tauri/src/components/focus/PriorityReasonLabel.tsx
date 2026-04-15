@@ -16,7 +16,10 @@ export function PriorityReasonLabel({ factors }: PriorityReasonLabelProps) {
             className={
               f.type === 'readyToMerge'
                 ? 'text-[var(--color-status-green)] font-medium'
-                : f.type.includes('Red') || f.type.includes('red') || f.type === 'myPrRedChecks' || f.type === 'othersRedChecks'
+                : f.type.includes('Red') ||
+                    f.type.includes('red') ||
+                    f.type === 'myPrRedChecks' ||
+                    f.type === 'othersRedChecks'
                   ? 'text-[var(--color-status-red)]'
                   : f.type.includes('Stale') || f.type === 'staleness' || f.type === 'reviewStale'
                     ? 'text-[var(--color-status-yellow)]'

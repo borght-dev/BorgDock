@@ -1,20 +1,20 @@
 import clsx from 'clsx';
 import { memo, useMemo } from 'react';
+import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
+import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { computeMergeScore } from '@/services/merge-score';
+import type { PriorityFactor } from '@/services/priority-scoring';
+import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
-import type { PriorityFactor } from '@/services/priority-scoring';
-import { detectWorkItemIds } from '@/services/work-item-linker';
-import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
-import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { ActionButton } from './ActionButton';
-import { ExpandedContent } from './PullRequestExpandedContent';
 import { LabelBadge } from './LabelBadge';
 import { MergeScoreBadge } from './MergeScoreBadge';
-import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { PrContextMenu } from './PrContextMenu';
+import { ExpandedContent } from './PullRequestExpandedContent';
 import { StatusIndicator } from './StatusIndicator';
 
 interface PullRequestCardProps {
@@ -28,7 +28,12 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-export const PullRequestCard = memo(function PullRequestCard({ prWithChecks, isFocused, focusMode, priorityFactors }: PullRequestCardProps) {
+export const PullRequestCard = memo(function PullRequestCard({
+  prWithChecks,
+  isFocused,
+  focusMode,
+  priorityFactors,
+}: PullRequestCardProps) {
   const { pullRequest: pr, overallStatus, passedCount, checks, failedCheckNames } = prWithChecks;
   const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
@@ -109,7 +114,15 @@ export const PullRequestCard = memo(function PullRequestCard({ prWithChecks, isF
                 }}
                 title={`Checked out in ${worktreeMatch.fullPath}`}
               >
-                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
                   <path d="M4 2v12M12 8c0-3-2-4-4-4" />
                 </svg>
                 {worktreeMatch.slotName}
@@ -117,8 +130,19 @@ export const PullRequestCard = memo(function PullRequestCard({ prWithChecks, isF
             )}
             {prWithChecks.pendingCheckNames.length > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-[var(--color-warning-badge-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-warning-badge-fg)] border border-[var(--color-warning-badge-border)]">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="animate-spin">
-                  <path d="M6 1a5 5 0 1 0 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  className="animate-spin"
+                >
+                  <path
+                    d="M6 1a5 5 0 1 0 5 5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 in progress
               </span>
@@ -159,61 +183,79 @@ export const PullRequestCard = memo(function PullRequestCard({ prWithChecks, isF
 
           {/* Stats row */}
           <div className="mt-2.5 flex items-center gap-4 text-xs text-[var(--color-text-tertiary)]">
-            {totalChecks > 0 && (() => {
-              const relevant = totalChecks - prWithChecks.skippedCount;
-              const failedCount = prWithChecks.failedCheckNames.length;
-              const pendingCount = prWithChecks.pendingCheckNames.length;
-              return (
-                <span
-                  className="flex items-center gap-2"
-                  title={`${passedCount}/${relevant} checks passed${prWithChecks.skippedCount > 0 ? ` (${prWithChecks.skippedCount} skipped)` : ''}`}
-                >
-                  <span className="flex h-[4px] w-20 gap-0.5 overflow-hidden rounded-full">
-                    {passedCount > 0 && (
-                      <span
-                        className="h-full rounded-full"
-                        style={{ flex: passedCount, background: 'var(--color-status-green)' }}
-                      />
-                    )}
-                    {failedCount > 0 && (
-                      <span
-                        className="h-full rounded-full"
-                        style={{ flex: failedCount, background: 'var(--color-status-red)' }}
-                      />
-                    )}
-                    {pendingCount > 0 && (
-                      <span
-                        className="h-full rounded-full"
-                        style={{ flex: pendingCount, background: 'var(--color-status-yellow)' }}
-                      />
-                    )}
-                    {prWithChecks.skippedCount > 0 && (
-                      <span
-                        className="h-full rounded-full"
-                        style={{ flex: prWithChecks.skippedCount, background: 'var(--color-status-gray)', opacity: 0.3 }}
-                      />
-                    )}
+            {totalChecks > 0 &&
+              (() => {
+                const relevant = totalChecks - prWithChecks.skippedCount;
+                const failedCount = prWithChecks.failedCheckNames.length;
+                const pendingCount = prWithChecks.pendingCheckNames.length;
+                return (
+                  <span
+                    className="flex items-center gap-2"
+                    title={`${passedCount}/${relevant} checks passed${prWithChecks.skippedCount > 0 ? ` (${prWithChecks.skippedCount} skipped)` : ''}`}
+                  >
+                    <span className="flex h-[4px] w-20 gap-0.5 overflow-hidden rounded-full">
+                      {passedCount > 0 && (
+                        <span
+                          className="h-full rounded-full"
+                          style={{ flex: passedCount, background: 'var(--color-status-green)' }}
+                        />
+                      )}
+                      {failedCount > 0 && (
+                        <span
+                          className="h-full rounded-full"
+                          style={{ flex: failedCount, background: 'var(--color-status-red)' }}
+                        />
+                      )}
+                      {pendingCount > 0 && (
+                        <span
+                          className="h-full rounded-full"
+                          style={{ flex: pendingCount, background: 'var(--color-status-yellow)' }}
+                        />
+                      )}
+                      {prWithChecks.skippedCount > 0 && (
+                        <span
+                          className="h-full rounded-full"
+                          style={{
+                            flex: prWithChecks.skippedCount,
+                            background: 'var(--color-status-gray)',
+                            opacity: 0.3,
+                          }}
+                        />
+                      )}
+                    </span>
+                    <span className="font-mono tabular-nums">
+                      {passedCount}/{relevant}
+                    </span>
                   </span>
-                  <span className="font-mono tabular-nums">{passedCount}/{relevant}</span>
-                </span>
-              );
-            })()}
+                );
+              })()}
             {(pr.additions > 0 || pr.deletions > 0) && (
               <span className="font-mono tabular-nums">
-                <span className="font-medium text-[var(--color-status-green)]">+{(pr.additions ?? 0).toLocaleString()}</span>
+                <span className="font-medium text-[var(--color-status-green)]">
+                  +{(pr.additions ?? 0).toLocaleString()}
+                </span>
                 <span className="text-[var(--color-text-ghost)]"> </span>
-                <span className="font-medium text-[var(--color-status-red)]">{'\u2212'}{(pr.deletions ?? 0).toLocaleString()}</span>
+                <span className="font-medium text-[var(--color-status-red)]">
+                  {'\u2212'}
+                  {(pr.deletions ?? 0).toLocaleString()}
+                </span>
               </span>
             )}
             {pr.commitCount > 0 && (
               <span className="tabular-nums">
                 {pr.commitCount}c
-                {pr.changedFiles > 0 && <>{' \u00B7 '}{pr.changedFiles} files</>}
+                {pr.changedFiles > 0 && (
+                  <>
+                    {' \u00B7 '}
+                    {pr.changedFiles} files
+                  </>
+                )}
               </span>
             )}
             {pr.commentCount > 0 && (
               <span className="tabular-nums" title="Comments">
-                {pr.commentCount}{'\uD83D\uDCAC'}
+                {pr.commentCount}
+                {'\uD83D\uDCAC'}
               </span>
             )}
           </div>
@@ -221,35 +263,76 @@ export const PullRequestCard = memo(function PullRequestCard({ prWithChecks, isF
           {/* Conflict resolve button - always visible when conflicts */}
           {pr.mergeable === false && (
             <div className="mt-2">
-              <ActionButton label="Resolve Conflicts" icon={'\u2726'} onClick={actions.handleResolveConflicts} variant="accent" />
+              <ActionButton
+                label="Resolve Conflicts"
+                icon={'\u2726'}
+                onClick={actions.handleResolveConflicts}
+                variant="accent"
+              />
             </div>
           )}
 
           {/* Action buttons - visible on hover */}
           <div className="mt-2 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {overallStatus === 'red' && actions.failedCheck && (
-              <ActionButton label="Re-run" icon={'\u21BB'} onClick={actions.handleRerun} variant="accent" />
+              <ActionButton
+                label="Re-run"
+                icon={'\u21BB'}
+                onClick={actions.handleRerun}
+                variant="accent"
+              />
             )}
             {overallStatus === 'red' && (
-              <ActionButton label="Fix" icon={'\u2726'} onClick={actions.handleFix} variant="purple" />
+              <ActionButton
+                label="Fix"
+                icon={'\u2726'}
+                onClick={actions.handleFix}
+                variant="purple"
+              />
             )}
-            <ActionButton label="Monitor" icon={'\u25B6'} onClick={actions.handleMonitor} variant="purple" />
+            <ActionButton
+              label="Monitor"
+              icon={'\u25B6'}
+              onClick={actions.handleMonitor}
+              variant="purple"
+            />
             {failedCheckNames.length > 0 && (
-              <ActionButton label="Copy" icon={'\uD83D\uDCCB'} onClick={actions.handleCopyErrors} variant="default" />
+              <ActionButton
+                label="Copy"
+                icon={'\uD83D\uDCCB'}
+                onClick={actions.handleCopyErrors}
+                variant="default"
+              />
             )}
-            <ActionButton label="Open in Browser" onClick={actions.handleOpenInBrowser} variant="default" />
-            <ActionButton label="Copy Branch" onClick={actions.handleCopyBranch} variant="default" />
+            <ActionButton
+              label="Open in Browser"
+              onClick={actions.handleOpenInBrowser}
+              variant="default"
+            />
+            <ActionButton
+              label="Copy Branch"
+              onClick={actions.handleCopyBranch}
+              variant="default"
+            />
             {actions.repoPath && (
               <ActionButton label="Checkout" onClick={actions.handleCheckout} variant="default" />
             )}
             {isOpen && (
-              <ActionButton label={pr.isDraft ? 'Mark Ready' : 'Mark Draft'} onClick={actions.handleToggleDraft} variant="draft" />
+              <ActionButton
+                label={pr.isDraft ? 'Mark Ready' : 'Mark Draft'}
+                onClick={actions.handleToggleDraft}
+                variant="draft"
+              />
             )}
             {canMerge && (
               <ActionButton label="Merge" onClick={actions.handleMerge} variant="success" />
             )}
             {isOpen && (
-              <ActionButton label="Bypass Merge" onClick={actions.handleBypassMerge} variant="danger" />
+              <ActionButton
+                label="Bypass Merge"
+                onClick={actions.handleBypassMerge}
+                variant="danger"
+              />
             )}
             {isOpen && (
               <ActionButton label="Close PR" onClick={actions.handleClose} variant="danger" />

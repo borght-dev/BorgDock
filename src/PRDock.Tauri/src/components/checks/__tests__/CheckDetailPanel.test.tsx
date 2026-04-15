@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { CheckDetailPanel } from '../CheckDetailPanel';
+import { describe, expect, it, vi } from 'vitest';
 import type { CheckRun, ParsedError } from '@/types';
+import { CheckDetailPanel } from '../CheckDetailPanel';
 
 // Mock child components so we isolate CheckDetailPanel logic
 vi.mock('../LogViewer', () => ({
@@ -51,20 +51,14 @@ describe('CheckDetailPanel', () => {
   });
 
   it('selects the first run by default when no selectedRunId is provided', () => {
-    const runs = [
-      makeCheckRun({ id: 1, name: 'build' }),
-      makeCheckRun({ id: 2, name: 'lint' }),
-    ];
+    const runs = [makeCheckRun({ id: 1, name: 'build' }), makeCheckRun({ id: 2, name: 'lint' })];
     render(<CheckDetailPanel checkRuns={runs} />);
     const select = screen.getByRole('combobox') as HTMLSelectElement;
     expect(select.value).toBe('1');
   });
 
   it('selects the specified run via selectedRunId', () => {
-    const runs = [
-      makeCheckRun({ id: 1, name: 'build' }),
-      makeCheckRun({ id: 2, name: 'lint' }),
-    ];
+    const runs = [makeCheckRun({ id: 1, name: 'build' }), makeCheckRun({ id: 2, name: 'lint' })];
     render(<CheckDetailPanel checkRuns={runs} selectedRunId={2} />);
     const select = screen.getByRole('combobox') as HTMLSelectElement;
     expect(select.value).toBe('2');
@@ -84,10 +78,7 @@ describe('CheckDetailPanel', () => {
 
   it('renders ParsedErrorCard for each error', () => {
     const runs = [makeCheckRun()];
-    const errors = [
-      makeError({ message: 'Error one' }),
-      makeError({ message: 'Error two' }),
-    ];
+    const errors = [makeError({ message: 'Error one' }), makeError({ message: 'Error two' })];
     render(<CheckDetailPanel checkRuns={runs} parsedErrors={errors} />);
     expect(screen.getAllByTestId('parsed-error-card')).toHaveLength(2);
     expect(screen.getByText('Error one')).toBeDefined();
@@ -116,10 +107,7 @@ describe('CheckDetailPanel', () => {
   });
 
   it('allows changing the selected run via the dropdown', () => {
-    const runs = [
-      makeCheckRun({ id: 1, name: 'build' }),
-      makeCheckRun({ id: 2, name: 'lint' }),
-    ];
+    const runs = [makeCheckRun({ id: 1, name: 'build' }), makeCheckRun({ id: 2, name: 'lint' })];
     render(<CheckDetailPanel checkRuns={runs} />);
     const select = screen.getByRole('combobox') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: '2' } });
@@ -135,7 +123,9 @@ describe('CheckDetailPanel', () => {
   });
 
   it('shows status when conclusion is null', () => {
-    const runs = [makeCheckRun({ id: 1, name: 'deploy', status: 'in_progress', conclusion: undefined })];
+    const runs = [
+      makeCheckRun({ id: 1, name: 'deploy', status: 'in_progress', conclusion: undefined }),
+    ];
     render(<CheckDetailPanel checkRuns={runs} />);
     const option = screen.getByRole('option') as HTMLOptionElement;
     expect(option.textContent).toContain('in_progress');

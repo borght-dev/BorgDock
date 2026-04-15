@@ -3,13 +3,13 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { parseError } from '@/utils/parse-error';
 import { rerunWorkflow } from '@/services/github/checks';
 import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
+import { parseError } from '@/utils/parse-error';
 
 interface PrContextMenuProps {
   pr: PullRequestWithChecks;
@@ -149,7 +149,13 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
-    await fixWithClaude(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '');
+    await fixWithClaude(
+      pr,
+      failedCheckNames.length > 0 ? failedCheckNames : ['unknown'],
+      [],
+      [],
+      '',
+    );
   }, 'Fix with Claude failed');
 
   const handleMonitorWithClaude = handleAction(async () => {
@@ -246,11 +252,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
         onClick={handleBypassMerge}
         disabled={pullRequest.state !== 'open'}
       />
-      <MenuItem
-        label="Close PR"
-        onClick={handleClose}
-        disabled={pullRequest.state !== 'open'}
-      />
+      <MenuItem label="Close PR" onClick={handleClose} disabled={pullRequest.state !== 'open'} />
     </div>
   );
 }

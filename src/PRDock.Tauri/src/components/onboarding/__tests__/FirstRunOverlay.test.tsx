@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { FirstRunOverlay } from '../FirstRunOverlay';
 
 describe('FirstRunOverlay', () => {
@@ -31,13 +31,7 @@ describe('FirstRunOverlay', () => {
   it('calls both onCtaClick and onDismiss when CTA button is clicked', () => {
     const onCtaClick = vi.fn();
     const onDismiss = vi.fn();
-    render(
-      <FirstRunOverlay
-        {...defaultProps}
-        onCtaClick={onCtaClick}
-        onDismiss={onDismiss}
-      />,
-    );
+    render(<FirstRunOverlay {...defaultProps} onCtaClick={onCtaClick} onDismiss={onDismiss} />);
     fireEvent.click(screen.getByText('Get Started'));
     expect(onCtaClick).toHaveBeenCalledTimes(1);
     expect(onDismiss).toHaveBeenCalledTimes(1);

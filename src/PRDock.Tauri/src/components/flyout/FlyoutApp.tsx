@@ -238,7 +238,8 @@ export function FlyoutApp() {
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-lg"
                 style={{
-                  background: 'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
+                  background:
+                    'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
                   boxShadow: '0 2px 8px color-mix(in srgb, var(--color-accent) 25%, transparent)',
                 }}
               >
@@ -260,7 +261,10 @@ export function FlyoutApp() {
                 >
                   PRDock
                 </div>
-                <div className="mt-0.5 text-[10.5px]" style={{ color: 'var(--color-text-tertiary)' }}>
+                <div
+                  className="mt-0.5 text-[10.5px]"
+                  style={{ color: 'var(--color-text-tertiary)' }}
+                >
                   {totalCount} open pull request{totalCount !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -277,7 +281,12 @@ export function FlyoutApp() {
 
           {/* Stat strip */}
           <div className="mt-3 flex gap-3.5">
-            <StatDot color="var(--color-status-red)" count={failingCount} label="failing" pulse={failingCount > 0} />
+            <StatDot
+              color="var(--color-status-red)"
+              count={failingCount}
+              label="failing"
+              pulse={failingCount > 0}
+            />
             <StatDot color="var(--color-status-yellow)" count={pendingCount} label="running" />
             <StatDot color="var(--color-status-green)" count={passingCount} label="passing" />
           </div>
@@ -296,7 +305,10 @@ export function FlyoutApp() {
             />
           ))}
           {pullRequests.length === 0 && (
-            <div className="py-8 text-center text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
+            <div
+              className="py-8 text-center text-[12px]"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
               No open pull requests
             </div>
           )}
@@ -366,17 +378,19 @@ function PrRow({
 }) {
   const [hovered, setHovered] = useState(false);
 
-  const statusColor = pr.overallStatus === 'red'
-    ? 'var(--color-status-red)'
-    : pr.overallStatus === 'yellow'
-      ? 'var(--color-status-yellow)'
-      : 'var(--color-status-green)';
+  const statusColor =
+    pr.overallStatus === 'red'
+      ? 'var(--color-status-red)'
+      : pr.overallStatus === 'yellow'
+        ? 'var(--color-status-yellow)'
+        : 'var(--color-status-green)';
 
-  const checksLabel = pr.failedCount > 0
-    ? `${pr.failedCount} failing`
-    : pr.pendingCount > 0
-      ? `${pr.pendingCount} running`
-      : `${pr.passedCount} passed`;
+  const checksLabel =
+    pr.failedCount > 0
+      ? `${pr.failedCount} failing`
+      : pr.pendingCount > 0
+        ? `${pr.pendingCount} running`
+        : `${pr.passedCount} passed`;
 
   const reviewMap: Record<string, { label: string; colorVar: string }> = {
     approved: { label: 'approved', colorVar: '--color-review-approved' },
@@ -433,7 +447,10 @@ function PrRow({
                 <button
                   type="button"
                   title="Fix failing checks with Claude"
-                  onClick={(e) => { e.stopPropagation(); onFix(pr); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFix(pr);
+                  }}
                   style={{
                     fontSize: 9,
                     fontWeight: 600,
@@ -453,7 +470,10 @@ function PrRow({
                 <button
                   type="button"
                   title="Monitor PR with Claude"
-                  onClick={(e) => { e.stopPropagation(); onMonitor(pr); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMonitor(pr);
+                  }}
                   style={{
                     fontSize: 9,
                     fontWeight: 600,
@@ -479,7 +499,9 @@ function PrRow({
           >
             {pr.repoOwner}/{pr.repoName} #{pr.number}
           </span>
-          <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>·</span>
+          <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+            ·
+          </span>
           <div className="flex items-center gap-1">
             <StatusIcon status={pr.overallStatus} color={statusColor} />
             <span
@@ -491,8 +513,13 @@ function PrRow({
           </div>
           {pr.commentCount > 0 && (
             <>
-              <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>·</span>
-              <div className="flex items-center gap-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
+              <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                ·
+              </span>
+              <div
+                className="flex items-center gap-0.5"
+                style={{ color: 'var(--color-text-tertiary)' }}
+              >
                 <CommentIcon />
                 <span className="text-[10.5px]">{pr.commentCount}</span>
               </div>
@@ -526,7 +553,17 @@ function ReviewBadge({ label, colorVar }: { label: string; colorVar: string }) {
   );
 }
 
-function StatDot({ color, count, label, pulse }: { color: string; count: number; label: string; pulse?: boolean }) {
+function StatDot({
+  color,
+  count,
+  label,
+  pulse,
+}: {
+  color: string;
+  count: number;
+  label: string;
+  pulse?: boolean;
+}) {
   return (
     <div className="flex items-center gap-1.5">
       <span
@@ -547,7 +584,15 @@ function StatDot({ color, count, label, pulse }: { color: string; count: number;
   );
 }
 
-function IconButton({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) {
+function IconButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -572,7 +617,16 @@ function IconButton({ title, onClick, children }: { title: string; onClick: () =
 function StatusIcon({ status, color }: { status: string; color: string }) {
   if (status === 'red') {
     return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="m15 9-6 6M9 9l6 6" />
       </svg>
@@ -580,14 +634,32 @@ function StatusIcon({ status, color }: { status: string; color: string }) {
   }
   if (status === 'yellow') {
     return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>
     );
   }
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="10" />
       <path d="m9 12 2 2 4-4" />
     </svg>
@@ -596,7 +668,16 @@ function StatusIcon({ status, color }: { status: string; color: string }) {
 
 function CommentIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
@@ -604,7 +685,16 @@ function CommentIcon() {
 
 function PanelRightOpenIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect width="18" height="18" x="3" y="3" rx="2" />
       <path d="M15 3v18" />
       <path d="m10 15-3-3 3-3" />
@@ -614,7 +704,16 @@ function PanelRightOpenIcon() {
 
 function SettingsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
       <circle cx="12" cy="12" r="3" />
     </svg>

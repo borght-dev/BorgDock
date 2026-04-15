@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppSettings } from '@/types';
 
 const mockEnable = vi.fn();
@@ -140,9 +140,7 @@ describe('useRunAtStartup', () => {
     renderHook(() => useRunAtStartup(makeSettings(true)));
 
     await vi.waitFor(() => {
-      expect(mockError).toHaveBeenCalledWith(
-        expect.stringContaining('[autostart] failed to sync'),
-      );
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining('[autostart] failed to sync'));
     });
   });
 

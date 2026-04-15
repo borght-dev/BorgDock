@@ -69,10 +69,7 @@ export function ResultsTable({
             >
               <td className="sql-row-num">{rowIdx + 1}</td>
               {row.map((cell, colIdx) => (
-                <td
-                  key={colIdx}
-                  className={clsx('sql-cell', cell === null && 'sql-cell--null')}
-                >
+                <td key={colIdx} className={clsx('sql-cell', cell === null && 'sql-cell--null')}>
                   {cell === null ? 'NULL' : cell}
                 </td>
               ))}

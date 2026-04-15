@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
+import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getPRCommits } from '@/services/github';
 import { getClient } from '@/services/github/singleton';
-import { useCachedTabData } from '@/hooks/useCachedTabData';
 import type { PullRequestCommit } from '@/types';
 
 interface CommitsTabProps {

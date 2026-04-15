@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { NotificationBubble } from '../NotificationBubble';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InAppNotification } from '@/types';
+import { NotificationBubble } from '../NotificationBubble';
 
 const mockOpenUrl = vi.fn().mockResolvedValue(undefined);
 vi.mock('@tauri-apps/plugin-opener', () => ({
@@ -44,22 +44,42 @@ describe('NotificationBubble', () => {
   });
 
   it('renders severity label for success', () => {
-    render(<NotificationBubble notification={makeNotification({ severity: 'success' })} onDismiss={vi.fn()} />);
+    render(
+      <NotificationBubble
+        notification={makeNotification({ severity: 'success' })}
+        onDismiss={vi.fn()}
+      />,
+    );
     expect(screen.getByText('Success')).toBeDefined();
   });
 
   it('renders severity label for error', () => {
-    render(<NotificationBubble notification={makeNotification({ severity: 'error' })} onDismiss={vi.fn()} />);
+    render(
+      <NotificationBubble
+        notification={makeNotification({ severity: 'error' })}
+        onDismiss={vi.fn()}
+      />,
+    );
     expect(screen.getByText('Error')).toBeDefined();
   });
 
   it('renders severity label for warning', () => {
-    render(<NotificationBubble notification={makeNotification({ severity: 'warning' })} onDismiss={vi.fn()} />);
+    render(
+      <NotificationBubble
+        notification={makeNotification({ severity: 'warning' })}
+        onDismiss={vi.fn()}
+      />,
+    );
     expect(screen.getByText('Warning')).toBeDefined();
   });
 
   it('renders severity label for info', () => {
-    render(<NotificationBubble notification={makeNotification({ severity: 'info' })} onDismiss={vi.fn()} />);
+    render(
+      <NotificationBubble
+        notification={makeNotification({ severity: 'info' })}
+        onDismiss={vi.fn()}
+      />,
+    );
     expect(screen.getByText('Info')).toBeDefined();
   });
 
@@ -98,7 +118,9 @@ describe('NotificationBubble', () => {
   });
 
   it('does not render action buttons when actions is empty', () => {
-    render(<NotificationBubble notification={makeNotification({ actions: [] })} onDismiss={vi.fn()} />);
+    render(
+      <NotificationBubble notification={makeNotification({ actions: [] })} onDismiss={vi.fn()} />,
+    );
     // Only the dismiss button should be present when there are no actions.
     const buttons = document.querySelectorAll('button');
     expect(buttons.length).toBe(1);
@@ -131,7 +153,10 @@ describe('NotificationBubble', () => {
 
   it('uses standard width for non-merged severity', () => {
     const { container } = render(
-      <NotificationBubble notification={makeNotification({ severity: 'info' })} onDismiss={vi.fn()} />,
+      <NotificationBubble
+        notification={makeNotification({ severity: 'info' })}
+        onDismiss={vi.fn()}
+      />,
     );
     const outerDiv = container.firstChild as HTMLElement;
     expect(outerDiv.className).toContain('w-[380px]');
@@ -158,14 +183,20 @@ describe('NotificationBubble', () => {
 
   it('renders the severity icon character', () => {
     render(
-      <NotificationBubble notification={makeNotification({ severity: 'error' })} onDismiss={vi.fn()} />,
+      <NotificationBubble
+        notification={makeNotification({ severity: 'error' })}
+        onDismiss={vi.fn()}
+      />,
     );
     expect(screen.getByText('!')).toBeDefined();
   });
 
   it('renders checkmark icon for success', () => {
     render(
-      <NotificationBubble notification={makeNotification({ severity: 'success' })} onDismiss={vi.fn()} />,
+      <NotificationBubble
+        notification={makeNotification({ severity: 'success' })}
+        onDismiss={vi.fn()}
+      />,
     );
     expect(screen.getByText('\u2713')).toBeDefined();
   });

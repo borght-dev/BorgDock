@@ -5,11 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { MergeReadinessChecklist } from '@/components/pr-detail/MergeReadinessChecklist';
 import type { PullRequestWithChecks } from '@/types';
 
-export function ExpandedContent({
-  prWithChecks,
-}: {
-  prWithChecks: PullRequestWithChecks;
-}) {
+export function ExpandedContent({ prWithChecks }: { prWithChecks: PullRequestWithChecks }) {
   const pr = prWithChecks.pullRequest;
 
   return (
@@ -40,11 +36,14 @@ export function ExpandedContent({
           </span>
           <span className="text-[var(--color-text-muted)]"> / </span>
           <span className="font-medium text-[var(--color-status-red)]">
-            {'\u2212'}{(pr.deletions ?? 0).toLocaleString()}
+            {'\u2212'}
+            {(pr.deletions ?? 0).toLocaleString()}
           </span>
         </span>
         <span className="rounded bg-[var(--color-surface-raised)] px-2.5 py-1 text-[var(--color-text-secondary)]">
-          <strong className="font-medium text-[var(--color-text-primary)]">{pr.changedFiles}</strong>{' '}
+          <strong className="font-medium text-[var(--color-text-primary)]">
+            {pr.changedFiles}
+          </strong>{' '}
           file{pr.changedFiles !== 1 ? 's' : ''} changed
         </span>
       </div>
@@ -59,7 +58,9 @@ export function ExpandedContent({
             Summary
           </div>
           <div className="markdown-body max-h-[300px] overflow-y-auto text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{pr.body}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+              {pr.body}
+            </ReactMarkdown>
           </div>
         </div>
       )}

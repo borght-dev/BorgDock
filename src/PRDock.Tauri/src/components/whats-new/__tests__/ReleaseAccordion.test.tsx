@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { ReleaseAccordion } from '../ReleaseAccordion';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import type { Release } from '@/types/whats-new';
+import { ReleaseAccordion } from '../ReleaseAccordion';
 
 const release: Release = {
   version: '1.0.11',

@@ -30,7 +30,6 @@ export interface RepoSettings {
   favoriteWorktreePaths?: string[];
 }
 
-
 export interface UiSettings {
   sidebarEdge: SidebarEdge;
   sidebarMode: SidebarMode;

@@ -9,6 +9,18 @@ export type {
   CommentSeverity,
 } from './claude-review';
 export type {
+  DiffFile,
+  DiffHunk,
+  DiffLine,
+  DiffLineType,
+  DiffViewMode,
+  FileStatus,
+  FileStatusFilter,
+  HighlightCategory,
+  HighlightSpan,
+  InlineChange,
+} from './diff';
+export type {
   InAppNotification,
   NotificationAction,
   NotificationSeverity,
@@ -44,7 +56,7 @@ export type {
   UpdateSettings,
 } from './settings';
 export type { UpdateInfo } from './update';
-export type { Kind, Highlight, Release } from './whats-new';
+export type { Highlight, Kind, Release } from './whats-new';
 export type {
   AdoQuery,
   AdoQueryResult,
@@ -58,15 +70,3 @@ export type {
   WorkItemRelation,
 } from './work-item';
 export type { WorktreeInfo } from './worktree';
-export type {
-  DiffFile,
-  DiffHunk,
-  DiffLine,
-  DiffLineType,
-  DiffViewMode,
-  FileStatus,
-  FileStatusFilter,
-  HighlightCategory,
-  HighlightSpan,
-  InlineChange,
-} from './diff';

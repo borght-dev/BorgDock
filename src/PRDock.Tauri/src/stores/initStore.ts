@@ -65,9 +65,10 @@ export const useInitStore = create<InitState>()((set) => ({
 
   failStep: (id, message) => set({ currentStep: null, error: { stepId: id, message } }),
 
-  reset: () => set((state) => ({
-    ...initialState,
-    runToken: state.runToken + 1,
-    hasCompletedInitialLaunch: state.hasCompletedInitialLaunch,
-  })),
+  reset: () =>
+    set((state) => ({
+      ...initialState,
+      runToken: state.runToken + 1,
+      hasCompletedInitialLaunch: state.hasCompletedInitialLaunch,
+    })),
 }));

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import { makePr } from '@/test-utils/make-pr';
@@ -67,32 +67,52 @@ describe('Sidebar', () => {
   });
 
   it('renders Header and StatusBar', () => {
-    render(<Sidebar><div>children</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div>children</div>
+      </Sidebar>,
+    );
     expect(screen.getByTestId('header')).toBeTruthy();
     expect(screen.getByTestId('status-bar')).toBeTruthy();
   });
 
   it('shows children when no PR is selected', () => {
-    render(<Sidebar><div data-testid="child-content">My child</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div data-testid="child-content">My child</div>
+      </Sidebar>,
+    );
     expect(screen.getByTestId('child-content')).toBeTruthy();
   });
 
   it('shows FilterBar and SearchBar when on prs section with no selected PR', () => {
-    render(<Sidebar><div>children</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div>children</div>
+      </Sidebar>,
+    );
     expect(screen.getByTestId('filter-bar')).toBeTruthy();
     expect(screen.getByTestId('search-bar')).toBeTruthy();
   });
 
   it('hides FilterBar and SearchBar when on a non-prs section', () => {
     useUiStore.setState({ activeSection: 'focus' });
-    render(<Sidebar><div>children</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div>children</div>
+      </Sidebar>,
+    );
     expect(screen.queryByTestId('filter-bar')).toBeNull();
     expect(screen.queryByTestId('search-bar')).toBeNull();
   });
 
   it('shows PRDetailPanel when a PR is selected', () => {
     useUiStore.setState({ selectedPrNumber: 1 });
-    render(<Sidebar><div data-testid="child-content">My child</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div data-testid="child-content">My child</div>
+      </Sidebar>,
+    );
     expect(screen.getByTestId('pr-detail-panel')).toBeTruthy();
     expect(screen.getByText('Detail for PR #1')).toBeTruthy();
     expect(screen.queryByTestId('child-content')).toBeNull();
@@ -100,20 +120,32 @@ describe('Sidebar', () => {
 
   it('hides FilterBar and SearchBar when a PR is selected', () => {
     useUiStore.setState({ selectedPrNumber: 1 });
-    render(<Sidebar><div>children</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div>children</div>
+      </Sidebar>,
+    );
     expect(screen.queryByTestId('filter-bar')).toBeNull();
     expect(screen.queryByTestId('search-bar')).toBeNull();
   });
 
   it('shows children when selectedPrNumber does not match any PR', () => {
     useUiStore.setState({ selectedPrNumber: 999 });
-    render(<Sidebar><div data-testid="child-content">My child</div></Sidebar>);
+    render(
+      <Sidebar>
+        <div data-testid="child-content">My child</div>
+      </Sidebar>,
+    );
     expect(screen.getByTestId('child-content')).toBeTruthy();
     expect(screen.queryByTestId('pr-detail-panel')).toBeNull();
   });
 
   it('renders the sidebar shell container', () => {
-    const { container } = render(<Sidebar><div>children</div></Sidebar>);
+    const { container } = render(
+      <Sidebar>
+        <div>children</div>
+      </Sidebar>,
+    );
     expect(container.querySelector('.sidebar-shell')).toBeTruthy();
   });
 });

@@ -12,11 +12,22 @@ interface DiffFileTreeProps {
 function fileExtIcon(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
   const map: Record<string, string> = {
-    ts: 'TS', tsx: 'TX', js: 'JS', jsx: 'JX',
-    css: 'CS', scss: 'SC', html: 'HT',
-    json: 'JN', md: 'MD', rs: 'RS',
-    toml: 'TL', sql: 'SQ', yaml: 'YM', yml: 'YM',
-    svg: 'SV', png: 'PN',
+    ts: 'TS',
+    tsx: 'TX',
+    js: 'JS',
+    jsx: 'JX',
+    css: 'CS',
+    scss: 'SC',
+    html: 'HT',
+    json: 'JN',
+    md: 'MD',
+    rs: 'RS',
+    toml: 'TL',
+    sql: 'SQ',
+    yaml: 'YM',
+    yml: 'YM',
+    svg: 'SV',
+    png: 'PN',
   };
   return map[ext] ?? (ext.slice(0, 2).toUpperCase() || 'F');
 }
@@ -93,7 +104,9 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
         {filtered.map((file) => {
           const badge = statusBadge(file.status);
           const basename = file.filename.split('/').pop() ?? file.filename;
-          const dirPath = treeMode ? undefined : file.filename.slice(0, -(basename.length + 1)) || undefined;
+          const dirPath = treeMode
+            ? undefined
+            : file.filename.slice(0, -(basename.length + 1)) || undefined;
           const isActive = activeFile === file.filename;
 
           return (
@@ -123,10 +136,7 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
                 )}
               </div>
 
-              <span
-                className="shrink-0 text-[8px] font-bold"
-                style={{ color: badge.color }}
-              >
+              <span className="shrink-0 text-[8px] font-bold" style={{ color: badge.color }}>
                 {badge.letter}
               </span>
 

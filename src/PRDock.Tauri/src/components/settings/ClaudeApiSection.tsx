@@ -17,9 +17,7 @@ export function ClaudeApiSection({ claudeApi, onChange }: ClaudeApiSectionProps)
   return (
     <div className="space-y-2.5">
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
-          API Key
-        </label>
+        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">API Key</label>
         <input
           type="password"
           className="field-input w-full"
@@ -30,9 +28,7 @@ export function ClaudeApiSection({ claudeApi, onChange }: ClaudeApiSectionProps)
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
-          Model
-        </label>
+        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">Model</label>
         <select
           className="field-input w-full"
           value={claudeApi.model}

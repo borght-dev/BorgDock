@@ -55,8 +55,9 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });
-    persistToTauriStore('ui-state.json', 'activeSection', section)
-      .catch((err) => console.warn('Failed to persist activeSection:', err));
+    persistToTauriStore('ui-state.json', 'activeSection', section).catch((err) =>
+      console.warn('Failed to persist activeSection:', err),
+    );
   },
 
   selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),

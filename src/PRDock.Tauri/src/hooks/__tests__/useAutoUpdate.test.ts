@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import type { AppSettings } from '@/types';
 
 const mockInvoke = vi.fn();
@@ -30,7 +30,9 @@ vi.mock('@/stores/notification-store', () => ({
 
 import { useAutoUpdate } from '../useAutoUpdate';
 
-function makeSettings(overrides: Partial<{ autoCheckEnabled: boolean; autoDownload: boolean }> = {}): AppSettings {
+function makeSettings(
+  overrides: Partial<{ autoCheckEnabled: boolean; autoDownload: boolean }> = {},
+): AppSettings {
   return {
     setupComplete: true,
     gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
@@ -313,10 +315,9 @@ describe('useAutoUpdate', () => {
   it('clears interval when autoCheckEnabled changes to false', async () => {
     mockInvoke.mockResolvedValue(null);
 
-    const { rerender } = renderHook(
-      ({ settings }) => useAutoUpdate(settings),
-      { initialProps: { settings: makeSettings({ autoCheckEnabled: true }) } },
-    );
+    const { rerender } = renderHook(({ settings }) => useAutoUpdate(settings), {
+      initialProps: { settings: makeSettings({ autoCheckEnabled: true }) },
+    });
 
     rerender({ settings: makeSettings({ autoCheckEnabled: false }) });
 

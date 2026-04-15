@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
 
 // --- Mocks ---
@@ -47,8 +47,7 @@ vi.mock('@/stores/pr-store', () => ({
 
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: Object.assign(
-    (selector: (s: typeof mockSettingsStoreState) => unknown) =>
-      selector(mockSettingsStoreState),
+    (selector: (s: typeof mockSettingsStoreState) => unknown) => selector(mockSettingsStoreState),
     { getState: () => mockSettingsStoreState },
   ),
 }));
@@ -126,9 +125,7 @@ function makePrWithChecks(
 }
 
 function findFlyoutPayload(): Record<string, unknown> | undefined {
-  const call = mockEmitTo.mock.calls.find(
-    (c) => c[0] === 'flyout' && c[1] === 'flyout-update',
-  );
+  const call = mockEmitTo.mock.calls.find((c) => c[0] === 'flyout' && c[1] === 'flyout-update');
   return call?.[2];
 }
 
@@ -359,9 +356,7 @@ describe('useBadgeSync', () => {
       renderHook(() => useBadgeSync());
 
       await vi.waitFor(() => {
-        const payload = findFlyoutPayload() as
-          | { theme: string; hotkey: string }
-          | undefined;
+        const payload = findFlyoutPayload() as { theme: string; hotkey: string } | undefined;
         expect(payload).toBeDefined();
         expect(payload!.theme).toBe('light');
         expect(payload!.hotkey).toBe('Alt+Space');

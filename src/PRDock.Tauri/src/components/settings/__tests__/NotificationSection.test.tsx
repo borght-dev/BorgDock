@@ -68,9 +68,7 @@ describe('NotificationSection', () => {
     render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
     const row = screen.getByText('Review updates').closest('div')!;
     fireEvent.click(row.querySelector('button')!);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ toastOnReviewUpdate: false }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ toastOnReviewUpdate: false }));
   });
 
   it('toggles PR becomes mergeable off', () => {
@@ -98,9 +96,7 @@ describe('NotificationSection', () => {
     render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
     const row = screen.getByText('Nudge for pending reviews').closest('div')!;
     fireEvent.click(row.querySelector('button')!);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ reviewNudgeEnabled: false }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ reviewNudgeEnabled: false }));
   });
 
   it('shows nudge interval when enabled', () => {
@@ -161,8 +157,6 @@ describe('NotificationSection', () => {
     render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
     fireEvent.click(screen.getByTitle('Send error notification'));
     expect(showMock).toHaveBeenCalledTimes(1);
-    expect(showMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'error' }),
-    );
+    expect(showMock).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
   });
 });

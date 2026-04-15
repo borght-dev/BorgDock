@@ -4,7 +4,7 @@ type TSParser = import('web-tree-sitter').Parser;
 type TSLanguage = import('web-tree-sitter').Language;
 type TSNode = import('web-tree-sitter').Node;
 
-let ParserClass: (typeof import('web-tree-sitter'))['Parser'] | null = null;
+let ParserClass: typeof import('web-tree-sitter')['Parser'] | null = null;
 let initPromise: Promise<boolean> | null = null;
 const languageCache = new Map<string, TSLanguage | null>();
 const grammarLoadPromises = new Map<string, Promise<TSLanguage | null>>();
@@ -30,51 +30,112 @@ const EXT_TO_GRAMMAR: Record<string, string> = {
 
 const NODE_TYPE_CATEGORIES: Record<string, HighlightCategory> = {
   // Keywords
-  'if': 'keyword', 'else': 'keyword', 'for': 'keyword', 'while': 'keyword',
-  'return': 'keyword', 'import': 'keyword', 'export': 'keyword',
-  'function': 'keyword', 'class': 'keyword', 'new': 'keyword',
-  'const': 'keyword', 'let': 'keyword', 'var': 'keyword',
-  'async': 'keyword', 'await': 'keyword', 'yield': 'keyword',
-  'try': 'keyword', 'catch': 'keyword', 'finally': 'keyword', 'throw': 'keyword',
-  'switch': 'keyword', 'case': 'keyword', 'break': 'keyword', 'continue': 'keyword',
-  'typeof': 'keyword', 'instanceof': 'keyword', 'in': 'keyword', 'of': 'keyword',
-  'as': 'keyword', 'extends': 'keyword', 'implements': 'keyword',
-  'interface': 'keyword', 'type': 'keyword', 'enum': 'keyword', 'namespace': 'keyword',
-  'default': 'keyword', 'from': 'keyword', 'with': 'keyword', 'do': 'keyword',
-  'void': 'keyword', 'delete': 'keyword', 'static': 'keyword', 'abstract': 'keyword',
-  'declare': 'keyword', 'readonly': 'keyword', 'override': 'keyword',
+  if: 'keyword',
+  else: 'keyword',
+  for: 'keyword',
+  while: 'keyword',
+  return: 'keyword',
+  import: 'keyword',
+  export: 'keyword',
+  function: 'keyword',
+  class: 'keyword',
+  'new': 'keyword',
+  const: 'keyword',
+  let: 'keyword',
+  var: 'keyword',
+  async: 'keyword',
+  await: 'keyword',
+  yield: 'keyword',
+  try: 'keyword',
+  catch: 'keyword',
+  finally: 'keyword',
+  throw: 'keyword',
+  switch: 'keyword',
+  case: 'keyword',
+  break: 'keyword',
+  continue: 'keyword',
+  typeof: 'keyword',
+  instanceof: 'keyword',
+  in: 'keyword',
+  of: 'keyword',
+  as: 'keyword',
+  extends: 'keyword',
+  implements: 'keyword',
+  interface: 'keyword',
+  type: 'keyword',
+  enum: 'keyword',
+  namespace: 'keyword',
+  default: 'keyword',
+  from: 'keyword',
+  with: 'keyword',
+  do: 'keyword',
+  void: 'keyword',
+  delete: 'keyword',
+  static: 'keyword',
+  abstract: 'keyword',
+  declare: 'keyword',
+  readonly: 'keyword',
+  override: 'keyword',
   // Rust keywords
-  pub: 'keyword', fn: 'keyword', use: 'keyword', mod: 'keyword',
-  struct: 'keyword', impl: 'keyword', trait: 'keyword', match: 'keyword',
-  mut: 'keyword', ref: 'keyword', self: 'keyword', crate: 'keyword',
-  extern: 'keyword', where: 'keyword', loop: 'keyword', move: 'keyword',
-  unsafe: 'keyword', dyn: 'keyword', macro_rules: 'keyword',
+  pub: 'keyword',
+  fn: 'keyword',
+  use: 'keyword',
+  mod: 'keyword',
+  struct: 'keyword',
+  impl: 'keyword',
+  trait: 'keyword',
+  match: 'keyword',
+  mut: 'keyword',
+  ref: 'keyword',
+  self: 'keyword',
+  crate: 'keyword',
+  extern: 'keyword',
+  where: 'keyword',
+  loop: 'keyword',
+  move: 'keyword',
+  unsafe: 'keyword',
+  dyn: 'keyword',
+  macro_rules: 'keyword',
 
   // Strings
-  string: 'string', string_literal: 'string', string_fragment: 'string',
+  string: 'string',
+  string_literal: 'string',
+  string_fragment: 'string',
   string_content: 'string',
-  template_string: 'string', template_literal: 'string',
-  raw_string_literal: 'string', char_literal: 'string',
-  regex: 'string', regex_pattern: 'string',
+  template_string: 'string',
+  template_literal: 'string',
+  raw_string_literal: 'string',
+  char_literal: 'string',
+  regex: 'string',
+  regex_pattern: 'string',
 
   // Comments
-  comment: 'comment', line_comment: 'comment', block_comment: 'comment',
+  comment: 'comment',
+  line_comment: 'comment',
+  block_comment: 'comment',
   doc_comment: 'comment',
 
   // Numbers
-  number: 'number', integer_literal: 'number', float_literal: 'number',
+  number: 'number',
+  integer_literal: 'number',
+  float_literal: 'number',
   number_literal: 'number',
 
   // Types
-  type_identifier: 'type', predefined_type: 'type',
+  type_identifier: 'type',
+  predefined_type: 'type',
   primitive_type: 'type',
 
   // Constants
-  true: 'constant', false: 'constant', null: 'constant', undefined: 'constant',
+  true: 'constant',
+  false: 'constant',
+  null: 'constant',
+  undefined: 'constant',
   none: 'constant',
 
   // Properties
-  property_identifier: 'property', shorthand_property_identifier: 'property',
+  property_identifier: 'property',
+  shorthand_property_identifier: 'property',
   field_identifier: 'property',
 
   // Tags (JSX/HTML)
@@ -119,7 +180,9 @@ async function loadLanguage(grammarName: string): Promise<TSLanguage | null> {
       if (!ok || !ParserClass) return null;
 
       const wasmPath = `/grammars/tree-sitter-${grammarName}.wasm`;
-      const P = ParserClass as unknown as { Language: { load: (path: string) => Promise<TSLanguage> } };
+      const P = ParserClass as unknown as {
+        Language: { load: (path: string) => Promise<TSLanguage> };
+      };
       const lang = await P.Language.load(wasmPath);
       languageCache.set(grammarName, lang);
       return lang;

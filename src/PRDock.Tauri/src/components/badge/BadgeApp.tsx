@@ -168,7 +168,9 @@ export function BadgeApp() {
         />
       </div>
       <div className="flex items-center justify-center gap-2.5 border-t border-[var(--color-separator)] px-2.5 py-1.5">
-        <span className="text-[10px] text-[var(--color-text-muted)]">{data.totalPrCount} total</span>
+        <span className="text-[10px] text-[var(--color-text-muted)]">
+          {data.totalPrCount} total
+        </span>
         {data.failingCount > 0 && (
           <span className="text-[10px] text-[var(--color-status-red)]">
             {data.failingCount} failing

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PullRequestWithChecks } from '@/types';
 import { useUiStore } from '@/stores/ui-store';
+import type { PullRequestWithChecks } from '@/types';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),

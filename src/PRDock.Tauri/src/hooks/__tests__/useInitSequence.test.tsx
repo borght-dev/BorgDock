@@ -162,7 +162,10 @@ describe('useInitSequence', () => {
 
     // Init path must not hydrate detail/reviews — that's left to the polling loop
     expect(mockGetOpenPRs).toHaveBeenCalledWith(client, 'test', 'repo', { hydrateDetails: false });
-    expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(expect.objectContaining({ number: 1 }), []);
+    expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(
+      expect.objectContaining({ number: 1 }),
+      [],
+    );
     expect(usePrStore.getState().pullRequests).toHaveLength(1);
     expect(useInitStore.getState().completedSteps['fetch-checks']).toBe(true);
   });
@@ -190,22 +193,21 @@ describe('useInitSequence', () => {
   });
 
   it('completes immediately when there are no enabled repos', async () => {
-    renderHook(
-      () =>
-        useInitSequence(
-          makeSettings({
-            repos: [
-              {
-                owner: 'test',
-                name: 'repo',
-                enabled: false,
-                worktreeBasePath: '',
-                worktreeSubfolder: '',
-              },
-            ],
-          }),
-          false,
-        ),
+    renderHook(() =>
+      useInitSequence(
+        makeSettings({
+          repos: [
+            {
+              owner: 'test',
+              name: 'repo',
+              enabled: false,
+              worktreeBasePath: '',
+              worktreeSubfolder: '',
+            },
+          ],
+        }),
+        false,
+      ),
     );
 
     await waitFor(() => {

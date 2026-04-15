@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BadgeApp } from '../BadgeApp';
 
 // Mock Tauri event APIs
@@ -420,7 +420,10 @@ describe('BadgeApp', () => {
     fireEvent.click(expandBtn);
 
     await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('resize_badge', expect.objectContaining({ anchor: 'auto' }));
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'resize_badge',
+        expect.objectContaining({ anchor: 'auto' }),
+      );
     });
   });
 });

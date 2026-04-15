@@ -1,5 +1,5 @@
-import type { HighlightSpan, InlineChange } from '@/types';
 import { getHighlightClass } from '@/services/syntax-highlighter';
+import type { HighlightSpan, InlineChange } from '@/types';
 
 interface DiffLineContentProps {
   content: string;

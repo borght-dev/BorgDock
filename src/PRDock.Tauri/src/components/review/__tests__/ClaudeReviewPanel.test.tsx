@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ClaudeReviewPanel } from '../ClaudeReviewPanel';
+import { describe, expect, it, vi } from 'vitest';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
+import { ClaudeReviewPanel } from '../ClaudeReviewPanel';
 
 vi.mock('../ReviewCommentCard', () => ({
   ReviewCommentCard: ({ comment }: { comment: ClaudeReviewComment }) => (
@@ -51,18 +51,14 @@ describe('ClaudeReviewPanel', () => {
   });
 
   it('renders comments expanded by default', () => {
-    const comments = [
-      makeComment({ id: '1', severity: 'critical', body: 'Critical issue' }),
-    ];
+    const comments = [makeComment({ id: '1', severity: 'critical', body: 'Critical issue' })];
     render(<ClaudeReviewPanel comments={comments} />);
     expect(screen.getByTestId('review-comment-card')).toBeDefined();
     expect(screen.getByText('Critical issue')).toBeDefined();
   });
 
   it('collapses a group when clicking the header', () => {
-    const comments = [
-      makeComment({ id: '1', severity: 'critical', body: 'Critical issue' }),
-    ];
+    const comments = [makeComment({ id: '1', severity: 'critical', body: 'Critical issue' })];
     render(<ClaudeReviewPanel comments={comments} />);
 
     // Verify comment is visible
@@ -78,9 +74,7 @@ describe('ClaudeReviewPanel', () => {
   });
 
   it('does not render severity groups with no comments', () => {
-    const comments = [
-      makeComment({ id: '1', severity: 'critical', body: 'Issue' }),
-    ];
+    const comments = [makeComment({ id: '1', severity: 'critical', body: 'Issue' })];
     render(<ClaudeReviewPanel comments={comments} />);
     expect(screen.queryByText('Suggestion')).toBeNull();
     expect(screen.queryByText('Praise')).toBeNull();
@@ -88,9 +82,7 @@ describe('ClaudeReviewPanel', () => {
   });
 
   it('renders "Other" group for unknown severity', () => {
-    const comments = [
-      makeComment({ id: '1', severity: 'unknown', body: 'Unknown item' }),
-    ];
+    const comments = [makeComment({ id: '1', severity: 'unknown', body: 'Unknown item' })];
     render(<ClaudeReviewPanel comments={comments} />);
     expect(screen.getByText('Other')).toBeDefined();
     expect(screen.getByText('Unknown item')).toBeDefined();

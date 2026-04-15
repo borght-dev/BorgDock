@@ -1,12 +1,14 @@
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
-import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
-import { PrContextMenu } from '../PrContextMenu';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
+import { PrContextMenu } from '../PrContextMenu';
 
 afterEach(cleanup);
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({ writeText: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
+  writeText: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock('@/stores/settings-store', () => {
@@ -438,13 +440,7 @@ describe('PrContextMenu', () => {
   });
 
   it('works without onConfirmAction prop', () => {
-    render(
-      <PrContextMenu
-        pr={makePr()}
-        position={defaultPosition}
-        onClose={onClose}
-      />,
-    );
+    render(<PrContextMenu pr={makePr()} position={defaultPosition} onClose={onClose} />);
     // Should not throw when clicking draft toggle without onConfirmAction
     fireEvent.click(screen.getByText('Mark as draft'));
     expect(onClose).toHaveBeenCalled();

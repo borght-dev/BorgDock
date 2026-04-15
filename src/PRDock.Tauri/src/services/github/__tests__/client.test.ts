@@ -150,9 +150,7 @@ describe('GitHubClient', () => {
 
     it('throws GitHubAuthError on 403 when rate limit is not exhausted', async () => {
       const client = createClient();
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse(403, {}, { 'X-RateLimit-Remaining': '100' }),
-      );
+      fetchSpy.mockResolvedValueOnce(mockResponse(403, {}, { 'X-RateLimit-Remaining': '100' }));
 
       await expect(client.get('repos/test')).rejects.toThrow(GitHubAuthError);
     });
@@ -240,9 +238,7 @@ describe('GitHubClient', () => {
 
     it('parses rate limit headers', async () => {
       const client = createClient();
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse(200, {}, { 'X-RateLimit-Remaining': '4999' }),
-      );
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, {}, { 'X-RateLimit-Remaining': '4999' }));
 
       await client.post('repos/test', {});
 

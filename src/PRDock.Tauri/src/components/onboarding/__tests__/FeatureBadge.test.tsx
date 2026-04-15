@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FeatureBadge } from '../FeatureBadge';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { FeatureBadge } from '../FeatureBadge';
 
 vi.mock('@tauri-apps/plugin-store', () => ({
   load: vi.fn(() => Promise.resolve({ set: vi.fn(), save: vi.fn(), get: vi.fn() })),

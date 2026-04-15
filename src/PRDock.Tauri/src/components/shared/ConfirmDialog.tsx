@@ -56,40 +56,46 @@ export function ConfirmDialog({
       : 'bg-[var(--color-accent)] text-white hover:opacity-90';
 
   return (
-    <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false, tabbableOptions: { displayCheck: 'none' } }}>
+    <FocusTrap
+      focusTrapOptions={{
+        allowOutsideClick: true,
+        escapeDeactivates: false,
+        tabbableOptions: { displayCheck: 'none' },
+      }}
+    >
       <div>
-      {/* Overlay */}
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={handleCancel} />
+        {/* Overlay */}
+        <div className="fixed inset-0 z-50 bg-black/50" onClick={handleCancel} />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          className="pointer-events-auto w-full max-w-sm rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-xl p-5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-          <p className="mt-2 text-[13px] text-[var(--color-text-secondary)] leading-relaxed">
-            {message}
-          </p>
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={handleCancel}
-              className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
-            >
-              {cancelLabel}
-            </button>
-            <button
-              onClick={handleConfirm}
-              className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors cursor-pointer ${confirmClasses}`}
-            >
-              {confirmLabel}
-            </button>
+        {/* Modal */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            className="pointer-events-auto w-full max-w-sm rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+            <p className="mt-2 text-[13px] text-[var(--color-text-secondary)] leading-relaxed">
+              {message}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={handleCancel}
+                className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+              >
+                {cancelLabel}
+              </button>
+              <button
+                onClick={handleConfirm}
+                className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors cursor-pointer ${confirmClasses}`}
+              >
+                {confirmLabel}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </FocusTrap>
   );

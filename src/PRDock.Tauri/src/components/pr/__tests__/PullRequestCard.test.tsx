@@ -1,13 +1,15 @@
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
-import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
-import { PullRequestCard } from '../PullRequestCard';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
+import { PullRequestCard } from '../PullRequestCard';
 
 afterEach(cleanup);
 
 // Mock Tauri APIs
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({ writeText: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
+  writeText: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
 
 // Mock services
@@ -44,7 +46,9 @@ let uiState: Record<string, unknown> = {};
 
 vi.mock('@/stores/ui-store', () => {
   const fn = vi.fn();
-  fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => selector(uiState));
+  fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
+    selector(uiState),
+  );
   return { useUiStore: fn };
 });
 
@@ -123,7 +127,14 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       ...overrides.pullRequest,
     },
     checks: overrides.checks ?? [
-      { id: 1, name: 'build', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 },
+      {
+        id: 1,
+        name: 'build',
+        status: 'completed',
+        conclusion: 'success',
+        htmlUrl: '',
+        checkSuiteId: 1,
+      },
     ],
     overallStatus: overrides.overallStatus ?? 'green',
     failedCheckNames: overrides.failedCheckNames ?? [],
@@ -191,7 +202,9 @@ describe('PullRequestCard', () => {
     it('shows draft badge when PR is draft', () => {
       render(
         <PullRequestCard
-          prWithChecks={makePr({ pullRequest: { isDraft: true } as PullRequestWithChecks['pullRequest'] })}
+          prWithChecks={makePr({
+            pullRequest: { isDraft: true } as PullRequestWithChecks['pullRequest'],
+          })}
         />,
       );
       expect(screen.getByText('draft')).toBeInTheDocument();
@@ -201,7 +214,9 @@ describe('PullRequestCard', () => {
       render(
         <PullRequestCard
           prWithChecks={makePr({
-            pullRequest: { mergedAt: '2024-01-02T00:00:00Z' } as PullRequestWithChecks['pullRequest'],
+            pullRequest: {
+              mergedAt: '2024-01-02T00:00:00Z',
+            } as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
@@ -249,11 +264,7 @@ describe('PullRequestCard', () => {
     });
 
     it('shows in-progress badge when there are pending checks', () => {
-      render(
-        <PullRequestCard
-          prWithChecks={makePr({ pendingCheckNames: ['lint'] })}
-        />,
-      );
+      render(<PullRequestCard prWithChecks={makePr({ pendingCheckNames: ['lint'] })} />);
       expect(screen.getByText('in progress')).toBeInTheDocument();
     });
 
@@ -271,7 +282,9 @@ describe('PullRequestCard', () => {
       render(
         <PullRequestCard
           prWithChecks={makePr({
-            pullRequest: { labels: ['bug', 'urgent'] } as unknown as PullRequestWithChecks['pullRequest'],
+            pullRequest: {
+              labels: ['bug', 'urgent'],
+            } as unknown as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
@@ -349,7 +362,14 @@ describe('PullRequestCard', () => {
           prWithChecks={makePr({
             overallStatus: 'red',
             checks: [
-              { id: 1, name: 'build', status: 'completed', conclusion: 'failure', htmlUrl: '', checkSuiteId: 1 },
+              {
+                id: 1,
+                name: 'build',
+                status: 'completed',
+                conclusion: 'failure',
+                htmlUrl: '',
+                checkSuiteId: 1,
+              },
             ],
             failedCheckNames: ['build'],
           })}
@@ -377,11 +397,7 @@ describe('PullRequestCard', () => {
     });
 
     it('shows "Copy" button when there are failed checks', () => {
-      render(
-        <PullRequestCard
-          prWithChecks={makePr({ failedCheckNames: ['build'] })}
-        />,
-      );
+      render(<PullRequestCard prWithChecks={makePr({ failedCheckNames: ['build'] })} />);
       expect(screen.getByText('Copy')).toBeInTheDocument();
     });
 
@@ -508,9 +524,7 @@ describe('PullRequestCard', () => {
     });
 
     it('applies focused ring when isFocused is true', () => {
-      const { container } = render(
-        <PullRequestCard prWithChecks={makePr()} isFocused={true} />,
-      );
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} isFocused={true} />);
       const button = container.querySelector('[data-pr-card]');
       expect(button?.className).toContain('ring-2');
     });
@@ -614,8 +628,22 @@ describe('PullRequestCard', () => {
         <PullRequestCard
           prWithChecks={makePr({
             checks: [
-              { id: 1, name: 'build', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 },
-              { id: 2, name: 'lint', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 },
+              {
+                id: 1,
+                name: 'build',
+                status: 'completed',
+                conclusion: 'success',
+                htmlUrl: '',
+                checkSuiteId: 1,
+              },
+              {
+                id: 2,
+                name: 'lint',
+                status: 'completed',
+                conclusion: 'success',
+                htmlUrl: '',
+                checkSuiteId: 1,
+              },
             ],
             passedCount: 2,
             skippedCount: 0,

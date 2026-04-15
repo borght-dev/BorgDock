@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { DiffFileSection } from '../DiffFileSection';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiffFile, DiffViewMode } from '@/types';
+import { DiffFileSection } from '../DiffFileSection';
 
 vi.mock('@/services/diff-parser', () => ({
   parsePatch: vi.fn((patch: string) => {
@@ -47,13 +47,15 @@ function makeFile(overrides: Partial<DiffFile> = {}): DiffFile {
   };
 }
 
-function makeProps(overrides: Partial<{
-  file: DiffFile;
-  viewMode: DiffViewMode;
-  defaultCollapsed: boolean;
-  onCopyPath: (path: string) => void;
-  onOpenInGitHub: (filename: string) => void;
-}> = {}) {
+function makeProps(
+  overrides: Partial<{
+    file: DiffFile;
+    viewMode: DiffViewMode;
+    defaultCollapsed: boolean;
+    onCopyPath: (path: string) => void;
+    onOpenInGitHub: (filename: string) => void;
+  }> = {},
+) {
   return {
     file: makeFile(),
     viewMode: 'unified' as DiffViewMode,
@@ -166,9 +168,7 @@ describe('DiffFileSection', () => {
   });
 
   it('starts collapsed when defaultCollapsed is true', () => {
-    const { container } = render(
-      <DiffFileSection {...makeProps({ defaultCollapsed: true })} />,
-    );
+    const { container } = render(<DiffFileSection {...makeProps({ defaultCollapsed: true })} />);
     expect(container.querySelector('table')).toBeNull();
   });
 
@@ -188,9 +188,7 @@ describe('DiffFileSection', () => {
 
   it('shows binary file message', () => {
     render(
-      <DiffFileSection
-        {...makeProps({ file: makeFile({ isBinary: true, patch: undefined }) })}
-      />,
+      <DiffFileSection {...makeProps({ file: makeFile({ isBinary: true, patch: undefined }) })} />,
     );
     expect(screen.getByText('Binary file not shown')).toBeDefined();
   });
@@ -205,11 +203,7 @@ describe('DiffFileSection', () => {
   });
 
   it('shows "no changes" for files with no patch', () => {
-    render(
-      <DiffFileSection
-        {...makeProps({ file: makeFile({ patch: undefined }) })}
-      />,
-    );
+    render(<DiffFileSection {...makeProps({ file: makeFile({ patch: undefined }) })} />);
     expect(screen.getByText('No changes to display')).toBeDefined();
   });
 

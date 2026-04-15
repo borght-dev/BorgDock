@@ -51,11 +51,11 @@ vi.mock('@/hooks/useAdoImageAuth', () => ({
   useAdoImageAuth: vi.fn(),
 }));
 
-import { WorkItemDetailApp } from '../WorkItemDetailApp';
 import { getWorkItem } from '@/services/ado/workitems';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { WorkItem } from '@/types';
 import type { AppSettings } from '@/types/settings';
+import { WorkItemDetailApp } from '../WorkItemDetailApp';
 
 // ---------- factories ----------
 
@@ -342,7 +342,12 @@ describe('WorkItemDetailApp', () => {
     mockInvoke.mockResolvedValueOnce(settings);
     vi.mocked(getWorkItem).mockResolvedValueOnce(workItem);
     vi.mocked(getWorkItemComments).mockResolvedValueOnce([
-      { id: 1, text: 'Test comment', createdBy: { displayName: 'User' }, createdDate: '2026-01-01' },
+      {
+        id: 1,
+        text: 'Test comment',
+        createdBy: { displayName: 'User' },
+        createdDate: '2026-01-01',
+      },
     ]);
 
     Object.defineProperty(window, 'location', {

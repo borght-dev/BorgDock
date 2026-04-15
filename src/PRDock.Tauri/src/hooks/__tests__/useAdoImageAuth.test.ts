@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useRef, type RefObject } from 'react';
+import { type RefObject, useRef } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock settings store
 const mockSettings = {
@@ -105,7 +105,10 @@ describe('useAdoImageAuth', () => {
 
     renderHook(() => {
       const ref = useRef<HTMLElement | null>(container);
-      useAdoImageAuth(ref, '<img src="https://dev.azure.com/org/project/_apis/wit/attachments/123">');
+      useAdoImageAuth(
+        ref,
+        '<img src="https://dev.azure.com/org/project/_apis/wit/attachments/123">',
+      );
       return ref;
     });
 
@@ -202,7 +205,10 @@ describe('useAdoImageAuth', () => {
   it('hides image while loading', async () => {
     let resolveFetch: (value: unknown) => void;
     globalThis.fetch = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveFetch = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
     );
 
     const img = createMockImg('https://dev.azure.com/img.png');
@@ -256,7 +262,10 @@ describe('useAdoImageAuth', () => {
   it('does not update src after unmount (cancelled)', async () => {
     let resolveFetch: (value: unknown) => void;
     globalThis.fetch = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveFetch = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
     );
 
     const img = createMockImg('https://dev.azure.com/img.png');

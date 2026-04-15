@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getHighlightClass } from '../syntax-highlighter';
 import type { HighlightCategory } from '@/types';
+import { getHighlightClass } from '../syntax-highlighter';
 
 // Mock tree-sitter node for walkTree testing
 function makeMockNode(
@@ -48,9 +48,20 @@ function buildTreeSitterMock(rootNode: ReturnType<typeof makeMockNode> | null = 
 
 describe('getHighlightClass', () => {
   const categories: HighlightCategory[] = [
-    'keyword', 'string', 'comment', 'number', 'type',
-    'function', 'variable', 'operator', 'punctuation',
-    'constant', 'property', 'tag', 'attribute', 'plain',
+    'keyword',
+    'string',
+    'comment',
+    'number',
+    'type',
+    'function',
+    'variable',
+    'operator',
+    'punctuation',
+    'constant',
+    'property',
+    'tag',
+    'attribute',
+    'plain',
   ];
 
   it('returns a CSS custom property name for each category', () => {
@@ -86,8 +97,8 @@ describe('highlightLines', () => {
 
   it('returns highlight spans when tree-sitter initializes successfully', async () => {
     const rootNode = makeMockNode('program', 0, 0, 0, 20, [
-      makeMockNode('const', 0, 0, 0, 5),   // keyword
-      makeMockNode('string', 0, 8, 0, 15),  // string
+      makeMockNode('const', 0, 0, 0, 5), // keyword
+      makeMockNode('string', 0, 8, 0, 15), // string
     ]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
@@ -148,8 +159,8 @@ describe('highlightLines', () => {
 
   it('handles multiple lines correctly', async () => {
     const rootNode = makeMockNode('program', 0, 0, 1, 10, [
-      makeMockNode('const', 0, 0, 0, 5),    // keyword on row 0
-      makeMockNode('return', 1, 0, 1, 6),    // keyword on row 1
+      makeMockNode('const', 0, 0, 0, 5), // keyword on row 0
+      makeMockNode('return', 1, 0, 1, 6), // keyword on row 1
     ]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
@@ -189,9 +200,7 @@ describe('highlightLines', () => {
 
   it('maps various file extensions to correct grammars', async () => {
     // This tests getGrammarName coverage for different extensions
-    const rootNode = makeMockNode('program', 0, 0, 0, 5, [
-      makeMockNode('const', 0, 0, 0, 5),
-    ]);
+    const rootNode = makeMockNode('program', 0, 0, 0, 5, [makeMockNode('const', 0, 0, 0, 5)]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
@@ -211,9 +220,7 @@ describe('highlightLines', () => {
 
   it('skips nodes that do not overlap the target row', async () => {
     // Node is on row 5, but we only have lines for row 0
-    const rootNode = makeMockNode('program', 0, 0, 5, 10, [
-      makeMockNode('const', 5, 0, 5, 5),
-    ]);
+    const rootNode = makeMockNode('program', 0, 0, 5, 10, [makeMockNode('const', 5, 0, 5, 5)]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
@@ -274,7 +281,7 @@ describe('highlightLines', () => {
   it('handles multi-line span where node starts before target row', async () => {
     // Node spans rows 0-1, but we target row 1 -- startCol should be 0
     const rootNode = makeMockNode('program', 0, 0, 1, 10, [
-      makeMockNode('string', 0, 5, 1, 3),  // multi-line string starting on row 0, ending on row 1
+      makeMockNode('string', 0, 5, 1, 3), // multi-line string starting on row 0, ending on row 1
     ]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
@@ -301,7 +308,7 @@ describe('highlightLines', () => {
   it('handles multi-line span where node ends after target row', async () => {
     // Node spans rows 0-2, target row 0 -- endCol should be Infinity
     const rootNode = makeMockNode('program', 0, 0, 2, 10, [
-      makeMockNode('comment', 0, 2, 2, 5),  // multi-line comment
+      makeMockNode('comment', 0, 2, 2, 5), // multi-line comment
     ]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
@@ -321,9 +328,7 @@ describe('highlightLines', () => {
   });
 
   it('reuses cached language on second call', async () => {
-    const rootNode = makeMockNode('program', 0, 0, 0, 5, [
-      makeMockNode('const', 0, 0, 0, 5),
-    ]);
+    const rootNode = makeMockNode('program', 0, 0, 0, 5, [makeMockNode('const', 0, 0, 0, 5)]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
@@ -343,9 +348,7 @@ describe('highlightLines', () => {
 
   it('uses ParserClass from already-initialized tree-sitter', async () => {
     // First call initializes, second call should find ParserClass already set
-    const rootNode = makeMockNode('program', 0, 0, 0, 5, [
-      makeMockNode('const', 0, 0, 0, 5),
-    ]);
+    const rootNode = makeMockNode('program', 0, 0, 0, 5, [makeMockNode('const', 0, 0, 0, 5)]);
     const { MockParserClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
@@ -359,5 +362,4 @@ describe('highlightLines', () => {
     // Second call for different grammar -- should reuse ParserClass (initTreeSitter returns true immediately)
     await highlightLines('b.js', ['const y']);
   });
-
 });

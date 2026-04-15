@@ -202,18 +202,12 @@ describe('aggregateReviewStatus', () => {
 
   it('returns none when all reviews have unrecognized states', () => {
     expect(
-      aggregateReviewStatus([
-        { state: 'DISMISSED', user: { login: 'alice', avatar_url: '' } },
-      ]),
+      aggregateReviewStatus([{ state: 'DISMISSED', user: { login: 'alice', avatar_url: '' } }]),
     ).toBe('none');
   });
 
   it('handles reviews with null user', () => {
-    expect(
-      aggregateReviewStatus([
-        { state: 'APPROVED', user: null },
-      ]),
-    ).toBe('none');
+    expect(aggregateReviewStatus([{ state: 'APPROVED', user: null }])).toBe('none');
   });
 
   it('handles reviews with null state', () => {
@@ -318,9 +312,7 @@ describe('getPRFiles', () => {
       sha: 'abc123',
     });
 
-    expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/pulls/42/files?per_page=100&page=1',
-    );
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/pulls/42/files?per_page=100&page=1');
   });
 
   it('paginates when there are exactly 100 files', async () => {
@@ -340,20 +332,14 @@ describe('getPRFiles', () => {
       },
     ];
 
-    vi.mocked(client.get)
-      .mockResolvedValueOnce(page1)
-      .mockResolvedValueOnce(page2);
+    vi.mocked(client.get).mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
 
     const result = await getPRFiles(client, 'owner', 'repo', 42);
 
     expect(result).toHaveLength(101);
     expect(client.get).toHaveBeenCalledTimes(2);
-    expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/pulls/42/files?per_page=100&page=1',
-    );
-    expect(client.get).toHaveBeenCalledWith(
-      'repos/owner/repo/pulls/42/files?per_page=100&page=2',
-    );
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/pulls/42/files?per_page=100&page=1');
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/pulls/42/files?per_page=100&page=2');
   });
 
   it('handles null/undefined filename and status', async () => {
@@ -483,7 +469,12 @@ describe('getOpenPRs edge cases', () => {
 
     vi.mocked(client.get)
       .mockResolvedValueOnce([minimalDto]) // list
-      .mockResolvedValueOnce({ ...minimalDto, mergeable: null, mergeable_state: 'unknown', requested_reviewers: null }) // detail
+      .mockResolvedValueOnce({
+        ...minimalDto,
+        mergeable: null,
+        mergeable_state: 'unknown',
+        requested_reviewers: null,
+      }) // detail
       .mockResolvedValueOnce([]); // reviews
 
     const result = await getOpenPRs(client, 'o', 'r');

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { LogViewer } from '../LogViewer';
 
 // tanstack/react-virtual needs scrollElement dimensions — jsdom returns 0.

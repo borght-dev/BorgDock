@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PaletteApp } from '../PaletteApp';
 
 const mockClose = vi.fn(() => Promise.resolve());
@@ -11,16 +11,18 @@ const mockSetPosition = vi.fn(() => Promise.resolve());
 const mockStartDragging = vi.fn(() => Promise.resolve());
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(() => Promise.resolve({
-    azureDevOps: {
-      organization: 'org',
-      project: 'proj',
-      personalAccessToken: 'pat',
-      recentWorkItemIds: [],
-      workingOnWorkItemIds: [],
-    },
-    ui: { theme: 'system' },
-  })),
+  invoke: vi.fn(() =>
+    Promise.resolve({
+      azureDevOps: {
+        organization: 'org',
+        project: 'proj',
+        personalAccessToken: 'pat',
+        recentWorkItemIds: [],
+        workingOnWorkItemIds: [],
+      },
+      ui: { theme: 'system' },
+    }),
+  ),
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({

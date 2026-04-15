@@ -102,11 +102,7 @@ export function computeInlineChanges(
   return { deleted, added };
 }
 
-function buildSpans(
-  text: string,
-  lcs: string,
-  changeType: 'added' | 'deleted',
-): InlineChange[] {
+function buildSpans(text: string, lcs: string, changeType: 'added' | 'deleted'): InlineChange[] {
   const spans: InlineChange[] = [];
   let ti = 0;
   let li = 0;

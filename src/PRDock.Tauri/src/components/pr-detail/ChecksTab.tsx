@@ -1,6 +1,6 @@
+import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback } from 'react';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 
@@ -100,7 +100,14 @@ function SpinnerIcon({ className }: { className?: string }) {
       fill="none"
       className={clsx('animate-spin', className)}
     >
-      <circle cx="8" cy="8" r="6" stroke="var(--color-status-yellow)" opacity="0.2" strokeWidth="1.6" />
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        stroke="var(--color-status-yellow)"
+        opacity="0.2"
+        strokeWidth="1.6"
+      />
       <path
         d="M8 2a6 6 0 0 1 6 6"
         stroke="var(--color-status-yellow)"
@@ -115,12 +122,7 @@ function SkipIcon({ className }: { className?: string }) {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={className}>
       <circle cx="8" cy="8" r="7" fill="var(--color-status-gray)" opacity="0.1" />
-      <path
-        d="M5 8h6"
-        stroke="var(--color-status-gray)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+      <path d="M5 8h6" stroke="var(--color-status-gray)" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -174,7 +176,10 @@ function SummaryBar({ checks }: { checks: CheckRun[] }) {
             )}
           </>
         ) : (
-          <div className="checks-progress-segment checks-progress-skipped" style={{ width: '100%' }} />
+          <div
+            className="checks-progress-segment checks-progress-skipped"
+            style={{ width: '100%' }}
+          />
         )}
       </div>
 
@@ -222,7 +227,17 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
   if (checks.length === 0) {
     return (
       <div className="checks-empty">
-        <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.3">
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.3"
+        >
           <path d="m3 8.5 3.5 3.5 6.5-8" />
         </svg>
         <span>No CI checks configured</span>
@@ -268,7 +283,9 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
                     role="button"
                     tabIndex={0}
                     onClick={() => openUrl(run.htmlUrl).catch(console.error)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') openUrl(run.htmlUrl).catch(console.error); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') openUrl(run.htmlUrl).catch(console.error);
+                    }}
                   >
                     <StatusSvg state={state} className="checks-run-icon" />
                     <span className="checks-run-name">{run.name}</span>

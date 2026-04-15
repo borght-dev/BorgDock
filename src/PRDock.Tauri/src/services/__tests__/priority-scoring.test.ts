@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computePriorityScores, sortByPriority } from '@/services/priority-scoring';
-import type { PullRequestWithChecks, PullRequest } from '@/types';
+import type { PullRequest, PullRequestWithChecks } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -61,17 +61,13 @@ afterEach(() => {
 
 describe('computePriorityScores', () => {
   it('excludes drafts from other authors', () => {
-    const prs = [
-      makePrWithChecks({ authorLogin: 'other', isDraft: true, number: 1 }),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'other', isDraft: true, number: 1 })];
     const scores = computePriorityScores(prs, 'me', {});
     expect(scores.size).toBe(0);
   });
 
   it('includes own drafts', () => {
-    const prs = [
-      makePrWithChecks({ authorLogin: 'me', isDraft: true, number: 1 }),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'me', isDraft: true, number: 1 })];
     const scores = computePriorityScores(prs, 'me', {});
     expect(scores.has(1)).toBe(true);
   });
@@ -132,12 +128,7 @@ describe('computePriorityScores', () => {
   });
 
   it('gives myPrRedChecks (20 pts) when own PR has red checks', () => {
-    const prs = [
-      makePrWithChecks(
-        { authorLogin: 'me', number: 10 },
-        { overallStatus: 'red' },
-      ),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'me', number: 10 }, { overallStatus: 'red' })];
     const scores = computePriorityScores(prs, 'me', {});
     const score = scores.get(10)!;
     const factor = score.factors.find((f) => f.type === 'myPrRedChecks');
@@ -176,14 +167,12 @@ describe('computePriorityScores', () => {
     vi.setSystemTime(new Date('2025-06-03T00:00:00Z'));
 
     const prs = [
-      makePrWithChecks(
-        {
-          authorLogin: 'me',
-          number: 10,
-          updatedAt: '2025-06-01T00:00:00Z',
-          reviewStatus: 'changesRequested',
-        },
-      ),
+      makePrWithChecks({
+        authorLogin: 'me',
+        number: 10,
+        updatedAt: '2025-06-01T00:00:00Z',
+        reviewStatus: 'changesRequested',
+      }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
     const score = scores.get(10)!;
@@ -321,21 +310,14 @@ describe('computePriorityScores', () => {
   });
 
   it('does not give staleness when updated recently', () => {
-    const prs = [
-      makePrWithChecks({ authorLogin: 'other', number: 10 }),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'other', number: 10 })];
     const scores = computePriorityScores(prs, 'me', {});
     const score = scores.get(10)!;
     expect(score.factors.find((f) => f.type === 'staleness')).toBeUndefined();
   });
 
   it('gives othersRedChecks (5 pts) for others PR with red status', () => {
-    const prs = [
-      makePrWithChecks(
-        { authorLogin: 'other', number: 10 },
-        { overallStatus: 'red' },
-      ),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'other', number: 10 }, { overallStatus: 'red' })];
     const scores = computePriorityScores(prs, 'me', {});
     const score = scores.get(10)!;
     const factor = score.factors.find((f) => f.type === 'othersRedChecks');
@@ -344,12 +326,7 @@ describe('computePriorityScores', () => {
   });
 
   it('does not give othersRedChecks for own PR', () => {
-    const prs = [
-      makePrWithChecks(
-        { authorLogin: 'me', number: 10 },
-        { overallStatus: 'red' },
-      ),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'me', number: 10 }, { overallStatus: 'red' })];
     const scores = computePriorityScores(prs, 'me', {});
     const score = scores.get(10)!;
     expect(score.factors.find((f) => f.type === 'othersRedChecks')).toBeUndefined();
@@ -456,9 +433,7 @@ describe('computePriorityScores', () => {
   });
 
   it('returns "Open PR" as primaryReason when no factors', () => {
-    const prs = [
-      makePrWithChecks({ authorLogin: 'other', number: 10 }),
-    ];
+    const prs = [makePrWithChecks({ authorLogin: 'other', number: 10 })];
     const scores = computePriorityScores(prs, 'me', {});
     const score = scores.get(10)!;
     expect(score.primaryReason).toBe('Open PR');

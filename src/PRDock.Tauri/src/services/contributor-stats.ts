@@ -14,7 +14,13 @@ export async function fetchContributorWeights(
   repos: { owner: string; name: string }[],
   username: string,
 ): Promise<Map<string, number>> {
-  const fingerprint = repos.map(r => `${r.owner}/${r.name}`).sort().join(',') + ':' + username;
+  const fingerprint =
+    repos
+      .map((r) => `${r.owner}/${r.name}`)
+      .sort()
+      .join(',') +
+    ':' +
+    username;
   if (fingerprint !== _cacheFingerprint) {
     cache = new Map();
     _cacheFingerprint = fingerprint;
@@ -26,7 +32,10 @@ export async function fetchContributorWeights(
   for (const repo of repos) {
     const key = `${repo.owner}/${repo.name}`;
     try {
-      const stats = await fetchWithRetry(client, `repos/${repo.owner}/${repo.name}/stats/contributors`);
+      const stats = await fetchWithRetry(
+        client,
+        `repos/${repo.owner}/${repo.name}/stats/contributors`,
+      );
       if (!Array.isArray(stats)) {
         weights.set(key, 1.0);
         continue;
@@ -83,7 +92,9 @@ export function startDailyRefresh(
   // Refresh every 24 hours
   refreshTimer = setInterval(
     () => {
-      fetchContributorWeights(client, repos, username).catch((err) => console.warn('Contributor weight refresh failed:', err));
+      fetchContributorWeights(client, repos, username).catch((err) =>
+        console.warn('Contributor weight refresh failed:', err),
+      );
     },
     24 * 60 * 60 * 1000,
   );

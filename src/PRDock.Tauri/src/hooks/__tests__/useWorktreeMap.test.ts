@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import type { AppSettings } from '@/types';
 import type { WorktreeInfo } from '@/types/worktree';
 
@@ -147,7 +147,11 @@ describe('useWorktreeMap', () => {
   it('skips main worktrees', async () => {
     mockInvoke.mockResolvedValue([
       makeWorktreeInfo({ path: '/repo', branchName: 'main', isMainWorktree: true }),
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot1', branchName: 'feature-a', isMainWorktree: false }),
+      makeWorktreeInfo({
+        path: '/repo/.worktrees/slot1',
+        branchName: 'feature-a',
+        isMainWorktree: false,
+      }),
     ]);
 
     const settings = makeSettings([
@@ -281,7 +285,10 @@ describe('useWorktreeMap', () => {
   it('does not update map after cancelled (unmount)', async () => {
     let resolveInvoke: (v: WorktreeInfo[]) => void;
     mockInvoke.mockImplementation(
-      () => new Promise<WorktreeInfo[]>((resolve) => { resolveInvoke = resolve; }),
+      () =>
+        new Promise<WorktreeInfo[]>((resolve) => {
+          resolveInvoke = resolve;
+        }),
     );
 
     const settings = makeSettings([
@@ -335,7 +342,13 @@ describe('useWorktreeMap', () => {
     ]);
 
     const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: 'C:\\repos\\project', worktreeSubfolder: '' },
+      {
+        owner: 'o',
+        name: 'r',
+        enabled: true,
+        worktreeBasePath: 'C:\\repos\\project',
+        worktreeSubfolder: '',
+      },
     ]);
 
     renderHook(() => useWorktreeMap(settings));

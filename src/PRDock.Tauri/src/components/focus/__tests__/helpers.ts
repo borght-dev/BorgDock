@@ -2,7 +2,9 @@ import type { PullRequestWithChecks } from '@/types';
 
 let _seq = 1;
 
-export function makePr(overrides: Partial<PullRequestWithChecks['pullRequest']> = {}): PullRequestWithChecks {
+export function makePr(
+  overrides: Partial<PullRequestWithChecks['pullRequest']> = {},
+): PullRequestWithChecks {
   const n = _seq++;
   return {
     pullRequest: {

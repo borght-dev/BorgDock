@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks, RepoSettings } from '@/types';
 
 const mockInvoke = vi.fn();
@@ -40,12 +40,14 @@ vi.mock('@/stores/settings-store', () => ({
 
 import { useClaudeActions } from '../useClaudeActions';
 
-function makePr(overrides: Partial<{
-  number: number;
-  repoOwner: string;
-  repoName: string;
-  headRef: string;
-}>= {}): PullRequestWithChecks {
+function makePr(
+  overrides: Partial<{
+    number: number;
+    repoOwner: string;
+    repoName: string;
+    headRef: string;
+  }> = {},
+): PullRequestWithChecks {
   return {
     pullRequest: {
       number: overrides.number ?? 1,
@@ -93,7 +95,9 @@ describe('useClaudeActions', () => {
   describe('fixWithClaude', () => {
     it('creates worktree, writes prompt, and launches claude', async () => {
       mockInvoke
-        .mockResolvedValueOnce([{ path: '/worktree/feature-branch', branchName: 'feature-branch', isMainWorktree: false }])
+        .mockResolvedValueOnce([
+          { path: '/worktree/feature-branch', branchName: 'feature-branch', isMainWorktree: false },
+        ])
         .mockResolvedValueOnce('/worktree/feature-branch');
 
       const { result } = renderHook(() => useClaudeActions());
@@ -101,7 +105,15 @@ describe('useClaudeActions', () => {
       await result.current.fixWithClaude(
         makePr(),
         ['build'],
-        [{ filePath: 'src/app.ts', message: 'error', errorCode: 'TS001', category: 'error', isIntroducedByPr: true }],
+        [
+          {
+            filePath: 'src/app.ts',
+            message: 'error',
+            errorCode: 'TS001',
+            category: 'error',
+            isIntroducedByPr: true,
+          },
+        ],
         ['src/app.ts'],
         'raw log text',
       );
@@ -123,13 +135,7 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await result.current.fixWithClaude(
-        makePr({ headRef: 'new-branch' }),
-        ['lint'],
-        [],
-        [],
-        '',
-      );
+      await result.current.fixWithClaude(makePr({ headRef: 'new-branch' }), ['lint'], [], [], '');
 
       expect(mockInvoke).toHaveBeenCalledWith('create_worktree', {
         basePath: '/path/to/repo',
@@ -159,9 +165,9 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await expect(
-        result.current.fixWithClaude(makePr(), ['build'], [], [], ''),
-      ).rejects.toThrow('No worktree base path');
+      await expect(result.current.fixWithClaude(makePr(), ['build'], [], [], '')).rejects.toThrow(
+        'No worktree base path',
+      );
 
       repoSettings.worktreeBasePath = origRepos;
     });
@@ -173,13 +179,7 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await result.current.fixWithClaude(
-        makePr(),
-        ['build', 'lint', 'test'],
-        [],
-        [],
-        '',
-      );
+      await result.current.fixWithClaude(makePr(), ['build', 'lint', 'test'], [], [], '');
 
       expect(mockLaunchClaude).toHaveBeenCalledWith(
         '/worktree/feature-branch',
@@ -240,7 +240,11 @@ describe('useClaudeActions', () => {
   describe('worktree reuse', () => {
     it('reuses existing worktree with refs/heads/ prefix', async () => {
       mockInvoke.mockResolvedValueOnce([
-        { path: '/worktree/feature-branch', branchName: 'refs/heads/feature-branch', isMainWorktree: false },
+        {
+          path: '/worktree/feature-branch',
+          branchName: 'refs/heads/feature-branch',
+          isMainWorktree: false,
+        },
       ]);
 
       const { result } = renderHook(() => useClaudeActions());

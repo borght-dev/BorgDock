@@ -1,7 +1,7 @@
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
-import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
-import { TeamReviewLoad } from '../TeamReviewLoad';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePrStore } from '@/stores/pr-store';
+import { TeamReviewLoad } from '../TeamReviewLoad';
 
 afterEach(cleanup);
 
@@ -11,14 +11,23 @@ vi.mock('@/stores/pr-store', () => {
   return { usePrStore: fn };
 });
 
-const mockUsePrStore = usePrStore as unknown as ReturnType<typeof vi.fn> & { getState: ReturnType<typeof vi.fn> };
+const mockUsePrStore = usePrStore as unknown as ReturnType<typeof vi.fn> & {
+  getState: ReturnType<typeof vi.fn>;
+};
 
 describe('TeamReviewLoad', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  function setupStore(reviewers: Array<{ login: string; pendingReviewCount: number; stalePrCount: number; avgWaitHours: number }>) {
+  function setupStore(
+    reviewers: Array<{
+      login: string;
+      pendingReviewCount: number;
+      stalePrCount: number;
+      avgWaitHours: number;
+    }>,
+  ) {
     const setFilter = vi.fn();
     const setSearchQuery = vi.fn();
     mockUsePrStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
@@ -41,17 +50,13 @@ describe('TeamReviewLoad', () => {
   });
 
   it('renders the Review Load heading when reviewers exist', () => {
-    setupStore([
-      { login: 'alice', pendingReviewCount: 2, stalePrCount: 0, avgWaitHours: 1 },
-    ]);
+    setupStore([{ login: 'alice', pendingReviewCount: 2, stalePrCount: 0, avgWaitHours: 1 }]);
     render(<TeamReviewLoad />);
     expect(screen.getByText('Review Load')).toBeInTheDocument();
   });
 
   it('shows the reviewer count badge', () => {
-    setupStore([
-      { login: 'alice', pendingReviewCount: 2, stalePrCount: 0, avgWaitHours: 1 },
-    ]);
+    setupStore([{ login: 'alice', pendingReviewCount: 2, stalePrCount: 0, avgWaitHours: 1 }]);
     render(<TeamReviewLoad />);
     // Count badge shows "1" for 1 reviewer
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -68,17 +73,13 @@ describe('TeamReviewLoad', () => {
   });
 
   it('shows avatar initials for each reviewer', () => {
-    setupStore([
-      { login: 'carol', pendingReviewCount: 1, stalePrCount: 0, avgWaitHours: 0.5 },
-    ]);
+    setupStore([{ login: 'carol', pendingReviewCount: 1, stalePrCount: 0, avgWaitHours: 0.5 }]);
     render(<TeamReviewLoad />);
     expect(screen.getByText('CA')).toBeInTheDocument();
   });
 
   it('collapses and expands when clicking the heading button', () => {
-    setupStore([
-      { login: 'dave', pendingReviewCount: 3, stalePrCount: 0, avgWaitHours: 2 },
-    ]);
+    setupStore([{ login: 'dave', pendingReviewCount: 3, stalePrCount: 0, avgWaitHours: 2 }]);
     render(<TeamReviewLoad />);
     expect(screen.getByText('dave')).toBeInTheDocument();
 

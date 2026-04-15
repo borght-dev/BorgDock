@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WorkItemDetailPanel, type WorkItemDetailData } from '../WorkItemDetailPanel';
 import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '@/types';
+import { type WorkItemDetailData, WorkItemDetailPanel } from '../WorkItemDetailPanel';
 
 // Mock useAdoImageAuth — it needs DOM refs + settings store, not relevant for unit tests
 vi.mock('@/hooks/useAdoImageAuth', () => ({
@@ -161,9 +161,7 @@ describe('WorkItemDetailPanel', () => {
     fireEvent.change(titleTextarea, { target: { value: 'Updated title' } });
 
     fireEvent.click(screen.getByText('Save'));
-    expect(props.onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Updated title' }),
-    );
+    expect(props.onSave).toHaveBeenCalledWith(expect.objectContaining({ title: 'Updated title' }));
   });
 
   it('disables save button when title is empty', () => {
@@ -392,8 +390,6 @@ describe('WorkItemDetailPanel', () => {
     fireEvent.change(typeSelect, { target: { value: 'Bug' } });
 
     fireEvent.click(screen.getByText('Create'));
-    expect(props.onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ workItemType: 'Bug' }),
-    );
+    expect(props.onSave).toHaveBeenCalledWith(expect.objectContaining({ workItemType: 'Bug' }));
   });
 });

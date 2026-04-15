@@ -28,9 +28,7 @@ describe('ClaudeApiSection', () => {
   });
 
   it('renders API Key with existing value', () => {
-    render(
-      <ClaudeApiSection claudeApi={makeApi({ apiKey: 'sk-ant-test' })} onChange={onChange} />,
-    );
+    render(<ClaudeApiSection claudeApi={makeApi({ apiKey: 'sk-ant-test' })} onChange={onChange} />);
     const input = screen.getByPlaceholderText('sk-ant-...') as HTMLInputElement;
     expect(input.value).toBe('sk-ant-test');
   });
@@ -44,9 +42,7 @@ describe('ClaudeApiSection', () => {
   });
 
   it('sets apiKey to undefined when cleared', () => {
-    render(
-      <ClaudeApiSection claudeApi={makeApi({ apiKey: 'sk-ant-test' })} onChange={onChange} />,
-    );
+    render(<ClaudeApiSection claudeApi={makeApi({ apiKey: 'sk-ant-test' })} onChange={onChange} />);
     fireEvent.change(screen.getByPlaceholderText('sk-ant-...'), {
       target: { value: '' },
     });
@@ -70,9 +66,7 @@ describe('ClaudeApiSection', () => {
     fireEvent.change(screen.getByDisplayValue('Claude Sonnet 4.6'), {
       target: { value: 'claude-opus-4-6' },
     });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'claude-opus-4-6' }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-opus-4-6' }));
   });
 
   it('renders Max Tokens input with correct value', () => {

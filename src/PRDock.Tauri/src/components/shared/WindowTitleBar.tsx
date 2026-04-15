@@ -1,6 +1,6 @@
+import type { Window } from '@tauri-apps/api/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useRef } from 'react';
-import type { Window } from '@tauri-apps/api/window';
 
 interface WindowTitleBarProps {
   title: string;
@@ -42,29 +42,17 @@ export function WindowTitleBar({ title }: WindowTitleBarProps) {
   }, [win]);
 
   return (
-    <div
-      className="window-titlebar"
-      data-tauri-drag-region
-      onDoubleClick={handleMaximize}
-    >
+    <div className="window-titlebar" data-tauri-drag-region onDoubleClick={handleMaximize}>
       <span className="window-titlebar-title" data-tauri-drag-region>
         {title}
       </span>
       <div className="window-titlebar-controls">
-        <button
-          className="window-titlebar-btn"
-          onClick={handleMinimize}
-          aria-label="Minimize"
-        >
+        <button className="window-titlebar-btn" onClick={handleMinimize} aria-label="Minimize">
           <svg width="10" height="10" viewBox="0 0 10 10">
             <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
           </svg>
         </button>
-        <button
-          className="window-titlebar-btn"
-          onClick={handleMaximize}
-          aria-label="Maximize"
-        >
+        <button className="window-titlebar-btn" onClick={handleMaximize} aria-label="Maximize">
           <svg width="10" height="10" viewBox="0 0 10 10">
             <rect
               x="1.5"

@@ -84,7 +84,11 @@ export function computePriorityScores(
     const hours = hoursAgo(p.updatedAt);
     if (hours > 24) {
       const stalePoints = Math.min(10, Math.floor((hours - 24) / 24) + 2);
-      factors.push({ type: 'staleness', points: stalePoints, label: `Stale ${daysAgo(p.updatedAt)}d` });
+      factors.push({
+        type: 'staleness',
+        points: stalePoints,
+        label: `Stale ${daysAgo(p.updatedAt)}d`,
+      });
     }
 
     // checkStatus (0-5) — red checks on others' PR

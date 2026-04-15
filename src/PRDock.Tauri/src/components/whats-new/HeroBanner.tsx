@@ -1,6 +1,6 @@
+import type React from 'react';
 import { useState } from 'react';
 import { flushSync } from 'react-dom';
-import type React from 'react';
 import type { Kind } from '@/types/whats-new';
 
 const KIND_GRADIENTS: Record<Kind, string> = {
@@ -13,17 +13,47 @@ const KIND_GRADIENTS: Record<Kind, string> = {
 
 const KIND_ICON: Record<Kind, React.ReactElement> = {
   new: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
     </svg>
   ),
   improved: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M3 17l6-6 4 4 8-8M14 7h7v7" />
     </svg>
   ),
   fixed: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01" />
     </svg>
   ),
@@ -38,9 +68,7 @@ export function HeroBanner({ hero, kind }: Props) {
   const [errored, setErrored] = useState(false);
   if (hero && !errored) {
     return (
-      <div
-        className="h-[74px] overflow-hidden rounded-md border border-[var(--color-subtle-border)] mb-2.5"
-      >
+      <div className="h-[74px] overflow-hidden rounded-md border border-[var(--color-subtle-border)] mb-2.5">
         <img
           src={hero.src}
           alt={hero.alt}

@@ -78,7 +78,14 @@ describe('buildFixPrompt', () => {
   });
 
   it('includes all check names in the title for multiple checks', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['ci/build', 'ci/test'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(
+      makePrWithChecks(),
+      ['ci/build', 'ci/test'],
+      [],
+      [],
+      '',
+      makeRepoSettings(),
+    );
 
     expect(prompt).toContain('# Fix Failing Checks: 2 checks');
     expect(prompt).toContain('ci/build, ci/test');
@@ -100,7 +107,14 @@ describe('buildFixPrompt', () => {
 
   it('includes parsed errors with file paths and line numbers', () => {
     const errors = makeErrors();
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], errors, [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(
+      makePrWithChecks(),
+      ['build'],
+      errors,
+      [],
+      '',
+      makeRepoSettings(),
+    );
 
     expect(prompt).toContain('src/auth.ts:42');
     expect(prompt).toContain('Property does not exist on type');
@@ -130,7 +144,14 @@ describe('buildFixPrompt', () => {
     const logLines = Array.from({ length: 300 }, (_, i) => `log line ${i + 1}`);
     const rawLog = logLines.join('\n');
 
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], rawLog, makeRepoSettings());
+    const prompt = buildFixPrompt(
+      makePrWithChecks(),
+      ['build'],
+      [],
+      [],
+      rawLog,
+      makeRepoSettings(),
+    );
 
     expect(prompt).toContain('## Raw Log (last 200 lines)');
     expect(prompt).toContain('log line 101');
@@ -160,7 +181,14 @@ describe('buildFixPrompt', () => {
   });
 
   it('includes task instructions with multiple checks', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build', 'test'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(
+      makePrWithChecks(),
+      ['build', 'test'],
+      [],
+      [],
+      '',
+      makeRepoSettings(),
+    );
 
     expect(prompt).toContain('## Task');
     expect(prompt).toContain('Fix the failing checks (build, test)');
@@ -358,7 +386,10 @@ describe('performFixWithClaude', () => {
       writeTextFile: mockWriteTextFile,
       BaseDirectory: { Temp: 'Temp' },
     }));
-    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir, join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')) }));
+    vi.doMock('@tauri-apps/api/path', () => ({
+      tempDir: mockTempDir,
+      join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')),
+    }));
 
     const { performFixWithClaude } = await import('../claude-launcher');
 
@@ -375,9 +406,12 @@ describe('performFixWithClaude', () => {
     });
 
     // Should have called launch_claude_code with existing worktree path
-    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', expect.objectContaining({
-      worktreePath: '/worktrees/fix-branch',
-    }));
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'launch_claude_code',
+      expect.objectContaining({
+        worktreePath: '/worktrees/fix-branch',
+      }),
+    );
   });
 
   it('creates new worktree when branch does not exist', async () => {
@@ -403,7 +437,10 @@ describe('performFixWithClaude', () => {
       writeTextFile: mockWriteTextFile,
       BaseDirectory: { Temp: 'Temp' },
     }));
-    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir, join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')) }));
+    vi.doMock('@tauri-apps/api/path', () => ({
+      tempDir: mockTempDir,
+      join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')),
+    }));
 
     const { performFixWithClaude } = await import('../claude-launcher');
 
@@ -424,9 +461,12 @@ describe('performFixWithClaude', () => {
       subfolder: '.trees',
       branchName: 'fix/branch',
     });
-    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', expect.objectContaining({
-      worktreePath: '/worktrees/.worktrees/fix-branch',
-    }));
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'launch_claude_code',
+      expect.objectContaining({
+        worktreePath: '/worktrees/.worktrees/fix-branch',
+      }),
+    );
   });
 
   it('matches worktree by refs/heads/ prefixed branch name', async () => {
@@ -434,7 +474,11 @@ describe('performFixWithClaude', () => {
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === 'list_worktrees') {
         return Promise.resolve([
-          { path: '/worktrees/my-branch', branchName: 'refs/heads/my-branch', isMainWorktree: false },
+          {
+            path: '/worktrees/my-branch',
+            branchName: 'refs/heads/my-branch',
+            isMainWorktree: false,
+          },
         ]);
       }
       if (cmd === 'launch_claude_code') {
@@ -451,7 +495,10 @@ describe('performFixWithClaude', () => {
       writeTextFile: mockWriteTextFile,
       BaseDirectory: { Temp: 'Temp' },
     }));
-    vi.doMock('@tauri-apps/api/path', () => ({ tempDir: mockTempDir, join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')) }));
+    vi.doMock('@tauri-apps/api/path', () => ({
+      tempDir: mockTempDir,
+      join: (...parts: string[]) => Promise.resolve(parts.join('/').replace(/\/+/g, '/')),
+    }));
 
     const { performFixWithClaude } = await import('../claude-launcher');
 
@@ -469,9 +516,12 @@ describe('performFixWithClaude', () => {
 
     // Should use the existing worktree, not create a new one
     expect(mockInvoke).not.toHaveBeenCalledWith('create_worktree', expect.anything());
-    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', expect.objectContaining({
-      worktreePath: '/worktrees/my-branch',
-    }));
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'launch_claude_code',
+      expect.objectContaining({
+        worktreePath: '/worktrees/my-branch',
+      }),
+    );
   });
 
   it('uses empty string for worktreeSubfolder when not set', async () => {

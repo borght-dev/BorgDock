@@ -28,7 +28,11 @@ vi.mock('focus-trap-react', () => ({
 // Mock child components that have complex dependencies
 vi.mock('@/components/worktree/WorktreePruneDialog', () => ({
   WorktreePruneDialog: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
-    isOpen ? <div data-testid="prune-dialog"><button onClick={onClose}>Close Prune</button></div> : null,
+    isOpen ? (
+      <div data-testid="prune-dialog">
+        <button onClick={onClose}>Close Prune</button>
+      </div>
+    ) : null,
 }));
 vi.mock('@/hooks/useAutoUpdate', () => ({
   useAutoUpdate: () => ({

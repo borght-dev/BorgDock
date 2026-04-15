@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { computeReleasesToShow } from '../useReleasesToShow';
+import { describe, expect, it } from 'vitest';
 import type { Release } from '@/types/whats-new';
+import { computeReleasesToShow } from '../useReleasesToShow';
 
 const r = (version: string, autoOpenEligible = true): Release => ({
   version,

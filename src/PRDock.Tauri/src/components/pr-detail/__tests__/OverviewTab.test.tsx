@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PullRequestWithChecks } from '@/types';
 import { useSettingsStore } from '@/stores/settings-store';
+import type { PullRequestWithChecks } from '@/types';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -335,7 +335,9 @@ describe('OverviewTab', () => {
       },
     });
     render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('Configure an API key in Settings to enable AI summaries')).toBeTruthy();
+    expect(
+      screen.getByText('Configure an API key in Settings to enable AI summaries'),
+    ).toBeTruthy();
   });
 
   it('shows "Summarize with AI" button when API key is set', () => {

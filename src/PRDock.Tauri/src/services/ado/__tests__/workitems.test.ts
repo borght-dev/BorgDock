@@ -179,9 +179,7 @@ describe('downloadAttachment', () => {
     const result = await downloadAttachment(client, 'att-123', 'report.pdf');
 
     expect(result).toBe(fakeBlob);
-    expect(client.getStream).toHaveBeenCalledWith(
-      'wit/attachments/att-123?fileName=report.pdf',
-    );
+    expect(client.getStream).toHaveBeenCalledWith('wit/attachments/att-123?fileName=report.pdf');
   });
 
   it('encodes the file name in the URL', async () => {
@@ -355,9 +353,7 @@ describe('buildIdPrefixWiql', () => {
     const wiql = buildIdPrefixWiql('1234567');
 
     // Only exact match, no range clauses (already 7 digits)
-    expect(wiql).toBe(
-      'SELECT [System.Id] FROM WorkItems WHERE [System.Id] = 1234567',
-    );
+    expect(wiql).toBe('SELECT [System.Id] FROM WorkItems WHERE [System.Id] = 1234567');
   });
 });
 
@@ -365,7 +361,10 @@ describe('searchWorkItemsByIdPrefix', () => {
   it('searches by ID prefix and returns work items', async () => {
     const client = createMockClient();
     vi.mocked(client.post).mockResolvedValueOnce({
-      workItems: [{ id: 123, url: '' }, { id: 1234, url: '' }],
+      workItems: [
+        { id: 123, url: '' },
+        { id: 1234, url: '' },
+      ],
     });
     vi.mocked(client.get).mockResolvedValueOnce({
       value: [fakeWorkItem, { ...fakeWorkItem, id: 1234 }],

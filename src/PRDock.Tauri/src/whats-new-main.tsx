@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';
-import { WhatsNewApp } from './components/whats-new/WhatsNewApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
+import { WhatsNewApp } from './components/whats-new/WhatsNewApp';
 import { attachConsoleBridge, createLogger } from './services/logger';
 
 attachConsoleBridge();

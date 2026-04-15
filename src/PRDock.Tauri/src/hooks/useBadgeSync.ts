@@ -36,13 +36,9 @@ function buildFlyoutPayload(
   const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
   const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
-  const passingCount = pullRequests.filter(
-    (p) => p.overallStatus === 'green',
-  ).length;
+  const passingCount = pullRequests.filter((p) => p.overallStatus === 'green').length;
 
-  const lastSyncAgo = lastPollTime
-    ? formatTimeAgo(new Date(lastPollTime).toISOString())
-    : '...';
+  const lastSyncAgo = lastPollTime ? formatTimeAgo(new Date(lastPollTime).toISOString()) : '...';
 
   return {
     pullRequests: pullRequests.map((pr) => ({
@@ -258,26 +254,40 @@ export function useBadgeSync() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
 
-        const fnFix = await listen<{ repoOwner: string; repoName: string; number: number; failedCheckNames: string[] }>(
-          'flyout-fix-pr',
-          (event) => {
-            const { repoOwner, repoName, number, failedCheckNames } = event.payload;
-            const pr = usePrStore.getState().pullRequests.find(
-              (p) => p.pullRequest.repoOwner === repoOwner && p.pullRequest.repoName === repoName && p.pullRequest.number === number,
+        const fnFix = await listen<{
+          repoOwner: string;
+          repoName: string;
+          number: number;
+          failedCheckNames: string[];
+        }>('flyout-fix-pr', (event) => {
+          const { repoOwner, repoName, number, failedCheckNames } = event.payload;
+          const pr = usePrStore
+            .getState()
+            .pullRequests.find(
+              (p) =>
+                p.pullRequest.repoOwner === repoOwner &&
+                p.pullRequest.repoName === repoName &&
+                p.pullRequest.number === number,
             );
-            if (pr) {
-              fixRef.current(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '').catch(console.error);
-            }
-          },
-        );
+          if (pr) {
+            fixRef
+              .current(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '')
+              .catch(console.error);
+          }
+        });
 
         const fnMonitor = await listen<{ repoOwner: string; repoName: string; number: number }>(
           'flyout-monitor-pr',
           (event) => {
             const { repoOwner, repoName, number } = event.payload;
-            const pr = usePrStore.getState().pullRequests.find(
-              (p) => p.pullRequest.repoOwner === repoOwner && p.pullRequest.repoName === repoName && p.pullRequest.number === number,
-            );
+            const pr = usePrStore
+              .getState()
+              .pullRequests.find(
+                (p) =>
+                  p.pullRequest.repoOwner === repoOwner &&
+                  p.pullRequest.repoName === repoName &&
+                  p.pullRequest.number === number,
+              );
             if (pr) {
               monitorRef.current(pr).catch(console.error);
             }

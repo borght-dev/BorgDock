@@ -105,16 +105,14 @@ export async function getOpenPRs(
       ]);
       // mergeable can be null if GitHub hasn't computed it yet;
       // fall back to mergeable_state which is more reliably populated
-      pr.mergeable =
-        detail.mergeable ??
-        mergeableFromState(detail.mergeable_state) ??
-        undefined;
+      pr.mergeable = detail.mergeable ?? mergeableFromState(detail.mergeable_state) ?? undefined;
       pr.additions = detail.additions ?? 0;
       pr.deletions = detail.deletions ?? 0;
       pr.changedFiles = detail.changed_files ?? 0;
       pr.commitCount = detail.commits ?? 0;
       pr.reviewStatus = aggregateReviewStatus(reviews);
-      pr.requestedReviewers = detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
+      pr.requestedReviewers =
+        detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
     }),
   );
 

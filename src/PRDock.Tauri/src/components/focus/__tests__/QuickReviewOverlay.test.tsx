@@ -7,7 +7,9 @@ import { makePr, resetSeq } from './helpers';
 // Mock child components to isolate overlay logic
 vi.mock('../QuickReviewCard', () => ({
   QuickReviewCard: ({ pr }: { pr: unknown }) => (
-    <div data-testid="quick-review-card">card-{(pr as { pullRequest: { number: number } }).pullRequest.number}</div>
+    <div data-testid="quick-review-card">
+      card-{(pr as { pullRequest: { number: number } }).pullRequest.number}
+    </div>
   ),
 }));
 
@@ -96,7 +98,9 @@ describe('QuickReviewOverlay', () => {
     const pr1 = makePr();
     const pr2 = makePr();
     useQuickReviewStore.getState().startSession([pr1, pr2]);
-    act(() => { useQuickReviewStore.getState().advance('skipped'); });
+    act(() => {
+      useQuickReviewStore.getState().advance('skipped');
+    });
     render(<QuickReviewOverlay />);
     expect(screen.getByText(/Back/)).toBeDefined();
   });
@@ -187,7 +191,9 @@ describe('QuickReviewOverlay', () => {
   it('renders error banner when store has an error', () => {
     const pr = makePr();
     useQuickReviewStore.getState().startSession([pr]);
-    act(() => { useQuickReviewStore.getState().setError('Network error'); });
+    act(() => {
+      useQuickReviewStore.getState().setError('Network error');
+    });
     render(<QuickReviewOverlay />);
     expect(screen.getByText('Network error')).toBeDefined();
     expect(screen.getByText('Retry')).toBeDefined();
@@ -196,7 +202,9 @@ describe('QuickReviewOverlay', () => {
   it('clicking Retry clears the error', () => {
     const pr = makePr();
     useQuickReviewStore.getState().startSession([pr]);
-    act(() => { useQuickReviewStore.getState().setError('Timeout'); });
+    act(() => {
+      useQuickReviewStore.getState().setError('Timeout');
+    });
     render(<QuickReviewOverlay />);
     fireEvent.click(screen.getByText('Retry'));
     expect(useQuickReviewStore.getState().error).toBeNull();
@@ -223,7 +231,9 @@ describe('QuickReviewOverlay', () => {
   it('renders summary when state is complete', () => {
     const pr = makePr();
     useQuickReviewStore.getState().startSession([pr]);
-    act(() => { useQuickReviewStore.getState().advance('approved'); });
+    act(() => {
+      useQuickReviewStore.getState().advance('approved');
+    });
     expect(useQuickReviewStore.getState().state).toBe('complete');
     render(<QuickReviewOverlay />);
     expect(screen.getByTestId('quick-review-summary')).toBeDefined();

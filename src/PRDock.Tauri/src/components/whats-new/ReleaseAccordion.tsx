@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Release } from '@/types/whats-new';
-import { HighlightCard } from './HighlightCard';
 import { AlsoFixedList } from './AlsoFixedList';
+import { HighlightCard } from './HighlightCard';
 
 interface Props {
   release: Release;
@@ -34,7 +34,9 @@ export function ReleaseAccordion({ release, defaultExpanded, isCurrent }: Props)
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <Caret open={open} />
-          <span className={`text-[14px] font-medium ${open ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-tertiary)]'}`}>
+          <span
+            className={`text-[14px] font-medium ${open ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-tertiary)]'}`}
+          >
             {release.version}
           </span>
           {open && isCurrent && (

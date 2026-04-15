@@ -22,9 +22,11 @@ export function PRDetailApp() {
   // We still fall back to URLSearchParams so manual dev (e.g. opening
   // the page in a browser) keeps working.
   const { owner, repo, number } = useMemo(() => {
-    const injected = (window as unknown as {
-      __PRDOCK_PR_DETAIL__?: { owner?: string; repo?: string; number?: number };
-    }).__PRDOCK_PR_DETAIL__;
+    const injected = (
+      window as unknown as {
+        __PRDOCK_PR_DETAIL__?: { owner?: string; repo?: string; number?: number };
+      }
+    ).__PRDOCK_PR_DETAIL__;
     if (injected?.owner && injected.repo && injected.number) {
       return {
         owner: injected.owner,
@@ -155,10 +157,7 @@ export function PRDetailApp() {
 
   if (error) {
     return (
-      <div
-        className="flex h-screen flex-col"
-        style={{ backgroundColor: 'var(--color-surface)' }}
-      >
+      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
@@ -171,10 +170,7 @@ export function PRDetailApp() {
 
   if (isLoading || !pr) {
     return (
-      <div
-        className="flex h-screen flex-col"
-        style={{ backgroundColor: 'var(--color-surface)' }}
-      >
+      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />

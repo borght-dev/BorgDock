@@ -14,7 +14,13 @@ export function XIcon({ size = 12, color = 'currentColor' }: { size?: number; co
   );
 }
 
-export function CheckIcon({ size = 12, color = 'currentColor' }: { size?: number; color?: string }) {
+export function CheckIcon({
+  size = 12,
+  color = 'currentColor',
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
       <path
@@ -44,7 +50,13 @@ export function PRIcon({ size = 14, color = 'currentColor' }: { size?: number; c
   );
 }
 
-export function ChevronIcon({ size = 14, color = 'currentColor' }: { size?: number; color?: string }) {
+export function ChevronIcon({
+  size = 14,
+  color = 'currentColor',
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
       <path
@@ -111,10 +123,7 @@ export function ExpandChevron({
       title={isExpanded ? 'Collapse' : 'Expand PR list'}
     >
       <div className={clsx('transition-transform duration-200', isExpanded && 'rotate-180')}>
-        <ChevronIcon
-          size={10}
-          color="currentColor"
-        />
+        <ChevronIcon size={10} color="currentColor" />
       </div>
     </button>
   );

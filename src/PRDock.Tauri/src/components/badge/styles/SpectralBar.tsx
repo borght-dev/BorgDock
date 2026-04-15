@@ -4,9 +4,9 @@ import {
   BADGE_KEYFRAMES,
   DragGrip,
   ExpandChevron,
+  generateCheckPips,
   PRIcon,
   STATUS_DOT_MAP,
-  generateCheckPips,
 } from './shared';
 
 export function SpectralBar({
@@ -22,7 +22,8 @@ export function SpectralBar({
   const isFailing = statusColor === 'red';
   const dotColor = STATUS_DOT_MAP[statusColor];
   const pips = generateCheckPips(totalPrCount, failingCount, pendingCount);
-  const passRatio = totalPrCount > 0 ? ((totalPrCount - failingCount - pendingCount) / totalPrCount) * 100 : 100;
+  const passRatio =
+    totalPrCount > 0 ? ((totalPrCount - failingCount - pendingCount) / totalPrCount) * 100 : 100;
 
   return (
     <>
@@ -81,7 +82,8 @@ export function SpectralBar({
         <div
           className="w-px self-stretch my-2"
           style={{
-            background: 'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
+            background:
+              'linear-gradient(to bottom, transparent, var(--color-separator), transparent)',
           }}
         />
 
@@ -108,10 +110,7 @@ export function SpectralBar({
               />
             ))}
           </div>
-          <span
-            className="text-[11px] font-medium whitespace-nowrap"
-            style={{ color: dotColor }}
-          >
+          <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: dotColor }}>
             {statusText}
           </span>
         </button>

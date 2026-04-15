@@ -33,9 +33,7 @@ export function HighlightCard({ highlight }: Props) {
         >
           {KIND_LABEL[kind]}
         </span>
-        <span className="text-[14px] font-medium text-[var(--color-text-primary)]">
-          {title}
-        </span>
+        <span className="text-[14px] font-medium text-[var(--color-text-primary)]">{title}</span>
         {keyboard && (
           <kbd className="font-mono text-[11px] px-1.5 py-[1px] rounded border bg-[var(--color-surface-raised)] border-[var(--color-strong-border)] text-[var(--color-text-primary)]">
             {keyboard}

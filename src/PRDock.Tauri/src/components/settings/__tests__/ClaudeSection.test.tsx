@@ -97,9 +97,7 @@ describe('ClaudeSection', () => {
     fireEvent.change(screen.getByPlaceholderText('claude (default)'), {
       target: { value: '' },
     });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ claudeCodePath: undefined }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ claudeCodePath: undefined }));
   });
 
   it('shows correct selected value for each option', () => {

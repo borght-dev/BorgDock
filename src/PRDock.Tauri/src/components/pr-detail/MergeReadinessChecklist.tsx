@@ -225,13 +225,20 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
                 {item.label}
               </span>
             </div>
-            <span className="shrink-0 text-[9px] text-[var(--color-text-muted)]">{item.description}</span>
+            <span className="shrink-0 text-[9px] text-[var(--color-text-muted)]">
+              {item.description}
+            </span>
           </div>
         ))}
       </div>
 
       {/* Bottom accent line showing score */}
-      <div className="h-[2px]" style={{ background: `linear-gradient(90deg, ${color} ${score}%, var(--color-subtle-border) ${score}%)` }} />
+      <div
+        className="h-[2px]"
+        style={{
+          background: `linear-gradient(90deg, ${color} ${score}%, var(--color-subtle-border) ${score}%)`,
+        }}
+      />
     </div>
   );
 }

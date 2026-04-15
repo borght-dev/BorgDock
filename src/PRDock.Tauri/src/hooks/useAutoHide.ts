@@ -130,7 +130,7 @@ export function useAutoHide(settings: AppSettings) {
           }
         });
         if (cancelled) {
-          fn();  // cleanup immediately if already unmounted
+          fn(); // cleanup immediately if already unmounted
           return;
         }
         unlisten = fn;

@@ -3,8 +3,8 @@ import { LogicalSize } from '@tauri-apps/api/dpi';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { parseError } from '@/utils/parse-error';
 import type { AppSettings, RepoSettings } from '@/types/settings';
+import { parseError } from '@/utils/parse-error';
 
 // Minimum window height so a small worktree list doesn't leave a cramped window.
 const MIN_PALETTE_HEIGHT = 420;
@@ -129,7 +129,11 @@ function WorktreeRow({
         </div>
         <div className="wt-row-secondary">
           <span className="wt-folder">{folder}</span>
-          {parent && <span className="wt-parent" title={parent}>{parent}</span>}
+          {parent && (
+            <span className="wt-parent" title={parent}>
+              {parent}
+            </span>
+          )}
         </div>
       </div>
       <div className="wt-row-actions">
@@ -296,8 +300,7 @@ export function WorktreePaletteApp() {
         const currentLogicalH = physSize.height / scale;
 
         const overflow = contentEl.scrollHeight - contentEl.clientHeight;
-        const maxLogicalH =
-          (monitor ? monitor.size.height / scale : 900) - MONITOR_BOTTOM_MARGIN;
+        const maxLogicalH = (monitor ? monitor.size.height / scale : 900) - MONITOR_BOTTOM_MARGIN;
 
         let targetH: number;
         if (overflow > 0) {
@@ -631,9 +634,7 @@ export function WorktreePaletteApp() {
                 <span className="wt-group-count">{entries.length}</span>
                 {errors.has(repoKey) && <span className="wt-group-error">error</span>}
               </div>
-              {errors.has(repoKey) && (
-                <div className="wt-error-detail">{errors.get(repoKey)}</div>
-              )}
+              {errors.has(repoKey) && <div className="wt-error-detail">{errors.get(repoKey)}</div>}
               <div className="wt-list">
                 {entries.map((entry) => {
                   const idx = flatIndex++;

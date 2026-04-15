@@ -118,9 +118,18 @@ export function PaletteApp() {
           onMouseDown={startDrag}
         >
           <div className="flex gap-1">
-            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
-            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
-            <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-text-ghost)' }} />
+            <div
+              className="h-1 w-1 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-ghost)' }}
+            />
+            <div
+              className="h-1 w-1 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-ghost)' }}
+            />
+            <div
+              className="h-1 w-1 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-ghost)' }}
+            />
           </div>
         </div>
 
@@ -220,7 +229,8 @@ export function PaletteApp() {
             {isSearching && (
               <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent align-middle" />
             )}
-            {statusText || (navItems.length > 0 ? '\u2191\u2193 navigate \u00b7 \u23ce select' : '')}
+            {statusText ||
+              (navItems.length > 0 ? '\u2191\u2193 navigate \u00b7 \u23ce select' : '')}
           </span>
           <span className="text-[11px]" style={{ color: 'var(--color-text-faint)' }}>
             Esc to close

@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import type { AppSettings, WorkItem } from '@/types';
 
 // --- Mock ADO services ---
@@ -200,10 +200,7 @@ describe('useAdoPolling', () => {
     renderHook(() => useAdoPolling(makeSettings()));
 
     await vi.waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to load ADO query tree:',
-        expect.any(Error),
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to load ADO query tree:', expect.any(Error));
     });
 
     consoleSpy.mockRestore();
@@ -304,7 +301,10 @@ describe('useAdoPolling', () => {
   it('sets isLoading during query execution', async () => {
     let resolveQuery: (v: WorkItem[]) => void;
     mockExecuteQuery.mockImplementation(
-      () => new Promise<WorkItem[]>((resolve) => { resolveQuery = resolve; }),
+      () =>
+        new Promise<WorkItem[]>((resolve) => {
+          resolveQuery = resolve;
+        }),
     );
 
     renderHook(() => useAdoPolling(makeSettings()));
@@ -337,10 +337,7 @@ describe('useAdoPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to execute ADO query:',
-        expect.any(Error),
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to execute ADO query:', expect.any(Error));
     });
 
     await vi.waitFor(() => {
@@ -560,7 +557,13 @@ describe('useAdoPolling', () => {
         path: 'Shared/Bugs',
         isFolder: false,
         children: [
-          { id: 'q1-child', name: 'Active Bugs', path: 'Shared/Bugs/Active', isFolder: false, children: [] },
+          {
+            id: 'q1-child',
+            name: 'Active Bugs',
+            path: 'Shared/Bugs/Active',
+            isFolder: false,
+            children: [],
+          },
         ],
       },
     ];

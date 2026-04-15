@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchContributorWeights,
   getCachedWeights,
@@ -67,9 +67,7 @@ describe('fetchContributorWeights', () => {
 
   it('returns 0 when user has no commits', async () => {
     const client = makeClient({
-      'repos/org/repo/stats/contributors': [
-        { author: { login: 'alice' }, total: 100 },
-      ],
+      'repos/org/repo/stats/contributors': [{ author: { login: 'alice' }, total: 100 }],
     });
 
     const weights = await fetchContributorWeights(
@@ -130,9 +128,7 @@ describe('fetchContributorWeights', () => {
 
   it('handles multiple repos', async () => {
     const client = makeClient({
-      'repos/org/repo1/stats/contributors': [
-        { author: { login: 'alice' }, total: 100 },
-      ],
+      'repos/org/repo1/stats/contributors': [{ author: { login: 'alice' }, total: 100 }],
       'repos/org/repo2/stats/contributors': [
         { author: { login: 'alice' }, total: 50 },
         { author: { login: 'bob' }, total: 200 },
@@ -153,9 +149,7 @@ describe('fetchContributorWeights', () => {
 
   it('is case-insensitive for username matching', async () => {
     const client = makeClient({
-      'repos/org/repo/stats/contributors': [
-        { author: { login: 'Alice' }, total: 100 },
-      ],
+      'repos/org/repo/stats/contributors': [{ author: { login: 'Alice' }, total: 100 }],
     });
 
     const weights = await fetchContributorWeights(
@@ -238,16 +232,10 @@ describe('fetchContributorWeights', () => {
 describe('getCachedWeights', () => {
   it('returns the cache populated by fetchContributorWeights', async () => {
     const client = makeClient({
-      'repos/org/repo/stats/contributors': [
-        { author: { login: 'alice' }, total: 100 },
-      ],
+      'repos/org/repo/stats/contributors': [{ author: { login: 'alice' }, total: 100 }],
     });
 
-    await fetchContributorWeights(
-      client as never,
-      [{ owner: 'org', name: 'repo' }],
-      'alice',
-    );
+    await fetchContributorWeights(client as never, [{ owner: 'org', name: 'repo' }], 'alice');
 
     const cached = getCachedWeights();
     expect(cached.get('org/repo')).toBe(1.0);
@@ -261,16 +249,10 @@ describe('getCachedWeights', () => {
 describe('startDailyRefresh / stopDailyRefresh', () => {
   it('starts a 24h interval that calls fetchContributorWeights', () => {
     const client = makeClient({
-      'repos/org/repo/stats/contributors': [
-        { author: { login: 'alice' }, total: 100 },
-      ],
+      'repos/org/repo/stats/contributors': [{ author: { login: 'alice' }, total: 100 }],
     });
 
-    startDailyRefresh(
-      client as never,
-      [{ owner: 'org', name: 'repo' }],
-      'alice',
-    );
+    startDailyRefresh(client as never, [{ owner: 'org', name: 'repo' }], 'alice');
 
     expect(client.get).not.toHaveBeenCalled();
 
@@ -284,11 +266,7 @@ describe('startDailyRefresh / stopDailyRefresh', () => {
       'repos/org/repo/stats/contributors': [],
     });
 
-    startDailyRefresh(
-      client as never,
-      [{ owner: 'org', name: 'repo' }],
-      'alice',
-    );
+    startDailyRefresh(client as never, [{ owner: 'org', name: 'repo' }], 'alice');
 
     stopDailyRefresh();
 

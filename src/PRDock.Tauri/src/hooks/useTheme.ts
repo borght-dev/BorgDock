@@ -25,7 +25,11 @@ function applyTheme(effective: EffectiveTheme) {
     document.documentElement.classList.remove('dark');
   }
   // Persist so the inline <script> in HTML can read it synchronously on next load
-  try { localStorage.setItem('prdock-theme', effective); } catch { /* quota exceeded */ }
+  try {
+    localStorage.setItem('prdock-theme', effective);
+  } catch {
+    /* quota exceeded */
+  }
 }
 
 export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {

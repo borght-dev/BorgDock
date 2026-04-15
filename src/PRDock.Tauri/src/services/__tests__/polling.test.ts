@@ -266,9 +266,7 @@ describe('PollingManager', () => {
     });
 
     it('continues polling after an error in scheduled mode', async () => {
-      pollFn
-        .mockRejectedValueOnce(new Error('transient'))
-        .mockResolvedValueOnce('recovered');
+      pollFn.mockRejectedValueOnce(new Error('transient')).mockResolvedValueOnce('recovered');
 
       const manager = new PollingManager(pollFn, 1000);
       const onResult = vi.fn();

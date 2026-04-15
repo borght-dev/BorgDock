@@ -12,7 +12,10 @@ export function computeTeamReviewLoad(
   prs: PullRequestWithChecks[],
   reviewRequestTimestamps: Record<string, string>,
 ): ReviewerLoad[] {
-  const byReviewer = new Map<string, { pending: number; stale: number; totalWaitMs: number; timestampCount: number }>();
+  const byReviewer = new Map<
+    string,
+    { pending: number; stale: number; totalWaitMs: number; timestampCount: number }
+  >();
 
   for (const pr of prs) {
     for (const reviewer of pr.pullRequest.requestedReviewers) {
@@ -43,9 +46,10 @@ export function computeTeamReviewLoad(
       login,
       pendingReviewCount: entry.pending,
       stalePrCount: entry.stale,
-      avgWaitHours: entry.timestampCount > 0
-        ? Math.round(entry.totalWaitMs / entry.timestampCount / (1000 * 60 * 60))
-        : 0,
+      avgWaitHours:
+        entry.timestampCount > 0
+          ? Math.round(entry.totalWaitMs / entry.timestampCount / (1000 * 60 * 60))
+          : 0,
     });
   }
 

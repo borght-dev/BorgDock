@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // WorktreePruneDialog has a render loop issue in tests because
 // Set objects in useCallback deps are never referentially stable.
@@ -82,19 +82,20 @@ function TestDialog({
     <>
       <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div
-          className="pointer-events-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between">
             <h2>Prune Worktrees</h2>
-            <button onClick={onClose} data-testid="header-close">X</button>
+            <button onClick={onClose} data-testid="header-close">
+              X
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
             <button onClick={onSelectAllOrphaned}>Select all orphaned</button>
             <button onClick={onDeselectAll}>Deselect all</button>
-            <span>{rows.length} worktree{rows.length !== 1 ? 's' : ''} found</span>
+            <span>
+              {rows.length} worktree{rows.length !== 1 ? 's' : ''} found
+            </span>
           </div>
 
           <div>
@@ -105,15 +106,9 @@ function TestDialog({
             {!isLoading &&
               rows.map((row, i) => (
                 <label key={row.path} className={row.isSelected ? 'selected-row' : ''}>
-                  <input
-                    type="checkbox"
-                    checked={row.isSelected}
-                    onChange={() => onToggleRow(i)}
-                  />
+                  <input type="checkbox" checked={row.isSelected} onChange={() => onToggleRow(i)} />
                   <span>{row.branchName.replace(/^refs\/heads\//, '')}</span>
-                  <span className={statusClasses(row.status)}>
-                    {statusLabel(row.status)}
-                  </span>
+                  <span className={statusClasses(row.status)}>{statusLabel(row.status)}</span>
                   <span title={row.path}>{truncatePath(row.path)}</span>
                 </label>
               ))}
@@ -125,12 +120,15 @@ function TestDialog({
             {isRemoving && (
               <div data-testid="progress">
                 <span>Removing worktrees...</span>
-                <span>{removeProgress}/{removeTotal}</span>
+                <span>
+                  {removeProgress}/{removeTotal}
+                </span>
                 <div
                   style={{
-                    width: (removeTotal ?? 0) > 0
-                      ? `${((removeProgress ?? 0) / (removeTotal ?? 1)) * 100}%`
-                      : '0%',
+                    width:
+                      (removeTotal ?? 0) > 0
+                        ? `${((removeProgress ?? 0) / (removeTotal ?? 1)) * 100}%`
+                        : '0%',
                   }}
                 />
               </div>
@@ -138,10 +136,7 @@ function TestDialog({
 
             <div className="flex justify-end gap-2">
               <button onClick={onClose}>Close</button>
-              <button
-                disabled={selectedCount === 0 || isRemoving}
-                onClick={onRemoveSelected}
-              >
+              <button disabled={selectedCount === 0 || isRemoving} onClick={onRemoveSelected}>
                 Remove selected ({selectedCount})
               </button>
             </div>
@@ -440,9 +435,7 @@ describe('WorktreePruneDialog', () => {
       <TestDialog
         isOpen={true}
         onClose={vi.fn()}
-        rows={[
-          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: false },
-        ]}
+        rows={[{ branchName: 'a', path: '/a', status: 'orphaned', isSelected: false }]}
         isLoading={false}
         onToggleRow={vi.fn()}
         onSelectAllOrphaned={vi.fn()}
@@ -478,9 +471,7 @@ describe('WorktreePruneDialog', () => {
       <TestDialog
         isOpen={true}
         onClose={vi.fn()}
-        rows={[
-          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: true },
-        ]}
+        rows={[{ branchName: 'a', path: '/a', status: 'orphaned', isSelected: true }]}
         isLoading={false}
         isRemoving={true}
         removeProgress={1}
@@ -500,9 +491,7 @@ describe('WorktreePruneDialog', () => {
       <TestDialog
         isOpen={true}
         onClose={vi.fn()}
-        rows={[
-          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: true },
-        ]}
+        rows={[{ branchName: 'a', path: '/a', status: 'orphaned', isSelected: true }]}
         isLoading={false}
         isRemoving={true}
         removeProgress={0}
@@ -559,9 +548,7 @@ describe('WorktreePruneDialog', () => {
       <TestDialog
         isOpen={true}
         onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat', path: longPath, status: 'orphaned', isSelected: false },
-        ]}
+        rows={[{ branchName: 'feat', path: longPath, status: 'orphaned', isSelected: false }]}
         isLoading={false}
         onToggleRow={vi.fn()}
         onSelectAllOrphaned={vi.fn()}
@@ -580,9 +567,7 @@ describe('WorktreePruneDialog', () => {
       <TestDialog
         isOpen={true}
         onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat', path: shortPath, status: 'orphaned', isSelected: false },
-        ]}
+        rows={[{ branchName: 'feat', path: shortPath, status: 'orphaned', isSelected: false }]}
         isLoading={false}
         onToggleRow={vi.fn()}
         onSelectAllOrphaned={vi.fn()}
@@ -598,9 +583,7 @@ describe('WorktreePruneDialog', () => {
       <TestDialog
         isOpen={true}
         onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat', path: '/path', status: 'orphaned', isSelected: true },
-        ]}
+        rows={[{ branchName: 'feat', path: '/path', status: 'orphaned', isSelected: true }]}
         isLoading={false}
         onToggleRow={vi.fn()}
         onSelectAllOrphaned={vi.fn()}

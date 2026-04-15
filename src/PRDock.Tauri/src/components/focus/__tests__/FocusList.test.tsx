@@ -10,12 +10,20 @@ import { makePr, resetSeq } from './helpers';
 
 // Mock heavy child components
 vi.mock('@/components/pr/PullRequestCard', () => ({
-  PullRequestCard: ({ prWithChecks, isFocused, focusMode }: {
+  PullRequestCard: ({
+    prWithChecks,
+    isFocused,
+    focusMode,
+  }: {
     prWithChecks: PullRequestWithChecks;
     isFocused: boolean;
     focusMode: boolean;
   }) => (
-    <div data-testid={`pr-card-${prWithChecks.pullRequest.number}`} data-focused={isFocused} data-focus-mode={focusMode}>
+    <div
+      data-testid={`pr-card-${prWithChecks.pullRequest.number}`}
+      data-focused={isFocused}
+      data-focus-mode={focusMode}
+    >
       {prWithChecks.pullRequest.title}
     </div>
   ),
@@ -27,7 +35,16 @@ vi.mock('../FocusEmptyState', () => ({
 
 vi.mock('@/components/onboarding', () => ({
   FeatureBadge: ({ badgeId }: { badgeId: string }) => <span data-testid={`badge-${badgeId}`} />,
-  FirstRunOverlay: ({ message, onDismiss, onCtaClick }: { message: string; ctaLabel: string; onDismiss: () => void; onCtaClick: () => void }) => (
+  FirstRunOverlay: ({
+    message,
+    onDismiss,
+    onCtaClick,
+  }: {
+    message: string;
+    ctaLabel: string;
+    onDismiss: () => void;
+    onCtaClick: () => void;
+  }) => (
     <div data-testid="first-run-overlay">
       <span>{message}</span>
       <button onClick={onCtaClick}>CTA</button>
@@ -55,9 +72,12 @@ vi.mock('@/stores/onboarding-store', async () => {
     dismissedBadges: new Set<string>(),
     dismissedHints: new Set<string>(),
     markFocusOverlaySeen: () => set({ hasSeenFocusOverlay: true }),
-    dismissBadge: (id: string) => set((s) => ({ dismissedBadges: new Set([...s.dismissedBadges, id]) })),
-    dismissHint: (id: string) => set((s) => ({ dismissedHints: new Set([...s.dismissedHints, id]) })),
-    resetAll: () => set({ hasSeenFocusOverlay: false, dismissedBadges: new Set(), dismissedHints: new Set() }),
+    dismissBadge: (id: string) =>
+      set((s) => ({ dismissedBadges: new Set([...s.dismissedBadges, id]) })),
+    dismissHint: (id: string) =>
+      set((s) => ({ dismissedHints: new Set([...s.dismissedHints, id]) })),
+    resetAll: () =>
+      set({ hasSeenFocusOverlay: false, dismissedBadges: new Set(), dismissedHints: new Set() }),
     restoreOnboardingState: async () => {},
   }));
   return { useOnboardingStore: store };

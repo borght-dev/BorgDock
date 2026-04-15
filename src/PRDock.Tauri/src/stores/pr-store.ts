@@ -1,13 +1,20 @@
 import { create } from 'zustand';
 import {
   computePriorityScores,
-  sortByPriority,
   type PriorityScore,
+  sortByPriority,
 } from '@/services/priority-scoring';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
 import type { PullRequestWithChecks } from '@/types';
 
-export type PrFilter = 'all' | 'mine' | 'failing' | 'ready' | 'reviewing' | 'needsReview' | 'closed';
+export type PrFilter =
+  | 'all'
+  | 'mine'
+  | 'failing'
+  | 'ready'
+  | 'reviewing'
+  | 'needsReview'
+  | 'closed';
 export type SortBy = 'updated' | 'created' | 'title';
 
 interface RateLimit {
@@ -107,9 +114,7 @@ function isReviewing(pr: PullRequestWithChecks): boolean {
 
 function needsReviewFrom(pr: PullRequestWithChecks, username: string): boolean {
   if (!username) return false;
-  return pr.pullRequest.requestedReviewers.some(
-    (r) => r.toLowerCase() === username.toLowerCase(),
-  );
+  return pr.pullRequest.requestedReviewers.some((r) => r.toLowerCase() === username.toLowerCase());
 }
 
 function applyFilter(
@@ -200,19 +205,32 @@ function prKey(pr: { repoOwner: string; repoName: string; number: number }): str
   return `${pr.repoOwner}/${pr.repoName}#${pr.number}`;
 }
 
-function reviewKey(pr: { repoOwner: string; repoName: string; number: number }, reviewer: string): string {
+function reviewKey(
+  pr: { repoOwner: string; repoName: string; number: number },
+  reviewer: string,
+): string {
   return `${prKey(pr)}:${reviewer.toLowerCase()}`;
 }
 
-function makeCacheKey(prs: PullRequestWithChecks[], username: string, timestamps: Record<string, string>): string {
-  const prFingerprint = prs.map(p =>
-    `${p.pullRequest.number}:${p.overallStatus}:${p.pullRequest.reviewStatus}`
-  ).join(',');
+function makeCacheKey(
+  prs: PullRequestWithChecks[],
+  username: string,
+  timestamps: Record<string, string>,
+): string {
+  const prFingerprint = prs
+    .map((p) => `${p.pullRequest.number}:${p.overallStatus}:${p.pullRequest.reviewStatus}`)
+    .join(',');
   const tsKeys = Object.keys(timestamps).sort().join(',');
   return `${prFingerprint}|${username}|${tsKeys}`;
 }
 
-function makeViewCacheKey(dataCacheKey: string, filter: PrFilter, searchQuery: string, sortBy: SortBy, closedCount: number): string {
+function makeViewCacheKey(
+  dataCacheKey: string,
+  filter: PrFilter,
+  searchQuery: string,
+  sortBy: SortBy,
+  closedCount: number,
+): string {
   return `${dataCacheKey}|${filter}|${searchQuery}|${sortBy}|${closedCount}`;
 }
 
@@ -246,8 +264,15 @@ export const usePrStore = create<PrState>()((set, get) => ({
   filteredPrs: () => {
     const state = get();
     const { pullRequests, closedPullRequests, filter, searchQuery, sortBy, username } = state;
-    const viewKey = makeViewCacheKey(state._cacheKey, filter, searchQuery, sortBy, closedPullRequests.length);
-    if (state._cachedFilteredPrs && state._viewCacheKey === viewKey) return state._cachedFilteredPrs;
+    const viewKey = makeViewCacheKey(
+      state._cacheKey,
+      filter,
+      searchQuery,
+      sortBy,
+      closedPullRequests.length,
+    );
+    if (state._cachedFilteredPrs && state._viewCacheKey === viewKey)
+      return state._cachedFilteredPrs;
     const filtered = applyFilter(pullRequests, closedPullRequests, filter, username);
     const searched = filtered.filter((pr) => matchesSearch(pr, searchQuery));
     const result = sortPrs(searched, sortBy, username);
@@ -388,14 +413,40 @@ export const usePrStore = create<PrState>()((set, get) => ({
       _viewCacheKey: '',
     });
   },
-  setClosedPullRequests: (prs) => set({ closedPullRequests: prs, _cachedCounts: null, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
-  setFilter: (filter) => set({ filter, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
-  setSearchQuery: (query) => set({ searchQuery: query, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
-  setSortBy: (sort) => set({ sortBy: sort, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
+  setClosedPullRequests: (prs) =>
+    set({
+      closedPullRequests: prs,
+      _cachedCounts: null,
+      _cachedFilteredPrs: null,
+      _cachedGroupedByRepo: null,
+      _viewCacheKey: '',
+    }),
+  setFilter: (filter) =>
+    set({ filter, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
+  setSearchQuery: (query) =>
+    set({
+      searchQuery: query,
+      _cachedFilteredPrs: null,
+      _cachedGroupedByRepo: null,
+      _viewCacheKey: '',
+    }),
+  setSortBy: (sort) =>
+    set({ sortBy: sort, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
   setUsername: (username) => {
     const state = get();
     const newKey = makeCacheKey(state.pullRequests, username, state.reviewRequestTimestamps);
-    set({ username, _cacheKey: newKey, _cachedPriorityScores: null, _cachedTeamReviewLoad: null, _cachedCounts: null, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _cachedNeedsMyReview: null, _cachedFocusPrs: null, _viewCacheKey: '' });
+    set({
+      username,
+      _cacheKey: newKey,
+      _cachedPriorityScores: null,
+      _cachedTeamReviewLoad: null,
+      _cachedCounts: null,
+      _cachedFilteredPrs: null,
+      _cachedGroupedByRepo: null,
+      _cachedNeedsMyReview: null,
+      _cachedFocusPrs: null,
+      _viewCacheKey: '',
+    });
   },
   setPollingState: (isPolling, lastPollTime) =>
     set({ isPolling, ...(lastPollTime ? { lastPollTime } : {}) }),

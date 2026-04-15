@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
+import { invoke } from '@tauri-apps/api/core';
+import { useEffect, useRef } from 'react';
 import { RELEASES } from '@/generated/changelog';
-import { semverGt, semverLte } from '@/utils/semver';
-import { useWhatsNewStore } from '@/stores/whats-new-store';
 import { createLogger } from '@/services/logger';
+import { useWhatsNewStore } from '@/stores/whats-new-store';
+import { semverGt, semverLte } from '@/utils/semver';
 
 const log = createLogger('useWhatsNew');
 

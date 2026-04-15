@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { DiffToolbar } from '../DiffToolbar';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiffViewMode, FileStatusFilter, PullRequestCommit } from '@/types';
+import { DiffToolbar } from '../DiffToolbar';
 
 function makeCommit(overrides: Partial<PullRequestCommit> = {}): PullRequestCommit {
   return {
@@ -186,7 +186,7 @@ describe('DiffToolbar', () => {
     const commits = [makeCommit({ sha: 'cccc1234567890', message: longMsg })];
     render(<DiffToolbar {...makeProps({ commits })} />);
     // Message should be sliced to 50 chars
-    const option = screen.getByText(new RegExp('A{50}'));
+    const option = screen.getByText(/A{50}/);
     expect(option).toBeDefined();
   });
 });

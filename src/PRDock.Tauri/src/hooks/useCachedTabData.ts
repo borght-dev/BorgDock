@@ -55,8 +55,7 @@ export function useCachedTabData<T>(
         // Check staleness: PR updated after cache, or cache older than threshold
         const cachedAtMs = parseInt(cached.cachedAt, 10) * 1000;
         const isStale =
-          cached.prUpdatedAt !== prUpdatedAt ||
-          Date.now() - cachedAtMs > STALE_THRESHOLD_MS;
+          cached.prUpdatedAt !== prUpdatedAt || Date.now() - cachedAtMs > STALE_THRESHOLD_MS;
 
         if (!isStale) {
           log.debug('cache fresh — skipping API fetch', { dataType, prNumber });

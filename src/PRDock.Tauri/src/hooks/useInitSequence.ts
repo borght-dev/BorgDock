@@ -13,11 +13,7 @@ import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 const log = createLogger('init');
 const FETCH_PRS_TIMEOUT_MS = 20_000;
 
-async function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  timeoutMessage: string,
-): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -123,8 +119,7 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
           log.debug('auth cancelled during error path', { runId });
           return;
         }
-        const message =
-          err instanceof Error ? err.message : 'GitHub authentication failed';
+        const message = err instanceof Error ? err.message : 'GitHub authentication failed';
         log.error('step=auth failed', err, {
           durationMs: Math.round(performance.now() - authStart),
         });
@@ -186,10 +181,8 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
       const apiFetch = async () => {
         client.markPollStart();
         for (const repo of enabledRepos) {
-          const prs = await log.time(
-            `getOpenPRs ${repo.owner}/${repo.name}`,
-            () =>
-              getOpenPRs(client, repo.owner, repo.name, { hydrateDetails: false }),
+          const prs = await log.time(`getOpenPRs ${repo.owner}/${repo.name}`, () =>
+            getOpenPRs(client, repo.owner, repo.name, { hydrateDetails: false }),
           );
           log.debug('fetched PRs for repo', {
             repo: `${repo.owner}/${repo.name}`,
@@ -231,8 +224,7 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
           });
         } catch (err) {
           if (cancelled()) return;
-          const message =
-            err instanceof Error ? err.message : 'Failed to fetch pull requests';
+          const message = err instanceof Error ? err.message : 'Failed to fetch pull requests';
           log.error('step=fetch-prs failed', err, {
             durationMs: Math.round(performance.now() - fetchStart),
             collectedSoFar: rawPrs.length,

@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ReviewCommentCard } from '../ReviewCommentCard';
+import { describe, expect, it, vi } from 'vitest';
 import type { ClaudeReviewComment } from '@/types';
+import { ReviewCommentCard } from '../ReviewCommentCard';
 
 // Mock react-markdown since it can cause issues in jsdom
 vi.mock('react-markdown', () => ({
@@ -29,11 +29,7 @@ describe('ReviewCommentCard', () => {
   });
 
   it('renders file path when present', () => {
-    render(
-      <ReviewCommentCard
-        comment={makeComment({ filePath: 'src/app.ts', lineNumber: 42 })}
-      />,
-    );
+    render(<ReviewCommentCard comment={makeComment({ filePath: 'src/app.ts', lineNumber: 42 })} />);
     expect(screen.getByText('src/app.ts:42')).toBeDefined();
   });
 
@@ -53,9 +49,7 @@ describe('ReviewCommentCard', () => {
     // No file path element should exist
     const codeElements = container.querySelectorAll('p[class*="font-"]');
     // The file path <p> should not be present when filePath is undefined
-    const filePathTexts = Array.from(codeElements).filter((el) =>
-      el.textContent?.includes('.ts'),
-    );
+    const filePathTexts = Array.from(codeElements).filter((el) => el.textContent?.includes('.ts'));
     expect(filePathTexts).toHaveLength(0);
   });
 

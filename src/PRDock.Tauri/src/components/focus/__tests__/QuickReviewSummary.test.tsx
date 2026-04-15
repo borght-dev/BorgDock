@@ -46,9 +46,7 @@ describe('QuickReviewSummary', () => {
 
   it('renders commented count when present', () => {
     const pr1 = makePr();
-    const decisions = new Map<number, ReviewDecision>([
-      [pr1.pullRequest.number, 'commented'],
-    ]);
+    const decisions = new Map<number, ReviewDecision>([[pr1.pullRequest.number, 'commented']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     // "Commented" appears in the stats section and the PR list
     expect(screen.getAllByText('Commented').length).toBeGreaterThanOrEqual(1);
@@ -56,9 +54,7 @@ describe('QuickReviewSummary', () => {
 
   it('renders skipped count when present', () => {
     const pr1 = makePr();
-    const decisions = new Map<number, ReviewDecision>([
-      [pr1.pullRequest.number, 'skipped'],
-    ]);
+    const decisions = new Map<number, ReviewDecision>([[pr1.pullRequest.number, 'skipped']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     // "Skipped" appears in the stats section and the PR list
     expect(screen.getAllByText('Skipped').length).toBeGreaterThanOrEqual(1);
@@ -66,9 +62,7 @@ describe('QuickReviewSummary', () => {
 
   it('does not render zero-count decision categories in stats', () => {
     const pr1 = makePr();
-    const decisions = new Map<number, ReviewDecision>([
-      [pr1.pullRequest.number, 'approved'],
-    ]);
+    const decisions = new Map<number, ReviewDecision>([[pr1.pullRequest.number, 'approved']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     expect(screen.queryByText('Commented')).toBeNull();
     expect(screen.queryByText('Skipped')).toBeNull();

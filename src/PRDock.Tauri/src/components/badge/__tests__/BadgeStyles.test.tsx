@@ -1,7 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { badgeStyleMap, GlassCapsule, MinimalNotch, FloatingIsland, LiquidMorph, SpectralBar } from '../BadgeStyles';
+import { describe, expect, it, vi } from 'vitest';
 import type { BadgeStyleProps } from '../BadgeStyles';
+import {
+  badgeStyleMap,
+  FloatingIsland,
+  GlassCapsule,
+  LiquidMorph,
+  MinimalNotch,
+  SpectralBar,
+} from '../BadgeStyles';
 
 // Mock getCurrentWindow for dragging
 vi.mock('@tauri-apps/api/window', () => ({
@@ -23,7 +30,6 @@ const makeProps = (overrides: Partial<BadgeStyleProps> = {}): BadgeStyleProps =>
 });
 
 describe('BadgeStyles', () => {
-
   describe('badgeStyleMap', () => {
     it('contains all 5 badge style variants', () => {
       expect(Object.keys(badgeStyleMap)).toEqual([
@@ -71,9 +77,7 @@ describe('BadgeStyles', () => {
     it('shows X icon when failing (red status)', () => {
       const { container } = render(<GlassCapsule {...makeProps({ statusColor: 'red' })} />);
       const paths = container.querySelectorAll('path');
-      const xPath = Array.from(paths).find((p) =>
-        p.getAttribute('d')?.includes('M4 4L12 12'),
-      );
+      const xPath = Array.from(paths).find((p) => p.getAttribute('d')?.includes('M4 4L12 12'));
       expect(xPath).toBeDefined();
     });
 

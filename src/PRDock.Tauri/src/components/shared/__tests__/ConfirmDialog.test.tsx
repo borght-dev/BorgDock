@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConfirmDialog } from '../ConfirmDialog';
 
@@ -19,9 +19,7 @@ describe('ConfirmDialog', () => {
   });
 
   it('renders nothing when isOpen is false', () => {
-    const { container } = render(
-      <ConfirmDialog {...defaultProps} isOpen={false} />,
-    );
+    const { container } = render(<ConfirmDialog {...defaultProps} isOpen={false} />);
     expect(container.innerHTML).toBe('');
   });
 
@@ -39,11 +37,7 @@ describe('ConfirmDialog', () => {
 
   it('uses custom button labels', () => {
     render(
-      <ConfirmDialog
-        {...defaultProps}
-        confirmLabel="Yes, delete"
-        cancelLabel="No, keep it"
-      />,
+      <ConfirmDialog {...defaultProps} confirmLabel="Yes, delete" cancelLabel="No, keep it" />,
     );
     expect(screen.getByText('Yes, delete')).toBeTruthy();
     expect(screen.getByText('No, keep it')).toBeTruthy();

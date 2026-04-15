@@ -43,9 +43,7 @@ export function StatusBar() {
               className="inline-block h-1.5 w-1.5 rounded-full"
               style={{ background: 'var(--color-status-red)' }}
             />
-            <span style={{ color: 'var(--color-status-red)' }}>
-              {counts.failing} failing
-            </span>
+            <span style={{ color: 'var(--color-status-red)' }}>{counts.failing} failing</span>
           </span>
         )}
         {counts.ready > 0 && (
@@ -54,9 +52,7 @@ export function StatusBar() {
               className="inline-block h-1.5 w-1.5 rounded-full"
               style={{ background: 'var(--color-status-green)' }}
             />
-            <span style={{ color: 'var(--color-status-green)' }}>
-              {counts.ready} ready
-            </span>
+            <span style={{ color: 'var(--color-status-green)' }}>{counts.ready} ready</span>
           </span>
         )}
       </div>

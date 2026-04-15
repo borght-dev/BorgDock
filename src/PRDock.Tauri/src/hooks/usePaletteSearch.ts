@@ -203,10 +203,7 @@ export function usePaletteSearch() {
   }, [workingOnItems, assignedToMeItems, recentItems]);
 
   // Flat list for keyboard navigation in browse mode
-  const browseFlat = useMemo(
-    () => browseSections.flatMap((s) => s.items),
-    [browseSections],
-  );
+  const browseFlat = useMemo(() => browseSections.flatMap((s) => s.items), [browseSections]);
 
   const navItems = isSearchMode ? searchResults : browseFlat;
 

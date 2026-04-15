@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RepoStep } from '../RepoStep';
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -28,7 +28,9 @@ describe('RepoStep', () => {
   it('renders the heading and description', () => {
     render(<RepoStep {...defaultProps} />);
     expect(screen.getByText('Select Repositories')).toBeTruthy();
-    expect(screen.getByText('Add repos by path or owner/name, or select from discovered repos')).toBeTruthy();
+    expect(
+      screen.getByText('Add repos by path or owner/name, or select from discovered repos'),
+    ).toBeTruthy();
   });
 
   it('renders the manual add input and button', () => {

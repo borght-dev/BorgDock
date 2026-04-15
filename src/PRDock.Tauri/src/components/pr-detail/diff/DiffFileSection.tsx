@@ -1,9 +1,9 @@
-import { useMemo, useState, forwardRef } from 'react';
-import type { DiffFile, DiffViewMode } from '@/types';
-import { parsePatch } from '@/services/diff-parser';
+import { forwardRef, useMemo, useState } from 'react';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
-import { UnifiedDiffView } from './UnifiedDiffView';
+import { parsePatch } from '@/services/diff-parser';
+import type { DiffFile, DiffViewMode } from '@/types';
 import { SplitDiffView } from './SplitDiffView';
+import { UnifiedDiffView } from './UnifiedDiffView';
 
 interface DiffFileSectionProps {
   file: DiffFile;
@@ -28,11 +28,16 @@ function statusBadgeColor(status: string): string {
 
 function statusLabel(status: string): string {
   switch (status) {
-    case 'added': return 'A';
-    case 'removed': return 'D';
-    case 'renamed': return 'R';
-    case 'copied': return 'C';
-    default: return 'M';
+    case 'added':
+      return 'A';
+    case 'removed':
+      return 'D';
+    case 'renamed':
+      return 'R';
+    case 'copied':
+      return 'C';
+    default:
+      return 'M';
   }
 }
 
@@ -53,11 +58,18 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
         : file.filename;
 
     return (
-      <div ref={ref} data-filename={file.filename} className="border-b border-[var(--color-diff-border)]">
+      <div
+        ref={ref}
+        data-filename={file.filename}
+        className="border-b border-[var(--color-diff-border)]"
+      >
         {/* Sticky file header */}
         <div
           className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)]"
-          style={{ backgroundColor: 'var(--color-diff-file-header-bg)', backdropFilter: 'blur(8px)' }}
+          style={{
+            backgroundColor: 'var(--color-diff-file-header-bg)',
+            backdropFilter: 'blur(8px)',
+          }}
         >
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -69,15 +81,27 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
               height="12"
               viewBox="0 0 16 16"
               fill="currentColor"
-              style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}
+              style={{
+                transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                transition: 'transform 150ms',
+              }}
             >
-              <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M4 6l4 4 4-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
 
           <span
             className="shrink-0 text-[9px] font-bold px-1 rounded"
-            style={{ color: statusBadgeColor(file.status), backgroundColor: `color-mix(in srgb, ${statusBadgeColor(file.status)} 10%, transparent)` }}
+            style={{
+              color: statusBadgeColor(file.status),
+              backgroundColor: `color-mix(in srgb, ${statusBadgeColor(file.status)} 10%, transparent)`,
+            }}
           >
             {statusLabel(file.status)}
           </span>
@@ -104,7 +128,14 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
             className="shrink-0 p-0.5 rounded text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
             title="Copy file path"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <rect x="5" y="5" width="8" height="8" rx="1" />
               <path d="M3 11V3h8" />
             </svg>
@@ -116,7 +147,15 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
               className="shrink-0 p-0.5 rounded text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
               title="Open in GitHub"
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
                 <path d="M9 2h5v5" />
                 <path d="m14 2-7 7" />
                 <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />

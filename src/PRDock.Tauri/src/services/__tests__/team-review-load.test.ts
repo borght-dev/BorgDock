@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computeTeamReviewLoad } from '@/services/team-review-load';
-import type { PullRequestWithChecks, PullRequest } from '@/types';
+import type { PullRequest, PullRequestWithChecks } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -64,9 +64,7 @@ describe('computeTeamReviewLoad', () => {
   });
 
   it('returns empty array when no PRs have requested reviewers', () => {
-    const prs = [
-      makePrWithChecks({ number: 1, requestedReviewers: [] }),
-    ];
+    const prs = [makePrWithChecks({ number: 1, requestedReviewers: [] })];
     expect(computeTeamReviewLoad(prs, {})).toEqual([]);
   });
 
@@ -178,9 +176,7 @@ describe('computeTeamReviewLoad', () => {
   });
 
   it('avgWaitHours is 0 when no timestamps exist', () => {
-    const prs = [
-      makePrWithChecks({ number: 1, requestedReviewers: ['alice'] }),
-    ];
+    const prs = [makePrWithChecks({ number: 1, requestedReviewers: ['alice'] })];
     const result = computeTeamReviewLoad(prs, {});
     expect(result[0].avgWaitHours).toBe(0);
   });

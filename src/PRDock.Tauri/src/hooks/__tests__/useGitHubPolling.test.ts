@@ -1,5 +1,5 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import type { AppSettings, PullRequest } from '@/types';
 
 // --- Mock all external dependencies ---
@@ -413,8 +413,20 @@ describe('useGitHubPolling', () => {
   it('skips repos that are not enabled', async () => {
     const settings = makeSettings({
       repos: [
-        { owner: 'test', name: 'repo1', enabled: true, worktreeBasePath: '', worktreeSubfolder: '' },
-        { owner: 'test', name: 'repo2', enabled: false, worktreeBasePath: '', worktreeSubfolder: '' },
+        {
+          owner: 'test',
+          name: 'repo1',
+          enabled: true,
+          worktreeBasePath: '',
+          worktreeSubfolder: '',
+        },
+        {
+          owner: 'test',
+          name: 'repo2',
+          enabled: false,
+          worktreeBasePath: '',
+          worktreeSubfolder: '',
+        },
       ],
     });
 
@@ -435,7 +447,13 @@ describe('useGitHubPolling', () => {
   it('returns empty when no repos are enabled', async () => {
     const settings = makeSettings({
       repos: [
-        { owner: 'test', name: 'repo', enabled: false, worktreeBasePath: '', worktreeSubfolder: '' },
+        {
+          owner: 'test',
+          name: 'repo',
+          enabled: false,
+          worktreeBasePath: '',
+          worktreeSubfolder: '',
+        },
       ],
     });
 
@@ -474,11 +492,7 @@ describe('useGitHubPolling', () => {
     renderHook(() => useGitHubPolling(makeSettings()));
 
     await vi.waitFor(() => {
-      expect(mockGetClosedPRs).toHaveBeenCalledWith(
-        mockClientInstance,
-        'test',
-        'repo',
-      );
+      expect(mockGetClosedPRs).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
     });
 
     await vi.waitFor(() => {

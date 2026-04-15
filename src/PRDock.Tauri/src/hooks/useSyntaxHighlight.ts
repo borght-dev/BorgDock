@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { DiffHunk, HighlightSpan } from '@/types';
 import { highlightLines } from '@/services/syntax-highlighter';
+import type { DiffHunk, HighlightSpan } from '@/types';
 
 export function useSyntaxHighlight(
   filename: string,
@@ -31,17 +31,21 @@ export function useSyntaxHighlight(
 
     if (allLines.length === 0) return;
 
-    highlightLines(filename, allLines).then((result) => {
-      if (cancelled || !result) return;
+    highlightLines(filename, allLines)
+      .then((result) => {
+        if (cancelled || !result) return;
 
-      // Remap source line indices back to diff line indices
-      const remapped = new Map<number, HighlightSpan[]>();
-      for (const [diffIdx, sourceIdx] of lineIndexMap) {
-        const spans = result.get(sourceIdx);
-        if (spans) remapped.set(diffIdx, spans);
-      }
-      setHighlights(remapped);
-    }).catch(() => { /* syntax highlighting is best-effort */ });
+        // Remap source line indices back to diff line indices
+        const remapped = new Map<number, HighlightSpan[]>();
+        for (const [diffIdx, sourceIdx] of lineIndexMap) {
+          const spans = result.get(sourceIdx);
+          if (spans) remapped.set(diffIdx, spans);
+        }
+        setHighlights(remapped);
+      })
+      .catch(() => {
+        /* syntax highlighting is best-effort */
+      });
 
     return () => {
       cancelled = true;

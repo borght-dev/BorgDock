@@ -83,5 +83,4 @@ describe('getGitHubToken', () => {
 
     await expect(getGitHubToken('   ')).rejects.toThrow('No GitHub token available');
   });
-
 });

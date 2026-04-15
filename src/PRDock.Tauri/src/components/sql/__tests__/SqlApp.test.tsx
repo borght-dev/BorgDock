@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqlApp } from '../SqlApp';
 
 const mockClose = vi.fn(() => Promise.resolve());
@@ -69,7 +69,10 @@ describe('SqlApp', () => {
           resultSets: [
             {
               columns: ['id', 'name'],
-              rows: [['1', 'Alice'], ['2', 'Bob']],
+              rows: [
+                ['1', 'Alice'],
+                ['2', 'Bob'],
+              ],
               rowCount: 2,
               truncated: false,
             },
@@ -223,7 +226,16 @@ describe('SqlApp', () => {
       if (cmd === 'load_settings') {
         return Promise.resolve({
           sql: {
-            connections: [{ name: 'DevDB', server: 'localhost', port: 1433, database: 'test', authentication: 'sql', trustServerCertificate: true }],
+            connections: [
+              {
+                name: 'DevDB',
+                server: 'localhost',
+                port: 1433,
+                database: 'test',
+                authentication: 'sql',
+                trustServerCertificate: true,
+              },
+            ],
             lastUsedConnection: 'DevDB',
           },
           ui: { theme: 'system' },
@@ -474,7 +486,16 @@ describe('SqlApp', () => {
       if (cmd === 'load_settings') {
         return Promise.resolve({
           sql: {
-            connections: [{ name: 'DevDB', server: 'localhost', port: 1433, database: 'test', authentication: 'sql', trustServerCertificate: true }],
+            connections: [
+              {
+                name: 'DevDB',
+                server: 'localhost',
+                port: 1433,
+                database: 'test',
+                authentication: 'sql',
+                trustServerCertificate: true,
+              },
+            ],
             lastUsedConnection: 'DevDB',
           },
           ui: { theme: 'system' },
@@ -568,8 +589,22 @@ describe('SqlApp', () => {
         return Promise.resolve({
           sql: {
             connections: [
-              { name: 'DevDB', server: 'localhost', port: 1433, database: 'test', authentication: 'sql', trustServerCertificate: true },
-              { name: 'ProdDB', server: 'prod', port: 1433, database: 'prod', authentication: 'sql', trustServerCertificate: true },
+              {
+                name: 'DevDB',
+                server: 'localhost',
+                port: 1433,
+                database: 'test',
+                authentication: 'sql',
+                trustServerCertificate: true,
+              },
+              {
+                name: 'ProdDB',
+                server: 'prod',
+                port: 1433,
+                database: 'prod',
+                authentication: 'sql',
+                trustServerCertificate: true,
+              },
             ],
             lastUsedConnection: 'DevDB',
           },

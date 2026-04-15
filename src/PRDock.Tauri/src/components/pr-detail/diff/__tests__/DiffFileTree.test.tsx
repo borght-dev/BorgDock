@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { DiffFileTree } from '../DiffFileTree';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiffFile, FileStatusFilter } from '@/types';
+import { DiffFileTree } from '../DiffFileTree';
 
 function makeFile(overrides: Partial<DiffFile> = {}): DiffFile {
   return {
@@ -75,39 +75,65 @@ describe('DiffFileTree', () => {
   });
 
   it('shows status badge M for modified files', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'modified' })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'modified' })] })}
+      />,
+    );
     expect(screen.getByText('M')).toBeDefined();
   });
 
   it('shows status badge A for added files', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'added' })] })} />);
+    render(
+      <DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'added' })] })} />,
+    );
     expect(screen.getByText('A')).toBeDefined();
   });
 
   it('shows status badge D for removed files', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'removed' })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'removed' })] })}
+      />,
+    );
     expect(screen.getByText('D')).toBeDefined();
   });
 
   it('shows status badge R for renamed files', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'renamed' })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'renamed' })] })}
+      />,
+    );
     expect(screen.getByText('R')).toBeDefined();
   });
 
   it('shows status badge C for copied files', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'copied' })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', status: 'copied' })] })}
+      />,
+    );
     expect(screen.getByText('C')).toBeDefined();
   });
 
   it('shows additions and deletions per file', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', additions: 7, deletions: 3 })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', additions: 7, deletions: 3 })] })}
+      />,
+    );
     // Both file row and summary show the same numbers, so expect 2 of each
     expect(screen.getAllByText('+7').length).toBe(2);
     expect(screen.getAllByText('-3').length).toBe(2);
   });
 
   it('hides additions when zero', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', additions: 0, deletions: 3 })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', additions: 0, deletions: 3 })] })}
+      />,
+    );
     // +0 should not appear in the file row
     const greens = screen.queryAllByText('+0');
     expect(greens.length).toBe(1); // only in summary
@@ -115,7 +141,11 @@ describe('DiffFileTree', () => {
   });
 
   it('hides deletions when zero', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'a.ts', additions: 5, deletions: 0 })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'a.ts', additions: 5, deletions: 0 })] })}
+      />,
+    );
     expect(screen.getAllByText('+5').length).toBe(2);
     // -0 should not appear in the file row
     const reds = screen.queryAllByText('-0');
@@ -164,7 +194,11 @@ describe('DiffFileTree', () => {
   });
 
   it('shows directory path in flat mode', () => {
-    render(<DiffFileTree {...makeProps({ files: [makeFile({ filename: 'src/components/App.tsx' })] })} />);
+    render(
+      <DiffFileTree
+        {...makeProps({ files: [makeFile({ filename: 'src/components/App.tsx' })] })}
+      />,
+    );
     expect(screen.getByText('src/components')).toBeDefined();
   });
 

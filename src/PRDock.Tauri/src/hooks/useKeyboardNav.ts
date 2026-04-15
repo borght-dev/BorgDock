@@ -103,7 +103,9 @@ export function useKeyboardNav() {
           const selected = focusPrs[focusedIndexRef.current];
           if (!selected) break;
           const p = selected.pullRequest;
-          const queueMerge = (window as unknown as Record<string, unknown>).__prdockQueueMerge as QueueMergeFn | undefined;
+          const queueMerge = (window as unknown as Record<string, unknown>).__prdockQueueMerge as
+            | QueueMergeFn
+            | undefined;
           if (queueMerge) {
             queueMerge(p.repoOwner, p.repoName, p.number);
           }

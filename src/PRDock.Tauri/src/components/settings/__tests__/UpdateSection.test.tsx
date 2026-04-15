@@ -58,18 +58,14 @@ describe('UpdateSection', () => {
     render(<UpdateSection updates={makeUpdates()} onChange={onChange} />);
     const row = screen.getByText('Auto-check for updates').closest('div')!;
     fireEvent.click(row.querySelector('button')!);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ autoCheckEnabled: false }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ autoCheckEnabled: false }));
   });
 
   it('toggles auto-download off', () => {
     render(<UpdateSection updates={makeUpdates()} onChange={onChange} />);
     const row = screen.getByText('Auto-download updates').closest('div')!;
     fireEvent.click(row.querySelector('button')!);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ autoDownload: false }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ autoDownload: false }));
   });
 
   it('renders Check for Updates button', () => {

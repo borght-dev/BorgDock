@@ -7,12 +7,12 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 import {
-  loadTabData,
-  saveTabData,
   loadCachedEtags,
-  saveCachedEtags,
   loadCachedPRs,
+  loadTabData,
+  saveCachedEtags,
   saveCachedPRs,
+  saveTabData,
 } from '../cache';
 
 describe('cache service', () => {

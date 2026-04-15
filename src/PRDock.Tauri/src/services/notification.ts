@@ -2,7 +2,13 @@ import type { ReviewSlaTier } from '@/services/review-sla';
 import type { InAppNotification, PullRequest, PullRequestWithChecks } from '@/types';
 
 export interface StateTransition {
-  type: 'checkFailed' | 'allChecksPassed' | 'reviewChangesRequested' | 'reviewRequested' | 'merged' | 'becameMergeable';
+  type:
+    | 'checkFailed'
+    | 'allChecksPassed'
+    | 'reviewChangesRequested'
+    | 'reviewRequested'
+    | 'merged'
+    | 'becameMergeable';
   pr: PullRequest;
   detail?: string;
 }
@@ -98,9 +104,7 @@ export function detectStateTransitions(
       const wasPending = prev.pullRequest.requestedReviewers.some(
         (r) => r.toLowerCase() === uLower,
       );
-      const isPending = cur.pullRequest.requestedReviewers.some(
-        (r) => r.toLowerCase() === uLower,
-      );
+      const isPending = cur.pullRequest.requestedReviewers.some((r) => r.toLowerCase() === uLower);
       if (!wasPending && isPending) {
         transitions.push({
           type: 'reviewRequested',
@@ -223,9 +227,7 @@ export function buildReviewNudgeNotification(
     launchUrl: `${pr.htmlUrl}/files`,
     prNumber: pr.number,
     repoFullName: `${pr.repoOwner}/${pr.repoName}`,
-    actions: [
-      { label: 'Start Review', url: `${pr.htmlUrl}/files` },
-    ],
+    actions: [{ label: 'Start Review', url: `${pr.htmlUrl}/files` }],
   };
 }
 
@@ -238,7 +240,10 @@ export function buildBecameMergeableNotification(pr: PullRequest): InAppNotifica
     prNumber: pr.number,
     repoFullName: `${pr.repoOwner}/${pr.repoName}`,
     actions: [
-      { label: 'Merge', url: `prdock://merge/${encodeURIComponent(pr.repoOwner)}/${encodeURIComponent(pr.repoName)}/${pr.number}` },
+      {
+        label: 'Merge',
+        url: `prdock://merge/${encodeURIComponent(pr.repoOwner)}/${encodeURIComponent(pr.repoName)}/${pr.number}`,
+      },
       { label: 'Open in GitHub', url: pr.htmlUrl },
     ],
   };

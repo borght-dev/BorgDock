@@ -10,9 +10,8 @@ export function buildFixPrompt(
   repoSettings: RepoSettings,
 ): string {
   const p = pr.pullRequest;
-  const checksLabel = failedCheckNames.length === 1
-    ? failedCheckNames[0]
-    : `${failedCheckNames.length} checks`;
+  const checksLabel =
+    failedCheckNames.length === 1 ? failedCheckNames[0] : `${failedCheckNames.length} checks`;
   let prompt = `# Fix Failing ${failedCheckNames.length === 1 ? 'Check' : 'Checks'}: ${checksLabel}\n\n`;
   prompt += `## PR Context\n`;
   prompt += `- **PR:** #${p.number} ${p.title}\n`;
@@ -211,10 +210,9 @@ export async function performFixWithClaude(
   }
 
   // List worktrees to find or create one
-  const worktrees = await invoke<Array<{ path: string; branchName: string; isMainWorktree: boolean }>>(
-    'list_worktrees',
-    { basePath: repoConfig.worktreeBasePath },
-  );
+  const worktrees = await invoke<
+    Array<{ path: string; branchName: string; isMainWorktree: boolean }>
+  >('list_worktrees', { basePath: repoConfig.worktreeBasePath });
   const existing = worktrees.find(
     (w) => w.branchName === branch || w.branchName === `refs/heads/${branch}`,
   );

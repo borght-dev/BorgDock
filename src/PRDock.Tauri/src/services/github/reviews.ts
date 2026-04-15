@@ -1,5 +1,5 @@
-import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 import { createLogger } from '@/services/logger';
+import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 import type { GitHubClient } from './client';
 
 const log = createLogger('github:reviews');
@@ -98,7 +98,12 @@ export async function getBotReviewComments(
       });
     }
   } catch (err) {
-    log.warn('failed to fetch bot PR review comments', { owner, repo, prNumber, error: String(err) });
+    log.warn('failed to fetch bot PR review comments', {
+      owner,
+      repo,
+      prNumber,
+      error: String(err),
+    });
   }
 
   // 2. Issue comments (top-level PR comments)

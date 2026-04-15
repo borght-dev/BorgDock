@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FloatingBadge } from '../FloatingBadge';
+import { describe, expect, it, vi } from 'vitest';
 import type { BadgePrItem } from '../FloatingBadge';
+import { FloatingBadge } from '../FloatingBadge';
 
 // Mock Tauri core API
 vi.mock('@tauri-apps/api/core', () => ({
@@ -111,14 +111,7 @@ describe('FloatingBadge', () => {
   it('calls onOpenPr when a PR item is clicked', () => {
     const onOpenPr = vi.fn();
     const prItem = makePrItem({ title: 'Click me' });
-    render(
-      <FloatingBadge
-        {...defaultProps}
-        myPrs={[prItem]}
-        teamPrs={[]}
-        onOpenPr={onOpenPr}
-      />,
-    );
+    render(<FloatingBadge {...defaultProps} myPrs={[prItem]} teamPrs={[]} onOpenPr={onOpenPr} />);
 
     // Expand
     const buttons = document.querySelectorAll('button');
@@ -131,11 +124,7 @@ describe('FloatingBadge', () => {
 
   it('shows checks text badge when present', () => {
     render(
-      <FloatingBadge
-        {...defaultProps}
-        myPrs={[makePrItem({ checksText: '2/3' })]}
-        teamPrs={[]}
-      />,
+      <FloatingBadge {...defaultProps} myPrs={[makePrItem({ checksText: '2/3' })]} teamPrs={[]} />,
     );
 
     // Expand
@@ -176,21 +165,13 @@ describe('FloatingBadge', () => {
   });
 
   it('uses animated dot for failing (red) status', () => {
-    const { container } = render(
-      <FloatingBadge {...defaultProps} statusColor="red" />,
-    );
+    const { container } = render(<FloatingBadge {...defaultProps} statusColor="red" />);
     const dot = container.querySelector('[style*="animation"]');
     expect(dot).toBeDefined();
   });
 
   it('collapses when chevron is clicked again', () => {
-    render(
-      <FloatingBadge
-        {...defaultProps}
-        myPrs={[makePrItem()]}
-        teamPrs={[]}
-      />,
-    );
+    render(<FloatingBadge {...defaultProps} myPrs={[makePrItem()]} teamPrs={[]} />);
 
     const buttons = document.querySelectorAll('button');
     const chevron = buttons[buttons.length - 1]!;

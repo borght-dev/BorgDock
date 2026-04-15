@@ -40,7 +40,13 @@ export async function loadTabData<T>(
     });
     return result ?? null;
   } catch (err) {
-    log.warn('loadTabData failed (returning null)', { repoOwner, repoName, prNumber, dataType, error: String(err) });
+    log.warn('loadTabData failed (returning null)', {
+      repoOwner,
+      repoName,
+      prNumber,
+      dataType,
+      error: String(err),
+    });
     return null;
   }
 }
@@ -94,10 +100,7 @@ export async function saveCachedEtags(entries: CachedEtagEntry[]): Promise<void>
 // PR list cache (wires up existing but unused commands)
 // ---------------------------------------------------------------------------
 
-export async function loadCachedPRs(
-  repoOwner: string,
-  repoName: string,
-): Promise<unknown[]> {
+export async function loadCachedPRs(repoOwner: string, repoName: string): Promise<unknown[]> {
   try {
     return await invoke<unknown[]>('cache_load_prs', { repoOwner, repoName });
   } catch (err) {

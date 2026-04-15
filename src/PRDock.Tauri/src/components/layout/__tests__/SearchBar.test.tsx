@@ -1,5 +1,5 @@
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 import { usePrStore } from '@/stores/pr-store';
 
 // Mock Tauri plugin-store (used by pr-store indirectly)
@@ -42,7 +42,9 @@ describe('SearchBar', () => {
     expect(usePrStore.getState().searchQuery).toBe('');
 
     // Advance past debounce
-    act(() => { vi.advanceTimersByTime(300); });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(usePrStore.getState().searchQuery).toBe('hello');
   });
 
@@ -51,11 +53,17 @@ describe('SearchBar', () => {
     const input = screen.getByPlaceholderText('Filter pull requests...');
 
     fireEvent.change(input, { target: { value: 'h' } });
-    act(() => { vi.advanceTimersByTime(200); });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     fireEvent.change(input, { target: { value: 'he' } });
-    act(() => { vi.advanceTimersByTime(200); });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     fireEvent.change(input, { target: { value: 'hel' } });
-    act(() => { vi.advanceTimersByTime(300); });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
 
     // Only the final value should be set
     expect(usePrStore.getState().searchQuery).toBe('hel');
@@ -77,7 +85,9 @@ describe('SearchBar', () => {
     render(<SearchBar />);
     const input = screen.getByPlaceholderText('Filter pull requests...') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'test' } });
-    act(() => { vi.advanceTimersByTime(300); });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(usePrStore.getState().searchQuery).toBe('test');
 
     fireEvent.click(screen.getByLabelText('Clear search'));
@@ -104,7 +114,9 @@ describe('SearchBar', () => {
     fireEvent.change(input, { target: { value: 'pending' } });
     unmount();
     // Should not throw or update store after unmount
-    act(() => { vi.advanceTimersByTime(300); });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(usePrStore.getState().searchQuery).toBe('');
   });
 });

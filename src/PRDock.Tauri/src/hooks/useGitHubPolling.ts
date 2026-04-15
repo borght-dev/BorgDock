@@ -144,9 +144,7 @@ export function useGitHubPolling(settings: AppSettings) {
       const enabledRepos = settingsRef.current.repos.filter((r) => r.enabled);
       for (const repo of enabledRepos) {
         const repoPrs = results.filter(
-          (r) =>
-            r.pullRequest.repoOwner === repo.owner &&
-            r.pullRequest.repoName === repo.name,
+          (r) => r.pullRequest.repoOwner === repo.owner && r.pullRequest.repoName === repo.name,
         );
         if (repoPrs.length > 0) {
           saveCachedPRs(repo.owner, repo.name, repoPrs);
@@ -165,11 +163,7 @@ export function useGitHubPolling(settings: AppSettings) {
       try {
         const closedResults: PullRequestWithChecks[] = [];
         for (const repo of settingsRef.current.repos.filter((r) => r.enabled)) {
-          const closedPrs = await getClosedPRs(
-            client,
-            repo.owner,
-            repo.name,
-          );
+          const closedPrs = await getClosedPRs(client, repo.owner, repo.name);
           for (const pr of closedPrs) {
             closedResults.push(aggregatePrWithChecks(pr, []));
           }

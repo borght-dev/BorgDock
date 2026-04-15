@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppSettings, PullRequestWithChecks } from '@/types';
 
 const mockShow = vi.fn();
@@ -76,12 +76,14 @@ function makePr(number: number): PullRequestWithChecks {
   };
 }
 
-function makeSettings(overrides: Partial<{
-  reviewNudgeEnabled: boolean;
-  reviewNudgeIntervalMinutes: number;
-  reviewNudgeEscalation: boolean;
-  username: string;
-}> = {}): AppSettings {
+function makeSettings(
+  overrides: Partial<{
+    reviewNudgeEnabled: boolean;
+    reviewNudgeIntervalMinutes: number;
+    reviewNudgeEscalation: boolean;
+    username: string;
+  }> = {},
+): AppSettings {
   return {
     setupComplete: true,
     gitHub: {
@@ -338,10 +340,9 @@ describe('useReviewNudges', () => {
   });
 
   it('clears interval when disabled', () => {
-    const { rerender } = renderHook(
-      ({ settings }) => useReviewNudges(settings),
-      { initialProps: { settings: makeSettings({ reviewNudgeEnabled: true }) } },
-    );
+    const { rerender } = renderHook(({ settings }) => useReviewNudges(settings), {
+      initialProps: { settings: makeSettings({ reviewNudgeEnabled: true }) },
+    });
 
     rerender({ settings: makeSettings({ reviewNudgeEnabled: false }) });
 

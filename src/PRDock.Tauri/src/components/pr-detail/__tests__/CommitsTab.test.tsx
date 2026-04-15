@@ -44,7 +44,12 @@ describe('CommitsTab', () => {
   it('shows loading skeleton initially', () => {
     mockGetPRCommits.mockImplementation(() => new Promise(() => {}));
     const { container } = render(
-      <CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />,
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
     );
     const pulseEls = container.querySelectorAll('.animate-pulse');
     expect(pulseEls.length).toBeGreaterThan(0);
@@ -52,7 +57,14 @@ describe('CommitsTab', () => {
 
   it('shows empty state when no commits', async () => {
     mockGetPRCommits.mockResolvedValue([]);
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('No commits found.')).toBeTruthy();
     });
@@ -62,27 +74,44 @@ describe('CommitsTab', () => {
     mockGetPRCommits.mockResolvedValue([
       makeCommit({ sha: 'abc1234', message: 'feat: add login\n\nMore details' }),
     ]);
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('feat: add login')).toBeTruthy();
     });
   });
 
   it('renders short SHA (first 7 chars)', async () => {
-    mockGetPRCommits.mockResolvedValue([
-      makeCommit({ sha: 'abc1234567890def' }),
-    ]);
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    mockGetPRCommits.mockResolvedValue([makeCommit({ sha: 'abc1234567890def' })]);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('abc1234')).toBeTruthy();
     });
   });
 
   it('renders author login', async () => {
-    mockGetPRCommits.mockResolvedValue([
-      makeCommit({ authorLogin: 'alice' }),
-    ]);
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    mockGetPRCommits.mockResolvedValue([makeCommit({ authorLogin: 'alice' })]);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText(/alice/)).toBeTruthy();
     });
@@ -94,7 +123,14 @@ describe('CommitsTab', () => {
       makeCommit({ sha: 'bbb2222', message: 'Second commit' }),
       makeCommit({ sha: 'ccc3333', message: 'Third commit' }),
     ]);
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
       expect(screen.getByText('First commit')).toBeTruthy();
       expect(screen.getByText('Second commit')).toBeTruthy();
@@ -104,7 +140,14 @@ describe('CommitsTab', () => {
 
   it('handles error gracefully', async () => {
     mockGetPRCommits.mockRejectedValue(new Error('API error'));
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     // useCachedTabData catches the error internally; component shows empty state
     await waitFor(() => {
       expect(screen.getByText('No commits found.')).toBeTruthy();
@@ -113,20 +156,29 @@ describe('CommitsTab', () => {
 
   it('passes correct params to getPRCommits', async () => {
     mockGetPRCommits.mockResolvedValue([]);
-    render(<CommitsTab prNumber={42} repoOwner="myorg" repoName="myrepo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <CommitsTab
+        prNumber={42}
+        repoOwner="myorg"
+        repoName="myrepo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     await waitFor(() => {
-      expect(mockGetPRCommits).toHaveBeenCalledWith(
-        expect.anything(),
-        'myorg',
-        'myrepo',
-        42,
-      );
+      expect(mockGetPRCommits).toHaveBeenCalledWith(expect.anything(), 'myorg', 'myrepo', 42);
     });
   });
 
   it('handles null client gracefully', async () => {
     mockGetClient.mockReturnValue(null);
-    render(<CommitsTab prNumber={1} repoOwner="owner" repoName="repo" prUpdatedAt="2024-01-01T00:00:00Z" />);
+    render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
     // fetchFn throws, useCachedTabData catches it; component shows empty state
     await waitFor(() => {
       expect(screen.getByText('No commits found.')).toBeTruthy();

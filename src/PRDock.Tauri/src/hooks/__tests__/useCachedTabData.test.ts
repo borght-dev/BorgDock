@@ -1,5 +1,5 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
 
 const mockInvoke = vi.fn();
 
@@ -106,7 +106,9 @@ describe('useCachedTabData', () => {
     // Use a deferred promise so we can observe the cached state before fetch resolves
     let resolveFetch!: (v: unknown) => void;
     const fetchFn = vi.fn().mockReturnValue(
-      new Promise((resolve) => { resolveFetch = resolve; }),
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
     );
 
     const { result } = renderHook(() =>
@@ -158,7 +160,9 @@ describe('useCachedTabData', () => {
 
     let resolveFetch!: (v: unknown) => void;
     const fetchFn = vi.fn().mockReturnValue(
-      new Promise((resolve) => { resolveFetch = resolve; }),
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
     );
 
     const { result } = renderHook(() =>
@@ -247,7 +251,9 @@ describe('useCachedTabData', () => {
 
     let rejectFetch!: (e: Error) => void;
     const fetchFn = vi.fn().mockReturnValue(
-      new Promise((_, reject) => { rejectFetch = reject; }),
+      new Promise((_, reject) => {
+        rejectFetch = reject;
+      }),
     );
 
     const { result } = renderHook(() =>
@@ -365,8 +371,11 @@ describe('useCachedTabData', () => {
     });
 
     // Verify correct dataType passed to cache
-    expect(mockInvoke).toHaveBeenCalledWith('cache_load_tab_data', expect.objectContaining({
-      dataType: 'files',
-    }));
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'cache_load_tab_data',
+      expect.objectContaining({
+        dataType: 'files',
+      }),
+    );
   });
 });

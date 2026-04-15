@@ -1,7 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef } from 'react';
-import type { DiffHunk, DiffLine, HighlightSpan, InlineChange } from '@/types';
 import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
+import type { DiffHunk, DiffLine, HighlightSpan, InlineChange } from '@/types';
 import { DiffLineContent } from './DiffLineContent';
 
 const VIRTUALIZE_THRESHOLD = 500;
@@ -32,12 +32,19 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
 
   if (allLines.length > VIRTUALIZE_THRESHOLD) {
     return (
-      <VirtualUnifiedDiff allLines={allLines} inlineMap={inlineMap} syntaxHighlights={syntaxHighlights} />
+      <VirtualUnifiedDiff
+        allLines={allLines}
+        inlineMap={inlineMap}
+        syntaxHighlights={syntaxHighlights}
+      />
     );
   }
 
   return (
-    <table className="w-full border-collapse" style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}>
+    <table
+      className="w-full border-collapse"
+      style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
+    >
       <colgroup>
         <col style={{ width: '44px' }} />
         <col style={{ width: '44px' }} />
@@ -48,7 +55,11 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
           if (line.type === 'hunk-header') {
             return (
               <tr key={i} style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)' }}>
-                <td colSpan={3} className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none" style={{ height: '28px' }}>
+                <td
+                  colSpan={3}
+                  className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none"
+                  style={{ height: '28px' }}
+                >
                   {line.content}
                 </td>
               </tr>
@@ -72,14 +83,13 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
           const prefix = line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' ';
 
           const inlineData = inlineMap.get(i);
-          const inlineChanges: InlineChange[] | undefined =
-            inlineData
-              ? line.type === 'delete'
-                ? inlineData.deleted
-                : line.type === 'add'
-                  ? inlineData.added
-                  : undefined
-              : undefined;
+          const inlineChanges: InlineChange[] | undefined = inlineData
+            ? line.type === 'delete'
+              ? inlineData.deleted
+              : line.type === 'add'
+                ? inlineData.added
+                : undefined
+            : undefined;
 
           const syntaxSpans = syntaxHighlights?.get(i);
 
@@ -98,8 +108,14 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
                 {line.newLineNumber ?? ''}
               </td>
               <td className="pl-2 whitespace-pre overflow-x-auto">
-                <span className="select-none text-[var(--color-diff-line-number)] mr-1">{prefix}</span>
-                <DiffLineContent content={line.content} inlineChanges={inlineChanges} syntaxSpans={syntaxSpans} />
+                <span className="select-none text-[var(--color-diff-line-number)] mr-1">
+                  {prefix}
+                </span>
+                <DiffLineContent
+                  content={line.content}
+                  inlineChanges={inlineChanges}
+                  syntaxSpans={syntaxSpans}
+                />
               </td>
             </tr>
           );
@@ -127,8 +143,14 @@ function VirtualUnifiedDiff({
   });
 
   return (
-    <div ref={parentRef} className="overflow-auto" style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}>
-      <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+    <div
+      ref={parentRef}
+      className="overflow-auto"
+      style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
+    >
+      <div
+        style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
+      >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const i = virtualRow.index;
           const line = allLines[i]!;
@@ -139,9 +161,18 @@ function VirtualUnifiedDiff({
                 key={i}
                 data-index={i}
                 ref={virtualizer.measureElement}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${virtualRow.start}px)` }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
               >
-                <div className="flex" style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)', height: '28px' }}>
+                <div
+                  className="flex"
+                  style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)', height: '28px' }}
+                >
                   <div className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none leading-[28px]">
                     {line.content}
                   </div>
@@ -150,11 +181,27 @@ function VirtualUnifiedDiff({
             );
           }
 
-          const bgColor = line.type === 'add' ? 'var(--color-diff-added-bg)' : line.type === 'delete' ? 'var(--color-diff-deleted-bg)' : 'var(--color-diff-context-bg)';
-          const gutterBg = line.type === 'add' ? 'var(--color-diff-added-gutter-bg)' : line.type === 'delete' ? 'var(--color-diff-deleted-gutter-bg)' : 'transparent';
+          const bgColor =
+            line.type === 'add'
+              ? 'var(--color-diff-added-bg)'
+              : line.type === 'delete'
+                ? 'var(--color-diff-deleted-bg)'
+                : 'var(--color-diff-context-bg)';
+          const gutterBg =
+            line.type === 'add'
+              ? 'var(--color-diff-added-gutter-bg)'
+              : line.type === 'delete'
+                ? 'var(--color-diff-deleted-gutter-bg)'
+                : 'transparent';
           const prefix = line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' ';
           const inlineData = inlineMap.get(i);
-          const inlineChanges = inlineData ? (line.type === 'delete' ? inlineData.deleted : line.type === 'add' ? inlineData.added : undefined) : undefined;
+          const inlineChanges = inlineData
+            ? line.type === 'delete'
+              ? inlineData.deleted
+              : line.type === 'add'
+                ? inlineData.added
+                : undefined
+            : undefined;
           const syntaxSpans = syntaxHighlights?.get(i);
 
           return (
@@ -162,18 +209,37 @@ function VirtualUnifiedDiff({
               key={i}
               data-index={i}
               ref={virtualizer.measureElement}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${virtualRow.start}px)`, backgroundColor: bgColor }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+                backgroundColor: bgColor,
+              }}
             >
               <div className="flex">
-                <div className="w-[44px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]" style={{ backgroundColor: gutterBg }}>
+                <div
+                  className="w-[44px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                  style={{ backgroundColor: gutterBg }}
+                >
                   {line.oldLineNumber ?? ''}
                 </div>
-                <div className="w-[44px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]" style={{ backgroundColor: gutterBg }}>
+                <div
+                  className="w-[44px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                  style={{ backgroundColor: gutterBg }}
+                >
                   {line.newLineNumber ?? ''}
                 </div>
                 <div className="pl-2 whitespace-pre overflow-x-auto flex-1">
-                  <span className="select-none text-[var(--color-diff-line-number)] mr-1">{prefix}</span>
-                  <DiffLineContent content={line.content} inlineChanges={inlineChanges} syntaxSpans={syntaxSpans} />
+                  <span className="select-none text-[var(--color-diff-line-number)] mr-1">
+                    {prefix}
+                  </span>
+                  <DiffLineContent
+                    content={line.content}
+                    inlineChanges={inlineChanges}
+                    syntaxSpans={syntaxSpans}
+                  />
                 </div>
               </div>
             </div>

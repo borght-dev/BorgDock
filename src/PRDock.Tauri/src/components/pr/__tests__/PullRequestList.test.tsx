@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
-import { PullRequestList } from '../PullRequestList';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
+import { PullRequestList } from '../PullRequestList';
 
 afterEach(cleanup);
 

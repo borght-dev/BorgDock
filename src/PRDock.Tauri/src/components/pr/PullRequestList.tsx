@@ -31,18 +31,17 @@ export function PullRequestList() {
   // Subscribe to state fields that affect derived selectors so the
   // component re-renders when they change. useShallow performs a
   // shallow equality check, replacing the old void-statement workaround.
-  const { closedPullRequests, filter, username } =
-    usePrStore(
-      useShallow((s) => ({
-        pullRequests: s.pullRequests,
-        closedPullRequests: s.closedPullRequests,
-        filter: s.filter,
-        searchQuery: s.searchQuery,
-        sortBy: s.sortBy,
-        username: s.username,
-        reviewRequestTimestamps: s.reviewRequestTimestamps,
-      })),
-    );
+  const { closedPullRequests, filter, username } = usePrStore(
+    useShallow((s) => ({
+      pullRequests: s.pullRequests,
+      closedPullRequests: s.closedPullRequests,
+      filter: s.filter,
+      searchQuery: s.searchQuery,
+      sortBy: s.sortBy,
+      username: s.username,
+      reviewRequestTimestamps: s.reviewRequestTimestamps,
+    })),
+  );
 
   const needsMyReview = usePrStore((s) => s.needsMyReview);
   const groupedByRepo = usePrStore((s) => s.groupedByRepo);
@@ -98,11 +97,20 @@ export function PullRequestList() {
             className="flex items-center gap-2 px-3 pt-2 pb-1"
             style={{ borderColor: 'var(--color-separator)' }}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-status-yellow)' }}>
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'var(--color-status-yellow)' }}
+            >
               Needs Your Review
             </span>
             <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
-            <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums" style={{ color: 'var(--color-status-yellow)', background: 'color-mix(in srgb, var(--color-status-yellow) 15%, transparent)' }}>
+            <span
+              className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
+              style={{
+                color: 'var(--color-status-yellow)',
+                background: 'color-mix(in srgb, var(--color-status-yellow) 15%, transparent)',
+              }}
+            >
               {reviewQueue.length}
             </span>
           </div>
@@ -138,11 +146,20 @@ export function PullRequestList() {
             className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1"
             style={{ borderColor: 'var(--color-separator)' }}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-ghost)' }}>
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'var(--color-text-ghost)' }}
+            >
               Recently Closed
             </span>
             <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
-            <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums" style={{ color: 'var(--color-text-ghost)', background: 'var(--color-surface-raised)' }}>
+            <span
+              className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
+              style={{
+                color: 'var(--color-text-ghost)',
+                background: 'var(--color-surface-raised)',
+              }}
+            >
               {closedPullRequests.length}
             </span>
           </div>

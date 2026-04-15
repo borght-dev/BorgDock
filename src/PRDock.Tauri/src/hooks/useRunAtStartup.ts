@@ -1,5 +1,5 @@
+import { error, info } from '@tauri-apps/plugin-log';
 import { useEffect } from 'react';
-import { info, error } from '@tauri-apps/plugin-log';
 import type { AppSettings } from '@/types';
 
 export function useRunAtStartup(settings: AppSettings) {

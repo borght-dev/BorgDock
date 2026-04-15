@@ -78,106 +78,106 @@ export function SettingsFlyout() {
   return (
     <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
       <div>
-      {/* Overlay */}
-      <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />
+        {/* Overlay */}
+        <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />
 
-      {/* Flyout panel */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Settings"
-        className={clsx(
-          'fixed right-0 top-0 z-50 flex h-full w-[360px] flex-col',
-          'bg-[var(--color-modal-bg)] border-l border-[var(--color-modal-border)]',
-          'shadow-xl',
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-3">
-          <span className="text-sm font-semibold text-[var(--color-text-primary)]">Settings</span>
-          <button
-            className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
-            onClick={close}
-          >
-            &#10005;
-          </button>
+        {/* Flyout panel */}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Settings"
+          className={clsx(
+            'fixed right-0 top-0 z-50 flex h-full w-[360px] flex-col',
+            'bg-[var(--color-modal-bg)] border-l border-[var(--color-modal-border)]',
+            'shadow-xl',
+          )}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-3">
+            <span className="text-sm font-semibold text-[var(--color-text-primary)]">Settings</span>
+            <button
+              className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+              onClick={close}
+            >
+              &#10005;
+            </button>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            <SectionCard title="GitHub">
+              <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />
+            </SectionCard>
+
+            <SectionCard title="Repositories">
+              <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />
+            </SectionCard>
+
+            <SectionCard title="Appearance">
+              <AppearanceSection ui={settings.ui} onChange={(ui) => update({ ui })} />
+            </SectionCard>
+
+            <SectionCard title="Notifications">
+              <NotificationSection
+                notifications={settings.notifications}
+                onChange={(notifications) => update({ notifications })}
+              />
+            </SectionCard>
+
+            <SectionCard title="Claude Code">
+              <ClaudeSection
+                claudeCode={settings.claudeCode}
+                onChange={(claudeCode) => update({ claudeCode })}
+              />
+            </SectionCard>
+
+            <SectionCard title="Claude API (PR Summary)">
+              <ClaudeApiSection
+                claudeApi={settings.claudeApi}
+                onChange={(claudeApi) => update({ claudeApi })}
+              />
+            </SectionCard>
+
+            <SectionCard title="Azure DevOps">
+              <AdoSection
+                azureDevOps={settings.azureDevOps}
+                onChange={(azureDevOps) => update({ azureDevOps })}
+              />
+            </SectionCard>
+
+            <SectionCard title="SQL Server">
+              <SqlSection sql={settings.sql} onChange={(sql) => update({ sql })} />
+            </SectionCard>
+
+            <SectionCard title="Updates">
+              <UpdateSection
+                updates={settings.updates}
+                onChange={(updates) => update({ updates })}
+              />
+            </SectionCard>
+
+            {/* Maintenance */}
+            <SectionCard title="Maintenance">
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setIsPruneOpen(true)}
+                  className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                >
+                  Prune Worktrees
+                </button>
+                <button
+                  onClick={() => useOnboardingStore.getState().resetAll()}
+                  className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                >
+                  Reset Onboarding
+                </button>
+              </div>
+            </SectionCard>
+          </div>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-          <SectionCard title="GitHub">
-            <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />
-          </SectionCard>
-
-          <SectionCard title="Repositories">
-            <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />
-          </SectionCard>
-
-          <SectionCard title="Appearance">
-            <AppearanceSection ui={settings.ui} onChange={(ui) => update({ ui })} />
-          </SectionCard>
-
-          <SectionCard title="Notifications">
-            <NotificationSection
-              notifications={settings.notifications}
-              onChange={(notifications) => update({ notifications })}
-            />
-          </SectionCard>
-
-          <SectionCard title="Claude Code">
-            <ClaudeSection
-              claudeCode={settings.claudeCode}
-              onChange={(claudeCode) => update({ claudeCode })}
-            />
-          </SectionCard>
-
-          <SectionCard title="Claude API (PR Summary)">
-            <ClaudeApiSection
-              claudeApi={settings.claudeApi}
-              onChange={(claudeApi) => update({ claudeApi })}
-            />
-          </SectionCard>
-
-          <SectionCard title="Azure DevOps">
-            <AdoSection
-              azureDevOps={settings.azureDevOps}
-              onChange={(azureDevOps) => update({ azureDevOps })}
-            />
-          </SectionCard>
-
-          <SectionCard title="SQL Server">
-            <SqlSection sql={settings.sql} onChange={(sql) => update({ sql })} />
-          </SectionCard>
-
-          <SectionCard title="Updates">
-            <UpdateSection
-              updates={settings.updates}
-              onChange={(updates) => update({ updates })}
-            />
-          </SectionCard>
-
-          {/* Maintenance */}
-          <SectionCard title="Maintenance">
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setIsPruneOpen(true)}
-                className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-              >
-                Prune Worktrees
-              </button>
-              <button
-                onClick={() => useOnboardingStore.getState().resetAll()}
-                className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-              >
-                Reset Onboarding
-              </button>
-            </div>
-          </SectionCard>
-        </div>
-      </div>
-
-      {/* Worktree Prune Dialog */}
-      <WorktreePruneDialog isOpen={isPruneOpen} onClose={() => setIsPruneOpen(false)} />
+        {/* Worktree Prune Dialog */}
+        <WorktreePruneDialog isOpen={isPruneOpen} onClose={() => setIsPruneOpen(false)} />
       </div>
     </FocusTrap>
   );

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { ResultsTable } from '../ResultsTable';
 
 describe('ResultsTable', () => {
@@ -144,11 +144,7 @@ describe('ResultsTable', () => {
 
   it('applies selected styling to selected rows', () => {
     const { container } = render(
-      <ResultsTable
-        {...defaultProps}
-        selectedRows={new Set([1])}
-        onSelectionChange={vi.fn()}
-      />,
+      <ResultsTable {...defaultProps} selectedRows={new Set([1])} onSelectionChange={vi.fn()} />,
     );
     const selectedRows = container.querySelectorAll('.sql-data-row--selected');
     expect(selectedRows.length).toBe(1);
