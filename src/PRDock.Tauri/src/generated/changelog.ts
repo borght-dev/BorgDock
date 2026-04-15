@@ -4,6 +4,25 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.0.12",
+    "date": "2026-04-15",
+    "summary": "Auto-updates actually check the latest release.",
+    "highlights": [
+      {
+        "kind": "fixed",
+        "title": "Auto-updates actually check the latest release",
+        "description": "Every PRDock version since v1.0.8 silently failed to detect new releases. The updater asked GitHub for the full releases list and took the first entry with a `latest.json` asset, but GitHub's listing endpoint doesn't reliably sort by newest-first — duplicate tags and republished releases can bump an older version to the top. As a result the updater kept fetching an outdated `latest.json`, saw a version ≤ the installed one, and reported \"You're on the latest version\" forever. Switched to GitHub's canonical `/releases/latest` endpoint, which returns the single release GitHub marks as newest — plus added logging so the actual `current` vs `latest` versions are visible in `prdock.log` for future debugging.",
+        "hero": {
+          "src": "/whats-new/1.0.12/auto-update-fix.png",
+          "alt": "Auto-update fix"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": false
+  },
+  {
     "version": "1.0.11",
     "date": "2026-04-15",
     "summary": "\"What's new?\" window, Close PRs from the detail panel, Inline Fix-with-Claude on failing checks, and more.",

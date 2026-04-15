@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.12 — 2026-04-15
+
+### Bug Fixes
+
+- **Auto-updates actually check the latest release** — Every PRDock version since v1.0.8 silently failed to detect new releases. The updater asked GitHub for the full releases list and took the first entry with a `latest.json` asset, but GitHub's listing endpoint doesn't reliably sort by newest-first — duplicate tags and republished releases can bump an older version to the top. As a result the updater kept fetching an outdated `latest.json`, saw a version ≤ the installed one, and reported "You're on the latest version" forever. Switched to GitHub's canonical `/releases/latest` endpoint, which returns the single release GitHub marks as newest — plus added logging so the actual `current` vs `latest` versions are visible in `prdock.log` for future debugging. ![Auto-update fix](whats-new/1.0.12/auto-update-fix.png)
+
 ## 1.0.11 — 2026-04-15
 
 ### New Features
