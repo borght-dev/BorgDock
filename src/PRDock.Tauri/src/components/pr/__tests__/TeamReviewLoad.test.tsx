@@ -6,7 +6,7 @@ import { TeamReviewLoad } from '../TeamReviewLoad';
 afterEach(cleanup);
 
 vi.mock('@/stores/pr-store', () => {
-  const fn = vi.fn();
+  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & { getState: ReturnType<typeof vi.fn> };
   fn.getState = vi.fn(() => ({}));
   return { usePrStore: fn };
 });

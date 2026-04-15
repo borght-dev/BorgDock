@@ -346,6 +346,7 @@ describe('WorkItemDetailApp', () => {
         text: 'Test comment',
         createdBy: { displayName: 'User' },
         createdDate: '2026-01-01',
+        modifiedDate: '2026-01-01',
       },
     ]);
 

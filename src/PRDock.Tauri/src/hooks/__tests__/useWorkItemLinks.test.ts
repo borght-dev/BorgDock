@@ -64,6 +64,8 @@ function makeWorkItem(id: number, title: string = 'Work Item'): WorkItem {
       'System.State': 'Active',
       'System.WorkItemType': 'User Story',
     },
+    relations: [],
+    htmlUrl: '',
   };
 }
 
