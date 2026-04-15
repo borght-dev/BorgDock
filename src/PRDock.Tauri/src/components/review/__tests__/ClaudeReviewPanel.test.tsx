@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ClaudeReviewComment, CommentSeverity } from '@/types';
+import type { ClaudeReviewComment } from '@/types';
 import { ClaudeReviewPanel } from '../ClaudeReviewPanel';
 
 vi.mock('../ReviewCommentCard', () => ({

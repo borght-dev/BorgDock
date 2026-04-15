@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useNotificationStore } from '@/stores/notification-store';
 import type { InAppNotification } from '@/types';
 import { NotificationOverlay } from '../NotificationOverlay';

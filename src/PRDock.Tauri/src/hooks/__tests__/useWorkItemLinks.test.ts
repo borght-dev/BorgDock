@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PullRequest, WorkItem } from '@/types';
 

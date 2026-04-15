@@ -300,7 +300,7 @@ export function SqlApp() {
       .map((p) => {
         const header = p.columns.join('\t');
         const body = p.rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
-        return header + '\n' + body;
+        return `${header}\n${body}`;
       })
       .join('\n\n');
     await writeText(text);
@@ -313,15 +313,15 @@ export function SqlApp() {
       .map((p) => {
         const header = p.columns.join('\t');
         const body = p.rows.map((r) => r.map((c) => c ?? '').join('\t')).join('\n');
-        return header + '\n' + body;
+        return `${header}\n${body}`;
       })
       .join('\n\n');
-    await writeText(query.trim() + '\n\n' + text);
+    await writeText(`${query.trim()}\n\n${text}`);
     flash('Copied!');
   }, [query, getResultSetParts, flash]);
 
   const hasConnections = sqlSettings && sqlSettings.connections.length > 0;
-  const hasResults = result && result.resultSets.some((rs) => rs.columns.length > 0);
+  const hasResults = result?.resultSets.some((rs) => rs.columns.length > 0);
   const totalSelectedRows = Array.from(selectedRowsMap.values()).reduce(
     (sum, s) => sum + s.size,
     0,

@@ -52,7 +52,6 @@ vi.mock('@/hooks/useAdoImageAuth', () => ({
 }));
 
 import { getWorkItem } from '@/services/ado/workitems';
-import { useSettingsStore } from '@/stores/settings-store';
 import type { WorkItem } from '@/types';
 import type { AppSettings } from '@/types/settings';
 import { WorkItemDetailApp } from '../WorkItemDetailApp';

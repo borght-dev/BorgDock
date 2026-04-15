@@ -569,7 +569,7 @@ describe('useGitHubPolling', () => {
 
     // pollNow should set isPolling to true
     let pollingDuringCall = false;
-    const origSetPollingState = usePrStore.getState().setPollingState;
+    const _origSetPollingState = usePrStore.getState().setPollingState;
     const spy = vi.spyOn(usePrStore.getState(), 'setPollingState');
 
     await act(async () => {

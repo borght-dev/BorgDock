@@ -95,7 +95,7 @@ export function useClaudeActions() {
       await launchClaude(worktreePath, promptFile, `Fix ${checksLabel}`);
       log('claude launched');
     },
-    [findRepoSettings, getOrCreateWorktree],
+    [findRepoSettings, getOrCreateWorktree, showNotification],
   );
 
   const resolveConflicts = useCallback(
@@ -115,7 +115,7 @@ export function useClaudeActions() {
       await launchClaude(worktreePath, promptFile, 'Resolve merge conflicts');
       log('claude launched for conflict resolution');
     },
-    [getOrCreateWorktree],
+    [getOrCreateWorktree, showNotification],
   );
 
   const monitorPr = useCallback(
@@ -142,7 +142,7 @@ export function useClaudeActions() {
       await launchClaude(worktreePath, promptFile, `Monitor PR #${p.number}`);
       log('claude launched');
     },
-    [findRepoSettings, getOrCreateWorktree],
+    [findRepoSettings, getOrCreateWorktree, showNotification],
   );
 
   const getMonitorPrompt = useCallback(

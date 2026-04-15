@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DiffHunk, DiffLine, HighlightSpan } from '@/types';
 import { UnifiedDiffView } from '../UnifiedDiffView';

@@ -268,7 +268,7 @@ export class GitHubClient {
     return result.data as T;
   }
 
-  private checkResponseForAuthErrors(response: Response, method: string, path: string): void {
+  private checkResponseForAuthErrors(response: Response, _method: string, _path: string): void {
     if (response.status === 403 && this.rateLimit.remaining === 0) {
       throw new GitHubRateLimitError(
         `GitHub API rate limit exceeded. Resets at ${this.rateLimit.reset?.toISOString() ?? 'unknown'}.`,

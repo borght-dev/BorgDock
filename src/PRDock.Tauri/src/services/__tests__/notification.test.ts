@@ -11,7 +11,6 @@ import {
   buildReviewRequestedNotification,
   detectStateTransitions,
   isReadyToMerge,
-  sendOsNotification,
 } from '../notification';
 
 function makePr(overrides: Partial<PullRequest> = {}): PullRequest {

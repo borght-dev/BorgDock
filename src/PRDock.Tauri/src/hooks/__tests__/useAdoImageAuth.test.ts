@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { type RefObject, useRef } from 'react';
+import { useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock settings store
@@ -269,7 +269,7 @@ describe('useAdoImageAuth', () => {
     );
 
     const img = createMockImg('https://dev.azure.com/img.png');
-    const originalSrc = img.src;
+    const _originalSrc = img.src;
     const container = createContainer([img]);
 
     const { unmount } = renderHook(() => {
