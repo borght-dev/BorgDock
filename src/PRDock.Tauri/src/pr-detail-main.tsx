@@ -4,6 +4,9 @@ import './styles/index.css';
 import { PRDetailApp } from './components/pr-detail/PRDetailApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { attachConsoleBridge, createLogger } from './services/logger';
+import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
+
+disableDefaultContextMenu();
 
 // Route console.* into tauri-plugin-log so logs land in %APPDATA%/PRDock/logs/prdock.log.
 // Must run before anything else writes to the console.
@@ -27,9 +30,6 @@ bootLog.info('bootstrap start', {
   hasTauri: '__TAURI_INTERNALS__' in window,
   search: window.location.search,
 });
-
-const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-document.documentElement.classList.toggle('dark', isDark);
 
 try {
   const root = document.getElementById('root');

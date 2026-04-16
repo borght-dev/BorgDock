@@ -5,6 +5,9 @@ import App from './App';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { attachConsoleBridge, createLogger } from './services/logger';
 import './styles/index.css';
+import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
+
+disableDefaultContextMenu();
 
 // Route all console.* calls into the tauri-plugin-log backend so they land
 // in %APPDATA%/PRDock/logs/prdock.log alongside Rust logs. Must run before

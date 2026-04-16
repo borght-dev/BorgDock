@@ -4,7 +4,9 @@ import './styles/index.css';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { WhatsNewApp } from './components/whats-new/WhatsNewApp';
 import { attachConsoleBridge, createLogger } from './services/logger';
+import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 
+disableDefaultContextMenu();
 attachConsoleBridge();
 const log = createLogger('whats-new-boot');
 
@@ -14,9 +16,6 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
   log.error('unhandled rejection', e.reason);
 });
-
-const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-document.documentElement.classList.toggle('dark', isDark);
 
 try {
   const root = document.getElementById('root');

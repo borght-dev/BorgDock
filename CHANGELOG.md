@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.13 — 2026-04-16
+
+### Bug Fixes
+
+- **Worktree palette is styled again** — The Ctrl+F7 worktree palette shipped as unstyled raw HTML in v1.0.11 and v1.0.12: plain black text on white, no rows, no icons, no layout. Root cause was that the palette's stylesheet was stored as a React `<style>{...}</style>` child with a large inline string, and React 19 silently drops those in production builds. Moved the styles into a real `.css` file so Vite links them via `<link rel="stylesheet">`, which WebView2 always honors.
+- **Theme respects your saved preference across all pop-out windows** — Pop-out windows (command palette, worktree palette, SQL, PR detail, work item detail, badge, flyout, What's new) were clobbering the user's saved `Light` / `Dark` preference on mount by re-reading the system preference and re-applying it — so if you picked Light on a dark-mode machine, every new window opened dark anyway. Removed the override; the HTML-level theme bootstrap (which already respects `localStorage`) is now the single source of truth for initial theme.
+
+### Improvements
+
+- **No more WebView2 right-click menu** — The default browser context menu (Inspect, Reload, Copy image address, …) no longer appears anywhere in PRDock. Components that render their own context menus still work.
+
 ## 1.0.12 — 2026-04-15
 
 ### Bug Fixes

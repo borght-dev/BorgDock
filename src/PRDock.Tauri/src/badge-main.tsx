@@ -3,10 +3,9 @@ import ReactDOM from 'react-dom/client';
 import './styles/index.css';
 import { BadgeApp } from './components/badge/BadgeApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
+import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 
-// Apply system theme as default until main window sends the actual theme
-const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-document.documentElement.classList.toggle('dark', isDark);
+disableDefaultContextMenu();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
