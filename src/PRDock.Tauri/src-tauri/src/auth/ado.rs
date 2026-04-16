@@ -1,5 +1,6 @@
 //! ADO auth resolver — az CLI token fetching + PAT header formatting.
 
+use crate::git::hidden_command;
 use serde::Serialize;
 use std::io;
 
@@ -43,6 +44,55 @@ pub(crate) fn classify_az_error(
         exit_code.unwrap_or(-1),
         stderr.trim()
     ))
+}
+
+const ADO_RESOURCE_ID: &str = "499b84ac-1321-427f-aa17-267ca6975798";
+
+/// Fetch an Azure DevOps bearer token via `az account get-access-token`.
+/// Returns the raw token on success, or a classified `AdoAuthError`.
+pub fn az_cli_token() -> Result<String, AdoAuthError> {
+    let result = hidden_command("az")
+        .args([
+            "account",
+            "get-access-token",
+            "--resource",
+            ADO_RESOURCE_ID,
+            "--query",
+            "accessToken",
+            "-o",
+            "tsv",
+        ])
+        .output();
+
+    let output = match result {
+        Ok(o) => o,
+        Err(e) => return Err(classify_az_error(Some(e.kind()), None, "")),
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(classify_az_error(None, output.status.code(), &stderr));
+    }
+
+    let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if token.is_empty() {
+        return Err(AdoAuthError::TokenFetchFailed(
+            "az returned empty token".to_string(),
+        ));
+    }
+    Ok(token)
+}
+
+/// Cheap "is az installed?" probe — runs `az --version` and returns
+/// whether it exited successfully. Does not test login state; that
+/// surfaces naturally when a token fetch is attempted.
+#[tauri::command]
+pub fn az_cli_available() -> bool {
+    hidden_command("az")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
