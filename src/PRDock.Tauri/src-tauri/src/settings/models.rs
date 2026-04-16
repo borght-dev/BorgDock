@@ -305,6 +305,10 @@ pub struct AzureDevOpsSettings {
     pub organization: String,
     #[serde(default)]
     pub project: String,
+    #[serde(default = "default_ado_auth_method")]
+    pub auth_method: String,
+    #[serde(default)]
+    pub auth_auto_detected: bool,
     #[serde(skip_serializing)]
     pub personal_access_token: Option<String>,
     #[serde(default = "default_ado_poll_interval")]
@@ -322,6 +326,10 @@ pub struct AzureDevOpsSettings {
     pub recent_work_item_ids: Vec<i32>,
 }
 
+fn default_ado_auth_method() -> String {
+    "azCli".to_string()
+}
+
 fn default_ado_poll_interval() -> u32 {
     120
 }
@@ -331,6 +339,8 @@ impl Default for AzureDevOpsSettings {
         Self {
             organization: String::new(),
             project: String::new(),
+            auth_method: default_ado_auth_method(),
+            auth_auto_detected: false,
             personal_access_token: None,
             poll_interval_seconds: 120,
             favorite_query_ids: Vec::new(),
