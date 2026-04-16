@@ -1,5 +1,6 @@
 //! ADO auth resolver — az CLI token fetching + PAT header formatting.
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use crate::git::hidden_command;
 use serde::Serialize;
 use std::io;
@@ -94,8 +95,6 @@ pub fn az_cli_available() -> bool {
         .map(|o| o.status.success())
         .unwrap_or(false)
 }
-
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 /// Compose a `Basic` Authorization header value for an ADO PAT.
 /// ADO accepts an empty username, so the encoded payload is `":<pat>"`.
