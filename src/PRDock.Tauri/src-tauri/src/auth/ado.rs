@@ -161,6 +161,12 @@ mod tests {
     }
 
     #[test]
+    fn resolve_header_pat_mode_whitespace_only_pat_errors() {
+        let result = resolve_header_internal("pat", Some("   ".to_string()));
+        assert!(matches!(result.unwrap_err(), AdoAuthError::MissingPat));
+    }
+
+    #[test]
     fn resolve_header_invalid_method_errors() {
         let result = resolve_header_internal("xyz", None);
         match result.unwrap_err() {
