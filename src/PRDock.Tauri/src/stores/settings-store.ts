@@ -61,6 +61,8 @@ const defaultSettings: AppSettings = {
   azureDevOps: {
     organization: '',
     project: '',
+    authMethod: 'azCli',
+    authAutoDetected: false,
     pollIntervalSeconds: 120,
     favoriteQueryIds: [],
     trackedWorkItemIds: [],

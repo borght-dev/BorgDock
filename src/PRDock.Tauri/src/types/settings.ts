@@ -1,4 +1,5 @@
 export type AuthMethod = 'ghCli' | 'pat';
+export type AdoAuthMethod = 'azCli' | 'pat';
 export type SidebarEdge = 'left' | 'right';
 export type SidebarMode = 'pinned' | 'floating';
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -79,6 +80,8 @@ export interface UpdateSettings {
 export interface AzureDevOpsSettings {
   organization: string;
   project: string;
+  authMethod: AdoAuthMethod;
+  authAutoDetected: boolean;
   personalAccessToken?: string;
   pollIntervalSeconds: number;
   favoriteQueryIds: string[];
