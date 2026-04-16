@@ -95,9 +95,80 @@ pub fn az_cli_available() -> bool {
         .unwrap_or(false)
 }
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+/// Compose a `Basic` Authorization header value for an ADO PAT.
+/// ADO accepts an empty username, so the encoded payload is `":<pat>"`.
+pub(crate) fn format_pat_header(pat: &str) -> String {
+    format!("Basic {}", STANDARD.encode(format!(":{pat}")))
+}
+
+/// Pure dispatch — extracted for testability. `az_cli_token` is only
+/// called by the public Tauri command below, which wraps this.
+pub(crate) fn resolve_header_internal(
+    method: &str,
+    pat: Option<String>,
+) -> Result<String, AdoAuthError> {
+    match method {
+        "azCli" => {
+            let token = az_cli_token()?;
+            Ok(format!("Bearer {token}"))
+        }
+        "pat" => match pat.as_deref().map(str::trim) {
+            Some(p) if !p.is_empty() => Ok(format_pat_header(p)),
+            _ => Err(AdoAuthError::MissingPat),
+        },
+        other => Err(AdoAuthError::InvalidMethod(other.to_string())),
+    }
+}
+
+/// Tauri command — returns a ready-to-use `Authorization` header value
+/// based on the caller-supplied auth method and optional PAT.
+#[tauri::command]
+pub fn ado_resolve_auth_header(
+    auth_method: String,
+    pat: Option<String>,
+) -> Result<String, AdoAuthError> {
+    resolve_header_internal(&auth_method, pat)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn format_pat_header_prepends_colon_and_base64_encodes() {
+        // ":hello" → "OmhlbGxv" (standard base64)
+        let header = format_pat_header("hello");
+        assert_eq!(header, "Basic OmhlbGxv");
+    }
+
+    #[test]
+    fn resolve_header_pat_mode_returns_basic() {
+        let result = resolve_header_internal("pat", Some("abc123".to_string()));
+        assert_eq!(result.unwrap(), "Basic OmFiYzEyMw==");
+    }
+
+    #[test]
+    fn resolve_header_pat_mode_missing_pat_errors() {
+        let result = resolve_header_internal("pat", None);
+        assert!(matches!(result.unwrap_err(), AdoAuthError::MissingPat));
+    }
+
+    #[test]
+    fn resolve_header_pat_mode_empty_pat_errors() {
+        let result = resolve_header_internal("pat", Some("".to_string()));
+        assert!(matches!(result.unwrap_err(), AdoAuthError::MissingPat));
+    }
+
+    #[test]
+    fn resolve_header_invalid_method_errors() {
+        let result = resolve_header_internal("xyz", None);
+        match result.unwrap_err() {
+            AdoAuthError::InvalidMethod(m) => assert_eq!(m, "xyz"),
+            _ => panic!("expected InvalidMethod"),
+        }
+    }
 
     #[test]
     fn classify_spawn_not_found_is_not_installed() {

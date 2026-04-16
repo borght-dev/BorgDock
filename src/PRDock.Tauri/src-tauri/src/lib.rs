@@ -91,6 +91,8 @@ pub fn run() {
             auth::gh_cli_token,
             auth::validate_pat,
             auth::check_github_auth,
+            auth::ado::az_cli_available,
+            auth::ado::ado_resolve_auth_header,
             // Platform
             platform::window::position_sidebar,
             platform::window::toggle_sidebar,
