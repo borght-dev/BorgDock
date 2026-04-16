@@ -3518,6 +3518,7 @@ dependencies = [
 name = "prdock"
 version = "1.0.13"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "dirs 6.0.0",
  "keyring",

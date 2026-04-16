@@ -1,3 +1,5 @@
+pub mod ado;
+
 use crate::git::hidden_command;
 
 #[tauri::command]
