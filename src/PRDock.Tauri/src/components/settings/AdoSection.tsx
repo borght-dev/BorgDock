@@ -1,6 +1,7 @@
+import clsx from 'clsx';
 import { useState } from 'react';
 import { AdoClient } from '@/services/ado/client';
-import type { AzureDevOpsSettings } from '@/types';
+import type { AzureDevOpsSettings, AdoAuthMethod } from '@/types';
 
 interface AdoSectionProps {
   azureDevOps: AzureDevOpsSettings;
@@ -58,24 +59,47 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
         />
       </FieldLabel>
 
-      <FieldLabel label="Personal Access Token">
-        <div className="relative">
-          <input
-            type={showToken ? 'text' : 'password'}
-            className="field-input w-full pr-8"
-            value={azureDevOps.personalAccessToken ?? ''}
-            onChange={(e) => update({ personalAccessToken: e.target.value })}
-            placeholder="ADO PAT"
-          />
-          <button
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-            onClick={() => setShowToken((prev) => !prev)}
-            type="button"
-          >
-            {showToken ? 'Hide' : 'Show'}
-          </button>
+      <FieldLabel label="Auth Method">
+        <div className="flex gap-1">
+          {(['azCli', 'pat'] as const).map((method) => (
+            <button
+              key={method}
+              className={clsx(
+                'flex-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                azureDevOps.authMethod === method
+                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
+                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
+              )}
+              onClick={() =>
+                update({ authMethod: method as AdoAuthMethod, authAutoDetected: true })
+              }
+            >
+              {method === 'azCli' ? 'Azure CLI' : 'Personal Access Token'}
+            </button>
+          ))}
         </div>
       </FieldLabel>
+
+      {azureDevOps.authMethod === 'pat' && (
+        <FieldLabel label="Personal Access Token">
+          <div className="relative">
+            <input
+              type={showToken ? 'text' : 'password'}
+              className="field-input w-full pr-8"
+              value={azureDevOps.personalAccessToken ?? ''}
+              onChange={(e) => update({ personalAccessToken: e.target.value })}
+              placeholder="ADO PAT"
+            />
+            <button
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              onClick={() => setShowToken((prev) => !prev)}
+              type="button"
+            >
+              {showToken ? 'Hide' : 'Show'}
+            </button>
+          </div>
+        </FieldLabel>
+      )}
 
       <FieldLabel label={`Poll Interval: ${azureDevOps.pollIntervalSeconds}s`}>
         <input

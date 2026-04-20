@@ -34,6 +34,7 @@ export type {
   ReviewStatus,
 } from './pull-request';
 export type {
+  AdoAuthMethod,
   AppSettings,
   AuthMethod,
   AzureDevOpsSettings,
