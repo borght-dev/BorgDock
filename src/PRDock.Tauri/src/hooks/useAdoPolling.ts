@@ -26,7 +26,9 @@ export function useAdoPolling(settings: AppSettings) {
   settingsRef.current = settings;
 
   const isConfigured =
-    !!settings.azureDevOps.organization && !!settings.azureDevOps.personalAccessToken;
+    !!settings.azureDevOps.organization &&
+    !!settings.azureDevOps.project &&
+    (settings.azureDevOps.authMethod === 'azCli' || !!settings.azureDevOps.personalAccessToken);
 
   // Create/update client when settings change
   useEffect(() => {

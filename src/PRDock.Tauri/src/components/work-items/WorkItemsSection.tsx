@@ -149,7 +149,9 @@ export function WorkItemsSection() {
   }, [detailItem]);
 
   // Not configured state
-  if (!adoSettings.organization || !adoSettings.personalAccessToken) {
+  const hasCredentials =
+    adoSettings.authMethod === 'azCli' || !!adoSettings.personalAccessToken;
+  if (!adoSettings.organization || !hasCredentials) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
         <div className="text-center">
