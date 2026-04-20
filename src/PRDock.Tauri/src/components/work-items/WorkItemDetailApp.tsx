@@ -242,6 +242,7 @@ export function WorkItemDetailApp() {
       adoSettings.organization,
       adoSettings.project,
       adoSettings.personalAccessToken ?? '',
+      adoSettings.authMethod,
     );
   }, [adoSettings]);
 
@@ -268,7 +269,12 @@ export function WorkItemDetailApp() {
         }
 
         const ado = settings.azureDevOps;
-        const client = new AdoClient(ado.organization, ado.project, ado.personalAccessToken ?? '');
+        const client = new AdoClient(
+          ado.organization,
+          ado.project,
+          ado.personalAccessToken ?? '',
+          ado.authMethod,
+        );
 
         const item = await getWorkItem(client, workItemId);
         setWorkItem(item);

@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { type RefObject, useEffect, useRef } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
 
@@ -13,39 +14,53 @@ export function useAdoImageAuth(containerRef: RefObject<HTMLElement | null>, htm
     const el = containerRef.current;
     if (!el || !htmlContent) return;
 
-    const pat = useSettingsStore.getState().settings.azureDevOps.personalAccessToken;
-    if (!pat) return;
+    const ado = useSettingsStore.getState().settings.azureDevOps;
+    if (!ado.organization) return;
 
-    const authHeader = `Basic ${btoa(`:${pat}`)}`;
-    const imgs = el.querySelectorAll<HTMLImageElement>('img');
     let cancelled = false;
 
-    for (const img of imgs) {
-      const src = img.getAttribute('src') ?? '';
-      // All images in ADO HTML content require auth — skip only data: URIs and blob: URIs
-      if (!src.startsWith('http')) continue;
-
-      // Hide broken image while loading
-      img.style.opacity = '0';
-      img.style.transition = 'opacity 0.2s';
-
-      fetch(src, { headers: { Authorization: authHeader } })
-        .then((r) => {
-          if (!r.ok) throw new Error(`${r.status}`);
-          return r.blob();
-        })
-        .then((blob) => {
-          if (cancelled) return;
-          const url = URL.createObjectURL(blob);
-          blobUrls.current.push(url);
-          img.src = url;
-          img.style.opacity = '1';
-        })
-        .catch(() => {
-          if (cancelled) return;
-          img.style.opacity = '1'; // show broken state
+    (async () => {
+      let authHeader: string;
+      try {
+        authHeader = await invoke<string>('ado_resolve_auth_header', {
+          authMethod: ado.authMethod,
+          pat: ado.authMethod === 'pat' ? (ado.personalAccessToken ?? '') : null,
         });
-    }
+      } catch {
+        return;
+      }
+
+      if (cancelled) return;
+
+      const imgs = el.querySelectorAll<HTMLImageElement>('img');
+
+      for (const img of imgs) {
+        const src = img.getAttribute('src') ?? '';
+        // All images in ADO HTML content require auth — skip only data: URIs and blob: URIs
+        if (!src.startsWith('http')) continue;
+
+        // Hide broken image while loading
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.2s';
+
+        fetch(src, { headers: { Authorization: authHeader } })
+          .then((r) => {
+            if (!r.ok) throw new Error(`${r.status}`);
+            return r.blob();
+          })
+          .then((blob) => {
+            if (cancelled) return;
+            const url = URL.createObjectURL(blob);
+            blobUrls.current.push(url);
+            img.src = url;
+            img.style.opacity = '1';
+          })
+          .catch(() => {
+            if (cancelled) return;
+            img.style.opacity = '1'; // show broken state
+          });
+      }
+    })();
 
     return () => {
       cancelled = true;

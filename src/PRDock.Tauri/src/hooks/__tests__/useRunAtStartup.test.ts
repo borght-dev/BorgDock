@@ -56,6 +56,8 @@ function makeSettings(runAtStartup: boolean): AppSettings {
     azureDevOps: {
       organization: '',
       project: '',
+      authMethod: 'pat' as const,
+      authAutoDetected: true,
       pollIntervalSeconds: 60,
       favoriteQueryIds: [],
       trackedWorkItemIds: [],

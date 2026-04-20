@@ -24,14 +24,20 @@ export function useWorkItemLinks(pr: PullRequest | null): UseWorkItemLinksResult
       if (ids.length === 0) return;
 
       const ado = settings.azureDevOps;
-      if (!ado.organization || !ado.project || !ado.personalAccessToken) return;
+      const patOk = ado.authMethod === 'azCli' || !!ado.personalAccessToken;
+      if (!ado.organization || !ado.project || !patOk) return;
 
       const missingIds = ids.filter((id) => !isFresh(id));
       if (missingIds.length === 0) return;
 
       setIsLoading(true);
       try {
-        const client = new AdoClient(ado.organization, ado.project, ado.personalAccessToken);
+        const client = new AdoClient(
+          ado.organization,
+          ado.project,
+          ado.personalAccessToken ?? '',
+          ado.authMethod,
+        );
         const items = await getWorkItems(client, missingIds);
         if (cancelled) return;
         for (const item of items) {

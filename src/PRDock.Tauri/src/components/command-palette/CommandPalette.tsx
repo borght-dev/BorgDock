@@ -69,7 +69,12 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
 
   const getClient = useCallback(() => {
     const ado = settings.azureDevOps;
-    return new AdoClient(ado.organization, ado.project, ado.personalAccessToken ?? '');
+    return new AdoClient(
+      ado.organization,
+      ado.project,
+      ado.personalAccessToken ?? '',
+      ado.authMethod,
+    );
   }, [settings.azureDevOps]);
 
   // Build the "Working On" and "Assigned to Me" sections from in-memory work items

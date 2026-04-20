@@ -38,13 +38,15 @@ export function useAdoPolling(settings: AppSettings) {
     clientRef.current = new AdoClient(
       settings.azureDevOps.organization,
       settings.azureDevOps.project,
-      settings.azureDevOps.personalAccessToken!,
+      settings.azureDevOps.personalAccessToken ?? '',
+      settings.azureDevOps.authMethod,
     );
   }, [
     isConfigured,
     settings.azureDevOps.organization,
     settings.azureDevOps.project,
     settings.azureDevOps.personalAccessToken,
+    settings.azureDevOps.authMethod,
   ]);
 
   // On mount: resolve user, load query tree, restore state
@@ -54,7 +56,8 @@ export function useAdoPolling(settings: AppSettings) {
     const client = new AdoClient(
       settings.azureDevOps.organization,
       settings.azureDevOps.project,
-      settings.azureDevOps.personalAccessToken!,
+      settings.azureDevOps.personalAccessToken ?? '',
+      settings.azureDevOps.authMethod,
     );
     clientRef.current = client;
 

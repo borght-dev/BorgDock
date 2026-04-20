@@ -136,6 +136,7 @@ export function usePaletteSearch() {
       adoSettings.organization,
       adoSettings.project,
       adoSettings.personalAccessToken ?? '',
+      adoSettings.authMethod,
     );
 
     setIsLoadingBrowse(true);
@@ -213,6 +214,7 @@ export function usePaletteSearch() {
       adoSettings.organization,
       adoSettings.project,
       adoSettings.personalAccessToken ?? '',
+      adoSettings.authMethod,
     );
   }, [adoSettings]);
 

@@ -23,12 +23,9 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
         azureDevOps.organization,
         azureDevOps.project,
         azureDevOps.personalAccessToken ?? '',
+        azureDevOps.authMethod,
       );
-      const error = await client.testConnection(
-        azureDevOps.organization,
-        azureDevOps.project,
-        azureDevOps.personalAccessToken ?? '',
-      );
+      const error = await client.testConnection();
       if (error) {
         setTestStatus('error');
         setTestError(error);

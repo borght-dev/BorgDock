@@ -76,6 +76,8 @@ function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSetti
     azureDevOps: {
       organization: '',
       project: '',
+      authMethod: 'pat' as const,
+      authAutoDetected: true,
       pollIntervalSeconds: 60,
       favoriteQueryIds: [],
       trackedWorkItemIds: [],

@@ -53,6 +53,8 @@ describe('SetupWizard', () => {
         azureDevOps: {
           organization: '',
           project: '',
+          authMethod: 'pat' as const,
+          authAutoDetected: true,
           pollIntervalSeconds: 120,
           favoriteQueryIds: [],
           trackedWorkItemIds: [],

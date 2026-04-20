@@ -5,9 +5,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Mock settings store
 const mockSettings = {
   azureDevOps: {
+    organization: 'my-org',
     personalAccessToken: 'test-pat',
+    authMethod: 'pat' as const,
+    authAutoDetected: false,
   },
 };
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(`Basic ${btoa(':test-pat')}`),
+}));
 
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: {
@@ -76,9 +83,9 @@ describe('useAdoImageAuth', () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it('does nothing when no PAT is configured', () => {
-    const origPat = mockSettings.azureDevOps.personalAccessToken;
-    mockSettings.azureDevOps.personalAccessToken = '';
+  it('does nothing when no organization is configured', () => {
+    const origOrg = mockSettings.azureDevOps.organization;
+    mockSettings.azureDevOps.organization = '';
     globalThis.fetch = vi.fn();
 
     const container = createContainer([createMockImg('https://dev.azure.com/img.png')]);
@@ -90,7 +97,7 @@ describe('useAdoImageAuth', () => {
     });
 
     expect(globalThis.fetch).not.toHaveBeenCalled();
-    mockSettings.azureDevOps.personalAccessToken = origPat;
+    mockSettings.azureDevOps.organization = origOrg;
   });
 
   it('fetches http images with auth header and replaces src with blob URL', async () => {
@@ -275,6 +282,11 @@ describe('useAdoImageAuth', () => {
       const ref = useRef<HTMLElement | null>(container);
       useAdoImageAuth(ref, 'html');
       return ref;
+    });
+
+    // Wait for invoke to resolve and fetch to be called before unmounting
+    await vi.waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalled();
     });
 
     unmount();

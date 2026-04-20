@@ -67,6 +67,8 @@ describe('CommandPalette', () => {
           organization: 'org',
           project: 'proj',
           personalAccessToken: 'pat',
+          authMethod: 'pat' as const,
+          authAutoDetected: true,
           pollIntervalSeconds: 120,
           favoriteQueryIds: [],
           trackedWorkItemIds: [],

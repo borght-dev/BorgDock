@@ -14,6 +14,8 @@ function makeAdo(overrides?: Partial<AzureDevOpsSettings>): AzureDevOpsSettings 
     organization: 'my-org',
     project: 'my-project',
     personalAccessToken: 'ado-pat-123',
+    authMethod: 'pat',
+    authAutoDetected: true,
     pollIntervalSeconds: 120,
     favoriteQueryIds: [],
     trackedWorkItemIds: [],

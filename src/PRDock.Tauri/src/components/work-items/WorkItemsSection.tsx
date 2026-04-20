@@ -62,6 +62,7 @@ export function WorkItemsSection() {
     organization: adoSettings.organization,
     project: adoSettings.project,
     personalAccessToken: adoSettings.personalAccessToken,
+    authMethod: adoSettings.authMethod,
   });
 
   // Resolve the selected query name for display

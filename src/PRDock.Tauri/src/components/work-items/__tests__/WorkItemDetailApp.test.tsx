@@ -94,6 +94,8 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       organization: 'myorg',
       project: 'myproj',
       personalAccessToken: 'fake-pat',
+      authMethod: 'pat' as const,
+      authAutoDetected: true,
       pollIntervalSeconds: 120,
       favoriteQueryIds: [],
       trackedWorkItemIds: [],

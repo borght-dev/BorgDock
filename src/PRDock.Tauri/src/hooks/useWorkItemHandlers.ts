@@ -21,10 +21,11 @@ interface UseWorkItemHandlersOptions {
   organization: string;
   project: string;
   personalAccessToken?: string;
+  authMethod: import('@/types/settings').AdoAuthMethod;
 }
 
 export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
-  const { organization, project, personalAccessToken } = options;
+  const { organization, project, personalAccessToken, authMethod } = options;
 
   // Local state
   const [queryBrowserOpen, setQueryBrowserOpen] = useState(false);
@@ -39,11 +40,12 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
 
   // ADO client helper
   const getClient = useCallback((): AdoClient | null => {
-    if (!organization || !personalAccessToken) {
+    const patOk = authMethod === 'azCli' || !!personalAccessToken;
+    if (!organization || !patOk) {
       return null;
     }
-    return new AdoClient(organization, project, personalAccessToken);
-  }, [organization, project, personalAccessToken]);
+    return new AdoClient(organization, project, personalAccessToken ?? '', authMethod);
+  }, [organization, project, personalAccessToken, authMethod]);
 
   const handleSelectWorkItem = useCallback(
     async (id: number) => {

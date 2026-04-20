@@ -65,6 +65,8 @@ function makeSettings(overrides: Partial<AppSettings['azureDevOps']> = {}): AppS
       organization: 'test-org',
       project: 'test-project',
       personalAccessToken: 'test-pat',
+      authMethod: 'pat' as const,
+      authAutoDetected: true,
       pollIntervalSeconds: 120,
       favoriteQueryIds: [],
       trackedWorkItemIds: [],

@@ -70,6 +70,8 @@ function setupStores(
         organization: configured ? 'myorg' : '',
         project: configured ? 'myproj' : '',
         personalAccessToken: configured ? 'fake-pat' : '',
+        authMethod: 'pat' as const,
+        authAutoDetected: true,
         pollIntervalSeconds: 120,
         favoriteQueryIds: [],
         trackedWorkItemIds: [],
