@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { AdoAuthMethod } from '@/types/settings';
 
 const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503]);
 const MAX_RETRIES = 3;
@@ -15,26 +16,55 @@ export class AdoClient {
   private readonly org: string;
   private readonly project: string;
   private readonly pat: string;
-  private readonly authHeader: string;
+  private readonly authMethod: AdoAuthMethod;
+  private cachedHeader: string | null = null;
 
-  constructor(org: string, project: string, pat: string) {
+  constructor(org: string, project: string, pat: string, authMethod: AdoAuthMethod = 'pat') {
     this.org = org;
     this.project = project;
     this.pat = pat;
-    this.authHeader = `Basic ${btoa(`:${pat}`)}`;
+    this.authMethod = authMethod;
+  }
+
+  private async getAuthHeader(forceRefresh = false): Promise<string> {
+    if (!forceRefresh && this.cachedHeader) return this.cachedHeader;
+    const header = await invoke<string>('ado_resolve_auth_header', {
+      authMethod: this.authMethod,
+      pat: this.authMethod === 'pat' ? this.pat : null,
+    });
+    this.cachedHeader = header;
+    return header;
   }
 
   /**
-   * Route all ADO HTTP requests through the Rust backend via Tauri IPC.
-   * Azure DevOps API does not return CORS headers for the Tauri webview
-   * origin, so browser fetch() fails with "Failed to fetch".
+   * Route ADO HTTP requests through the Rust backend. On a 401, refresh
+   * the cached Authorization header once and retry the original request.
+   * The retry is enforced here rather than in `fetchWithRetry` so it
+   * applies to every call path (get, post, patch, delete, getStream).
    */
   private async fetchViaTauri(url: string, init: RequestInit): Promise<Response> {
-    const headers: Record<string, string> = {};
+    let response = await this.fetchViaTauriOnce(url, init, await this.getAuthHeader());
+    if (response.status === 401) {
+      try {
+        const fresh = await this.getAuthHeader(true);
+        response = await this.fetchViaTauriOnce(url, init, fresh);
+      } catch {
+        // Resolver failed on refresh — let the original 401 surface.
+      }
+    }
+    return response;
+  }
+
+  private async fetchViaTauriOnce(
+    url: string,
+    init: RequestInit,
+    authHeader: string,
+  ): Promise<Response> {
+    const headers: Record<string, string> = { Authorization: authHeader };
     if (init.headers) {
       const h = init.headers as Record<string, string>;
       for (const [k, v] of Object.entries(h)) {
-        headers[k] = v;
+        if (k.toLowerCase() !== 'authorization') headers[k] = v;
       }
     }
 
@@ -69,9 +99,9 @@ export class AdoClient {
   }
 
   get isConfigured(): boolean {
-    return (
-      this.org.trim().length > 0 && this.project.trim().length > 0 && this.pat.trim().length > 0
-    );
+    if (this.org.trim().length === 0 || this.project.trim().length === 0) return false;
+    if (this.authMethod === 'azCli') return true;
+    return this.pat.trim().length > 0;
   }
 
   private get baseUrl(): string {
@@ -88,22 +118,19 @@ export class AdoClient {
     return `https://dev.azure.com/${encodeURIComponent(this.org)}/_apis/${relativePath}${separator}api-version=7.1`;
   }
 
-  private get headers(): Record<string, string> {
-    return {
-      Authorization: this.authHeader,
-      'Content-Type': 'application/json',
-    };
+  private get commonHeaders(): Record<string, string> {
+    return { 'Content-Type': 'application/json' };
   }
 
   async get<T>(relativePath: string, apiVersion?: string): Promise<T> {
     const url = this.buildUrl(relativePath, apiVersion);
-    const response = await this.fetchWithRetry(url, { headers: this.headers });
+    const response = await this.fetchWithRetry(url, { headers: this.commonHeaders });
     return this.handleResponse<T>(response, url);
   }
 
   async getOrgLevel<T>(relativePath: string): Promise<T> {
     const url = this.buildOrgUrl(relativePath);
-    const response = await this.fetchWithRetry(url, { headers: this.headers });
+    const response = await this.fetchWithRetry(url, { headers: this.commonHeaders });
     return this.handleResponse<T>(response, url);
   }
 
@@ -116,10 +143,7 @@ export class AdoClient {
     const url = this.buildUrl(relativePath, apiVersion);
     const response = await this.fetchWithRetry(url, {
       method: 'POST',
-      headers: {
-        ...this.headers,
-        'Content-Type': contentType ?? 'application/json',
-      },
+      headers: { ...this.commonHeaders, 'Content-Type': contentType ?? 'application/json' },
       body: JSON.stringify(body),
     });
     return this.handleResponse<T>(response, url);
@@ -129,10 +153,7 @@ export class AdoClient {
     const url = this.buildUrl(relativePath);
     const response = await this.fetchWithRetry(url, {
       method: 'PATCH',
-      headers: {
-        ...this.headers,
-        'Content-Type': contentType ?? 'application/json',
-      },
+      headers: { ...this.commonHeaders, 'Content-Type': contentType ?? 'application/json' },
       body: JSON.stringify(body),
     });
     return this.handleResponse<T>(response, url);
@@ -142,7 +163,7 @@ export class AdoClient {
     const url = this.buildUrl(relativePath);
     const response = await this.fetchWithRetry(url, {
       method: 'DELETE',
-      headers: this.headers,
+      headers: this.commonHeaders,
     });
 
     if (response.status === 401 || response.status === 403) {
@@ -159,7 +180,7 @@ export class AdoClient {
 
   async getStream(relativePath: string): Promise<Blob> {
     const url = this.buildUrl(relativePath);
-    const response = await this.fetchWithRetry(url, { headers: this.headers });
+    const response = await this.fetchWithRetry(url, { headers: this.commonHeaders });
 
     if (response.status === 401 || response.status === 403) {
       throw new AdoAuthError(`Azure DevOps authentication failed (${response.status}).`);
@@ -175,18 +196,21 @@ export class AdoClient {
     return response.blob();
   }
 
-  async testConnection(organization: string, project: string, pat: string): Promise<string | null> {
+  /**
+   * Verify the current credentials by GETting the project metadata.
+   * Uses the configured auth method — no extra args required.
+   *
+   * Returns a human-readable string on HTTP-level failures, `null` on
+   * success. Structured errors from `ado_resolve_auth_header` (e.g.
+   * `AzNotInstalled`, `AzNotLoggedIn`) are re-thrown so the UI can
+   * match on their `kind` field and render mode-specific copy.
+   */
+  async testConnection(): Promise<string | null> {
     try {
-      const url = `https://dev.azure.com/${encodeURIComponent(organization)}/_apis/projects/${encodeURIComponent(project)}?api-version=7.1`;
-      const init: RequestInit = {
-        headers: {
-          Authorization: `Basic ${btoa(`:${pat}`)}`,
-          'Content-Type': 'application/json',
-        },
-      };
-      const response = await this.fetchWithRetry(url, init);
+      const url = `https://dev.azure.com/${encodeURIComponent(this.org)}/_apis/projects/${encodeURIComponent(this.project)}?api-version=7.1`;
+      const response = await this.fetchWithRetry(url, { headers: this.commonHeaders });
 
-      if (response.status === 401) return 'Invalid Personal Access Token.';
+      if (response.status === 401) return 'Authentication failed. Check your credentials.';
       if (response.status === 404) return 'Organization or project not found.';
 
       if (!response.ok) {
@@ -199,7 +223,9 @@ export class AdoClient {
         if (error.name === 'AbortError') return 'Connection timed out.';
         return `Connection failed: ${error.message}`;
       }
-      return 'Connection failed: Unknown error';
+      // Non-Error values (structured Tauri errors from the resolver)
+      // surface unchanged so the caller can dispatch on `kind`.
+      throw error;
     }
   }
 
