@@ -142,6 +142,7 @@ export function useAdoPolling(settings: AppSettings) {
     settings.azureDevOps.organization,
     settings.azureDevOps.personalAccessToken,
     settings.azureDevOps.project,
+    settings.azureDevOps.authMethod,
   ]);
 
   // Subscribe to selectedQueryId changes and fetch work items
