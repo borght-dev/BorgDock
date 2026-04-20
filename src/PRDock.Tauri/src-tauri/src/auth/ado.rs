@@ -49,10 +49,29 @@ pub(crate) fn classify_az_error(
 
 const ADO_RESOURCE_ID: &str = "499b84ac-1321-427f-aa17-267ca6975798";
 
+/// Returns the program name to invoke for Azure CLI.
+///
+/// On Windows, Azure CLI ships as `az.cmd` (a batch wrapper around the
+/// Python entry point). `std::process::Command::new("az")` on Windows
+/// does not find it because `CreateProcessW` only auto-appends `.exe`
+/// when no extension is provided — not `.cmd` or `.bat`. Terminals
+/// (cmd.exe, PowerShell, Windows Terminal) find `az.cmd` via
+/// `PATHEXT`, which is why `az` works in a shell but not from Rust.
+///
+/// On non-Windows platforms, `az` is a plain shim script and works
+/// without an extension.
+fn az_program() -> &'static str {
+    if cfg!(windows) {
+        "az.cmd"
+    } else {
+        "az"
+    }
+}
+
 /// Fetch an Azure DevOps bearer token via `az account get-access-token`.
 /// Returns the raw token on success, or a classified `AdoAuthError`.
 pub fn az_cli_token() -> Result<String, AdoAuthError> {
-    let result = hidden_command("az")
+    let result = hidden_command(az_program())
         .args([
             "account",
             "get-access-token",
@@ -89,7 +108,7 @@ pub fn az_cli_token() -> Result<String, AdoAuthError> {
 /// surfaces naturally when a token fetch is attempted.
 #[tauri::command]
 pub fn az_cli_available() -> bool {
-    hidden_command("az")
+    hidden_command(az_program())
         .arg("--version")
         .output()
         .map(|o| o.status.success())

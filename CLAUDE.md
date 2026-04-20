@@ -72,6 +72,12 @@ pub async fn my_window_command(app: tauri::AppHandle, /* args */) -> Result<T, S
 
 The command has to be `async` so it can `.await` the oneshot. `toggle_flyout` is the one exception — it's a non-command internal helper called synchronously from the tray event handler, which already runs on the main thread via `run_on_main_thread`.
 
+## Spawning Windows CLI wrappers (`az.cmd`, etc.) from Rust
+
+Rust's `std::process::Command::new("az")` on Windows uses `CreateProcessW`, which only auto-appends `.exe` — not `.cmd`, `.bat`, or the rest of `PATHEXT`. Azure CLI ships as `az.cmd` (a batch wrapper around the Python entry point), so bare `"az"` fails with `NotFound` even when `az` works in Windows Terminal, cmd.exe, or PowerShell (those honor `PATHEXT`).
+
+**Rule:** when spawning a CLI tool from Rust on Windows via `hidden_command`/`Command::new`, check whether the tool ships as `.exe` (like `gh.exe`, `git.exe`) or as a batch wrapper (`az.cmd`, `npm.cmd`, `yarn.cmd`, most Python-wrapped CLIs). Batch wrappers need the extension spelled out, ideally behind a `cfg!(windows)` guard. See `src-tauri/src/auth/ado.rs::az_program()` for the canonical pattern.
+
 ## `cargo check` / `cargo build` hangs in Git Bash on Windows
 
 Git Bash's MSYS path conversion mangles flags like `-Brepro` (MSVC's deterministic-build flag), parsing them as `-B` followed by a path argument. Symptom: `cc-rs` errors like `"C:/Program" "Files/Git/Brepro-"` during `libsqlite3-sys` build.
