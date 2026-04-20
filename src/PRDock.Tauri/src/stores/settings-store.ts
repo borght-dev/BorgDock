@@ -120,7 +120,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       const adoPat = await invoke<string | null>('get_credential', {
         service: 'prdock:azure_devops',
       });
-      if (adoPat) settings.azureDevOps.personalAccessToken = adoPat;
+      if (adoPat) {
+        settings.azureDevOps.personalAccessToken = adoPat;
+        // Migration: existing users with a stored PAT but no prior
+        // auto-detect run — pin to PAT mode and mark as detected so
+        // AdoSection's first-mount hook doesn't clobber their choice.
+        if (!settings.azureDevOps.authAutoDetected) {
+          settings.azureDevOps.authMethod = 'pat';
+          settings.azureDevOps.authAutoDetected = true;
+        }
+      }
 
       const claudeKey = await invoke<string | null>('get_credential', {
         service: 'prdock:claude_api',

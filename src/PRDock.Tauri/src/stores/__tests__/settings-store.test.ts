@@ -214,3 +214,96 @@ describe('settings-store', () => {
     });
   });
 });
+
+describe('settings-store ADO auth migration', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    useSettingsStore.setState({ isLoading: false, hasLoaded: false });
+  });
+
+  it('forces authMethod to pat when an ADO PAT exists in keychain and authAutoDetected is false', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (cmd: string, args?: unknown) => {
+      if (cmd === 'load_settings') {
+        return {
+          setupComplete: true,
+          gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 30, username: '' },
+          repos: [],
+          ui: {},
+          notifications: {},
+          claudeCode: {},
+          claudeApi: { model: '', maxTokens: 4096 },
+          claudeReview: { botUsername: '' },
+          updates: { autoCheckEnabled: true, autoDownload: true },
+          azureDevOps: {
+            organization: 'myorg',
+            project: 'myproj',
+            authMethod: 'azCli',
+            authAutoDetected: false,
+            pollIntervalSeconds: 120,
+            favoriteQueryIds: [],
+            trackedWorkItemIds: [],
+            workingOnWorkItemIds: [],
+            workItemWorktreePaths: {},
+            recentWorkItemIds: [],
+          },
+          sql: { connections: [] },
+          repoPriority: {},
+        };
+      }
+      if (cmd === 'get_credential') {
+        const service = (args as { service: string }).service;
+        if (service === 'prdock:azure_devops') return 'existing-pat-value';
+        return null;
+      }
+      return null;
+    });
+
+    await useSettingsStore.getState().loadSettings();
+
+    const settings = useSettingsStore.getState().settings;
+    expect(settings.azureDevOps.personalAccessToken).toBe('existing-pat-value');
+    expect(settings.azureDevOps.authMethod).toBe('pat');
+    expect(settings.azureDevOps.authAutoDetected).toBe(true);
+  });
+
+  it('leaves authMethod as azCli when no ADO PAT in keychain and authAutoDetected is false', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (cmd: string) => {
+      if (cmd === 'load_settings') {
+        return {
+          setupComplete: false,
+          gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 30, username: '' },
+          repos: [],
+          ui: {},
+          notifications: {},
+          claudeCode: {},
+          claudeApi: { model: '', maxTokens: 4096 },
+          claudeReview: { botUsername: '' },
+          updates: { autoCheckEnabled: true, autoDownload: true },
+          azureDevOps: {
+            organization: '',
+            project: '',
+            authMethod: 'azCli',
+            authAutoDetected: false,
+            pollIntervalSeconds: 120,
+            favoriteQueryIds: [],
+            trackedWorkItemIds: [],
+            workingOnWorkItemIds: [],
+            workItemWorktreePaths: {},
+            recentWorkItemIds: [],
+          },
+          sql: { connections: [] },
+          repoPriority: {},
+        };
+      }
+      return null;
+    });
+
+    await useSettingsStore.getState().loadSettings();
+
+    const settings = useSettingsStore.getState().settings;
+    expect(settings.azureDevOps.authMethod).toBe('azCli');
+    expect(settings.azureDevOps.authAutoDetected).toBe(false);
+  });
+});
