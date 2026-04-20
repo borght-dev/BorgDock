@@ -4,6 +4,25 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.0.14",
+    "date": "2026-04-20",
+    "summary": "Azure CLI authentication for Azure DevOps.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Azure CLI authentication for Azure DevOps",
+        "description": "Connect to Azure DevOps using your existing `az login` session instead of minting and rotating Personal Access Tokens. Settings → Azure DevOps has a new auth-method toggle that defaults to Azure CLI when `az` is installed on your machine; PRDock fetches a fresh bearer token on demand and transparently refreshes it when it expires. If you already have a PAT configured it keeps working unchanged — the PAT flow is still available for anyone without `az` installed.",
+        "hero": {
+          "src": "/whats-new/1.0.14/azure-cli-auth.png",
+          "alt": "Azure CLI auth in settings"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "1.0.13",
     "date": "2026-04-16",
     "summary": "Worktree palette is styled again, Theme respects your saved preference across all pop-out windows, and No more WebView2 right-click menu.",

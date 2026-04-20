@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.14 — 2026-04-20
+
+### New Features
+
+- **Azure CLI authentication for Azure DevOps** — Connect to Azure DevOps using your existing `az login` session instead of minting and rotating Personal Access Tokens. Settings → Azure DevOps has a new auth-method toggle that defaults to Azure CLI when `az` is installed on your machine; PRDock fetches a fresh bearer token on demand and transparently refreshes it when it expires. If you already have a PAT configured it keeps working unchanged — the PAT flow is still available for anyone without `az` installed. ![Azure CLI auth in settings](whats-new/1.0.14/azure-cli-auth.png)
+
 ## 1.0.13 — 2026-04-16
 
 ### Bug Fixes
