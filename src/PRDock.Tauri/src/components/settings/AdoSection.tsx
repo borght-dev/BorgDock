@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { AdoClient } from '@/services/ado/client';
 import type { AzureDevOpsSettings, AdoAuthMethod } from '@/types';
 
@@ -12,13 +13,44 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
   const [showToken, setShowToken] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testError, setTestError] = useState('');
+  const [detectedStatus, setDetectedStatus] = useState<
+    | { kind: 'ok' }
+    | { kind: 'az_not_installed' }
+    | { kind: 'az_not_logged_in' }
+    | { kind: 'token_fetch_failed'; message: string }
+    | null
+  >(null);
 
   const update = (partial: Partial<AzureDevOpsSettings>) =>
     onChange({ ...azureDevOps, ...partial });
 
+  useEffect(() => {
+    if (azureDevOps.authAutoDetected) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const available = await invoke<boolean>('az_cli_available');
+        if (cancelled) return;
+        update({
+          authMethod: available ? 'azCli' : 'pat',
+          authAutoDetected: true,
+        });
+      } catch {
+        if (cancelled) return;
+        update({ authMethod: 'pat', authAutoDetected: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Run once per mount when autoDetected flips to true.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleTestConnection = async () => {
     setTestStatus('testing');
     setTestError('');
+    setDetectedStatus(null);
     try {
       const client = new AdoClient(
         azureDevOps.organization,
@@ -32,10 +64,27 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
         setTestError(error);
       } else {
         setTestStatus('success');
+        if (azureDevOps.authMethod === 'azCli') {
+          setDetectedStatus({ kind: 'ok' });
+        }
       }
-    } catch {
+    } catch (e) {
       setTestStatus('error');
-      setTestError('Connection failed.');
+      // ado_resolve_auth_header rejection arrives here as a structured
+      // error object — { kind, message } — when Rust returns AdoAuthError.
+      const errObj = e as { kind?: string; message?: string };
+      if (errObj?.kind === 'az_not_installed') {
+        setDetectedStatus({ kind: 'az_not_installed' });
+        setTestError('Azure CLI not found on PATH.');
+      } else if (errObj?.kind === 'az_not_logged_in') {
+        setDetectedStatus({ kind: 'az_not_logged_in' });
+        setTestError('Not logged in to Azure.');
+      } else if (errObj?.kind === 'token_fetch_failed') {
+        setDetectedStatus({ kind: 'token_fetch_failed', message: errObj.message ?? 'Unknown error' });
+        setTestError(`Couldn't fetch Azure token: ${errObj.message ?? 'Unknown error'}`);
+      } else {
+        setTestError('Connection failed.');
+      }
     }
   };
 
@@ -79,6 +128,31 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
           ))}
         </div>
       </FieldLabel>
+
+      {azureDevOps.authMethod === 'azCli' && detectedStatus && (
+        <div className="text-[10px]">
+          {detectedStatus.kind === 'ok' && (
+            <span className="text-[var(--color-status-green)]">
+              Using your <code>az login</code> session.
+            </span>
+          )}
+          {detectedStatus.kind === 'az_not_installed' && (
+            <span className="text-[var(--color-status-red)]">
+              Azure CLI not found on PATH. Install <code>az</code> or switch to Personal Access Token.
+            </span>
+          )}
+          {detectedStatus.kind === 'az_not_logged_in' && (
+            <span className="text-[var(--color-status-red)]">
+              Not logged in to Azure. Run <code>az login</code> in a terminal, then click Test Connection.
+            </span>
+          )}
+          {detectedStatus.kind === 'token_fetch_failed' && (
+            <span className="text-[var(--color-status-red)]">
+              Couldn&apos;t fetch Azure token: {detectedStatus.message}
+            </span>
+          )}
+        </div>
+      )}
 
       {azureDevOps.authMethod === 'pat' && (
         <FieldLabel label="Personal Access Token">
