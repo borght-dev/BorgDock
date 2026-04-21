@@ -35,3 +35,34 @@
   padding: 20px;
   opacity: 0.6;
 }
+
+.code-view {
+  overflow: auto;
+  font-family: 'Consolas', 'SF Mono', Menlo, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 4px 0;
+  outline: none;
+}
+
+.code-line-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  white-space: pre;
+}
+
+.code-line-row--hit {
+  background: rgba(255, 200, 80, 0.08);
+}
+
+.code-line-number {
+  text-align: right;
+  padding-right: 10px;
+  opacity: 0.35;
+  user-select: none;
+}
+
+.code-line-text {
+  user-select: text;
+  white-space: pre;
+}
