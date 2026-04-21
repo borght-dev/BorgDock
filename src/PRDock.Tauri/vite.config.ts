@@ -56,6 +56,8 @@ export default defineConfig({
         "src/workitem-detail-main.tsx",
         "src/worktree-main.tsx",
         "src/whats-new-main.tsx",
+        "src/file-palette-main.tsx",
+        "src/file-viewer-main.tsx",
         "src/test-setup.ts",
         "src/test-utils/**",
         "src/**/index.ts",

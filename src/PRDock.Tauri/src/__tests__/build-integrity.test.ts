@@ -25,6 +25,8 @@ const ENTRY_POINTS = [
   { key: 'worktree', html: 'worktree.html', script: '/src/worktree-main.tsx' },
   { key: 'workitem-detail', html: 'workitem-detail.html', script: '/src/workitem-detail-main.tsx' },
   { key: 'whats-new', html: 'whats-new.html', script: '/src/whats-new-main.tsx' },
+  { key: 'filepalette', html: 'file-palette.html', script: '/src/file-palette-main.tsx' },
+  { key: 'fileviewer', html: 'file-viewer.html', script: '/src/file-viewer-main.tsx' },
 ];
 
 // Rust-side window URLs → expected HTML file (must be a valid entry point)
@@ -34,6 +36,7 @@ const RUST_WINDOW_URLS: Record<string, string> = {
   // hotkey.rs
   palette: 'palette.html',
   'worktree-palette': 'worktree.html',
+  'file-palette': 'file-palette.html',
   sql: 'sql.html',
   // window.rs
   'pr-detail': 'pr-detail.html',
