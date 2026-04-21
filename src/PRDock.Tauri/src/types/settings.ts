@@ -31,6 +31,11 @@ export interface RepoSettings {
   favoriteWorktreePaths?: string[];
 }
 
+export interface FilePaletteRoot {
+  path: string;
+  label?: string;
+}
+
 export interface UiSettings {
   sidebarEdge: SidebarEdge;
   sidebarMode: SidebarMode;
@@ -43,6 +48,9 @@ export interface UiSettings {
   badgeStyle: BadgeStyle;
   indicatorStyle: IndicatorStyle;
   worktreePaletteFavoritesOnly?: boolean;
+  filePaletteWidth?: number;
+  filePaletteHeight?: number;
+  filePaletteActiveRootPath?: string;
 }
 
 export interface NotificationSettings {
@@ -121,4 +129,5 @@ export interface AppSettings {
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
   repoPriority: Record<string, RepoPriority>;
+  filePaletteRoots?: FilePaletteRoot[];
 }
