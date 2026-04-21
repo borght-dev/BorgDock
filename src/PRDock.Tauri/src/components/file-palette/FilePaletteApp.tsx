@@ -13,6 +13,12 @@ import { useFileIndex } from './use-file-index';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
 
+function joinRootAndRel(root: string, rel: string): string {
+  const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '');
+  const normRel = rel.replace(/\\/g, '/').replace(/^\//, '');
+  return `${normRoot}/${normRel}`;
+}
+
 export function FilePaletteApp() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [worktreePathsByRepo, setWorktreePathsByRepo] = useState<Record<string, string[]>>({});
@@ -101,9 +107,18 @@ export function FilePaletteApp() {
     return match ?? null;
   }, [parsed.mode, results, selectedIndex, contentSearch.results]);
 
-  const openResult = useCallback((_i: number) => {
-    // Will be wired in Task 19 (Enter-to-pop-out).
-  }, []);
+  const openResult = useCallback(
+    (i: number) => {
+      if (!activeRoot) return;
+      const entry = results[i];
+      if (!entry) return;
+      const absPath = joinRootAndRel(activeRoot, entry.rel_path);
+      invoke('open_file_viewer_window', { path: absPath }).catch((e) => {
+        console.error('open_file_viewer_window failed', e);
+      });
+    },
+    [activeRoot, results],
+  );
 
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
