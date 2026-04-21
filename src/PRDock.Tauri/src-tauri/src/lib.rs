@@ -221,6 +221,7 @@ pub fn run() {
             ado::ado_fetch,
             // File palette
             file_palette::read_file::read_text_file,
+            file_palette::files::list_root_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
