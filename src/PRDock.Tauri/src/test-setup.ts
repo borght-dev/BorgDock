@@ -1,6 +1,18 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
+
+// @testing-library/dom's waitFor detects fake timers only when a `jest` global
+// exists (it probes `typeof jest` in helpers.js). Without this, `waitFor`
+// hangs under `vi.useFakeTimers()` because its internal setInterval/setTimeout
+// polls are themselves patched by the fake timers. Expose a tiny `vi`-backed
+// bridge so the detection succeeds and it calls `jest.advanceTimersByTime`.
+// See: https://github.com/testing-library/react-testing-library/issues/1197
+if (typeof globalThis !== 'undefined' && !(globalThis as unknown as { jest?: unknown }).jest) {
+  (globalThis as unknown as { jest: { advanceTimersByTime: (ms: number) => void } }).jest = {
+    advanceTimersByTime: (ms: number) => vi.advanceTimersByTime(ms),
+  };
+}
 
 // Polyfill matchMedia for jsdom
 if (typeof window !== 'undefined' && !window.matchMedia) {

@@ -8,6 +8,7 @@ import { buildRootEntries, RootsColumn, type RootEntry } from './RootsColumn';
 import { PreviewPane } from './PreviewPane';
 import { SearchPane } from './SearchPane';
 import { ResultsList, type ResultEntry } from './ResultsList';
+import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
@@ -23,6 +24,11 @@ export function FilePaletteApp() {
 
   const fileIndex = useFileIndex(activeRoot);
   const parsed: ParsedQuery = useMemo(() => parseQuery(query), [query]);
+
+  const contentSearch = useContentSearch(
+    parsed.mode === 'content' ? activeRoot : null,
+    parsed.mode === 'content' ? parsed.query : '',
+  );
 
   useEffect(() => {
     (async () => {
@@ -70,12 +76,30 @@ export function FilePaletteApp() {
   }, []);
 
   const results: ResultEntry[] = useMemo(() => {
-    if (parsed.mode !== 'filename') return [];
-    return fileIndex.filter(parsed.query).slice(0, 500).map((e) => ({
-      rel_path: e.rel_path,
-      mode: 'filename' as const,
-    }));
-  }, [parsed, fileIndex]);
+    if (parsed.mode === 'filename') {
+      return fileIndex
+        .filter(parsed.query)
+        .slice(0, 500)
+        .map((e) => ({ rel_path: e.rel_path, mode: 'filename' as const }));
+    }
+    if (parsed.mode === 'content') {
+      return contentSearch.results.map((r) => ({
+        rel_path: r.rel_path,
+        mode: 'content' as const,
+        match_count: r.match_count,
+        line: r.matches[0]?.line,
+      }));
+    }
+    return [];
+  }, [parsed, fileIndex, contentSearch.results]);
+
+  const currentContentHit = useMemo(() => {
+    if (parsed.mode !== 'content') return null;
+    const sel = results[selectedIndex];
+    if (!sel) return null;
+    const match = contentSearch.results.find((r) => r.rel_path === sel.rel_path);
+    return match ?? null;
+  }, [parsed.mode, results, selectedIndex, contentSearch.results]);
 
   const openResult = useCallback((_i: number) => {
     // Will be wired in Task 19 (Enter-to-pop-out).
@@ -144,7 +168,8 @@ export function FilePaletteApp() {
         <PreviewPane
           rootPath={activeRoot}
           relPath={results[selectedIndex]?.rel_path ?? null}
-          scrollToLine={results[selectedIndex]?.line}
+          scrollToLine={currentContentHit?.matches[0]?.line ?? results[selectedIndex]?.line}
+          highlightedLines={currentContentHit?.matches.map((m) => m.line)}
         />
       </div>
     </div>
