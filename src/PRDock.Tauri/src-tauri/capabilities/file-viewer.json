@@ -1,0 +1,16 @@
+{
+  "identifier": "file-viewer-capability",
+  "description": "Permissions for file viewer pop-out windows",
+  "windows": ["file-viewer-*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-set-position",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-size",
+    "core:window:allow-inner-size",
+    "core:window:allow-scale-factor",
+    "core:event:default"
+  ]
+}

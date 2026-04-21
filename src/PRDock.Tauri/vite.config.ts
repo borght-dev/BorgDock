@@ -85,6 +85,8 @@ export default defineConfig({
         sql: path.resolve(__dirname, "sql.html"),
         worktree: path.resolve(__dirname, "worktree.html"),
         'whats-new': path.resolve(__dirname, "whats-new.html"),
+        filepalette: path.resolve(__dirname, "file-palette.html"),
+        fileviewer: path.resolve(__dirname, "file-viewer.html"),
       },
     },
   },
