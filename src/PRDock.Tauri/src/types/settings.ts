@@ -48,8 +48,6 @@ export interface UiSettings {
   badgeStyle: BadgeStyle;
   indicatorStyle: IndicatorStyle;
   worktreePaletteFavoritesOnly?: boolean;
-  filePaletteWidth?: number;
-  filePaletteHeight?: number;
   filePaletteActiveRootPath?: string;
 }
 
