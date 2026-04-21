@@ -159,6 +159,10 @@ export function FilePaletteApp() {
     [query, results, selectedIndex, openResult],
   );
 
+  const jumpToSymbol = useCallback((word: string) => {
+    setQuery(`@${word}`);
+  }, []);
+
   useEffect(() => {
     rowRefs.current.get(selectedIndex)?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
@@ -202,6 +206,7 @@ export function FilePaletteApp() {
           relPath={results[selectedIndex]?.rel_path ?? null}
           scrollToLine={currentContentHit?.matches[0]?.line ?? results[selectedIndex]?.line}
           highlightedLines={currentContentHit?.matches.map((m) => m.line)}
+          onIdentifierJump={jumpToSymbol}
         />
       </div>
     </div>
