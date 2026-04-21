@@ -110,52 +110,57 @@ export function useBackgroundIndexer(
           langId as 'typescript' | 'javascript' | 'rust' | 'c_sharp',
         );
         const parser = new Parser();
-        parser.setLanguage(language);
-        const query = new Query(language, queryText);
+        let query: import('web-tree-sitter').Query | null = null;
+        try {
+          parser.setLanguage(language);
+          query = new Query(language, queryText);
 
-        for (const f of group) {
-          if (cancelled || rootRef.current !== root) {
-            parser.delete();
-            query.delete();
-            return;
-          }
-          const abs = joinPath(root, f.rel_path);
-          let content: string;
-          try {
-            content = await invoke<string>('read_text_file', { path: abs });
-          } catch {
-            setProcessed((p) => p + 1);
-            continue;
-          }
-          const tree = parser.parse(content);
-          if (tree) {
-            const captures = query.captures(tree.rootNode);
-            for (const cap of captures) {
-              if (cap.name === 'symbol.name') {
-                collected.push({
-                  name: cap.node.text,
-                  rel_path: f.rel_path,
-                  line: cap.node.startPosition.row + 1,
-                });
-              }
+          for (const f of group) {
+            if (cancelled || rootRef.current !== root) {
+              return;
             }
-            tree.delete();
-          }
-          setProcessed((p) => p + 1);
-          if (collected.length % 200 === 0) {
-            setEntries([...collected]);
-            await new Promise((resolve) => {
-              if (typeof window.requestIdleCallback === 'function') {
-                window.requestIdleCallback(() => resolve(null), { timeout: 50 });
-              } else {
-                window.setTimeout(() => resolve(null), 0);
+            const abs = joinPath(root, f.rel_path);
+            let content: string;
+            try {
+              content = await invoke<string>('read_text_file', { path: abs });
+            } catch {
+              if (!cancelled && rootRef.current === root) {
+                setProcessed((p) => p + 1);
               }
-            });
+              continue;
+            }
+            const tree = parser.parse(content);
+            if (tree) {
+              const captures = query.captures(tree.rootNode);
+              for (const cap of captures) {
+                if (cap.name === 'symbol.name') {
+                  collected.push({
+                    name: cap.node.text,
+                    rel_path: f.rel_path,
+                    line: cap.node.startPosition.row + 1,
+                  });
+                }
+              }
+              tree.delete();
+            }
+            if (!cancelled && rootRef.current === root) {
+              setProcessed((p) => p + 1);
+            }
+            if (collected.length % 200 === 0) {
+              setEntries([...collected]);
+              await new Promise((resolve) => {
+                if (typeof window.requestIdleCallback === 'function') {
+                  window.requestIdleCallback(() => resolve(null), { timeout: 50 });
+                } else {
+                  window.setTimeout(() => resolve(null), 0);
+                }
+              });
+            }
           }
+        } finally {
+          query?.delete();
+          parser.delete();
         }
-
-        parser.delete();
-        query.delete();
       }
 
       if (!cancelled && rootRef.current === root) {
