@@ -16,14 +16,75 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::Manager;
 
+fn log_dir() -> std::path::PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("PRDock")
+        .join("logs")
+}
+
+/// Write panic info to a dedicated file synchronously, then chain to the
+/// default hook. Release builds use `panic = "abort"`, so `log::error!` alone
+/// can lose the message before the buffered writer flushes — a direct
+/// write+flush is the only way to guarantee the panic is recorded.
+fn install_panic_hook() {
+    // Make the default hook print a backtrace even when RUST_BACKTRACE is unset.
+    if std::env::var_os("RUST_BACKTRACE").is_none() {
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
+
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info
+            .payload()
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| info.payload().downcast_ref::<String>().map(|s| s.as_str()))
+            .unwrap_or("<non-string panic payload>");
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "<unknown location>".to_string());
+        let thread = std::thread::current()
+            .name()
+            .unwrap_or("<unnamed>")
+            .to_string();
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        let ts = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f");
+        let message = format!(
+            "[{ts}] PANIC thread={thread} at {location}\n  payload: {payload}\n  backtrace:\n{backtrace}\n"
+        );
+
+        // Direct + flushed write — survives `panic = abort`.
+        let dir = log_dir();
+        let _ = std::fs::create_dir_all(&dir);
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(dir.join("prdock-panic.log"))
+        {
+            use std::io::Write;
+            let _ = f.write_all(message.as_bytes());
+            let _ = f.flush();
+        }
+
+        // Best-effort: also route through the log plugin (may or may not flush).
+        log::error!("{}", message.trim_end());
+
+        // Stderr for `cargo tauri dev`.
+        eprintln!("{message}");
+
+        default_hook(info);
+    }));
+}
+
 pub fn run() {
+    install_panic_hook();
+
     let log_plugin = tauri_plugin_log::Builder::new()
         .targets([
             tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-                path: dirs::config_dir()
-                    .unwrap_or_else(|| std::path::PathBuf::from("."))
-                    .join("PRDock")
-                    .join("logs"),
+                path: log_dir(),
                 file_name: Some("prdock".into()),
             }),
             // Also stream to stdout so `cargo tauri dev` shows live logs,
