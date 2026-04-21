@@ -40,7 +40,7 @@
   overflow: auto;
   font-family: 'Consolas', 'SF Mono', Menlo, 'Courier New', monospace;
   font-size: 12px;
-  line-height: 20px;
+  line-height: var(--code-line-height, 20px);
   padding: 4px 0;
   outline: none;
 }

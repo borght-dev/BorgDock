@@ -5,6 +5,10 @@ import {
 } from '@/services/syntax-highlighter';
 import type { HighlightSpan } from '@/types';
 
+// Must match the `line-height` on `.code-view` in file-palette.css (see
+// var(--code-line-height) fallback). scrollToLine relies on this.
+const LINE_HEIGHT_PX = 20;
+
 export interface CodeViewProps {
   path: string;
   content: string;
@@ -38,9 +42,10 @@ export function CodeView({
 
   // Scroll to a specific line.
   useEffect(() => {
+    // TODO: scrollToLine only re-fires on prop change. Setting the same line
+    // value twice (e.g., user re-clicks the current row) will not re-scroll.
     if (!scrollToLine || !rootRef.current) return;
-    const lineHeight = 20;
-    const target = (scrollToLine - 1) * lineHeight - rootRef.current.clientHeight / 3;
+    const target = (scrollToLine - 1) * LINE_HEIGHT_PX - rootRef.current.clientHeight / 3;
     rootRef.current.scrollTop = Math.max(0, target);
   }, [scrollToLine]);
 
