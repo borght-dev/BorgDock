@@ -183,12 +183,24 @@ export function FilePaletteApp() {
           />
           {loadError ? (
             <div className="fp-empty">Load error: {loadError}</div>
+          ) : roots.length === 0 ? (
+            <div className="fp-empty">No roots configured. Add worktrees or paths under Settings.</div>
           ) : fileIndex.loading && parsed.mode === 'filename' ? (
             <div className="fp-empty">Loading file index…</div>
           ) : parsed.mode === 'symbol' && indexer.indexing && results.length === 0 ? (
             <div className="fp-empty">
               Indexing symbols… {indexer.processed} / {indexer.total}
             </div>
+          ) : results.length === 0 && parsed.query ? (
+            parsed.mode === 'filename' ? (
+              <div className="fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
+            ) : parsed.mode === 'content' ? (
+              <div className="fp-empty">No content matches for &lsquo;{parsed.query}&rsquo;.</div>
+            ) : (
+              <div className="fp-empty">
+                No implementations found for &lsquo;{parsed.query}&rsquo; in this root. v1 supports TS, JS, C#, Rust.
+              </div>
+            )
           ) : (
             <ResultsList
               results={results}
