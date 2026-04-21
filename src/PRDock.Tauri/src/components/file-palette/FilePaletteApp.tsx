@@ -8,8 +8,10 @@ import { buildRootEntries, RootsColumn, type RootEntry } from './RootsColumn';
 import { PreviewPane } from './PreviewPane';
 import { SearchPane } from './SearchPane';
 import { ResultsList, type ResultEntry } from './ResultsList';
+import { useBackgroundIndexer } from './use-background-indexer';
 import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
+import { mergeSymbolHits } from './use-symbol-index';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
 
@@ -29,6 +31,7 @@ export function FilePaletteApp() {
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
 
   const fileIndex = useFileIndex(activeRoot);
+  const indexer = useBackgroundIndexer(activeRoot, fileIndex.entries);
   const parsed: ParsedQuery = useMemo(() => parseQuery(query), [query]);
 
   const contentSearch = useContentSearch(
@@ -96,8 +99,18 @@ export function FilePaletteApp() {
         line: r.matches[0]?.line,
       }));
     }
+    if (parsed.mode === 'symbol') {
+      return mergeSymbolHits(indexer.entries, parsed.query)
+        .slice(0, 200)
+        .map((s) => ({
+          rel_path: s.rel_path,
+          mode: 'symbol' as const,
+          line: s.line,
+          symbol: s.name,
+        }));
+    }
     return [];
-  }, [parsed, fileIndex, contentSearch.results]);
+  }, [parsed, fileIndex, contentSearch.results, indexer.entries]);
 
   const currentContentHit = useMemo(() => {
     if (parsed.mode !== 'content') return null;
@@ -168,6 +181,10 @@ export function FilePaletteApp() {
             <div className="fp-empty">Load error: {loadError}</div>
           ) : fileIndex.loading && parsed.mode === 'filename' ? (
             <div className="fp-empty">Loading file index…</div>
+          ) : parsed.mode === 'symbol' && indexer.indexing && results.length === 0 ? (
+            <div className="fp-empty">
+              Indexing symbols… {indexer.processed} / {indexer.total}
+            </div>
           ) : (
             <ResultsList
               results={results}
