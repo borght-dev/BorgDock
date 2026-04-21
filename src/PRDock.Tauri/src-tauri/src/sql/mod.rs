@@ -243,66 +243,91 @@ pub async fn execute_sql_query(
 
     let server = conn_config.server.clone();
     let port = conn_config.port;
-    let mut client = connect(&server, port, config).await?;
 
-    let start = std::time::Instant::now();
+    // Tiberius panics (not errors) when a result row contains an unsupported
+    // column type — SQL Server UDTs like `geography`, `hierarchyid`, CLR
+    // types, etc. Running the query body on a spawned task isolates that
+    // panic: it surfaces as a JoinError we can convert into a friendly
+    // Result, instead of tearing down the whole process.
+    let handle = tokio::spawn(async move {
+        let mut client = connect(&server, port, config).await?;
 
-    let stream = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        client.query(query, &[]),
-    )
-    .await
-    .map_err(|_| "Query timed out after 30 seconds".to_string())?
-    .map_err(|e| format!("Query failed: {e}"))?;
+        let start = std::time::Instant::now();
 
-    let results = stream
-        .into_results()
+        let stream = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            client.query(query, &[]),
+        )
         .await
-        .map_err(|e| format!("Failed to read results: {e}"))?;
+        .map_err(|_| "Query timed out after 30 seconds".to_string())?
+        .map_err(|e| format!("Query failed: {e}"))?;
 
-    let execution_time_ms = start.elapsed().as_millis() as u64;
+        let results = stream
+            .into_results()
+            .await
+            .map_err(|e| format!("Failed to read results: {e}"))?;
 
-    let mut result_sets = Vec::new();
-    let mut total_row_count = 0;
+        let execution_time_ms = start.elapsed().as_millis() as u64;
 
-    for rows in results {
-        if rows.is_empty() {
-            continue;
-        }
+        let mut result_sets = Vec::new();
+        let mut total_row_count = 0;
 
-        let columns: Vec<String> = rows[0]
-            .columns()
-            .iter()
-            .map(|c| c.name().to_string())
-            .collect();
-
-        let mut data_rows: Vec<Vec<Option<String>>> = Vec::new();
-        let mut truncated = false;
-
-        for (i, row) in rows.iter().enumerate() {
-            if i >= MAX_ROWS {
-                truncated = true;
-                break;
+        for rows in results {
+            if rows.is_empty() {
+                continue;
             }
-            data_rows.push(row_to_strings(row));
+
+            let columns: Vec<String> = rows[0]
+                .columns()
+                .iter()
+                .map(|c| c.name().to_string())
+                .collect();
+
+            let mut data_rows: Vec<Vec<Option<String>>> = Vec::new();
+            let mut truncated = false;
+
+            for (i, row) in rows.iter().enumerate() {
+                if i >= MAX_ROWS {
+                    truncated = true;
+                    break;
+                }
+                data_rows.push(row_to_strings(row));
+            }
+
+            let row_count = data_rows.len();
+            total_row_count += row_count;
+
+            result_sets.push(ResultSet {
+                columns,
+                rows: data_rows,
+                row_count,
+                truncated,
+            });
         }
 
-        let row_count = data_rows.len();
-        total_row_count += row_count;
+        Ok::<QueryResult, String>(QueryResult {
+            result_sets,
+            execution_time_ms,
+            total_row_count,
+        })
+    });
 
-        result_sets.push(ResultSet {
-            columns,
-            rows: data_rows,
-            row_count,
-            truncated,
-        });
+    match handle.await {
+        Ok(result) => result,
+        Err(join_err) if join_err.is_panic() => {
+            let panic = join_err.into_panic();
+            let msg = panic
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()))
+                .unwrap_or_else(|| "unknown panic".to_string());
+            log::error!("execute_sql_query: tiberius panic caught: {msg}");
+            Err(format!(
+                "Query engine error: {msg}\n\nThis usually means the result includes a column of a type tiberius doesn't support (e.g. geography, hierarchyid, XML, CLR UDT). Try selecting specific columns instead of SELECT *."
+            ))
+        }
+        Err(join_err) => Err(format!("Query task failed: {join_err}")),
     }
-
-    Ok(QueryResult {
-        result_sets,
-        execution_time_ms,
-        total_row_count,
-    })
 }
 
 #[tauri::command]

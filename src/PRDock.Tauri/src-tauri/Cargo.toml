@@ -59,4 +59,7 @@ windows = { version = "0.61", features = [
 strip = true
 lto = true
 codegen-units = 1
-panic = "abort"
+# Unwind (not abort) on release so tiberius panics (e.g. on unsupported column
+# types like geography/hierarchyid UDTs) can be caught via tokio::spawn +
+# JoinError::is_panic instead of terminating the whole app. See sql::execute_sql_query.
+panic = "unwind"
