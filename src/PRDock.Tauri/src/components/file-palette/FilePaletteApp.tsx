@@ -191,6 +191,8 @@ export function FilePaletteApp() {
             <div className="fp-empty">
               Indexing symbols… {indexer.processed} / {indexer.total}
             </div>
+          ) : parsed.mode === 'content' && contentSearch.loading && results.length === 0 ? (
+            <div className="fp-empty">Searching…</div>
           ) : results.length === 0 && parsed.query ? (
             parsed.mode === 'filename' ? (
               <div className="fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
