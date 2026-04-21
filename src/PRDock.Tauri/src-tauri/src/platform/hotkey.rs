@@ -127,10 +127,11 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
 
-    // Register SQL window shortcut (Ctrl+F10) — toggles to match the palette
-    // behavior. The SQL window holds persistent connection + tab state, so
-    // closing it discards in-progress work; users can minimize via the title
-    // bar if they want to preserve state.
+    // Register SQL window shortcut (Ctrl+F10) — unlike the palettes, the SQL
+    // window is a persistent workbench: it shows in the taskbar / Alt+Tab and
+    // stays open until the user closes it via Escape or the title bar. A
+    // re-press brings the existing window to front (it's easily occluded by
+    // the always-on-top main sidebar), it does not close it.
     let app_sql = app.clone();
     app.global_shortcut()
         .on_shortcut("Ctrl+F10", move |_app, _shortcut, event| {
@@ -141,7 +142,9 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
             let app_cb = app_sql.clone();
             let _ = app_sql.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("sql") {
-                    let _ = win.close();
+                    let _ = win.unminimize();
+                    let _ = win.show();
+                    let _ = win.set_focus();
                     return;
                 }
 
@@ -154,7 +157,6 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 .inner_size(900.0, 650.0)
                 .decorations(false)
                 .resizable(true)
-                .skip_taskbar(true)
                 .center()
                 .focused(true)
                 .build()
