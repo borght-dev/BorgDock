@@ -25,10 +25,10 @@ describe('CodeView', () => {
   it('applies the highlightedLines class to the requested rows', () => {
     render(<CodeView path="t.ts" content={'a\nb\nc\nd'} highlightedLines={[2, 4]} />);
     const rows = screen.getAllByTestId('code-line-row');
-    expect(rows[0].className).not.toContain('code-line-row--hit');
-    expect(rows[1].className).toContain('code-line-row--hit');
-    expect(rows[2].className).not.toContain('code-line-row--hit');
-    expect(rows[3].className).toContain('code-line-row--hit');
+    expect(rows[0]!.className).not.toContain('code-line-row--hit');
+    expect(rows[1]!.className).toContain('code-line-row--hit');
+    expect(rows[2]!.className).not.toContain('code-line-row--hit');
+    expect(rows[3]!.className).toContain('code-line-row--hit');
   });
 
   it('calls onIdentifierJump on F12 when a word is under the cursor', () => {
@@ -40,7 +40,7 @@ describe('CodeView', () => {
         onIdentifierJump={onJump}
       />,
     );
-    const lineText = screen.getAllByTestId('code-line-text')[0];
+    const lineText = screen.getAllByTestId('code-line-text')[0]!;
     // Simulate selecting the word handleLogin via native Range.
     const range = document.createRange();
     range.selectNodeContents(lineText);

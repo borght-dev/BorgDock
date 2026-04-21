@@ -105,7 +105,7 @@ export function CodeView({
 
 function renderLine(text: string, spans: HighlightSpan[] | null) {
   if (!spans || spans.length === 0) return text === '' ? ' ' : text;
-  const out: Array<string | JSX.Element> = [];
+  const out: Array<string | React.ReactNode> = [];
   let cursor = 0;
   spans.forEach((span, idx) => {
     if (span.start > cursor) out.push(text.slice(cursor, span.start));
