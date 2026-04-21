@@ -223,6 +223,7 @@ pub fn run() {
             file_palette::read_file::read_text_file,
             file_palette::files::list_root_files,
             file_palette::content_search::search_content,
+            file_palette::windows::open_file_viewer_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
