@@ -127,6 +127,49 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
 
+    // Register file palette shortcut (Ctrl+F8) — toggles the same way as the
+    // command and worktree palettes. The palette window itself is keyboard-
+    // dismissed and skipTaskbar=true. Files opened from it pop out into
+    // separate first-class viewer windows (see file_palette::windows).
+    let app_file_palette = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F8", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+
+            let app_cb = app_file_palette.clone();
+            let _ = app_file_palette.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("file-palette") {
+                    let _ = win.close();
+                    return;
+                }
+
+                if let Ok(win) = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "file-palette",
+                    tauri::WebviewUrl::App("file-palette.html".into()),
+                )
+                .title("PRDock File Palette")
+                .inner_size(1100.0, 600.0)
+                .min_inner_size(800.0, 400.0)
+                .decorations(false)
+                .always_on_top(true)
+                .resizable(true)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build()
+                {
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                        let _ = win.set_focus();
+                    });
+                }
+            });
+        })
+        .map_err(|e| format!("Failed to register file palette hotkey: {e}"))?;
+
     // Register SQL window shortcut (Ctrl+F10) — unlike the palettes, the SQL
     // window is a persistent workbench: it shows in the taskbar / Alt+Tab and
     // stays open until the user closes it via Escape or the title bar. A
