@@ -5,6 +5,7 @@ import type { AppSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { parseQuery, type ParsedQuery } from './parse-query';
 import { buildRootEntries, RootsColumn, type RootEntry } from './RootsColumn';
+import { PreviewPane } from './PreviewPane';
 import { SearchPane } from './SearchPane';
 import { ResultsList, type ResultEntry } from './ResultsList';
 import { useFileIndex } from './use-file-index';
@@ -140,7 +141,11 @@ export function FilePaletteApp() {
             />
           )}
         </div>
-        <div className="fp-preview-placeholder">Preview</div>
+        <PreviewPane
+          rootPath={activeRoot}
+          relPath={results[selectedIndex]?.rel_path ?? null}
+          scrollToLine={results[selectedIndex]?.line}
+        />
       </div>
     </div>
   );

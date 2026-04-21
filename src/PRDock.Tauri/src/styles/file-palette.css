@@ -187,3 +187,25 @@
 .fp-result-meta { font-size: 10px; opacity: 0.5; flex-shrink: 0; }
 
 .fp-empty { padding: 14px; opacity: 0.55; font-size: 12px; }
+
+.fp-preview-empty {
+  padding: 18px;
+  opacity: 0.55;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.fp-preview-action {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: rgba(80,140,255,0.22);
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.fp-preview-action:hover { background: rgba(80,140,255,0.35); }
