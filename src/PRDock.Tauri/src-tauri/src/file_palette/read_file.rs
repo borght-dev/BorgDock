@@ -2,6 +2,8 @@ use serde::Serialize;
 use std::path::PathBuf;
 
 const DEFAULT_MAX_BYTES: u64 = 1_048_576; // 1 MB
+const BINARY_SAMPLE_BYTES: usize = 8192;
+const BINARY_THRESHOLD_PERCENT: usize = 10;
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -45,16 +47,17 @@ fn read_text_file_sync(path: PathBuf, limit: u64) -> Result<String, ReadFileErro
 
 /// True if the first 8 KB contain > 10% non-printable bytes.
 fn looks_binary(bytes: &[u8]) -> bool {
-    let sample_len = bytes.len().min(8192);
+    let sample_len = bytes.len().min(BINARY_SAMPLE_BYTES);
     if sample_len == 0 {
         return false;
     }
     let sample = &bytes[..sample_len];
     let bad = sample
         .iter()
-        .filter(|&&b| b == 0 || (b < 9) || (b > 13 && b < 32 && b != 27))
+        // Treat control bytes as "bad" except TAB (9), LF (10), VT (11), FF (12), CR (13), ESC (27).
+        .filter(|&&b| b < 9 || (b > 13 && b < 32 && b != 27))
         .count();
-    (bad * 10) > sample_len
+    (bad * 100) > sample_len * BINARY_THRESHOLD_PERCENT
 }
 
 #[cfg(test)]
