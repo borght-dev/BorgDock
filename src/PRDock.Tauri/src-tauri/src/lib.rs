@@ -219,6 +219,8 @@ pub fn run() {
             claude_api::generate_pr_summary,
             // Azure DevOps HTTP proxy (CORS bypass)
             ado::ado_fetch,
+            // File palette
+            file_palette::read_file::read_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
