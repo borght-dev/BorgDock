@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
 import { CodeView } from './CodeView';
+import { joinRootAndRel } from './join-path';
 
 interface Props {
   rootPath: string | null;
@@ -26,7 +27,7 @@ export function PreviewPane({
   onIdentifierJump,
 }: Props) {
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
-  const absPath = rootPath && relPath ? joinPath(rootPath, relPath) : null;
+  const absPath = rootPath && relPath ? joinRootAndRel(rootPath, relPath) : null;
 
   useEffect(() => {
     if (!absPath) {
@@ -104,10 +105,4 @@ function normalizeError(err: unknown): LoadState {
     return { kind: 'error', message: e.message ?? 'unknown error' };
   }
   return { kind: 'error', message: String(err) };
-}
-
-function joinPath(root: string, rel: string): string {
-  const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '');
-  const normRel = rel.replace(/\\/g, '/').replace(/^\//, '');
-  return `${normRoot}/${normRel}`;
 }

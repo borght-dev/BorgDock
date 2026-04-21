@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
+import { joinRootAndRel } from './join-path';
 import { parseQuery, type ParsedQuery } from './parse-query';
 import { buildRootEntries, RootsColumn, type RootEntry } from './RootsColumn';
 import { PreviewPane } from './PreviewPane';
@@ -14,12 +15,6 @@ import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
-
-function joinRootAndRel(root: string, rel: string): string {
-  const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '');
-  const normRel = rel.replace(/\\/g, '/').replace(/^\//, '');
-  return `${normRoot}/${normRel}`;
-}
 
 export function FilePaletteApp() {
   const [settings, setSettings] = useState<AppSettings | null>(null);

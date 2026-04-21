@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef, useState } from 'react';
+import { joinRootAndRel } from './join-path';
 import { languageForExtension, type SymbolEntry } from './use-symbol-index';
 import type { FileEntry } from './use-file-index';
 
@@ -119,7 +120,7 @@ export function useBackgroundIndexer(
             if (cancelled || rootRef.current !== root) {
               return;
             }
-            const abs = joinPath(root, f.rel_path);
+            const abs = joinRootAndRel(root, f.rel_path);
             let content: string;
             try {
               content = await invoke<string>('read_text_file', { path: abs });
@@ -175,10 +176,4 @@ export function useBackgroundIndexer(
   }, [root, files]);
 
   return { entries, processed, total: files.length, indexing };
-}
-
-function joinPath(root: string, rel: string): string {
-  const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '');
-  const normRel = rel.replace(/\\/g, '/').replace(/^\//, '');
-  return `${normRoot}/${normRel}`;
 }
