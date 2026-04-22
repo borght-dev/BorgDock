@@ -33,6 +33,8 @@ export function ResultsTable({
         } else {
           next.add(index);
         }
+      } else if (next.has(index) && next.size === 1) {
+        next.clear();
       } else {
         next.clear();
         next.add(index);

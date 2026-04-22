@@ -217,6 +217,19 @@ export function SqlApp() {
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
+  // Click outside rows clears selection (copy buttons excluded so Copy still works)
+  useEffect(() => {
+    function handleDocClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('.sql-data-row')) return;
+      if (target.closest('.sql-copy-group')) return;
+      setSelectedRowsMap((prev) => (prev.size === 0 ? prev : new Map()));
+    }
+    document.addEventListener('click', handleDocClick);
+    return () => document.removeEventListener('click', handleDocClick);
+  }, []);
+
   // Drag-to-resize editor
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
@@ -242,7 +255,16 @@ export function SqlApp() {
   }, []);
 
   const runQuery = useCallback(async () => {
-    if (!selectedConnection || !query.trim()) return;
+    if (!selectedConnection) return;
+
+    const ta = textareaRef.current;
+    const selected =
+      ta && ta.selectionStart !== ta.selectionEnd
+        ? query.slice(ta.selectionStart, ta.selectionEnd)
+        : '';
+    const toRun = (selected || query).trim();
+    if (!toRun) return;
+
     setIsRunning(true);
     setError('');
     setResult(null);
@@ -251,7 +273,7 @@ export function SqlApp() {
     try {
       const res = await invoke<QueryResult>('execute_sql_query', {
         connectionName: selectedConnection,
-        query: query.trim(),
+        query: toRun,
       });
       setResult(res);
     } catch (err) {
