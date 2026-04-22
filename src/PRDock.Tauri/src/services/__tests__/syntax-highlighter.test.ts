@@ -28,7 +28,9 @@ function makeMockNode(
   };
 }
 
-// Build a mock tree-sitter module
+// Build a mock tree-sitter module. Real web-tree-sitter ≥0.25 exports `Parser`
+// and `Language` as separate named classes (no default export), so the mocks
+// mirror that shape.
 function buildTreeSitterMock(rootNode: ReturnType<typeof makeMockNode> | null = null) {
   const mockTree = rootNode
     ? {
@@ -46,12 +48,13 @@ function buildTreeSitterMock(rootNode: ReturnType<typeof makeMockNode> | null = 
   const mockLanguage = { name: 'typescript' };
 
   const MockParserClass = vi.fn().mockImplementation(() => mockParser);
-  (MockParserClass as unknown as Record<string, unknown>).Language = {
-    load: vi.fn().mockResolvedValue(mockLanguage),
-  };
   (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
 
-  return { MockParserClass, mockParser, mockLanguage, mockTree };
+  const MockLanguageClass = {
+    load: vi.fn().mockResolvedValue(mockLanguage),
+  };
+
+  return { MockParserClass, MockLanguageClass, mockParser, mockLanguage, mockTree };
 }
 
 describe('getHighlightClass', () => {
@@ -108,10 +111,11 @@ describe('highlightLines', () => {
       makeMockNode('const', 0, 0, 0, 5), // keyword
       makeMockNode('string', 0, 8, 0, 15), // string
     ]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -126,10 +130,13 @@ describe('highlightLines', () => {
   });
 
   it('returns null when tree-sitter init fails', async () => {
+    const MockParserClass = vi.fn();
+    (MockParserClass as unknown as Record<string, unknown>).init = vi
+      .fn()
+      .mockRejectedValue(new Error('WASM load failed'));
     vi.doMock('web-tree-sitter', () => ({
-      default: {
-        init: vi.fn().mockRejectedValue(new Error('WASM load failed')),
-      },
+      Parser: MockParserClass,
+      Language: { load: vi.fn() },
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -140,12 +147,12 @@ describe('highlightLines', () => {
   it('returns null when language loading fails', async () => {
     const MockParserClass = vi.fn();
     (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
-    (MockParserClass as unknown as Record<string, unknown>).Language = {
-      load: vi.fn().mockRejectedValue(new Error('Grammar not found')),
-    };
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: {
+        load: vi.fn().mockRejectedValue(new Error('Grammar not found')),
+      },
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -154,10 +161,11 @@ describe('highlightLines', () => {
   });
 
   it('returns null when parser.parse returns null', async () => {
-    const { MockParserClass } = buildTreeSitterMock(null);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(null);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -170,10 +178,11 @@ describe('highlightLines', () => {
       makeMockNode('const', 0, 0, 0, 5), // keyword on row 0
       makeMockNode('return', 1, 0, 1, 6), // keyword on row 1
     ]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -191,10 +200,11 @@ describe('highlightLines', () => {
       // Row 1 has a node type that's not in NODE_TYPE_CATEGORIES
       makeMockNode('unknown_node_type', 1, 0, 1, 10),
     ]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -209,10 +219,11 @@ describe('highlightLines', () => {
   it('maps various file extensions to correct grammars', async () => {
     // This tests getGrammarName coverage for different extensions
     const rootNode = makeMockNode('program', 0, 0, 0, 5, [makeMockNode('const', 0, 0, 0, 5)]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -229,10 +240,11 @@ describe('highlightLines', () => {
   it('skips nodes that do not overlap the target row', async () => {
     // Node is on row 5, but we only have lines for row 0
     const rootNode = makeMockNode('program', 0, 0, 5, 10, [makeMockNode('const', 5, 0, 5, 5)]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -248,10 +260,11 @@ describe('highlightLines', () => {
     const child = makeMockNode('const', 0, 0, 0, 5);
     const parent = makeMockNode('if', 0, 0, 0, 20, [child]);
     const rootNode = makeMockNode('program', 0, 0, 0, 20, [parent]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -273,12 +286,11 @@ describe('highlightLines', () => {
       delete: vi.fn(),
     }));
     (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
-    (MockParserClass as unknown as Record<string, unknown>).Language = {
-      load: vi.fn().mockResolvedValue({ name: 'typescript' }),
-    };
+    const MockLanguageClass = { load: vi.fn().mockResolvedValue({ name: 'typescript' }) };
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -291,10 +303,11 @@ describe('highlightLines', () => {
     const rootNode = makeMockNode('program', 0, 0, 1, 10, [
       makeMockNode('string', 0, 5, 1, 3), // multi-line string starting on row 0, ending on row 1
     ]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -318,10 +331,11 @@ describe('highlightLines', () => {
     const rootNode = makeMockNode('program', 0, 0, 2, 10, [
       makeMockNode('comment', 0, 2, 2, 5), // multi-line comment
     ]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -337,10 +351,11 @@ describe('highlightLines', () => {
 
   it('reuses cached language on second call', async () => {
     const rootNode = makeMockNode('program', 0, 0, 0, 5, [makeMockNode('const', 0, 0, 0, 5)]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');
@@ -357,10 +372,11 @@ describe('highlightLines', () => {
   it('uses ParserClass from already-initialized tree-sitter', async () => {
     // First call initializes, second call should find ParserClass already set
     const rootNode = makeMockNode('program', 0, 0, 0, 5, [makeMockNode('const', 0, 0, 0, 5)]);
-    const { MockParserClass } = buildTreeSitterMock(rootNode);
+    const { MockParserClass, MockLanguageClass } = buildTreeSitterMock(rootNode);
 
     vi.doMock('web-tree-sitter', () => ({
-      default: MockParserClass,
+      Parser: MockParserClass,
+      Language: MockLanguageClass,
     }));
 
     const { highlightLines } = await import('../syntax-highlighter');

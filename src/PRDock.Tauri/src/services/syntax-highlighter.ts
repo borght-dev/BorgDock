@@ -5,6 +5,7 @@ type TSLanguage = import('web-tree-sitter').Language;
 type TSNode = import('web-tree-sitter').Node;
 
 let ParserClass: typeof import('web-tree-sitter')['Parser'] | null = null;
+let LanguageClass: typeof import('web-tree-sitter')['Language'] | null = null;
 let initPromise: Promise<boolean> | null = null;
 const languageCache = new Map<string, TSLanguage | null>();
 const grammarLoadPromises = new Map<string, Promise<TSLanguage | null>>();
@@ -146,20 +147,37 @@ const NODE_TYPE_CATEGORIES: Record<string, HighlightCategory> = {
 };
 
 async function initTreeSitter(): Promise<boolean> {
-  if (ParserClass) return true;
+  if (ParserClass && LanguageClass) return true;
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
     try {
-      const mod = await import('web-tree-sitter');
-      const Parser = mod.default ?? mod;
+      // web-tree-sitter ≥0.25 exports `Parser` and `Language` as separate named
+      // classes — there is no default export, and `Language` is NOT a static
+      // member of `Parser` (as it was in ≤0.20). Older code that did
+      // `Parser.Language.load(...)` silently returned `undefined` and the whole
+      // highlighter became a no-op.
+      const mod = (await import('web-tree-sitter')) as unknown as {
+        Parser: typeof import('web-tree-sitter')['Parser'];
+        Language: typeof import('web-tree-sitter')['Language'];
+      };
+      const { Parser, Language } = mod;
+
+      if (!Parser || typeof (Parser as unknown as { init?: unknown }).init !== 'function') {
+        throw new Error('web-tree-sitter: Parser.init not found on module export');
+      }
+      if (!Language || typeof (Language as unknown as { load?: unknown }).load !== 'function') {
+        throw new Error('web-tree-sitter: Language.load not found on module export');
+      }
+
       await (Parser as unknown as { init: (opts?: object) => Promise<void> }).init({
         locateFile: () => '/web-tree-sitter.wasm',
       });
-      ParserClass = Parser as unknown as typeof ParserClass;
+      ParserClass = Parser;
+      LanguageClass = Language;
       return true;
     } catch (err) {
-      console.warn('Tree-sitter init failed:', err);
+      console.warn('[syntax-highlighter] tree-sitter init failed:', err);
       initPromise = null;
       return false;
     }
@@ -177,16 +195,17 @@ async function loadLanguage(grammarName: string): Promise<TSLanguage | null> {
   const promise = (async (): Promise<TSLanguage | null> => {
     try {
       const ok = await initTreeSitter();
-      if (!ok || !ParserClass) return null;
+      if (!ok || !LanguageClass) return null;
 
       const wasmPath = `/grammars/tree-sitter-${grammarName}.wasm`;
-      const P = ParserClass as unknown as {
-        Language: { load: (path: string) => Promise<TSLanguage> };
+      const L = LanguageClass as unknown as {
+        load: (path: string) => Promise<TSLanguage>;
       };
-      const lang = await P.Language.load(wasmPath);
+      const lang = await L.load(wasmPath);
       languageCache.set(grammarName, lang);
       return lang;
-    } catch {
+    } catch (err) {
+      console.warn(`[syntax-highlighter] grammar load failed for ${grammarName}:`, err);
       languageCache.set(grammarName, null);
       return null;
     }
@@ -252,7 +271,8 @@ export async function highlightLines(
     tree.delete();
     parser.delete();
     return result;
-  } catch {
+  } catch (err) {
+    console.warn(`[syntax-highlighter] parse failed for ${filename}:`, err);
     return null;
   }
 }
