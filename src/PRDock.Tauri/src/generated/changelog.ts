@@ -4,6 +4,48 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.0.15",
+    "date": "2026-04-22",
+    "summary": "File palette (Ctrl+F8), Run only the highlighted SQL, and Confirm before Bypass Merge.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "File palette (Ctrl+F8)",
+        "description": "A new palette for finding files across your git worktrees and custom roots. Three search modes: filename search by default, `> foo` for content search (ripgrep-backed regex), and `@bar` to jump to a function/class/symbol via Tree-sitter. Arrow keys navigate; a live preview pane renders the file with syntax highlighting; F12 inside the preview jumps to the symbol's implementation; Enter pops out a dedicated viewer window. Favorites, collapsible roots, and remembered layout preferences round it out.",
+        "hero": {
+          "src": "/whats-new/1.0.15/file-palette.png",
+          "alt": "File palette"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Run only the highlighted SQL",
+        "description": "Select a portion of your query and hit Run (or Ctrl+Enter) to execute just that part. Perfect for multi-statement scripts or trimming a WHERE clause to check the broader result.",
+        "hero": {
+          "src": "/whats-new/1.0.15/sql-run-selection.png",
+          "alt": "Run selected SQL"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Confirm before Bypass Merge",
+        "description": "The PR detail window now asks for confirmation before bypassing required checks on a merge, so a stray click can't silently override branch protection.",
+        "hero": {
+          "src": "/whats-new/1.0.15/bypass-merge-confirm.png",
+          "alt": "Bypass merge confirm dialog"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "SQL queries on spatial columns no longer crash PRDock — Querying tables with `geography`, `geometry`, or `hierarchyid` columns (common in certain views) used to abort the whole app because Tiberius panics on unsupported SQL Server types. PRDock now catches the panic and returns a friendly error suggesting you avoid `SELECT *`.",
+      "File palette previews UTF-16 SQL Server scripts as text — `.sql` files saved from SSMS are UTF-16 encoded. The preview pane now decodes them correctly instead of treating them as binary."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "1.0.14",
     "date": "2026-04-20",
     "summary": "Azure CLI authentication for Azure DevOps.",

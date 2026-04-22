@@ -31,10 +31,16 @@ The Reviews tab renders full Claude Code review comments with Markdown formattin
 ## Features
 
 - **PR Monitoring** — Polls GitHub for open pull requests across configurable repositories, displaying status, reviews, and CI checks in a compact sidebar.
-- **Docked Sidebar** — A chromeless WPF overlay that pins to the left or right edge of your screen, with auto-hide and hotkey toggle (`Ctrl+Win+Shift+G`).
+- **Docked Sidebar** — A chromeless overlay that pins to the left or right edge of your screen, with auto-hide and hotkey toggle (`Ctrl+Win+Shift+G`).
+- **Focus Tab** — A priority-scored "what needs your attention now" view that surfaces ready-to-merge PRs, broken builds on your own PRs, and incoming review requests. One-key Quick Review mode for batch approvals.
+- **File Palette** (`Ctrl+F8`) — Fast filename, content (`>`), and symbol (`@`) search across your worktrees with live syntax-highlighted preview and a pop-out file viewer window.
+- **Syntax Highlighting** — Tree-sitter based highlighting across 11 languages (TypeScript, Rust, C#, SQL, and more) in diffs, the file palette preview, and the file viewer.
 - **CI Check Details** — Inspect failed checks inline with parsed error messages extracted from GitHub Actions logs (supports build errors, test failures, lint warnings, and runtime exceptions).
 - **Claude Code Integration** — One-click launch of a Claude Code terminal session to automatically fix CI failures. PRDock finds or creates a git worktree for the PR branch and generates a targeted fix prompt.
 - **Claude Review Panel** — Surfaces review comments left by Claude Code's bot, grouped by severity, with full Markdown rendering.
+- **SQL Query Tool** (`Ctrl+F10`) — Run queries against configured SQL Server connections with Windows Integrated or SQL auth. Execute the highlighted selection only, or the full query.
+- **Azure DevOps Work Items** (`Ctrl+F9`) — Browse, edit, and track Azure DevOps work items alongside your PRs, with optional `az` CLI auto-auth.
+- **What's New** — In-app release-notes window surfaces new features after each auto-update.
 - **Notifications** — Windows toast notifications for check status changes, new PRs, and review updates.
 - **Floating Badge** — A minimal always-on-top badge showing failing PR count when the sidebar is hidden. Five selectable styles:
 
@@ -86,7 +92,7 @@ src/PRDock.Tauri/         # Tauri + React + TypeScript application
 
 ## Security Notes
 
-- **Content Security Policy** — The Tauri CSP restricts network access to the GitHub API, Azure DevOps, and GitHub avatar CDN. All other external requests are blocked.
+- **Content Security Policy** — The Tauri CSP restricts network access to the GitHub API, Azure DevOps, and GitHub avatar CDN. All other external requests are blocked. `script-src` includes `'wasm-unsafe-eval'` so tree-sitter grammar WASMs can instantiate for syntax highlighting.
 - **Updater transport** — The auto-updater fetches release metadata from the GitHub API (over HTTPS), then serves it to the Tauri updater plugin via a short-lived local HTTP server on `127.0.0.1`. The `dangerousInsecureTransportProtocol` setting is required for this loopback-only server; no data is sent over the network unencrypted.
 - **Credentials** — GitHub tokens are stored in the OS-level Tauri store (per-user, not in the repo). No secrets are hardcoded in the source.
 

@@ -220,6 +220,7 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 ### ADO Settings
 - Organization name
 - Project name
+- Authentication method toggle: auto-detect via `az` CLI or Personal Access Token (with first-mount validation and migration path for existing PAT users)
 - Personal Access Token (with show/hide toggle)
 - Poll interval (30-600 seconds)
 - Connection testing with validation feedback
@@ -238,8 +239,10 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 
 ### Query Execution
 - SQL query input with execute shortcut (Ctrl+Enter)
+- Execute only the highlighted selection (falls back to the full query when nothing is selected)
 - Open via Ctrl+F10 hotkey
 - Results in table format with column headers
+- Row selection UX: click a selected row to deselect; click outside the row area to clear all selections
 - Multiple result sets support
 - Execution time display
 - Row count tracking with truncation at 10,000 rows
@@ -432,14 +435,20 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 
 ---
 
-## 13. First-Run Setup Wizard
+## 13. First-Run Setup Wizard & In-App Onboarding
 
+### Setup Wizard
 - Multi-step guided setup (4 steps):
   1. **Authentication** — GitHub CLI auto-detection with validation, PAT fallback, username capture
   2. **Repository Discovery** — Auto-scan filesystem for git repos with GitHub remotes, multi-select checklist, worktree subfolder config
   3. **Position** — Sidebar edge selection (left/right), theme selection (system/light/dark)
   4. **Done** — Setup completion summary, launch to main app
 - Validation at each step with status feedback
+
+### Ongoing Onboarding
+- **Feature badges** — "new" dots on entry points like the Focus tab, Quick Review mode, and File Palette; dismissible per-badge and remembered across sessions
+- **Inline hints** — contextual tooltips on hover or first use of a feature
+- **First-run overlay** — post-wizard highlight layer pointing to key entry points
 
 ---
 
@@ -466,6 +475,7 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 ### Global Hotkeys
 - **Configurable global hotkey** (default: Ctrl+Win+Shift+G) — Toggle sidebar
 - **Ctrl+F7** — Worktree palette
+- **Ctrl+F8** — File Palette
 - **Ctrl+F9** — ADO command palette
 - **Ctrl+F10** — SQL query window
 - Interactive hotkey recorder with visual feedback
@@ -544,6 +554,12 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 - Install button when update ready
 - Current version display
 
+### What's New Window
+- In-app release-notes window launched after an update installs
+- Hero banner, per-release accordion, highlighted feature cards, and an "also fixed" list
+- Pulls release metadata from bundled changelog (`src/generated/changelog.ts`)
+- Can be reopened at any time from the updater UI
+
 ---
 
 ## 19. PR Context Menu
@@ -578,6 +594,8 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 - Atomic settings save with backup
 - Error notifications to user
 - Structured logging to ~/.config/PRDock/logs/prdock.log (5MB rotation, all rotations kept)
+- Global panic hook flushing to a dedicated panic log (`%APPDATA%\PRDock\logs\prdock-panic.log`) for post-crash diagnosis
+- Release profile uses `panic = "unwind"` so SQL UDT decoder panics (tiberius on `geography`/`geometry`/`hierarchyid`/CLR types) are caught and surfaced as friendly errors instead of crashing the app
 - GitHub auth validation
 - PAT token validation
 - ADO connection validation
@@ -611,7 +629,74 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 
 ---
 
-## 24. Animations & Visual Polish
+## 24. Focus Tab & Priority Scoring
+
+### Focus Tab
+- Dedicated "Focus" sidebar tab that ranks open PRs by a computed priority score so the highest-signal PR is always on top
+- Per-card **primary reason** label (e.g. "Ready to merge", "Build failing", "Review requested") so the ranking is legible at a glance
+- Empty state with contextual messaging when nothing is currently demanding attention
+- Merge celebration toast on successful merge from Focus
+
+### Priority Factors
+- **Ready to merge** (up to 45 pts) — your PR is green, not draft, mergeable, and approved
+- **Own PR build failing** (20 pts)
+- **Changes requested on own PR** (15 pts)
+- **Review requested of you** (15 pts)
+- **Staleness bonuses** — extra weight for own PRs with unresolved issues older than 24h
+- **Per-repo priority weighting** — per-repo multipliers configured in settings
+- Contributor weighting hook for future social-signal inputs
+- Others' drafts excluded entirely
+
+### Quick Review Overlay
+- Batch-review mode that presents PRs one at a time in a full-window overlay
+- Approve, comment, or request changes per PR without leaving the overlay
+- Back navigation through the session
+- Session summary screen showing the decisions you just made
+- Session state persisted in a dedicated Zustand store
+
+---
+
+## 25. File Palette (Ctrl+F8)
+
+### Search Modes
+- **Filename / substring search** across all selected roots, `.gitignore`-aware
+- **Content search** (prefix query with `>`) — full-text search with jump-to-match highlighting
+- **Symbol-implementation search** (prefix query with `@`) — finds class / function / method / const definitions via Tree-sitter AST queries, not plain-text matching
+- Debounced search with a visible "Searching…" indicator while content search is running
+
+### Roots & Navigation
+- Left column of roots: all known worktrees plus user-added custom paths
+- Per-repo favorites with a favorites-only toggle
+- Collapsible roots column to maximize result space
+- Full-path display toggle for disambiguating results across roots
+- Active root persisted per session
+
+### Preview & Viewer
+- Live preview pane tracking the current selection
+- Syntax-highlighted preview with line gutter and copy-all action (shared `CodeView` component)
+- UTF-16 text file decoding — `.sql` files saved from SSMS are readable in preview
+- **F12** inside the preview jumps to the symbol's implementation across roots
+- **Enter** opens the current file in a pop-out **File Viewer** window with its own toolbar, independent from the main app window
+
+### Backend
+- Rust-side file index, `.gitignore` respect, and content search implemented in `src-tauri/src/file_palette/`
+- Dedicated Tauri window capabilities for palette and viewer
+
+---
+
+## 26. Syntax Highlighting
+
+- Tree-sitter based (`web-tree-sitter` 0.26) with grammars compiled from source
+- Powers File Palette preview, the pop-out File Viewer, diff views, and any CodeView usage
+- Grammars bundled at `public/grammars/tree-sitter-<name>.wasm`:
+  - `tsx`, `typescript`, `javascript`, `rust`, `c_sharp`, `sql`, `json`, `yaml`, `toml`, `css`, `html`
+- Grammars built via `scripts/build-grammars.sh` against the same CLI major version as `web-tree-sitter` (emits the `dylink.0` custom section required by 0.24+)
+- CSP includes `'wasm-unsafe-eval'` in `script-src` so grammar WASMs can instantiate in packaged builds
+- Graceful fallback to plain text if a grammar fails to load (warnings surfaced to devtools, not the user)
+
+---
+
+## 27. Animations & Visual Polish
 
 - Sidebar slide-in/out animations
 - PR card expand/collapse animations
