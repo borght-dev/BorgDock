@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PRDock — What's new 1.0.15 hero mockups</title>
+    <style>
+      :root {
+        --c-bg: #110f1a;
+        --c-bg-raised: #1a1726;
+        --c-border-subtle: rgba(138, 133, 160, 0.14);
+        --c-border-strong: rgba(138, 133, 160, 0.24);
+        --c-text-primary: #edeaf4;
+        --c-text-secondary: #c8c4d6;
+        --c-text-muted: #8a85a0;
+        --c-accent: #7c6af6;
+        --c-accent-bright: #9384f7;
+        --c-accent-soft: rgba(124, 106, 246, 0.16);
+        --c-accent-border: rgba(124, 106, 246, 0.34);
+        --c-green: #7dd3c0;
+        --c-red: #e54065;
+        --c-yellow: #f5b73b;
+        --c-cyan: #6fc7e6;
+        --c-orange: #ff9e64;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: #0b0810;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        padding: 40px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        align-items: flex-start;
+        color: var(--c-text-primary);
+      }
+      .label {
+        font-size: 10px;
+        color: var(--c-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-weight: 600;
+      }
+
+      .hero {
+        width: 450px;
+        height: 74px;
+        border-radius: 7px;
+        border: 1px solid var(--c-border-subtle);
+        overflow: hidden;
+        position: relative;
+        isolation: isolate;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/></svg>");
+        mix-blend-mode: overlay;
+      }
+
+      /* ============================================================
+       * HERO — File palette (Ctrl+F8)
+       * A mini palette window: search bar on the left with an @ token,
+       * two fake result rows, and a small code preview on the right.
+       * ============================================================ */
+      .hero--palette {
+        background: radial-gradient(
+            ellipse 420px 180px at 85% 120%,
+            rgba(124, 106, 246, 0.32),
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 320px 160px at 10% -20%,
+            rgba(111, 199, 230, 0.18),
+            transparent 65%
+          ),
+          linear-gradient(160deg, #1c1440 0%, #0f0a20 100%);
+        display: flex;
+        align-items: stretch;
+        padding: 6px;
+        gap: 6px;
+      }
+      .hero--palette .panel {
+        background: rgba(16, 12, 28, 0.72);
+        border: 1px solid rgba(237, 234, 244, 0.08);
+        backdrop-filter: blur(10px);
+        border-radius: 5px;
+        padding: 5px 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .hero--palette .left {
+        flex: 0 0 54%;
+      }
+      .hero--palette .search {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 9.5px;
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+        color: #fff;
+        padding: 2px 1px;
+        border-bottom: 1px solid rgba(237, 234, 244, 0.06);
+        padding-bottom: 4px;
+      }
+      .hero--palette .search .kbd {
+        font-family: inherit;
+        font-size: 7.5px;
+        padding: 1px 4px;
+        background: rgba(237, 234, 244, 0.08);
+        border: 1px solid rgba(237, 234, 244, 0.12);
+        border-radius: 3px;
+        color: var(--c-text-muted);
+        margin-left: auto;
+        letter-spacing: 0.05em;
+      }
+      .hero--palette .search .at {
+        color: var(--c-accent-bright);
+        font-weight: 700;
+      }
+      .hero--palette .search .caret {
+        width: 1px;
+        height: 10px;
+        background: var(--c-accent-bright);
+        margin-left: -2px;
+        animation: none;
+      }
+      .hero--palette .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding-top: 2px;
+      }
+      .hero--palette .row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 8.5px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+      }
+      .hero--palette .row.selected {
+        background: rgba(124, 106, 246, 0.22);
+        border: 1px solid rgba(124, 106, 246, 0.35);
+        padding: 1px 3px;
+      }
+      .hero--palette .row .sym {
+        color: var(--c-orange);
+        font-weight: 700;
+        font-size: 7.5px;
+        width: 9px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .hero--palette .row .name {
+        color: var(--c-text-primary);
+        font-weight: 600;
+      }
+      .hero--palette .row.selected .name {
+        color: #fff;
+      }
+      .hero--palette .row .path {
+        color: var(--c-text-muted);
+        font-size: 7.5px;
+        margin-left: auto;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 110px;
+      }
+
+      .hero--palette .right {
+        flex: 1;
+        padding: 4px 5px;
+        gap: 1.5px;
+        justify-content: center;
+      }
+      .hero--palette .right .line {
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+        font-size: 7.5px;
+        line-height: 1.5;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .hero--palette .k { color: #c890ff; }  /* keyword */
+      .hero--palette .fn { color: var(--c-cyan); }  /* function */
+      .hero--palette .s { color: var(--c-green); }  /* string */
+      .hero--palette .p { color: var(--c-text-muted); }  /* punctuation */
+      .hero--palette .v { color: #e0dcec; }  /* variable */
+      .hero--palette .c { color: #6b6580; font-style: italic; }  /* comment */
+
+      /* ============================================================
+       * HERO — Run highlighted SQL
+       * Multi-line SQL in a mini editor with one statement's range
+       * visually highlighted (selection). A glowing Run button on the
+       * right runs only the selection.
+       * ============================================================ */
+      .hero--sql {
+        background: radial-gradient(
+            ellipse 440px 180px at 100% 50%,
+            rgba(125, 211, 192, 0.28),
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 280px 140px at 15% -20%,
+            rgba(124, 106, 246, 0.28),
+            transparent 65%
+          ),
+          linear-gradient(160deg, #141132 0%, #0c0a1e 100%);
+        display: flex;
+        align-items: stretch;
+        padding: 6px;
+        gap: 7px;
+      }
+      .hero--sql .editor {
+        flex: 1;
+        background: rgba(12, 10, 24, 0.7);
+        border: 1px solid rgba(237, 234, 244, 0.08);
+        border-radius: 5px;
+        display: flex;
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+        overflow: hidden;
+      }
+      .hero--sql .gutter {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 4px 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5px;
+        border-right: 1px solid rgba(237, 234, 244, 0.05);
+      }
+      .hero--sql .gutter div {
+        font-size: 7.5px;
+        color: var(--c-text-muted);
+        line-height: 1.55;
+        text-align: right;
+        min-width: 8px;
+      }
+      .hero--sql .lines {
+        padding: 4px 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5px;
+        flex: 1;
+        min-width: 0;
+      }
+      .hero--sql .line {
+        font-size: 7.5px;
+        line-height: 1.55;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position: relative;
+      }
+      .hero--sql .sel {
+        background: rgba(124, 106, 246, 0.3);
+        box-shadow: 0 0 0 1px rgba(124, 106, 246, 0.45);
+        border-radius: 1.5px;
+        padding: 0 2px;
+        margin: 0 -2px;
+      }
+      .hero--sql .k { color: #c890ff; font-weight: 600; }
+      .hero--sql .s { color: var(--c-green); }
+      .hero--sql .n { color: var(--c-orange); }  /* number */
+      .hero--sql .p { color: var(--c-text-muted); }
+      .hero--sql .v { color: #e0dcec; }
+      .hero--sql .c { color: #6b6580; font-style: italic; }
+
+      .hero--sql .run-side {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 0 2px;
+        min-width: 74px;
+      }
+      .hero--sql .run-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 10px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(180deg, #a98bff 0%, #7c6af6 100%);
+        border: 0;
+        border-radius: 4px;
+        white-space: nowrap;
+        box-shadow: 0 0 0 1px rgba(124, 106, 246, 0.4),
+          0 4px 14px -2px rgba(124, 106, 246, 0.6),
+          0 0 18px -2px rgba(124, 106, 246, 0.55);
+      }
+      .hero--sql .run-btn svg {
+        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+      }
+      .hero--sql .kbd {
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+        font-size: 7.5px;
+        padding: 1px 5px;
+        background: rgba(237, 234, 244, 0.05);
+        border: 1px solid rgba(237, 234, 244, 0.1);
+        border-radius: 3px;
+        color: var(--c-text-muted);
+        letter-spacing: 0.03em;
+      }
+
+      /* ============================================================
+       * HERO — Confirm before Bypass Merge
+       * A mini confirm dialog with a warning icon, a Cancel button,
+       * and a red Bypass-merge confirm button.
+       * ============================================================ */
+      .hero--bypass {
+        background: radial-gradient(
+            ellipse 420px 170px at 75% 130%,
+            rgba(229, 64, 101, 0.3),
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 280px 120px at 20% -30%,
+            rgba(245, 183, 59, 0.18),
+            transparent 65%
+          ),
+          linear-gradient(160deg, #2a143a 0%, #1a0e28 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 14px;
+      }
+      .hero--bypass .dialog {
+        width: 100%;
+        max-width: 400px;
+        background: rgba(20, 15, 32, 0.82);
+        border: 1px solid rgba(237, 234, 244, 0.14);
+        backdrop-filter: blur(12px);
+        border-radius: 7px;
+        padding: 9px 12px;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.55);
+      }
+      .hero--bypass .warn-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(245, 183, 59, 0.35),
+          rgba(245, 183, 59, 0.12)
+        );
+        border: 1px solid rgba(245, 183, 59, 0.42);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: var(--c-yellow);
+      }
+      .hero--bypass .body {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5px;
+        min-width: 0;
+        flex: 1;
+      }
+      .hero--bypass .title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.01em;
+      }
+      .hero--bypass .desc {
+        font-size: 8px;
+        color: var(--c-text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .hero--bypass .btns {
+        display: flex;
+        gap: 5px;
+        flex-shrink: 0;
+      }
+      .hero--bypass .btn {
+        font-size: 9px;
+        font-weight: 600;
+        padding: 4px 9px;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        white-space: nowrap;
+      }
+      .hero--bypass .btn-cancel {
+        background: rgba(237, 234, 244, 0.06);
+        border-color: rgba(237, 234, 244, 0.14);
+        color: var(--c-text-secondary);
+      }
+      .hero--bypass .btn-confirm {
+        background: linear-gradient(180deg, #f05975 0%, #d12b50 100%);
+        color: #fff;
+        box-shadow: 0 0 0 1px rgba(229, 64, 101, 0.45),
+          0 4px 14px -2px rgba(229, 64, 101, 0.55);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Hero 1: File palette -->
+    <div class="label">File palette</div>
+    <div data-hero="file-palette" class="hero hero--palette">
+      <div class="panel left">
+        <div class="search">
+          <span class="at">@</span><span>useFileIndex</span><span class="caret"></span>
+          <span class="kbd">Ctrl+F8</span>
+        </div>
+        <div class="rows">
+          <div class="row selected">
+            <span class="sym">ƒ</span>
+            <span class="name">useFileIndex</span>
+            <span class="path">hooks/useFileIndex.ts</span>
+          </div>
+          <div class="row">
+            <span class="sym">ƒ</span>
+            <span class="name">buildFileIndex</span>
+            <span class="path">services/file-index.ts</span>
+          </div>
+          <div class="row">
+            <span class="sym">T</span>
+            <span class="name">FileIndexEntry</span>
+            <span class="path">types/file-index.ts</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel right">
+        <div class="line"><span class="k">export</span> <span class="k">function</span> <span class="fn">useFileIndex</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span></div>
+        <div class="line">  <span class="k">const</span> <span class="v">[entries, setEntries]</span> <span class="p">=</span></div>
+        <div class="line">    <span class="fn">useState</span><span class="p">&lt;</span><span class="v">FileIndexEntry</span><span class="p">[]&gt;([])</span><span class="p">;</span></div>
+        <div class="line">  <span class="c">// ripgrep + tree-sitter</span></div>
+      </div>
+    </div>
+
+    <!-- Hero 2: Run highlighted SQL -->
+    <div class="label">Run highlighted SQL</div>
+    <div data-hero="sql-run-selection" class="hero hero--sql">
+      <div class="editor">
+        <div class="gutter">
+          <div>1</div>
+          <div>2</div>
+          <div>3</div>
+          <div>4</div>
+          <div>5</div>
+        </div>
+        <div class="lines">
+          <div class="line"><span class="c">-- pick one to run</span></div>
+          <div class="line"><span class="k">SELECT</span> <span class="p">*</span> <span class="k">FROM</span> <span class="v">users</span> <span class="k">WHERE</span> <span class="v">id</span> <span class="p">=</span> <span class="n">1</span><span class="p">;</span></div>
+          <div class="line"><span class="sel"><span class="k">SELECT</span> <span class="p">*</span> <span class="k">FROM</span> <span class="v">orders</span> <span class="k">WHERE</span> <span class="v">status</span> <span class="p">=</span> <span class="s">'open'</span></span><span class="p">;</span></div>
+          <div class="line"><span class="k">SELECT</span> <span class="fn">COUNT</span><span class="p">(</span><span class="p">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="v">events</span><span class="p">;</span></div>
+          <div class="line"><span class="k">UPDATE</span> <span class="v">flags</span> <span class="k">SET</span> <span class="v">on</span> <span class="p">=</span> <span class="n">1</span><span class="p">;</span></div>
+        </div>
+      </div>
+      <div class="run-side">
+        <button class="run-btn">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.5v11l9-5.5z"/></svg>
+          Run
+        </button>
+        <span class="kbd">Ctrl+Enter</span>
+      </div>
+    </div>
+
+    <!-- Hero 3: Bypass merge confirm -->
+    <div class="label">Bypass merge confirm</div>
+    <div data-hero="bypass-merge-confirm" class="hero hero--bypass">
+      <div class="dialog">
+        <div class="warn-icon">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 1.5 14.5 13h-13z"/>
+            <path d="M8 6v3.5M8 11v.5"/>
+          </svg>
+        </div>
+        <div class="body">
+          <div class="title">Bypass required checks?</div>
+          <div class="desc">2 required checks are still running or failing.</div>
+        </div>
+        <div class="btns">
+          <button class="btn btn-cancel">Cancel</button>
+          <button class="btn btn-confirm">Bypass &amp; merge</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
