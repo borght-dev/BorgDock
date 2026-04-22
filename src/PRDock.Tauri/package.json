@@ -61,7 +61,6 @@
     "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.4",
     "tree-sitter-cli": "^0.26.8",
-    "tree-sitter-wasms": "^0.1.13",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.2",

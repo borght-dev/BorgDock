@@ -33,17 +33,20 @@ src/PRDock.Tauri/         # Tauri + React application
 
 Full spec: `PRDock-Implementation-Plan.md`
 
-## Syntax highlighting (diff view)
+## Syntax highlighting (diff view, file palette, file viewer)
 
-Tree-sitter based. Three moving parts that must stay in sync:
+Tree-sitter based. Two moving parts that must stay in sync:
 
-1. **Runtime**: `web-tree-sitter` (dynamic import in `src/services/syntax-highlighter.ts`). Its wasm is served at `/web-tree-sitter.wasm` — do NOT change the `locateFile` callback without also updating `vite.config.ts`.
-2. **Grammars from npm**: `tree-sitter-wasms` ships prebuilt `.wasm` for tsx, typescript, javascript, rust, c_sharp, css, html, json, yaml, toml, etc. They are copied to `/grammars/` by `vite-plugin-static-copy` in `vite.config.ts`. Dev server and prod build both go through this plugin — nothing to commit.
-3. **SQL grammar (special case)**: SQL is NOT in `tree-sitter-wasms`. We build it from `@derekstride/tree-sitter-sql` using the tree-sitter CLI and commit the result to `public/grammars/tree-sitter-sql.wasm`. Rebuild with `bash scripts/build-sql-grammar.sh` (needs `tree-sitter-cli` dev dep, which auto-downloads wasi-sdk on first run). **On Windows, the wasi-sdk binaries may need `Unblock-File` before they can run** — if `wasm-ld.exe: Access is denied` appears, run `Get-ChildItem $env:LOCALAPPDATA\tree-sitter\wasi-sdk\bin\*.exe | Unblock-File`.
+1. **Runtime**: `web-tree-sitter` (dynamic import in `src/services/syntax-highlighter.ts`). Its wasm is served at `/web-tree-sitter.wasm` — do NOT change the `locateFile` callback without also updating `vite.config.ts`. The module exports `Parser` and `Language` as **separate named classes** (no default export, and `Language` is NOT a static member of `Parser` like it was in ≤0.20). `syntax-highlighter.ts` imports both via `const { Parser, Language } = mod`.
+2. **Grammars built from source**: every grammar (tsx, ts, js, rust, c_sharp, css, html, json, yaml, toml, sql) is built from its npm source package with the bundled `tree-sitter-cli` and committed to `public/grammars/tree-sitter-<name>.wasm`. Vite serves `public/` at root automatically, so they end up at `/grammars/tree-sitter-<name>.wasm` with no copy plugin. Rebuild everything with `bash scripts/build-grammars.sh`, or a single grammar with `bash scripts/build-grammars.sh tsx`.
 
-The `EXT_TO_GRAMMAR` map in `syntax-highlighter.ts` must only reference grammars that actually exist in `public/grammars/` or `node_modules/tree-sitter-wasms/out/`. Markdown is intentionally absent — no prebuilt wasm ships for it.
+**Why build from source instead of the prebuilt `tree-sitter-wasms` package:** its latest release (0.1.13) ships wasms with the *old* `dylink` custom section. `web-tree-sitter` ≥0.24 requires the new `dylink.0` section — otherwise `Language.load()` rejects with `Error: need dylink section` and every language silently becomes plain text. The CLI at the same major version as `web-tree-sitter` emits the new format.
 
-If diffs show up as plain text with no coloring, first check the browser devtools network tab for 404s on `/grammars/tree-sitter-*.wasm` or `/web-tree-sitter.wasm` — that's almost always the symptom of a broken copy pipeline.
+**On Windows**, the tree-sitter CLI downloads wasi-sdk into `%LOCALAPPDATA%/tree-sitter` on first build. The downloaded `.exe` binaries may be marked as "from the internet" — if you see `wasm-ld.exe: Access is denied`, run `Get-ChildItem $env:LOCALAPPDATA\tree-sitter\wasi-sdk\bin\*.exe | Unblock-File`.
+
+The `EXT_TO_GRAMMAR` map in `syntax-highlighter.ts` must only reference grammars that actually exist in `public/grammars/`. Markdown is intentionally absent — the upstream grammar is messy to pin and comes and goes.
+
+If diffs / files show up as plain text with no coloring, check the browser devtools console for `[syntax-highlighter]` warnings — they name the exact grammar and failure. A 404 on `/grammars/tree-sitter-*.wasm` in the network tab usually means someone added a new extension to `EXT_TO_GRAMMAR` without extending `scripts/build-grammars.sh`.
 
 ## Tauri sync commands and main-thread operations
 

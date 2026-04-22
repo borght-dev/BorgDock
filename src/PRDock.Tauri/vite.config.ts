@@ -23,15 +23,12 @@ export default defineConfig({
           dest: ".",
           rename: { stripBase: true },
         },
-        {
-          // Prebuilt language grammars — served at /grammars/tree-sitter-*.wasm
-          // (SQL grammar is built manually and lives in public/grammars/)
-          src: "node_modules/tree-sitter-wasms/out/*.wasm",
-          dest: "grammars",
-          rename: { stripBase: true },
-        },
       ],
     }),
+    // Language grammars (tree-sitter-*.wasm) are built from source by
+    // scripts/build-grammars.sh and committed to public/grammars/ — Vite
+    // serves the public dir at root automatically, so they end up at
+    // /grammars/tree-sitter-<name>.wasm without any copy plugin.
   ],
   test: {
     environment: "jsdom",
