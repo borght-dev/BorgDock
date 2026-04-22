@@ -108,6 +108,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   );
   const [commentBody, setCommentBody] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmBypass, setConfirmBypass] = useState(false);
   const { resolveConflicts } = useClaudeActions();
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
@@ -177,7 +178,10 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     }
   }, [p.repoOwner, p.repoName, p.number]);
 
-  const handleBypassMerge = useCallback(async () => {
+  const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
+
+  const handleBypassExecute = useCallback(async () => {
+    setConfirmBypass(false);
     setActionStatus('Merging...');
     try {
       await bypassMergePullRequest(p.repoOwner, p.repoName, p.number);
@@ -475,7 +479,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           </button>
         )}
         <button
-          onClick={handleBypassMerge}
+          onClick={handleBypassConfirm}
           className="rounded-md border-2 border-[var(--color-status-red)] border-dashed bg-transparent px-3 py-1.5 text-xs font-medium text-[var(--color-action-danger-fg)] hover:bg-[var(--color-action-danger-bg)] transition-colors"
         >
           Bypass Merge
@@ -512,6 +516,17 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         variant="danger"
         onConfirm={handleCloseExecute}
         onCancel={() => setConfirmClose(false)}
+      />
+
+      {/* Bypass Merge confirm dialog */}
+      <ConfirmDialog
+        isOpen={confirmBypass}
+        title="Bypass merge protections?"
+        message={`This will merge PR #${p.number} bypassing branch protection rules. This action cannot be undone.`}
+        confirmLabel="Bypass Merge"
+        variant="danger"
+        onConfirm={handleBypassExecute}
+        onCancel={() => setConfirmBypass(false)}
       />
 
       {/* Description */}

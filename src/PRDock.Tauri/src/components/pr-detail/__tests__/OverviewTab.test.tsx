@@ -412,11 +412,30 @@ describe('OverviewTab', () => {
     expect(postComment).toHaveBeenCalled();
   });
 
-  it('calls bypassMergePullRequest when "Bypass Merge" is clicked', async () => {
-    const { bypassMergePullRequest } = await import('@/services/github/mutations');
+  it('shows confirm dialog when "Bypass Merge" is clicked', () => {
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Bypass Merge'));
+    expect(screen.getByRole('dialog', { name: 'Bypass merge protections?' })).toBeTruthy();
+  });
+
+  it('calls bypassMergePullRequest when dialog confirm is clicked', async () => {
+    const { bypassMergePullRequest } = await import('@/services/github/mutations');
+    vi.mocked(bypassMergePullRequest).mockClear();
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Bypass Merge'));
+    const dialog = screen.getByRole('dialog', { name: 'Bypass merge protections?' });
+    fireEvent.click(within(dialog).getByText('Bypass Merge'));
     expect(bypassMergePullRequest).toHaveBeenCalled();
+  });
+
+  it('does not call bypassMergePullRequest when dialog cancel is clicked', async () => {
+    const { bypassMergePullRequest } = await import('@/services/github/mutations');
+    vi.mocked(bypassMergePullRequest).mockClear();
+    render(<OverviewTab pr={makePr()} />);
+    fireEvent.click(screen.getByText('Bypass Merge'));
+    const dialog = screen.getByRole('dialog', { name: 'Bypass merge protections?' });
+    fireEvent.click(within(dialog).getByText('Cancel'));
+    expect(bypassMergePullRequest).not.toHaveBeenCalled();
   });
 
   it('changes review event when select is changed', () => {
