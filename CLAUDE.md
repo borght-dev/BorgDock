@@ -48,6 +48,8 @@ The `EXT_TO_GRAMMAR` map in `syntax-highlighter.ts` must only reference grammars
 
 If diffs / files show up as plain text with no coloring, check the browser devtools console for `[syntax-highlighter]` warnings — they name the exact grammar and failure. A 404 on `/grammars/tree-sitter-*.wasm` in the network tab usually means someone added a new extension to `EXT_TO_GRAMMAR` without extending `scripts/build-grammars.sh`.
 
+**CSP must include `'wasm-unsafe-eval'` in `script-src`.** The CSP in `src-tauri/tauri.conf.json` (`app.security.csp`) is enforced by WebView2 in packaged builds. `web-tree-sitter` ≥0.24 instantiates grammars via `WebAssembly.compile()` — without `'wasm-unsafe-eval'`, this throws and every `Language.load()` call rejects silently (the highlighter's try/catch swallows it and returns `null`, so the app looks fine but every file renders as plain text). Dev mode doesn't surface this because Vite's dev server doesn't inject the production CSP. If you ever strip the CSP down, keep `'wasm-unsafe-eval'` in `script-src`.
+
 ## Tauri sync commands and main-thread operations
 
 Tauri 2 invokes both sync and async `#[tauri::command]` functions on a **worker thread**, not the main GUI thread. Any operation that touches a `WebviewWindow` — especially `WebviewWindowBuilder::build()`, and often `show()` / `hide()` / `set_position()` — has to run on the main thread, or the cross-thread marshalling deadlocks against itself on Windows (the main thread waits for the worker that's waiting for the main thread).
