@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.15 — 2026-04-22
+
+### New Features
+
+- File palette (Ctrl+F8) — A new palette for finding files across your git worktrees and custom roots. Three search modes: filename search by default, `> foo` for content search (ripgrep-backed regex), and `@bar` to jump to a function/class/symbol via Tree-sitter. Arrow keys navigate; a live preview pane renders the file with syntax highlighting; F12 inside the preview jumps to the symbol's implementation; Enter pops out a dedicated viewer window. Favorites, collapsible roots, and remembered layout preferences round it out.
+- Panic log for post-mortem crash diagnostics — Unexpected crashes now write a synchronously-flushed stack trace to `%APPDATA%\PRDock\logs\prdock-panic.log`, so you can share the file if PRDock ever disappears on you.
+
+### Improvements
+
+- Run only the highlighted SQL — Select a portion of your query and hit Run (or Ctrl+Enter) to execute just that part. Perfect for multi-statement scripts or trimming a WHERE clause to check the broader result.
+- SQL window has a taskbar entry and shows up in Alt-Tab — The SQL runner is now a real first-class window instead of a pop-out that vanishes from window switchers.
+- Confirm before Bypass Merge — The PR detail window now asks for confirmation before bypassing required checks on a merge, so a stray click can't silently override branch protection.
+- Smarter row selection in SQL results — Click a selected row a second time to deselect it, or click anywhere outside the results to clear all row selections.
+- Stronger syntax highlighting — Tree-sitter runtime upgraded to 0.26, and every grammar (TypeScript, Rust, C#, SQL, YAML, TOML, JSON, and more) is now compiled from source, fixing cases where files silently fell back to plain text.
+
+### Bug Fixes
+
+- SQL queries on spatial columns no longer crash PRDock — Querying tables with `geography`, `geometry`, or `hierarchyid` columns (common in certain views) used to abort the whole app because Tiberius panics on unsupported SQL Server types. PRDock now catches the panic and returns a friendly error suggesting you avoid `SELECT *`.
+- File palette previews UTF-16 SQL Server scripts as text — `.sql` files saved from SSMS are UTF-16 encoded. The preview pane now decodes them correctly instead of treating them as binary.
+
 ## 1.0.14 — 2026-04-20
 
 ### New Features
