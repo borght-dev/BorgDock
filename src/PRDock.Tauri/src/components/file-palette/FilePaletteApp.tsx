@@ -23,6 +23,9 @@ export function FilePaletteApp() {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [favoritePaths, setFavoritePaths] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [rootsCollapsed, setRootsCollapsed] = useState(false);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
 
   const fileIndex = useFileIndex(activeRoot);
@@ -49,6 +52,11 @@ export function FilePaletteApp() {
         }));
         setWorktreePathsByRepo(collected);
         setActiveRoot(s.ui?.filePaletteActiveRootPath ?? null);
+        setFavoritesOnly(s.ui?.filePaletteFavoritesOnly ?? false);
+        setRootsCollapsed(s.ui?.filePaletteRootsCollapsed ?? false);
+        const favs = new Set<string>();
+        for (const r of s.repos) for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
+        setFavoritePaths(favs);
       } catch (e) {
         setLoadError(parseError(e).message);
       }
@@ -71,13 +79,78 @@ export function FilePaletteApp() {
 
   const selectRoot = useCallback(async (path: string) => {
     setActiveRoot(path);
+    setRootsCollapsed(true);
     try {
       const s = await invoke<AppSettings>('load_settings');
       await invoke('save_settings', {
-        settings: { ...s, ui: { ...s.ui, filePaletteActiveRootPath: path } },
+        settings: {
+          ...s,
+          ui: {
+            ...s.ui,
+            filePaletteActiveRootPath: path,
+            filePaletteRootsCollapsed: true,
+          },
+        },
       });
     } catch { /* ignore */ }
   }, []);
+
+  const toggleRootsCollapsed = useCallback(async () => {
+    const next = !rootsCollapsed;
+    setRootsCollapsed(next);
+    try {
+      const s = await invoke<AppSettings>('load_settings');
+      await invoke('save_settings', {
+        settings: { ...s, ui: { ...s.ui, filePaletteRootsCollapsed: next } },
+      });
+    } catch { /* ignore */ }
+  }, [rootsCollapsed]);
+
+  const toggleFavoritesOnly = useCallback(async () => {
+    const next = !favoritesOnly;
+    setFavoritesOnly(next);
+    try {
+      const s = await invoke<AppSettings>('load_settings');
+      await invoke('save_settings', {
+        settings: { ...s, ui: { ...s.ui, filePaletteFavoritesOnly: next } },
+      });
+    } catch {
+      setFavoritesOnly(!next);
+    }
+  }, [favoritesOnly]);
+
+  const toggleFavorite = useCallback(
+    async (root: RootEntry) => {
+      if (root.source !== 'worktree' || !root.repoOwner || !root.repoName) return;
+      const wasFav = favoritePaths.has(root.path);
+      setFavoritePaths((prev) => {
+        const n = new Set(prev);
+        if (wasFav) n.delete(root.path); else n.add(root.path);
+        return n;
+      });
+      try {
+        const s = await invoke<AppSettings>('load_settings');
+        const updatedRepos = s.repos.map((r) => {
+          if (r.owner !== root.repoOwner || r.name !== root.repoName) return r;
+          const existing = r.favoriteWorktreePaths ?? [];
+          const favoriteWorktreePaths = wasFav
+            ? existing.filter((p) => p !== root.path)
+            : existing.includes(root.path)
+              ? existing
+              : [...existing, root.path];
+          return { ...r, favoriteWorktreePaths };
+        });
+        await invoke('save_settings', { settings: { ...s, repos: updatedRepos } });
+      } catch {
+        setFavoritePaths((prev) => {
+          const n = new Set(prev);
+          if (wasFav) n.add(root.path); else n.delete(root.path);
+          return n;
+        });
+      }
+    },
+    [favoritePaths],
+  );
 
   const results: ResultEntry[] = useMemo(() => {
     if (parsed.mode === 'filename') {
@@ -167,8 +240,18 @@ export function FilePaletteApp() {
       <div className="fp-titlebar" data-tauri-drag-region>
         <span className="fp-title">FILES</span>
       </div>
-      <div className="fp-body">
-        <RootsColumn roots={roots} activePath={activeRoot} onSelect={selectRoot} />
+      <div className={`fp-body${rootsCollapsed ? ' fp-body--collapsed' : ''}`}>
+        <RootsColumn
+          roots={roots}
+          activePath={activeRoot}
+          onSelect={selectRoot}
+          favoritePaths={favoritePaths}
+          onToggleFavorite={toggleFavorite}
+          favoritesOnly={favoritesOnly}
+          onToggleFavoritesOnly={toggleFavoritesOnly}
+          collapsed={rootsCollapsed}
+          onToggleCollapsed={toggleRootsCollapsed}
+        />
         <div className="fp-middle">
           <SearchPane
             query={query}

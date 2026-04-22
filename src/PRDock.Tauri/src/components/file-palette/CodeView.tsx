@@ -4,6 +4,7 @@ import {
   highlightLines as runHighlighter,
 } from '@/services/syntax-highlighter';
 import type { HighlightSpan } from '@/types';
+import './CodeView.css';
 
 // Must match the `line-height` on `.code-view` in file-palette.css (see
 // var(--code-line-height) fallback). scrollToLine relies on this.
@@ -110,7 +111,7 @@ function renderLine(text: string, spans: HighlightSpan[] | null) {
   spans.forEach((span, idx) => {
     if (span.start > cursor) out.push(text.slice(cursor, span.start));
     out.push(
-      <span key={idx} className={getHighlightClass(span.category)}>
+      <span key={idx} style={{ color: `var(${getHighlightClass(span.category)})` }}>
         {text.slice(span.start, span.end)}
       </span>,
     );

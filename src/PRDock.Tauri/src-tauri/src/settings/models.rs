@@ -112,6 +112,10 @@ pub struct UiSettings {
     pub indicator_style: String,
     #[serde(default)]
     pub worktree_palette_favorites_only: bool,
+    #[serde(default)]
+    pub file_palette_favorites_only: bool,
+    #[serde(default)]
+    pub file_palette_roots_collapsed: bool,
 }
 
 fn default_sidebar_edge() -> String {
@@ -160,6 +164,8 @@ impl Default for UiSettings {
             badge_style: "GlassCapsule".to_string(),
             indicator_style: "SegmentRing".to_string(),
             worktree_palette_favorites_only: false,
+            file_palette_favorites_only: false,
+            file_palette_roots_collapsed: false,
         }
     }
 }

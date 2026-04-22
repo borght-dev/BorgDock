@@ -1,0 +1,43 @@
+/*
+ * Styles for the <CodeView> component. Co-located with the component so both
+ * the file palette and the stand-alone file viewer get the same gutter +
+ * syntax colors without either window having to remember to import the
+ * palette-wide stylesheet.
+ */
+
+.code-view {
+  /* `min-height: 0` is what makes `overflow: auto` actually scroll when we
+     sit in a flex/grid cell — without it the content grows the track and
+     there's nothing to clip. Same trick for the horizontal axis. */
+  overflow: auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  font-family: "Consolas", "SF Mono", Menlo, "Courier New", monospace;
+  font-size: 12px;
+  line-height: var(--code-line-height, 20px);
+  padding: 4px 0;
+  outline: none;
+}
+
+.code-line-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  white-space: pre;
+}
+
+.code-line-row--hit {
+  background: var(--color-warning-badge-bg);
+}
+
+.code-line-number {
+  text-align: right;
+  padding-right: 10px;
+  opacity: 0.35;
+  user-select: none;
+}
+
+.code-line-text {
+  user-select: text;
+  white-space: pre;
+}

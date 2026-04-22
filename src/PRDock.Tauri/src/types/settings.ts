@@ -49,6 +49,8 @@ export interface UiSettings {
   indicatorStyle: IndicatorStyle;
   worktreePaletteFavoritesOnly?: boolean;
   filePaletteActiveRootPath?: string;
+  filePaletteFavoritesOnly?: boolean;
+  filePaletteRootsCollapsed?: boolean;
 }
 
 export interface NotificationSettings {
