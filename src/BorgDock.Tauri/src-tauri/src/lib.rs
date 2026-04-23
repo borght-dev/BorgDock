@@ -152,15 +152,13 @@ pub fn run() {
                 log::error!("register_fixed_hotkeys failed: {e}");
             }
 
-            // Show the main window from Rust to avoid relying on JS IPC
-            // permissions / timing. The window starts hidden (visible: false
-            // in tauri.conf.json) to prevent a blank flash on startup.
-            // set_focus() is required so Windows registers focus tracking —
-            // without it onFocusChanged never fires and clicking outside
-            // won't trigger auto-hide.
-            if let Some(win) = app.get_webview_window("main") {
-                let _ = win.show();
-                let _ = win.set_focus();
+            // Park the main window off-screen at 1×1. This keeps the React
+            // tree alive (WebView2 throttles JS in hidden windows on Windows,
+            // which would slow the polling loop) without showing the sidebar
+            // to the user on startup. The tray icon / hotkey / flyout are
+            // the entry points that call show_main_window to reveal it.
+            if let Err(e) = platform::window::park_main_offscreen(&app.handle().clone()) {
+                log::error!("park_main_offscreen failed: {e}");
             }
 
             Ok(())

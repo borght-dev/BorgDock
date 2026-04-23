@@ -16,6 +16,31 @@ pub(crate) fn sidebar_visible() -> bool {
     SIDEBAR_VISIBLE.load(Ordering::SeqCst)
 }
 
+/// Move the main window to a 1×1 off-screen position. Used so its React tree
+/// keeps running (WebView2 throttles JS in hidden windows on Windows) without
+/// being visible to the user. Called at startup and whenever the user hides
+/// the sidebar.
+pub(crate) fn park_main_offscreen(app: &tauri::AppHandle) -> Result<(), String> {
+    let win = get_main_window(app)?;
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let mon_x = win
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| win.primary_monitor().ok().flatten())
+        .map(|m| m.position().x)
+        .unwrap_or(0);
+    let off_x = mon_x - (32000.0 * scale) as i32;
+    let off_y = -(32000.0 * scale) as i32;
+    win.set_position(tauri::Position::Physical(PhysicalPosition::new(off_x, off_y)))
+        .map_err(|e| e.to_string())?;
+    win.set_size(tauri::Size::Physical(PhysicalSize::new(1, 1)))
+        .map_err(|e| e.to_string())?;
+    win.show().map_err(|e| e.to_string())?;
+    SIDEBAR_VISIBLE.store(false, Ordering::SeqCst);
+    Ok(())
+}
+
 /// Show the main sidebar window, focus it, and force a repaint.
 ///
 /// Windows + transparent + always-on-top WebView2 windows need aggressive
@@ -25,6 +50,22 @@ pub(crate) fn sidebar_visible() -> bool {
 pub(crate) fn show_main_window(app: &tauri::AppHandle) -> Result<(), String> {
     log::info!("show_main_window: begin");
     let win = get_main_window(app)?;
+
+    // The window may be parked off-screen at 1×1 (from startup or a hide).
+    // Re-apply the configured sidebar edge/width so it docks correctly before
+    // we show it. Load settings synchronously — this is a fast file read.
+    match crate::settings::load_settings_internal() {
+        Ok(settings) => {
+            let edge = &settings.ui.sidebar_edge;
+            let width = settings.ui.sidebar_width_px;
+            if let Err(e) = apply_sidebar_position(&win, edge, width) {
+                log::warn!("show_main_window: apply_sidebar_position failed: {e}");
+            }
+        }
+        Err(e) => {
+            log::warn!("show_main_window: could not load settings for position: {e}");
+        }
+    }
 
     // If minimized, unminimize first — `show()` alone won't restore it.
     let _ = win.unminimize();
@@ -42,41 +83,12 @@ pub(crate) fn show_main_window(app: &tauri::AppHandle) -> Result<(), String> {
     // Reapply position and size to force the compositor to repaint.
     // A single set_size is sometimes not enough — resize by 1px and back so
     // the WM_SIZE message definitely fires.
-    // Also clamp the position so the window is fully on-screen.
     if let Ok(size) = win.outer_size() {
         if size.width > 1 {
             let shrunk = PhysicalSize::new(size.width - 1, size.height);
             let _ = win.set_size(tauri::Size::Physical(shrunk));
         }
         let _ = win.set_size(tauri::Size::Physical(size));
-
-        // Clamp position to keep the window within the current monitor.
-        if let Ok(pos) = win.outer_position() {
-            let mut x = pos.x;
-            let mut y = pos.y;
-            if let Ok(Some(monitor)) = win.current_monitor() {
-                let mon_pos = monitor.position();
-                let mon_size = monitor.size();
-                let mon_right = mon_pos.x + mon_size.width as i32;
-                let mon_bottom = mon_pos.y + mon_size.height as i32;
-
-                // Clamp right/bottom edge
-                if x + size.width as i32 > mon_right {
-                    x = mon_right - size.width as i32;
-                }
-                if y + size.height as i32 > mon_bottom {
-                    y = mon_bottom - size.height as i32;
-                }
-                // Clamp left/top edge
-                if x < mon_pos.x {
-                    x = mon_pos.x;
-                }
-                if y < mon_pos.y {
-                    y = mon_pos.y;
-                }
-            }
-            let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
-        }
     }
 
     if let Err(e) = win.set_focus() {
@@ -88,17 +100,11 @@ pub(crate) fn show_main_window(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Hide the main sidebar window. Idempotent.
+/// Hide the main sidebar window by parking it off-screen. Idempotent.
+/// Parking (rather than calling `win.hide()`) keeps the React tree alive and
+/// prevents WebView2 from throttling the JS polling loop on Windows.
 pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
-    log::info!("hide_main_window: begin");
-    let win = get_main_window(app)?;
-    win.hide().map_err(|e| {
-        log::error!("hide_main_window: hide() failed: {e}");
-        e.to_string()
-    })?;
-    SIDEBAR_VISIBLE.store(false, Ordering::SeqCst);
-    log::info!("hide_main_window: done");
-    Ok(())
+    park_main_offscreen(app)
 }
 
 // ---------------------------------------------------------------------------
