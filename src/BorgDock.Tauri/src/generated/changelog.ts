@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.0.16",
+    "date": "2026-04-22",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Syntax highlighting works in installed builds — Tree-sitter grammars were silently failing to load in packaged releases because the app's Content Security Policy blocked WebAssembly compilation. The CSP now allows `wasm-unsafe-eval` so diffs, the file palette preview, and the file viewer all render with proper syntax colors again."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "1.0.15",
     "date": "2026-04-22",
     "summary": "File palette (Ctrl+F8), Run only the highlighted SQL, and Confirm before Bypass Merge.",
