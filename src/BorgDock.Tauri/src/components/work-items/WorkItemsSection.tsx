@@ -7,6 +7,7 @@ import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
 import { WorkItemList } from '@/components/work-items/WorkItemList';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { classifyFields, extractAttachments } from '@/utils/work-item-fields';
 import {
@@ -20,6 +21,7 @@ import {
 export function WorkItemsSection() {
   const settings = useSettingsStore((s) => s.settings);
   const adoSettings = settings.azureDevOps;
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
   // Work items store
   const queryTree = useWorkItemsStore((s) => s.queryTree);
@@ -165,9 +167,16 @@ export function WorkItemsSection() {
             <rect x="2" y="3" width="12" height="10" rx="1.5" />
             <path d="M5 6h6M5 9h4" />
           </svg>
-          <p className="text-[13px] text-[var(--color-text-muted)]">
-            Configure Azure DevOps in Settings to see work items
+          <p className="mb-3 text-[13px] text-[var(--color-text-muted)]">
+            Configure Azure DevOps to see work items
           </p>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
+          >
+            Open Settings
+          </button>
         </div>
       </div>
     );

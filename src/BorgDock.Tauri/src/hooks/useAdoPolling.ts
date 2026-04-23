@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { AdoClient } from '@/services/ado/client';
 import { executeQuery, getQueryTree } from '@/services/ado/queries';
@@ -16,6 +16,20 @@ function mapQueryToTreeNode(query: AdoQuery, favoriteIds: string[]): AdoQueryTre
   };
 }
 
+// Treat connection settings as "settled" only after they stop changing for
+// this long. Prevents every keystroke in the Settings → ADO form from
+// re-creating the client and firing a 404 on partial org/project values.
+const SETTLE_DELAY_MS = 500;
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export function useAdoPolling(settings: AppSettings) {
   const clientRef = useRef<AdoClient | null>(null);
   const pollingRef = useRef<PollingManager<WorkItem[]> | null>(null);
@@ -25,10 +39,18 @@ export function useAdoPolling(settings: AppSettings) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
+  const organization = useDebouncedValue(settings.azureDevOps.organization, SETTLE_DELAY_MS);
+  const project = useDebouncedValue(settings.azureDevOps.project, SETTLE_DELAY_MS);
+  const personalAccessToken = useDebouncedValue(
+    settings.azureDevOps.personalAccessToken,
+    SETTLE_DELAY_MS,
+  );
+  const authMethod = settings.azureDevOps.authMethod;
+
   const isConfigured =
-    !!settings.azureDevOps.organization &&
-    !!settings.azureDevOps.project &&
-    (settings.azureDevOps.authMethod === 'azCli' || !!settings.azureDevOps.personalAccessToken);
+    !!organization &&
+    !!project &&
+    (authMethod === 'azCli' || !!personalAccessToken);
 
   // Create/update client when settings change
   useEffect(() => {
@@ -38,28 +60,22 @@ export function useAdoPolling(settings: AppSettings) {
     }
 
     clientRef.current = new AdoClient(
-      settings.azureDevOps.organization,
-      settings.azureDevOps.project,
-      settings.azureDevOps.personalAccessToken ?? '',
-      settings.azureDevOps.authMethod,
+      organization,
+      project,
+      personalAccessToken ?? '',
+      authMethod,
     );
-  }, [
-    isConfigured,
-    settings.azureDevOps.organization,
-    settings.azureDevOps.project,
-    settings.azureDevOps.personalAccessToken,
-    settings.azureDevOps.authMethod,
-  ]);
+  }, [isConfigured, organization, project, personalAccessToken, authMethod]);
 
   // On mount: resolve user, load query tree, restore state
   useEffect(() => {
     if (!isConfigured) return;
 
     const client = new AdoClient(
-      settings.azureDevOps.organization,
-      settings.azureDevOps.project,
-      settings.azureDevOps.personalAccessToken ?? '',
-      settings.azureDevOps.authMethod,
+      organization,
+      project,
+      personalAccessToken ?? '',
+      authMethod,
     );
     clientRef.current = client;
 
@@ -137,13 +153,7 @@ export function useAdoPolling(settings: AppSettings) {
     // Array/object settings (favoriteQueryIds, trackedWorkItemIds, etc.)
     // are read from settingsRef inside the async IIFE.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isConfigured,
-    settings.azureDevOps.organization,
-    settings.azureDevOps.personalAccessToken,
-    settings.azureDevOps.project,
-    settings.azureDevOps.authMethod,
-  ]);
+  }, [isConfigured, organization, personalAccessToken, project, authMethod]);
 
   // Subscribe to selectedQueryId changes and fetch work items
   useEffect(() => {
