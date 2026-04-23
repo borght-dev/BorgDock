@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { createLogger } from '@/services/logger';
+import type { ToastPayload } from './flyout-mode';
 
 const log = createLogger('FlyoutGlance');
 
@@ -34,7 +35,7 @@ export interface FlyoutPr {
   isMine: boolean;
 }
 
-export function FlyoutGlance({ data }: { data: FlyoutData }) {
+export function FlyoutGlance({ data, banner }: { data: FlyoutData; banner?: ToastPayload }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { failingCount, pendingCount, passingCount, pullRequests, totalCount } = data;
@@ -210,6 +211,16 @@ export function FlyoutGlance({ data }: { data: FlyoutData }) {
             <StatDot color="var(--color-status-green)" count={passingCount} label="passing" />
           </div>
         </div>
+
+        {banner && (
+          <div
+            className="px-4 py-2 text-[11px] font-semibold text-white"
+            style={{ background: bannerColor(banner.severity) }}
+            data-testid="flyout-glance-banner"
+          >
+            {banner.title}
+          </div>
+        )}
 
         {/* PR list */}
         <div className="max-h-[360px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
@@ -637,6 +648,19 @@ function SettingsIcon() {
       <circle cx="12" cy="12" r="3" />
     </svg>
   );
+}
+
+function bannerColor(severity: ToastPayload['severity']): string {
+  switch (severity) {
+    case 'error':
+      return 'linear-gradient(90deg,#dc2646,#b01834)';
+    case 'warning':
+      return 'linear-gradient(90deg,#d97706,#b05800)';
+    case 'success':
+      return 'linear-gradient(90deg,#05966a,#046e4e)';
+    default:
+      return 'linear-gradient(90deg,#7c6af6,#5b45e8)';
+  }
 }
 
 /** Deterministic color from author login */

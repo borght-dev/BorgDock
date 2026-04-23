@@ -1,3 +1,4 @@
+import { emitTo } from '@tauri-apps/api/event';
 import { useEffect, useRef } from 'react';
 import { loadCachedEtags, loadCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
@@ -144,6 +145,11 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
         store.completeStep('fetch-prs', { count: 0 });
         store.completeStep('fetch-checks');
         store.markComplete();
+        try {
+          await emitTo('flyout', 'init-complete', {});
+        } catch (err) {
+          log.warn('failed to emit init-complete to flyout', { error: String(err) });
+        }
         return;
       }
 
@@ -253,6 +259,11 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
         runId,
         totalDurationMs: Math.round(performance.now() - sequenceStart),
       });
+      try {
+        await emitTo('flyout', 'init-complete', {});
+      } catch (err) {
+        log.warn('failed to emit init-complete to flyout', { error: String(err) });
+      }
     })();
   }, [needsSetup, runToken]);
 }
