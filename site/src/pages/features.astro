@@ -1,0 +1,72 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import { SectionHeading } from '~/components/SectionHeading';
+
+import { FocusFeature } from '~/components/sections/FocusFeature';
+import { CiClaudeFeature } from '~/components/sections/CiClaudeFeature';
+import { FilePaletteFeature } from '~/components/sections/FilePaletteFeature';
+import { SqlFeature } from '~/components/sections/SqlFeature';
+import { WorkItemsFeature } from '~/components/sections/WorkItemsFeature';
+import { BadgeFeature } from '~/components/sections/BadgeFeature';
+import { ShortcutsFeature } from '~/components/sections/ShortcutsFeature';
+import { FinalCta } from '~/components/sections/FinalCta';
+
+interface Boring {
+  t: string;
+  d: string;
+}
+
+const boring: Boring[] = [
+  { t: 'Token bucket polling', d: "Respects GitHub's per-user + per-installation rate limits. Never hammers." },
+  { t: 'Offline-first cache', d: 'SQLite WAL local cache. The sidebar works on the plane; syncs when you land.' },
+  { t: 'Per-repo priorities', d: 'Weight a repo up or down globally. Quiet vendor forks. Loud prod monorepo.' },
+  { t: 'Native notifications', d: 'Tray + OS notifications for reviews requested, CI flips, merges.' },
+  { t: 'Auto-updates', d: 'Signed, delta updates on all three platforms. Roll back any release with one click.' },
+  { t: 'No telemetry by default', d: 'Off out of the box. Opt in from Settings if you want to help us prioritize.' },
+];
+---
+
+<Layout title="Features — BorgDock">
+  <SiteNav current="features" />
+
+  <section class="section section--first" style="max-width: 1200px;">
+    <SectionHeading
+      eyebrow="The full tour"
+      title={{ lead: 'Seven surfaces. ', em: 'One dock.' }}
+      lede="BorgDock is a Tauri desktop app. Each surface is a dedicated window you can summon by keybinding, sized to fit beside your editor, not cover it."
+    />
+  </section>
+
+  <FocusFeature />
+  <CiClaudeFeature />
+  <FilePaletteFeature />
+  <SqlFeature />
+  <WorkItemsFeature />
+  <BadgeFeature />
+  <ShortcutsFeature />
+
+  <section class="section" style="max-width: 1200px; margin-top: 140px;">
+    <SectionHeading
+      eyebrow="And the parts you don't see"
+      title={{ lead: 'The ', em: 'boring stuff', trail: ' we got right.' }}
+      align="center"
+    />
+    <div class="card-grid-3" style="margin-top: 48px;">
+      {
+        boring.map((f) => (
+          <div
+            style="padding: 22px; border-radius: 12px; background: var(--color-card-background); border: 1px solid var(--color-card-border);"
+          >
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">{f.t}</div>
+            <div style="font-size: 13px; color: var(--color-text-tertiary); line-height: 1.55;">{f.d}</div>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <FinalCta />
+  <SiteFooter />
+</Layout>

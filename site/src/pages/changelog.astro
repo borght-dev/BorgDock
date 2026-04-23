@@ -1,0 +1,138 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import { SectionHeading } from '~/components/SectionHeading';
+
+type Kind = 'new' | 'improved' | 'fixed';
+
+interface Release {
+  v: string;
+  date: string;
+  groups: Partial<Record<Kind, string[]>>;
+}
+
+const releases: Release[] = [
+  {
+    v: '0.14.0',
+    date: 'Apr 18, 2026',
+    groups: {
+      new: [
+        'File Palette now searches across every cloned repo under ~/src',
+        'Cross-repo results preview with full syntax highlighting',
+      ],
+      improved: [
+        'Fuzzy ranking weights path segments over basename by 1.4×',
+        'Palette opens in <16ms on 20k-file corpora',
+      ],
+    },
+  },
+  {
+    v: '0.13.2',
+    date: 'Apr 04, 2026',
+    groups: {
+      improved: [
+        'Priority scoring: eight-signal model replaces the old 5-signal one',
+        '40% fewer false-urgent PRs on queues >30',
+      ],
+      fixed: ['Sidebar no longer loses position after display-sleep on multi-monitor macOS'],
+    },
+  },
+  {
+    v: '0.13.0',
+    date: 'Mar 22, 2026',
+    groups: {
+      new: ['Quick Review mode — one keybinding to approve / request-changes / skip a queue'],
+      improved: ['Status bar shows sync lag when polling stalls'],
+    },
+  },
+  {
+    v: '0.12.1',
+    date: 'Mar 08, 2026',
+    groups: {
+      fixed: [
+        'CI log parser: surface the FIRST TypeScript error, not the last (it was dropping root causes)',
+        'Windows: tray icon resets to default on theme switch',
+      ],
+    },
+  },
+  {
+    v: '0.12.0',
+    date: 'Feb 24, 2026',
+    groups: {
+      new: [
+        'Azure DevOps work-item browser',
+        'Auto-link PRs to work items by commit message or branch prefix',
+      ],
+    },
+  },
+  {
+    v: '0.11.0',
+    date: 'Feb 10, 2026',
+    groups: {
+      new: ['SQL Server query window with saved connections'],
+      improved: ['Floating badge: five selectable styles'],
+    },
+  },
+];
+
+const kindColor: Record<Kind, { fg: string; bg: string }> = {
+  new: { fg: 'var(--color-accent)', bg: 'var(--color-accent-subtle)' },
+  improved: { fg: 'var(--color-status-green)', bg: 'var(--color-success-badge-bg)' },
+  fixed: { fg: 'var(--color-status-yellow)', bg: 'var(--color-warning-badge-bg)' },
+};
+---
+
+<Layout title="Changelog — BorgDock">
+  <SiteNav current="changelog" />
+
+  <section class="section section--first" style="max-width: 820px;">
+    <SectionHeading
+      eyebrow="Changelog"
+      title={{ lead: 'Everything, ', em: 'with a changelog.' }}
+      lede="New release every two weeks, on average. RSS available at the bottom of the page."
+    />
+  </section>
+
+  <section style="max-width: 820px; margin: 56px auto 0; padding: 0 32px;">
+    {
+      releases.map((r) => (
+        <div class="changelog-row">
+          <div class="changelog-row__date">
+            <div style="font-size: 22px; font-weight: 600; color: var(--color-text-primary);">
+              v{r.v}
+            </div>
+            <div style="font-size: 11px; color: var(--color-text-muted); margin-top: 4px;">
+              {r.date}
+            </div>
+          </div>
+          <div>
+            {
+              (Object.entries(r.groups) as [Kind, string[]][]).map(([kind, items]) => {
+                const { fg, bg } = kindColor[kind];
+                return (
+                  <div style="margin-bottom: 20px;">
+                    <div
+                      style={`display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; color: ${fg}; background: ${bg}; border: 1px solid ${fg}33; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px;`}
+                    >
+                      {kind}
+                    </div>
+                    <ul style="margin: 0; padding-left: 18px; display: grid; gap: 6px;">
+                      {items.map((it) => (
+                        <li style="font-size: 14px; line-height: 1.55; color: var(--color-text-secondary);">
+                          {it}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </div>
+      ))
+    }
+  </section>
+
+  <SiteFooter />
+</Layout>

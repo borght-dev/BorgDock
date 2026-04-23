@@ -1,0 +1,170 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+
+import { FocusSidebar } from '~/components/screens/FocusSidebar';
+import { MainPRsWindow } from '~/components/screens/MainPRsWindow';
+import { DiffViewer } from '~/components/screens/DiffViewer';
+import { PrDetail } from '~/components/screens/PrDetail';
+import { FilePalette } from '~/components/screens/FilePalette';
+import { SqlWindow } from '~/components/screens/SqlWindow';
+import { CiLogPanel } from '~/components/screens/CiLogPanel';
+import { WorkItemsList } from '~/components/screens/WorkItemsList';
+import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
+---
+
+<Layout title="Gallery — BorgDock" description="Every BorgDock screen, at full fidelity.">
+  <SiteNav current="gallery" />
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 64px 32px 24px;">
+    <div
+      style="font-size: 11px; font-family: var(--font-code); color: var(--color-text-muted); letter-spacing: 0.04em; margin-bottom: 14px;"
+    >
+      GALLERY · every screen
+    </div>
+    <h1
+      class="prdock-display"
+      style="font-size: clamp(44px, 5vw, 64px); line-height: 1.02; margin: 0; letter-spacing: -0.025em; max-width: 900px;"
+    >
+      One design vocabulary. <em style="color: var(--color-text-tertiary); font-style: normal; font-weight: 400;">Nine surfaces.</em>
+    </h1>
+    <p style="font-size: 15px; color: var(--color-text-secondary); max-width: 640px; margin-top: 16px; line-height: 1.6;">
+      The same titlebar, the same pill system, the same keyboard footer, the same
+      monospace metadata — across PRs, diffs, checks, files, queries, and the floating
+      badge. Shot on v0.14, both light and dark modes.
+    </p>
+  </section>
+
+  <section class="gallery-grid">
+    <article>
+      <p class="gallery-caption">Focus</p>
+      <h2 class="gallery-title">Triage, <em>ranked.</em></h2>
+      <p class="gallery-lede">
+        Every PR scored on eight signals. The tab re-sorts in real time so the next thing
+        to do is always on top.
+      </p>
+      <div class="gallery-shelf">
+        <div class="mockup-scroll">
+          <FocusSidebar width={420} height={640} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Main window · PRs</p>
+      <h2 class="gallery-title">Grouped by <em>what needs you,</em> not by date.</h2>
+      <p class="gallery-lede">
+        Section tabs in the titlebar, filter pills underneath, cards grouped by state —
+        Ready to merge / Needs attention / In review.
+      </p>
+      <div class="gallery-shelf gallery-shelf--wide">
+        <div class="mockup-scroll">
+          <MainPRsWindow width={1020} height={720} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Diff viewer</p>
+      <h2 class="gallery-title">Split view, <em>vs HEAD or vs base.</em></h2>
+      <p class="gallery-lede">
+        File tree, split or unified mode, and a toggle to compare against your local HEAD
+        or the PR base branch.
+      </p>
+      <div class="gallery-shelf gallery-shelf--wide">
+        <div class="mockup-scroll">
+          <DiffViewer width={1180} height={720} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">PR detail · Checks</p>
+      <h2 class="gallery-title">All ten checks. <em>One click to Claude.</em></h2>
+      <p class="gallery-lede">
+        Every CI run in a flat list. Red ones grow a "Send to Claude Code" button
+        inline — it opens a worktree with the first real error as the prompt.
+      </p>
+      <div class="gallery-shelf gallery-shelf--wide">
+        <div class="mockup-scroll">
+          <PrDetail width={820} height={840} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">File palette · ⌘P</p>
+      <h2 class="gallery-title">Every file, <em>every repo.</em></h2>
+      <p class="gallery-lede">
+        Fuzzy match across every clone in ~/src. Syntax-highlighted preview. Jump to the
+        PR that touched the file last.
+      </p>
+      <div class="gallery-shelf">
+        <div class="mockup-scroll">
+          <FilePalette width={780} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Query window · ⌘L</p>
+      <h2 class="gallery-title">SQL <em>where you already are.</em></h2>
+      <p class="gallery-lede">
+        SQL Server, Postgres, MySQL. Read-only by default, results cached for instant
+        re-scroll, syntax matching the rest of the app.
+      </p>
+      <div class="gallery-shelf">
+        <div class="mockup-scroll">
+          <SqlWindow width={620} height={440} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">CI log</p>
+      <h2 class="gallery-title">The first real error, <em>not the last 2,000 lines.</em></h2>
+      <p class="gallery-lede">
+        Log-parsing extracts the actual failing assertion so Claude Code gets a clean
+        prompt.
+      </p>
+      <div class="gallery-shelf">
+        <div class="mockup-scroll">
+          <CiLogPanel width={540} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Azure DevOps</p>
+      <h2 class="gallery-title">Work items, <em>in the dock.</em></h2>
+      <p class="gallery-lede">
+        Auto-linked by branch or commit. Sprint, state, tags, implementing PR — all on
+        one card.
+      </p>
+      <div class="gallery-shelf">
+        <div class="mockup-scroll">
+          <WorkItemsList width={420} height={580} />
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Floating badge · ⌘⇧B</p>
+      <h2 class="gallery-title">Hide the dock. <em>Keep the signal.</em></h2>
+      <p class="gallery-lede">
+        An always-on-top capsule: count and worst status. Click to expand; double-click
+        to reopen the dock.
+      </p>
+      <div class="gallery-shelf">
+        <div style="display: flex; flex-direction: column; gap: 18px; align-items: center;">
+          <FloatingBadgeMock status="red" count={23} failing={2} width={340} />
+          <FloatingBadgeMock status="yellow" count={18} failing={0} width={340} />
+          <FloatingBadgeMock status="green" count={11} failing={0} width={340} />
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <SiteFooter />
+</Layout>

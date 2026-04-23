@@ -1,0 +1,35 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+
+import { Hero } from '~/components/sections/Hero';
+import { ShowcaseStrip } from '~/components/sections/ShowcaseStrip';
+import { FocusFeature } from '~/components/sections/FocusFeature';
+import { DiffFeature } from '~/components/sections/DiffFeature';
+import { CiClaudeFeature } from '~/components/sections/CiClaudeFeature';
+import { FilePaletteFeature } from '~/components/sections/FilePaletteFeature';
+import { DetailAndWork } from '~/components/sections/DetailAndWork';
+import { SqlFeature } from '~/components/sections/SqlFeature';
+import { BadgeFeature } from '~/components/sections/BadgeFeature';
+import { ShortcutsFeature } from '~/components/sections/ShortcutsFeature';
+import { ChangelogTeaser } from '~/components/sections/ChangelogTeaser';
+import { FinalCta } from '~/components/sections/FinalCta';
+---
+
+<Layout title="BorgDock — Less context switching. More shipping.">
+  <SiteNav current="home" />
+  <Hero />
+  <ShowcaseStrip />
+  <FocusFeature />
+  <DiffFeature />
+  <CiClaudeFeature />
+  <FilePaletteFeature />
+  <DetailAndWork />
+  <SqlFeature />
+  <BadgeFeature />
+  <ShortcutsFeature />
+  <ChangelogTeaser />
+  <FinalCta />
+  <SiteFooter />
+</Layout>

@@ -1,0 +1,50 @@
+---
+import { BorgDockLogo } from '~/components/ui/BorgDockLogo';
+
+interface Column {
+  title: string;
+  items: string[];
+}
+
+const columns: Column[] = [
+  { title: 'Product', items: ['Features', 'Gallery', 'Changelog', 'Download', 'Roadmap'] },
+  {
+    title: 'Docs',
+    items: ['Quick start', 'Keyboard shortcuts', 'GitHub setup', 'Azure DevOps', 'Claude Code'],
+  },
+  { title: 'Community', items: ['GitHub', 'Discord', 'Blog', 'RSS', '@borgdock'] },
+  { title: 'Legal', items: ['Terms', 'Privacy', 'Telemetry', 'Security', 'License'] },
+];
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__grid">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <BorgDockLogo size={20} />
+          <span style="font-weight: 600; font-size: 14px;">BorgDock</span>
+        </div>
+        <p class="site-footer__brand-copy">
+          A docked developer cockpit: PRs, CI, Claude Code, worktrees, work items, SQL,
+          and file search — all in one always-on sidebar.
+        </p>
+        <div class="site-footer__small">
+          © 2026 BorgDock · made by devs who review too many PRs
+        </div>
+      </div>
+      {
+        columns.map((col) => (
+          <div>
+            <div class="site-footer__col-title">{col.title}</div>
+            {col.items.map((i) => (
+              <a href="#" class="site-footer__col-link">
+                {i}
+              </a>
+            ))}
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</footer>

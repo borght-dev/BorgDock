@@ -1,0 +1,233 @@
+/* PRDock design tokens — extracted from DESIGN-SYSTEM.md */
+:root {
+  /* Brand / accent */
+  --color-accent: #6655d4;
+  --color-accent-foreground: #ffffff;
+  --color-accent-subtle: rgba(124, 106, 246, 0.10);
+  --color-purple: #6655d4;
+  --color-purple-soft: rgba(124, 106, 246, 0.06);
+  --color-purple-border: rgba(124, 106, 246, 0.14);
+
+  /* Surfaces */
+  --color-background: #f7f5fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: rgba(90, 86, 112, 0.03);
+  --color-surface-hover: rgba(90, 86, 112, 0.05);
+  --color-sidebar-gradient-top: #f7f5fb;
+  --color-sidebar-gradient-bottom: #edeaf4;
+  --color-card-background: #ffffff;
+  --color-card-border: rgba(90, 86, 112, 0.08);
+  --color-card-border-my-pr: rgba(124, 106, 246, 0.22);
+
+  /* Text */
+  --color-text-primary: #1a1726;
+  --color-text-secondary: #3a3550;
+  --color-text-tertiary: #5a5670;
+  --color-text-muted: #8a85a0;
+  --color-text-faint: #b8b0c8;
+  --color-text-ghost: #d8d4e3;
+
+  /* Borders */
+  --color-subtle-border: rgba(90, 86, 112, 0.08);
+  --color-strong-border: rgba(90, 86, 112, 0.14);
+  --color-separator: rgba(90, 86, 112, 0.08);
+
+  /* Status */
+  --color-status-green: #3ba68e;
+  --color-status-red: #c7324f;
+  --color-status-yellow: #b07d09;
+  --color-status-gray: #8a85a0;
+
+  --color-success-badge-bg: rgba(59, 166, 142, 0.08);
+  --color-success-badge-fg: #3ba68e;
+  --color-success-badge-border: rgba(59, 166, 142, 0.20);
+  --color-warning-badge-bg: rgba(176, 125, 9, 0.08);
+  --color-warning-badge-fg: #b07d09;
+  --color-warning-badge-border: rgba(176, 125, 9, 0.22);
+  --color-error-badge-bg: rgba(199, 50, 79, 0.08);
+  --color-error-badge-fg: #c7324f;
+  --color-error-badge-border: rgba(199, 50, 79, 0.22);
+
+  --color-badge-glow-green: rgba(59, 166, 142, 0.35);
+  --color-badge-glow-red: rgba(199, 50, 79, 0.35);
+  --color-badge-glow-yellow: rgba(245, 183, 59, 0.35);
+  --color-badge-glass: rgba(247, 245, 251, 0.97);
+  --color-badge-surface: rgba(237, 234, 244, 0.97);
+  --color-badge-border: rgba(90, 86, 112, 0.12);
+
+  /* Syntax */
+  --color-syntax-keyword: #6655d4;
+  --color-syntax-string: #3ba68e;
+  --color-syntax-comment: #8a85a0;
+  --color-syntax-number: #b07d09;
+  --color-syntax-type: #c7324f;
+  --color-syntax-function: #3a3550;
+  --color-syntax-variable: #1a1726;
+  --color-syntax-operator: #5a5670;
+  --color-syntax-punctuation: #8a85a0;
+  --color-syntax-property: #3a3550;
+  --color-syntax-tag: #c7324f;
+  --color-syntax-attribute: #b07d09;
+
+  /* Diff */
+  --color-diff-added-bg: rgba(59, 166, 142, 0.10);
+  --color-diff-deleted-bg: rgba(199, 50, 79, 0.10);
+  --color-diff-added-gutter-bg: rgba(59, 166, 142, 0.18);
+  --color-diff-deleted-gutter-bg: rgba(199, 50, 79, 0.18);
+
+  /* Spacing / radius (from recommended §4, §5) */
+  --space-1: 2px;  --space-2: 4px;  --space-3: 6px;  --space-4: 8px;
+  --space-5: 10px; --space-6: 12px; --space-8: 16px; --space-12: 24px;
+  --radius-sm: 5px;  --radius-md: 6px;  --radius-lg: 8px;  --radius-pill: 9999px;
+
+  --text-micro: 10px; --text-small: 11px; --text-body: 12px;
+  --text-base: 13px;  --text-title: 18px;
+
+  /* In-app UI stays system so mockups look native to the real app. */
+  --font-ui-system: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  /* Marketing body / UI */
+  --font-ui: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  /* Display type uses the same UI font, just at larger sizes with tighter tracking. */
+  --font-display: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  /* Motion */
+  --motion-press: transform 80ms ease;
+  --motion-color: 120ms ease;
+  --motion-ui: 150ms ease;
+  --motion-tab: 200ms ease-out;
+}
+
+.dark {
+  --color-accent: #7c6af6;
+  --color-accent-subtle: rgba(124, 106, 246, 0.15);
+  --color-purple: #9384f7;
+  --color-purple-soft: rgba(147, 132, 247, 0.08);
+  --color-purple-border: rgba(147, 132, 247, 0.20);
+
+  --color-background: #110f1a;
+  --color-surface: #1a1726;
+  --color-surface-raised: rgba(138, 133, 160, 0.03);
+  --color-surface-hover: rgba(138, 133, 160, 0.05);
+  --color-sidebar-gradient-top: #110f1a;
+  --color-sidebar-gradient-bottom: #1a1726;
+  --color-card-background: #1a1726;
+  --color-card-border: rgba(138, 133, 160, 0.08);
+
+  --color-text-primary: #edeaf4;
+  --color-text-secondary: #c8c4d6;
+  --color-text-tertiary: #8a85a0;
+  --color-text-muted: #5a5670;
+  --color-text-faint: #3a3650;
+  --color-text-ghost: #2a2640;
+
+  --color-subtle-border: rgba(138, 133, 160, 0.08);
+  --color-strong-border: rgba(138, 133, 160, 0.14);
+  --color-separator: rgba(138, 133, 160, 0.08);
+
+  --color-status-green: #7dd3c0;
+  --color-status-red: #e54065;
+  --color-status-yellow: #f5b73b;
+  --color-status-gray: #5a5670;
+
+  --color-success-badge-bg: rgba(125, 211, 192, 0.10);
+  --color-success-badge-fg: #7dd3c0;
+  --color-success-badge-border: rgba(125, 211, 192, 0.22);
+  --color-warning-badge-bg: rgba(245, 183, 59, 0.10);
+  --color-warning-badge-fg: #f5b73b;
+  --color-warning-badge-border: rgba(245, 183, 59, 0.22);
+  --color-error-badge-bg: rgba(229, 64, 101, 0.10);
+  --color-error-badge-fg: #e54065;
+  --color-error-badge-border: rgba(229, 64, 101, 0.22);
+
+  --color-badge-glass: rgba(26, 23, 38, 0.97);
+  --color-badge-surface: rgba(26, 23, 38, 0.97);
+  --color-badge-border: rgba(255, 255, 255, 0.12);
+
+  --color-syntax-keyword: #b8b0f8;
+  --color-syntax-string: #7dd3c0;
+  --color-syntax-comment: #5a5670;
+  --color-syntax-number: #f5b73b;
+  --color-syntax-type: #e54065;
+  --color-syntax-function: #c8c4d6;
+  --color-syntax-variable: #edeaf4;
+  --color-syntax-operator: #8a85a0;
+  --color-syntax-punctuation: #5a5670;
+  --color-syntax-property: #c8c4d6;
+  --color-syntax-tag: #e54065;
+  --color-syntax-attribute: #f5b73b;
+
+  --color-diff-added-bg: rgba(125, 211, 192, 0.10);
+  --color-diff-deleted-bg: rgba(229, 64, 101, 0.10);
+  --color-diff-added-gutter-bg: rgba(125, 211, 192, 0.18);
+  --color-diff-deleted-gutter-bg: rgba(229, 64, 101, 0.18);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-ui);
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* Display type — same font as UI, tighter tracking, weight 600 for headlines.
+   Emphasis renders in a lighter weight and tertiary color instead of italics. */
+.prdock-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.prdock-display em,
+.prdock-display .em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+
+/* Anything inside a PRDock app mockup keeps the native system font,
+   even though the marketing shell uses Geist. */
+.prdock-app {
+  font-family: var(--font-ui-system);
+}
+
+/* --- PRDock UI primitive helpers --- */
+.prdock-card {
+  background: var(--color-card-background);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+}
+.prdock-chip {
+  font-family: var(--font-code);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+}
+.prdock-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+.prdock-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.prdock-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.prdock-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-strong-border);
+  border-radius: 4px;
+}
+.prdock-scroll::-webkit-scrollbar-track { background: transparent; }
