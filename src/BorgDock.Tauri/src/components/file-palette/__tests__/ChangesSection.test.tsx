@@ -42,8 +42,8 @@ describe('ChangesSection', () => {
     render(<ChangesSection {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByText('src/foo.ts')).toBeTruthy());
     expect(screen.getByText('src/bar.ts')).toBeTruthy();
-    expect(screen.getByText(/Local/)).toBeTruthy();
-    expect(screen.getByText(/vs master/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Local/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /vs master/ })).toBeTruthy();
   });
 
   it('filters rows by filename query (case-insensitive substring)', async () => {

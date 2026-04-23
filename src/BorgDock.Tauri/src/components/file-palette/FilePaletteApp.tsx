@@ -348,6 +348,7 @@ export function FilePaletteApp() {
             onToggleCollapse={toggleChangesCollapse}
             refreshTick={refreshTick}
             onVisibleRowsChange={setChangesVisibleRows}
+            rowRef={(el, i) => { rowRefs.current.set(i, el); }}
           />
           {loadError ? (
             <div className="fp-empty">Load error: {loadError}</div>
@@ -378,7 +379,7 @@ export function FilePaletteApp() {
               onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
               onOpen={(i) => openResult(i + changesVisibleRows.length)}
               rowRef={(el, i) => {
-                rowRefs.current.set(i, el);
+                rowRefs.current.set(i + changesVisibleRows.length, el);
               }}
             />
           )}

@@ -36,6 +36,9 @@ export interface ChangesSectionProps {
   /** Called after each successful fetch so the parent knows how many flat-nav rows this
    *  section contributes (0 when collapsed / empty / not in repo). */
   onVisibleRowsChange?: (rows: VisibleRow[]) => void;
+  /** Registers each rendered row with the parent's rowRefs map keyed by global nav
+   *  index, so ArrowUp/Down scrolls the selected row into view. */
+  rowRef?: (el: HTMLButtonElement | null, globalIndex: number) => void;
 }
 
 export interface VisibleRow {
@@ -78,6 +81,7 @@ export function ChangesSection(props: ChangesSectionProps) {
     onToggleCollapse,
     refreshTick,
     onVisibleRowsChange,
+    rowRef,
   } = props;
 
   const [data, setData] = useState<ChangedFilesOutput | null>(null);
@@ -173,6 +177,7 @@ export function ChangesSection(props: ChangesSectionProps) {
       <button
         key={`${group}:${file.path}`}
         type="button"
+        ref={(el) => rowRef?.(el, globalIdx)}
         className={`fp-changes-row${selected ? ' fp-changes-row--selected' : ''}`}
         onMouseEnter={() => onHover(globalIdx)}
         onClick={() => onOpen(file, group)}
@@ -210,7 +215,9 @@ export function ChangesSection(props: ChangesSectionProps) {
         onClick={() => onToggleCollapse('vsBase')}
         title={`vs ${data.baseRef || 'base'}`}
       >
-        <span>{vsBaseCollapsed ? '▸' : '▾'} vs base ({filteredVsBase.length})</span>
+        <span>
+          {vsBaseCollapsed ? '▸' : '▾'} vs {data.baseRef || 'base'} ({filteredVsBase.length})
+        </span>
       </button>
       {!vsBaseCollapsed && filteredVsBase.map((f) => renderRow(f, 'vsBase'))}
     </div>
