@@ -188,6 +188,7 @@ pub fn run() {
             git::commands::resolve_repo_path,
             git::commands::run_gh_command,
             git::diff::git_file_diff,
+            git::diff::git_changed_files,
             // Window
             platform::window::open_pr_detail_window,
             platform::window::open_whats_new_window,

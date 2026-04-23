@@ -268,9 +268,184 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
     out
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangedFilesOutput {
+    pub local: Vec<ChangedFile>,
+    pub vs_base: Vec<ChangedFile>,
+    pub base_ref: String,
+    pub in_repo: bool,
+}
+
+#[tauri::command]
+pub async fn git_changed_files(root: String) -> Result<ChangedFilesOutput, String> {
+    tokio::task::spawn_blocking(move || compute_changed_files(&root))
+        .await
+        .map_err(|e| format!("task join error: {e}"))?
+}
+
+fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
+    let root_path = PathBuf::from(root);
+    let dir = working_dir_for(&root_path);
+
+    let toplevel = match repo_toplevel(&dir) {
+        Some(t) => t,
+        None => {
+            return Ok(ChangedFilesOutput {
+                local: Vec::new(),
+                vs_base: Vec::new(),
+                base_ref: String::new(),
+                in_repo: false,
+            });
+        }
+    };
+
+    // 1. Local: `git status --porcelain=v1 -z`
+    let status_out = run_git_raw(
+        &toplevel,
+        &["status", "--porcelain=v1", "-z"],
+    )?;
+    if !status_out.status.success() {
+        return Err(format!(
+            "git status failed (exit {}): {}",
+            status_out.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&status_out.stderr).trim()
+        ));
+    }
+    let local = parse_name_status(&status_out.stdout, NameStatusMode::Status);
+
+    // 2. vs base: merge-base against origin/<default>, then `git diff --name-status -z`.
+    //    If default branch cannot be resolved (detached, no origin/HEAD, etc.),
+    //    skip vs_base gracefully.
+    let (vs_base, base_ref) = match resolve_default_branch(&toplevel) {
+        Ok(branch) => {
+            let remote_ref = format!("origin/{branch}");
+            match run_git_capture(&toplevel, &["merge-base", "HEAD", &remote_ref]) {
+                Ok(merge_base) => {
+                    let diff_out = run_git_raw(
+                        &toplevel,
+                        &[
+                            "diff",
+                            "--name-status",
+                            "-z",
+                            &format!("{merge_base}..HEAD"),
+                        ],
+                    )?;
+                    if !diff_out.status.success() {
+                        (Vec::new(), branch)
+                    } else {
+                        let all = parse_name_status(&diff_out.stdout, NameStatusMode::Diff);
+                        // Dedup: drop any path already in `local`.
+                        let local_paths: std::collections::HashSet<&str> =
+                            local.iter().map(|f| f.path.as_str()).collect();
+                        let filtered: Vec<ChangedFile> = all
+                            .into_iter()
+                            .filter(|f| !local_paths.contains(f.path.as_str()))
+                            .collect();
+                        (filtered, branch)
+                    }
+                }
+                Err(_) => (Vec::new(), branch),
+            }
+        }
+        Err(_) => (Vec::new(), String::new()),
+    };
+
+    Ok(ChangedFilesOutput {
+        local,
+        vs_base,
+        base_ref,
+        in_repo: true,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::process::Command;
+
+    fn init_test_repo(tmp: &std::path::Path) {
+        let run = |args: &[&str]| {
+            let out = Command::new("git")
+                .args(args)
+                .current_dir(tmp)
+                .output()
+                .expect("git");
+            assert!(
+                out.status.success(),
+                "git {:?} failed: {}",
+                args,
+                String::from_utf8_lossy(&out.stderr)
+            );
+        };
+        run(&["init", "-q", "-b", "master"]);
+        run(&["config", "user.email", "t@test"]);
+        run(&["config", "user.name", "t"]);
+        // Fake origin/master so resolve_default_branch can find it.
+        fs::write(tmp.join("seed.txt"), "seed").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "seed"]);
+        run(&["update-ref", "refs/remotes/origin/master", "HEAD"]);
+        // Set origin/HEAD so resolve_default_branch's first lookup succeeds.
+        run(&["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"]);
+    }
+
+    #[test]
+    fn changed_files_reports_local_and_vs_base() {
+        let tmp = tempfile::tempdir().unwrap();
+        init_test_repo(tmp.path());
+
+        // Commit a file "committed.ts" on a new branch → should land in vsBase.
+        Command::new("git").args(["checkout", "-qb", "feature"]).current_dir(tmp.path()).output().unwrap();
+        fs::write(tmp.path().join("committed.ts"), "x").unwrap();
+        Command::new("git").args(["add", "."]).current_dir(tmp.path()).output().unwrap();
+        Command::new("git").args(["commit", "-qm", "committed"]).current_dir(tmp.path()).output().unwrap();
+
+        // Uncommitted: one modified + one untracked.
+        fs::write(tmp.path().join("seed.txt"), "modified").unwrap();
+        fs::write(tmp.path().join("untracked.ts"), "u").unwrap();
+
+        let result = compute_changed_files(tmp.path().to_string_lossy().as_ref())
+            .expect("compute_changed_files");
+        assert!(result.in_repo);
+        assert_eq!(result.base_ref, "master");
+
+        let local_paths: Vec<&str> = result.local.iter().map(|f| f.path.as_str()).collect();
+        assert!(local_paths.contains(&"seed.txt"));
+        assert!(local_paths.contains(&"untracked.ts"));
+
+        let vs_base_paths: Vec<&str> = result.vs_base.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(vs_base_paths, vec!["committed.ts"]);
+    }
+
+    #[test]
+    fn changed_files_dedups_locally_modified_from_vs_base() {
+        let tmp = tempfile::tempdir().unwrap();
+        init_test_repo(tmp.path());
+
+        Command::new("git").args(["checkout", "-qb", "feature"]).current_dir(tmp.path()).output().unwrap();
+        fs::write(tmp.path().join("both.ts"), "a").unwrap();
+        Command::new("git").args(["add", "."]).current_dir(tmp.path()).output().unwrap();
+        Command::new("git").args(["commit", "-qm", "both"]).current_dir(tmp.path()).output().unwrap();
+
+        // Now modify "both.ts" locally without committing.
+        fs::write(tmp.path().join("both.ts"), "a2").unwrap();
+
+        let result = compute_changed_files(tmp.path().to_string_lossy().as_ref()).unwrap();
+        // Appears only in local; dedup removed from vs_base.
+        assert!(result.local.iter().any(|f| f.path == "both.ts"));
+        assert!(result.vs_base.iter().all(|f| f.path != "both.ts"));
+    }
+
+    #[test]
+    fn changed_files_returns_not_in_repo_for_plain_folder() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result = compute_changed_files(tmp.path().to_string_lossy().as_ref()).unwrap();
+        assert!(!result.in_repo);
+        assert_eq!(result.local.len(), 0);
+        assert_eq!(result.vs_base.len(), 0);
+    }
 
     #[test]
     fn parses_status_mode_plain_modification() {
