@@ -89,6 +89,26 @@ export default function App() {
     }
   }, [isInitComplete, needsSetup]);
 
+  // Show the main window as a centered modal when setup is needed, or park it
+  // off-screen (via hide_sidebar) when setup is complete. This runs on every
+  // needsSetup change so the window is correctly positioned on first launch and
+  // after the wizard finishes.
+  useEffect(() => {
+    void (async () => {
+      try {
+        if (needsSetup) {
+          await invoke('show_setup_wizard');
+        } else {
+          // When setup completes (or on subsequent launches with setup done),
+          // park the main window off-screen by invoking hide_sidebar.
+          await invoke('hide_sidebar');
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [needsSetup]);
+
   // Stable empty array so the polling hook's deps don't change every render
   const emptyRepos = useMemo<RepoSettings[]>(() => [], []);
   const pollingSettings = useMemo(

@@ -209,6 +209,7 @@ pub fn run() {
             git::diff::git_file_diff,
             git::diff::git_changed_files,
             // Window
+            platform::window::show_setup_wizard,
             platform::window::open_pr_detail_window,
             platform::window::open_whats_new_window,
             platform::window::set_badge_visible,

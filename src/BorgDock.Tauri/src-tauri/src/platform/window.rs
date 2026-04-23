@@ -467,6 +467,43 @@ pub async fn resize_flyout(
     rx.await.map_err(|e| e.to_string())?
 }
 
+/// Resize the main window into a centered ~520×640 modal and show it. Used
+/// on first run to host the setup wizard. The main window is normally parked
+/// off-screen at 1×1 (see park_main_offscreen); this command reshapes it
+/// into a centered modal for the duration of setup, then hide_sidebar can
+/// park it again once setup completes.
+#[tauri::command]
+pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            let win = get_main_window(&app_for_run)?;
+            let scale = win.scale_factor().unwrap_or(1.0);
+            let ww = (520.0 * scale) as i32;
+            let wh = (640.0 * scale) as i32;
+            win.set_size(tauri::Size::Physical(PhysicalSize::new(ww as u32, wh as u32)))
+                .map_err(|e| e.to_string())?;
+            if let Ok(Some(monitor)) = win.current_monitor() {
+                let mw = monitor.size().width as i32;
+                let mh = monitor.size().height as i32;
+                let mp = monitor.position();
+                let x = mp.x + (mw - ww) / 2;
+                let y = mp.y + (mh - wh) / 2;
+                win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
+                    .map_err(|e| e.to_string())?;
+            }
+            win.show().map_err(|e| e.to_string())?;
+            let _ = win.set_focus();
+            SIDEBAR_VISIBLE.store(true, Ordering::SeqCst);
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+    rx.await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn open_pr_detail_window(
     app: tauri::AppHandle,
