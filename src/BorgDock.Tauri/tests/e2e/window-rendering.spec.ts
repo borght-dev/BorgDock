@@ -65,7 +65,7 @@ const SECONDARY_WINDOW_MOCKS = `
       case 'cache_init':
       case 'get_cached_prs':
       case 'save_settings':
-      case 'register_hotkey':
+      case 'register_user_hotkeys':
       case 'unregister_hotkey':
       case 'position_sidebar':
       case 'open_in_terminal':

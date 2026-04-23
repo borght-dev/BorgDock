@@ -37,7 +37,7 @@ export const TAURI_MOCK_SCRIPT = `
           window.__BORGDOCK_MOCK_SETTINGS__ = args?.settings;
           return null;
 
-        case 'register_hotkey':
+        case 'register_user_hotkeys':
         case 'unregister_hotkey':
         case 'position_sidebar':
         case 'toggle_sidebar':
