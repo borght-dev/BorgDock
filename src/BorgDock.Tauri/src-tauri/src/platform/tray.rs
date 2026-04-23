@@ -24,17 +24,17 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .item(&quit)
         .build()?;
 
-    // Start with the idle brand icon (no badge)
+    // Start with the initializing brand icon (no badge)
     let dark = app
         .get_webview_window("main")
         .and_then(|w| w.theme().ok())
         .map(|t| matches!(t, tauri::Theme::Dark))
         .unwrap_or(true);
-    let icon = render_tray_icon(0, TrayWorstState::Idle, dark);
+    let icon = render_tray_icon(0, TrayWorstState::Initializing, dark);
 
     TrayIconBuilder::with_id("main")
         .icon(icon)
-        .tooltip("BorgDock")
+        .tooltip("BorgDock — loading…")
         .menu(&menu)
         // Right-click shows menu; left-click toggles flyout
         .show_menu_on_left_click(false)
@@ -96,6 +96,7 @@ pub enum TrayWorstState {
     Pending,
     Passing,
     Idle,
+    Initializing,
 }
 
 impl TrayWorstState {
@@ -105,6 +106,7 @@ impl TrayWorstState {
             TrayWorstState::Pending => 1,
             TrayWorstState::Passing => 2,
             TrayWorstState::Idle => 3,
+            TrayWorstState::Initializing => 4,
         }
     }
 }
@@ -117,6 +119,7 @@ fn status_gradient(worst: TrayWorstState, dark: bool) -> ([u8; 4], [u8; 4]) {
         TrayWorstState::Pending => ([217, 119, 6, 255], [176, 88, 0, 255]),
         TrayWorstState::Passing => ([5, 150, 105, 255], [4, 110, 78, 255]),
         TrayWorstState::Idle => brand_gradient(dark),
+        TrayWorstState::Initializing => brand_gradient(dark),
     }
 }
 
