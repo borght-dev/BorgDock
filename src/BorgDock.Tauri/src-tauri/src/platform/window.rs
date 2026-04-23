@@ -432,6 +432,34 @@ pub async fn resize_badge(
     rx.await.map_err(|e| e.to_string())?
 }
 
+/// Resize the flyout and reposition so the correct corner stays anchored to
+/// the tray/indicator area. On Windows (BottomRight anchor) the flyout's
+/// bottom edge stays fixed relative to the taskbar; on macOS/Linux
+/// (TopRight) the top edge stays fixed relative to the menu bar.
+#[tauri::command]
+pub async fn resize_flyout(
+    app: tauri::AppHandle,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_run = app.clone();
+
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            let win = app_for_run
+                .get_webview_window("flyout")
+                .ok_or_else(|| "flyout window not built".to_string())?;
+            position_flyout_near_tray(&win, width as f64, height as f64)?;
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn open_pr_detail_window(
     app: tauri::AppHandle,

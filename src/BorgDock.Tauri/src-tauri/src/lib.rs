@@ -216,6 +216,7 @@ pub fn run() {
             platform::window::set_badge_visible,
             platform::window::hide_badge,
             platform::window::resize_badge,
+            platform::window::resize_flyout,
             // Process
             git::process::launch_claude_code,
             git::process::get_active_sessions,
