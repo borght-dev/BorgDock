@@ -268,7 +268,7 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
     out
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangedFilesOutput {
     pub local: Vec<ChangedFile>,
@@ -365,30 +365,36 @@ mod tests {
     use std::fs;
     use std::process::Command;
 
+    /// Run a git subcommand in `tmp`, asserting success and surfacing stderr
+    /// on failure. Shared by `init_test_repo` and the `changed_files_*` tests.
+    fn git_in(tmp: &std::path::Path, args: &[&str]) {
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(tmp)
+            .output()
+            .expect("git");
+        assert!(
+            out.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
     fn init_test_repo(tmp: &std::path::Path) {
-        let run = |args: &[&str]| {
-            let out = Command::new("git")
-                .args(args)
-                .current_dir(tmp)
-                .output()
-                .expect("git");
-            assert!(
-                out.status.success(),
-                "git {:?} failed: {}",
-                args,
-                String::from_utf8_lossy(&out.stderr)
-            );
-        };
-        run(&["init", "-q", "-b", "master"]);
-        run(&["config", "user.email", "t@test"]);
-        run(&["config", "user.name", "t"]);
+        git_in(tmp, &["init", "-q", "-b", "master"]);
+        git_in(tmp, &["config", "user.email", "t@test"]);
+        git_in(tmp, &["config", "user.name", "t"]);
         // Fake origin/master so resolve_default_branch can find it.
         fs::write(tmp.join("seed.txt"), "seed").unwrap();
-        run(&["add", "."]);
-        run(&["commit", "-q", "-m", "seed"]);
-        run(&["update-ref", "refs/remotes/origin/master", "HEAD"]);
+        git_in(tmp, &["add", "."]);
+        git_in(tmp, &["commit", "-q", "-m", "seed"]);
+        git_in(tmp, &["update-ref", "refs/remotes/origin/master", "HEAD"]);
         // Set origin/HEAD so resolve_default_branch's first lookup succeeds.
-        run(&["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"]);
+        git_in(
+            tmp,
+            &["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"],
+        );
     }
 
     #[test]
@@ -397,10 +403,10 @@ mod tests {
         init_test_repo(tmp.path());
 
         // Commit a file "committed.ts" on a new branch → should land in vsBase.
-        Command::new("git").args(["checkout", "-qb", "feature"]).current_dir(tmp.path()).output().unwrap();
+        git_in(tmp.path(), &["checkout", "-qb", "feature"]);
         fs::write(tmp.path().join("committed.ts"), "x").unwrap();
-        Command::new("git").args(["add", "."]).current_dir(tmp.path()).output().unwrap();
-        Command::new("git").args(["commit", "-qm", "committed"]).current_dir(tmp.path()).output().unwrap();
+        git_in(tmp.path(), &["add", "."]);
+        git_in(tmp.path(), &["commit", "-qm", "committed"]);
 
         // Uncommitted: one modified + one untracked.
         fs::write(tmp.path().join("seed.txt"), "modified").unwrap();
@@ -424,10 +430,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         init_test_repo(tmp.path());
 
-        Command::new("git").args(["checkout", "-qb", "feature"]).current_dir(tmp.path()).output().unwrap();
+        git_in(tmp.path(), &["checkout", "-qb", "feature"]);
         fs::write(tmp.path().join("both.ts"), "a").unwrap();
-        Command::new("git").args(["add", "."]).current_dir(tmp.path()).output().unwrap();
-        Command::new("git").args(["commit", "-qm", "both"]).current_dir(tmp.path()).output().unwrap();
+        git_in(tmp.path(), &["add", "."]);
+        git_in(tmp.path(), &["commit", "-qm", "both"]);
 
         // Now modify "both.ts" locally without committing.
         fs::write(tmp.path().join("both.ts"), "a2").unwrap();
