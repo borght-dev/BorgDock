@@ -129,8 +129,15 @@ pub fn run() {
         .manage(platform::flyout_cache::FlyoutCache {
             data: Mutex::new(None),
         })
+        .manage(file_palette::cache::FileIndexCache {
+            conn: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            in_flight: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
+        })
         .setup(|app| {
             platform::tray::setup_tray(app)?;
+
+            let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();
+            file_palette::cache::init(&file_cache_state);
 
             // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
             // once, at setup. These are code-defined and must not be re-

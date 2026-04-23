@@ -164,6 +164,41 @@ pub fn spawn_refresh(
     });
 }
 
+pub fn db_path() -> std::path::PathBuf {
+    dirs::config_dir()
+        .expect("could not determine config directory")
+        .join("BorgDock")
+        .join("fileindex.db")
+}
+
+/// Open (or create) the SQLite file and install it into the managed cache
+/// state. Safe to call multiple times — subsequent calls no-op. Errors during
+/// init are logged but non-fatal: the command falls back to direct walks.
+pub fn init(state: &FileIndexCache) {
+    let path = db_path();
+    if let Some(parent) = path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            log::warn!("file_index cache: failed to create dir {}: {e}", parent.display());
+            return;
+        }
+    }
+    let conn = match Connection::open(&path) {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("file_index cache: open failed at {}: {e}", path.display());
+            return;
+        }
+    };
+    if let Err(e) = create_schema(&conn) {
+        log::warn!("file_index cache: create_schema failed: {e}");
+        return;
+    }
+    match state.conn.lock() {
+        Ok(mut guard) => *guard = Some(conn),
+        Err(e) => log::warn!("file_index cache: connection mutex poisoned during init: {e}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
