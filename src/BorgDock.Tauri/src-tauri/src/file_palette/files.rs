@@ -47,7 +47,7 @@ pub async fn list_root_files(
         .map_err(|e| format!("Task join error: {e}"))?
 }
 
-fn walk_root(root: &Path, limit: usize) -> Result<ListFilesResult, String> {
+pub(super) fn walk_root(root: &Path, limit: usize) -> Result<ListFilesResult, String> {
     if !root.exists() {
         return Err(format!("root does not exist: {}", root.display()));
     }

@@ -86,6 +86,84 @@ pub fn normalize_root(raw: &str) -> String {
     s
 }
 
+/// RAII handle that registers a re-walk as "in flight" on creation and
+/// removes it on drop. Use `Guard::try_claim` to take a slot iff no other
+/// re-walk is currently running for the same key.
+pub struct Guard {
+    set: Arc<Mutex<HashSet<PathBuf>>>,
+    key: PathBuf,
+}
+
+impl Guard {
+    /// Unconditionally insert the key (for tests). Prefer `try_claim` in
+    /// production code so concurrent callers don't stack refreshes.
+    pub fn new(set: &Arc<Mutex<HashSet<PathBuf>>>, key: PathBuf) -> Self {
+        set.lock().unwrap().insert(key.clone());
+        Self { set: set.clone(), key }
+    }
+
+    /// Insert `key` only if absent. Returns `Some(Guard)` on success, `None`
+    /// if another refresh for the same key is already in flight.
+    pub fn try_claim(set: &Arc<Mutex<HashSet<PathBuf>>>, key: PathBuf) -> Option<Self> {
+        let inserted = set.lock().unwrap().insert(key.clone());
+        if inserted {
+            Some(Self { set: set.clone(), key })
+        } else {
+            None
+        }
+    }
+}
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        if let Ok(mut set) = self.set.lock() {
+            set.remove(&self.key);
+        }
+    }
+}
+
+/// Fire-and-forget: re-walk `root` in the background and overwrite the cache
+/// row if the walk succeeds. Deduplicated via an in-flight set so concurrent
+/// callers against the same root collapse to a single refresh.
+pub fn spawn_refresh(
+    conn: Arc<Mutex<Option<Connection>>>,
+    in_flight: Arc<Mutex<HashSet<PathBuf>>>,
+    root: String,
+    limit: usize,
+) {
+    let key = PathBuf::from(&root);
+    let Some(guard) = Guard::try_claim(&in_flight, key) else {
+        log::debug!("file_index cache: refresh already in flight for {root}");
+        return;
+    };
+
+    tokio::task::spawn_blocking(move || {
+        // Keep the guard alive for the whole background walk. When this closure
+        // returns (including on panic), the guard drops and the key leaves the
+        // in-flight set, freeing future refreshes.
+        let _guard = guard;
+
+        match super::files::walk_root(&PathBuf::from(&root), limit) {
+            Ok(result) => {
+                let Ok(conn_lock) = conn.lock() else {
+                    log::warn!("file_index cache: connection mutex poisoned; skipping write");
+                    return;
+                };
+                let Some(conn_ref) = conn_lock.as_ref() else {
+                    log::warn!("file_index cache: connection is None; skipping write");
+                    return;
+                };
+                if let Err(e) = write(conn_ref, &root, &result) {
+                    log::warn!("file_index cache: failed to write refreshed entries: {e}");
+                }
+            }
+            Err(e) => {
+                log::warn!("file_index cache: background re-walk failed for {root}: {e}");
+            }
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,5 +283,32 @@ mod tests {
         .unwrap();
         assert_eq!(read(&conn, "/one").unwrap().entries[0].rel_path, "one.ts");
         assert_eq!(read(&conn, "/two").unwrap().entries[0].rel_path, "two.ts");
+    }
+
+    use std::sync::Arc;
+
+    #[test]
+    fn in_flight_guard_inserts_on_creation_and_removes_on_drop() {
+        let set: Arc<Mutex<HashSet<PathBuf>>> = Arc::new(Mutex::new(HashSet::new()));
+        let key = PathBuf::from("/repo");
+        {
+            let _g = Guard::new(&set, key.clone());
+            assert!(set.lock().unwrap().contains(&key));
+        }
+        // Dropped at end of scope.
+        assert!(!set.lock().unwrap().contains(&key));
+    }
+
+    #[test]
+    fn try_claim_returns_none_when_already_in_flight() {
+        let set: Arc<Mutex<HashSet<PathBuf>>> = Arc::new(Mutex::new(HashSet::new()));
+        let key = PathBuf::from("/repo");
+        let first = Guard::try_claim(&set, key.clone());
+        assert!(first.is_some());
+        let second = Guard::try_claim(&set, key.clone());
+        assert!(second.is_none(), "second claim must return None while first is live");
+        drop(first);
+        let third = Guard::try_claim(&set, key);
+        assert!(third.is_some(), "claim must succeed after previous guard drops");
     }
 }
