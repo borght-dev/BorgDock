@@ -229,13 +229,20 @@ export function FilePaletteApp() {
     return [];
   }, [parsed, fileIndex, contentSearch.results, indexer.entries]);
 
+  // selectedIndex is a flat-nav index: [0, changesVisibleRows.length) is Changes
+  // rows; [changesVisibleRows.length, +results.length) is regular results. The
+  // preview + contentHit logic below only applies when the selection is in the
+  // results range — subtract the Changes offset first, otherwise we'd index into
+  // the wrong list or read a stale cell.
+  const resultsSelectedIndex = selectedIndex - changesVisibleRows.length;
+  const selectedResult =
+    resultsSelectedIndex >= 0 ? results[resultsSelectedIndex] ?? null : null;
+
   const currentContentHit = useMemo(() => {
-    if (parsed.mode !== 'content') return null;
-    const sel = results[selectedIndex];
-    if (!sel) return null;
-    const match = contentSearch.results.find((r) => r.rel_path === sel.rel_path);
+    if (parsed.mode !== 'content' || !selectedResult) return null;
+    const match = contentSearch.results.find((r) => r.rel_path === selectedResult.rel_path);
     return match ?? null;
-  }, [parsed.mode, results, selectedIndex, contentSearch.results]);
+  }, [parsed.mode, selectedResult, contentSearch.results]);
 
   const totalFlatLength = changesVisibleRows.length + results.length;
 
@@ -378,8 +385,8 @@ export function FilePaletteApp() {
         </div>
         <PreviewPane
           rootPath={activeRoot}
-          relPath={results[selectedIndex]?.rel_path ?? null}
-          scrollToLine={currentContentHit?.matches[0]?.line ?? results[selectedIndex]?.line}
+          relPath={selectedResult?.rel_path ?? null}
+          scrollToLine={currentContentHit?.matches[0]?.line ?? selectedResult?.line}
           highlightedLines={currentContentHit?.matches.map((m) => m.line)}
           onIdentifierJump={jumpToSymbol}
         />
