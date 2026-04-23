@@ -14,6 +14,7 @@ static LAST_ICON_STATE: AtomicU64 = AtomicU64::new(u64::MAX);
 static IS_INITIALIZING: AtomicBool = AtomicBool::new(true);
 
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let show_flyout = MenuItemBuilder::with_id("show_flyout", "Show flyout").build(app)?;
     let show = MenuItemBuilder::with_id("show", "Show sidebar").build(app)?;
     let settings = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
     let whats_new = MenuItemBuilder::with_id("whats_new", "What's new…").build(app)?;
@@ -21,6 +22,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
     let menu = MenuBuilder::new(app)
+        .item(&show_flyout)
         .item(&show)
         .item(&settings)
         .item(&whats_new)
@@ -43,6 +45,14 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         // Right-click shows menu; left-click toggles flyout
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id().as_ref() {
+            "show_flyout" => {
+                let app_handle = app.clone();
+                let _ = app.run_on_main_thread(move || {
+                    if let Err(e) = crate::platform::window::toggle_flyout(&app_handle) {
+                        log::error!("tray show_flyout: {e}");
+                    }
+                });
+            }
             "show" => {
                 let _ = crate::platform::window::show_main_window(app);
             }
