@@ -181,6 +181,17 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         />
       </FieldLabel>
 
+      {/* Flyout Hotkey */}
+      <FieldLabel label="Flyout hotkey">
+        <HotkeyRecorder
+          value={ui.flyoutHotkey}
+          onChange={(shortcut) => update({ flyoutHotkey: shortcut })}
+        />
+        <div className="mt-1 text-[10px] text-[var(--color-text-ghost)]">
+          Toggles the tray flyout from anywhere. Default: Ctrl+Win+Shift+F.
+        </div>
+      </FieldLabel>
+
       {/* Windows Terminal profile override (only meaningful on Windows, but the
           field is harmless on other platforms and will simply be ignored). */}
       <FieldLabel label="Windows Terminal profile">
