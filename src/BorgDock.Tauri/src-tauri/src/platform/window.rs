@@ -473,7 +473,7 @@ pub async fn open_pr_detail_window(
     let owner_json = serde_json::to_string(&owner).map_err(|e| e.to_string())?;
     let repo_json = serde_json::to_string(&repo).map_err(|e| e.to_string())?;
     let init_script = format!(
-        "window.__PRDOCK_PR_DETAIL__ = {{ owner: {}, repo: {}, number: {} }};",
+        "window.__BORGDOCK_PR_DETAIL__ = {{ owner: {}, repo: {}, number: {} }};",
         owner_json, repo_json, number
     );
     log::info!("open_pr_detail_window: init_script built, dispatching to main thread");
@@ -585,7 +585,7 @@ pub async fn open_whats_new_window(
         None => "null".to_string(),
     };
     let init_script = format!(
-        "window.__PRDOCK_WHATS_NEW__ = {{ version: {} }};",
+        "window.__BORGDOCK_WHATS_NEW__ = {{ version: {} }};",
         version_json
     );
 

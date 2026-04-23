@@ -18,7 +18,7 @@ async function setupWithPrs(page: import('@playwright/test').Page) {
         setTimeout(() => {
           // We need to access Zustand stores; they're module-scoped singletons
           // so we post a message that the app can handle
-          window.__PRDOCK_INJECT_PRS__ = true;
+          window.__BORGDOCK_INJECT_PRS__ = true;
         }, 200);
       }
       return result;

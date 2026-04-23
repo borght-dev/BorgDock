@@ -13,7 +13,7 @@ export const TAURI_MOCK_SCRIPT = `
 
       switch (cmd) {
         case 'load_settings':
-          return window.__PRDOCK_MOCK_SETTINGS__ || {
+          return window.__BORGDOCK_MOCK_SETTINGS__ || {
             setupComplete: false,
             gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
             repos: [],
@@ -34,7 +34,7 @@ export const TAURI_MOCK_SCRIPT = `
           };
 
         case 'save_settings':
-          window.__PRDOCK_MOCK_SETTINGS__ = args?.settings;
+          window.__BORGDOCK_MOCK_SETTINGS__ = args?.settings;
           return null;
 
         case 'register_hotkey':
@@ -141,7 +141,7 @@ export async function injectCompletedSetup(page: Page) {
   const settings = completedSettings();
   await page.addInitScript(`
     ${TAURI_MOCK_SCRIPT}
-    window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+    window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
   `);
 }
 
@@ -420,7 +420,7 @@ export async function injectPrsViaStore(page: Page) {
     // The stores are created as singletons, so we can find them through the React tree
     // Simpler approach: use the window.__ZUSTAND_STORES__ if available,
     // or directly manipulate the DOM to trigger store changes
-    (window as any).__PRDOCK_MOCK_PRS__ = mockPrs;
+    (window as any).__BORGDOCK_MOCK_PRS__ = mockPrs;
   });
 }
 

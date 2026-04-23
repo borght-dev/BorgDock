@@ -13,10 +13,10 @@ test.describe('Badge Interactions', () => {
       ${TAURI_MOCK_SCRIPT}
 
       // Track invoked commands for assertions
-      window.__PRDOCK_INVOKED_CMDS__ = [];
+      window.__BORGDOCK_INVOKED_CMDS__ = [];
       const origInvoke = window.__TAURI_INTERNALS__.invoke;
       window.__TAURI_INTERNALS__.invoke = async (cmd, args) => {
-        window.__PRDOCK_INVOKED_CMDS__.push({ cmd, args });
+        window.__BORGDOCK_INVOKED_CMDS__.push({ cmd, args });
         return origInvoke(cmd, args);
       };
 
@@ -100,7 +100,7 @@ test.describe('Badge Interactions', () => {
     await sidebarBtn.click();
     await page.waitForTimeout(300);
 
-    const cmds = await page.evaluate(() => (window as any).__PRDOCK_INVOKED_CMDS__);
+    const cmds = await page.evaluate(() => (window as any).__BORGDOCK_INVOKED_CMDS__);
     const toggleCmd = cmds.find((c: any) => c.cmd === 'toggle_sidebar');
     expect(toggleCmd).toBeTruthy();
   });
@@ -118,7 +118,7 @@ test.describe('Badge Interactions', () => {
     await chevron.click();
     await page.waitForTimeout(300);
 
-    const cmds = await page.evaluate(() => (window as any).__PRDOCK_INVOKED_CMDS__);
+    const cmds = await page.evaluate(() => (window as any).__BORGDOCK_INVOKED_CMDS__);
     const resizeCmd = cmds.find((c: any) => c.cmd === 'resize_badge');
     expect(resizeCmd).toBeTruthy();
     // Expanded size should be larger than collapsed

@@ -10,7 +10,7 @@ test.describe('Theme Switching', () => {
 
     await page.addInitScript(`
       ${TAURI_MOCK_SCRIPT}
-      window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+      window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
     `);
 
     await page.goto('/');
@@ -29,7 +29,7 @@ test.describe('Theme Switching', () => {
 
     await page.addInitScript(`
       ${TAURI_MOCK_SCRIPT}
-      window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+      window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
     `);
 
     await page.goto('/');
@@ -49,7 +49,7 @@ test.describe('Theme Switching', () => {
 
     await page.addInitScript(`
       ${TAURI_MOCK_SCRIPT}
-      window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+      window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
     `);
 
     await page.goto('/');
@@ -88,7 +88,7 @@ test.describe('Theme Switching', () => {
 
     await page.addInitScript(`
       ${TAURI_MOCK_SCRIPT}
-      window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+      window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
     `);
 
     // Emulate dark color scheme
@@ -108,7 +108,7 @@ test.describe('Theme Switching', () => {
 
     await page.addInitScript(`
       ${TAURI_MOCK_SCRIPT}
-      window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+      window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
     `);
 
     // Emulate light color scheme
@@ -128,7 +128,7 @@ test.describe('Theme Switching', () => {
 
     await page.addInitScript(`
       ${TAURI_MOCK_SCRIPT}
-      window.__PRDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+      window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
     `);
 
     await page.goto('/');

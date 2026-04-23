@@ -60,7 +60,7 @@ test.describe('Work Items Section', () => {
   test('Work Items section renders filter bar when ADO is configured', async ({ page }) => {
     // Inject settings with ADO configured
     await page.addInitScript(`
-      window.__PRDOCK_MOCK_SETTINGS__ = {
+      window.__BORGDOCK_MOCK_SETTINGS__ = {
         setupComplete: true,
         gitHub: { authMethod: 'pat', personalAccessToken: 'ghp_test123', pollIntervalSeconds: 60, username: 'testuser' },
         repos: [{ owner: 'test-org', name: 'test-repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '.worktrees' }],
@@ -94,7 +94,7 @@ test.describe('Work Items Section', () => {
   test('query browser button is visible when ADO is configured', async ({ page }) => {
     // Same setup as above with ADO configured
     await page.addInitScript(`
-      window.__PRDOCK_MOCK_SETTINGS__ = {
+      window.__BORGDOCK_MOCK_SETTINGS__ = {
         setupComplete: true,
         gitHub: { authMethod: 'pat', personalAccessToken: 'ghp_test123', pollIntervalSeconds: 60, username: 'testuser' },
         repos: [{ owner: 'test-org', name: 'test-repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '.worktrees' }],

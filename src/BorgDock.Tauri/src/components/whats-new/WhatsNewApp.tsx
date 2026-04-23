@@ -9,7 +9,7 @@ import { useReleasesToShow } from './useReleasesToShow';
 const log = createLogger('whats-new-app');
 
 interface InjectedWindow {
-  __PRDOCK_WHATS_NEW__?: { version: string | null };
+  __BORGDOCK_WHATS_NEW__?: { version: string | null };
 }
 
 export function WhatsNewApp() {
@@ -23,7 +23,7 @@ export function WhatsNewApp() {
     if (!hydrated) void hydrate();
   }, [hydrated, hydrate]);
 
-  const initialTarget = (window as unknown as InjectedWindow).__PRDOCK_WHATS_NEW__?.version ?? null;
+  const initialTarget = (window as unknown as InjectedWindow).__BORGDOCK_WHATS_NEW__?.version ?? null;
 
   const { releases, expandedVersion, countBehind, currentVersion, ready } = useReleasesToShow(
     RELEASES,

@@ -31,9 +31,9 @@ export function PRDetailApp() {
   const { owner, repo, number } = useMemo(() => {
     const injected = (
       window as unknown as {
-        __PRDOCK_PR_DETAIL__?: { owner?: string; repo?: string; number?: number };
+        __BORGDOCK_PR_DETAIL__?: { owner?: string; repo?: string; number?: number };
       }
-    ).__PRDOCK_PR_DETAIL__;
+    ).__BORGDOCK_PR_DETAIL__;
     if (injected?.owner && injected.repo && injected.number) {
       return {
         owner: injected.owner,

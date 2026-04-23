@@ -92,7 +92,7 @@ test.describe('PR List', () => {
       window.__TAURI_INTERNALS__.invoke = async (cmd, args) => {
         if (cmd === 'load_settings') {
           // Return completed settings immediately
-          return window.__PRDOCK_MOCK_SETTINGS__;
+          return window.__BORGDOCK_MOCK_SETTINGS__;
         }
         return origInvoke(cmd, args);
       };

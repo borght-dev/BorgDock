@@ -1824,7 +1824,7 @@ pub async fn open_whats_new_window(
         None => "null".to_string(),
     };
     let init_script = format!(
-        "window.__PRDOCK_WHATS_NEW__ = {{ version: {} }};",
+        "window.__BORGDOCK_WHATS_NEW__ = {{ version: {} }};",
         version_json
     );
 
@@ -2910,7 +2910,7 @@ import { useReleasesToShow } from './useReleasesToShow';
 const log = createLogger('whats-new-app');
 
 interface InjectedWindow {
-  __PRDOCK_WHATS_NEW__?: { version: string | null };
+  __BORGDOCK_WHATS_NEW__?: { version: string | null };
 }
 
 export function WhatsNewApp() {
@@ -2925,7 +2925,7 @@ export function WhatsNewApp() {
   }, [hydrated, hydrate]);
 
   const initialTarget =
-    (window as unknown as InjectedWindow).__PRDOCK_WHATS_NEW__?.version ?? null;
+    (window as unknown as InjectedWindow).__BORGDOCK_WHATS_NEW__?.version ?? null;
 
   const { releases, expandedVersion, countBehind, currentVersion, ready } = useReleasesToShow(
     RELEASES,
@@ -3335,7 +3335,7 @@ If anything failed, diagnose and patch in a follow-up commit.
 | First-run seed | 12 |
 | "Got it" writes lastSeenVersion | 21 |
 | "Don't auto-open again" writes both flags | 21 |
-| Deep link `?version=` / `__PRDOCK_WHATS_NEW__` | 13, 20, 21 |
+| Deep link `?version=` / `__BORGDOCK_WHATS_NEW__` | 13, 20, 21 |
 | Components (WhatsNewApp, ReleaseAccordion, HighlightCard, HeroBanner, AlsoFixedList, useReleasesToShow) | 14, 16–21 |
 | Kind color mapping (New green / Improved yellow / Fixed violet) | 15, 17 |
 | Error handling: missing historical hero | 16 |

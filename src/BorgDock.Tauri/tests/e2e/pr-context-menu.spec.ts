@@ -9,7 +9,7 @@ async function setupWithPrs(page: import('@playwright/test').Page) {
 
   // Expose a store bridge so we can inject PRs after React mounts
   await page.addInitScript(`
-    window.__PRDOCK_STORE_BRIDGE_READY__ = false;
+    window.__BORGDOCK_STORE_BRIDGE_READY__ = false;
 
     // Listen for the injection event
     window.addEventListener('borgdock-inject-test-prs', (e) => {
