@@ -3,6 +3,7 @@ pub mod auth;
 pub mod cache;
 pub mod claude_api;
 pub mod file_palette;
+pub mod flyout;
 pub mod git;
 pub mod keychain;
 pub mod notification;
