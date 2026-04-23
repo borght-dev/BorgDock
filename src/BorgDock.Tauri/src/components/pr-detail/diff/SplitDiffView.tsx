@@ -5,6 +5,7 @@ import type { DiffHunk, DiffLine, HighlightSpan, InlineChange } from '@/types';
 import { DiffLineContent } from './DiffLineContent';
 
 const VIRTUALIZE_THRESHOLD = 500;
+const GUTTER_PX = 40;
 
 interface SplitDiffViewProps {
   hunks: DiffHunk[];
@@ -29,16 +30,28 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
     return <VirtualSplitDiff rows={rows} syntaxHighlights={syntaxHighlights} />;
   }
 
+  // Content column widths split the remaining space after the two 40px
+  // gutters, so the four columns sum exactly to the table width.
+  const contentWidth = `calc((100% - ${GUTTER_PX * 2}px) / 2)`;
+
   return (
     <table
       className="w-full border-collapse"
-      style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
+      style={{
+        fontFamily: 'var(--font-code)',
+        fontSize: '13px',
+        lineHeight: '20px',
+        // `table-layout: fixed` makes the colgroup widths authoritative.
+        // Without it, wide diff lines override the 50% hints and one side
+        // grows at the expense of the other.
+        tableLayout: 'fixed',
+      }}
     >
       <colgroup>
-        <col style={{ width: '40px' }} />
-        <col style={{ width: '50%' }} />
-        <col style={{ width: '40px' }} />
-        <col style={{ width: '50%' }} />
+        <col style={{ width: `${GUTTER_PX}px` }} />
+        <col style={{ width: contentWidth }} />
+        <col style={{ width: `${GUTTER_PX}px` }} />
+        <col style={{ width: contentWidth }} />
       </colgroup>
       <tbody>
         {rows.map((row, i) => {
@@ -87,20 +100,22 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
                 {row.left?.oldLineNumber ?? ''}
               </td>
               <td
-                className="pl-2 whitespace-pre overflow-x-auto border-r border-[var(--color-diff-border)]"
-                style={{ backgroundColor: leftBg }}
+                className="border-r border-[var(--color-diff-border)]"
+                style={{ backgroundColor: leftBg, padding: 0, overflow: 'hidden' }}
               >
-                {row.left && (
-                  <DiffLineContent
-                    content={row.left.content}
-                    inlineChanges={row.leftInline}
-                    syntaxSpans={
-                      row.leftOrigIdx !== undefined
-                        ? syntaxHighlights?.get(row.leftOrigIdx)
-                        : undefined
-                    }
-                  />
-                )}
+                <div className="pl-2 whitespace-pre overflow-x-auto">
+                  {row.left && (
+                    <DiffLineContent
+                      content={row.left.content}
+                      inlineChanges={row.leftInline}
+                      syntaxSpans={
+                        row.leftOrigIdx !== undefined
+                          ? syntaxHighlights?.get(row.leftOrigIdx)
+                          : undefined
+                      }
+                    />
+                  )}
+                </div>
               </td>
               {/* Right side */}
               <td
@@ -109,21 +124,20 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
               >
                 {row.right?.newLineNumber ?? ''}
               </td>
-              <td
-                className="pl-2 whitespace-pre overflow-x-auto"
-                style={{ backgroundColor: rightBg }}
-              >
-                {row.right && (
-                  <DiffLineContent
-                    content={row.right.content}
-                    inlineChanges={row.rightInline}
-                    syntaxSpans={
-                      row.rightOrigIdx !== undefined
-                        ? syntaxHighlights?.get(row.rightOrigIdx)
-                        : undefined
-                    }
-                  />
-                )}
+              <td style={{ backgroundColor: rightBg, padding: 0, overflow: 'hidden' }}>
+                <div className="pl-2 whitespace-pre overflow-x-auto">
+                  {row.right && (
+                    <DiffLineContent
+                      content={row.right.content}
+                      inlineChanges={row.rightInline}
+                      syntaxSpans={
+                        row.rightOrigIdx !== undefined
+                          ? syntaxHighlights?.get(row.rightOrigIdx)
+                          : undefined
+                      }
+                    />
+                  )}
+                </div>
               </td>
             </tr>
           );
@@ -239,7 +253,7 @@ function VirtualSplitDiff({
   return (
     <div
       ref={parentRef}
-      className="overflow-auto"
+      className="overflow-auto h-full"
       style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
     >
       <div

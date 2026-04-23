@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { AppSettings } from '@/types/settings';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
 import { CodeView } from '../file-palette/CodeView';
@@ -40,8 +41,43 @@ export function FileViewerApp() {
   // 'auto' defers the choice to the first diff response — if the file is
   // changed vs HEAD we open in diff mode, otherwise plain content.
   const [mode, setMode] = useState<Mode | 'auto'>('auto');
-  const [viewMode, setViewMode] = useState<ViewMode>('unified');
+  const [viewMode, setViewModeState] = useState<ViewMode>('unified');
+  // Suppress the first persist: we apply the value loaded from settings, and
+  // don't want that round-trip to immediately re-save the same value.
+  const viewModeHydrated = useRef(false);
   const [defaultBranchLabel, setDefaultBranchLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    invoke<AppSettings>('load_settings')
+      .then((s) => {
+        const saved = s.ui?.fileViewerDefaultViewMode;
+        if (saved === 'split' || saved === 'unified') setViewModeState(saved);
+      })
+      .catch(() => {
+        /* fall back to default 'unified' */
+      })
+      .finally(() => {
+        viewModeHydrated.current = true;
+      });
+  }, []);
+
+  const setViewMode = useCallback((next: ViewMode | ((prev: ViewMode) => ViewMode)) => {
+    setViewModeState((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      if (viewModeHydrated.current && resolved !== prev) {
+        void invoke<AppSettings>('load_settings')
+          .then((s) =>
+            invoke('save_settings', {
+              settings: { ...s, ui: { ...s.ui, fileViewerDefaultViewMode: resolved } },
+            }),
+          )
+          .catch(() => {
+            /* ignore persistence failure — in-session state is still correct */
+          });
+      }
+      return resolved;
+    });
+  }, []);
 
   useEffect(() => {
     if (!path) {

@@ -88,6 +88,6 @@
 
 .fv-btn--close { font-size: 16px; line-height: 1; padding: 2px 8px; }
 
-.fv-body { flex: 1; min-height: 0; }
+.fv-body { flex: 1; min-height: 0; overflow: auto; }
 
 .fv-empty { padding: 18px; opacity: 0.55; font-size: 12px; }

@@ -35,6 +35,7 @@ describe('FileViewerApp', () => {
       if (cmd === 'git_file_diff') {
         return Promise.resolve({ patch: '', baselineRef: '', inRepo: false });
       }
+      if (cmd === 'load_settings') return Promise.resolve({ ui: {} });
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
 
@@ -49,6 +50,7 @@ describe('FileViewerApp', () => {
       if (cmd === 'git_file_diff') {
         return Promise.resolve({ patch: SAMPLE_PATCH, baselineRef: 'HEAD', inRepo: true });
       }
+      if (cmd === 'load_settings') return Promise.resolve({ ui: {} });
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
 
@@ -66,6 +68,7 @@ describe('FileViewerApp', () => {
       if (cmd === 'git_file_diff') {
         return Promise.resolve({ patch: '', baselineRef: 'HEAD', inRepo: true });
       }
+      if (cmd === 'load_settings') return Promise.resolve({ ui: {} });
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
 
@@ -92,6 +95,7 @@ describe('FileViewerApp', () => {
           inRepo: true,
         });
       }
+      if (cmd === 'load_settings') return Promise.resolve({ ui: {} });
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
     render(<FileViewerApp />);

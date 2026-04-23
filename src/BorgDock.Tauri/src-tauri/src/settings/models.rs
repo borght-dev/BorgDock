@@ -116,6 +116,11 @@ pub struct UiSettings {
     pub file_palette_favorites_only: bool,
     #[serde(default)]
     pub file_palette_roots_collapsed: bool,
+    /// Remembered diff layout for file-viewer windows ("unified" | "split").
+    /// Users pick this via the Split/Unified toolbar or Ctrl+Shift+M; the
+    /// next viewer window opens in the same layout.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_viewer_default_view_mode: Option<String>,
     /// Override for the Windows Terminal profile used when launching "Claude"
     /// or similar wt-based shells. Empty/None = auto-detect from wt settings.json.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -170,6 +175,7 @@ impl Default for UiSettings {
             worktree_palette_favorites_only: false,
             file_palette_favorites_only: false,
             file_palette_roots_collapsed: false,
+            file_viewer_default_view_mode: None,
             windows_terminal_profile: None,
         }
     }

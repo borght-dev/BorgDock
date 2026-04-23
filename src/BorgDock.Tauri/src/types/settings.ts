@@ -52,6 +52,8 @@ export interface UiSettings {
   filePaletteFavoritesOnly?: boolean;
   filePaletteRootsCollapsed?: boolean;
   filePaletteChangesCollapsed?: { local: boolean; vsBase: boolean };
+  /** Remembered diff layout for file-viewer windows. Controlled by the Split/Unified buttons and Ctrl+Shift+M. */
+  fileViewerDefaultViewMode?: 'unified' | 'split';
   /** Override for the Windows Terminal profile used when launching "Claude". Empty = auto-detect. */
   windowsTerminalProfile?: string;
 }
