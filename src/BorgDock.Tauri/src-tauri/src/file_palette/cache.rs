@@ -131,7 +131,10 @@ pub fn spawn_refresh(
     root: String,
     limit: usize,
 ) {
-    let key = PathBuf::from(&root);
+    // Normalize the key so callers passing the same root with different
+    // casing / slashes / trailing separators collapse to a single in-flight
+    // slot — matches how `read` and `write` canonicalize before touching SQL.
+    let key = PathBuf::from(normalize_root(&root));
     let Some(guard) = Guard::try_claim(&in_flight, key) else {
         log::debug!("file_index cache: refresh already in flight for {root}");
         return;
@@ -174,6 +177,11 @@ pub fn db_path() -> std::path::PathBuf {
 /// Open (or create) the SQLite file and install it into the managed cache
 /// state. Safe to call multiple times — subsequent calls no-op. Errors during
 /// init are logged but non-fatal: the command falls back to direct walks.
+///
+/// If the existing DB file is corrupt (schema creation fails), the bad file
+/// is renamed aside with a timestamp suffix and init retries once against a
+/// fresh file. This prevents a corrupt DB from permanently wedging the cache
+/// across app restarts.
 pub fn init(state: &FileIndexCache) {
     let path = db_path();
     if let Some(parent) = path.parent() {
@@ -182,17 +190,56 @@ pub fn init(state: &FileIndexCache) {
             return;
         }
     }
-    let conn = match Connection::open(&path) {
+
+    match open_and_create(&path) {
+        Some(conn) => install_conn(state, conn),
+        None => {
+            let quarantine = path.with_extension(format!(
+                "db.corrupt-{}",
+                Utc::now().format("%Y%m%dT%H%M%S")
+            ));
+            match std::fs::rename(&path, &quarantine) {
+                Ok(()) => {
+                    log::warn!(
+                        "file_index cache: quarantined corrupt DB to {}; retrying fresh",
+                        quarantine.display()
+                    );
+                    if let Some(conn) = open_and_create(&path) {
+                        install_conn(state, conn);
+                    } else {
+                        log::warn!(
+                            "file_index cache: retry after quarantine also failed; running without cache"
+                        );
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "file_index cache: could not quarantine corrupt DB ({e}); running without cache"
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn open_and_create(path: &std::path::Path) -> Option<Connection> {
+    let conn = match Connection::open(path) {
         Ok(c) => c,
         Err(e) => {
             log::warn!("file_index cache: open failed at {}: {e}", path.display());
-            return;
+            return None;
         }
     };
-    if let Err(e) = create_schema(&conn) {
-        log::warn!("file_index cache: create_schema failed: {e}");
-        return;
+    match create_schema(&conn) {
+        Ok(()) => Some(conn),
+        Err(e) => {
+            log::warn!("file_index cache: create_schema failed: {e}");
+            None
+        }
     }
+}
+
+fn install_conn(state: &FileIndexCache, conn: Connection) {
     match state.conn.lock() {
         Ok(mut guard) => *guard = Some(conn),
         Err(e) => log::warn!("file_index cache: connection mutex poisoned during init: {e}"),
