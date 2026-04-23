@@ -13,6 +13,7 @@ import { useBackgroundIndexer } from './use-background-indexer';
 import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
+import { ChangesSection, type ChangedGroup, type VisibleRow } from './ChangesSection';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
 
@@ -26,6 +27,12 @@ export function FilePaletteApp() {
   const [favoritePaths, setFavoritePaths] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [rootsCollapsed, setRootsCollapsed] = useState(false);
+  const [changesCollapsed, setChangesCollapsed] = useState<{ local: boolean; vsBase: boolean }>({
+    local: false,
+    vsBase: false,
+  });
+  const [changesVisibleRows, setChangesVisibleRows] = useState<VisibleRow[]>([]);
+  const [refreshTick, setRefreshTick] = useState(0);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
 
   const fileIndex = useFileIndex(activeRoot);
@@ -54,6 +61,9 @@ export function FilePaletteApp() {
         setActiveRoot(s.ui?.filePaletteActiveRootPath ?? null);
         setFavoritesOnly(s.ui?.filePaletteFavoritesOnly ?? false);
         setRootsCollapsed(s.ui?.filePaletteRootsCollapsed ?? false);
+        setChangesCollapsed(
+          s.ui?.filePaletteChangesCollapsed ?? { local: false, vsBase: false },
+        );
         const favs = new Set<string>();
         for (const r of s.repos) for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
         setFavoritePaths(favs);
@@ -83,7 +93,7 @@ export function FilePaletteApp() {
     }
   }, [roots, activeRoot, favoritesOnly, favoritePaths]);
 
-  useEffect(() => setSelectedIndex(0), [query, activeRoot]);
+  useEffect(() => setSelectedIndex(0), [query, activeRoot, changesVisibleRows.length]);
 
   const selectRoot = useCallback(async (path: string) => {
     setActiveRoot(path);
@@ -113,6 +123,37 @@ export function FilePaletteApp() {
       });
     } catch { /* ignore */ }
   }, [rootsCollapsed]);
+
+  const toggleChangesCollapse = useCallback(
+    async (group: ChangedGroup) => {
+      setChangesCollapsed((prev) => {
+        const next = { ...prev, [group]: !prev[group] };
+        void invoke<AppSettings>('load_settings')
+          .then((s) =>
+            invoke('save_settings', {
+              settings: { ...s, ui: { ...s.ui, filePaletteChangesCollapsed: next } },
+            }),
+          )
+          .catch(() => {
+            /* ignore persistence failure */
+          });
+        return next;
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      unlisten = await getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+        if (focused) setRefreshTick((n) => n + 1);
+      });
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   const toggleFavoritesOnly = useCallback(async () => {
     const next = !favoritesOnly;
@@ -196,17 +237,30 @@ export function FilePaletteApp() {
     return match ?? null;
   }, [parsed.mode, results, selectedIndex, contentSearch.results]);
 
+  const totalFlatLength = changesVisibleRows.length + results.length;
+
   const openResult = useCallback(
-    (i: number) => {
+    (globalIdx: number) => {
       if (!activeRoot) return;
-      const entry = results[i];
+      if (globalIdx < changesVisibleRows.length) {
+        const row = changesVisibleRows[globalIdx];
+        if (!row) return;
+        const absPath = joinRootAndRel(activeRoot, row.file.path);
+        invoke('open_file_viewer_window', {
+          path: absPath,
+          baseline: row.group === 'vsBase' ? 'mergeBaseDefault' : 'HEAD',
+        }).catch((e) => console.error('open_file_viewer_window failed', e));
+        return;
+      }
+      const resultIdx = globalIdx - changesVisibleRows.length;
+      const entry = results[resultIdx];
       if (!entry) return;
       const absPath = joinRootAndRel(activeRoot, entry.rel_path);
       invoke('open_file_viewer_window', { path: absPath }).catch((e) => {
         console.error('open_file_viewer_window failed', e);
       });
     },
-    [activeRoot, results],
+    [activeRoot, changesVisibleRows, results],
   );
 
   const handleKey = useCallback(
@@ -219,7 +273,7 @@ export function FilePaletteApp() {
       }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+        setSelectedIndex((i) => Math.min(i + 1, totalFlatLength - 1));
         return;
       }
       if (e.key === 'ArrowUp') {
@@ -229,10 +283,10 @@ export function FilePaletteApp() {
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (results[selectedIndex]) openResult(selectedIndex);
+        openResult(selectedIndex);
       }
     },
-    [query, results, selectedIndex, openResult],
+    [query, totalFlatLength, selectedIndex, openResult],
   );
 
   const jumpToSymbol = useCallback((word: string) => {
@@ -267,6 +321,27 @@ export function FilePaletteApp() {
             parsed={parsed}
             resultCount={results.length}
           />
+          <ChangesSection
+            rootPath={activeRoot}
+            query={query}
+            queryMode={parsed.mode}
+            selectedGlobalIndex={selectedIndex}
+            baseIndex={0}
+            onOpen={(file, group) => {
+              if (!activeRoot) return;
+              const absPath = joinRootAndRel(activeRoot, file.path);
+              invoke('open_file_viewer_window', {
+                path: absPath,
+                baseline: group === 'vsBase' ? 'mergeBaseDefault' : 'HEAD',
+              }).catch((e) => console.error('open_file_viewer_window failed', e));
+            }}
+            onHover={setSelectedIndex}
+            localCollapsed={changesCollapsed.local}
+            vsBaseCollapsed={changesCollapsed.vsBase}
+            onToggleCollapse={toggleChangesCollapse}
+            refreshTick={refreshTick}
+            onVisibleRowsChange={setChangesVisibleRows}
+          />
           {loadError ? (
             <div className="fp-empty">Load error: {loadError}</div>
           ) : roots.length === 0 ? (
@@ -292,9 +367,9 @@ export function FilePaletteApp() {
           ) : (
             <ResultsList
               results={results}
-              selectedIndex={selectedIndex}
-              onHover={setSelectedIndex}
-              onOpen={openResult}
+              selectedIndex={selectedIndex - changesVisibleRows.length}
+              onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
+              onOpen={(i) => openResult(i + changesVisibleRows.length)}
               rowRef={(el, i) => {
                 rowRefs.current.set(i, el);
               }}

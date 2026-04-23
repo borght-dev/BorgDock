@@ -4,7 +4,10 @@ import { FilePaletteApp } from '../FilePaletteApp';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: vi.fn(() => ({ close: vi.fn(() => Promise.resolve()) })),
+  getCurrentWindow: vi.fn(() => ({
+    close: vi.fn(() => Promise.resolve()),
+    onFocusChanged: vi.fn(() => Promise.resolve(() => {})),
+  })),
 }));
 vi.mock('../use-background-indexer', () => ({
   useBackgroundIndexer: () => ({ entries: [], processed: 0, total: 0, indexing: false }),
