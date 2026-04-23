@@ -100,6 +100,8 @@ pub struct UiSettings {
     pub theme: String,
     #[serde(default = "default_global_hotkey")]
     pub global_hotkey: String,
+    #[serde(default = "default_flyout_hotkey")]
+    pub flyout_hotkey: String,
     #[serde(default = "default_editor_command")]
     pub editor_command: String,
     #[serde(default)]
@@ -147,6 +149,10 @@ fn default_global_hotkey() -> String {
     "Ctrl+Win+Shift+G".to_string()
 }
 
+fn default_flyout_hotkey() -> String {
+    "Ctrl+Win+Shift+F".to_string()
+}
+
 fn default_editor_command() -> String {
     "code".to_string()
 }
@@ -167,6 +173,7 @@ impl Default for UiSettings {
             sidebar_width_px: 800,
             theme: "system".to_string(),
             global_hotkey: "Ctrl+Win+Shift+G".to_string(),
+            flyout_hotkey: "Ctrl+Win+Shift+F".to_string(),
             editor_command: "code".to_string(),
             run_at_startup: false,
             badge_enabled: true,
