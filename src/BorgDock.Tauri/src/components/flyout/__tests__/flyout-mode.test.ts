@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ToastPayload } from '../flyout-mode';
-import { reduceFlyoutMode, initialFlyoutMode, TOAST_MAX, TOAST_AUTOHIDE_MS } from '../flyout-mode';
+import { initialFlyoutMode, reduceFlyoutMode, TOAST_AUTOHIDE_MS, TOAST_MAX } from '../flyout-mode';
 
 const makeToast = (id: string, severity: ToastPayload['severity'] = 'info'): ToastPayload => ({
   id,
@@ -36,7 +36,11 @@ describe('reduceFlyoutMode', () => {
   });
 
   it('toast while toast appends and resets deadline', () => {
-    const first = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
+    const first = reduceFlyoutMode(
+      { kind: 'idle' },
+      { type: 'toast', payload: makeToast('a') },
+      1000,
+    );
     const next = reduceFlyoutMode(first, { type: 'toast', payload: makeToast('b') }, 3000);
     expect(next.kind).toBe('toast');
     if (next.kind !== 'toast') return;
@@ -67,25 +71,45 @@ describe('reduceFlyoutMode', () => {
   });
 
   it('user-open while toast transitions to glance', () => {
-    const toastState = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
+    const toastState = reduceFlyoutMode(
+      { kind: 'idle' },
+      { type: 'toast', payload: makeToast('a') },
+      1000,
+    );
     const next = reduceFlyoutMode(toastState, { type: 'user-open' }, 2000);
     expect(next.kind).toBe('glance');
   });
 
   it('close from any visible state goes to idle', () => {
-    const toastState = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
+    const toastState = reduceFlyoutMode(
+      { kind: 'idle' },
+      { type: 'toast', payload: makeToast('a') },
+      1000,
+    );
     expect(reduceFlyoutMode(toastState, { type: 'close' }, 2000).kind).toBe('idle');
     expect(reduceFlyoutMode({ kind: 'glance' }, { type: 'close' }, 2000).kind).toBe('idle');
   });
 
   it('timer-expired while toast goes to idle', () => {
-    const toastState = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
-    const next = reduceFlyoutMode(toastState, { type: 'timer-expired' }, 1000 + TOAST_AUTOHIDE_MS + 1);
+    const toastState = reduceFlyoutMode(
+      { kind: 'idle' },
+      { type: 'toast', payload: makeToast('a') },
+      1000,
+    );
+    const next = reduceFlyoutMode(
+      toastState,
+      { type: 'timer-expired' },
+      1000 + TOAST_AUTOHIDE_MS + 1,
+    );
     expect(next.kind).toBe('idle');
   });
 
   it('hover-enter clears deadline; hover-leave resets it', () => {
-    const toastState = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
+    const toastState = reduceFlyoutMode(
+      { kind: 'idle' },
+      { type: 'toast', payload: makeToast('a') },
+      1000,
+    );
     const hovered = reduceFlyoutMode(toastState, { type: 'hover-enter' }, 2000);
     if (hovered.kind !== 'toast') throw new Error('expected toast');
     expect(hovered.timerDeadline).toBe(null);

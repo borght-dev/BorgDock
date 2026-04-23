@@ -71,8 +71,6 @@ export function reduceFlyoutMode(mode: FlyoutMode, event: FlyoutEvent, now: numb
       return mode.kind === 'toast' ? { ...mode, timerDeadline: null } : mode;
 
     case 'hover-leave':
-      return mode.kind === 'toast'
-        ? { ...mode, timerDeadline: now + TOAST_AUTOHIDE_MS }
-        : mode;
+      return mode.kind === 'toast' ? { ...mode, timerDeadline: now + TOAST_AUTOHIDE_MS } : mode;
   }
 }
