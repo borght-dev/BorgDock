@@ -105,7 +105,84 @@ pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
 // Flyout window (replaces the old floating badge)
 // ---------------------------------------------------------------------------
 
-/// Toggle the flyout window: show + focus if hidden/absent, hide if visible.
+const FLYOUT_GLANCE_W: f64 = 412.0;
+const FLYOUT_GLANCE_H: f64 = 512.0;
+
+const CHROME_OFFSET_WIN: i32 = 48;
+const CHROME_OFFSET_MAC: i32 = 28;
+const CHROME_OFFSET_LINUX: i32 = 32;
+
+fn chrome_offset_for_os() -> i32 {
+    if cfg!(target_os = "windows") {
+        CHROME_OFFSET_WIN
+    } else if cfg!(target_os = "macos") {
+        CHROME_OFFSET_MAC
+    } else {
+        CHROME_OFFSET_LINUX
+    }
+}
+
+/// Build the flyout window invisibly. Called once, from Tauri `setup`.
+/// Position is computed from the current primary monitor.
+pub(crate) fn build_flyout_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
+    let win = WebviewWindowBuilder::new(
+        app,
+        "flyout",
+        WebviewUrl::App("flyout.html".into()),
+    )
+    .title("BorgDock")
+    .inner_size(FLYOUT_GLANCE_W, FLYOUT_GLANCE_H)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .resizable(false)
+    .skip_taskbar(true)
+    .shadow(false)
+    .visible(false)
+    .focused(false)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    if let Err(e) = position_flyout_near_tray(&win, FLYOUT_GLANCE_W, FLYOUT_GLANCE_H) {
+        log::warn!("initial flyout positioning failed: {e}");
+    }
+    Ok(win)
+}
+
+/// Position the flyout's bottom-right (Windows) or top-right (macOS/Linux)
+/// corner near the tray/indicator area.
+pub(crate) fn position_flyout_near_tray(
+    win: &WebviewWindow,
+    inner_w: f64,
+    inner_h: f64,
+) -> Result<(), String> {
+    use crate::flyout::position::{compute_flyout_position, default_anchor_for_os};
+
+    let monitor = win
+        .current_monitor()
+        .map_err(|e| e.to_string())?
+        .or_else(|| win.primary_monitor().ok().flatten())
+        .ok_or("No monitor found")?;
+    let scale = win.scale_factor().unwrap_or(1.0);
+
+    let w = (inner_w * scale) as i32;
+    let h = (inner_h * scale) as i32;
+    let ws = monitor.size();
+    let wp = monitor.position();
+
+    let (x, y) = compute_flyout_position(
+        wp.x, wp.y, ws.width as i32, ws.height as i32,
+        w, h, default_anchor_for_os(), chrome_offset_for_os(),
+    );
+
+    win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
+        .map_err(|e| e.to_string())?;
+    win.set_size(tauri::Size::Physical(PhysicalSize::new(w as u32, h as u32)))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Toggle the flyout window: show + focus if hidden, hide if visible.
 /// Called from the tray icon left-click handler.
 pub(crate) fn toggle_flyout(app: &tauri::AppHandle) -> Result<(), String> {
     // If the mouse hook just hid the flyout (e.g. the tray click itself was
@@ -117,70 +194,26 @@ pub(crate) fn toggle_flyout(app: &tauri::AppHandle) -> Result<(), String> {
             return Ok(());
         }
     }
-    if let Some(win) = app.get_webview_window("flyout") {
-        // Window exists — toggle visibility
-        let visible = win.is_visible().unwrap_or(false);
-        if visible {
-            log::info!("toggle_flyout: hiding");
-            #[cfg(target_os = "windows")]
-            super::click_outside::uninstall_hook();
-            win.hide().map_err(|e| e.to_string())?;
-        } else {
-            log::info!("toggle_flyout: showing existing");
-            position_flyout_above_tray(app, &win)?;
-            win.show().map_err(|e| e.to_string())?;
-            let _ = win.set_always_on_top(true);
-            force_repaint(&win);
-            let _ = win.set_focus();
-            install_click_outside_hook(app, &win);
-            // Nudge the main window to send fresh data to the flyout
-            let _ = app.emit_to("main", "flyout-request-data", ());
-        }
-    } else {
-        // Create lazily on first open
-        log::info!("toggle_flyout: creating new window");
-        let win = WebviewWindowBuilder::new(
-            app,
-            "flyout",
-            WebviewUrl::App("flyout.html".into()),
-        )
-        .title("BorgDock")
-        .inner_size(412.0, 512.0)
-        .decorations(false)
-        .transparent(true)
-        .always_on_top(true)
-        .resizable(false)
-        .skip_taskbar(true)
-        .shadow(false)
-        .visible(false) // position first, then show
-        .focused(true)
-        .build()
-        .map_err(|e| e.to_string())?;
 
-        position_flyout_above_tray(app, &win)?;
-        let _ = win.show();
+    let win = app
+        .get_webview_window("flyout")
+        .ok_or_else(|| "flyout window not built yet".to_string())?;
+    let visible = win.is_visible().unwrap_or(false);
+    if visible {
+        log::info!("toggle_flyout: hiding");
+        #[cfg(target_os = "windows")]
+        super::click_outside::uninstall_hook();
+        win.hide().map_err(|e| e.to_string())?;
+    } else {
+        log::info!("toggle_flyout: showing");
+        position_flyout_near_tray(&win, FLYOUT_GLANCE_W, FLYOUT_GLANCE_H)?;
+        win.show().map_err(|e| e.to_string())?;
         let _ = win.set_always_on_top(true);
         force_repaint(&win);
         let _ = win.set_focus();
         install_click_outside_hook(app, &win);
-
-        // Auto-hide on focus loss — only on non-Windows.
-        // On Windows Focused(false) fires spuriously during the window's
-        // initial setup (two events before React even mounts), which would
-        // hide the freshly-created flyout before it's usable. The
-        // WH_MOUSE_LL hook is the real click-outside mechanism on Windows.
-        #[cfg(not(target_os = "windows"))]
-        {
-            let app_handle = app.clone();
-            win.on_window_event(move |event| {
-                if let tauri::WindowEvent::Focused(false) = event {
-                    log::info!("flyout lost focus — hiding");
-                    if let Some(fw) = app_handle.get_webview_window("flyout") {
-                        let _ = fw.hide();
-                    }
-                }
-            });
-        }
+        // Nudge the main window to send fresh data to the flyout
+        let _ = app.emit_to("main", "flyout-request-data", ());
     }
     Ok(())
 }
@@ -198,44 +231,6 @@ fn install_click_outside_hook(_app: &tauri::AppHandle, _win: &WebviewWindow) {
             Err(e) => log::error!("flyout hwnd() failed: {e}"),
         }
     }
-}
-
-/// Position the flyout window above the system tray area.
-/// We approximate the tray position: Windows puts it in the bottom-right.
-fn position_flyout_above_tray(app: &tauri::AppHandle, win: &WebviewWindow) -> Result<(), String> {
-    let scale = win.scale_factor().unwrap_or(1.0);
-    // 380px panel + 32px padding (16px each side) for shadow overflow
-    let flyout_w = (412.0 * scale) as i32;
-    let flyout_h = (512.0 * scale) as i32;
-
-    // Try to use the primary monitor's work area
-    let (screen_w, screen_h, screen_x, screen_y) = if let Some(monitor) = app
-        .get_webview_window("main")
-        .and_then(|w| w.current_monitor().ok().flatten())
-    {
-        let s = monitor.size();
-        let p = monitor.position();
-        (s.width as i32, s.height as i32, p.x, p.y)
-    } else {
-        (1920, 1080, 0, 0)
-    };
-
-    // Place it so the panel (380px inner) sits above the taskbar.
-    // The window is 420px wide — the extra 40px is shadow padding.
-    // Anchor the panel's right edge near the tray area.
-    let taskbar_h = (48.0 * scale) as i32;
-    let x = screen_x + screen_w - flyout_w;
-    let y = screen_y + screen_h - taskbar_h - flyout_h;
-
-    win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
-        .map_err(|e| e.to_string())?;
-    win.set_size(tauri::Size::Physical(PhysicalSize::new(
-        flyout_w as u32,
-        flyout_h as u32,
-    )))
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
 }
 
 /// Force a repaint on transparent WebView2 windows (Windows workaround).

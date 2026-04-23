@@ -137,6 +137,10 @@ pub fn run() {
         .setup(|app| {
             platform::tray::setup_tray(app)?;
 
+            if let Err(e) = platform::window::build_flyout_window(&app.handle().clone()) {
+                log::error!("build_flyout_window failed: {e}");
+            }
+
             let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();
             file_palette::cache::init(&file_cache_state);
 
