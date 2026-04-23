@@ -24,13 +24,13 @@ const ALLOWED_EXTENSIONS: &[&str] = &[
     "md", "mdx", "txt", "rst",
 ];
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 pub struct FileEntry {
     pub rel_path: String,
     pub size: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 pub struct ListFilesResult {
     pub entries: Vec<FileEntry>,
     pub truncated: bool,
