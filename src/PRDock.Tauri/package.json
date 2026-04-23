@@ -2,6 +2,7 @@
   "name": "prdock",
   "private": true,
   "version": "1.0.16",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -2,8 +2,9 @@
 name = "prdock"
 version = "1.0.16"
 description = "PRDock — cross-platform PR monitor sidebar"
-authors = ["PRDock"]
+authors = ["Koen van der Borght"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "prdock_lib"
