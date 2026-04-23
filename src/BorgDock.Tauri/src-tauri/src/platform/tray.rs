@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -8,6 +8,10 @@ use tauri::{
 /// Packed representation of the last tray icon state so we can skip redundant
 /// re-renders. Layout: [count: u8 | worst: u8 | dark: u8 | 0]
 static LAST_ICON_STATE: AtomicU64 = AtomicU64::new(u64::MAX);
+
+/// True while the app is still initializing. The pulse animation task checks
+/// this flag on every tick; `stop_initializing_animation` flips it to false.
+static IS_INITIALIZING: AtomicBool = AtomicBool::new(true);
 
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItemBuilder::with_id("show", "Show sidebar").build(app)?;
@@ -139,11 +143,26 @@ pub fn update_tray_icon(
     count: u8,
     worst_state: TrayWorstState,
 ) -> Result<(), String> {
+    // First non-Initializing state arriving means init is done. Stop the pulse.
+    if !matches!(worst_state, TrayWorstState::Initializing) {
+        stop_initializing_animation();
+    }
+
     let dark = app
         .get_webview_window("main")
         .and_then(|w| w.theme().ok())
         .map(|t| matches!(t, tauri::Theme::Dark))
         .unwrap_or(true);
+
+    // Animated frames must not dedup — each tick re-renders even if state
+    // is nominally the same.
+    if matches!(worst_state, TrayWorstState::Initializing) {
+        let icon = render_tray_icon(count, worst_state, dark);
+        if let Some(tray) = app.tray_by_id("main") {
+            tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
 
     // Skip if state hasn't changed
     let packed =
@@ -252,6 +271,84 @@ fn render_tray_icon(
     }
 
     tauri::image::Image::new_owned(buf, SIZE, SIZE)
+}
+
+/// Render the idle brand icon with a brightness-modulated overlay driven by
+/// `phase` (in radians). Reuses `render_tray_icon` and then blends a
+/// translucent white layer whose alpha follows |sin(phase)| so the overall
+/// brightness "breathes" during init.
+pub(crate) fn render_initializing_icon(dark: bool, phase: f32) -> tauri::image::Image<'static> {
+    const SIZE: u32 = 64;
+    let img = render_tray_icon(0, TrayWorstState::Initializing, dark);
+    // Blend a white overlay whose alpha breathes with |sin(phase)|.
+    let overlay_alpha = (phase.sin().abs() * 80.0) as u8;
+    if overlay_alpha == 0 {
+        return img;
+    }
+    // image::Image doesn't expose a mutable pixel view, so we re-render
+    // into a fresh buffer and apply the overlay there.
+    let _ = img; // drop the original; we'll rebuild
+    let base_img = render_tray_icon(0, TrayWorstState::Initializing, dark);
+    // Obtain the raw bytes by encoding then re-reading — cheapest path
+    // that avoids unsafe. Since render_tray_icon already allocates a vec
+    // we can re-render with the overlay applied directly.
+    let mut buf = vec![0u8; (SIZE * SIZE * 4) as usize];
+    // Redo the gradient fill with a brightened palette.
+    let sq_size = 60u32;
+    let sq_off = (SIZE - sq_size) / 2;
+    let radius = 13.0f32;
+    let (c1, c2) = brand_gradient(dark);
+    let ov = overlay_alpha as f32 / 255.0;
+    let brighten = |ch: u8| -> u8 { (ch as f32 + (255.0 - ch as f32) * ov) as u8 };
+    let c1b = [brighten(c1[0]), brighten(c1[1]), brighten(c1[2]), 255u8];
+    let c2b = [brighten(c2[0]), brighten(c2[1]), brighten(c2[2]), 255u8];
+    for y in 0..sq_size {
+        for x in 0..sq_size {
+            if !in_rounded_rect(x as f32, y as f32, sq_size as f32, sq_size as f32, radius) {
+                continue;
+            }
+            let t = ((x as f32 + y as f32) / (sq_size as f32 * 2.0 - 2.0)).min(1.0);
+            let px = sq_off + x;
+            let py = sq_off + y;
+            let i = ((py * SIZE + px) * 4) as usize;
+            buf[i]     = lerp_u8(c1b[0], c2b[0], t);
+            buf[i + 1] = lerp_u8(c1b[1], c2b[1], t);
+            buf[i + 2] = lerp_u8(c1b[2], c2b[2], t);
+            buf[i + 3] = 255;
+        }
+    }
+    let ink: [u8; 4] = [255, 255, 255, 255];
+    draw_brand_waveform(&mut buf, SIZE, 8.0, 14.0, 56.0, 50.0, 3.6, &ink);
+    let _ = base_img; // silence unused warning
+    tauri::image::Image::new_owned(buf, SIZE, SIZE)
+}
+
+/// Spawn a tokio task that updates the tray icon while IS_INITIALIZING is
+/// true. The dedup cache (LAST_ICON_STATE) is bypassed for this duration —
+/// animated frames are not "state" and each tick must render. On init
+/// completion, stop_initializing_animation() flips the flag and the task
+/// exits on its next tick.
+pub fn start_initializing_animation(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let dark = app
+            .get_webview_window("main")
+            .and_then(|w| w.theme().ok())
+            .map(|t| matches!(t, tauri::Theme::Dark))
+            .unwrap_or(true);
+        let mut phase: f32 = 0.0;
+        while IS_INITIALIZING.load(Ordering::SeqCst) {
+            phase += 0.35; // roughly one full sine cycle every ~18 ticks
+            if let Some(tray) = app.tray_by_id("main") {
+                let icon = render_initializing_icon(dark, phase);
+                let _ = tray.set_icon(Some(icon));
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+    });
+}
+
+pub fn stop_initializing_animation() {
+    IS_INITIALIZING.store(false, Ordering::SeqCst);
 }
 
 /// Draw the BorgDock brand waveform fitted into the bounding box

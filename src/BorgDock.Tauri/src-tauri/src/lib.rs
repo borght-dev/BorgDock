@@ -136,6 +136,7 @@ pub fn run() {
         })
         .setup(|app| {
             platform::tray::setup_tray(app)?;
+            platform::tray::start_initializing_animation(app.handle().clone());
 
             if let Err(e) = platform::window::build_flyout_window(&app.handle().clone()) {
                 log::error!("build_flyout_window failed: {e}");
