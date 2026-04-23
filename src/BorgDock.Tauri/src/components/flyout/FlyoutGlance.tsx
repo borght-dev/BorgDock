@@ -35,31 +35,37 @@ export interface FlyoutPr {
   isMine: boolean;
 }
 
-export function FlyoutGlance({ data, banner }: { data: FlyoutData; banner?: ToastPayload }) {
+export function FlyoutGlance({
+  data,
+  banner,
+  onClose,
+}: {
+  data: FlyoutData;
+  banner?: ToastPayload;
+  onClose: () => void;
+}) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { failingCount, pendingCount, passingCount, pullRequests, totalCount } = data;
 
-  const handleBackdropMouseDown = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('hide_flyout');
-      } catch {
-        // ignore
+  const handleBackdropMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
       }
-    }
-  }, []);
+    },
+    [onClose],
+  );
 
   const handleOpenSidebar = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('toggle_sidebar');
-      await invoke('hide_flyout');
     } catch {
       // ignore
     }
-  }, []);
+    onClose();
+  }, [onClose]);
 
   const handleOpenSettings = useCallback(async () => {
     try {
@@ -67,66 +73,73 @@ export function FlyoutGlance({ data, banner }: { data: FlyoutData; banner?: Toas
       const { emitTo } = await import('@tauri-apps/api/event');
       await emitTo('main', 'open-settings', {});
       await invoke('toggle_sidebar');
-      await invoke('hide_flyout');
     } catch {
       // ignore
     }
-  }, []);
+    onClose();
+  }, [onClose]);
 
-  const handleClickPr = useCallback(async (pr: FlyoutPr) => {
-    log.info('PR clicked', { owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('open_pr_detail_window', {
-        owner: pr.repoOwner,
-        repo: pr.repoName,
-        number: pr.number,
-      });
-      log.info('open_pr_detail_window succeeded', {
-        owner: pr.repoOwner,
-        repo: pr.repoName,
-        number: pr.number,
-      });
-      await invoke('hide_flyout');
-    } catch (err) {
-      log.error('handleClickPr failed', err, {
-        owner: pr.repoOwner,
-        repo: pr.repoName,
-        number: pr.number,
-      });
-    }
-  }, []);
+  const handleClickPr = useCallback(
+    async (pr: FlyoutPr) => {
+      log.info('PR clicked', { owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('open_pr_detail_window', {
+          owner: pr.repoOwner,
+          repo: pr.repoName,
+          number: pr.number,
+        });
+        log.info('open_pr_detail_window succeeded', {
+          owner: pr.repoOwner,
+          repo: pr.repoName,
+          number: pr.number,
+        });
+      } catch (err) {
+        log.error('handleClickPr failed', err, {
+          owner: pr.repoOwner,
+          repo: pr.repoName,
+          number: pr.number,
+        });
+      }
+      onClose();
+    },
+    [onClose],
+  );
 
-  const handleFixPr = useCallback(async (pr: FlyoutPr) => {
-    try {
-      const { emitTo } = await import('@tauri-apps/api/event');
-      await emitTo('main', 'flyout-fix-pr', {
-        repoOwner: pr.repoOwner,
-        repoName: pr.repoName,
-        number: pr.number,
-        failedCheckNames: pr.failedCheckNames ?? [],
-      });
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('hide_flyout');
-    } catch {
-      // ignore
-    }
-  }, []);
+  const handleFixPr = useCallback(
+    async (pr: FlyoutPr) => {
+      try {
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('main', 'flyout-fix-pr', {
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          number: pr.number,
+          failedCheckNames: pr.failedCheckNames ?? [],
+        });
+      } catch {
+        // ignore
+      }
+      onClose();
+    },
+    [onClose],
+  );
 
-  const handleMonitorPr = useCallback(async (pr: FlyoutPr) => {
-    try {
-      const { emitTo } = await import('@tauri-apps/api/event');
-      await emitTo('main', 'flyout-monitor-pr', {
-        repoOwner: pr.repoOwner,
-        repoName: pr.repoName,
-        number: pr.number,
-      });
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('hide_flyout');
-    } catch {
-      // ignore
-    }
-  }, []);
+  const handleMonitorPr = useCallback(
+    async (pr: FlyoutPr) => {
+      try {
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('main', 'flyout-monitor-pr', {
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          number: pr.number,
+        });
+      } catch {
+        // ignore
+      }
+      onClose();
+    },
+    [onClose],
+  );
 
   return (
     <div

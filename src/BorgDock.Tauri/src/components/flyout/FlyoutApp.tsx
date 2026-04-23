@@ -36,12 +36,11 @@ export function FlyoutApp() {
   // Reducer for the flyout mode state machine. `now` is wall-clock here since
   // this is production code; the reducer itself is pure (tested independently
   // with an injected `now`).
-  const [mode, dispatchRaw] = useReducer(
+  const [mode, dispatch] = useReducer(
     (state: ReturnType<typeof reduceFlyoutMode>, event: FlyoutEvent) =>
       reduceFlyoutMode(state, event, Date.now()),
     initialFlyoutMode,
   );
-  const dispatch = useCallback((event: FlyoutEvent) => dispatchRaw(event), []);
 
   // Data fetch + flyout-update event listener — same as the pre-refactor shell.
   useEffect(() => {
@@ -97,7 +96,7 @@ export function FlyoutApp() {
       unlistenToast?.();
       unlistenRequest?.();
     };
-  }, [dispatch]);
+  }, []);
 
   // Close on blur — same as before, but also dispatch close so the reducer
   // returns to idle.
@@ -116,7 +115,19 @@ export function FlyoutApp() {
     };
     window.addEventListener('blur', hide);
     return () => window.removeEventListener('blur', hide);
-  }, [dispatch]);
+  }, []);
+
+  // Shared close handler used by FlyoutGlance so every hide path also resets
+  // the reducer back to idle.
+  const handleClose = useCallback(async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('hide_flyout');
+    } catch {
+      // ignore
+    }
+    dispatch({ type: 'close' });
+  }, []);
 
   const handleToastAction = useCallback(
     async (toast: ToastPayload, action: string, url?: string) => {
@@ -158,13 +169,19 @@ export function FlyoutApp() {
             }
             break;
         }
-        await invoke('hide_flyout');
-        dispatch({ type: 'close' });
       } catch (err) {
         log.error('toast action failed', err);
+      } finally {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('hide_flyout');
+        } catch {
+          // ignore
+        }
+        dispatch({ type: 'close' });
       }
     },
-    [dispatch],
+    [],
   );
 
   switch (mode.kind) {
@@ -173,7 +190,7 @@ export function FlyoutApp() {
     case 'idle':
       return null;
     case 'glance':
-      return <FlyoutGlance data={data} banner={mode.banner} />;
+      return <FlyoutGlance data={data} banner={mode.banner} onClose={handleClose} />;
     case 'toast':
       return (
         <FlyoutToast
