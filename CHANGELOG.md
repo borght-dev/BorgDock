@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.1.0 — 2026-04-23
+
+### New Features
+
+- Tray-first workflow — BorgDock now stays out of your way by default. The sidebar no longer auto-opens on launch; the tray icon is your constant presence. Use `Ctrl+Win+Shift+F` (configurable in Settings) to pop up the tray flyout for a quick glance, or `Ctrl+Win+Shift+G` to summon the full sidebar when you want to dig in. Right-click the tray for Show flyout / Show sidebar / Settings / What's new / Quit.
+- In-app notification toasts — Notifications now appear as styled BorgDock toasts near the tray instead of landing in Windows Action Center. Each toast shows title, severity, and inline action buttons (Fix with Claude, Open) so you can react without opening the sidebar. Toasts auto-hide after 7 seconds, pause on hover, and stack up to three when multiple events fire close together.
+- First-run setup wizard as a modal — New users see a centered modal wizard on first launch instead of the docked sidebar; subsequent launches go straight into the tray-first experience.
+- Changes section in the file palette — Press `Ctrl+F8` and you'll see modified/added/deleted files from the current worktree grouped at the top of the results, before any search query. Jump from palette to diff without context-switching.
+- Worktree-aware PR checkout — Checking out a PR now honors the correct git worktree and preloads its baseline for the file viewer, so you see the exact change set instead of raw file contents.
+- Deep-linkable file viewer — The file viewer can open with a specific baseline via URL query param, making viewer windows shareable across palette → viewer handoffs.
+
+### Improvements
+
+- BorgDock brand — The product is now BorgDock (renamed from PRDock). Tray icon, settings, logs, and AppData paths all follow the new name.
+- Faster file palette startup — File index now persists across sessions in a SQLite-backed cache with in-flight deduplication, so the palette opens instantly on repeat use instead of rescanning your worktrees every time.
+- DPI-correct flyout positioning — The flyout now sits cleanly above the taskbar at any display scale. No more slight overlap at 125% / 150% scaling on Windows.
+- Tray icon shows a loading state — While BorgDock fetches your PRs on startup, the tray icon gently breathes with a "BorgDock — loading…" tooltip. You can tell at a glance whether data is current.
+- Cross-platform tray positioning — On macOS and Linux (GNOME/Ubuntu), the flyout now anchors to the top-right near the menu bar/indicator area. Windows keeps its bottom-right anchor.
+- Debounced Azure DevOps settings — Connection fields now debounce as you type, and a new "Open Settings" shortcut jumps directly to the ADO section.
+- Polling resilience — When a poll fails, previously-fetched check statuses are preserved instead of being cleared. Your PR list stays informative through transient network hiccups.
+- Configurable flyout hotkey — The flyout's global shortcut is now user-configurable alongside the existing sidebar hotkey in Settings → Appearance.
+- Marketing site rebuilt — The public site is now a typed Astro + React project with design-system-aligned mockups and mobile-responsive layouts.
+- Release pipeline modernized — Releases now run on GitHub-hosted runners with the Tauri updater v2 format, simplifying the updater plugin and removing CI cruft.
+
+### Bug Fixes
+
+- Split view in the file viewer now remembers its choice across sessions and opens at a proper 50/50 layout instead of an unbalanced default.
+- File palette search results scroll correctly when long, and favorites are used as the default root when available.
+- Corrupt file-palette cache database is auto-quarantined and rebuilt instead of breaking palette load.
+- File palette's selected index now correctly offsets when the Changes section is present, so arrow-key navigation lands on the right row.
+- Palette focus handoff is driven from the frontend handshake, avoiding a race that could leave palettes out of focus on open.
+
 ## 1.0.16 — 2026-04-22
 
 ### Bug Fixes

@@ -4,6 +4,20 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.1.0",
+    "date": "2026-04-23",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Split view in the file viewer now remembers its choice across sessions and opens at a proper 50/50 layout instead of an unbalanced default.",
+      "File palette search results scroll correctly when long, and favorites are used as the default root when available.",
+      "Corrupt file-palette cache database is auto-quarantined and rebuilt instead of breaking palette load.",
+      "File palette's selected index now correctly offsets when the Changes section is present, so arrow-key navigation lands on the right row.",
+      "Palette focus handoff is driven from the frontend handshake, avoiding a race that could leave palettes out of focus on open."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "1.0.16",
     "date": "2026-04-22",
     "summary": "",
