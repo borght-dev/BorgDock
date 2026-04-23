@@ -69,11 +69,19 @@ export function FilePaletteApp() {
   }, [settings, worktreePathsByRepo]);
 
   useEffect(() => {
-    if (!activeRoot && roots.length > 0) setActiveRoot(roots[0]!.path);
-    else if (activeRoot && !roots.some((r) => r.path === activeRoot) && roots.length > 0) {
-      setActiveRoot(roots[0]!.path);
+    if (roots.length === 0) return;
+    // When the user has "favorites only" on, the default root must come from the
+    // visible (favorite) set — otherwise the palette opens on a hidden worktree.
+    const pickable = favoritesOnly
+      ? roots.filter((r) => r.source !== 'worktree' || favoritePaths.has(r.path))
+      : roots;
+    const fallback = pickable[0] ?? roots[0]!;
+    if (!activeRoot) {
+      setActiveRoot(fallback.path);
+    } else if (!roots.some((r) => r.path === activeRoot)) {
+      setActiveRoot(fallback.path);
     }
-  }, [roots, activeRoot]);
+  }, [roots, activeRoot, favoritesOnly, favoritePaths]);
 
   useEffect(() => setSelectedIndex(0), [query, activeRoot]);
 
