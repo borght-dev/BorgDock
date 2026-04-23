@@ -33,7 +33,10 @@ export function FileViewerApp() {
 
   const [contentState, setContentState] = useState<ContentState>({ kind: 'loading' });
   const [diffState, setDiffState] = useState<DiffState>({ kind: 'loading' });
-  const [baseline, setBaseline] = useState<Baseline>('HEAD');
+  const [baseline, setBaseline] = useState<Baseline>(() => {
+    const raw = new URLSearchParams(window.location.search).get('baseline');
+    return raw === 'mergeBaseDefault' ? 'mergeBaseDefault' : 'HEAD';
+  });
   // 'auto' defers the choice to the first diff response — if the file is
   // changed vs HEAD we open in diff mode, otherwise plain content.
   const [mode, setMode] = useState<Mode | 'auto'>('auto');

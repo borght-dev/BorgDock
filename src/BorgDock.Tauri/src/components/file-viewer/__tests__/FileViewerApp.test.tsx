@@ -72,4 +72,33 @@ describe('FileViewerApp', () => {
     render(<FileViewerApp />);
     await waitFor(() => expect(screen.getByText(/x = 1/)).toBeTruthy());
   });
+
+  it('starts in mergeBaseDefault mode when ?baseline=mergeBaseDefault is in the URL', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/file-viewer.html?path=' +
+        encodeURIComponent('E:/a.ts') +
+        '&baseline=mergeBaseDefault',
+    );
+    await setInvoke((cmd, args) => {
+      if (cmd === 'read_text_file') return Promise.resolve('export const x = 1;');
+      if (cmd === 'git_file_diff') {
+        const baseline = (args as { baseline?: string } | undefined)?.baseline;
+        // Assert the initial diff fetch uses the URL-provided baseline.
+        return Promise.resolve({
+          patch: baseline === 'mergeBaseDefault' ? SAMPLE_PATCH : '',
+          baselineRef: baseline === 'mergeBaseDefault' ? 'master' : 'HEAD',
+          inRepo: true,
+        });
+      }
+      return Promise.reject(new Error(`unexpected ${cmd}`));
+    });
+    render(<FileViewerApp />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /vs master/ })).toHaveClass(
+        'fv-seg-btn--active',
+      ),
+    );
+  });
 });
