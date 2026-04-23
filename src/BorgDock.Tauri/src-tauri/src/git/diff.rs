@@ -159,3 +159,189 @@ fn compute_diff(path: &str, baseline: &str) -> Result<FileDiffOutput, String> {
         in_repo: true,
     })
 }
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangedFile {
+    pub path: String,
+    pub status: String,
+    pub old_path: Option<String>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum NameStatusMode {
+    /// `git status --porcelain=v1 -z` — records begin with two status bytes + space + path.
+    /// Renames produce two records: `"R  new_path"` then `"old_path"`.
+    Status,
+    /// `git diff --name-status -z` — records begin with a single status letter + NUL + path.
+    /// Renames/copies produce three records: `"R100"` / `"C90"` then old_path then new_path.
+    Diff,
+}
+
+pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile> {
+    let mut out = Vec::new();
+    // Split on NUL; trailing NUL produces an empty last element which we skip.
+    let records: Vec<&[u8]> = bytes
+        .split(|b| *b == 0)
+        .filter(|r| !r.is_empty())
+        .collect();
+
+    let mut i = 0;
+    while i < records.len() {
+        match mode {
+            NameStatusMode::Status => {
+                let rec = records[i];
+                if rec.len() < 3 {
+                    i += 1;
+                    continue;
+                }
+                let x = rec[0] as char;
+                let y = rec[1] as char;
+                // Two-byte code; "?? " means untracked, "R  " means renamed.
+                // Status letter priority: index side (X) except untracked (?/?) → '?'.
+                let status_char = if x == '?' && y == '?' {
+                    '?'
+                } else if x != ' ' {
+                    x
+                } else {
+                    y
+                };
+                let path = String::from_utf8_lossy(&rec[3..]).to_string();
+                if status_char == 'R' || status_char == 'C' {
+                    // Next record is the old path.
+                    let old = records
+                        .get(i + 1)
+                        .map(|b| String::from_utf8_lossy(b).to_string());
+                    out.push(ChangedFile {
+                        path,
+                        status: status_char.to_string(),
+                        old_path: old,
+                    });
+                    i += 2;
+                } else {
+                    out.push(ChangedFile {
+                        path,
+                        status: status_char.to_string(),
+                        old_path: None,
+                    });
+                    i += 1;
+                }
+            }
+            NameStatusMode::Diff => {
+                let rec = records[i];
+                if rec.is_empty() {
+                    i += 1;
+                    continue;
+                }
+                let status_char = rec[0] as char;
+                if status_char == 'R' || status_char == 'C' {
+                    // Three records: "R100" / "C90", old, new.
+                    let old = records
+                        .get(i + 1)
+                        .map(|b| String::from_utf8_lossy(b).to_string());
+                    let new_path = records
+                        .get(i + 2)
+                        .map(|b| String::from_utf8_lossy(b).to_string())
+                        .unwrap_or_default();
+                    out.push(ChangedFile {
+                        path: new_path,
+                        status: status_char.to_string(),
+                        old_path: old,
+                    });
+                    i += 3;
+                } else {
+                    // Two records: status, path.
+                    let path = records
+                        .get(i + 1)
+                        .map(|b| String::from_utf8_lossy(b).to_string())
+                        .unwrap_or_default();
+                    out.push(ChangedFile {
+                        path,
+                        status: status_char.to_string(),
+                        old_path: None,
+                    });
+                    i += 2;
+                }
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_status_mode_plain_modification() {
+        let bytes = b" M src/foo.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Status);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "src/foo.ts");
+        assert_eq!(files[0].status, "M");
+        assert!(files[0].old_path.is_none());
+    }
+
+    #[test]
+    fn parses_status_mode_untracked() {
+        let bytes = b"?? src/new.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Status);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "src/new.ts");
+        assert_eq!(files[0].status, "?");
+    }
+
+    #[test]
+    fn parses_status_mode_rename_two_records() {
+        let bytes = b"R  new.ts\0old.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Status);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "new.ts");
+        assert_eq!(files[0].status, "R");
+        assert_eq!(files[0].old_path.as_deref(), Some("old.ts"));
+    }
+
+    #[test]
+    fn parses_status_mode_multiple_files() {
+        let bytes = b" M a.ts\0?? b.ts\0D  c.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Status);
+        assert_eq!(files.len(), 3);
+        assert_eq!(files[0].status, "M");
+        assert_eq!(files[1].status, "?");
+        assert_eq!(files[2].status, "D");
+    }
+
+    #[test]
+    fn parses_diff_mode_plain_modification() {
+        let bytes = b"M\0src/foo.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Diff);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "src/foo.ts");
+        assert_eq!(files[0].status, "M");
+    }
+
+    #[test]
+    fn parses_diff_mode_rename_three_records() {
+        let bytes = b"R100\0old.ts\0new.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Diff);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "new.ts");
+        assert_eq!(files[0].status, "R");
+        assert_eq!(files[0].old_path.as_deref(), Some("old.ts"));
+    }
+
+    #[test]
+    fn parses_diff_mode_deletion() {
+        let bytes = b"D\0gone.ts\0";
+        let files = parse_name_status(bytes, NameStatusMode::Diff);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "gone.ts");
+        assert_eq!(files[0].status, "D");
+    }
+
+    #[test]
+    fn parse_handles_empty_input() {
+        assert_eq!(parse_name_status(b"", NameStatusMode::Status).len(), 0);
+        assert_eq!(parse_name_status(b"", NameStatusMode::Diff).len(), 0);
+    }
+}
