@@ -40,9 +40,15 @@ fn hex16(hash: &blake3::Hash) -> String {
 pub async fn open_file_viewer_window(
     app: tauri::AppHandle,
     path: String,
+    baseline: Option<String>,
 ) -> Result<(), String> {
     let label = viewer_label_for(&path);
     let encoded = urlencoding::encode(&path).into_owned();
+    let baseline_qs = baseline
+        .as_deref()
+        .filter(|b| !b.is_empty())
+        .map(|b| format!("&baseline={}", urlencoding::encode(b)))
+        .unwrap_or_default();
 
     let (tx, rx) = oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
@@ -52,7 +58,7 @@ pub async fn open_file_viewer_window(
                 bring_to_front(&win);
                 return Ok(());
             }
-            let url = format!("file-viewer.html?path={encoded}");
+            let url = format!("file-viewer.html?path={encoded}{baseline_qs}");
             let win = WebviewWindowBuilder::new(
                 &app_for_run,
                 &label,
