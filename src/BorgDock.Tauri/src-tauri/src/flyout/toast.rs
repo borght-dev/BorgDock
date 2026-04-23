@@ -48,7 +48,7 @@ pub async fn show_flyout_toast(
                 .get_webview_window("flyout")
                 .ok_or_else(|| "flyout window not built".to_string())?;
             if !win.is_visible().unwrap_or(false) {
-                crate::platform::window::position_flyout_near_tray(&win, 340.0, 170.0)?;
+                crate::platform::window::position_flyout_near_tray(&win, 340.0, 200.0)?;
                 win.show().map_err(|e| e.to_string())?;
                 let _ = win.set_always_on_top(true);
             }

@@ -184,6 +184,34 @@ export function FlyoutApp() {
     [],
   );
 
+  // Resize the flyout window to match current mode + content.
+  // Toast height grows with queue size so cards don't clip at the window edge.
+  const toastQueueLen = mode.kind === 'toast' ? mode.queue.length : 0;
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        if (mode.kind === 'toast') {
+          const n = mode.queue.length;
+          // Per-card budget + outer padding. Generous to fit title + body + optional action row.
+          const width = 340;
+          const height = n * 160 + 32;
+          if (!cancelled) await invoke('resize_flyout', { width, height });
+        } else if (mode.kind === 'glance' || mode.kind === 'initializing') {
+          // Match the glance-mode constants from Rust (FLYOUT_GLANCE_W/H).
+          if (!cancelled) await invoke('resize_flyout', { width: 412, height: 512 });
+        }
+        // idle: window is hidden, no-op
+      } catch {
+        // ignore — resize is cosmetic, not critical
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode.kind, toastQueueLen]);
+
   switch (mode.kind) {
     case 'initializing':
       return <FlyoutInitializing />;
