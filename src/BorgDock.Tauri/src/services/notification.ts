@@ -251,11 +251,6 @@ export function buildBecameMergeableNotification(pr: PullRequest): InAppNotifica
 
 // --- OS notification ---
 
-export interface OsNotificationButton {
-  label: string;
-  action: string;
-}
-
 export interface OsNotificationOptions {
   title: string;
   body: string;
@@ -264,7 +259,6 @@ export interface OsNotificationOptions {
   prOwner?: string;
   prRepo?: string;
   prNumber?: number;
-  buttons?: OsNotificationButton[];
   actions?: { label: string; action: string; url?: string }[];
 }
 
@@ -287,15 +281,6 @@ export async function sendOsNotification(options: OsNotificationOptions): Promis
     actions: options.actions ?? [],
   };
   await invoke('show_flyout_toast', { payload });
-  // Keep OS toast in parallel until phase 5 removes send_notification.
-  await invoke('send_notification', {
-    title: options.title,
-    body: options.body,
-    prOwner: options.prOwner,
-    prRepo: options.prRepo,
-    prNumber: options.prNumber,
-    buttons: options.buttons,
-  });
 }
 
 // --- Helpers ---

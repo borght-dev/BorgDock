@@ -6,7 +6,6 @@ pub mod file_palette;
 pub mod flyout;
 pub mod git;
 pub mod keychain;
-pub mod notification;
 pub mod platform;
 pub mod settings;
 pub mod sql;
@@ -238,8 +237,6 @@ pub fn run() {
             keychain::get_credential,
             keychain::set_credential,
             keychain::delete_credential,
-            // Notification
-            notification::send_notification,
             // Updater
             updater::check_for_update,
             updater::download_and_install_update,

@@ -386,23 +386,15 @@ describe('sendOsNotification', () => {
       prOwner: 'owner',
       prRepo: 'repo',
       prNumber: 42,
-      buttons: [{ label: 'Click', action: 'open' }],
     });
 
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
     expect(mockInvoke).toHaveBeenCalledWith('show_flyout_toast', {
       payload: expect.objectContaining({
         title: expect.any(String),
         body: expect.any(String),
         severity: expect.any(String),
       }),
-    });
-    expect(mockInvoke).toHaveBeenCalledWith('send_notification', {
-      title: 'Test',
-      body: 'Test body',
-      prOwner: 'owner',
-      prRepo: 'repo',
-      prNumber: 42,
-      buttons: [{ label: 'Click', action: 'open' }],
     });
   });
 });
