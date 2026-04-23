@@ -389,6 +389,13 @@ describe('sendOsNotification', () => {
       buttons: [{ label: 'Click', action: 'open' }],
     });
 
+    expect(mockInvoke).toHaveBeenCalledWith('show_flyout_toast', {
+      payload: expect.objectContaining({
+        title: expect.any(String),
+        body: expect.any(String),
+        severity: expect.any(String),
+      }),
+    });
     expect(mockInvoke).toHaveBeenCalledWith('send_notification', {
       title: 'Test',
       body: 'Test body',

@@ -259,14 +259,35 @@ export interface OsNotificationButton {
 export interface OsNotificationOptions {
   title: string;
   body: string;
+  severity?: 'info' | 'success' | 'warning' | 'error';
+  id?: string;
   prOwner?: string;
   prRepo?: string;
   prNumber?: number;
   buttons?: OsNotificationButton[];
+  actions?: { label: string; action: string; url?: string }[];
 }
 
 export async function sendOsNotification(options: OsNotificationOptions): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
+  const severity = options.severity ?? 'info';
+  const id =
+    options.id ??
+    (options.prOwner && options.prRepo && options.prNumber
+      ? `${options.prOwner}/${options.prRepo}#${options.prNumber}`
+      : `${options.title}-${Date.now()}`);
+  const payload = {
+    id,
+    severity,
+    title: options.title,
+    body: options.body,
+    prOwner: options.prOwner,
+    prRepo: options.prRepo,
+    prNumber: options.prNumber,
+    actions: options.actions ?? [],
+  };
+  await invoke('show_flyout_toast', { payload });
+  // Keep OS toast in parallel until phase 5 removes send_notification.
   await invoke('send_notification', {
     title: options.title,
     body: options.body,
