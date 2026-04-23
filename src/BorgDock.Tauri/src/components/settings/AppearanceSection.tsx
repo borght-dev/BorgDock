@@ -181,6 +181,26 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         />
       </FieldLabel>
 
+      {/* Windows Terminal profile override (only meaningful on Windows, but the
+          field is harmless on other platforms and will simply be ignored). */}
+      <FieldLabel label="Windows Terminal profile">
+        <input
+          type="text"
+          value={ui.windowsTerminalProfile ?? ''}
+          onChange={(e) =>
+            update({
+              windowsTerminalProfile: e.target.value.trim() || undefined,
+            })
+          }
+          placeholder="Auto-detect"
+          className="field-input w-full"
+          spellCheck={false}
+        />
+        <div className="mt-1 text-[10px] text-[var(--color-text-ghost)]">
+          Used by the "Claude" button in the checkout flow. Leave empty to auto-detect your default profile.
+        </div>
+      </FieldLabel>
+
       {/* Run at Startup */}
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">

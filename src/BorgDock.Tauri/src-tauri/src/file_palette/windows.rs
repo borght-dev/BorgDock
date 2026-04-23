@@ -1,5 +1,21 @@
-use tauri::{Manager, WebviewWindowBuilder};
+use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
 use tokio::sync::oneshot;
+
+/// Bring a webview window to the foreground. On Windows, Win32's
+/// anti-focus-stealing policy drops `set_focus()` when the calling process
+/// isn't already foreground, so the new viewer silently ends up behind the
+/// palette. A brief `always_on_top` flash forces the z-order up without
+/// leaving the window pinned.
+fn bring_to_front(win: &WebviewWindow) {
+    let _ = win.unminimize();
+    let _ = win.show();
+    #[cfg(windows)]
+    {
+        let _ = win.set_always_on_top(true);
+        let _ = win.set_always_on_top(false);
+    }
+    let _ = win.set_focus();
+}
 
 /// Viewer window label format: `file-viewer-<16 hex chars of blake3>`.
 /// Stable per absolute path (normalized), so reopening the same file focuses
@@ -33,7 +49,7 @@ pub async fn open_file_viewer_window(
     app.run_on_main_thread(move || {
         let result = (|| -> Result<(), String> {
             if let Some(win) = app_for_run.get_webview_window(&label) {
-                let _ = win.set_focus();
+                bring_to_front(&win);
                 return Ok(());
             }
             let url = format!("file-viewer.html?path={encoded}");
@@ -52,7 +68,7 @@ pub async fn open_file_viewer_window(
             .focused(true)
             .build()
             .map_err(|e| format!("failed to build viewer window: {e}"))?;
-            let _ = win.set_focus();
+            bring_to_front(&win);
             Ok(())
         })();
         let _ = tx.send(result);

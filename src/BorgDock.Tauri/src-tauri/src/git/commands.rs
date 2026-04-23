@@ -5,23 +5,36 @@ use std::process::Stdio;
 use super::hidden_command;
 
 fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
+    log::info!("git run: cwd={working_dir} args={:?}", args);
     let output = hidden_command("git")
         .args(args)
         .current_dir(working_dir)
         .output()
-        .map_err(|e| format!("Failed to run git: {e}"))?;
+        .map_err(|e| {
+            log::error!("git spawn failed: cwd={working_dir} args={:?} err={e}", args);
+            format!("Failed to run git: {e}")
+        })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let code = output.status.code().unwrap_or(-1);
+    log::info!(
+        "git done: cwd={working_dir} args={:?} exit={code} stdout={:?} stderr={:?}",
+        args,
+        stdout.trim(),
+        stderr.trim()
+    );
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!(
             "git {} failed (exit {}): {}",
             args.join(" "),
-            output.status.code().unwrap_or(-1),
+            code,
             stderr.trim()
         ));
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    Ok(stdout.trim().to_string())
 }
 
 #[derive(Serialize)]
@@ -152,25 +165,66 @@ pub async fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
     .map_err(|e| format!("Task join error: {e}"))?
 }
 
+fn run_git_verbose(working_dir: &str, args: &[&str]) -> Result<String, String> {
+    log::info!("git run: cwd={working_dir} args={:?}", args);
+    let output = hidden_command("git")
+        .args(args)
+        .current_dir(working_dir)
+        .output()
+        .map_err(|e| {
+            log::error!("git spawn failed: cwd={working_dir} args={:?} err={e}", args);
+            format!("Failed to run git: {e}")
+        })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let code = output.status.code().unwrap_or(-1);
+    log::info!(
+        "git done: cwd={working_dir} args={:?} exit={code} stdout={:?} stderr={:?}",
+        args,
+        stdout.trim(),
+        stderr.trim()
+    );
+
+    // git fetch/checkout write user-facing progress to stderr; combine both for display.
+    let mut combined = String::new();
+    if !stdout.trim().is_empty() {
+        combined.push_str(stdout.trim_end());
+    }
+    if !stderr.trim().is_empty() {
+        if !combined.is_empty() {
+            combined.push('\n');
+        }
+        combined.push_str(stderr.trim_end());
+    }
+
+    if !output.status.success() {
+        return Err(format!(
+            "git {} failed (exit {}): {}",
+            args.join(" "),
+            code,
+            stderr.trim()
+        ));
+    }
+
+    Ok(combined)
+}
+
 #[tauri::command]
-pub async fn git_fetch(repo_path: String, remote: Option<String>) -> Result<(), String> {
+pub async fn git_fetch(repo_path: String, remote: Option<String>) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
         let remote = remote.unwrap_or_else(|| "origin".to_string());
-        run_git(&repo_path, &["fetch", &remote])?;
-        Ok(())
+        run_git_verbose(&repo_path, &["fetch", &remote])
     })
     .await
     .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub async fn git_checkout(repo_path: String, branch: String) -> Result<(), String> {
-    tokio::task::spawn_blocking(move || {
-        run_git(&repo_path, &["checkout", &branch])?;
-        Ok(())
-    })
-    .await
-    .map_err(|e| format!("Task join error: {e}"))?
+pub async fn git_checkout(repo_path: String, branch: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || run_git_verbose(&repo_path, &["checkout", &branch]))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]

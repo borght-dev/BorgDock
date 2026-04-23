@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::hidden_command;
+use super::{hidden_command, run_git_step, GitStep};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -251,6 +251,129 @@ pub async fn create_worktree(
     .map_err(|e| format!("Task join error: {e}"))?
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckoutPrResult {
+    pub worktree_path: String,
+    pub steps: Vec<GitStep>,
+}
+
+/// Check out a PR's branch into a worktree — either by creating a new worktree
+/// (when `existing_worktree_path` is None) or by switching an existing worktree
+/// to the branch. Never touches the main worktree implicitly — the caller
+/// must point `existing_worktree_path` at a non-main worktree to operate on one.
+///
+/// Returns the worktree path and an ordered list of every git command that ran,
+/// so the UI can render the full transcript.
+#[tauri::command]
+pub async fn checkout_pr(
+    base_repo_path: String,
+    branch_name: String,
+    existing_worktree_path: Option<String>,
+    new_worktree_subfolder: Option<String>,
+    new_worktree_name: Option<String>,
+) -> Result<CheckoutPrResult, String> {
+    tokio::task::spawn_blocking(move || {
+        if base_repo_path.is_empty() {
+            return Err("Repo base path is not configured. Set it in Settings.".to_string());
+        }
+
+        let mut steps: Vec<GitStep> = Vec::new();
+
+        // 1) Fetch the branch from origin in the main repo.
+        let fetch = run_git_step(&base_repo_path, &["fetch", "origin", &branch_name]);
+        let fetch_ok = fetch.ok;
+        steps.push(fetch);
+        if !fetch_ok {
+            return Err(format_step_failure(&steps));
+        }
+
+        let origin_ref = format!("origin/{branch_name}");
+
+        if let Some(worktree_path) = existing_worktree_path {
+            // 2a) Switch the existing worktree onto the PR branch, tracking origin.
+            let checkout = run_git_step(
+                &worktree_path,
+                &["checkout", "-B", &branch_name, &origin_ref],
+            );
+            let checkout_ok = checkout.ok;
+            steps.push(checkout);
+            if !checkout_ok {
+                return Err(format_step_failure(&steps));
+            }
+            Ok(CheckoutPrResult {
+                worktree_path,
+                steps,
+            })
+        } else {
+            // 2b) Create a new worktree.
+            let subfolder = new_worktree_subfolder.unwrap_or_else(|| ".worktrees".to_string());
+            let name = new_worktree_name
+                .filter(|n| !n.trim().is_empty())
+                .unwrap_or_else(|| sanitize_branch_name(&branch_name));
+            let name = sanitize_branch_name(&name);
+
+            let worktree_dir = std::path::Path::new(&base_repo_path).join(&subfolder);
+            std::fs::create_dir_all(&worktree_dir).map_err(|e| {
+                format!("Failed to create worktree parent directory: {e}")
+            })?;
+            let worktree_path = worktree_dir.join(&name);
+            let worktree_path_str = worktree_path.to_string_lossy().to_string();
+
+            if worktree_path.exists() {
+                // Directory is already there — try to reuse it by checking out the branch.
+                let checkout = run_git_step(
+                    &worktree_path_str,
+                    &["checkout", "-B", &branch_name, &origin_ref],
+                );
+                let checkout_ok = checkout.ok;
+                steps.push(checkout);
+                if !checkout_ok {
+                    return Err(format_step_failure(&steps));
+                }
+            } else {
+                let add = run_git_step(
+                    &base_repo_path,
+                    &[
+                        "worktree",
+                        "add",
+                        "-B",
+                        &branch_name,
+                        &worktree_path_str,
+                        &origin_ref,
+                    ],
+                );
+                let add_ok = add.ok;
+                steps.push(add);
+                if !add_ok {
+                    return Err(format_step_failure(&steps));
+                }
+            }
+
+            Ok(CheckoutPrResult {
+                worktree_path: worktree_path_str,
+                steps,
+            })
+        }
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn format_step_failure(steps: &[GitStep]) -> String {
+    match steps.last() {
+        Some(last) => {
+            let detail = if last.output.is_empty() {
+                format!("exit {}", last.exit_code)
+            } else {
+                last.output.clone()
+            };
+            format!("{} failed: {}", last.cmd, detail)
+        }
+        None => "checkout failed".to_string(),
+    }
+}
+
 #[tauri::command]
 pub async fn remove_worktree(base_path: String, worktree_path: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
@@ -316,6 +439,258 @@ pub async fn open_in_editor(path: String) -> Result<(), String> {
     })
     .await
     .map_err(|e| format!("Task join error: {e}"))?
+}
+
+#[tauri::command]
+pub async fn reveal_in_file_manager(path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        #[cfg(target_os = "windows")]
+        {
+            hidden_command("explorer.exe")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to open explorer: {e}"))?;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to open finder: {e}"))?;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            hidden_command("xdg-open")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to open file manager: {e}"))?;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
+#[tauri::command]
+pub async fn launch_claude_in_terminal(
+    path: String,
+    profile_override: Option<String>,
+) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        #[cfg(target_os = "windows")]
+        {
+            // Match how "Open in Terminal" feels: the new tab must inherit the
+            // user's default Windows Terminal profile (colors, font, background,
+            // etc.). wt.exe can't do that if we just pass `-- pwsh` because
+            // unqualified `pwsh` won't match the profile's full-path commandline,
+            // so wt falls back to a generic ad-hoc profile. Using `-p "<name>"`
+            // forces the visuals regardless of the commandline override.
+            let ps_command = "claude --dangerously-skip-permissions";
+            let default_profile = profile_override
+                .as_ref()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .or_else(find_wt_default_profile_name);
+
+            // -w new forces a brand-new wt window (not a tab in an existing one).
+            // -NoLogo -NoProfile skips the banner and the user's $PROFILE.ps1 (oh-my-posh,
+            // git prompts, etc.) which can otherwise take 2-5s to run before claude starts.
+            // The tab exists solely to host claude, so loading an interactive profile is waste.
+            let mut launches: Vec<Vec<String>> = Vec::new();
+            if let Some(name) = default_profile.as_deref() {
+                launches.push(vec![
+                    "-w".into(), "new".into(),
+                    "new-tab".into(),
+                    "-p".into(), name.to_string(),
+                    "--title".into(), "Claude".into(),
+                    "-d".into(), path.clone(),
+                    "pwsh".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+                ]);
+                launches.push(vec![
+                    "-w".into(), "new".into(),
+                    "new-tab".into(),
+                    "-p".into(), name.to_string(),
+                    "--title".into(), "Claude".into(),
+                    "-d".into(), path.clone(),
+                    "powershell".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+                ]);
+            }
+            launches.push(vec![
+                "-w".into(), "new".into(),
+                "new-tab".into(),
+                "--title".into(), "Claude".into(),
+                "-d".into(), path.clone(),
+                "pwsh".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+            ]);
+            launches.push(vec![
+                "-w".into(), "new".into(),
+                "new-tab".into(),
+                "--title".into(), "Claude".into(),
+                "-d".into(), path.clone(),
+                "powershell".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+            ]);
+
+            let mut last_err: Option<std::io::Error> = None;
+            let mut launched = false;
+            for args in &launches {
+                match hidden_command("wt.exe").args(args).spawn() {
+                    Ok(_) => {
+                        launched = true;
+                        break;
+                    }
+                    Err(e) => last_err = Some(e),
+                }
+            }
+
+            if !launched {
+                // Last resort: cmd window that cd's in and runs claude.
+                hidden_command("cmd")
+                    .args([
+                        "/c", "start", "cmd", "/k",
+                        &format!("cd /d \"{path}\" && claude --dangerously-skip-permissions"),
+                    ])
+                    .spawn()
+                    .map_err(|e| {
+                        let prior = last_err
+                            .map(|le| format!(" (wt.exe: {le})"))
+                            .unwrap_or_default();
+                        format!("Failed to launch claude: {e}{prior}")
+                    })?;
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            // macOS/Linux: rely on a login shell so PATH resolves `claude`.
+            std::process::Command::new("sh")
+                .args(["-c", "claude --dangerously-skip-permissions"])
+                .current_dir(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch claude: {e}"))?;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
+#[cfg(target_os = "windows")]
+fn find_wt_default_profile_name() -> Option<String> {
+    use std::sync::OnceLock;
+    // Cache for the process lifetime. Users rarely change their default wt
+    // profile mid-session, and if they do, restarting BorgDock refreshes it.
+    static CACHED: OnceLock<Option<String>> = OnceLock::new();
+    CACHED
+        .get_or_init(|| {
+            let result = compute_wt_default_profile_name();
+            match &result {
+                Some(name) => log::info!("wt default profile (cached for session): {name}"),
+                None => log::info!("wt default profile not found; using fallback launch"),
+            }
+            result
+        })
+        .clone()
+}
+
+#[cfg(target_os = "windows")]
+fn compute_wt_default_profile_name() -> Option<String> {
+    use std::env;
+    use std::path::PathBuf;
+
+    let local_app_data = env::var_os("LOCALAPPDATA")?;
+    let lad = PathBuf::from(&local_app_data);
+    let candidates = [
+        lad.join("Packages")
+            .join("Microsoft.WindowsTerminal_8wekyb3d8bbwe")
+            .join("LocalState")
+            .join("settings.json"),
+        lad.join("Packages")
+            .join("Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe")
+            .join("LocalState")
+            .join("settings.json"),
+        lad.join("Microsoft").join("Windows Terminal").join("settings.json"),
+    ];
+
+    for path in candidates {
+        let Ok(raw) = std::fs::read_to_string(&path) else { continue };
+        let stripped = strip_jsonc_comments(&raw);
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&stripped) else {
+            log::debug!("wt settings.json at {path:?} failed to parse even after comment strip");
+            continue;
+        };
+        let Some(default_guid) = v.get("defaultProfile").and_then(|x| x.as_str()) else {
+            continue;
+        };
+        let list = v
+            .get("profiles")
+            .and_then(|p| p.get("list").or(Some(p)))
+            .and_then(|x| x.as_array());
+        let Some(list) = list else { continue };
+
+        for profile in list {
+            let guid = profile.get("guid").and_then(|x| x.as_str()).unwrap_or("");
+            if guid.eq_ignore_ascii_case(default_guid) {
+                if let Some(name) = profile.get("name").and_then(|x| x.as_str()) {
+                    return Some(name.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Strip `//` line comments and `/* */` block comments, respecting string boundaries.
+/// Windows Terminal's settings.json is JSONC; stock serde_json chokes on comments.
+#[cfg(target_os = "windows")]
+fn strip_jsonc_comments(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    let mut in_string = false;
+    let mut escape = false;
+
+    while i < bytes.len() {
+        let c = bytes[i];
+        if in_string {
+            out.push(c as char);
+            if escape {
+                escape = false;
+            } else if c == b'\\' {
+                escape = true;
+            } else if c == b'"' {
+                in_string = false;
+            }
+            i += 1;
+            continue;
+        }
+        if c == b'"' {
+            in_string = true;
+            out.push('"');
+            i += 1;
+            continue;
+        }
+        if c == b'/' && i + 1 < bytes.len() {
+            if bytes[i + 1] == b'/' {
+                // line comment — skip to newline
+                i += 2;
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+                continue;
+            }
+            if bytes[i + 1] == b'*' {
+                // block comment — skip to */
+                i += 2;
+                while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                    i += 1;
+                }
+                i = (i + 2).min(bytes.len());
+                continue;
+            }
+        }
+        out.push(c as char);
+        i += 1;
+    }
+    out
 }
 
 fn sanitize_branch_name(name: &str) -> String {

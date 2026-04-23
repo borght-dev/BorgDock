@@ -116,6 +116,10 @@ pub struct UiSettings {
     pub file_palette_favorites_only: bool,
     #[serde(default)]
     pub file_palette_roots_collapsed: bool,
+    /// Override for the Windows Terminal profile used when launching "Claude"
+    /// or similar wt-based shells. Empty/None = auto-detect from wt settings.json.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub windows_terminal_profile: Option<String>,
 }
 
 fn default_sidebar_edge() -> String {
@@ -166,6 +170,7 @@ impl Default for UiSettings {
             worktree_palette_favorites_only: false,
             file_palette_favorites_only: false,
             file_palette_roots_collapsed: false,
+            windows_terminal_profile: None,
         }
     }
 }

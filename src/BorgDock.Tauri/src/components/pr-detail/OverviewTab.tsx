@@ -22,6 +22,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
+import { CheckoutFlow } from './CheckoutFlow';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
@@ -101,6 +102,7 @@ async function handleCopyBranch(branch: string) {
 export function OverviewTab({ pr }: OverviewTabProps) {
   const p = pr.pullRequest;
   const [actionStatus, setActionStatus] = useState('');
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [reviewBody, setReviewBody] = useState('');
   const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>(
@@ -112,6 +114,18 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   const { resolveConflicts } = useClaudeActions();
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
+  const repoConfig = useSettingsStore((s) =>
+    s.settings.repos.find((r) => r.owner === p.repoOwner && r.name === p.repoName),
+  );
+  const repoPath = repoConfig?.worktreeBasePath ?? '';
+  const worktreeSubfolder = repoConfig?.worktreeSubfolder ?? '.worktrees';
+  const favoritePaths = repoConfig?.favoriteWorktreePaths;
+  const favoritesOnlyDefault = useSettingsStore(
+    (s) => s.settings.ui.worktreePaletteFavoritesOnly ?? false,
+  );
+  const windowsTerminalProfile = useSettingsStore(
+    (s) => s.settings.ui.windowsTerminalProfile,
+  );
   const sKey = summaryKey(p.repoOwner, p.repoName, p.number);
   const cachedSummary = useSummaryStore((s) => s.getSummary(sKey, p.updatedAt));
   const summaryLoading = useSummaryStore((s) => s.isLoading(sKey));
@@ -151,18 +165,9 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     setTimeout(() => setActionStatus(''), 5000);
   }, [pr, resolveConflicts]);
 
-  const handleCheckout = useCallback(async () => {
-    setActionStatus('Checking out...');
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('git_fetch', { repoPath: '.', remote: 'origin' });
-      await invoke('git_checkout', { repoPath: '.', branch: p.headRef });
-      setActionStatus('Checked out!');
-    } catch (err) {
-      setActionStatus(`Checkout failed: ${err}`);
-    }
-    setTimeout(() => setActionStatus(''), 3000);
-  }, [p.headRef]);
+  const handleCheckout = useCallback(() => {
+    setCheckoutOpen((open) => !open);
+  }, []);
 
   const handleMerge = useCallback(async () => {
     const client = getClient();
@@ -460,7 +465,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         </button>
         <button
           onClick={handleCheckout}
-          className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] transition-colors"
+          aria-expanded={checkoutOpen}
+          className={
+            checkoutOpen
+              ? 'rounded-md border border-[#7a8dff40] bg-[var(--color-accent-soft,rgba(122,141,255,0.1))] px-3 py-1.5 text-xs font-semibold text-[var(--color-accent)]'
+              : 'rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] transition-colors'
+          }
         >
           Checkout
         </button>
@@ -502,6 +512,19 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           )}
           {actionStatus}
         </div>
+      )}
+
+      {/* Checkout flow */}
+      {checkoutOpen && (
+        <CheckoutFlow
+          branchName={p.headRef}
+          repoBasePath={repoPath}
+          worktreeSubfolder={worktreeSubfolder}
+          favoritePaths={favoritePaths}
+          favoritesOnlyDefault={favoritesOnlyDefault}
+          windowsTerminalProfile={windowsTerminalProfile}
+          onDismiss={() => setCheckoutOpen(false)}
+        />
       )}
 
       {/* Merge celebration */}

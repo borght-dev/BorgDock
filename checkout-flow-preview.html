@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BorgDock — Checkout flow design preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* -----------------------------------------------------------------------
+     BorgDock-like tokens. These are a close approximation of the app's
+     CSS variables for preview purposes. The final React component uses the
+     live tokens (--color-accent, --color-subtle-border, etc.).
+     ----------------------------------------------------------------------- */
+  :root {
+    color-scheme: dark;
+
+    --color-background: #0e0f12;
+    --color-surface: #14161b;
+    --color-surface-raised: #181b22;
+    --color-surface-inset: #0b0c10;
+    --color-subtle-border: #262a33;
+    --color-separator: #1e212a;
+    --color-text-primary: #e6e8ee;
+    --color-text-secondary: #aeb3bf;
+    --color-text-muted: #727684;
+    --color-text-ghost: #4b4f5a;
+    --color-accent: #7a8dff;
+    --color-accent-foreground: #0b0c10;
+    --color-accent-soft: #7a8dff18;
+    --color-icon-btn-fg: #aeb3bf;
+    --color-icon-btn-hover: #222632;
+    --color-status-green: #5fd39b;
+    --color-status-amber: #f1c06a;
+    --color-status-red: #f17a7a;
+    --color-danger-soft: #f17a7a14;
+
+    --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #1a1f2e 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, #1c1422 0%, transparent 55%),
+      var(--color-background);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ---------- Left rail: state navigator ---------- */
+  .rail {
+    border-right: 1px solid var(--color-subtle-border);
+    padding: 28px 22px;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow: auto;
+  }
+  .rail h1 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .rail .sub {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin-bottom: 28px;
+  }
+  .rail .group-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-ghost);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin: 18px 0 6px;
+  }
+  .rail button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 1px solid transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  }
+  .rail button:hover {
+    color: var(--color-text-primary);
+    background: var(--color-icon-btn-hover);
+  }
+  .rail button.active {
+    color: var(--color-text-primary);
+    background: var(--color-accent-soft);
+    border-color: #7a8dff30;
+  }
+  .rail .step-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-ghost);
+    margin-right: 8px;
+  }
+  .rail .kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-muted);
+    float: right;
+    padding: 1px 5px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 3px;
+  }
+
+  /* ---------- Stage: the fake panel surface ---------- */
+  .stage {
+    padding: 56px 64px 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 22px;
+  }
+  .stage-caption {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.3px;
+  }
+  .stage-caption span {
+    color: var(--color-text-secondary);
+  }
+
+  /* The window frame that emulates the narrow PR detail panel */
+  .panel {
+    width: 440px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 10px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.02) inset,
+      0 30px 60px rgba(0,0,0,0.45);
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-separator);
+  }
+  .panel-header .title {
+    font-size: 13px;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .panel-header .pr-num {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+  }
+  .panel-body {
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ---------- Action row (the six buttons across the top) ---------- */
+  .action-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .btn {
+    appearance: none;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .btn:hover {
+    background: var(--color-icon-btn-hover);
+    border-color: #2f3542;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn--primary {
+    background: var(--color-accent-soft);
+    border-color: #7a8dff40;
+    color: var(--color-accent);
+  }
+  .btn--primary:hover {
+    background: #7a8dff25;
+    border-color: #7a8dff55;
+  }
+  .btn--danger {
+    color: var(--color-status-red);
+    border-color: #f17a7a40;
+    border-style: dashed;
+  }
+  .btn--danger:hover { background: var(--color-danger-soft); }
+  .btn--ghost {
+    background: transparent;
+  }
+  .btn--ghost:hover { background: var(--color-icon-btn-hover); }
+
+  /* ---------- The staging drawer ---------- */
+  .drawer {
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-raised);
+    overflow: hidden;
+  }
+  .drawer-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px dashed var(--color-subtle-border);
+  }
+  .drawer-header .target {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+  }
+  .drawer-header .target strong {
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+  .drawer-header .branch {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-primary);
+    background: var(--color-surface-inset);
+    border: 1px solid var(--color-separator);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .drawer-header .close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--color-text-ghost);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .drawer-header .close:hover { color: var(--color-text-primary); }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-muted);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 12px 14px 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-separator);
+  }
+
+  /* ---------- Worktree rows ---------- */
+  .wt-list {
+    padding: 2px 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .wt-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 10px 10px 8px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .wt-row:hover { background: var(--color-icon-btn-hover); }
+  .wt-row.selected { background: var(--color-accent-soft); }
+  .wt-row.selected::before {
+    content: "";
+    position: absolute;
+    left: -6px; top: 8px; bottom: 8px;
+    width: 2px;
+    background: var(--color-accent);
+    border-radius: 2px;
+  }
+  .wt-row .marker {
+    font-family: var(--font-mono);
+    color: var(--color-text-ghost);
+    font-size: 12px;
+    transition: color 120ms ease;
+  }
+  .wt-row.selected .marker { color: var(--color-accent); }
+  .wt-row .path {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-primary);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .wt-row .meta {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .wt-row .meta .mono {
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+  }
+  .wt-row .meta .sep { color: var(--color-text-ghost); }
+  .dot {
+    display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    vertical-align: middle;
+  }
+  .dot--clean { background: var(--color-status-green); }
+  .dot--dirty { background: var(--color-status-amber); }
+  .dot--conflict { background: var(--color-status-red); }
+  .tally {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--color-text-muted);
+  }
+  .wt-row .side {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-ghost);
+    padding: 2px 6px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .wt-row .side--danger {
+    color: var(--color-status-red);
+    border-color: #f17a7a40;
+    border-style: dashed;
+  }
+
+  .empty-wt {
+    padding: 14px;
+    margin: 0 6px 10px;
+    border: 1px dashed var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  .toggle-advanced {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--color-text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 14px 10px;
+    text-align: left;
+  }
+  .toggle-advanced:hover { color: var(--color-text-secondary); }
+
+  .drawer-footer {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+    padding: 10px 12px 12px;
+    border-top: 1px solid var(--color-separator);
+  }
+
+  /* ---------- Create new worktree form ---------- */
+  .form {
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+  }
+  .field { display: grid; gap: 5px; }
+  .field label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+  .field input {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-primary);
+    background: var(--color-surface-inset);
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 120ms ease;
+  }
+  .field input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px #7a8dff22;
+  }
+  .field .hint {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--color-text-ghost);
+  }
+  .field .preview {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    padding: 6px 8px;
+    background: var(--color-surface-inset);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-separator);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* ---------- Terminal log ---------- */
+  .log {
+    margin: 0 6px 10px;
+    background: var(--color-surface-inset);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--color-text-primary);
+    padding: 10px 12px;
+    max-height: 220px;
+    overflow: auto;
+    position: relative;
+  }
+  .log .cwd { color: var(--color-text-ghost); }
+  .log .cmd { color: var(--color-accent); }
+  .log .cmd::before { content: "$ "; color: var(--color-text-ghost); }
+  .log .out { color: var(--color-text-secondary); padding-left: 10px; display: block; }
+  .log .ok { color: var(--color-status-green); }
+  .log .ok::before { content: "✓ "; }
+  .log .err { color: var(--color-status-red); }
+  .log .err::before { content: "✗ "; }
+  .log .caret {
+    display: inline-block;
+    width: 6px; height: 12px;
+    background: var(--color-accent);
+    margin-left: 4px;
+    animation: blink 1.1s steps(2, start) infinite;
+    vertical-align: -2px;
+  }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* ---------- Running / status strip ---------- */
+  .status-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-separator);
+    background:
+      linear-gradient(90deg, #7a8dff11 0%, transparent 40%);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .status-strip.running .spinner {
+    width: 11px; height: 11px;
+    border: 1.5px solid var(--color-text-ghost);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  .status-strip.success {
+    background: linear-gradient(90deg, #5fd39b11 0%, transparent 40%);
+  }
+  .status-strip.success .checkmark {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #5fd39b22;
+    color: var(--color-status-green);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+  .status-strip.error {
+    background: linear-gradient(90deg, #f17a7a11 0%, transparent 40%);
+  }
+  .status-strip.error .cross {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #f17a7a22;
+    color: var(--color-status-red);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .status-strip .detail {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin-left: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Success actions row ---------- */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 10px 12px 14px;
+  }
+  .actions .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .actions .icon {
+    width: 16px; height: 16px;
+    color: var(--color-text-secondary);
+  }
+  .actions .btn:hover .icon { color: var(--color-accent); }
+
+  /* ---------- Error details ---------- */
+  .error-box {
+    margin: 0 6px 10px;
+    border: 1px dashed #f17a7a55;
+    background: #f17a7a0a;
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-status-red);
+    line-height: 1.5;
+  }
+  .error-box .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 4px;
+  }
+  .error-box .msg { color: var(--color-text-primary); }
+
+  /* ---------- Notes beside the panel ---------- */
+  .notes {
+    width: 440px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    line-height: 1.65;
+    border-left: 2px solid var(--color-accent);
+    padding-left: 14px;
+  }
+  .notes b { color: var(--color-text-primary); font-weight: 500; }
+  .notes code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    background: var(--color-surface-inset);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .notes ul { padding-left: 18px; margin: 8px 0; }
+  .notes li { margin: 4px 0; }
+
+  /* State visibility */
+  .state { display: none; }
+  .state.active { display: block; }
+
+  /* Fade-in for whole stage swap */
+  .state.active .panel,
+  .state.active .notes {
+    animation: fadeUp 220ms ease both;
+  }
+  .state.active .notes { animation-delay: 60ms; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <aside class="rail">
+    <h1>Checkout flow</h1>
+    <div class="sub">Design preview for the worktree-aware PR checkout panel.</div>
+
+    <div class="group-label">States</div>
+    <button data-state="idle" class="active"><span class="step-num">01</span>Idle (collapsed) <span class="kbd">↵</span></button>
+    <button data-state="picking"><span class="step-num">02</span>Picker — has worktrees</button>
+    <button data-state="picking-empty"><span class="step-num">03</span>Picker — no worktrees</button>
+    <button data-state="picking-advanced"><span class="step-num">04</span>Main worktree revealed</button>
+    <button data-state="creating"><span class="step-num">05</span>Create new worktree</button>
+    <button data-state="running"><span class="step-num">06</span>Running</button>
+    <button data-state="success"><span class="step-num">07</span>Success + actions</button>
+    <button data-state="error"><span class="step-num">08</span>Error</button>
+  </aside>
+
+  <main class="stage" id="stage">
+    <!-- 01 Idle -->
+    <div class="state active" data-state="idle">
+      <div class="stage-caption">01 · <span>Idle</span> — the six action buttons in the PR detail panel</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn btn--primary">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <b>Checkout</b> is a primary action (accent-tinted), signaling it's a directed, structural step. Clicking it expands an inline drawer below the action row — the page's focus moves to the drawer without navigating away.
+      </div>
+    </div>
+
+    <!-- 02 Picker -->
+    <div class="state" data-state="picking">
+      <div class="stage-caption">02 · <span>Picker</span> — choose a worktree or create a new one</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="drawer-header">
+              <div class="target">
+                <span>Checkout</span>
+                <span class="branch">fix/security-2026-04-23</span>
+                <span>into…</span>
+              </div>
+              <button class="close" aria-label="Dismiss">✕</button>
+            </div>
+
+            <div class="section-label">Existing worktrees</div>
+            <div class="wt-list">
+              <div class="wt-row selected">
+                <div class="marker">◆</div>
+                <div>
+                  <div class="path">.worktrees/fix-perf</div>
+                  <div class="meta">
+                    <span class="dot dot--clean"></span>
+                    <span class="mono">fix/perf</span>
+                    <span class="sep">·</span>
+                    <span class="tally">↑2</span>
+                    <span class="sep">·</span>
+                    <span>clean</span>
+                  </div>
+                </div>
+                <div class="side">selected</div>
+              </div>
+
+              <div class="wt-row">
+                <div class="marker">◇</div>
+                <div>
+                  <div class="path">.worktrees/feat-workspace-designer</div>
+                  <div class="meta">
+                    <span class="dot dot--dirty"></span>
+                    <span class="mono">feat/workspace-designer</span>
+                    <span class="sep">·</span>
+                    <span class="tally">3 uncommitted</span>
+                    <span class="sep">·</span>
+                    <span class="tally">↑1 ↓4</span>
+                  </div>
+                </div>
+                <div class="side">switch</div>
+              </div>
+
+              <div class="wt-row">
+                <div class="marker">◇</div>
+                <div>
+                  <div class="path">.worktrees/savedsearch-widget</div>
+                  <div class="meta">
+                    <span class="dot dot--clean"></span>
+                    <span class="mono">fix/savedsearch-widget-overwrite</span>
+                    <span class="sep">·</span>
+                    <span>clean</span>
+                  </div>
+                </div>
+                <div class="side">switch</div>
+              </div>
+            </div>
+
+            <div class="section-label">Or create a new one</div>
+            <div style="padding: 0 12px 10px;">
+              <button class="btn" style="width:100%; font-weight:500;">
+                + New worktree at <span style="font-family:var(--font-mono); color:var(--color-text-secondary);">.worktrees/fix-security-2026-04-23</span>
+              </button>
+            </div>
+
+            <button class="toggle-advanced">▸ show main worktree (unsafe)</button>
+
+            <div class="drawer-footer">
+              <button class="btn btn--ghost">Cancel</button>
+              <button class="btn btn--primary" style="font-weight:600;">Check out here →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <b>One row per worktree</b>, 2-line layout: mono path on top, meta line below with a muted status dot, the branch it currently holds, and ahead/behind/dirty tally.
+        <ul>
+          <li><b>Selected</b> row shows a left accent bar and filled <code>◆</code> marker.</li>
+          <li><b>"New worktree"</b> is a single CTA button below the list, pre-filled with a sanitized default derived from the PR's branch name.</li>
+          <li><b>Main worktree is hidden</b> behind a toggle. Clicking checkout into main overwrites the user's current branch — too dangerous to be a default-visible choice.</li>
+          <li>Single primary "Check out here →" button lives in the footer; Cancel to its left.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 03 Picker — no worktrees -->
+    <div class="state" data-state="picking-empty">
+      <div class="stage-caption">03 · <span>Picker (empty state)</span> — no worktrees yet, guide to create</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="drawer-header">
+              <div class="target">
+                <span>Checkout</span>
+                <span class="branch">fix/security-2026-04-23</span>
+                <span>into…</span>
+              </div>
+              <button class="close" aria-label="Dismiss">✕</button>
+            </div>
+
+            <div class="section-label">Existing worktrees</div>
+            <div class="empty-wt">
+              No worktrees yet in <code style="font-family:var(--font-mono); color:var(--color-text-secondary);">D:\FSP-Horizon</code>. Create one to safely check out this branch without touching your current working tree.
+            </div>
+
+            <div class="section-label">New worktree</div>
+            <div class="form" style="padding-top:4px;">
+              <div class="field">
+                <label>Name</label>
+                <input value="fix-security-2026-04-23" />
+                <div class="hint">Will be sanitized for your filesystem</div>
+              </div>
+              <div class="field">
+                <label>Full path</label>
+                <div class="preview">D:\FSP-Horizon\.worktrees\fix-security-2026-04-23</div>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn btn--ghost">Cancel</button>
+              <button class="btn btn--primary" style="font-weight:600;">Create &amp; check out →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        When no worktrees exist, the create-new form is promoted to the primary flow. This nudges users to the safe path without a scary warning or a disabled button.
+      </div>
+    </div>
+
+    <!-- 04 Picker — main revealed -->
+    <div class="state" data-state="picking-advanced">
+      <div class="stage-caption">04 · <span>Main worktree revealed</span> — advanced, warning-styled</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="drawer-header">
+              <div class="target">
+                <span>Checkout</span>
+                <span class="branch">fix/security-2026-04-23</span>
+                <span>into…</span>
+              </div>
+              <button class="close" aria-label="Dismiss">✕</button>
+            </div>
+
+            <div class="section-label">Existing worktrees</div>
+            <div class="wt-list">
+              <div class="wt-row">
+                <div class="marker">◇</div>
+                <div>
+                  <div class="path">.worktrees/fix-perf</div>
+                  <div class="meta">
+                    <span class="dot dot--clean"></span>
+                    <span class="mono">fix/perf</span>
+                    <span class="sep">·</span>
+                    <span>clean</span>
+                  </div>
+                </div>
+                <div class="side">switch</div>
+              </div>
+
+              <div class="wt-row" style="border: 1px dashed #f17a7a40; background: var(--color-danger-soft);">
+                <div class="marker" style="color: var(--color-status-red);">◇</div>
+                <div>
+                  <div class="path" style="color: var(--color-status-red);">D:\FSP-Horizon <span style="color: var(--color-text-ghost); font-weight: 400;">(main)</span></div>
+                  <div class="meta">
+                    <span class="dot dot--dirty"></span>
+                    <span class="mono">master</span>
+                    <span class="sep">·</span>
+                    <span class="tally">7 uncommitted</span>
+                    <span class="sep">·</span>
+                    <span style="color: var(--color-status-red);">overwrites your current branch</span>
+                  </div>
+                </div>
+                <div class="side side--danger">unsafe</div>
+              </div>
+            </div>
+
+            <div style="padding: 0 12px 10px;">
+              <button class="btn" style="width:100%; font-weight:500;">
+                + New worktree at <span style="font-family:var(--font-mono); color:var(--color-text-secondary);">.worktrees/fix-security-2026-04-23</span>
+              </button>
+            </div>
+
+            <button class="toggle-advanced" style="color: var(--color-text-secondary);">▾ hide main worktree</button>
+
+            <div class="drawer-footer">
+              <button class="btn btn--ghost">Cancel</button>
+              <button class="btn btn--primary" style="font-weight:600;">Check out here →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        When the user clicks "show main worktree (unsafe)", the main repo row appears with a <b>dashed red border</b>, a red "unsafe" badge on the right, and plain-English micro-copy explaining what it will do. Still selectable — just clearly marked.
+      </div>
+    </div>
+
+    <!-- 05 Creating form -->
+    <div class="state" data-state="creating">
+      <div class="stage-caption">05 · <span>Create</span> — editable name + live path preview</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="drawer-header">
+              <div class="target">
+                <span>New worktree for</span>
+                <span class="branch">fix/security-2026-04-23</span>
+              </div>
+              <button class="close" aria-label="Dismiss">✕</button>
+            </div>
+
+            <div class="form">
+              <div class="field">
+                <label>Name</label>
+                <input value="fix-security-2026-04-23" autofocus />
+                <div class="hint">Forward slashes in the branch name are replaced with dashes.</div>
+              </div>
+              <div class="field">
+                <label>Full path</label>
+                <div class="preview">D:\FSP-Horizon\.worktrees\fix-security-2026-04-23</div>
+                <div class="hint">Subfolder: <code style="font-family:var(--font-mono); color:var(--color-text-secondary);">.worktrees</code>. Configure in Settings.</div>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn btn--ghost">← Back</button>
+              <button class="btn btn--primary" style="font-weight:600;">Create &amp; check out →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        The name auto-populates from a sanitized branch name. The full path preview updates live so the user knows exactly where the worktree will land. Subfolder is configured globally in settings — no need to re-ask each time.
+      </div>
+    </div>
+
+    <!-- 06 Running -->
+    <div class="state" data-state="running">
+      <div class="stage-caption">06 · <span>Running</span> — the staging ceremony made visible</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="status-strip running">
+              <span class="spinner"></span>
+              <span>Staging <strong style="color:var(--color-text-primary); font-weight:500; font-family: var(--font-mono); font-size: 11.5px;">fix/security-2026-04-23</strong></span>
+              <span class="detail">.worktrees/fix-security-2026-04-23</span>
+            </div>
+
+            <div class="log">
+              <span class="cwd">cwd: D:\FSP-Horizon</span><br/>
+              <br/>
+              <span class="cmd">git fetch origin</span><br/>
+              <span class="out">From https://github.com/Gomocha-FSP/fsp-horizon</span>
+              <span class="out">&nbsp;&nbsp;* [new branch]&nbsp;&nbsp;fix/security-2026-04-23&nbsp;→&nbsp;origin/fix/security-2026-04-23</span>
+              <br/>
+              <span class="cmd">git worktree add -B fix/security-2026-04-23 .worktrees/fix-security-2026-04-23 origin/fix/security-2026-04-23</span><br/>
+              <span class="out">Preparing worktree (resetting branch 'fix/security-2026-04-23'; was at a4f8e21)</span>
+              <span class="out">HEAD is now at 7c3b9d4 Patch CVE-2026-2310 in authService<span class="caret"></span></span>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn btn--ghost" disabled style="opacity:0.4;">Cancel</button>
+              <button class="btn" disabled style="opacity:0.4;">running…</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        A <b>status strip</b> at the top of the drawer summarizes what's happening in one line: spinner · <code>Staging <i>branch</i></code> · target path.
+        <ul>
+          <li>Below it, a <b>terminal log</b> streams the actual git commands and their output — no more guessing what the app is doing.</li>
+          <li>Accent-colored <code>$</code> prefix, muted output lines, blinking caret on the last line while running.</li>
+          <li>The footer buttons are disabled until the run finishes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 07 Success -->
+    <div class="state" data-state="success">
+      <div class="stage-caption">07 · <span>Success</span> — stay on screen, offer next actions</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="status-strip success">
+              <span class="checkmark">✓</span>
+              <span>Checked out <strong style="color:var(--color-text-primary); font-weight:500; font-family: var(--font-mono); font-size: 11.5px;">fix/security-2026-04-23</strong></span>
+              <span class="detail">.worktrees/fix-security-2026-04-23</span>
+            </div>
+
+            <div class="log">
+              <span class="cwd">cwd: D:\FSP-Horizon</span><br/><br/>
+              <span class="cmd">git fetch origin</span><br/>
+              <span class="out">From https://github.com/Gomocha-FSP/fsp-horizon</span>
+              <span class="out">&nbsp;&nbsp;* [new branch]&nbsp;&nbsp;fix/security-2026-04-23&nbsp;→&nbsp;origin/fix/security-2026-04-23</span><br/>
+              <span class="cmd">git worktree add -B fix/security-2026-04-23 .worktrees/fix-security-2026-04-23 origin/fix/security-2026-04-23</span><br/>
+              <span class="out">Preparing worktree (resetting branch 'fix/security-2026-04-23'; was at a4f8e21)</span>
+              <span class="out">HEAD is now at 7c3b9d4 Patch CVE-2026-2310 in authService</span><br/>
+              <span class="ok">Ready in 2.4s</span>
+            </div>
+
+            <div class="actions">
+              <button class="btn">
+                <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z"/>
+                </svg>
+                Explorer
+              </button>
+              <button class="btn">
+                <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="12" height="10" rx="1.5"/>
+                  <path d="M5 7l2 2-2 2M9 11h3"/>
+                </svg>
+                Terminal
+              </button>
+              <button class="btn">
+                <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 2l1.6 3.8L13.5 7l-3.9 1.2L8 12l-1.6-3.8L2.5 7l3.9-1.2z"/>
+                </svg>
+                Claude
+              </button>
+              <button class="btn">
+                <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 4l-3 4 3 4M11 4l3 4-3 4M9.5 3 6.5 13"/>
+                </svg>
+                VSCode
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <b>Nothing disappears.</b> The log stays, the status strip turns green, and four icon+label chips appear as a single row at the bottom of the drawer. The drawer stays open until the user dismisses it.
+        <ul>
+          <li>Each icon is a hand-drawn SVG, not an emoji — they stay consistent across OS theme changes.</li>
+          <li>Buttons are even-width in a 4-column grid; label truncates rather than wrapping.</li>
+          <li>Clicking Checkout again on another PR replaces the drawer's content.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 08 Error -->
+    <div class="state" data-state="error">
+      <div class="stage-caption">08 · <span>Error</span> — visible stderr, retry, dismiss</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="title">Make `.gitlab-ci.yml` aware of the new test runner</div>
+          <div class="pr-num">#1423</div>
+        </div>
+        <div class="panel-body">
+          <div class="action-row">
+            <button class="btn">Open in Browser</button>
+            <button class="btn">Copy Branch</button>
+            <button class="btn btn--primary">Checkout</button>
+            <button class="btn">Mark Draft</button>
+            <button class="btn btn--danger">Bypass Merge</button>
+            <button class="btn btn--danger">Close PR</button>
+          </div>
+
+          <div class="drawer">
+            <div class="status-strip error">
+              <span class="cross">✕</span>
+              <span>Checkout failed</span>
+              <span class="detail">.worktrees/fix-security-2026-04-23</span>
+            </div>
+
+            <div class="log">
+              <span class="cwd">cwd: D:\FSP-Horizon</span><br/><br/>
+              <span class="cmd">git fetch origin</span><br/>
+              <span class="out">From https://github.com/Gomocha-FSP/fsp-horizon</span>
+              <span class="out">&nbsp;&nbsp;* [new branch]&nbsp;&nbsp;fix/security-2026-04-23&nbsp;→&nbsp;origin/fix/security-2026-04-23</span><br/>
+              <span class="cmd">git worktree add -B fix/security-2026-04-23 .worktrees/fix-security-2026-04-23 origin/fix/security-2026-04-23</span><br/>
+              <span class="err">fatal: '.worktrees/fix-security-2026-04-23' already exists</span>
+            </div>
+
+            <div class="error-box">
+              <div class="label">What went wrong</div>
+              <div class="msg">A directory already exists at the target path. Remove it, or pick a different worktree name.</div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn btn--ghost">Dismiss</button>
+              <button class="btn btn--primary" style="font-weight:600;">Retry</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        Errors don't collapse the log — the raw stderr stays visible. A plain-English "What went wrong" block below it interprets common git failures (path exists, permission denied, branch checked out elsewhere) so users don't need to read git-ese.
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const rail = document.querySelectorAll('.rail button');
+  const states = document.querySelectorAll('.state');
+
+  function show(name) {
+    rail.forEach(b => b.classList.toggle('active', b.dataset.state === name));
+    states.forEach(s => s.classList.toggle('active', s.dataset.state === name));
+  }
+
+  rail.forEach(b => b.addEventListener('click', () => show(b.dataset.state)));
+
+  // Keyboard: ←/→ cycles through states
+  const order = Array.from(rail).map(b => b.dataset.state);
+  document.addEventListener('keydown', (e) => {
+    const activeIdx = order.findIndex(s => document.querySelector(`.state[data-state="${s}"]`).classList.contains('active'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      show(order[(activeIdx + 1) % order.length]);
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      show(order[(activeIdx - 1 + order.length) % order.length]);
+    }
+  });
+</script>
+</body>
+</html>
