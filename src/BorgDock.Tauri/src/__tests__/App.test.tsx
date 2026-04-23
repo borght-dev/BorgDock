@@ -173,6 +173,7 @@ const fullSettings = {
     sidebarWidthPx: 800,
     theme: 'system' as const,
     globalHotkey: '',
+    flyoutHotkey: '',
     editorCommand: 'code',
     runAtStartup: false,
     badgeEnabled: true,
@@ -388,8 +389,9 @@ describe('App', () => {
       render(<App />);
     });
 
-    expect(invoke).toHaveBeenCalledWith('register_hotkey', {
-      shortcut: 'Ctrl+Shift+G',
+    expect(invoke).toHaveBeenCalledWith('register_user_hotkeys', {
+      sidebarShortcut: 'Ctrl+Shift+G',
+      flyoutShortcut: expect.any(String),
     });
   });
 

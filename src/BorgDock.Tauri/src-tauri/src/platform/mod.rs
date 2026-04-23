@@ -8,7 +8,7 @@ pub mod tray;
 pub mod window;
 pub mod work_area;
 
-pub use hotkey::{register_hotkey, unregister_hotkey};
+pub use hotkey::{register_user_hotkeys, unregister_hotkey};
 pub use logs::{get_log_folder, open_log_folder};
 pub use theme::get_system_theme;
 pub use tray::setup_tray;

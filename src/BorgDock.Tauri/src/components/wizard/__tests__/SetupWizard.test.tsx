@@ -29,6 +29,7 @@ describe('SetupWizard', () => {
           sidebarWidthPx: 800,
           theme: 'system',
           globalHotkey: 'Ctrl+Win+Shift+G',
+          flyoutHotkey: 'Ctrl+Win+Shift+F',
           editorCommand: 'code',
           runAtStartup: false,
           badgeEnabled: true,

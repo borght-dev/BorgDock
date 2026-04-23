@@ -44,6 +44,7 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
+      flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
       badgeEnabled: true,

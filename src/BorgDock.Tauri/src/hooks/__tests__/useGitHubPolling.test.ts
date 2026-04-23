@@ -76,6 +76,7 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
+      flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
       badgeEnabled: true,
@@ -414,7 +415,16 @@ describe('useGitHubPolling', () => {
 
   it('reuses prior checks when getCheckRunsForRef fails (avoids spurious gray→green transition)', async () => {
     const pr = makePr();
-    const priorChecks = [{ id: 42, name: 'build', status: 'completed', conclusion: 'success' }];
+    const priorChecks = [
+      {
+        id: 42,
+        name: 'build',
+        status: 'completed',
+        conclusion: 'success',
+        htmlUrl: '',
+        checkSuiteId: 1,
+      },
+    ];
 
     // Seed the store with a previous aggregation for this PR, as if the last
     // successful poll had reported green.

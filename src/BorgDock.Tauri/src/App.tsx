@@ -163,18 +163,23 @@ export default function App() {
     useUiStore.getState().setPendingWorkItemId(id);
   }, []);
 
-  // Register global hotkey
+  // Register global hotkeys (sidebar toggle + flyout toggle)
   useEffect(() => {
     if (settings.ui.globalHotkey) {
       // Normalize: Tauri expects "Super" for the Windows key, not "Win"
-      const shortcut = settings.ui.globalHotkey
-        .replace(/\bWin\b/gi, 'Super')
-        .replace(/\bMeta\b/gi, 'Super')
-        .replace(/\bCmd\b/gi, 'Super');
-      log.debug('registering global hotkey', { shortcut });
-      invoke('register_hotkey', { shortcut })
-        .then(() => log.info('global hotkey registered', { shortcut }))
-        .catch((err) => log.error('register_hotkey failed', err, { shortcut }));
+      const normalize = (s: string) =>
+        s
+          .replace(/\bWin\b/gi, 'Super')
+          .replace(/\bMeta\b/gi, 'Super')
+          .replace(/\bCmd\b/gi, 'Super');
+      const sidebarShortcut = normalize(settings.ui.globalHotkey);
+      const flyoutShortcut = normalize(settings.ui.flyoutHotkey);
+      log.debug('registering user hotkeys', { sidebarShortcut, flyoutShortcut });
+      invoke('register_user_hotkeys', { sidebarShortcut, flyoutShortcut })
+        .then(() => log.info('user hotkeys registered', { sidebarShortcut, flyoutShortcut }))
+        .catch((err) =>
+          log.error('register_user_hotkeys failed', err, { sidebarShortcut, flyoutShortcut }),
+        );
     }
     return () => {
       invoke('unregister_hotkey').catch((err) =>
@@ -183,7 +188,7 @@ export default function App() {
         }),
       );
     };
-  }, [settings.ui.globalHotkey]);
+  }, [settings.ui.globalHotkey, settings.ui.flyoutHotkey]);
 
   // Position sidebar on the screen edge
   useEffect(() => {

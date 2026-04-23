@@ -43,6 +43,7 @@ function makeSettings(
       sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
+      flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
       badgeEnabled: true,

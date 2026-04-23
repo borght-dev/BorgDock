@@ -4,10 +4,15 @@ use tauri::Manager;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 /// Currently-registered sidebar toggle shortcut (user-configurable via
-/// settings). Tracked so a later `register_hotkey` call can unregister just
-/// this one, without touching the fixed palette shortcuts (Ctrl+F7/F8/F9/F10)
-/// that are registered once at app setup.
+/// settings). Tracked so a later `register_user_hotkeys` call can unregister
+/// just this one, without touching the fixed palette shortcuts
+/// (Ctrl+F7/F8/F9/F10) that are registered once at app setup.
 static SIDEBAR_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
+
+/// Currently-registered flyout toggle shortcut (user-configurable via
+/// settings). Tracked so a later `register_user_hotkeys` call can unregister
+/// just this one, without touching the fixed palette shortcuts.
+static FLYOUT_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 
 /// Registers the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10). These are
 /// code-defined, not user-configurable, so they're registered once at setup
@@ -155,22 +160,33 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Register (or re-register) the sidebar toggle shortcut. Called from the
-/// frontend whenever `settings.ui.globalHotkey` changes. Only touches the
-/// sidebar shortcut; the fixed palette/SQL shortcuts are owned by
+/// Register (or re-register) both user-configurable hotkeys: the sidebar
+/// toggle and the flyout toggle. Called from the frontend whenever either
+/// `settings.ui.globalHotkey` or `settings.ui.flyoutHotkey` changes. Only
+/// touches the user shortcuts; the fixed palette/SQL shortcuts are owned by
 /// `register_fixed_hotkeys` and live for the process lifetime.
 #[tauri::command]
-pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), String> {
-    // Unregister only the previous sidebar shortcut, if any.
+pub fn register_user_hotkeys(
+    app: tauri::AppHandle,
+    sidebar_shortcut: String,
+    flyout_shortcut: String,
+) -> Result<(), String> {
+    // Unregister only the previous user shortcuts, if any.
     if let Ok(mut guard) = SIDEBAR_SHORTCUT.lock() {
         if let Some(prev) = guard.take() {
             let _ = app.global_shortcut().unregister(prev.as_str());
         }
     }
+    if let Ok(mut guard) = FLYOUT_SHORTCUT.lock() {
+        if let Some(prev) = guard.take() {
+            let _ = app.global_shortcut().unregister(prev.as_str());
+        }
+    }
 
+    // Sidebar toggle
     let app_toggle = app.clone();
     app.global_shortcut()
-        .on_shortcut(shortcut.as_str(), move |_app, _shortcut, event| {
+        .on_shortcut(sidebar_shortcut.as_str(), move |_app, _shortcut, event| {
             if event.state != ShortcutState::Pressed {
                 return;
             }
@@ -200,10 +216,30 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
                 Err(e) => log::error!("hotkey: run_on_main_thread dispatch failed: {e}"),
             }
         })
-        .map_err(|e| format!("Failed to register hotkey: {e}"))?;
+        .map_err(|e| format!("Failed to register sidebar hotkey: {e}"))?;
 
     if let Ok(mut guard) = SIDEBAR_SHORTCUT.lock() {
-        *guard = Some(shortcut);
+        *guard = Some(sidebar_shortcut);
+    }
+
+    // Flyout toggle
+    let app_flyout = app.clone();
+    app.global_shortcut()
+        .on_shortcut(flyout_shortcut.as_str(), move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let app_cb = app_flyout.clone();
+            let _ = app_flyout.run_on_main_thread(move || {
+                if let Err(e) = super::window::toggle_flyout(&app_cb) {
+                    log::error!("flyout hotkey: toggle_flyout failed: {e}");
+                }
+            });
+        })
+        .map_err(|e| format!("Failed to register flyout hotkey: {e}"))?;
+
+    if let Ok(mut guard) = FLYOUT_SHORTCUT.lock() {
+        *guard = Some(flyout_shortcut);
     }
 
     Ok(())
@@ -211,11 +247,17 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
 
 #[tauri::command]
 pub fn unregister_hotkey(app: tauri::AppHandle) -> Result<(), String> {
-    let prev = SIDEBAR_SHORTCUT.lock().ok().and_then(|mut g| g.take());
-    if let Some(shortcut) = prev {
+    let prev_sidebar = SIDEBAR_SHORTCUT.lock().ok().and_then(|mut g| g.take());
+    if let Some(shortcut) = prev_sidebar {
         app.global_shortcut()
             .unregister(shortcut.as_str())
             .map_err(|e| format!("Failed to unregister sidebar hotkey: {e}"))?;
+    }
+    let prev_flyout = FLYOUT_SHORTCUT.lock().ok().and_then(|mut g| g.take());
+    if let Some(shortcut) = prev_flyout {
+        app.global_shortcut()
+            .unregister(shortcut.as_str())
+            .map_err(|e| format!("Failed to unregister flyout hotkey: {e}"))?;
     }
     Ok(())
 }

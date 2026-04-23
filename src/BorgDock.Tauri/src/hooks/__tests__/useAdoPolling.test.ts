@@ -40,6 +40,7 @@ function makeSettings(overrides: Partial<AppSettings['azureDevOps']> = {}): AppS
       sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
+      flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
       badgeEnabled: true,

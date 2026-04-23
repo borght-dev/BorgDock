@@ -42,6 +42,7 @@ export interface UiSettings {
   sidebarWidthPx: number;
   theme: ThemeMode;
   globalHotkey: string;
+  flyoutHotkey: string;
   editorCommand: string;
   runAtStartup: boolean;
   badgeEnabled: boolean;

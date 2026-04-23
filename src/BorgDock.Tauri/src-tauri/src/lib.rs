@@ -177,7 +177,7 @@ pub fn run() {
             platform::window::hide_flyout,
             platform::work_area::reserve_work_area,
             platform::work_area::restore_work_area,
-            platform::hotkey::register_hotkey,
+            platform::hotkey::register_user_hotkeys,
             platform::hotkey::unregister_hotkey,
             platform::hotkey::palette_ready,
             platform::tray::update_tray_tooltip,
