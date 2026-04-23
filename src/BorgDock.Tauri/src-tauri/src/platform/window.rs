@@ -108,9 +108,9 @@ pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
 const FLYOUT_GLANCE_W: f64 = 412.0;
 const FLYOUT_GLANCE_H: f64 = 512.0;
 
-const CHROME_OFFSET_WIN: i32 = 48;
-const CHROME_OFFSET_MAC: i32 = 28;
-const CHROME_OFFSET_LINUX: i32 = 32;
+const CHROME_OFFSET_WIN: i32 = 52;
+const CHROME_OFFSET_MAC: i32 = 32;
+const CHROME_OFFSET_LINUX: i32 = 36;
 
 fn chrome_offset_for_os() -> i32 {
     if cfg!(target_os = "windows") {
@@ -170,9 +170,10 @@ pub(crate) fn position_flyout_near_tray(
     let ws = monitor.size();
     let wp = monitor.position();
 
+    let chrome = (chrome_offset_for_os() as f64 * scale) as i32;
     let (x, y) = compute_flyout_position(
         wp.x, wp.y, ws.width as i32, ws.height as i32,
-        w, h, default_anchor_for_os(), chrome_offset_for_os(),
+        w, h, default_anchor_for_os(), chrome,
     );
 
     win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
