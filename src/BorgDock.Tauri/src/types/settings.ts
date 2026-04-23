@@ -3,13 +3,6 @@ export type AdoAuthMethod = 'azCli' | 'pat';
 export type SidebarEdge = 'left' | 'right';
 export type SidebarMode = 'pinned' | 'floating';
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type BadgeStyle =
-  | 'GlassCapsule'
-  | 'MinimalNotch'
-  | 'FloatingIsland'
-  | 'LiquidMorph'
-  | 'SpectralBar';
-export type IndicatorStyle = 'SegmentRing' | 'SignalDots';
 export type PostFixAction = 'commitAndNotify' | 'commitOnly' | 'notifyOnly' | 'none';
 
 export interface GitHubSettings {
@@ -45,9 +38,6 @@ export interface UiSettings {
   flyoutHotkey: string;
   editorCommand: string;
   runAtStartup: boolean;
-  badgeEnabled: boolean;
-  badgeStyle: BadgeStyle;
-  indicatorStyle: IndicatorStyle;
   worktreePaletteFavoritesOnly?: boolean;
   filePaletteActiveRootPath?: string;
   filePaletteFavoritesOnly?: boolean;

@@ -79,9 +79,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
-      badgeEnabled: true,
-      badgeStyle: 'GlassCapsule',
-      indicatorStyle: 'SegmentRing',
     },
     notifications: {
       toastOnCheckStatusChange: true,

@@ -35,9 +35,6 @@ function makeSettings(runAtStartup: boolean): AppSettings {
       flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup,
-      badgeEnabled: true,
-      badgeStyle: 'GlassCapsule',
-      indicatorStyle: 'SegmentRing',
     },
     notifications: {
       toastOnCheckStatusChange: true,

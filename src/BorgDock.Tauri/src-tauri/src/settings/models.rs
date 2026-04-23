@@ -106,12 +106,6 @@ pub struct UiSettings {
     pub editor_command: String,
     #[serde(default)]
     pub run_at_startup: bool,
-    #[serde(default = "default_true")]
-    pub badge_enabled: bool,
-    #[serde(default = "default_badge_style")]
-    pub badge_style: String,
-    #[serde(default = "default_indicator_style")]
-    pub indicator_style: String,
     #[serde(default)]
     pub worktree_palette_favorites_only: bool,
     #[serde(default)]
@@ -157,13 +151,6 @@ fn default_editor_command() -> String {
     "code".to_string()
 }
 
-fn default_badge_style() -> String {
-    "GlassCapsule".to_string()
-}
-
-fn default_indicator_style() -> String {
-    "SegmentRing".to_string()
-}
 
 impl Default for UiSettings {
     fn default() -> Self {
@@ -176,9 +163,6 @@ impl Default for UiSettings {
             flyout_hotkey: "Ctrl+Win+Shift+F".to_string(),
             editor_command: "code".to_string(),
             run_at_startup: false,
-            badge_enabled: true,
-            badge_style: "GlassCapsule".to_string(),
-            indicator_style: "SegmentRing".to_string(),
             worktree_palette_favorites_only: false,
             file_palette_favorites_only: false,
             file_palette_roots_collapsed: false,

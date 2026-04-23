@@ -20,7 +20,7 @@ export const TAURI_MOCK_SCRIPT = `
             ui: {
               sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380,
               theme: 'dark', globalHotkey: 'Ctrl+Shift+P', editorCommand: 'code',
-              runAtStartup: false, badgeStyle: 'GlassCapsule', indicatorStyle: 'SegmentRing',
+              runAtStartup: false,
             },
             notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
             claudeCode: { defaultPostFixAction: 'commitAndNotify' },
@@ -41,9 +41,6 @@ export const TAURI_MOCK_SCRIPT = `
         case 'unregister_hotkey':
         case 'position_sidebar':
         case 'toggle_sidebar':
-        case 'show_badge':
-        case 'hide_badge':
-        case 'resize_badge':
         case 'init_cache':
           return null;
 
@@ -104,8 +101,6 @@ export function completedSettings() {
       globalHotkey: 'Ctrl+Shift+P',
       editorCommand: 'code',
       runAtStartup: false,
-      badgeStyle: 'GlassCapsule',
-      indicatorStyle: 'SegmentRing',
     },
     notifications: {
       toastOnCheckStatusChange: true,

@@ -13,9 +13,6 @@ function makeUi(overrides?: Partial<UiSettings>): UiSettings {
     flyoutHotkey: 'Ctrl+Win+Shift+F',
     editorCommand: 'code',
     runAtStartup: false,
-    badgeEnabled: true,
-    badgeStyle: 'GlassCapsule',
-    indicatorStyle: 'SegmentRing',
     ...overrides,
   };
 }
@@ -92,44 +89,6 @@ describe('AppearanceSection', () => {
     const slider = screen.getByRole('slider') as HTMLInputElement;
     fireEvent.change(slider, { target: { value: '600' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidthPx: 600 }));
-  });
-
-  // Badge Style
-  it('renders badge style select', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    expect(screen.getByDisplayValue('GlassCapsule')).toBeDefined();
-  });
-
-  it('renders all badge style options', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    const styles = ['GlassCapsule', 'MinimalNotch', 'FloatingIsland', 'LiquidMorph', 'SpectralBar'];
-    for (const style of styles) {
-      expect(screen.getByText(style)).toBeDefined();
-    }
-  });
-
-  it('updates badge style', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    fireEvent.change(screen.getByDisplayValue('GlassCapsule'), {
-      target: { value: 'MinimalNotch' },
-    });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ badgeStyle: 'MinimalNotch' }));
-  });
-
-  // Indicator Style
-  it('renders indicator style select', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    expect(screen.getByDisplayValue('SegmentRing')).toBeDefined();
-  });
-
-  it('updates indicator style', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    fireEvent.change(screen.getByDisplayValue('SegmentRing'), {
-      target: { value: 'SignalDots' },
-    });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ indicatorStyle: 'SignalDots' }),
-    );
   });
 
   // Run at Startup toggle

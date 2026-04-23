@@ -172,9 +172,6 @@ const fullSettings = {
     flyoutHotkey: '',
     editorCommand: 'code',
     runAtStartup: false,
-    badgeEnabled: true,
-    badgeStyle: 'GlassCapsule' as const,
-    indicatorStyle: 'SegmentRing' as const,
   },
   notifications: {
     toastOnCheckStatusChange: true,

@@ -46,9 +46,6 @@ function makeSettings(
       flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
-      badgeEnabled: true,
-      badgeStyle: 'GlassCapsule',
-      indicatorStyle: 'SegmentRing',
     },
     notifications: {
       toastOnCheckStatusChange: true,

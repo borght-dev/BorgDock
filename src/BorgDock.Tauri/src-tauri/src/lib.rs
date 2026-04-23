@@ -212,9 +212,6 @@ pub fn run() {
             platform::window::show_setup_wizard,
             platform::window::open_pr_detail_window,
             platform::window::open_whats_new_window,
-            platform::window::set_badge_visible,
-            platform::window::hide_badge,
-            platform::window::resize_badge,
             platform::window::resize_flyout,
             flyout::toast::show_flyout_toast,
             // Process

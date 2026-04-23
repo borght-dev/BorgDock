@@ -34,8 +34,7 @@ const SECONDARY_WINDOW_MOCKS = `
           }],
           ui: { theme: 'dark', sidebarEdge: 'right', sidebarMode: 'pinned',
                 sidebarWidthPx: 380, globalHotkey: 'Ctrl+Shift+P',
-                editorCommand: 'code', badgeStyle: 'GlassCapsule',
-                indicatorStyle: 'SegmentRing' },
+                editorCommand: 'code' },
           notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
           azureDevOps: {
             organization: 'org', project: 'proj', personalAccessToken: 'pat',
@@ -110,12 +109,6 @@ interface WindowSpec {
 // specs (pr-list, settings, etc.) — this suite focuses on secondary windows
 // that are created dynamically and are more likely to render blank.
 const WINDOWS: WindowSpec[] = [
-  {
-    name: 'Badge (badge.html)',
-    url: '/badge.html',
-    contentSelector: '#root',
-    noJsErrors: true,
-  },
   {
     name: 'Command Palette (palette.html)',
     url: '/palette.html',

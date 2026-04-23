@@ -55,9 +55,6 @@ function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSetti
       flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
-      badgeEnabled: true,
-      badgeStyle: 'GlassCapsule',
-      indicatorStyle: 'SegmentRing',
     },
     notifications: {
       toastOnCheckStatusChange: true,

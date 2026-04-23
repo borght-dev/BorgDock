@@ -46,7 +46,6 @@ export default defineConfig({
         "src/vite-env.d.ts",
         "src/**/*.d.ts",
         "src/main.tsx",
-        "src/badge-main.tsx",
         "src/palette-main.tsx",
         "src/pr-detail-main.tsx",
         "src/sql-main.tsx",
@@ -76,7 +75,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
-        badge: path.resolve(__dirname, "badge.html"),
         flyout: path.resolve(__dirname, "flyout.html"),
         palette: path.resolve(__dirname, "palette.html"),
         'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),

@@ -32,9 +32,6 @@ describe('SetupWizard', () => {
           flyoutHotkey: 'Ctrl+Win+Shift+F',
           editorCommand: 'code',
           runAtStartup: false,
-          badgeEnabled: true,
-          badgeStyle: 'GlassCapsule',
-          indicatorStyle: 'SegmentRing',
         },
         notifications: {
           toastOnCheckStatusChange: true,

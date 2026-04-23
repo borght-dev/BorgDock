@@ -43,9 +43,6 @@ function makeSettings(overrides: Partial<AppSettings['azureDevOps']> = {}): AppS
       flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
-      badgeEnabled: true,
-      badgeStyle: 'GlassCapsule',
-      indicatorStyle: 'SegmentRing',
     },
     notifications: {
       toastOnCheckStatusChange: true,

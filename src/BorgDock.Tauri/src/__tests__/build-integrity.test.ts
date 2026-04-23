@@ -17,7 +17,6 @@ const ROOT = path.resolve(__dirname, '..', '..');
 // Each entry: { html file, vite rollup key, script src in HTML }
 const ENTRY_POINTS = [
   { key: 'main', html: 'index.html', script: '/src/main.tsx' },
-  { key: 'badge', html: 'badge.html', script: '/src/badge-main.tsx' },
   { key: 'flyout', html: 'flyout.html', script: '/src/flyout-main.tsx' },
   { key: 'palette', html: 'palette.html', script: '/src/palette-main.tsx' },
   { key: 'pr-detail', html: 'pr-detail.html', script: '/src/pr-detail-main.tsx' },
@@ -41,7 +40,6 @@ const RUST_WINDOW_URLS: Record<string, string> = {
   // window.rs
   'pr-detail': 'pr-detail.html',
   flyout: 'flyout.html',
-  badge: 'badge.html',
   'workitem-detail': 'workitem-detail.html',
   'whats-new': 'whats-new.html',
 };
