@@ -78,10 +78,6 @@ vi.mock('@/hooks/useQuickReviewKeyboard', () => ({
   useQuickReviewKeyboard: vi.fn(),
 }));
 
-vi.mock('@/hooks/useNotificationActions', () => ({
-  useNotificationActions: vi.fn(),
-}));
-
 vi.mock('@/hooks/useReviewNudges', () => ({
   useReviewNudges: vi.fn(),
 }));

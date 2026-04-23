@@ -18,7 +18,6 @@ import { useCacheInit } from '@/hooks/useCacheInit';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
-import { useNotificationActions } from '@/hooks/useNotificationActions';
 import { useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
@@ -155,9 +154,6 @@ export default function App() {
 
   // Quick Review keyboard shortcuts
   useQuickReviewKeyboard();
-
-  // OS toast notification click/button actions
-  useNotificationActions();
 
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);
