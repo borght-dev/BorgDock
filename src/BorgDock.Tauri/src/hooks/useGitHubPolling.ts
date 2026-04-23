@@ -62,6 +62,16 @@ export function useGitHubPolling(settings: AppSettings) {
         return [];
       }
 
+      // Snapshot prior state so a transient check-runs fetch failure can fall
+      // back to the PR's last-known checks instead of resetting overallStatus
+      // to 'gray'. Otherwise the next successful poll looks like a gray→green
+      // transition and fires a spurious "All checks passed" notification.
+      const priorByKey = new Map<string, PullRequestWithChecks>();
+      for (const prior of usePrStore.getState().pullRequests) {
+        const p = prior.pullRequest;
+        priorByKey.set(`${p.repoOwner}/${p.repoName}#${p.number}`, prior);
+      }
+
       const pollStart = performance.now();
       log.info('poll cycle start', { repoCount: enabledRepos.length });
       const allPrs: PullRequestWithChecks[] = [];
@@ -92,13 +102,15 @@ export function useGitHubPolling(settings: AppSettings) {
               allPrs.push(result.value);
             } else {
               failedCheckFetches++;
+              const failedPr = prs[j]!;
               log.warn('poll: check-runs fetch failed for PR', {
                 repo: repoLabel,
-                pr: prs[j]!.number,
-                ref: prs[j]!.headRef,
+                pr: failedPr.number,
+                ref: failedPr.headRef,
                 error: String(result.reason),
               });
-              allPrs.push(aggregatePrWithChecks(prs[j]!, []));
+              const prior = priorByKey.get(`${repo.owner}/${repo.name}#${failedPr.number}`);
+              allPrs.push(aggregatePrWithChecks(failedPr, prior?.checks ?? []));
             }
           }
 

@@ -395,7 +395,7 @@ describe('useGitHubPolling', () => {
     expect(usePrStore.getState().rateLimit).toBeNull();
   });
 
-  it('handles getCheckRunsForRef failure gracefully', async () => {
+  it('handles getCheckRunsForRef failure gracefully (no prior state)', async () => {
     const pr = makePr();
     mockGetOpenPRs.mockResolvedValue([pr]);
     mockGetCheckRunsForRef.mockRejectedValue(new Error('check fetch failed'));
@@ -407,8 +407,42 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      // Should aggregate with empty checks on failure
+      // With no prior state for this PR, fall back to empty checks.
       expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(pr, []);
+    });
+  });
+
+  it('reuses prior checks when getCheckRunsForRef fails (avoids spurious gray→green transition)', async () => {
+    const pr = makePr();
+    const priorChecks = [{ id: 42, name: 'build', status: 'completed', conclusion: 'success' }];
+
+    // Seed the store with a previous aggregation for this PR, as if the last
+    // successful poll had reported green.
+    usePrStore.setState({
+      pullRequests: [
+        {
+          pullRequest: pr,
+          checks: priorChecks,
+          overallStatus: 'green',
+          failedCheckNames: [],
+          pendingCheckNames: [],
+          passedCount: 1,
+          skippedCount: 0,
+        },
+      ],
+    });
+
+    mockGetOpenPRs.mockResolvedValue([pr]);
+    mockGetCheckRunsForRef.mockRejectedValue(new Error('check fetch failed'));
+
+    renderHook(() => useGitHubPolling(makeSettings()));
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+
+    await vi.waitFor(() => {
+      expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(pr, priorChecks);
     });
   });
 
