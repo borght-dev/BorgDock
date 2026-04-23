@@ -267,10 +267,17 @@ export function WorktreePaletteApp() {
     loadWorktrees();
   }, [loadWorktrees]);
 
-  // Auto-focus search after load
+  // Auto-focus search after load. `invoke('palette_ready')` re-asserts
+  // OS-level focus on the main thread — the hotkey handler creates the
+  // window with `.focused(true)` but Windows' foreground-lock rules can
+  // leave it focus-less on creation.
   useEffect(() => {
     if (!loading) {
-      setTimeout(() => searchRef.current?.focus(), 50);
+      const id = window.setTimeout(() => {
+        searchRef.current?.focus();
+        invoke('palette_ready').catch(() => {});
+      }, 50);
+      return () => window.clearTimeout(id);
     }
   }, [loading]);
 

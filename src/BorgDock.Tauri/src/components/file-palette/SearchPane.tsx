@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef } from 'react';
 import type { ParsedQuery } from './parse-query';
 import { parseQuery } from './parse-query';
@@ -12,7 +13,10 @@ interface Props {
 export function SearchPane({ query, onQueryChange, parsed, resultCount }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
-    const id = window.setTimeout(() => inputRef.current?.focus(), 40);
+    const id = window.setTimeout(() => {
+      inputRef.current?.focus();
+      invoke('palette_ready').catch(() => {});
+    }, 40);
     return () => window.clearTimeout(id);
   }, []);
 

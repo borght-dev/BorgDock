@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
 import { PaletteRow } from '@/components/command-palette/PaletteRow';
@@ -21,22 +22,21 @@ export function PaletteApp() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Focus input on mount
+  // Focus input on mount. One paint after mount the input is in the DOM,
+  // so a single .focus() is enough. `invoke('palette_ready')` re-asserts
+  // OS-level focus on the main thread (Windows' foreground-lock rules
+  // sometimes leave a newly-created WebView2 window focus-less).
+  //
+  // A previous implementation polled setFocus every 50ms × 30 attempts,
+  // which combined with a Rust-side std::thread::spawn + sleep(200ms) +
+  // set_focus flooded WebView2's PostMessage queue and crashed the process
+  // ("PostMessage failed ; is the messages queue full?" / invalid HWND).
   useEffect(() => {
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      try {
-        await getCurrentWindow().setFocus();
-      } catch {
-        /* ignore */
-      }
+    const raf = requestAnimationFrame(() => {
       inputRef.current?.focus();
-      attempts++;
-      if (document.activeElement === inputRef.current || attempts > 30) {
-        clearInterval(interval);
-      }
-    }, 50);
-    return () => clearInterval(interval);
+      invoke('palette_ready').catch(() => {});
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   // Global keydown for Escape

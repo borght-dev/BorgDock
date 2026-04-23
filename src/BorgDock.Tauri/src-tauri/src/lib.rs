@@ -132,6 +132,14 @@ pub fn run() {
         .setup(|app| {
             platform::tray::setup_tray(app)?;
 
+            // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
+            // once, at setup. These are code-defined and must not be re-
+            // bound on every settings change — see register_fixed_hotkeys
+            // for the rationale.
+            if let Err(e) = platform::hotkey::register_fixed_hotkeys(app.handle()) {
+                log::error!("register_fixed_hotkeys failed: {e}");
+            }
+
             // Show the main window from Rust to avoid relying on JS IPC
             // permissions / timing. The window starts hidden (visible: false
             // in tauri.conf.json) to prevent a blank flash on startup.
@@ -164,6 +172,7 @@ pub fn run() {
             platform::work_area::restore_work_area,
             platform::hotkey::register_hotkey,
             platform::hotkey::unregister_hotkey,
+            platform::hotkey::palette_ready,
             platform::tray::update_tray_tooltip,
             platform::tray::update_tray_icon,
             platform::flyout_cache::cache_flyout_data,

@@ -1,13 +1,173 @@
+use std::sync::Mutex;
 use tauri::webview::WebviewWindowBuilder;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
+/// Currently-registered sidebar toggle shortcut (user-configurable via
+/// settings). Tracked so a later `register_hotkey` call can unregister just
+/// this one, without touching the fixed palette shortcuts (Ctrl+F7/F8/F9/F10)
+/// that are registered once at app setup.
+static SIDEBAR_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
+
+/// Registers the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10). These are
+/// code-defined, not user-configurable, so they're registered once at setup
+/// and never churned. Previously these lived inside `register_hotkey`, which
+/// is called on every settings load — each call did `unregister_all()` and
+/// re-registered, briefly leaving palette shortcuts unbound and racing
+/// against in-flight keypresses.
+pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
+    // Ctrl+F9 — command palette. Toggles: re-press closes the window so each
+    // open starts with fresh state, matching PaletteApp's Escape-to-close.
+    let app_palette = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F9", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let app_cb = app_palette.clone();
+            let _ = app_palette.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("palette") {
+                    let _ = win.close();
+                    return;
+                }
+                let _ = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "palette",
+                    tauri::WebviewUrl::App("palette.html".into()),
+                )
+                .title("BorgDock Command Palette")
+                .inner_size(480.0, 500.0)
+                .decorations(false)
+                .always_on_top(true)
+                .resizable(false)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build();
+                // The palette's frontend calls `palette_ready` once its DOM
+                // is mounted to re-assert OS focus on the main thread. No
+                // background-thread focus kick — that pattern violated
+                // Windows' thread affinity for focus APIs and, combined
+                // with a JS-side retry loop, saturated WebView2's
+                // PostMessage queue and crashed the process.
+            });
+        })
+        .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
+
+    // Ctrl+F7 — worktree palette.
+    let app_worktree = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F7", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let app_cb = app_worktree.clone();
+            let _ = app_worktree.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("worktree-palette") {
+                    let _ = win.close();
+                    return;
+                }
+                let _ = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "worktree-palette",
+                    tauri::WebviewUrl::App("worktree.html".into()),
+                )
+                .title("BorgDock Worktrees")
+                .inner_size(520.0, 420.0)
+                .decorations(false)
+                .always_on_top(true)
+                .resizable(false)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build();
+            });
+        })
+        .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
+
+    // Ctrl+F8 — file palette. Files opened from it pop out into separate
+    // first-class viewer windows (see file_palette::windows).
+    let app_file_palette = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F8", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let app_cb = app_file_palette.clone();
+            let _ = app_file_palette.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("file-palette") {
+                    let _ = win.close();
+                    return;
+                }
+                let _ = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "file-palette",
+                    tauri::WebviewUrl::App("file-palette.html".into()),
+                )
+                .title("BorgDock File Palette")
+                .inner_size(1100.0, 600.0)
+                .min_inner_size(800.0, 400.0)
+                .decorations(false)
+                .always_on_top(true)
+                .resizable(true)
+                .skip_taskbar(true)
+                .center()
+                .focused(true)
+                .build();
+            });
+        })
+        .map_err(|e| format!("Failed to register file palette hotkey: {e}"))?;
+
+    // Ctrl+F10 — SQL workbench. Unlike the palettes, the SQL window is a
+    // persistent workbench: it shows in the taskbar / Alt+Tab and stays open
+    // until the user closes it. A re-press brings the existing window to
+    // front (it's easily occluded by the always-on-top main sidebar).
+    let app_sql = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+F10", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let app_cb = app_sql.clone();
+            let _ = app_sql.run_on_main_thread(move || {
+                if let Some(win) = app_cb.get_webview_window("sql") {
+                    let _ = win.unminimize();
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                    return;
+                }
+                let _ = WebviewWindowBuilder::new(
+                    &app_cb,
+                    "sql",
+                    tauri::WebviewUrl::App("sql.html".into()),
+                )
+                .title("BorgDock SQL")
+                .inner_size(900.0, 650.0)
+                .decorations(false)
+                .resizable(true)
+                .center()
+                .focused(true)
+                .build();
+            });
+        })
+        .map_err(|e| format!("Failed to register SQL hotkey: {e}"))?;
+
+    Ok(())
+}
+
+/// Register (or re-register) the sidebar toggle shortcut. Called from the
+/// frontend whenever `settings.ui.globalHotkey` changes. Only touches the
+/// sidebar shortcut; the fixed palette/SQL shortcuts are owned by
+/// `register_fixed_hotkeys` and live for the process lifetime.
 #[tauri::command]
 pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), String> {
-    // Unregister previous shortcuts
-    let _ = app.global_shortcut().unregister_all();
+    // Unregister only the previous sidebar shortcut, if any.
+    if let Ok(mut guard) = SIDEBAR_SHORTCUT.lock() {
+        if let Some(prev) = guard.take() {
+            let _ = app.global_shortcut().unregister(prev.as_str());
+        }
+    }
 
-    // Register sidebar toggle shortcut
     let app_toggle = app.clone();
     app.global_shortcut()
         .on_shortcut(shortcut.as_str(), move |_app, _shortcut, event| {
@@ -42,183 +202,56 @@ pub fn register_hotkey(app: tauri::AppHandle, shortcut: String) -> Result<(), St
         })
         .map_err(|e| format!("Failed to register hotkey: {e}"))?;
 
-    // Register command palette shortcut (Ctrl+F9) — toggles the window:
-    // if it's open, the re-press closes it; otherwise the window is created.
-    // We close (not hide) to match PaletteApp's Escape-to-close behavior so
-    // the re-opened window always starts with fresh state.
-    let app_palette = app.clone();
-    app.global_shortcut()
-        .on_shortcut("Ctrl+F9", move |_app, _shortcut, event| {
-            if event.state != ShortcutState::Pressed {
-                return;
-            }
-
-            // Marshal onto the main thread — WebView2 window creation on
-            // Windows must happen on the thread that owns the message loop,
-            // otherwise the app hangs with "Not Responding".
-            let app_cb = app_palette.clone();
-            let _ = app_palette.run_on_main_thread(move || {
-                if let Some(win) = app_cb.get_webview_window("palette") {
-                    let _ = win.close();
-                    return;
-                }
-
-                if let Ok(win) = WebviewWindowBuilder::new(
-                    &app_cb,
-                    "palette",
-                    tauri::WebviewUrl::App("palette.html".into()),
-                )
-                .title("BorgDock Command Palette")
-                .inner_size(480.0, 500.0)
-                .decorations(false)
-                .always_on_top(true)
-                .resizable(false)
-                .skip_taskbar(true)
-                .center()
-                .focused(true)
-                .build()
-                {
-                    std::thread::spawn(move || {
-                        std::thread::sleep(std::time::Duration::from_millis(200));
-                        let _ = win.set_focus();
-                    });
-                }
-            });
-        })
-        .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
-
-    // Register worktree palette shortcut (Ctrl+F7) — toggles the same way
-    // as the command palette.
-    let app_worktree = app.clone();
-    app.global_shortcut()
-        .on_shortcut("Ctrl+F7", move |_app, _shortcut, event| {
-            if event.state != ShortcutState::Pressed {
-                return;
-            }
-
-            let app_cb = app_worktree.clone();
-            let _ = app_worktree.run_on_main_thread(move || {
-                if let Some(win) = app_cb.get_webview_window("worktree-palette") {
-                    let _ = win.close();
-                    return;
-                }
-
-                if let Ok(win) = WebviewWindowBuilder::new(
-                    &app_cb,
-                    "worktree-palette",
-                    tauri::WebviewUrl::App("worktree.html".into()),
-                )
-                .title("BorgDock Worktrees")
-                .inner_size(520.0, 420.0)
-                .decorations(false)
-                .always_on_top(true)
-                .resizable(false)
-                .skip_taskbar(true)
-                .center()
-                .focused(true)
-                .build()
-                {
-                    std::thread::spawn(move || {
-                        std::thread::sleep(std::time::Duration::from_millis(200));
-                        let _ = win.set_focus();
-                    });
-                }
-            });
-        })
-        .map_err(|e| format!("Failed to register worktree palette hotkey: {e}"))?;
-
-    // Register file palette shortcut (Ctrl+F8) — toggles the same way as the
-    // command and worktree palettes. The palette window itself is keyboard-
-    // dismissed and skipTaskbar=true. Files opened from it pop out into
-    // separate first-class viewer windows (see file_palette::windows).
-    let app_file_palette = app.clone();
-    app.global_shortcut()
-        .on_shortcut("Ctrl+F8", move |_app, _shortcut, event| {
-            if event.state != ShortcutState::Pressed {
-                return;
-            }
-
-            let app_cb = app_file_palette.clone();
-            let _ = app_file_palette.run_on_main_thread(move || {
-                if let Some(win) = app_cb.get_webview_window("file-palette") {
-                    let _ = win.close();
-                    return;
-                }
-
-                if let Ok(win) = WebviewWindowBuilder::new(
-                    &app_cb,
-                    "file-palette",
-                    tauri::WebviewUrl::App("file-palette.html".into()),
-                )
-                .title("BorgDock File Palette")
-                .inner_size(1100.0, 600.0)
-                .min_inner_size(800.0, 400.0)
-                .decorations(false)
-                .always_on_top(true)
-                .resizable(true)
-                .skip_taskbar(true)
-                .center()
-                .focused(true)
-                .build()
-                {
-                    std::thread::spawn(move || {
-                        std::thread::sleep(std::time::Duration::from_millis(200));
-                        let _ = win.set_focus();
-                    });
-                }
-            });
-        })
-        .map_err(|e| format!("Failed to register file palette hotkey: {e}"))?;
-
-    // Register SQL window shortcut (Ctrl+F10) — unlike the palettes, the SQL
-    // window is a persistent workbench: it shows in the taskbar / Alt+Tab and
-    // stays open until the user closes it via Escape or the title bar. A
-    // re-press brings the existing window to front (it's easily occluded by
-    // the always-on-top main sidebar), it does not close it.
-    let app_sql = app.clone();
-    app.global_shortcut()
-        .on_shortcut("Ctrl+F10", move |_app, _shortcut, event| {
-            if event.state != ShortcutState::Pressed {
-                return;
-            }
-
-            let app_cb = app_sql.clone();
-            let _ = app_sql.run_on_main_thread(move || {
-                if let Some(win) = app_cb.get_webview_window("sql") {
-                    let _ = win.unminimize();
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                    return;
-                }
-
-                if let Ok(win) = WebviewWindowBuilder::new(
-                    &app_cb,
-                    "sql",
-                    tauri::WebviewUrl::App("sql.html".into()),
-                )
-                .title("BorgDock SQL")
-                .inner_size(900.0, 650.0)
-                .decorations(false)
-                .resizable(true)
-                .center()
-                .focused(true)
-                .build()
-                {
-                    std::thread::spawn(move || {
-                        std::thread::sleep(std::time::Duration::from_millis(200));
-                        let _ = win.set_focus();
-                    });
-                }
-            });
-        })
-        .map_err(|e| format!("Failed to register SQL hotkey: {e}"))?;
+    if let Ok(mut guard) = SIDEBAR_SHORTCUT.lock() {
+        *guard = Some(shortcut);
+    }
 
     Ok(())
 }
 
 #[tauri::command]
 pub fn unregister_hotkey(app: tauri::AppHandle) -> Result<(), String> {
-    app.global_shortcut()
-        .unregister_all()
-        .map_err(|e| format!("Failed to unregister hotkeys: {e}"))
+    let prev = SIDEBAR_SHORTCUT.lock().ok().and_then(|mut g| g.take());
+    if let Some(shortcut) = prev {
+        app.global_shortcut()
+            .unregister(shortcut.as_str())
+            .map_err(|e| format!("Failed to unregister sidebar hotkey: {e}"))?;
+    }
+    Ok(())
+}
+
+/// Frontend handshake: a palette window calls this once its DOM is mounted
+/// and the input is reachable. We re-assert OS-level focus on the main
+/// thread so Windows' foreground-lock rules don't leave the new window
+/// focus-less. Replaces the old `std::thread::spawn` + `sleep(200ms)` +
+/// `set_focus()` pattern, which called Win32 focus APIs from a non-UI
+/// thread and, combined with a JS-side 50ms focus retry loop, saturated
+/// WebView2's PostMessage queue and hard-crashed the process.
+#[tauri::command]
+pub async fn palette_ready(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+) -> Result<(), String> {
+    let label = window.label().to_string();
+    if !matches!(
+        label.as_str(),
+        "palette" | "worktree-palette" | "file-palette"
+    ) {
+        return Err(format!("palette_ready: not a palette window: {label}"));
+    }
+
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            let win = app_for_run
+                .get_webview_window(&label)
+                .ok_or_else(|| format!("palette window '{label}' vanished"))?;
+            win.set_focus().map_err(|e| e.to_string())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.await.map_err(|e| e.to_string())?
 }
