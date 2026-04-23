@@ -38,13 +38,46 @@ pub struct ListFilesResult {
 
 #[tauri::command]
 pub async fn list_root_files(
+    cache: tauri::State<'_, super::cache::FileIndexCache>,
     root: String,
     limit: Option<usize>,
 ) -> Result<ListFilesResult, String> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT);
-    tokio::task::spawn_blocking(move || walk_root(&PathBuf::from(root), limit))
-        .await
-        .map_err(|e| format!("Task join error: {e}"))?
+
+    // Fast path: DB hit. Serve immediately, spawn a background refresh so
+    // the NEXT open reflects any filesystem changes.
+    if let Ok(conn_lock) = cache.conn.lock() {
+        if let Some(conn_ref) = conn_lock.as_ref() {
+            if let Some(hit) = super::cache::read(conn_ref, &root) {
+                drop(conn_lock);
+                super::cache::spawn_refresh(
+                    cache.conn.clone(),
+                    cache.in_flight.clone(),
+                    root.clone(),
+                    limit,
+                );
+                return Ok(hit);
+            }
+        }
+    }
+
+    // Cold path: synchronous walk, then cache.
+    let walked = tokio::task::spawn_blocking({
+        let root = root.clone();
+        move || walk_root(&PathBuf::from(root), limit)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))??;
+
+    if let Ok(conn_lock) = cache.conn.lock() {
+        if let Some(conn_ref) = conn_lock.as_ref() {
+            if let Err(e) = super::cache::write(conn_ref, &root, &walked) {
+                log::warn!("file_index cache: cold-write failed: {e}");
+            }
+        }
+    }
+
+    Ok(walked)
 }
 
 pub(super) fn walk_root(root: &Path, limit: usize) -> Result<ListFilesResult, String> {
@@ -96,6 +129,30 @@ fn is_allowed_extension(path: &Path) -> bool {
         }
         None => false,
     }
+}
+
+#[cfg(test)]
+pub(super) fn list_root_files_sync(
+    cache: &super::cache::FileIndexCache,
+    root: &str,
+    limit: usize,
+) -> Result<ListFilesResult, String> {
+    if let Ok(conn_lock) = cache.conn.lock() {
+        if let Some(conn_ref) = conn_lock.as_ref() {
+            if let Some(hit) = super::cache::read(conn_ref, root) {
+                // Skip spawning the real background refresh in tests — we
+                // assert on the synchronous return value only.
+                return Ok(hit);
+            }
+        }
+    }
+    let walked = walk_root(&PathBuf::from(root), limit)?;
+    if let Ok(conn_lock) = cache.conn.lock() {
+        if let Some(conn_ref) = conn_lock.as_ref() {
+            let _ = super::cache::write(conn_ref, root, &walked);
+        }
+    }
+    Ok(walked)
 }
 
 #[cfg(test)]
@@ -173,5 +230,47 @@ mod tests {
     fn missing_root_returns_error() {
         let err = walk_root(Path::new("/nope/does-not-exist-xyz"), DEFAULT_LIMIT).unwrap_err();
         assert!(err.contains("does not exist"));
+    }
+
+    use super::super::cache::{create_schema, read, FileIndexCache};
+    use rusqlite::Connection;
+    use std::collections::HashSet;
+    use std::sync::{Arc, Mutex};
+
+    fn make_cache() -> FileIndexCache {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        FileIndexCache {
+            conn: Arc::new(Mutex::new(Some(conn))),
+            in_flight: Arc::new(Mutex::new(HashSet::new())),
+        }
+    }
+
+    #[test]
+    fn list_root_files_uses_cache_on_second_call() {
+        let dir = tempdir().unwrap();
+        write(dir.path(), "src/a.ts", "");
+        write(dir.path(), "src/b.ts", "");
+
+        let cache = make_cache();
+        let root_str = dir.path().to_string_lossy().to_string();
+
+        // First call: cache miss → walk + write.
+        let first = list_root_files_sync(&cache, &root_str, DEFAULT_LIMIT).unwrap();
+        assert_eq!(first.entries.len(), 2);
+
+        // DB should now contain the cached entries for this root.
+        {
+            let conn_lock = cache.conn.lock().unwrap();
+            let conn_ref = conn_lock.as_ref().unwrap();
+            let hit = read(conn_ref, &root_str).expect("cache hit");
+            assert_eq!(hit.entries.len(), 2);
+        }
+
+        // Delete a file on disk — but because the second call hits the cache
+        // synchronously, we still get the old view.
+        std::fs::remove_file(dir.path().join("src/b.ts")).unwrap();
+        let second = list_root_files_sync(&cache, &root_str, DEFAULT_LIMIT).unwrap();
+        assert_eq!(second.entries.len(), 2, "cache should serve stale data");
     }
 }
