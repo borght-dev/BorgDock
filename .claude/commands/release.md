@@ -56,29 +56,24 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
 
 8. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
 
-9. **Verify signing key**: Remind the user that the `TAURI_SIGNING_PRIVATE_KEY` GitHub secret must be set for auto-updates to work. Without it, the CI generates `latest.json` with an empty signature and points at the `.exe` URL instead of the signed `.nsis.zip` — the Tauri updater will reject the update. The public key is already configured in `src/BorgDock.Tauri/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+9. **Verify signing key**: The `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub secrets must exist on the repo. Without them, the CI emits `latest.json` with an empty signature and the Tauri updater rejects the update. The public key is committed in `src/BorgDock.Tauri/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
 
-   To generate a key pair (one-time): `npx tauri signer generate -w ~/.tauri/borgdock.key`
-   Then add the private key as `TAURI_SIGNING_PRIVATE_KEY` and optionally the password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in GitHub repo settings > Secrets.
+   To regenerate (if the key is lost): `npx tauri signer generate -w ~/.tauri/borgdock.key`, then `gh secret set TAURI_SIGNING_PRIVATE_KEY < .../borgdock.key` and update the pubkey in `tauri.conf.json`.
 
 ## How the CI release works (`release-tauri.yml`)
 
-- Triggered by `v*` tags only (`wpf-v*` doesn't match because the pattern requires the tag to start with `v`).
-- Runs on a self-hosted Windows runner.
-- Builds with `npx tauri build --bundles nsis`.
-- Signs the installer if `TAURI_SIGNING_PRIVATE_KEY` is set (produces `.nsis.zip` + `.nsis.zip.sig`).
-- Uploads all NSIS bundle files to a GitHub release created via `gh release create`.
-- Generates `latest.json` for the Tauri updater:
-  - `version` comes from the **git tag** (stripped of the `v` prefix), not `tauri.conf.json`.
-  - `signature` comes from the `.sig` file (empty string if signing key is missing).
-  - `url` points at `BorgDock_<VERSION>_x64-setup.nsis.zip` (signed) or `BorgDock_<VERSION>_x64-setup.exe` (unsigned).
-  - The updater endpoint configured in `tauri.conf.json` is:
-    `https://github.com/<repo>/releases/latest/download/latest.json`
+- Triggered by `v*` tags only.
+- Runs on `windows-latest` (GitHub-hosted) with `tauri-apps/tauri-action@v0`.
+- Builds with `--bundles nsis`.
+- With signing secrets set, the NSIS installer is signed directly (v2 updater format): produces `BorgDock_<VERSION>_x64-setup.exe` + `BorgDock_<VERSION>_x64-setup.exe.sig`.
+- tauri-action creates the GitHub release, uploads all bundle artifacts + signatures, and generates `latest.json` automatically.
+- The `latest.json` URL points at the signed `.exe` installer; the updater plugin downloads and runs it directly.
+- The updater endpoint configured in `tauri.conf.json` is:
+  `https://github.com/<repo>/releases/latest/download/latest.json`
 
 ## Important
 
 - If any step fails, stop and report the error — do not continue with partial state.
 - **Version mismatch is the #1 cause of broken releases.** Always bump all three Tauri config files before tagging.
-- The asset filename pattern is `BorgDock_<VERSION>_x64-setup.nsis.zip` (signed) or `BorgDock_<VERSION>_x64-setup.exe` (unsigned). The version in the filename comes from `tauri.conf.json`, NOT the git tag — so they must match.
-- The self-hosted Windows runner must be online and picked up the job; if the Actions run stays queued, check the runner.
+- The asset filename pattern is `BorgDock_<VERSION>_x64-setup.exe` (+ `.sig` when signed). The version in the filename comes from `tauri.conf.json`, NOT the git tag — so they must match.
 - **Hero images are required for all current-release highlights.** Running `npm run validate-release -- <VERSION>` before tagging catches missing images. Historical versions are frozen; missing images there render a gradient fallback at runtime.

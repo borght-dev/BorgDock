@@ -10,136 +10,44 @@ permissions:
 
 jobs:
   build:
-    runs-on: self-hosted
-    defaults:
-      run:
-        shell: pwsh
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Mitigate Windows Defender file locks
-        run: |
-          # Try to add exclusions (requires admin — silently skip if not available)
-          try { Add-MpPreference -ExclusionPath "${{ github.workspace }}" } catch {}
-          try { Add-MpPreference -ExclusionPath "$env:USERPROFILE\.cargo" } catch {}
-          # Try to disable real-time monitoring for the build duration
-          try { Set-MpPreference -DisableRealtimeMonitoring $true } catch {}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: src/BorgDock.Tauri/package-lock.json
 
-      - name: Kill stale processes
-        run: |
-          # Kill any lingering borgdock.exe from previous builds
-          Get-Process -Name borgdock -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          # Kill any lingering NSIS processes
-          Get-Process -Name makensis -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 2
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Verify toolchain
-        run: |
-          rustc --version
-          cargo --version
-          node --version
-          npm --version
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src/BorgDock.Tauri/src-tauri -> target"
 
       - name: Install frontend dependencies
         run: npm ci
         working-directory: src/BorgDock.Tauri
 
-      - name: Add NSIS to PATH
-        run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
-
-      - name: Clean target directory
-        run: |
-          $targetDir = Join-Path "src" "BorgDock.Tauri" "src-tauri" "target"
-          if (Test-Path $targetDir) {
-            Write-Host "Removing $targetDir to ensure clean build..."
-            Remove-Item $targetDir -Recurse -Force -ErrorAction SilentlyContinue
-          }
-
-      - name: Build Tauri app
-        run: npx tauri build --bundles nsis
-        working-directory: src/BorgDock.Tauri
+      - name: Build, sign, and publish release
+        uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Re-enable Windows Defender
-        if: always()
-        run: |
-          try { Set-MpPreference -DisableRealtimeMonitoring $false } catch {}
-
-      - name: Create GitHub release and upload assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $ErrorActionPreference = "Continue"
-          $tag = "${{ github.ref_name }}"
-          $version = $tag -replace '^v', ''
-          $ws = "${{ github.workspace }}"
-          $nsisDir = Join-Path $ws "src" "BorgDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
-
-          Write-Host "Looking for assets in: $nsisDir"
-          Get-ChildItem $nsisDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
-
-          # Collect all bundle files
-          $assets = @()
-          Get-ChildItem $nsisDir -File -ErrorAction SilentlyContinue | ForEach-Object { $assets += $_.FullName }
-
-          if ($assets.Count -eq 0) {
-            Write-Error "No assets found!"
-            exit 1
-          }
-
-          Write-Host "Uploading $($assets.Count) assets..."
-
-          # Create release (ignore error if exists)
-          gh release create $tag --title "BorgDock $tag" --notes "See the assets to download and install this version." --latest 2>$null
-
-          # Upload all assets
-          foreach ($asset in $assets) {
-            Write-Host "  Uploading: $(Split-Path $asset -Leaf)"
-            gh release upload $tag $asset --clobber
-          }
-
-      - name: Generate and upload updater latest.json
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $ErrorActionPreference = "Continue"
-          $tag = "${{ github.ref_name }}"
-          $version = $tag -replace '^v', ''
-          $repo = "${{ github.repository }}"
-          $ws = "${{ github.workspace }}"
-          $nsisDir = Join-Path $ws "src" "BorgDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
-
-          # Check for .nsis.zip.sig (only exists if TAURI_SIGNING_PRIVATE_KEY is set)
-          $sigFile = Join-Path $nsisDir "BorgDock_${version}_x64-setup.nsis.zip.sig"
-          $zipFile = Join-Path $nsisDir "BorgDock_${version}_x64-setup.nsis.zip"
-
-          if (Test-Path $sigFile) {
-            $signature = (Get-Content $sigFile -Raw).Trim()
-            $url = "https://github.com/$repo/releases/download/$tag/BorgDock_${version}_x64-setup.nsis.zip"
-          } else {
-            Write-Host "No .sig file found — generating latest.json without signature (updater won't work, but WPF migration will)"
-            $signature = ""
-            $url = "https://github.com/$repo/releases/download/$tag/BorgDock_${version}_x64-setup.exe"
-          }
-
-          $latest = @{
-            version = $version
-            notes = "BorgDock $version"
-            pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = $signature
-                url = $url
-              }
-            }
-          } | ConvertTo-Json -Depth 4
-
-          $latest | Out-File -FilePath "latest.json" -Encoding utf8NoBOM
-          Write-Host "Generated latest.json:"
-          Get-Content latest.json
-
-          gh release upload $tag latest.json --clobber
+        with:
+          projectPath: src/BorgDock.Tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: "BorgDock ${{ github.ref_name }}"
+          releaseBody: "See the assets to download and install this version."
+          releaseDraft: false
+          prerelease: false
+          args: --bundles nsis
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
