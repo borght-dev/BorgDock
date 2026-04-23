@@ -51,6 +51,7 @@ export interface UiSettings {
   filePaletteActiveRootPath?: string;
   filePaletteFavoritesOnly?: boolean;
   filePaletteRootsCollapsed?: boolean;
+  filePaletteChangesCollapsed?: { local: boolean; vsBase: boolean };
   /** Override for the Windows Terminal profile used when launching "Claude". Empty = auto-detect. */
   windowsTerminalProfile?: string;
 }
