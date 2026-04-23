@@ -1,6 +1,6 @@
-# PRDock
+# BorgDock
 
-A lightweight desktop application that monitors GitHub pull requests as a docked sidebar overlay. PRDock surfaces CI check status, review state, and Claude Code review findings at a glance — and lets you launch automated fixes with one click.
+A lightweight desktop application that monitors GitHub pull requests as a docked sidebar overlay. BorgDock surfaces CI check status, review state, and Claude Code review findings at a glance — and lets you launch automated fixes with one click.
 
 ## Screenshots
 
@@ -8,7 +8,7 @@ A lightweight desktop application that monitors GitHub pull requests as a docked
 
 All your open PRs in one glance. The sidebar shows every PR grouped by repository with color-coded CI status (green = passing, red = failing, yellow = pending), lines changed, review state, and author avatars. Filter by status tabs — My PRs, Failing, Ready, Reviewing, or Closed — and search across all repos instantly.
 
-![PR Sidebar](docs/PRDockSideBar.png)
+![PR Sidebar](docs/BorgDockSideBar.png)
 
 ### Expanded PR Card
 
@@ -24,7 +24,7 @@ Open the detail view to see every CI check for a PR — Analyze, Build & Unit Te
 
 ### Claude Code Review
 
-The Reviews tab renders full Claude Code review comments with Markdown formatting. See the overall assessment, categorized issues (bugs, correctness, missing contract alignment), and actionable suggestions — all inline. Approve or request changes directly from PRDock.
+The Reviews tab renders full Claude Code review comments with Markdown formatting. See the overall assessment, categorized issues (bugs, correctness, missing contract alignment), and actionable suggestions — all inline. Approve or request changes directly from BorgDock.
 
 ![Claude Code Review](docs/PR%20Details%20Review.png)
 
@@ -36,7 +36,7 @@ The Reviews tab renders full Claude Code review comments with Markdown formattin
 - **File Palette** (`Ctrl+F8`) — Fast filename, content (`>`), and symbol (`@`) search across your worktrees with live syntax-highlighted preview and a pop-out file viewer window.
 - **Syntax Highlighting** — Tree-sitter based highlighting across 11 languages (TypeScript, Rust, C#, SQL, and more) in diffs, the file palette preview, and the file viewer.
 - **CI Check Details** — Inspect failed checks inline with parsed error messages extracted from GitHub Actions logs (supports build errors, test failures, lint warnings, and runtime exceptions).
-- **Claude Code Integration** — One-click launch of a Claude Code terminal session to automatically fix CI failures. PRDock finds or creates a git worktree for the PR branch and generates a targeted fix prompt.
+- **Claude Code Integration** — One-click launch of a Claude Code terminal session to automatically fix CI failures. BorgDock finds or creates a git worktree for the PR branch and generates a targeted fix prompt.
 - **Claude Review Panel** — Surfaces review comments left by Claude Code's bot, grouped by severity, with full Markdown rendering.
 - **SQL Query Tool** (`Ctrl+F10`) — Run queries against configured SQL Server connections with Windows Integrated or SQL auth. Execute the highlighted selection only, or the full query.
 - **Azure DevOps Work Items** (`Ctrl+F9`) — Browse, edit, and track Azure DevOps work items alongside your PRs, with optional `az` CLI auto-auth.
@@ -66,8 +66,8 @@ The Reviews tab renders full Claude Code review comments with Markdown formattin
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/PRDock.git
-cd PRDock/src/PRDock.Tauri
+git clone https://github.com/your-org/BorgDock.git
+cd BorgDock/src/BorgDock.Tauri
 
 # Install dependencies
 npm install
@@ -81,7 +81,7 @@ On first launch, the setup wizard will guide you through authentication and repo
 ## Project Structure
 
 ```
-src/PRDock.Tauri/         # Tauri + React + TypeScript application
+src/BorgDock.Tauri/         # Tauri + React + TypeScript application
 ```
 
 ## Tech Stack

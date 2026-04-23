@@ -3,15 +3,15 @@
 Date: 2026-04-14
 Status: Approved via brainstorming; implementation plan to follow
 Reference mockup: `.superpowers/brainstorm/1042-1776174854/content/whats-new-proper-v2.html`
-Reference redesign (user's aesthetic direction): `design/mockups/prdock_whats_new_redesign.html`
+Reference redesign (user's aesthetic direction): `design/mockups/borgdock_whats_new_redesign.html`
 
 ## Problem
 
-Users who auto-update PRDock don't discover the features we ship. The current process (`/release` writes CHANGELOG.md, GitHub Actions tags and publishes) ends with users getting a new binary with no in-app announcement of what changed. We need an in-app "What's new?" surface that makes shipped work visible without requiring the user to go read the GitHub release.
+Users who auto-update BorgDock don't discover the features we ship. The current process (`/release` writes CHANGELOG.md, GitHub Actions tags and publishes) ends with users getting a new binary with no in-app announcement of what changed. We need an in-app "What's new?" surface that makes shipped work visible without requiring the user to go read the GitHub release.
 
 ## Goals
 
-1. After an update containing user-facing changes, PRDock proactively shows what shipped in the versions the user skipped.
+1. After an update containing user-facing changes, BorgDock proactively shows what shipped in the versions the user skipped.
 2. Users can re-open the same experience at any time.
 3. Zero additional authoring burden in the normal case: CHANGELOG.md stays the canonical source. Optional richer content (hero images) is added per-release when wanted.
 4. Pure bugfix releases do not spam the user with popups.
@@ -21,7 +21,7 @@ Users who auto-update PRDock don't discover the features we ship. The current pr
 - Telemetry / "which highlights did users view".
 - Localization.
 - Inline screenshot lightbox / zoom.
-- Editing release notes from inside PRDock.
+- Editing release notes from inside BorgDock.
 
 ## Summary of decisions (locked during brainstorming)
 
@@ -33,11 +33,11 @@ Users who auto-update PRDock don't discover the features we ship. The current pr
 | Surface | **Separate resizable Tauri window** (`whats-new.html`, mirrors the PR detail pop-out pattern). |
 | Window size | **520 × 640**, resizable. |
 | Auto-open gate | Fire **only when at least one missed release has a `### New Features` or `### Improvements` section**. Bugfix-only releases stay quiet. Manual entry always works. |
-| Aesthetic | Restrained purple-slate matching existing PRDock components; slim 74px hero banners per highlight; left-rail version grouping; inline kind badge + title. |
+| Aesthetic | Restrained purple-slate matching existing BorgDock components; slim 74px hero banners per highlight; left-rail version grouping; inline kind badge + title. |
 
 ## User stories
 
-1. As a user who just updated PRDock, I want to know immediately what's new so I can try it.
+1. As a user who just updated BorgDock, I want to know immediately what's new so I can try it.
 2. As a user who dismissed the popup too quickly, I want a way to reopen it.
 3. As a user who was on an old version and leap-frogged several releases, I want all missed releases visible, not just the latest.
 4. As a user who doesn't want popups at all, I want a way to permanently disable the auto-open.
@@ -51,11 +51,11 @@ Three cleanly-separated pieces.
 
 `scripts/build-changelog.ts` (Node + TypeScript). Packaged as a Vite plugin registered in `vite.config.ts`. It runs on Vite's `buildStart` hook (so both `vite build` and `vite dev` trigger it) and also in response to CHANGELOG.md / `docs/whats-new/**` changes via Vite's watcher, so authors see updates in dev without restarting. Reads `CHANGELOG.md`, copies hero image files, emits a typed TS module.
 
-Input: `E:\PRDock\CHANGELOG.md` and `docs/whats-new/<version>/*` image sources.
+Input: `E:\BorgDock\CHANGELOG.md` and `docs/whats-new/<version>/*` image sources.
 
 Output:
-- `src/PRDock.Tauri/src/generated/changelog.ts` — a typed `export const RELEASES: Release[]`.
-- `src/PRDock.Tauri/public/whats-new/<version>/*` — copies of referenced hero images so Vite serves them at `/whats-new/<version>/<name>.png`.
+- `src/BorgDock.Tauri/src/generated/changelog.ts` — a typed `export const RELEASES: Release[]`.
+- `src/BorgDock.Tauri/public/whats-new/<version>/*` — copies of referenced hero images so Vite serves them at `/whats-new/<version>/<name>.png`.
 
 `public/whats-new/` is gitignored (generated) but `docs/whats-new/` is committed (the authored sources).
 
@@ -63,13 +63,13 @@ Output:
 
 A new Vite entry + Tauri window, modeled on the PR detail pop-out.
 
-- `src/PRDock.Tauri/whats-new.html` — Vite entry HTML.
-- `src/PRDock.Tauri/src/whats-new-main.tsx` — React root; reads `?version=` query param for deep-link behavior.
-- `src/PRDock.Tauri/src-tauri/src/lib.rs` — new `open_whats_new_window` Tauri command that focuses existing window or creates one using `WebviewWindowBuilder` at `520 × 640`, resizable, with a minimum size of `480 × 480`. Reuses the same plumbing as `open_pr_detail_window`.
+- `src/BorgDock.Tauri/whats-new.html` — Vite entry HTML.
+- `src/BorgDock.Tauri/src/whats-new-main.tsx` — React root; reads `?version=` query param for deep-link behavior.
+- `src/BorgDock.Tauri/src-tauri/src/lib.rs` — new `open_whats_new_window` Tauri command that focuses existing window or creates one using `WebviewWindowBuilder` at `520 × 640`, resizable, with a minimum size of `480 × 480`. Reuses the same plumbing as `open_pr_detail_window`.
 
 ### C. Launcher hook
 
-`src/PRDock.Tauri/src/hooks/useWhatsNew.ts` is called once from `App.tsx`. It:
+`src/BorgDock.Tauri/src/hooks/useWhatsNew.ts` is called once from `App.tsx`. It:
 
 1. Reads the app version via `getVersion()` from `@tauri-apps/api/app`.
 2. Reads `lastSeenVersion` and `autoOpenDisabled` from `whats-new-state.json` (tauri-plugin-store).
@@ -158,7 +158,7 @@ The build script fails the build when:
 - **Any highlight** in the current release (regardless of kind) has no hero image. Historical releases are frozen — missing images there render a gradient fallback without erroring.
 - An image path referenced from `docs/whats-new/<version>/` does not exist on disk.
 
-The current release is determined from `src/PRDock.Tauri/package.json`'s `version` field. Validation errors include file:line and a remediation hint ("Add `docs/whats-new/1.0.11/close-pr.png` or remove the `**bold title**` from bullet to demote it to the Also-fixed list.").
+The current release is determined from `src/BorgDock.Tauri/package.json`'s `version` field. Validation errors include file:line and a remediation hint ("Add `docs/whats-new/1.0.11/close-pr.png` or remove the `**bold title**` from bullet to demote it to the Also-fixed list.").
 
 ## Version tracking and gate
 
@@ -193,7 +193,7 @@ Reference mockup: `whats-new-proper-v2.html` in the brainstorm session directory
 
 ### Structure (top to bottom)
 
-1. **Chrome** — platform-standard title bar with "What's new in PRDock" title. No custom controls.
+1. **Chrome** — platform-standard title bar with "What's new in BorgDock" title. No custom controls.
 2. **Release head** — padding 22/24/14/24:
    - Eyebrow row: "RELEASE NOTES" left, "N versions behind" right.
    - H1: "What's new in **1.0.11**" (version in accent violet, weight 600, tabular numerals).
@@ -225,7 +225,7 @@ Reference mockup: `whats-new-proper-v2.html` in the brainstorm session directory
 | Improved | `#8A5F06` / `rgba(176,125,9,.08)` / `rgba(176,125,9,.22)` | `#F5B73B` / `rgba(245,183,59,.06)` / `rgba(245,183,59,.20)` | `### Improvements` |
 | Fixed | `#6655D4` / `rgba(124,106,246,.08)` / `rgba(124,106,246,.22)` | `#B8B0F8` / `rgba(184,176,248,.06)` / `rgba(184,176,248,.20)` | `### Bug Fixes` (title-bearing bullets) |
 
-All other colors, borders, and spacing come from the existing PRDock tokens in `src/PRDock.Tauri/src/styles/index.css`.
+All other colors, borders, and spacing come from the existing BorgDock tokens in `src/BorgDock.Tauri/src/styles/index.css`.
 
 ### Deep-link behavior
 
@@ -235,7 +235,7 @@ The window honors `?version=1.0.11` in the URL:
 
 ## Components
 
-All new, under `src/PRDock.Tauri/src/components/whats-new/`:
+All new, under `src/BorgDock.Tauri/src/components/whats-new/`:
 
 - `WhatsNewApp.tsx` — root layout (release-head, scroll, footer).
 - `ReleaseAccordion.tsx` — one version block (expanded or collapsed).
@@ -292,7 +292,7 @@ Ship the whole feature in one release. The first-run seed (setting `lastSeenVers
 
 - Image lightbox / zoom.
 - Video hero content.
-- Per-highlight "Try it" deep links into PRDock features.
+- Per-highlight "Try it" deep links into BorgDock features.
 - Release notes translation.
 - Opting in to screenshots via the sidebar when the user clicks a highlight.
 

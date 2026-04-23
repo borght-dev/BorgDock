@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security issue in PRDock, please report it privately rather than opening a public issue.
+If you discover a security issue in BorgDock, please report it privately rather than opening a public issue.
 
 **Contact**: koenvanderborght@outlook.com
 
@@ -16,10 +16,10 @@ I will acknowledge receipt within a few days and work with you on a timeline for
 
 ## Scope
 
-PRDock handles sensitive developer credentials (GitHub PATs, Azure DevOps PATs, SQL Server passwords, Anthropic API keys). Credential handling, storage (OS keychain), and IPC surfaces are the highest-priority areas for review.
+BorgDock handles sensitive developer credentials (GitHub PATs, Azure DevOps PATs, SQL Server passwords, Anthropic API keys). Credential handling, storage (OS keychain), and IPC surfaces are the highest-priority areas for review.
 
 ## Out of Scope
 
-- Vulnerabilities in upstream dependencies that are already tracked by their own advisories and have no exploit path specific to PRDock
+- Vulnerabilities in upstream dependencies that are already tracked by their own advisories and have no exploit path specific to BorgDock
 - Issues requiring a pre-compromised local machine (local attacker already has file system / process access)
 - Social engineering of users

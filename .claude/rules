@@ -1,4 +1,4 @@
-# PRDock Development Rules
+# BorgDock Development Rules
 
 ## Test-Driven Development (TDD)
 
@@ -51,4 +51,4 @@ Follow TDD for all new code — no exceptions:
 
 ## Spec Reference
 
-The full product specification lives at `PRDock-Implementation-Plan.md`. Always check it for expected behavior, UI layout, API endpoints, and design decisions before implementing a feature.
+The full product specification lives at `BorgDock-Implementation-Plan.md`. Always check it for expected behavior, UI layout, API endpoints, and design decisions before implementing a feature.

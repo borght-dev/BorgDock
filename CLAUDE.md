@@ -1,13 +1,13 @@
-# PRDock — Developer Guide for Claude
+# BorgDock — Developer Guide for Claude
 
 ## What is this?
 
-A desktop app that monitors GitHub PRs as a docked sidebar. Built with Tauri + React + TypeScript in `src/PRDock.Tauri/`.
+A desktop app that monitors GitHub PRs as a docked sidebar. Built with Tauri + React + TypeScript in `src/BorgDock.Tauri/`.
 
 ## Quick Commands
 
 ```bash
-cd src/PRDock.Tauri
+cd src/BorgDock.Tauri
 npm install                     # Install dependencies
 npm run dev                     # Dev mode with hot reload
 npm run build                   # Production build
@@ -17,7 +17,7 @@ npm run tauri dev               # Launch Tauri dev window
 ## Project Layout
 
 ```
-src/PRDock.Tauri/         # Tauri + React application
+src/BorgDock.Tauri/         # Tauri + React application
 ```
 
 ## Implementation Status (Legacy WPF — completed before Tauri rewrite)
@@ -31,7 +31,7 @@ src/PRDock.Tauri/         # Tauri + React application
 - **Phase 7 COMPLETE**: Hardening (retry handling, rate limit display, adaptive polling, graceful degradation)
 - **Phase 8 COMPLETE**: Azure DevOps (work items, CRUD, query browser, filtering, attachments, section switcher)
 
-Full spec: `PRDock-Implementation-Plan.md`
+Full spec: `BorgDock-Implementation-Plan.md`
 
 ## Syntax highlighting (diff view, file palette, file viewer)
 
@@ -94,7 +94,7 @@ Because this is a panic (not a `Result`), `try_get`-level handling in `row_to_st
 1. **Release profile uses `panic = "unwind"`** (not `abort`) in `src-tauri/Cargo.toml`. With `abort`, neither `catch_unwind` nor `tokio::spawn` can intercept the panic — the process dies before any handler runs. Don't revert this without a replacement strategy.
 2. **The query body in `sql::execute_sql_query` runs inside `tokio::spawn`**, and `JoinError::is_panic()` is checked on the handle. The panic payload is downcast to a string and returned as a friendly `Err(String)` suggesting the user avoid `SELECT *`.
 
-If a user reports the SQL window still crashing, check `%APPDATA%\PRDock\logs\prdock-panic.log` — the panic hook in `lib.rs::install_panic_hook` does a synchronous, flushed write there (survives even `panic = "abort"`, for diagnosing future crashes that predate the catch).
+If a user reports the SQL window still crashing, check `%APPDATA%\BorgDock\logs\borgdock-panic.log` — the panic hook in `lib.rs::install_panic_hook` does a synchronous, flushed write there (survives even `panic = "abort"`, for diagnosing future crashes that predate the catch).
 
 ## `cargo check` / `cargo build` hangs in Git Bash on Windows
 
@@ -103,7 +103,7 @@ Git Bash's MSYS path conversion mangles flags like `-Brepro` (MSVC's determinist
 Workaround: prefix cargo commands with `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`:
 
 ```bash
-cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check
+cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check
 ```
 
 Or run cargo from cmd.exe / PowerShell where MSYS isn't involved.

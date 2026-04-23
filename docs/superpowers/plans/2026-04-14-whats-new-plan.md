@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship an in-app "What's new?" window that auto-opens after PRDock updates to a release with user-facing changes and stays reachable from tray/settings for manual recall.
+**Goal:** Ship an in-app "What's new?" window that auto-opens after BorgDock updates to a release with user-facing changes and stays reachable from tray/settings for manual recall.
 
 **Architecture:** A Vite plugin parses `CHANGELOG.md` at build time and emits a typed TS module plus copied hero images. A new Tauri window (`whats-new.html` / 520×640) renders this content. A React hook compares the current app version against a persisted `lastSeenVersion` and opens the window when a missed release has a New Features or Improvements section.
 
@@ -32,7 +32,7 @@ Both adjustments preserve the spec's intent. The plan uses them as its source of
 docs/whats-new/                                    # Hero image sources
   README.md                                        # Authoring convention
   .gitkeep
-src/PRDock.Tauri/scripts/changelog/
+src/BorgDock.Tauri/scripts/changelog/
   parse.ts                                         # Pure CHANGELOG.md → Release[] parser
   emit.ts                                          # Release[] → generated TS module string
   copy-images.ts                                   # Copies/rewrites hero image paths
@@ -42,14 +42,14 @@ src/PRDock.Tauri/scripts/changelog/
   __tests__/parse.test.ts
   __tests__/emit.test.ts
   __tests__/copy-images.test.ts
-src/PRDock.Tauri/src/types/whats-new.ts            # Public Release / Highlight types
-src/PRDock.Tauri/src/generated/changelog.ts        # Initial stub; overwritten by Vite plugin
-src/PRDock.Tauri/src/utils/semver.ts               # semverGt / semverLte / semverEq
-src/PRDock.Tauri/src/stores/whats-new-store.ts     # lastSeenVersion + autoOpenDisabled
-src/PRDock.Tauri/src/hooks/useWhatsNew.ts          # Auto-open gate + openWhatsNew()
-src/PRDock.Tauri/whats-new.html                    # Vite entry
-src/PRDock.Tauri/src/whats-new-main.tsx            # React root
-src/PRDock.Tauri/src/components/whats-new/
+src/BorgDock.Tauri/src/types/whats-new.ts            # Public Release / Highlight types
+src/BorgDock.Tauri/src/generated/changelog.ts        # Initial stub; overwritten by Vite plugin
+src/BorgDock.Tauri/src/utils/semver.ts               # semverGt / semverLte / semverEq
+src/BorgDock.Tauri/src/stores/whats-new-store.ts     # lastSeenVersion + autoOpenDisabled
+src/BorgDock.Tauri/src/hooks/useWhatsNew.ts          # Auto-open gate + openWhatsNew()
+src/BorgDock.Tauri/whats-new.html                    # Vite entry
+src/BorgDock.Tauri/src/whats-new-main.tsx            # React root
+src/BorgDock.Tauri/src/components/whats-new/
   WhatsNewApp.tsx
   ReleaseAccordion.tsx
   HighlightCard.tsx
@@ -62,32 +62,32 @@ src/PRDock.Tauri/src/components/whats-new/
   __tests__/HighlightCard.test.tsx
   __tests__/HeroBanner.test.tsx
   __tests__/useReleasesToShow.test.ts
-src/PRDock.Tauri/src/utils/__tests__/semver.test.ts
-src/PRDock.Tauri/src/stores/__tests__/whats-new-store.test.ts
-src/PRDock.Tauri/src/hooks/__tests__/useWhatsNew.test.ts
+src/BorgDock.Tauri/src/utils/__tests__/semver.test.ts
+src/BorgDock.Tauri/src/stores/__tests__/whats-new-store.test.ts
+src/BorgDock.Tauri/src/hooks/__tests__/useWhatsNew.test.ts
 ```
 
 **Modified files:**
 
 ```
 .gitignore                                         # Ignore public/whats-new/
-src/PRDock.Tauri/package.json                      # Add tsx devDep + validate-release script
-src/PRDock.Tauri/vite.config.ts                    # Register plugin + rollup input
-src/PRDock.Tauri/src/styles/index.css              # Kind-color CSS vars
-src/PRDock.Tauri/src-tauri/src/platform/window.rs  # open_whats_new_window command
-src/PRDock.Tauri/src-tauri/src/lib.rs              # Register command in invoke_handler
-src/PRDock.Tauri/src-tauri/src/platform/tray.rs    # "What's new…" menu item
-src/PRDock.Tauri/src-tauri/capabilities/default.json # Allow open_whats_new_window invoke
-src/PRDock.Tauri/src/App.tsx                       # Call useWhatsNew()
-src/PRDock.Tauri/src/components/settings/UpdateSection.tsx  # "View release notes" button
-src/PRDock.Tauri/src/__tests__/build-integrity.test.ts      # Include whats-new.html
+src/BorgDock.Tauri/package.json                      # Add tsx devDep + validate-release script
+src/BorgDock.Tauri/vite.config.ts                    # Register plugin + rollup input
+src/BorgDock.Tauri/src/styles/index.css              # Kind-color CSS vars
+src/BorgDock.Tauri/src-tauri/src/platform/window.rs  # open_whats_new_window command
+src/BorgDock.Tauri/src-tauri/src/lib.rs              # Register command in invoke_handler
+src/BorgDock.Tauri/src-tauri/src/platform/tray.rs    # "What's new…" menu item
+src/BorgDock.Tauri/src-tauri/capabilities/default.json # Allow open_whats_new_window invoke
+src/BorgDock.Tauri/src/App.tsx                       # Call useWhatsNew()
+src/BorgDock.Tauri/src/components/settings/UpdateSection.tsx  # "View release notes" button
+src/BorgDock.Tauri/src/__tests__/build-integrity.test.ts      # Include whats-new.html
 .claude/commands/release.md                        # Hero-image + validator steps
 ```
 
 **Generated (gitignored):**
 
 ```
-src/PRDock.Tauri/public/whats-new/<version>/*      # Runtime-served hero images
+src/BorgDock.Tauri/public/whats-new/<version>/*      # Runtime-served hero images
 ```
 
 ---
@@ -100,8 +100,8 @@ src/PRDock.Tauri/public/whats-new/<version>/*      # Runtime-served hero images
 - Create: `docs/whats-new/README.md`
 - Create: `docs/whats-new/.gitkeep`
 - Modify: `.gitignore`
-- Create: `src/PRDock.Tauri/src/types/whats-new.ts`
-- Create: `src/PRDock.Tauri/src/generated/changelog.ts`
+- Create: `src/BorgDock.Tauri/src/types/whats-new.ts`
+- Create: `src/BorgDock.Tauri/src/generated/changelog.ts`
 
 - [ ] **Step 1: Create the authored-sources directory with a README**
 
@@ -116,7 +116,7 @@ then reference it from the corresponding bullet in `/CHANGELOG.md`:
     - **Close PRs from the detail panel** — One-line description. ![](whats-new/1.0.11/close-pr.png)
 
 The build-time Vite plugin lifts the image out of the bullet, copies it to
-`src/PRDock.Tauri/public/whats-new/<version>/`, and serves it at
+`src/BorgDock.Tauri/public/whats-new/<version>/`, and serves it at
 `/whats-new/<version>/<name>.png`.
 
 Constraints:
@@ -133,12 +133,12 @@ Append to `.gitignore`:
 
 ```
 ## "What's new" generated hero images (sources live in docs/whats-new/)
-src/PRDock.Tauri/public/whats-new/
+src/BorgDock.Tauri/public/whats-new/
 ```
 
 - [ ] **Step 3: Add the public types**
 
-Create `src/PRDock.Tauri/src/types/whats-new.ts`:
+Create `src/BorgDock.Tauri/src/types/whats-new.ts`:
 
 ```ts
 export type Kind = 'new' | 'improved' | 'fixed';
@@ -171,7 +171,7 @@ export interface Release {
 
 - [ ] **Step 4: Add the initial generated stub**
 
-Create `src/PRDock.Tauri/src/generated/changelog.ts`:
+Create `src/BorgDock.Tauri/src/generated/changelog.ts`:
 
 ```ts
 // THIS FILE IS GENERATED by scripts/changelog/vite-plugin.ts.
@@ -183,18 +183,18 @@ export const RELEASES: Release[] = [];
 
 - [ ] **Step 5: Verify project still builds**
 
-Run: `cd src/PRDock.Tauri && npm run lint`
+Run: `cd src/BorgDock.Tauri && npm run lint`
 Expected: no errors for the new files (other unrelated files may warn).
 
-Run: `cd src/PRDock.Tauri && npx tsc -b --noEmit`
+Run: `cd src/BorgDock.Tauri && npx tsc -b --noEmit`
 Expected: passes with no errors.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add docs/whats-new/ .gitignore \
-  src/PRDock.Tauri/src/types/whats-new.ts \
-  src/PRDock.Tauri/src/generated/changelog.ts
+  src/BorgDock.Tauri/src/types/whats-new.ts \
+  src/BorgDock.Tauri/src/generated/changelog.ts
 git commit -m "chore(whats-new): scaffold directories, public types, and generated stub"
 ```
 
@@ -205,13 +205,13 @@ git commit -m "chore(whats-new): scaffold directories, public types, and generat
 ### Task 2: Parser — version + date extraction (TDD)
 
 **Files:**
-- Create: `src/PRDock.Tauri/scripts/changelog/types.ts`
-- Create: `src/PRDock.Tauri/scripts/changelog/parse.ts`
-- Create: `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/types.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/parse.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -241,12 +241,12 @@ describe('parseChangelog', () => {
 
 - [ ] **Step 2: Verify the test fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: FAIL — `Cannot find module '../parse'`.
 
 - [ ] **Step 3: Create internal types**
 
-Create `src/PRDock.Tauri/scripts/changelog/types.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/types.ts`:
 
 ```ts
 import type { Release } from '../../src/types/whats-new';
@@ -266,7 +266,7 @@ export interface ParseError extends Error {
 
 - [ ] **Step 4: Implement minimal parse**
 
-Create `src/PRDock.Tauri/scripts/changelog/parse.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/parse.ts`:
 
 ```ts
 import type { ParsedChangelog, Release } from './types';
@@ -315,13 +315,13 @@ export function parseChangelog(md: string): ParsedChangelog {
 
 - [ ] **Step 5: Verify the test passes**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/
+git add src/BorgDock.Tauri/scripts/changelog/
 git commit -m "feat(whats-new): parser extracts version and date headings"
 ```
 
@@ -330,12 +330,12 @@ git commit -m "feat(whats-new): parser extracts version and date headings"
 ### Task 3: Parser — bullets → highlights and alsoFixed
 
 **Files:**
-- Modify: `src/PRDock.Tauri/scripts/changelog/parse.ts`
-- Modify: `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
+- Modify: `src/BorgDock.Tauri/scripts/changelog/parse.ts`
+- Modify: `src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
 
 - [ ] **Step 1: Add failing tests**
 
-Append to `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts` inside the `describe` block:
+Append to `src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts` inside the `describe` block:
 
 ```ts
   it('maps ### sections to highlight kinds', () => {
@@ -392,12 +392,12 @@ Append to `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts` inside th
 
 - [ ] **Step 2: Verify the new tests fail**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: the three new tests FAIL; earlier ones still pass.
 
 - [ ] **Step 3: Replace parse.ts with a two-pass implementation**
 
-Overwrite `src/PRDock.Tauri/scripts/changelog/parse.ts`:
+Overwrite `src/BorgDock.Tauri/scripts/changelog/parse.ts`:
 
 ```ts
 import type { ParsedChangelog, Release } from './types';
@@ -494,14 +494,14 @@ export function parseChangelog(md: string): ParsedChangelog {
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: all 6 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/parse.ts \
-  src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts
+git add src/BorgDock.Tauri/scripts/changelog/parse.ts \
+  src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts
 git commit -m "feat(whats-new): parser extracts highlights, alsoFixed, and kinds from sections"
 ```
 
@@ -510,8 +510,8 @@ git commit -m "feat(whats-new): parser extracts highlights, alsoFixed, and kinds
 ### Task 4: Parser — hero image and keyboard extraction
 
 **Files:**
-- Modify: `src/PRDock.Tauri/scripts/changelog/parse.ts`
-- Modify: `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
+- Modify: `src/BorgDock.Tauri/scripts/changelog/parse.ts`
+- Modify: `src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
 
 - [ ] **Step 1: Add failing tests**
 
@@ -584,12 +584,12 @@ Append to the same `describe` block in `parse.test.ts`:
 
 - [ ] **Step 2: Verify the new tests fail**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: 5 new tests FAIL.
 
 - [ ] **Step 3: Extend `makeHighlight` with extraction**
 
-Replace the `makeHighlight` function and add two helpers in `src/PRDock.Tauri/scripts/changelog/parse.ts` (keep the rest of the file unchanged):
+Replace the `makeHighlight` function and add two helpers in `src/BorgDock.Tauri/scripts/changelog/parse.ts` (keep the rest of the file unchanged):
 
 ```ts
 const MD_IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/;
@@ -668,14 +668,14 @@ to:
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: all 11 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/parse.ts \
-  src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts
+git add src/BorgDock.Tauri/scripts/changelog/parse.ts \
+  src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts
 git commit -m "feat(whats-new): parser extracts hero image and keyboard shortcut per highlight"
 ```
 
@@ -684,8 +684,8 @@ git commit -m "feat(whats-new): parser extracts hero image and keyboard shortcut
 ### Task 5: Parser — summary and autoOpenEligible
 
 **Files:**
-- Modify: `src/PRDock.Tauri/scripts/changelog/parse.ts`
-- Modify: `src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
+- Modify: `src/BorgDock.Tauri/scripts/changelog/parse.ts`
+- Modify: `src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts`
 
 - [ ] **Step 1: Add failing tests**
 
@@ -736,7 +736,7 @@ Append to `parse.test.ts`:
 
 - [ ] **Step 2: Verify failures**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: 6 new tests FAIL.
 
 - [ ] **Step 3: Implement summary + eligibility**
@@ -768,14 +768,14 @@ In `parseChangelog`, replace the final sort block with:
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/parse.test.ts`
 Expected: all 17 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/parse.ts \
-  src/PRDock.Tauri/scripts/changelog/__tests__/parse.test.ts
+git add src/BorgDock.Tauri/scripts/changelog/parse.ts \
+  src/BorgDock.Tauri/scripts/changelog/__tests__/parse.test.ts
 git commit -m "feat(whats-new): parser derives summary and autoOpenEligible per release"
 ```
 
@@ -786,12 +786,12 @@ git commit -m "feat(whats-new): parser derives summary and autoOpenEligible per 
 ### Task 6: Emit — generate typed TS module
 
 **Files:**
-- Create: `src/PRDock.Tauri/scripts/changelog/emit.ts`
-- Create: `src/PRDock.Tauri/scripts/changelog/__tests__/emit.test.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/emit.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/__tests__/emit.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/scripts/changelog/__tests__/emit.test.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/__tests__/emit.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -849,12 +849,12 @@ describe('emitModule', () => {
 
 - [ ] **Step 2: Verify the test fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/emit.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/emit.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement the emitter**
 
-Create `src/PRDock.Tauri/scripts/changelog/emit.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/emit.ts`:
 
 ```ts
 import type { Release } from '../../src/types/whats-new';
@@ -888,14 +888,14 @@ export const RELEASES: Release[] = ${body};
 
 - [ ] **Step 4: Verify the test passes**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/emit.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/emit.test.ts`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/emit.ts \
-  src/PRDock.Tauri/scripts/changelog/__tests__/emit.test.ts
+git add src/BorgDock.Tauri/scripts/changelog/emit.ts \
+  src/BorgDock.Tauri/scripts/changelog/__tests__/emit.test.ts
 git commit -m "feat(whats-new): emit typed TS module from parsed releases"
 ```
 
@@ -904,12 +904,12 @@ git commit -m "feat(whats-new): emit typed TS module from parsed releases"
 ### Task 7: copy-images — validate references and copy to public/
 
 **Files:**
-- Create: `src/PRDock.Tauri/scripts/changelog/copy-images.ts`
-- Create: `src/PRDock.Tauri/scripts/changelog/__tests__/copy-images.test.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/copy-images.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/__tests__/copy-images.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/scripts/changelog/__tests__/copy-images.test.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/__tests__/copy-images.test.ts`:
 
 ```ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -979,12 +979,12 @@ describe('syncImages', () => {
 
 - [ ] **Step 2: Verify the test fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/copy-images.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/copy-images.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `syncImages`**
 
-Create `src/PRDock.Tauri/scripts/changelog/copy-images.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/copy-images.ts`:
 
 ```ts
 import fs from 'node:fs';
@@ -1050,14 +1050,14 @@ export function syncImages({ refs, docsRoot, publicRoot }: SyncImagesInput): str
 
 - [ ] **Step 4: Verify the test passes**
 
-Run: `cd src/PRDock.Tauri && npx vitest run scripts/changelog/__tests__/copy-images.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run scripts/changelog/__tests__/copy-images.test.ts`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/copy-images.ts \
-  src/PRDock.Tauri/scripts/changelog/__tests__/copy-images.test.ts
+git add src/BorgDock.Tauri/scripts/changelog/copy-images.ts \
+  src/BorgDock.Tauri/scripts/changelog/__tests__/copy-images.test.ts
 git commit -m "feat(whats-new): copy-images validates references and mirrors to public dir"
 ```
 
@@ -1068,12 +1068,12 @@ git commit -m "feat(whats-new): copy-images validates references and mirrors to 
 ### Task 8: Vite plugin — wrap parse + emit + sync
 
 **Files:**
-- Create: `src/PRDock.Tauri/scripts/changelog/vite-plugin.ts`
-- Modify: `src/PRDock.Tauri/vite.config.ts`
+- Create: `src/BorgDock.Tauri/scripts/changelog/vite-plugin.ts`
+- Modify: `src/BorgDock.Tauri/vite.config.ts`
 
 - [ ] **Step 1: Write the plugin**
 
-Create `src/PRDock.Tauri/scripts/changelog/vite-plugin.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/vite-plugin.ts`:
 
 ```ts
 import fs from 'node:fs';
@@ -1110,7 +1110,7 @@ function run({ packageRoot, repoRoot }: PluginOptions): void {
 
 export function changelogPlugin(options: PluginOptions): Plugin {
   return {
-    name: 'prdock-whats-new-changelog',
+    name: 'borgdock-whats-new-changelog',
     buildStart() {
       run(options);
     },
@@ -1141,7 +1141,7 @@ export function changelogPlugin(options: PluginOptions): Plugin {
 
 - [ ] **Step 2: Register the plugin in `vite.config.ts`**
 
-In `src/PRDock.Tauri/vite.config.ts`:
+In `src/BorgDock.Tauri/vite.config.ts`:
 
 At the top, add:
 
@@ -1162,25 +1162,25 @@ Inside `defineConfig({ plugins: [...] })`, add after `tailwindcss()`:
 
 First, delete the stub content (the plugin should regenerate):
 
-Run: `cd src/PRDock.Tauri && rm -f src/generated/changelog.ts && npx vite build 2>&1 | head -40`
+Run: `cd src/BorgDock.Tauri && rm -f src/generated/changelog.ts && npx vite build 2>&1 | head -40`
 
 Expected: no errors; the build completes.
 
-Run: `cat src/PRDock.Tauri/src/generated/changelog.ts | head -5`
+Run: `cat src/BorgDock.Tauri/src/generated/changelog.ts | head -5`
 
 Expected: starts with `// THIS FILE IS GENERATED` and contains a populated `RELEASES` array with 1.0.10 etc.
 
 - [ ] **Step 4: Regenerate and confirm TS still compiles**
 
-Run: `cd src/PRDock.Tauri && npx tsc -b --noEmit`
+Run: `cd src/BorgDock.Tauri && npx tsc -b --noEmit`
 Expected: passes.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/vite-plugin.ts \
-  src/PRDock.Tauri/vite.config.ts \
-  src/PRDock.Tauri/src/generated/changelog.ts
+git add src/BorgDock.Tauri/scripts/changelog/vite-plugin.ts \
+  src/BorgDock.Tauri/vite.config.ts \
+  src/BorgDock.Tauri/src/generated/changelog.ts
 git commit -m "feat(whats-new): wire Vite plugin so dev and build regenerate the module"
 ```
 
@@ -1189,18 +1189,18 @@ git commit -m "feat(whats-new): wire Vite plugin so dev and build regenerate the
 ### Task 9: Release-strict validator CLI
 
 **Files:**
-- Create: `src/PRDock.Tauri/scripts/changelog/validate-release.ts`
-- Modify: `src/PRDock.Tauri/package.json`
+- Create: `src/BorgDock.Tauri/scripts/changelog/validate-release.ts`
+- Modify: `src/BorgDock.Tauri/package.json`
 
 - [ ] **Step 1: Add `tsx` as a devDependency**
 
-Run: `cd src/PRDock.Tauri && npm install --save-dev tsx@^4.19.0`
+Run: `cd src/BorgDock.Tauri && npm install --save-dev tsx@^4.19.0`
 
 Expected: package.json gains `"tsx": "^4.19.0"` under `devDependencies`.
 
 - [ ] **Step 2: Add the validator script**
 
-Create `src/PRDock.Tauri/scripts/changelog/validate-release.ts`:
+Create `src/BorgDock.Tauri/scripts/changelog/validate-release.ts`:
 
 ```ts
 #!/usr/bin/env tsx
@@ -1251,7 +1251,7 @@ main();
 
 - [ ] **Step 3: Add `validate-release` npm script**
 
-In `src/PRDock.Tauri/package.json`, in the `"scripts"` object, add:
+In `src/BorgDock.Tauri/package.json`, in the `"scripts"` object, add:
 
 ```json
     "validate-release": "tsx scripts/changelog/validate-release.ts"
@@ -1259,24 +1259,24 @@ In `src/PRDock.Tauri/package.json`, in the `"scripts"` object, add:
 
 - [ ] **Step 4: Smoke-test the validator against an intentionally-missing case**
 
-Run: `cd src/PRDock.Tauri && npm run validate-release -- 1.0.99 2>&1 || true`
+Run: `cd src/BorgDock.Tauri && npm run validate-release -- 1.0.99 2>&1 || true`
 
 Expected: exits non-zero with message `no CHANGELOG entry for 1.0.99`.
 
-Run: `cd src/PRDock.Tauri && npm run validate-release -- 1.0.2 2>&1 || true`
+Run: `cd src/BorgDock.Tauri && npm run validate-release -- 1.0.2 2>&1 || true`
 
 Expected: exits non-zero with message mentioning `"Notification windows are no longer transparent"` has no hero image (or similar; 1.0.2 is shipped without images).
 
-Run: `cd src/PRDock.Tauri && npm run validate-release -- 0.0.6`
+Run: `cd src/BorgDock.Tauri && npm run validate-release -- 0.0.6`
 
 Expected: exits 0 with `OK (0 highlights)` — 0.0.6 was bugfix-only.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/scripts/changelog/validate-release.ts \
-  src/PRDock.Tauri/package.json \
-  src/PRDock.Tauri/package-lock.json
+git add src/BorgDock.Tauri/scripts/changelog/validate-release.ts \
+  src/BorgDock.Tauri/package.json \
+  src/BorgDock.Tauri/package-lock.json
 git commit -m "feat(whats-new): add validate-release CLI for strict pre-tag checks"
 ```
 
@@ -1287,12 +1287,12 @@ git commit -m "feat(whats-new): add validate-release CLI for strict pre-tag chec
 ### Task 10: semver helpers
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/utils/semver.ts`
-- Create: `src/PRDock.Tauri/src/utils/__tests__/semver.test.ts`
+- Create: `src/BorgDock.Tauri/src/utils/semver.ts`
+- Create: `src/BorgDock.Tauri/src/utils/__tests__/semver.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/utils/__tests__/semver.test.ts`:
+Create `src/BorgDock.Tauri/src/utils/__tests__/semver.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -1322,12 +1322,12 @@ describe('semver helpers', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/utils/__tests__/semver.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/utils/__tests__/semver.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement**
 
-Create `src/PRDock.Tauri/src/utils/semver.ts`:
+Create `src/BorgDock.Tauri/src/utils/semver.ts`:
 
 ```ts
 function parts(v: string): [number, number, number] {
@@ -1354,13 +1354,13 @@ export function semverLte(a: string, b: string): boolean {
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/utils/__tests__/semver.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/utils/__tests__/semver.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/utils/
+git add src/BorgDock.Tauri/src/utils/
 git commit -m "feat(whats-new): add strict x.y.z semver comparison helpers"
 ```
 
@@ -1369,12 +1369,12 @@ git commit -m "feat(whats-new): add strict x.y.z semver comparison helpers"
 ### Task 11: whats-new persistent store
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/stores/whats-new-store.ts`
-- Create: `src/PRDock.Tauri/src/stores/__tests__/whats-new-store.test.ts`
+- Create: `src/BorgDock.Tauri/src/stores/whats-new-store.ts`
+- Create: `src/BorgDock.Tauri/src/stores/__tests__/whats-new-store.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/stores/__tests__/whats-new-store.test.ts`:
+Create `src/BorgDock.Tauri/src/stores/__tests__/whats-new-store.test.ts`:
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -1442,12 +1442,12 @@ describe('whats-new-store', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/stores/__tests__/whats-new-store.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/stores/__tests__/whats-new-store.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement the store**
 
-Create `src/PRDock.Tauri/src/stores/whats-new-store.ts`:
+Create `src/BorgDock.Tauri/src/stores/whats-new-store.ts`:
 
 ```ts
 import { create } from 'zustand';
@@ -1517,13 +1517,13 @@ export const useWhatsNewStore = create<State & Actions>((set, get) => ({
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/stores/__tests__/whats-new-store.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/stores/__tests__/whats-new-store.test.ts`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/stores/
+git add src/BorgDock.Tauri/src/stores/
 git commit -m "feat(whats-new): zustand store persists lastSeenVersion and autoOpenDisabled"
 ```
 
@@ -1532,12 +1532,12 @@ git commit -m "feat(whats-new): zustand store persists lastSeenVersion and autoO
 ### Task 12: useWhatsNew hook — gate + openWhatsNew
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/hooks/useWhatsNew.ts`
-- Create: `src/PRDock.Tauri/src/hooks/__tests__/useWhatsNew.test.ts`
+- Create: `src/BorgDock.Tauri/src/hooks/useWhatsNew.ts`
+- Create: `src/BorgDock.Tauri/src/hooks/__tests__/useWhatsNew.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/hooks/__tests__/useWhatsNew.test.ts`:
+Create `src/BorgDock.Tauri/src/hooks/__tests__/useWhatsNew.test.ts`:
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -1695,12 +1695,12 @@ describe('useWhatsNew', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/hooks/__tests__/useWhatsNew.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/hooks/__tests__/useWhatsNew.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement the hook**
 
-Create `src/PRDock.Tauri/src/hooks/useWhatsNew.ts`:
+Create `src/BorgDock.Tauri/src/hooks/useWhatsNew.ts`:
 
 ```ts
 import { useEffect, useRef } from 'react';
@@ -1771,13 +1771,13 @@ export function useWhatsNew(): void {
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/hooks/__tests__/useWhatsNew.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/hooks/__tests__/useWhatsNew.test.ts`
 Expected: all 4 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/hooks/
+git add src/BorgDock.Tauri/src/hooks/
 git commit -m "feat(whats-new): useWhatsNew hook seeds on first run and opens on missed releases"
 ```
 
@@ -1788,13 +1788,13 @@ git commit -m "feat(whats-new): useWhatsNew hook seeds on first run and opens on
 ### Task 13: Rust `open_whats_new_window` command
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/src/platform/window.rs`
-- Modify: `src/PRDock.Tauri/src-tauri/src/lib.rs`
-- Modify: `src/PRDock.Tauri/src-tauri/capabilities/default.json`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/platform/window.rs`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/lib.rs`
+- Modify: `src/BorgDock.Tauri/src-tauri/capabilities/default.json`
 
 - [ ] **Step 1: Add the command at the bottom of `window.rs`**
 
-Append to `src/PRDock.Tauri/src-tauri/src/platform/window.rs`:
+Append to `src/BorgDock.Tauri/src-tauri/src/platform/window.rs`:
 
 ```rust
 #[tauri::command]
@@ -1837,7 +1837,7 @@ pub async fn open_whats_new_window(
             label,
             WebviewUrl::App("whats-new.html".into()),
         )
-        .title("What's new in PRDock")
+        .title("What's new in BorgDock")
         .inner_size(520.0, 640.0)
         .min_inner_size(480.0, 480.0)
         .resizable(true)
@@ -1875,7 +1875,7 @@ pub async fn open_whats_new_window(
 
 - [ ] **Step 2: Register in `invoke_handler!`**
 
-In `src/PRDock.Tauri/src-tauri/src/lib.rs`, locate the `// Window` block in `invoke_handler![]` and add:
+In `src/BorgDock.Tauri/src-tauri/src/lib.rs`, locate the `// Window` block in `invoke_handler![]` and add:
 
 ```rust
             platform::window::open_whats_new_window,
@@ -1885,7 +1885,7 @@ right after `platform::window::open_pr_detail_window,`.
 
 - [ ] **Step 3: Allow the command in capabilities**
 
-In `src/PRDock.Tauri/src-tauri/capabilities/default.json`, find the `"permissions"` array. Locate the existing command-permission entry (e.g. for `open_pr_detail_window`). Add the new entry next to it. Example addition to the permissions array:
+In `src/BorgDock.Tauri/src-tauri/capabilities/default.json`, find the `"permissions"` array. Locate the existing command-permission entry (e.g. for `open_pr_detail_window`). Add the new entry next to it. Example addition to the permissions array:
 
 ```json
         "core:window:default",
@@ -1894,21 +1894,21 @@ In `src/PRDock.Tauri/src-tauri/capabilities/default.json`, find the `"permission
 
 If permissions are listed as object entries like `{ "identifier": "...", "allow": [...] }`, append `"open_whats_new_window"` to the allow list that already contains `"open_pr_detail_window"`. Run the following to inspect the file first:
 
-Run: `cat src/PRDock.Tauri/src-tauri/capabilities/default.json`
+Run: `cat src/BorgDock.Tauri/src-tauri/capabilities/default.json`
 
 Then edit it to add `open_whats_new_window` to whichever section already allows `open_pr_detail_window`. (The exact structure depends on how capabilities are currently configured; the pattern is: wherever `open_pr_detail_window` lives, add `open_whats_new_window` beside it.)
 
 - [ ] **Step 4: Verify the Rust side builds**
 
-Run: `cd src/PRDock.Tauri/src-tauri && cargo build 2>&1 | tail -20`
+Run: `cd src/BorgDock.Tauri/src-tauri && cargo build 2>&1 | tail -20`
 Expected: compilation succeeds. If a warning appears about unused imports (e.g. `serde_json`), add a `use` for it at the top of `window.rs`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/platform/window.rs \
-  src/PRDock.Tauri/src-tauri/src/lib.rs \
-  src/PRDock.Tauri/src-tauri/capabilities/default.json
+git add src/BorgDock.Tauri/src-tauri/src/platform/window.rs \
+  src/BorgDock.Tauri/src-tauri/src/lib.rs \
+  src/BorgDock.Tauri/src-tauri/capabilities/default.json
 git commit -m "feat(whats-new): Tauri open_whats_new_window command at 520x640"
 ```
 
@@ -1917,13 +1917,13 @@ git commit -m "feat(whats-new): Tauri open_whats_new_window command at 520x640"
 ### Task 14: Vite entry — whats-new.html + whats-new-main.tsx
 
 **Files:**
-- Create: `src/PRDock.Tauri/whats-new.html`
-- Create: `src/PRDock.Tauri/src/whats-new-main.tsx`
-- Modify: `src/PRDock.Tauri/vite.config.ts`
+- Create: `src/BorgDock.Tauri/whats-new.html`
+- Create: `src/BorgDock.Tauri/src/whats-new-main.tsx`
+- Modify: `src/BorgDock.Tauri/vite.config.ts`
 
 - [ ] **Step 1: Create the HTML entry**
 
-Create `src/PRDock.Tauri/whats-new.html`:
+Create `src/BorgDock.Tauri/whats-new.html`:
 
 ```html
 <!doctype html>
@@ -1931,7 +1931,7 @@ Create `src/PRDock.Tauri/whats-new.html`:
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>What's new in PRDock</title>
+    <title>What's new in BorgDock</title>
   </head>
   <body>
     <div id="root"></div>
@@ -1942,7 +1942,7 @@ Create `src/PRDock.Tauri/whats-new.html`:
 
 - [ ] **Step 2: Create the React bootstrap**
 
-Create `src/PRDock.Tauri/src/whats-new-main.tsx`:
+Create `src/BorgDock.Tauri/src/whats-new-main.tsx`:
 
 ```tsx
 import React from 'react';
@@ -1984,7 +1984,7 @@ try {
 
 - [ ] **Step 3: Register the rollup input**
 
-In `src/PRDock.Tauri/vite.config.ts`, under `build.rollupOptions.input`, add:
+In `src/BorgDock.Tauri/vite.config.ts`, under `build.rollupOptions.input`, add:
 
 ```ts
         'whats-new': path.resolve(__dirname, "whats-new.html"),
@@ -1992,7 +1992,7 @@ In `src/PRDock.Tauri/vite.config.ts`, under `build.rollupOptions.input`, add:
 
 - [ ] **Step 4: Create a minimal WhatsNewApp stub so the build compiles**
 
-Create `src/PRDock.Tauri/src/components/whats-new/WhatsNewApp.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/WhatsNewApp.tsx`:
 
 ```tsx
 export function WhatsNewApp() {
@@ -2000,7 +2000,7 @@ export function WhatsNewApp() {
 }
 ```
 
-And `src/PRDock.Tauri/src/components/whats-new/index.ts`:
+And `src/BorgDock.Tauri/src/components/whats-new/index.ts`:
 
 ```ts
 export { WhatsNewApp } from './WhatsNewApp';
@@ -2008,19 +2008,19 @@ export { WhatsNewApp } from './WhatsNewApp';
 
 - [ ] **Step 5: Verify it builds**
 
-Run: `cd src/PRDock.Tauri && npx tsc -b --noEmit && npx vite build 2>&1 | tail -20`
+Run: `cd src/BorgDock.Tauri && npx tsc -b --noEmit && npx vite build 2>&1 | tail -20`
 Expected: build succeeds; emitted output includes `whats-new.html` in `dist/`.
 
-Run: `ls src/PRDock.Tauri/dist/whats-new.html`
+Run: `ls src/BorgDock.Tauri/dist/whats-new.html`
 Expected: file exists.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/PRDock.Tauri/whats-new.html \
-  src/PRDock.Tauri/src/whats-new-main.tsx \
-  src/PRDock.Tauri/src/components/whats-new/ \
-  src/PRDock.Tauri/vite.config.ts
+git add src/BorgDock.Tauri/whats-new.html \
+  src/BorgDock.Tauri/src/whats-new-main.tsx \
+  src/BorgDock.Tauri/src/components/whats-new/ \
+  src/BorgDock.Tauri/vite.config.ts
 git commit -m "feat(whats-new): Vite entry + React bootstrap for whats-new window"
 ```
 
@@ -2031,7 +2031,7 @@ git commit -m "feat(whats-new): Vite entry + React bootstrap for whats-new windo
 ### Task 15: Kind-color CSS variables
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/styles/index.css`
+- Modify: `src/BorgDock.Tauri/src/styles/index.css`
 
 - [ ] **Step 1: Append kind tokens to the light (`:root`) block**
 
@@ -2077,13 +2077,13 @@ In the same file find the `.dark { ... }` block. Inside it add:
 
 - [ ] **Step 3: Verify CSS loads**
 
-Run: `cd src/PRDock.Tauri && npx vite build 2>&1 | tail -10`
+Run: `cd src/BorgDock.Tauri && npx vite build 2>&1 | tail -10`
 Expected: build succeeds.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/styles/index.css
+git add src/BorgDock.Tauri/src/styles/index.css
 git commit -m "style(whats-new): add kind-color CSS variables for light and dark themes"
 ```
 
@@ -2094,12 +2094,12 @@ git commit -m "style(whats-new): add kind-color CSS variables for light and dark
 ### Task 16: HeroBanner component
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/components/whats-new/HeroBanner.tsx`
-- Create: `src/PRDock.Tauri/src/components/whats-new/__tests__/HeroBanner.test.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/HeroBanner.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/__tests__/HeroBanner.test.tsx`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/components/whats-new/__tests__/HeroBanner.test.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/__tests__/HeroBanner.test.tsx`:
 
 ```tsx
 import { describe, it, expect } from 'vitest';
@@ -2133,12 +2133,12 @@ describe('HeroBanner', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/HeroBanner.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/HeroBanner.test.tsx`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement HeroBanner**
 
-Create `src/PRDock.Tauri/src/components/whats-new/HeroBanner.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/HeroBanner.tsx`:
 
 ```tsx
 import { useState } from 'react';
@@ -2206,14 +2206,14 @@ export function HeroBanner({ hero, kind }: Props) {
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/HeroBanner.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/HeroBanner.test.tsx`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/whats-new/HeroBanner.tsx \
-  src/PRDock.Tauri/src/components/whats-new/__tests__/HeroBanner.test.tsx
+git add src/BorgDock.Tauri/src/components/whats-new/HeroBanner.tsx \
+  src/BorgDock.Tauri/src/components/whats-new/__tests__/HeroBanner.test.tsx
 git commit -m "feat(whats-new): HeroBanner renders img or kind-gradient fallback"
 ```
 
@@ -2222,12 +2222,12 @@ git commit -m "feat(whats-new): HeroBanner renders img or kind-gradient fallback
 ### Task 17: HighlightCard component
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/components/whats-new/HighlightCard.tsx`
-- Create: `src/PRDock.Tauri/src/components/whats-new/__tests__/HighlightCard.test.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/HighlightCard.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/__tests__/HighlightCard.test.tsx`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/components/whats-new/__tests__/HighlightCard.test.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/__tests__/HighlightCard.test.tsx`:
 
 ```tsx
 import { describe, it, expect } from 'vitest';
@@ -2270,12 +2270,12 @@ describe('HighlightCard', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/HighlightCard.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/HighlightCard.test.tsx`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement the card**
 
-Create `src/PRDock.Tauri/src/components/whats-new/HighlightCard.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/HighlightCard.tsx`:
 
 ```tsx
 import ReactMarkdown from 'react-markdown';
@@ -2355,14 +2355,14 @@ export function HighlightCard({ highlight }: Props) {
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/HighlightCard.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/HighlightCard.test.tsx`
 Expected: all 4 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/whats-new/HighlightCard.tsx \
-  src/PRDock.Tauri/src/components/whats-new/__tests__/HighlightCard.test.tsx
+git add src/BorgDock.Tauri/src/components/whats-new/HighlightCard.tsx \
+  src/BorgDock.Tauri/src/components/whats-new/__tests__/HighlightCard.test.tsx
 git commit -m "feat(whats-new): HighlightCard renders kind badge, title, kbd chip, and markdown"
 ```
 
@@ -2371,11 +2371,11 @@ git commit -m "feat(whats-new): HighlightCard renders kind badge, title, kbd chi
 ### Task 18: AlsoFixedList component
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/components/whats-new/AlsoFixedList.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/AlsoFixedList.tsx`
 
 - [ ] **Step 1: Implement directly (trivial enough that a test adds noise — covered by WhatsNewApp integration test)**
 
-Create `src/PRDock.Tauri/src/components/whats-new/AlsoFixedList.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/AlsoFixedList.tsx`:
 
 ```tsx
 import ReactMarkdown from 'react-markdown';
@@ -2420,13 +2420,13 @@ export function AlsoFixedList({ items }: Props) {
 
 - [ ] **Step 2: Verify it compiles**
 
-Run: `cd src/PRDock.Tauri && npx tsc -b --noEmit`
+Run: `cd src/BorgDock.Tauri && npx tsc -b --noEmit`
 Expected: passes.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/whats-new/AlsoFixedList.tsx
+git add src/BorgDock.Tauri/src/components/whats-new/AlsoFixedList.tsx
 git commit -m "feat(whats-new): AlsoFixedList renders compact bullet list with markdown"
 ```
 
@@ -2435,12 +2435,12 @@ git commit -m "feat(whats-new): AlsoFixedList renders compact bullet list with m
 ### Task 19: ReleaseAccordion component
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/components/whats-new/ReleaseAccordion.tsx`
-- Create: `src/PRDock.Tauri/src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/ReleaseAccordion.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`:
 
 ```tsx
 import { describe, it, expect } from 'vitest';
@@ -2495,12 +2495,12 @@ describe('ReleaseAccordion', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement the accordion**
 
-Create `src/PRDock.Tauri/src/components/whats-new/ReleaseAccordion.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/ReleaseAccordion.tsx`:
 
 ```tsx
 import { useState } from 'react';
@@ -2576,14 +2576,14 @@ export function ReleaseAccordion({ release, defaultExpanded, isCurrent }: Props)
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/ReleaseAccordion.test.tsx`
 Expected: all 4 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/whats-new/ReleaseAccordion.tsx \
-  src/PRDock.Tauri/src/components/whats-new/__tests__/ReleaseAccordion.test.tsx
+git add src/BorgDock.Tauri/src/components/whats-new/ReleaseAccordion.tsx \
+  src/BorgDock.Tauri/src/components/whats-new/__tests__/ReleaseAccordion.test.tsx
 git commit -m "feat(whats-new): ReleaseAccordion with expand/collapse and Current pill"
 ```
 
@@ -2592,12 +2592,12 @@ git commit -m "feat(whats-new): ReleaseAccordion with expand/collapse and Curren
 ### Task 20: useReleasesToShow hook
 
 **Files:**
-- Create: `src/PRDock.Tauri/src/components/whats-new/useReleasesToShow.ts`
-- Create: `src/PRDock.Tauri/src/components/whats-new/__tests__/useReleasesToShow.test.ts`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/useReleasesToShow.ts`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/__tests__/useReleasesToShow.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/components/whats-new/__tests__/useReleasesToShow.test.ts`:
+Create `src/BorgDock.Tauri/src/components/whats-new/__tests__/useReleasesToShow.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -2660,12 +2660,12 @@ describe('computeReleasesToShow', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/useReleasesToShow.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/useReleasesToShow.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement the hook**
 
-Create `src/PRDock.Tauri/src/components/whats-new/useReleasesToShow.ts`:
+Create `src/BorgDock.Tauri/src/components/whats-new/useReleasesToShow.ts`:
 
 ```ts
 import { useEffect, useState } from 'react';
@@ -2759,14 +2759,14 @@ export function useReleasesToShow(
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/useReleasesToShow.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/useReleasesToShow.test.ts`
 Expected: all 4 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/whats-new/useReleasesToShow.ts \
-  src/PRDock.Tauri/src/components/whats-new/__tests__/useReleasesToShow.test.ts
+git add src/BorgDock.Tauri/src/components/whats-new/useReleasesToShow.ts \
+  src/BorgDock.Tauri/src/components/whats-new/__tests__/useReleasesToShow.test.ts
 git commit -m "feat(whats-new): useReleasesToShow computes expansion + count behind"
 ```
 
@@ -2775,12 +2775,12 @@ git commit -m "feat(whats-new): useReleasesToShow computes expansion + count beh
 ### Task 21: WhatsNewApp root
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/components/whats-new/WhatsNewApp.tsx`
-- Create: `src/PRDock.Tauri/src/components/whats-new/__tests__/WhatsNewApp.test.tsx`
+- Modify: `src/BorgDock.Tauri/src/components/whats-new/WhatsNewApp.tsx`
+- Create: `src/BorgDock.Tauri/src/components/whats-new/__tests__/WhatsNewApp.test.tsx`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/PRDock.Tauri/src/components/whats-new/__tests__/WhatsNewApp.test.tsx`:
+Create `src/BorgDock.Tauri/src/components/whats-new/__tests__/WhatsNewApp.test.tsx`:
 
 ```tsx
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -2891,12 +2891,12 @@ describe('WhatsNewApp', () => {
 
 - [ ] **Step 2: Verify it fails**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/WhatsNewApp.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/WhatsNewApp.test.tsx`
 Expected: FAIL.
 
 - [ ] **Step 3: Replace the stub with the full component**
 
-Overwrite `src/PRDock.Tauri/src/components/whats-new/WhatsNewApp.tsx`:
+Overwrite `src/BorgDock.Tauri/src/components/whats-new/WhatsNewApp.tsx`:
 
 ```tsx
 import { useCallback, useEffect } from 'react';
@@ -3008,7 +3008,7 @@ export function WhatsNewApp() {
         </label>
         <div className="flex items-center gap-3.5">
           <a
-            href="https://github.com/KoenvdB/PRDock/releases"
+            href="https://github.com/KoenvdB/BorgDock/releases"
             target="_blank"
             rel="noreferrer"
             className="text-[12px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
@@ -3031,17 +3031,17 @@ export function WhatsNewApp() {
 
 - [ ] **Step 4: Verify all tests pass**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/__tests__/WhatsNewApp.test.tsx`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/__tests__/WhatsNewApp.test.tsx`
 Expected: all 4 tests PASS.
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/components/whats-new/ src/hooks/__tests__/useWhatsNew.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/components/whats-new/ src/hooks/__tests__/useWhatsNew.test.ts`
 Expected: everything green.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/whats-new/WhatsNewApp.tsx \
-  src/PRDock.Tauri/src/components/whats-new/__tests__/WhatsNewApp.test.tsx
+git add src/BorgDock.Tauri/src/components/whats-new/WhatsNewApp.tsx \
+  src/BorgDock.Tauri/src/components/whats-new/__tests__/WhatsNewApp.test.tsx
 git commit -m "feat(whats-new): WhatsNewApp header, scroll, footer with Got it / Don't auto-open"
 ```
 
@@ -3052,11 +3052,11 @@ git commit -m "feat(whats-new): WhatsNewApp header, scroll, footer with Got it /
 ### Task 22: Wire `useWhatsNew` into App.tsx
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/App.tsx`
+- Modify: `src/BorgDock.Tauri/src/App.tsx`
 
 - [ ] **Step 1: Add the import and call**
 
-In `src/PRDock.Tauri/src/App.tsx`, add this import near the other hooks imports:
+In `src/BorgDock.Tauri/src/App.tsx`, add this import near the other hooks imports:
 
 ```tsx
 import { useWhatsNew } from '@/hooks/useWhatsNew';
@@ -3070,16 +3070,16 @@ Inside the `App` function body, near the other hook calls (after `useTheme(...)`
 
 - [ ] **Step 2: Verify tsc and tests**
 
-Run: `cd src/PRDock.Tauri && npx tsc -b --noEmit`
+Run: `cd src/BorgDock.Tauri && npx tsc -b --noEmit`
 Expected: passes.
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/`
 Expected: all tests pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/App.tsx
+git add src/BorgDock.Tauri/src/App.tsx
 git commit -m "feat(whats-new): wire useWhatsNew into App so it runs on startup"
 ```
 
@@ -3088,11 +3088,11 @@ git commit -m "feat(whats-new): wire useWhatsNew into App so it runs on startup"
 ### Task 23: Tray menu "What's new…" item
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/src/platform/tray.rs`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/platform/tray.rs`
 
 - [ ] **Step 1: Register the menu item**
 
-In `src/PRDock.Tauri/src-tauri/src/platform/tray.rs`, inside `setup_tray`, locate this block:
+In `src/BorgDock.Tauri/src-tauri/src/platform/tray.rs`, inside `setup_tray`, locate this block:
 
 ```rust
     let show = MenuItemBuilder::with_id("show", "Show sidebar").build(app)?;
@@ -3146,13 +3146,13 @@ Then, in the `on_menu_event` match, add an arm for `"whats_new"` alongside the e
 
 - [ ] **Step 2: Verify the Rust side builds**
 
-Run: `cd src/PRDock.Tauri/src-tauri && cargo build 2>&1 | tail -10`
+Run: `cd src/BorgDock.Tauri/src-tauri && cargo build 2>&1 | tail -10`
 Expected: compiles.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/platform/tray.rs
+git add src/BorgDock.Tauri/src-tauri/src/platform/tray.rs
 git commit -m "feat(whats-new): add 'What's new…' entry to system tray menu"
 ```
 
@@ -3161,11 +3161,11 @@ git commit -m "feat(whats-new): add 'What's new…' entry to system tray menu"
 ### Task 24: Settings → "View release notes" button
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/components/settings/UpdateSection.tsx`
+- Modify: `src/BorgDock.Tauri/src/components/settings/UpdateSection.tsx`
 
 - [ ] **Step 1: Add the button next to "Check for Updates"**
 
-In `src/PRDock.Tauri/src/components/settings/UpdateSection.tsx`, add this import near the others:
+In `src/BorgDock.Tauri/src/components/settings/UpdateSection.tsx`, add this import near the others:
 
 ```tsx
 import { openWhatsNew } from '@/hooks/useWhatsNew';
@@ -3184,13 +3184,13 @@ Then inside the `flex items-center gap-2` row containing the "Check for Updates"
 
 - [ ] **Step 2: Verify tests and build**
 
-Run: `cd src/PRDock.Tauri && npx tsc -b --noEmit && npx vitest run src/components/settings/`
+Run: `cd src/BorgDock.Tauri && npx tsc -b --noEmit && npx vitest run src/components/settings/`
 Expected: everything passes.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/settings/UpdateSection.tsx
+git add src/BorgDock.Tauri/src/components/settings/UpdateSection.tsx
 git commit -m "feat(whats-new): add 'View release notes' button to Update settings"
 ```
 
@@ -3201,11 +3201,11 @@ git commit -m "feat(whats-new): add 'View release notes' button to Update settin
 ### Task 25: Extend build-integrity test
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/__tests__/build-integrity.test.ts`
+- Modify: `src/BorgDock.Tauri/src/__tests__/build-integrity.test.ts`
 
 - [ ] **Step 1: Add the new entry point to the fixtures**
 
-In `src/PRDock.Tauri/src/__tests__/build-integrity.test.ts`, find the `ENTRY_POINTS` array and append:
+In `src/BorgDock.Tauri/src/__tests__/build-integrity.test.ts`, find the `ENTRY_POINTS` array and append:
 
 ```ts
   { key: 'whats-new', html: 'whats-new.html', script: '/src/whats-new-main.tsx' },
@@ -3219,13 +3219,13 @@ Find the `RUST_WINDOW_URLS` object and add:
 
 - [ ] **Step 2: Verify the build-integrity suite still passes**
 
-Run: `cd src/PRDock.Tauri && npx vitest run src/__tests__/build-integrity.test.ts`
+Run: `cd src/BorgDock.Tauri && npx vitest run src/__tests__/build-integrity.test.ts`
 Expected: all fixtures — including the new whats-new entry — pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/__tests__/build-integrity.test.ts
+git add src/BorgDock.Tauri/src/__tests__/build-integrity.test.ts
 git commit -m "test(whats-new): extend build-integrity to cover whats-new entry point"
 ```
 
@@ -3248,7 +3248,7 @@ In `.claude/commands/release.md`, find the numbered step list. Between step 3 (v
 
 5. **Validate** the release note by running the strict validator:
    ```
-   cd src/PRDock.Tauri && npm run validate-release -- <VERSION>
+   cd src/BorgDock.Tauri && npm run validate-release -- <VERSION>
    ```
    If any highlight is missing a hero image, the validator prints `file:line` with a remediation hint and exits non-zero. Fix and re-run until it prints `OK`.
 ```
@@ -3276,27 +3276,27 @@ git commit -m "docs(whats-new): update /release workflow with hero-image step an
 
 - [ ] **Step 1: Full test suite**
 
-Run: `cd src/PRDock.Tauri && npm run test 2>&1 | tail -40`
+Run: `cd src/BorgDock.Tauri && npm run test 2>&1 | tail -40`
 Expected: all Vitest tests pass (including new changelog, whats-new, semver, store, hook, and build-integrity suites).
 
 - [ ] **Step 2: Lint**
 
-Run: `cd src/PRDock.Tauri && npm run lint`
+Run: `cd src/BorgDock.Tauri && npm run lint`
 Expected: no errors. (Warnings in unrelated files that pre-existed are fine.)
 
 - [ ] **Step 3: Full build**
 
-Run: `cd src/PRDock.Tauri && npm run build 2>&1 | tail -20`
+Run: `cd src/BorgDock.Tauri && npm run build 2>&1 | tail -20`
 Expected: build succeeds; `dist/whats-new.html` exists; no runtime errors.
 
 - [ ] **Step 4: Rust build**
 
-Run: `cd src/PRDock.Tauri/src-tauri && cargo build 2>&1 | tail -10`
+Run: `cd src/BorgDock.Tauri/src-tauri && cargo build 2>&1 | tail -10`
 Expected: compiles.
 
 - [ ] **Step 5: Sanity-check the generated module**
 
-Run: `head -8 src/PRDock.Tauri/src/generated/changelog.ts`
+Run: `head -8 src/BorgDock.Tauri/src/generated/changelog.ts`
 Expected: starts with `// THIS FILE IS GENERATED` and imports `Release` from `@/types/whats-new`.
 
 - [ ] **Step 6: Manual walkthrough (notes for reviewer; no action required here)**

@@ -1,6 +1,6 @@
 # Implementation Plan: Tauri Feature Parity
 
-> All changes target `src/PRDock.Tauri/`
+> All changes target `src/BorgDock.Tauri/`
 > Reference: `plans/feature-parity.md`
 >
 > **Test conventions:**
@@ -704,7 +704,7 @@ test('tab switching is instant (no loading flash)', async ({ page }) => {
            .target(tauri_plugin_log::Target::new(
                tauri_plugin_log::TargetKind::Folder {
                    path: app_log_dir,
-                   file_name: Some("prdock".into()),
+                   file_name: Some("borgdock".into()),
                },
            ))
            .max_file_size(5_000_000) // 5MB per file

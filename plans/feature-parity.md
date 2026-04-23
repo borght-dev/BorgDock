@@ -1,7 +1,7 @@
-# PRDock Feature Parity: WPF vs Tauri
+# BorgDock Feature Parity: WPF vs Tauri
 
 > Generated: 2026-03-19
-> Methodology: Exhaustive file-by-file code review of both `src/PRDock.App/` (WPF) and `src/PRDock.Tauri/src/` (Tauri)
+> Methodology: Exhaustive file-by-file code review of both `src/BorgDock.App/` (WPF) and `src/BorgDock.Tauri/src/` (Tauri)
 
 ## Legend
 
@@ -262,7 +262,7 @@
 | Monitor PR | Y | Y | |
 | Resolve merge conflicts | Y | Y | Both: `resolveConflicts` / `LaunchConflictResolutionAsync` |
 | Worktree create/reuse | Y | Y | |
-| Prompt file generation | Y | Y | WPF: `%APPDATA%\PRDock\prompts\`. Tauri: via Rust temp files |
+| Prompt file generation | Y | Y | WPF: `%APPDATA%\BorgDock\prompts\`. Tauri: via Rust temp files |
 | Process tracking (active sessions) | Y | Y | WPF: `ProcessTracker`. Tauri: Rust `get_active_sessions` / `kill_session` |
 | Prompt cleanup (old files) | Y | P | WPF: 7-day cleanup. Tauri: unclear if automated |
 
@@ -302,7 +302,7 @@
 | Feature | WPF | Tauri | Notes |
 |---------|-----|-------|-------|
 | Single instance enforcement | Y | P | WPF: named mutex. Tauri: likely via Tauri plugin (not explicitly verified) |
-| Lock file | Y | N | WPF: `prdock.lock` in AppData. Not found in Tauri |
+| Lock file | Y | N | WPF: `borgdock.lock` in AppData. Not found in Tauri |
 | Serilog file logging | Y | N | WPF: rolling file logs. Tauri: console.error only (no file logging found) |
 | ETag caching (conditional requests) | Y | Y | Both: cache ETag + body, send If-None-Match, return cached on 304 |
 | Retry handler (exponential backoff) | Y | N | WPF: `RetryHandler` with Retry-After header support. Tauri: no explicit retry wrapper found |
@@ -371,7 +371,7 @@ The Tauri rewrite covers the vast majority of WPF features. The remaining gaps a
 | **Low** | Staggered repo polling | Burst avoidance, may not matter for most users |
 | **Low** | Eager parallel tab loading | Minor perceived latency difference |
 | **Low** | File logging (Serilog) | No persistent file logs for debugging in Tauri |
-| **Low** | Lock file | WPF: `prdock.lock` with PID. Tauri may handle single-instance differently |
+| **Low** | Lock file | WPF: `borgdock.lock` with PID. Tauri may handle single-instance differently |
 | **Low** | Settings dev overlay | WPF: `settings.dev.json` merge in DEBUG builds. Developer convenience only |
 | **Low** | Badge showcase window | WPF: `--showcase` flag. Developer tool only |
 | **Low** | Theme-aware tray icon | WPF: switches light/dark PNG variants. Cosmetic |

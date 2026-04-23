@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the PAT-only Azure DevOps auth flow in PRDock with an `az`-CLI-first flow that auto-detects `az login` on first use and falls back to PAT when `az` is unavailable, while preserving behavior for existing PAT users on upgrade.
+**Goal:** Replace the PAT-only Azure DevOps auth flow in BorgDock with an `az`-CLI-first flow that auto-detects `az login` on first use and falls back to PAT when `az` is unavailable, while preserving behavior for existing PAT users on upgrade.
 
 **Architecture:** A new Rust command `ado_resolve_auth_header` composes the full `Authorization` header value — either `Basic base64(":"+pat)` for PAT mode or `Bearer <token>` obtained by spawning `az account get-access-token`. The TS `AdoClient` asks Rust for a header on first use, caches it, and on any 401 response re-requests a fresh header and retries once. An `auth_auto_detected` boolean in settings gates the one-time first-mount detection so the radio selector stays stable after the user has made an explicit choice.
 
@@ -27,28 +27,28 @@ Both adjustments preserve the spec's intent. The plan uses them as its source of
 **New files:**
 
 ```
-src/PRDock.Tauri/src-tauri/src/auth/ado.rs         # AdoAuthError, az_cli_token, az_cli_available,
+src/BorgDock.Tauri/src-tauri/src/auth/ado.rs         # AdoAuthError, az_cli_token, az_cli_available,
                                                    # format_pat_header, ado_resolve_auth_header
-src/PRDock.Tauri/src/services/ado/__tests__/client.test.ts  # Vitest tests for AdoClient
+src/BorgDock.Tauri/src/services/ado/__tests__/client.test.ts  # Vitest tests for AdoClient
 ```
 
 **Modified files:**
 
 ```
-src/PRDock.Tauri/src-tauri/Cargo.toml              # Add base64 dep
-src/PRDock.Tauri/src-tauri/src/auth/mod.rs         # pub mod ado;
-src/PRDock.Tauri/src-tauri/src/lib.rs              # Register 3 new Tauri commands
-src/PRDock.Tauri/src-tauri/src/settings/models.rs  # AzureDevOpsSettings: +auth_method, +auth_auto_detected
-src/PRDock.Tauri/src/types/settings.ts             # AdoAuthMethod type, new fields
-src/PRDock.Tauri/src/stores/settings-store.ts      # Migration + default values
-src/PRDock.Tauri/src/services/ado/client.ts        # Constructor, getAuthHeader, 401 retry
-src/PRDock.Tauri/src/components/settings/AdoSection.tsx  # Radio, auto-detect, status line
-src/PRDock.Tauri/src/hooks/useAdoPolling.ts        # isConfigured gate
-src/PRDock.Tauri/src/components/work-items/WorkItemsSection.tsx  # Same gate
-src/PRDock.Tauri/src/components/command-palette/CommandPalette.tsx  # Pass authMethod
-src/PRDock.Tauri/src/components/work-items/WorkItemDetailApp.tsx  # Same
-src/PRDock.Tauri/src/hooks/usePaletteSearch.ts     # Same (2 places)
-src/PRDock.Tauri/src/hooks/useAdoImageAuth.ts      # Same
+src/BorgDock.Tauri/src-tauri/Cargo.toml              # Add base64 dep
+src/BorgDock.Tauri/src-tauri/src/auth/mod.rs         # pub mod ado;
+src/BorgDock.Tauri/src-tauri/src/lib.rs              # Register 3 new Tauri commands
+src/BorgDock.Tauri/src-tauri/src/settings/models.rs  # AzureDevOpsSettings: +auth_method, +auth_auto_detected
+src/BorgDock.Tauri/src/types/settings.ts             # AdoAuthMethod type, new fields
+src/BorgDock.Tauri/src/stores/settings-store.ts      # Migration + default values
+src/BorgDock.Tauri/src/services/ado/client.ts        # Constructor, getAuthHeader, 401 retry
+src/BorgDock.Tauri/src/components/settings/AdoSection.tsx  # Radio, auto-detect, status line
+src/BorgDock.Tauri/src/hooks/useAdoPolling.ts        # isConfigured gate
+src/BorgDock.Tauri/src/components/work-items/WorkItemsSection.tsx  # Same gate
+src/BorgDock.Tauri/src/components/command-palette/CommandPalette.tsx  # Pass authMethod
+src/BorgDock.Tauri/src/components/work-items/WorkItemDetailApp.tsx  # Same
+src/BorgDock.Tauri/src/hooks/usePaletteSearch.ts     # Same (2 places)
+src/BorgDock.Tauri/src/hooks/useAdoImageAuth.ts      # Same
 ```
 
 ---
@@ -56,13 +56,13 @@ src/PRDock.Tauri/src/hooks/useAdoImageAuth.ts      # Same
 ## Task 1: Add base64 crate and declare ado auth submodule
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/Cargo.toml` — add base64 dep
-- Modify: `src/PRDock.Tauri/src-tauri/src/auth/mod.rs:1` — declare submodule
-- Create: `src/PRDock.Tauri/src-tauri/src/auth/ado.rs` — empty placeholder
+- Modify: `src/BorgDock.Tauri/src-tauri/Cargo.toml` — add base64 dep
+- Modify: `src/BorgDock.Tauri/src-tauri/src/auth/mod.rs:1` — declare submodule
+- Create: `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs` — empty placeholder
 
 - [ ] **Step 1: Add base64 to Cargo.toml**
 
-In `src/PRDock.Tauri/src-tauri/Cargo.toml` after the `chrono = "0.4"` line (currently line 48):
+In `src/BorgDock.Tauri/src-tauri/Cargo.toml` after the `chrono = "0.4"` line (currently line 48):
 
 ```toml
 base64 = "0.22"
@@ -70,7 +70,7 @@ base64 = "0.22"
 
 - [ ] **Step 2: Create the empty submodule file**
 
-Create `src/PRDock.Tauri/src-tauri/src/auth/ado.rs` with a single line:
+Create `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs` with a single line:
 
 ```rust
 // ADO auth resolver — az CLI token fetching + PAT header formatting.
@@ -78,7 +78,7 @@ Create `src/PRDock.Tauri/src-tauri/src/auth/ado.rs` with a single line:
 
 - [ ] **Step 3: Declare the submodule from `auth/mod.rs`**
 
-Insert at the very top of `src/PRDock.Tauri/src-tauri/src/auth/mod.rs` (above line 1 `use crate::git::hidden_command;`):
+Insert at the very top of `src/BorgDock.Tauri/src-tauri/src/auth/mod.rs` (above line 1 `use crate::git::hidden_command;`):
 
 ```rust
 pub mod ado;
@@ -87,13 +87,13 @@ pub mod ado;
 
 - [ ] **Step 4: Verify the build picks up the new dep and module**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
 Expected: successful compile, new `base64` crate downloaded on first run.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/Cargo.toml src/PRDock.Tauri/src-tauri/Cargo.lock src/PRDock.Tauri/src-tauri/src/auth/mod.rs src/PRDock.Tauri/src-tauri/src/auth/ado.rs
+git add src/BorgDock.Tauri/src-tauri/Cargo.toml src/BorgDock.Tauri/src-tauri/Cargo.lock src/BorgDock.Tauri/src-tauri/src/auth/mod.rs src/BorgDock.Tauri/src-tauri/src/auth/ado.rs
 git commit -m "chore(ado-auth): scaffold ado auth submodule + base64 dep"
 ```
 
@@ -102,11 +102,11 @@ git commit -m "chore(ado-auth): scaffold ado auth submodule + base64 dep"
 ## Task 2: AdoAuthError enum and error classifier (TDD)
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/src/auth/ado.rs`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs`
 
 - [ ] **Step 1: Write failing unit tests for the classifier**
 
-Append to `src/PRDock.Tauri/src-tauri/src/auth/ado.rs`:
+Append to `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs`:
 
 ```rust
 use serde::Serialize;
@@ -196,13 +196,13 @@ mod tests {
 
 - [ ] **Step 2: Run the tests to verify they pass**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib auth::ado::tests`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib auth::ado::tests`
 Expected: 4 tests pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/auth/ado.rs
+git add src/BorgDock.Tauri/src-tauri/src/auth/ado.rs
 git commit -m "feat(ado-auth): AdoAuthError enum + az error classifier"
 ```
 
@@ -211,11 +211,11 @@ git commit -m "feat(ado-auth): AdoAuthError enum + az error classifier"
 ## Task 3: `az_cli_token()` and `az_cli_available()`
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/src/auth/ado.rs`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs`
 
 - [ ] **Step 1: Implement `az_cli_token` using the classifier**
 
-Append to `src/PRDock.Tauri/src-tauri/src/auth/ado.rs` (above the `#[cfg(test)] mod tests` block):
+Append to `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs` (above the `#[cfg(test)] mod tests` block):
 
 ```rust
 use crate::git::hidden_command;
@@ -272,13 +272,13 @@ pub fn az_cli_available() -> bool {
 
 - [ ] **Step 2: Verify compile**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
 Expected: successful compile. Existing tests still pass if you re-run `cargo test --lib auth::ado::tests`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/auth/ado.rs
+git add src/BorgDock.Tauri/src-tauri/src/auth/ado.rs
 git commit -m "feat(ado-auth): az_cli_token() and az_cli_available() helpers"
 ```
 
@@ -287,12 +287,12 @@ git commit -m "feat(ado-auth): az_cli_token() and az_cli_available() helpers"
 ## Task 4: `ado_resolve_auth_header()` with PAT formatter (TDD)
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/src/auth/ado.rs`
-- Modify: `src/PRDock.Tauri/src-tauri/src/lib.rs` — register 3 commands
+- Modify: `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/lib.rs` — register 3 commands
 
 - [ ] **Step 1: Write failing tests for `format_pat_header` and the PAT branch of the resolver**
 
-In `src/PRDock.Tauri/src-tauri/src/auth/ado.rs`, extend the existing `#[cfg(test)] mod tests` block with:
+In `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs`, extend the existing `#[cfg(test)] mod tests` block with:
 
 ```rust
     #[test]
@@ -332,12 +332,12 @@ In `src/PRDock.Tauri/src-tauri/src/auth/ado.rs`, extend the existing `#[cfg(test
 
 - [ ] **Step 2: Run tests — should fail with "undefined function format_pat_header / resolve_header_internal"**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib auth::ado::tests`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib auth::ado::tests`
 Expected: compile error about undefined names.
 
 - [ ] **Step 3: Implement `format_pat_header` and `resolve_header_internal`**
 
-Append to `src/PRDock.Tauri/src-tauri/src/auth/ado.rs` (above the `#[cfg(test)] mod tests` block):
+Append to `src/BorgDock.Tauri/src-tauri/src/auth/ado.rs` (above the `#[cfg(test)] mod tests` block):
 
 ```rust
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -380,12 +380,12 @@ pub fn ado_resolve_auth_header(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib auth::ado::tests`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib auth::ado::tests`
 Expected: 9 tests pass (4 classifier + 5 resolver).
 
 - [ ] **Step 5: Register the three Tauri commands in `lib.rs`**
 
-In `src/PRDock.Tauri/src-tauri/src/lib.rs`, inside the `invoke_handler` macro call, update the `// Auth` section (currently lines 90–93) to:
+In `src/BorgDock.Tauri/src-tauri/src/lib.rs`, inside the `invoke_handler` macro call, update the `// Auth` section (currently lines 90–93) to:
 
 ```rust
             // Auth
@@ -400,13 +400,13 @@ In `src/PRDock.Tauri/src-tauri/src/lib.rs`, inside the `invoke_handler` macro ca
 
 - [ ] **Step 6: Verify end-to-end compile**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
 Expected: successful compile.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/auth/ado.rs src/PRDock.Tauri/src-tauri/src/lib.rs
+git add src/BorgDock.Tauri/src-tauri/src/auth/ado.rs src/BorgDock.Tauri/src-tauri/src/lib.rs
 git commit -m "feat(ado-auth): ado_resolve_auth_header Tauri command"
 ```
 
@@ -415,11 +415,11 @@ git commit -m "feat(ado-auth): ado_resolve_auth_header Tauri command"
 ## Task 5: Add `auth_method` and `auth_auto_detected` to `AzureDevOpsSettings`
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src-tauri/src/settings/models.rs:301-344`
+- Modify: `src/BorgDock.Tauri/src-tauri/src/settings/models.rs:301-344`
 
 - [ ] **Step 1: Add the two fields to the struct**
 
-In `src/PRDock.Tauri/src-tauri/src/settings/models.rs`, update the `AzureDevOpsSettings` struct (currently lines 301–323) by inserting two fields just after `project: String` (line 307):
+In `src/BorgDock.Tauri/src-tauri/src/settings/models.rs`, update the `AzureDevOpsSettings` struct (currently lines 301–323) by inserting two fields just after `project: String` (line 307):
 
 ```rust
     #[serde(default = "default_ado_auth_method")]
@@ -449,13 +449,13 @@ In the `impl Default for AzureDevOpsSettings` block (currently lines 329–343),
 
 - [ ] **Step 4: Verify compile**
 
-Run: `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
+Run: `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check`
 Expected: successful compile.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/settings/models.rs
+git add src/BorgDock.Tauri/src-tauri/src/settings/models.rs
 git commit -m "feat(ado-auth): AzureDevOpsSettings gains authMethod + authAutoDetected"
 ```
 
@@ -464,12 +464,12 @@ git commit -m "feat(ado-auth): AzureDevOpsSettings gains authMethod + authAutoDe
 ## Task 6: Add fields and type to TS side
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/types/settings.ts:79-90`
-- Modify: `src/PRDock.Tauri/src/stores/settings-store.ts` — extend `defaultSettings`
+- Modify: `src/BorgDock.Tauri/src/types/settings.ts:79-90`
+- Modify: `src/BorgDock.Tauri/src/stores/settings-store.ts` — extend `defaultSettings`
 
 - [ ] **Step 1: Add the `AdoAuthMethod` type and update `AzureDevOpsSettings`**
 
-In `src/PRDock.Tauri/src/types/settings.ts`, after line 1 (`export type AuthMethod = 'ghCli' | 'pat';`), add:
+In `src/BorgDock.Tauri/src/types/settings.ts`, after line 1 (`export type AuthMethod = 'ghCli' | 'pat';`), add:
 
 ```typescript
 export type AdoAuthMethod = 'azCli' | 'pat';
@@ -484,7 +484,7 @@ Then update the `AzureDevOpsSettings` interface (lines 79–90) by inserting two
 
 - [ ] **Step 2: Update `defaultSettings` in settings-store.ts**
 
-Open `src/PRDock.Tauri/src/stores/settings-store.ts` and find the `defaultSettings` constant near the top (search for `azureDevOps:` inside it). Inside its `azureDevOps` object, add the two fields:
+Open `src/BorgDock.Tauri/src/stores/settings-store.ts` and find the `defaultSettings` constant near the top (search for `azureDevOps:` inside it). Inside its `azureDevOps` object, add the two fields:
 
 ```typescript
     authMethod: 'azCli',
@@ -493,7 +493,7 @@ Open `src/PRDock.Tauri/src/stores/settings-store.ts` and find the `defaultSettin
 
 - [ ] **Step 3: Verify TS compile**
 
-Run: `cd src/PRDock.Tauri && npm run build`
+Run: `cd src/BorgDock.Tauri && npm run build`
 Expected: successful type-check and bundle. If type errors appear in test fixtures that don't include the new fields, those will be fixed in Task 9.
 
 If the build fails only due to missing fields in fixture/test files, that's expected — proceed; Task 9 handles call-site and fixture updates. Otherwise investigate.
@@ -501,7 +501,7 @@ If the build fails only due to missing fields in fixture/test files, that's expe
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/types/settings.ts src/PRDock.Tauri/src/stores/settings-store.ts
+git add src/BorgDock.Tauri/src/types/settings.ts src/BorgDock.Tauri/src/stores/settings-store.ts
 git commit -m "feat(ado-auth): TS types + default for authMethod/authAutoDetected"
 ```
 
@@ -510,17 +510,17 @@ git commit -m "feat(ado-auth): TS types + default for authMethod/authAutoDetecte
 ## Task 7: Migration for existing ADO PAT users in the TS settings store
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/stores/settings-store.ts:108-144` (loadSettings)
+- Modify: `src/BorgDock.Tauri/src/stores/settings-store.ts:108-144` (loadSettings)
 
 - [ ] **Step 1: Write a failing Vitest test for the migration logic**
 
-Check whether `src/PRDock.Tauri/src/stores/__tests__/settings-store.test.ts` exists:
+Check whether `src/BorgDock.Tauri/src/stores/__tests__/settings-store.test.ts` exists:
 
 ```bash
-ls src/PRDock.Tauri/src/stores/__tests__/ 2>/dev/null
+ls src/BorgDock.Tauri/src/stores/__tests__/ 2>/dev/null
 ```
 
-If yes, append to it. If no, create `src/PRDock.Tauri/src/stores/__tests__/settings-store.test.ts` with:
+If yes, append to it. If no, create `src/BorgDock.Tauri/src/stores/__tests__/settings-store.test.ts` with:
 
 ```typescript
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -569,7 +569,7 @@ describe('settings-store ADO auth migration', () => {
       }
       if (cmd === 'get_credential') {
         const service = (args as { service: string }).service;
-        if (service === 'prdock:azure_devops') return 'existing-pat-value';
+        if (service === 'borgdock:azure_devops') return 'existing-pat-value';
         return null;
       }
       return null;
@@ -626,12 +626,12 @@ describe('settings-store ADO auth migration', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd src/PRDock.Tauri && npm run test -- settings-store`
+Run: `cd src/BorgDock.Tauri && npm run test -- settings-store`
 Expected: first test FAILS (authMethod is still 'azCli', authAutoDetected still false).
 
 - [ ] **Step 3: Add migration logic in `loadSettings`**
 
-In `src/PRDock.Tauri/src/stores/settings-store.ts`, locate the block ending around line 121 (`if (adoPat) settings.azureDevOps.personalAccessToken = adoPat;`). Replace that one line with:
+In `src/BorgDock.Tauri/src/stores/settings-store.ts`, locate the block ending around line 121 (`if (adoPat) settings.azureDevOps.personalAccessToken = adoPat;`). Replace that one line with:
 
 ```typescript
       if (adoPat) {
@@ -648,13 +648,13 @@ In `src/PRDock.Tauri/src/stores/settings-store.ts`, locate the block ending arou
 
 - [ ] **Step 4: Re-run the tests to verify they pass**
 
-Run: `cd src/PRDock.Tauri && npm run test -- settings-store`
+Run: `cd src/BorgDock.Tauri && npm run test -- settings-store`
 Expected: both tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/stores/settings-store.ts src/PRDock.Tauri/src/stores/__tests__/settings-store.test.ts
+git add src/BorgDock.Tauri/src/stores/settings-store.ts src/BorgDock.Tauri/src/stores/__tests__/settings-store.test.ts
 git commit -m "feat(ado-auth): migrate existing PAT users to authMethod=pat on hydrate"
 ```
 
@@ -663,12 +663,12 @@ git commit -m "feat(ado-auth): migrate existing PAT users to authMethod=pat on h
 ## Task 8: `AdoClient` refactor — async header caching + 401 retry (TDD)
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/services/ado/client.ts`
-- Create: `src/PRDock.Tauri/src/services/ado/__tests__/client.test.ts`
+- Modify: `src/BorgDock.Tauri/src/services/ado/client.ts`
+- Create: `src/BorgDock.Tauri/src/services/ado/__tests__/client.test.ts`
 
 - [ ] **Step 1: Write failing Vitest tests**
 
-Create `src/PRDock.Tauri/src/services/ado/__tests__/client.test.ts`:
+Create `src/BorgDock.Tauri/src/services/ado/__tests__/client.test.ts`:
 
 ```typescript
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -749,12 +749,12 @@ describe('AdoClient header resolution', () => {
 
 - [ ] **Step 2: Run the tests — expect compile/type errors**
 
-Run: `cd src/PRDock.Tauri && npm run test -- client.test`
+Run: `cd src/BorgDock.Tauri && npm run test -- client.test`
 Expected: tests FAIL with "Expected 3-4 arguments, but got 4" or similar — signature mismatch on the new 4th constructor arg.
 
 - [ ] **Step 3: Refactor `AdoClient` — signature, caching, retry**
 
-Replace the contents of `src/PRDock.Tauri/src/services/ado/client.ts` up through the end of `testConnection` (lines 1–204) with the new implementation. Here is the full replacement up to (but not including) the two exported error classes at the bottom — keep those exports intact:
+Replace the contents of `src/BorgDock.Tauri/src/services/ado/client.ts` up through the end of `testConnection` (lines 1–204) with the new implementation. Here is the full replacement up to (but not including) the two exported error classes at the bottom — keep those exports intact:
 
 ```typescript
 import { invoke } from '@tauri-apps/api/core';
@@ -1009,13 +1009,13 @@ Keep the `export class AdoAuthError extends Error { ... }` and `export class Ado
 
 - [ ] **Step 4: Run the new tests to verify they pass**
 
-Run: `cd src/PRDock.Tauri && npm run test -- client.test`
+Run: `cd src/BorgDock.Tauri && npm run test -- client.test`
 Expected: 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/services/ado/client.ts src/PRDock.Tauri/src/services/ado/__tests__/client.test.ts
+git add src/BorgDock.Tauri/src/services/ado/client.ts src/BorgDock.Tauri/src/services/ado/__tests__/client.test.ts
 git commit -m "refactor(ado-client): async header caching + 401 refresh retry"
 ```
 
@@ -1239,26 +1239,26 @@ If the hook has a different shape than shown above, adapt: the goal is "fetch an
 
 - [ ] **Step 7: Search for any call sites missed**
 
-Run: `grep -rn 'new AdoClient' src/PRDock.Tauri/src`
+Run: `grep -rn 'new AdoClient' src/BorgDock.Tauri/src`
 Expected: every match has exactly four arguments. Any three-arg call remaining → go back and fix.
 
 - [ ] **Step 8: Update the AdoSection-side default fixture in any tests**
 
 Test fixtures in `src/components/command-palette/__tests__/PaletteApp.test.tsx`, `CommandPalette.test.tsx`, `src/components/work-items/__tests__/WorkItemDetailApp.test.tsx`, and `src/__tests__/App.test.tsx` construct `azureDevOps` settings objects without `authMethod`/`authAutoDetected`. Add these two fields to each fixture — `authMethod: 'pat'` and `authAutoDetected: true` (choosing `pat` keeps the existing behavior tied to the fixtures' PAT values).
 
-Run: `grep -rln "personalAccessToken: 'pat'" src/PRDock.Tauri/src`
+Run: `grep -rln "personalAccessToken: 'pat'" src/BorgDock.Tauri/src`
 For each match, open the file and add the two fields to the same object literal.
 
 - [ ] **Step 9: Verify full build + tests**
 
 Run these in sequence:
-1. `cd src/PRDock.Tauri && npm run build` — expect success
-2. `cd src/PRDock.Tauri && npm run test` — expect all tests pass
+1. `cd src/BorgDock.Tauri && npm run build` — expect success
+2. `cd src/BorgDock.Tauri && npm run test` — expect all tests pass
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src
+git add src/BorgDock.Tauri/src
 git commit -m "refactor(ado-auth): thread authMethod through AdoClient call sites"
 ```
 
@@ -1267,12 +1267,12 @@ git commit -m "refactor(ado-auth): thread authMethod through AdoClient call site
 ## Task 10: Fix `isConfigured` gates for azCli mode
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/hooks/useAdoPolling.ts:28-29`
-- Modify: `src/PRDock.Tauri/src/components/work-items/WorkItemsSection.tsx:151`
+- Modify: `src/BorgDock.Tauri/src/hooks/useAdoPolling.ts:28-29`
+- Modify: `src/BorgDock.Tauri/src/components/work-items/WorkItemsSection.tsx:151`
 
 - [ ] **Step 1: Update `useAdoPolling.ts` gate**
 
-At `src/PRDock.Tauri/src/hooks/useAdoPolling.ts:28-29`, replace:
+At `src/BorgDock.Tauri/src/hooks/useAdoPolling.ts:28-29`, replace:
 
 ```typescript
 const isConfigured =
@@ -1290,7 +1290,7 @@ const isConfigured =
 
 - [ ] **Step 2: Update `WorkItemsSection.tsx` gate**
 
-At `src/PRDock.Tauri/src/components/work-items/WorkItemsSection.tsx:151`, replace:
+At `src/BorgDock.Tauri/src/components/work-items/WorkItemsSection.tsx:151`, replace:
 
 ```typescript
 if (!adoSettings.organization || !adoSettings.personalAccessToken) {
@@ -1306,19 +1306,19 @@ if (!adoSettings.organization || !hasCredentials) {
 
 - [ ] **Step 3: Search for any other gates that proxy configuration on PAT presence**
 
-Run: `grep -n 'adoSettings\\.personalAccessToken\\|azureDevOps\\.personalAccessToken' src/PRDock.Tauri/src --include='*.ts' --include='*.tsx' -r`
+Run: `grep -n 'adoSettings\\.personalAccessToken\\|azureDevOps\\.personalAccessToken' src/BorgDock.Tauri/src --include='*.ts' --include='*.tsx' -r`
 
 For each match that's used as a **boolean configured check** (not as an actual value passed to AdoClient), update it to include the azCli branch.
 
 - [ ] **Step 4: Verify build**
 
-Run: `cd src/PRDock.Tauri && npm run build`
+Run: `cd src/BorgDock.Tauri && npm run build`
 Expected: success.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/hooks/useAdoPolling.ts src/PRDock.Tauri/src/components/work-items/WorkItemsSection.tsx
+git add src/BorgDock.Tauri/src/hooks/useAdoPolling.ts src/BorgDock.Tauri/src/components/work-items/WorkItemsSection.tsx
 git commit -m "fix(ado-auth): isConfigured accepts azCli mode without a PAT"
 ```
 
@@ -1327,11 +1327,11 @@ git commit -m "fix(ado-auth): isConfigured accepts azCli mode without a PAT"
 ## Task 11: AdoSection radio buttons + conditional PAT field
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/components/settings/AdoSection.tsx`
+- Modify: `src/BorgDock.Tauri/src/components/settings/AdoSection.tsx`
 
 - [ ] **Step 1: Import `clsx` and wrap radio + PAT JSX**
 
-At the top of `src/PRDock.Tauri/src/components/settings/AdoSection.tsx`, replace the existing imports (lines 1–3) with:
+At the top of `src/BorgDock.Tauri/src/components/settings/AdoSection.tsx`, replace the existing imports (lines 1–3) with:
 
 ```typescript
 import clsx from 'clsx';
@@ -1343,7 +1343,7 @@ import type { AzureDevOpsSettings, AdoAuthMethod } from '@/types';
 
 - [ ] **Step 2: Add radio buttons above the PAT field and make the PAT field conditional**
 
-In `src/PRDock.Tauri/src/components/settings/AdoSection.tsx`, replace the entire `<FieldLabel label="Personal Access Token">` block (currently lines 64–81) with:
+In `src/BorgDock.Tauri/src/components/settings/AdoSection.tsx`, replace the entire `<FieldLabel label="Personal Access Token">` block (currently lines 64–81) with:
 
 ```tsx
       <FieldLabel label="Auth Method">
@@ -1393,7 +1393,7 @@ Note: when the user explicitly clicks a radio, we set `authAutoDetected: true`. 
 
 - [ ] **Step 3: Manual UI smoke test**
 
-Run: `cd src/PRDock.Tauri && npm run tauri dev`
+Run: `cd src/BorgDock.Tauri && npm run tauri dev`
 
 1. Open Settings → Azure DevOps.
 2. Verify the radio buttons render; both states visually update on click.
@@ -1403,7 +1403,7 @@ Run: `cd src/PRDock.Tauri && npm run tauri dev`
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/settings/AdoSection.tsx
+git add src/BorgDock.Tauri/src/components/settings/AdoSection.tsx
 git commit -m "feat(ado-auth): auth-method radio buttons in AdoSection"
 ```
 
@@ -1412,7 +1412,7 @@ git commit -m "feat(ado-auth): auth-method radio buttons in AdoSection"
 ## Task 12: First-mount auto-detect + error status line
 
 **Files:**
-- Modify: `src/PRDock.Tauri/src/components/settings/AdoSection.tsx`
+- Modify: `src/BorgDock.Tauri/src/components/settings/AdoSection.tsx`
 
 - [ ] **Step 1: Add the detection `useEffect` and status-line state**
 
@@ -1531,7 +1531,7 @@ Directly below the "Auth Method" `FieldLabel` block (just after the radio button
 
 - [ ] **Step 4: Manual UI smoke test**
 
-Run: `cd src/PRDock.Tauri && npm run tauri dev`
+Run: `cd src/BorgDock.Tauri && npm run tauri dev`
 
 1. If you have `az` installed and logged in:
    - Delete `authAutoDetected` from your settings.json (or test on a fresh profile) to force first-mount detection.
@@ -1546,7 +1546,7 @@ Run: `cd src/PRDock.Tauri && npm run tauri dev`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/settings/AdoSection.tsx
+git add src/BorgDock.Tauri/src/components/settings/AdoSection.tsx
 git commit -m "feat(ado-auth): first-mount detection + status line in AdoSection"
 ```
 
@@ -1562,7 +1562,7 @@ Run the six scenarios from the spec's §Testing plan on a dev build (`npm run ta
 
 - [ ] **Scenario 3:** Fresh install with `az` installed but not logged in → radio defaults to Azure CLI. Click Test — red NotLoggedIn message appears. Run `az login` in a terminal, click Test again — green.
 
-- [ ] **Scenario 4:** Upgrade from PAT-only build. Set up a fresh profile dir that contains a `settings.json` with org/project set and a PAT stored in the OS keychain under `prdock:azure_devops`. Launch PRDock — Settings → ADO shows the PAT radio selected, the PAT already populated, no behavior change.
+- [ ] **Scenario 4:** Upgrade from PAT-only build. Set up a fresh profile dir that contains a `settings.json` with org/project set and a PAT stored in the OS keychain under `borgdock:azure_devops`. Launch BorgDock — Settings → ADO shows the PAT radio selected, the PAT already populated, no behavior change.
 
 - [ ] **Scenario 5:** Mid-session token revocation. Start in azCli mode, connect, then run `az account clear`. Trigger any ADO poll (wait ~2 min or change focus). Expect: one silent refresh attempt, then status line red with NotLoggedIn. Existing work items stay visible but no new data loads until re-login.
 
@@ -1578,8 +1578,8 @@ git commit --allow-empty -m "test(ado-auth): e2e manual walkthrough complete"
 
 ## Post-implementation checklist
 
-- [ ] `cd src/PRDock.Tauri && npm run build` succeeds on master.
-- [ ] `cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib` passes (9 new tests + all pre-existing).
-- [ ] `cd src/PRDock.Tauri && npm run test` passes.
+- [ ] `cd src/BorgDock.Tauri && npm run build` succeeds on master.
+- [ ] `cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo test --lib` passes (9 new tests + all pre-existing).
+- [ ] `cd src/BorgDock.Tauri && npm run test` passes.
 - [ ] CHANGELOG.md gains an entry describing the new Azure CLI auth option under "Improvements" for the next release.
 - [ ] Spec at `docs/superpowers/specs/2026-04-16-ado-az-cli-auth-design.md` stays as the design-of-record; no edits needed post-implementation.

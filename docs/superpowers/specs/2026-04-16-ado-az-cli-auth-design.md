@@ -5,11 +5,11 @@ Status: Approved via brainstorming; implementation plan to follow
 
 ## Problem
 
-Azure DevOps authentication in PRDock currently requires the user to paste a Personal Access Token. PATs expire (30–365 days), have to be rotated manually, and require the user to navigate the ADO UI to mint one. Meanwhile PRDock already supports `gh auth token` for GitHub — users have `az login` sessions on the same machine but cannot use them. This spec describes replacing the PAT-only flow with an `az`-CLI-first flow that falls back to PAT when `az` is unavailable.
+Azure DevOps authentication in BorgDock currently requires the user to paste a Personal Access Token. PATs expire (30–365 days), have to be rotated manually, and require the user to navigate the ADO UI to mint one. Meanwhile BorgDock already supports `gh auth token` for GitHub — users have `az login` sessions on the same machine but cannot use them. This spec describes replacing the PAT-only flow with an `az`-CLI-first flow that falls back to PAT when `az` is unavailable.
 
 ## Goals
 
-1. When `az` is installed and the user is logged in, PRDock uses their `az login` session automatically — no PAT required.
+1. When `az` is installed and the user is logged in, BorgDock uses their `az login` session automatically — no PAT required.
 2. When `az` is absent or not logged in, the existing PAT flow still works exactly as today.
 3. Token expiry is handled gracefully: short-lived `az` bearer tokens don't break polling after one hour.
 4. Users retain explicit control — they can force PAT mode even with `az` installed (e.g. different Entra identity).
@@ -19,8 +19,8 @@ Azure DevOps authentication in PRDock currently requires the user to paste a Per
 
 - Changing the existing GitHub `gh auth` flow.
 - Adding an ADO step to the first-run setup wizard.
-- Device-code / interactive Entra login from inside PRDock (users are expected to run `az login` in a terminal).
-- Multi-tenant / multi-identity selection UI (users pick identity outside PRDock via `az account set`).
+- Device-code / interactive Entra login from inside BorgDock (users are expected to run `az login` in a terminal).
+- Multi-tenant / multi-identity selection UI (users pick identity outside BorgDock via `az account set`).
 - Proactive token refresh with timers — refresh is lazy, driven by 401 responses.
 
 ## Summary of decisions (locked during brainstorming)
@@ -153,7 +153,7 @@ Mirror `GitHubSection.tsx:18–38`:
 
 ## Security notes
 
-- The `az` bearer token is returned from Rust → TS via `invoke`. This briefly exposes the token to the JS runtime. Acceptable because (a) the GitHub flow already does the same with `gh auth token`, (b) PRDock runs locally as the user with the same trust boundary as `az` itself, (c) the alternative (Approach 3 from brainstorming) would require a much larger refactor of `ado_fetch`.
+- The `az` bearer token is returned from Rust → TS via `invoke`. This briefly exposes the token to the JS runtime. Acceptable because (a) the GitHub flow already does the same with `gh auth token`, (b) BorgDock runs locally as the user with the same trust boundary as `az` itself, (c) the alternative (Approach 3 from brainstorming) would require a much larger refactor of `ado_fetch`.
 - PATs continue to be stored in the settings file the same way they are today (unencrypted on disk, per the existing model). This is unchanged by this spec.
 - No new secrets are logged. `TokenFetchFailed(stderr)` passes through `az`'s stderr, which may contain hints but not tokens; a safety filter strips any `eyJ`-prefixed strings defensively before bubbling to the UI.
 
@@ -186,7 +186,7 @@ Single release, no feature flag. The migration step (§C) handles upgraders dete
 
 ## Out of scope / future work
 
-- Device-code login initiated from within PRDock (would need an Entra app registration and a webview flow).
+- Device-code login initiated from within BorgDock (would need an Entra app registration and a webview flow).
 - Supporting GitHub-hosted Azure DevOps equivalents (not a thing, included for symmetry).
 - Adding a Linux/macOS "az via keychain" path — `hidden_command("az")` already works on any platform where `az` is installed and on PATH.
 - Pre-emptive token refresh based on `expiresOn`. Revisit only if the lazy-on-401 path causes visible latency during polling.

@@ -6,7 +6,7 @@
 
 ## Goal
 
-A fast, keyboard-driven way to find, preview, and copy from source files across the set of directories a user works in regularly — without leaving PRDock and without opening a full IDE. Triggered by **Ctrl+F8**.
+A fast, keyboard-driven way to find, preview, and copy from source files across the set of directories a user works in regularly — without leaving BorgDock and without opening a full IDE. Triggered by **Ctrl+F8**.
 
 The user's stated priority is speed of finding the right piece of code. The three things they reach for most: find a file by name, find text across files, and jump to the implementation of a method (not the interface, not a call site — the definition with a body).
 
@@ -293,7 +293,7 @@ In `use-background-indexer.ts`:
 | Hidden files | shown |
 | Max preview file size | 1 MB |
 | Copy-all shortcut | Ctrl+Shift+C |
-| Theme | inherits from `localStorage['prdock-theme']`, same script block as other palettes |
+| Theme | inherits from `localStorage['borgdock-theme']`, same script block as other palettes |
 | File watcher | not in v1 (manual Refresh only) |
 | Out of v1 scope | symbol search for SQL/YAML/JSON/Markdown; multi-root unified search; fuzzy-match highlight in filename results |
 

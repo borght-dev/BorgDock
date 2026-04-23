@@ -11,7 +11,7 @@
 ### New Features
 
 - **File palette (Ctrl+F8)** — A new palette for finding files across your git worktrees and custom roots. Three search modes: filename search by default, `> foo` for content search (ripgrep-backed regex), and `@bar` to jump to a function/class/symbol via Tree-sitter. Arrow keys navigate; a live preview pane renders the file with syntax highlighting; F12 inside the preview jumps to the symbol's implementation; Enter pops out a dedicated viewer window. Favorites, collapsible roots, and remembered layout preferences round it out. ![File palette](whats-new/1.0.15/file-palette.png)
-- Panic log for post-mortem crash diagnostics — Unexpected crashes now write a synchronously-flushed stack trace to `%APPDATA%\PRDock\logs\prdock-panic.log`, so you can share the file if PRDock ever disappears on you.
+- Panic log for post-mortem crash diagnostics — Unexpected crashes now write a synchronously-flushed stack trace to `%APPDATA%\BorgDock\logs\borgdock-panic.log`, so you can share the file if BorgDock ever disappears on you.
 
 ### Improvements
 
@@ -23,14 +23,14 @@
 
 ### Bug Fixes
 
-- SQL queries on spatial columns no longer crash PRDock — Querying tables with `geography`, `geometry`, or `hierarchyid` columns (common in certain views) used to abort the whole app because Tiberius panics on unsupported SQL Server types. PRDock now catches the panic and returns a friendly error suggesting you avoid `SELECT *`.
+- SQL queries on spatial columns no longer crash BorgDock — Querying tables with `geography`, `geometry`, or `hierarchyid` columns (common in certain views) used to abort the whole app because Tiberius panics on unsupported SQL Server types. BorgDock now catches the panic and returns a friendly error suggesting you avoid `SELECT *`.
 - File palette previews UTF-16 SQL Server scripts as text — `.sql` files saved from SSMS are UTF-16 encoded. The preview pane now decodes them correctly instead of treating them as binary.
 
 ## 1.0.14 — 2026-04-20
 
 ### New Features
 
-- **Azure CLI authentication for Azure DevOps** — Connect to Azure DevOps using your existing `az login` session instead of minting and rotating Personal Access Tokens. Settings → Azure DevOps has a new auth-method toggle that defaults to Azure CLI when `az` is installed on your machine; PRDock fetches a fresh bearer token on demand and transparently refreshes it when it expires. If you already have a PAT configured it keeps working unchanged — the PAT flow is still available for anyone without `az` installed. ![Azure CLI auth in settings](whats-new/1.0.14/azure-cli-auth.png)
+- **Azure CLI authentication for Azure DevOps** — Connect to Azure DevOps using your existing `az login` session instead of minting and rotating Personal Access Tokens. Settings → Azure DevOps has a new auth-method toggle that defaults to Azure CLI when `az` is installed on your machine; BorgDock fetches a fresh bearer token on demand and transparently refreshes it when it expires. If you already have a PAT configured it keeps working unchanged — the PAT flow is still available for anyone without `az` installed. ![Azure CLI auth in settings](whats-new/1.0.14/azure-cli-auth.png)
 
 ## 1.0.13 — 2026-04-16
 
@@ -41,19 +41,19 @@
 
 ### Improvements
 
-- **No more WebView2 right-click menu** — The default browser context menu (Inspect, Reload, Copy image address, …) no longer appears anywhere in PRDock. Components that render their own context menus still work.
+- **No more WebView2 right-click menu** — The default browser context menu (Inspect, Reload, Copy image address, …) no longer appears anywhere in BorgDock. Components that render their own context menus still work.
 
 ## 1.0.12 — 2026-04-15
 
 ### Bug Fixes
 
-- **Auto-updates actually check the latest release** — Every PRDock version since v1.0.8 silently failed to detect new releases. The updater asked GitHub for the full releases list and took the first entry with a `latest.json` asset, but GitHub's listing endpoint doesn't reliably sort by newest-first — duplicate tags and republished releases can bump an older version to the top. As a result the updater kept fetching an outdated `latest.json`, saw a version ≤ the installed one, and reported "You're on the latest version" forever. Switched to GitHub's canonical `/releases/latest` endpoint, which returns the single release GitHub marks as newest — plus added logging so the actual `current` vs `latest` versions are visible in `prdock.log` for future debugging. ![Auto-update fix](whats-new/1.0.12/auto-update-fix.png)
+- **Auto-updates actually check the latest release** — Every BorgDock version since v1.0.8 silently failed to detect new releases. The updater asked GitHub for the full releases list and took the first entry with a `latest.json` asset, but GitHub's listing endpoint doesn't reliably sort by newest-first — duplicate tags and republished releases can bump an older version to the top. As a result the updater kept fetching an outdated `latest.json`, saw a version ≤ the installed one, and reported "You're on the latest version" forever. Switched to GitHub's canonical `/releases/latest` endpoint, which returns the single release GitHub marks as newest — plus added logging so the actual `current` vs `latest` versions are visible in `borgdock.log` for future debugging. ![Auto-update fix](whats-new/1.0.12/auto-update-fix.png)
 
 ## 1.0.11 — 2026-04-15
 
 ### New Features
 
-- **"What's new?" window** — PRDock now ships a dedicated release notes window that auto-opens the first time you launch a version with user-facing changes. It groups highlights by kind (New / Improved / Fixed), shows all missed releases in a collapsible accordion, and remembers what you've already seen. Reachable any time from the tray menu and Settings → Updates → "View release notes". ![What's new window hero](whats-new/1.0.11/whats-new-window.png)
+- **"What's new?" window** — BorgDock now ships a dedicated release notes window that auto-opens the first time you launch a version with user-facing changes. It groups highlights by kind (New / Improved / Fixed), shows all missed releases in a collapsible accordion, and remembers what you've already seen. Reachable any time from the tray menu and Settings → Updates → "View release notes". ![What's new window hero](whats-new/1.0.11/whats-new-window.png)
 - **Close PRs from the detail panel** — Stop hopping to the browser for dead PRs. The PR detail window now has a Close PR button that closes the pull request and auto-refreshes the list so you don't have to re-poll. ![Close PR button](whats-new/1.0.11/close-pr.png)
 - **Inline Fix-with-Claude on failing checks** — Failing check rows in the PR detail window now have a Fix with Claude button right there. One click spins up a worktree, generates a prompt from the check log, and launches Claude Code — no more scrolling up to the global button. ![Inline Fix with Claude](whats-new/1.0.11/fix-with-claude.png)
 - **Tray flyout** — Left-click the system tray icon to pop up a rich flyout panel above the taskbar with your PR list, per-PR status, inline Fix and Monitor actions, and a direct path to expand the sidebar. No more opening the main window just to see what's happening. ![Tray flyout popping up above the system tray](whats-new/1.0.11/tray-flyout.png)
@@ -113,14 +113,14 @@
 ### Improvements
 
 - **Theme-aware tray icon** — The system tray icon now automatically switches between light and dark variants to match your current theme, so it always looks right on your taskbar.
-- **Full brand icon set** — Added a complete set of PRDock icons (brand, dark, light, favicon, and transparent mark) in SVG and PNG at multiple sizes for a polished identity across all contexts.
+- **Full brand icon set** — Added a complete set of BorgDock icons (brand, dark, light, favicon, and transparent mark) in SVG and PNG at multiple sizes for a polished identity across all contexts.
 
 ## 1.0.0 — 2026-03-10
 
 ### New Features
 
 - **Multi-signal merge readiness indicators** — PR cards now display multiple signal indicators (CI status, reviews, conflicts, draft state) at a glance, replacing the old single-score ring with a richer, more informative view.
-- **Squash & merge from the sidebar** — Merge PRs directly from PRDock with one click. The PR list auto-refreshes after the merge completes.
+- **Squash & merge from the sidebar** — Merge PRs directly from BorgDock with one click. The PR list auto-refreshes after the merge completes.
 - **Toggle draft / ready for review** — Switch a PR between draft and ready-for-review without leaving your desktop.
 - **In-app notification bubbles** — Notifications now appear as polished in-app bubbles with smooth fade-and-slide animations, replacing the old OS toast popups.
 - **Expandable floating badge** — The floating badge can now expand to show your full PR list, so you can check statuses without opening the sidebar. It also supports upward expansion for bottom-of-screen placement.
@@ -224,7 +224,7 @@
 
 - **GitHub PR sidebar** — A docked desktop sidebar that monitors your GitHub pull requests in real time, with automatic polling and grouped-by-repo display.
 - **Live CI/CD status** — See check suites and individual check runs directly on each PR card, with color-coded pass/fail indicators.
-- **Failure log analysis** — When a CI check fails, PRDock parses the logs and surfaces the relevant error so you can diagnose issues without leaving your desktop.
+- **Failure log analysis** — When a CI check fails, BorgDock parses the logs and surfaces the relevant error so you can diagnose issues without leaving your desktop.
 - **Claude Code integration** — Launch Claude Code fix sessions in isolated git worktrees directly from failed checks, with generated prompts and process tracking.
 - **Claude review panel** — View AI-generated code review comments grouped by severity, rendered with full Markdown support.
 - **Floating badge** — A minimal, always-visible status pill shows your PR health at a glance even when the sidebar is hidden.
@@ -242,5 +242,5 @@
 - **SQLite PR cache** — Previously fetched PRs load instantly on startup from a local cache while fresh data is fetched in the background.
 - **Rich Markdown rendering** — Full AST-based Markdown rendering for review comments, with syntax highlighting and proper formatting.
 - **PR detail view** — Drill into any PR to see commits, changed files, comments, and review threads.
-- **Auto-start on login** — Optionally launch PRDock when you sign in to Windows.
+- **Auto-start on login** — Optionally launch BorgDock when you sign in to Windows.
 - **Auto-update** — Built-in update checking and installation powered by Velopack, with delta updates for fast upgrades.

@@ -1,6 +1,6 @@
-# PRDock — Complete Feature List
+# BorgDock — Complete Feature List
 
-A comprehensive catalog of every feature in PRDock, the developer desktop app that monitors GitHub PRs as a docked sidebar. Built with Tauri 2 + React 19 + TypeScript + Rust.
+A comprehensive catalog of every feature in BorgDock, the developer desktop app that monitors GitHub PRs as a docked sidebar. Built with Tauri 2 + React 19 + TypeScript + Rust.
 
 ---
 
@@ -520,13 +520,13 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 ## 17. Caching & Persistence
 
 ### SQLite PR Cache
-- Initialize and manage cache database (~/.config/PRDock/prcache.db)
+- Initialize and manage cache database (~/.config/BorgDock/prcache.db)
 - Save/load PRs per repository with timestamps
 - Age-based cleanup (entries older than 7 days)
 - Instant startup from cache while background refresh runs
 
 ### Settings Persistence
-- JSON config file (~/.config/PRDock/settings.json)
+- JSON config file (~/.config/BorgDock/settings.json)
 - Atomic writes with temp file + rename pattern
 - Backup file (.bak) for recovery
 - Development overlay support (settings.dev.json)
@@ -593,8 +593,8 @@ A comprehensive catalog of every feature in PRDock, the developer desktop app th
 - Crash recovery for work area reservation (persisted to workarea.json)
 - Atomic settings save with backup
 - Error notifications to user
-- Structured logging to ~/.config/PRDock/logs/prdock.log (5MB rotation, all rotations kept)
-- Global panic hook flushing to a dedicated panic log (`%APPDATA%\PRDock\logs\prdock-panic.log`) for post-crash diagnosis
+- Structured logging to ~/.config/BorgDock/logs/borgdock.log (5MB rotation, all rotations kept)
+- Global panic hook flushing to a dedicated panic log (`%APPDATA%\BorgDock\logs\borgdock-panic.log`) for post-crash diagnosis
 - Release profile uses `panic = "unwind"` so SQL UDT decoder panics (tiberius on `geography`/`geometry`/`hierarchyid`/CLR types) are caught and surfaced as friendly errors instead of crashing the app
 - GitHub auth validation
 - PAT token validation

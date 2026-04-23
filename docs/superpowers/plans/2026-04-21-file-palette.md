@@ -87,13 +87,13 @@
 
 ### Working-directory convention
 
-All paths below are relative to `src/PRDock.Tauri/`. When a cargo command is needed, use Git Bash with the MSYS bypass from `CLAUDE.md`:
+All paths below are relative to `src/BorgDock.Tauri/`. When a cargo command is needed, use Git Bash with the MSYS bypass from `CLAUDE.md`:
 
 ```bash
-cd src/PRDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check
+cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check
 ```
 
-Substitute `cargo test --lib file_palette` where relevant. npm/vitest commands run from `src/PRDock.Tauri/`.
+Substitute `cargo test --lib file_palette` where relevant. npm/vitest commands run from `src/BorgDock.Tauri/`.
 
 ---
 
@@ -135,7 +135,7 @@ Expected: exit code 0. No type errors.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/types/settings.ts
+git add src/BorgDock.Tauri/src/types/settings.ts
 git commit -m "feat(file-palette): add FilePaletteRoot + UiSettings fields"
 ```
 
@@ -171,7 +171,7 @@ If the section does exist, add `tempfile = "3"` to it.
 
 - [ ] **Step 3: Verify `cargo check` succeeds**
 
-Run from `src/PRDock.Tauri/`:
+Run from `src/BorgDock.Tauri/`:
 
 ```bash
 cd src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' cargo check
@@ -182,7 +182,7 @@ Expected: exits 0. The new crates are downloaded and compiled.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/Cargo.toml src/PRDock.Tauri/src-tauri/Cargo.lock
+git add src/BorgDock.Tauri/src-tauri/Cargo.toml src/BorgDock.Tauri/src-tauri/Cargo.lock
 git commit -m "chore(file-palette): add ignore + grep-* + blake3 crates"
 ```
 
@@ -254,7 +254,7 @@ Expected: exits 0.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/file_palette/ src/PRDock.Tauri/src-tauri/src/lib.rs
+git add src/BorgDock.Tauri/src-tauri/src/file_palette/ src/BorgDock.Tauri/src-tauri/src/lib.rs
 git commit -m "feat(file-palette): scaffold Rust file_palette module"
 ```
 
@@ -421,7 +421,7 @@ Expected: 5 tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/file_palette/read_file.rs src/PRDock.Tauri/src-tauri/src/lib.rs
+git add src/BorgDock.Tauri/src-tauri/src/file_palette/read_file.rs src/BorgDock.Tauri/src-tauri/src/lib.rs
 git commit -m "feat(file-palette): read_text_file command with binary + size checks"
 ```
 
@@ -644,7 +644,7 @@ Expected: exits 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/file_palette/files.rs src/PRDock.Tauri/src-tauri/src/lib.rs
+git add src/BorgDock.Tauri/src-tauri/src/file_palette/files.rs src/BorgDock.Tauri/src-tauri/src/lib.rs
 git commit -m "feat(file-palette): list_root_files with .gitignore awareness"
 ```
 
@@ -915,7 +915,7 @@ Expected: exits 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/file_palette/content_search.rs src/PRDock.Tauri/src-tauri/src/lib.rs
+git add src/BorgDock.Tauri/src-tauri/src/file_palette/content_search.rs src/BorgDock.Tauri/src-tauri/src/lib.rs
 git commit -m "feat(file-palette): search_content via grep-* crates"
 ```
 
@@ -938,9 +938,9 @@ git commit -m "feat(file-palette): search_content via grep-* crates"
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PRDock File Palette</title>
+    <title>BorgDock File Palette</title>
     <script>
-      (function(){try{var s=localStorage.getItem('prdock-theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();
+      (function(){try{var s=localStorage.getItem('borgdock-theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();
     </script>
     <style>
       html, body, #root { margin: 0; padding: 0; overflow: hidden; }
@@ -961,9 +961,9 @@ git commit -m "feat(file-palette): search_content via grep-* crates"
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PRDock File Viewer</title>
+    <title>BorgDock File Viewer</title>
     <script>
-      (function(){try{var s=localStorage.getItem('prdock-theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();
+      (function(){try{var s=localStorage.getItem('borgdock-theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();
     </script>
     <style>
       html, body, #root { margin: 0; padding: 0; overflow: hidden; }
@@ -1046,7 +1046,7 @@ A Vite build will fail at this stage because the `.tsx` entries don't exist yet 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/PRDock.Tauri/file-palette.html src/PRDock.Tauri/file-viewer.html src/PRDock.Tauri/src-tauri/capabilities/file-palette.json src/PRDock.Tauri/src-tauri/capabilities/file-viewer.json src/PRDock.Tauri/vite.config.ts
+git add src/BorgDock.Tauri/file-palette.html src/BorgDock.Tauri/file-viewer.html src/BorgDock.Tauri/src-tauri/capabilities/file-palette.json src/BorgDock.Tauri/src-tauri/capabilities/file-viewer.json src/BorgDock.Tauri/vite.config.ts
 git commit -m "chore(file-palette): add HTML shells, Vite entries, capabilities"
 ```
 
@@ -1107,7 +1107,7 @@ pub async fn open_file_viewer_window(
                 &label,
                 tauri::WebviewUrl::App(url.into()),
             )
-            .title("PRDock File Viewer")
+            .title("BorgDock File Viewer")
             .inner_size(900.0, 720.0)
             .decorations(false)
             .always_on_top(false)
@@ -1132,15 +1132,15 @@ mod tests {
 
     #[test]
     fn label_is_stable_for_same_path() {
-        let a = viewer_label_for("E:\\PRDock\\src\\app.ts");
-        let b = viewer_label_for("E:/PRDock/src/app.ts");
+        let a = viewer_label_for("E:\\BorgDock\\src\\app.ts");
+        let b = viewer_label_for("E:/BorgDock/src/app.ts");
         assert_eq!(a, b, "slash direction should not matter");
     }
 
     #[test]
     fn label_is_case_insensitive() {
-        let a = viewer_label_for("E:/PRDock/src/app.ts");
-        let b = viewer_label_for("e:/prdock/src/app.ts");
+        let a = viewer_label_for("E:/BorgDock/src/app.ts");
+        let b = viewer_label_for("e:/borgdock/src/app.ts");
         assert_eq!(a, b);
     }
 
@@ -1183,7 +1183,7 @@ From `src-tauri/Cargo.toml` Task 2 showed `urlencoding = "2"` on line 42 — goo
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/file_palette/windows.rs src/PRDock.Tauri/src-tauri/src/lib.rs
+git add src/BorgDock.Tauri/src-tauri/src/file_palette/windows.rs src/BorgDock.Tauri/src-tauri/src/lib.rs
 git commit -m "feat(file-palette): open_file_viewer_window with stable label per path"
 ```
 
@@ -1222,7 +1222,7 @@ Open `src-tauri/src/platform/hotkey.rs`. The Ctrl+F7 handler ends with `.map_err
                     "file-palette",
                     tauri::WebviewUrl::App("file-palette.html".into()),
                 )
-                .title("PRDock File Palette")
+                .title("BorgDock File Palette")
                 .inner_size(1100.0, 600.0)
                 .min_inner_size(800.0, 400.0)
                 .decorations(false)
@@ -1254,7 +1254,7 @@ Expected: exits 0.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src-tauri/src/platform/hotkey.rs
+git add src/BorgDock.Tauri/src-tauri/src/platform/hotkey.rs
 git commit -m "feat(file-palette): register Ctrl+F8 hotkey"
 ```
 
@@ -1376,14 +1376,14 @@ Edit `vite.config.ts`. Inside the `coverage.exclude` array (line 46-62), add:
 
 Run in one terminal: `npm run tauri dev`
 
-Once PRDock is running, press **Ctrl+F8**. A small undecorated window should appear centered on the primary monitor showing "File palette — coming online". Press Esc to close.
+Once BorgDock is running, press **Ctrl+F8**. A small undecorated window should appear centered on the primary monitor showing "File palette — coming online". Press Esc to close.
 
 Expected: window opens and closes cleanly. If the window is blank or throws a console error, open devtools on it (right-click in the dev build) and fix before moving on.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/file-palette-main.tsx src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/PRDock.Tauri/src/styles/file-palette.css src/PRDock.Tauri/vite.config.ts
+git add src/BorgDock.Tauri/src/file-palette-main.tsx src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/BorgDock.Tauri/src/styles/file-palette.css src/BorgDock.Tauri/vite.config.ts
 git commit -m "feat(file-palette): scaffold palette window with empty React app"
 ```
 
@@ -1478,7 +1478,7 @@ Expected: 7 tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/parse-query.ts src/PRDock.Tauri/src/components/file-palette/__tests__/parse-query.test.ts
+git add src/BorgDock.Tauri/src/components/file-palette/parse-query.ts src/BorgDock.Tauri/src/components/file-palette/__tests__/parse-query.test.ts
 git commit -m "feat(file-palette): parseQuery modes (filename / > content / @ symbol)"
 ```
 
@@ -1761,7 +1761,7 @@ Expected: 4 tests pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/CodeView.tsx src/PRDock.Tauri/src/components/file-palette/__tests__/CodeView.test.tsx src/PRDock.Tauri/src/styles/file-palette.css
+git add src/BorgDock.Tauri/src/components/file-palette/CodeView.tsx src/BorgDock.Tauri/src/components/file-palette/__tests__/CodeView.test.tsx src/BorgDock.Tauri/src/styles/file-palette.css
 git commit -m "feat(file-palette): reusable CodeView with syntax + gutter + copy-all"
 ```
 
@@ -1940,7 +1940,7 @@ Expected: 4 tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/use-file-index.ts src/PRDock.Tauri/src/components/file-palette/__tests__/use-file-index.test.ts
+git add src/BorgDock.Tauri/src/components/file-palette/use-file-index.ts src/BorgDock.Tauri/src/components/file-palette/__tests__/use-file-index.test.ts
 git commit -m "feat(file-palette): useFileIndex hook with substring filter"
 ```
 
@@ -2205,7 +2205,7 @@ Run `npm run tauri dev`. Press Ctrl+F8. Left column should list your worktrees g
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/RootsColumn.tsx src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/PRDock.Tauri/src/styles/file-palette.css
+git add src/BorgDock.Tauri/src/components/file-palette/RootsColumn.tsx src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/BorgDock.Tauri/src/styles/file-palette.css
 git commit -m "feat(file-palette): left column of roots (worktrees + custom)"
 ```
 
@@ -2557,7 +2557,7 @@ Run `npm run tauri dev`. Ctrl+F8. Middle column shows the search box. Type a fil
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/SearchPane.tsx src/PRDock.Tauri/src/components/file-palette/ResultsList.tsx src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/PRDock.Tauri/src/styles/file-palette.css
+git add src/BorgDock.Tauri/src/components/file-palette/SearchPane.tsx src/BorgDock.Tauri/src/components/file-palette/ResultsList.tsx src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/BorgDock.Tauri/src/styles/file-palette.css
 git commit -m "feat(file-palette): filename search end-to-end (roots + search + results)"
 ```
 
@@ -2737,7 +2737,7 @@ Ctrl+F8, select a result with arrow keys — the right column should load and di
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/PreviewPane.tsx src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/PRDock.Tauri/src/styles/file-palette.css
+git add src/BorgDock.Tauri/src/components/file-palette/PreviewPane.tsx src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/BorgDock.Tauri/src/styles/file-palette.css
 git commit -m "feat(file-palette): live preview pane tracking selection"
 ```
 
@@ -2975,7 +2975,7 @@ Ctrl+F8. Type `>const`. Results should show files containing `const` with match 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/use-content-search.ts src/PRDock.Tauri/src/components/file-palette/__tests__/use-content-search.test.ts src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
+git add src/BorgDock.Tauri/src/components/file-palette/use-content-search.ts src/BorgDock.Tauri/src/components/file-palette/__tests__/use-content-search.test.ts src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
 git commit -m "feat(file-palette): > content search wired in with jump-to-match"
 ```
 
@@ -3228,7 +3228,7 @@ Expected: 1 test passes.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/file-viewer-main.tsx src/PRDock.Tauri/src/components/file-viewer/ src/PRDock.Tauri/src/styles/file-viewer.css
+git add src/BorgDock.Tauri/src/file-viewer-main.tsx src/BorgDock.Tauri/src/components/file-viewer/ src/BorgDock.Tauri/src/styles/file-viewer.css
 git commit -m "feat(file-palette): pop-out file viewer window"
 ```
 
@@ -3275,7 +3275,7 @@ Ctrl+F8. Select a result. Enter. A new window should open showing the file. It s
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
+git add src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
 git commit -m "feat(file-palette): Enter opens viewer window"
 ```
 
@@ -3456,7 +3456,7 @@ Expected: 3 tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/queries/ src/PRDock.Tauri/src/components/file-palette/use-symbol-index.ts src/PRDock.Tauri/src/components/file-palette/__tests__/use-symbol-index.test.ts
+git add src/BorgDock.Tauri/src/components/file-palette/queries/ src/BorgDock.Tauri/src/components/file-palette/use-symbol-index.ts src/BorgDock.Tauri/src/components/file-palette/__tests__/use-symbol-index.test.ts
 git commit -m "feat(file-palette): Tree-sitter queries + symbol-hit filter"
 ```
 
@@ -3711,7 +3711,7 @@ Ctrl+F8. Wait a beat for index to build (watch the "Indexing symbols…" line). 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/use-background-indexer.ts src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/PRDock.Tauri/src/vite-env.d.ts
+git add src/BorgDock.Tauri/src/components/file-palette/use-background-indexer.ts src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx src/BorgDock.Tauri/src/vite-env.d.ts
 git commit -m "feat(file-palette): @ symbol-implementation search via Tree-sitter"
 ```
 
@@ -3748,7 +3748,7 @@ Open a TS file in the preview. Put the cursor on a function identifier (click in
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
+git add src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
 git commit -m "feat(file-palette): F12 inside preview jumps to implementation"
 ```
 
@@ -3871,7 +3871,7 @@ Replace the single `<ResultsList>` render with conditional wrap so empty states 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/PRDock.Tauri/src/components/file-palette/__tests__/FilePaletteApp.test.tsx src/PRDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
+git add src/BorgDock.Tauri/src/components/file-palette/__tests__/FilePaletteApp.test.tsx src/BorgDock.Tauri/src/components/file-palette/FilePaletteApp.tsx
 git commit -m "feat(file-palette): empty states + integration tests"
 ```
 

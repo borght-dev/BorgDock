@@ -1,8 +1,8 @@
-# PRDock Design System
+# BorgDock Design System
 
-A structured reference for PRDock's visual language, suitable for handing to a design tool (Claude Design, Figma plugins, token translators) or a human designer.
+A structured reference for BorgDock's visual language, suitable for handing to a design tool (Claude Design, Figma plugins, token translators) or a human designer.
 
-PRDock is a dense, desktop-native developer tool. The visual language is tuned for dense information (many PRs, many checks, many rows) while still feeling warm and distinctive — it should never read as "bootstrap gray." The signature is **deep plum backgrounds with a violet accent** plus a muted aquamarine/ruby status palette.
+BorgDock is a dense, desktop-native developer tool. The visual language is tuned for dense information (many PRs, many checks, many rows) while still feeling warm and distinctive — it should never read as "bootstrap gray." The signature is **deep plum backgrounds with a violet accent** plus a muted aquamarine/ruby status palette.
 
 ---
 
@@ -19,7 +19,7 @@ PRDock is a dense, desktop-native developer tool. The visual language is tuned f
 
 ## 2. Color Tokens
 
-All tokens live on `:root` (light) and `.dark` (dark) in `src/PRDock.Tauri/src/styles/index.css`. 327 CSS custom properties in total — the catalog below groups them by semantic role.
+All tokens live on `:root` (light) and `.dark` (dark) in `src/BorgDock.Tauri/src/styles/index.css`. 327 CSS custom properties in total — the catalog below groups them by semantic role.
 
 ### 2.1 Brand / Accent
 
@@ -195,7 +195,7 @@ System fonts only. No webfont loading.
 
 ### 3.2 Font Sizes (observed clusters)
 
-PRDock uses a compact type scale. Promote these to formal tokens:
+BorgDock uses a compact type scale. Promote these to formal tokens:
 
 | Suggested token | Size | Usage |
 |---|---|---|
@@ -267,7 +267,7 @@ Focus rings: `outline: 2px solid var(--color-accent); outline-offset: 1px;` (or 
 
 ## 7. Elevation / Shadows
 
-PRDock uses glow more than shadow. Define these token slots:
+BorgDock uses glow more than shadow. Define these token slots:
 
 | Suggested token | Purpose |
 |---|---|
@@ -281,7 +281,7 @@ PRDock uses glow more than shadow. Define these token slots:
 
 ## 8. Component Inventory
 
-Existing building blocks in `src/PRDock.Tauri/src/components/`. Entries marked **(ad-hoc)** are currently styled per-feature and should be extracted into a shared primitive.
+Existing building blocks in `src/BorgDock.Tauri/src/components/`. Entries marked **(ad-hoc)** are currently styled per-feature and should be extracted into a shared primitive.
 
 ### Primitives
 
@@ -481,7 +481,7 @@ A starter [DTCG](https://tr.designtokens.org/format/) JSON for designer tooling 
 
 ## 13. Source of Truth
 
-- Color, syntax, and most existing tokens: `src/PRDock.Tauri/src/styles/index.css`
-- Feature-specific CSS: `src/PRDock.Tauri/src/styles/file-palette.css`, `worktree-palette.css`, `file-viewer.css`
-- Theme switching: `src/PRDock.Tauri/src/` — theme applied by toggling `.dark` class on `<html>`, driven by the theme store (system / light / dark)
-- Tray icon variants: `src/PRDock.Tauri/src-tauri/icons/` (light and dark tray variants)
+- Color, syntax, and most existing tokens: `src/BorgDock.Tauri/src/styles/index.css`
+- Feature-specific CSS: `src/BorgDock.Tauri/src/styles/file-palette.css`, `worktree-palette.css`, `file-viewer.css`
+- Theme switching: `src/BorgDock.Tauri/src/` — theme applied by toggling `.dark` class on `<html>`, driven by the theme store (system / light / dark)
+- Tray icon variants: `src/BorgDock.Tauri/src-tauri/icons/` (light and dark tray variants)

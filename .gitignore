@@ -32,20 +32,20 @@ node_modules/
 *.sqlite
 *.sqlite3
 
-## Marketing assets (separate repo: prdock-marketing)
+## Marketing assets (separate repo: borgdock-marketing)
 promo-video/
 
 ## Claude Code worktrees (temporary agent workspaces)
 .claude/worktrees/
 
 ## Transient dev artifacts
-src/PRDock.Tauri/tsc.log
-src/PRDock.Tauri/tsc-output.txt
-src/PRDock.Tauri/test-window.html
+src/BorgDock.Tauri/tsc.log
+src/BorgDock.Tauri/tsc-output.txt
+src/BorgDock.Tauri/test-window.html
 .codex/
 
 ## Superpowers brainstorm mockups
 .superpowers/
 
 ## "What's new" generated hero images (sources live in docs/whats-new/)
-src/PRDock.Tauri/public/whats-new/
+src/BorgDock.Tauri/public/whats-new/

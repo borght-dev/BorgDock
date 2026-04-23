@@ -29,8 +29,8 @@ jobs:
 
       - name: Kill stale processes
         run: |
-          # Kill any lingering prdock.exe from previous builds
-          Get-Process -Name prdock -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          # Kill any lingering borgdock.exe from previous builds
+          Get-Process -Name borgdock -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           # Kill any lingering NSIS processes
           Get-Process -Name makensis -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 2
@@ -44,14 +44,14 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: src/PRDock.Tauri
+        working-directory: src/BorgDock.Tauri
 
       - name: Add NSIS to PATH
         run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Clean target directory
         run: |
-          $targetDir = Join-Path "src" "PRDock.Tauri" "src-tauri" "target"
+          $targetDir = Join-Path "src" "BorgDock.Tauri" "src-tauri" "target"
           if (Test-Path $targetDir) {
             Write-Host "Removing $targetDir to ensure clean build..."
             Remove-Item $targetDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -59,7 +59,7 @@ jobs:
 
       - name: Build Tauri app
         run: npx tauri build --bundles nsis
-        working-directory: src/PRDock.Tauri
+        working-directory: src/BorgDock.Tauri
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -77,7 +77,7 @@ jobs:
           $tag = "${{ github.ref_name }}"
           $version = $tag -replace '^v', ''
           $ws = "${{ github.workspace }}"
-          $nsisDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
+          $nsisDir = Join-Path $ws "src" "BorgDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
 
           Write-Host "Looking for assets in: $nsisDir"
           Get-ChildItem $nsisDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
@@ -94,7 +94,7 @@ jobs:
           Write-Host "Uploading $($assets.Count) assets..."
 
           # Create release (ignore error if exists)
-          gh release create $tag --title "PRDock $tag" --notes "See the assets to download and install this version." --latest 2>$null
+          gh release create $tag --title "BorgDock $tag" --notes "See the assets to download and install this version." --latest 2>$null
 
           # Upload all assets
           foreach ($asset in $assets) {
@@ -111,24 +111,24 @@ jobs:
           $version = $tag -replace '^v', ''
           $repo = "${{ github.repository }}"
           $ws = "${{ github.workspace }}"
-          $nsisDir = Join-Path $ws "src" "PRDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
+          $nsisDir = Join-Path $ws "src" "BorgDock.Tauri" "src-tauri" "target" "release" "bundle" "nsis"
 
           # Check for .nsis.zip.sig (only exists if TAURI_SIGNING_PRIVATE_KEY is set)
-          $sigFile = Join-Path $nsisDir "PRDock_${version}_x64-setup.nsis.zip.sig"
-          $zipFile = Join-Path $nsisDir "PRDock_${version}_x64-setup.nsis.zip"
+          $sigFile = Join-Path $nsisDir "BorgDock_${version}_x64-setup.nsis.zip.sig"
+          $zipFile = Join-Path $nsisDir "BorgDock_${version}_x64-setup.nsis.zip"
 
           if (Test-Path $sigFile) {
             $signature = (Get-Content $sigFile -Raw).Trim()
-            $url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.nsis.zip"
+            $url = "https://github.com/$repo/releases/download/$tag/BorgDock_${version}_x64-setup.nsis.zip"
           } else {
             Write-Host "No .sig file found — generating latest.json without signature (updater won't work, but WPF migration will)"
             $signature = ""
-            $url = "https://github.com/$repo/releases/download/$tag/PRDock_${version}_x64-setup.exe"
+            $url = "https://github.com/$repo/releases/download/$tag/BorgDock_${version}_x64-setup.exe"
           }
 
           $latest = @{
             version = $version
-            notes = "PRDock $version"
+            notes = "BorgDock $version"
             pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
               "windows-x86_64" = @{

@@ -1,0 +1,84 @@
+<div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1.5rem; display: flex; justify-content: center;">
+  <div style="width: 100%; max-width: 520px; background: #110F1A; border-radius: 10px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #EDEAF4;">
+
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(26,23,38,0.88); border-bottom: 1px solid rgba(138,133,160,0.08);">
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #EC6A5E; display: inline-block;"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #F4BF4F; display: inline-block;"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #61C554; display: inline-block;"></span>
+      <span style="margin-left: 12px; font-size: 12px; color: #8A85A0;">What's new in BorgDock</span>
+    </div>
+
+    <div style="padding: 24px 24px 16px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <span style="font-size: 11px; letter-spacing: 0.06em; color: #8A85A0; text-transform: uppercase;">Release notes</span>
+        <span style="font-size: 11px; color: #8A85A0;">2 versions behind</span>
+      </div>
+      <h1 style="font-size: 22px; font-weight: 500; margin: 0 0 4px; color: #EDEAF4; letter-spacing: -0.01em;">What's new in 1.0.11</h1>
+      <p style="font-size: 13px; color: #8A85A0; margin: 0;">Close PRs from the detail panel, persistent credentials, and a new build-integrity suite.</p>
+    </div>
+
+    <div style="padding: 0 24px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 10px 0; border-top: 1px solid rgba(138,133,160,0.08);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 14px; font-weight: 500; color: #EDEAF4;">1.0.11</span>
+          <span style="font-size: 11px; color: #7C6AF6; background: rgba(124,106,246,0.08); border: 1px solid rgba(124,106,246,0.22); padding: 2px 7px; border-radius: 4px;">Current</span>
+        </div>
+        <span style="font-size: 12px; color: #8A85A0;">Today</span>
+      </div>
+
+      <div style="padding: 12px 0 4px; border-left: 2px solid rgba(124,106,246,0.22); padding-left: 14px; margin-left: 2px;">
+
+        <div style="margin-bottom: 18px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: #7DD3C0; background: rgba(125,211,192,0.07); border: 1px solid rgba(125,211,192,0.18); padding: 2px 7px; border-radius: 4px; text-transform: uppercase;">New</span>
+            <span style="font-size: 14px; font-weight: 500; color: #EDEAF4;">Close PRs from the detail panel</span>
+          </div>
+          <p style="font-size: 13px; line-height: 1.55; color: #C8C4D6; margin: 0 0 8px;">Stop hopping to the browser for dead PRs. Hit <span style="font-family: 'Cascadia Code', monospace; font-size: 11px; background: rgba(138,133,160,0.08); border: 1px solid rgba(138,133,160,0.14); padding: 1px 5px; border-radius: 3px; color: #EDEAF4;">⌘⇧W</span> in the detail panel — the list auto-refreshes after it closes.</p>
+        </div>
+
+        <div style="margin-bottom: 18px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: #B8B0F8; background: rgba(184,176,248,0.06); border: 1px solid rgba(184,176,248,0.18); padding: 2px 7px; border-radius: 4px; text-transform: uppercase;">Fixed</span>
+            <span style="font-size: 14px; font-weight: 500; color: #EDEAF4;">Tokens survive reboots</span>
+          </div>
+          <p style="font-size: 13px; line-height: 1.55; color: #C8C4D6; margin: 0;">GitHub and Azure DevOps tokens now live in Windows Credential Manager. No more re-authenticating after a restart.</p>
+        </div>
+
+        <div style="margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: #F5B73B; background: rgba(245,183,59,0.06); border: 1px solid rgba(245,183,59,0.18); padding: 2px 7px; border-radius: 4px; text-transform: uppercase;">Improved</span>
+            <span style="font-size: 14px; font-weight: 500; color: #EDEAF4;">Build-integrity suite</span>
+          </div>
+          <p style="font-size: 13px; line-height: 1.55; color: #C8C4D6; margin: 0;">247 new automated checks verify window entry points and asset bundling stay intact across releases.</p>
+        </div>
+
+      </div>
+
+      <div style="margin: 18px 0 4px;">
+        <div style="font-size: 10px; letter-spacing: 0.06em; color: #8A85A0; text-transform: uppercase; margin-bottom: 8px;">Also fixed</div>
+        <ul style="margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.7; color: #C8C4D6;">
+          <li>SQL queries authenticate with the password hydrated from the keychain</li>
+          <li>Settings flyout no longer loops via <span style="font-family: 'Cascadia Code', monospace; font-size: 11px; color: #EDEAF4;">WorktreePruneDialog</span></li>
+        </ul>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid rgba(138,133,160,0.08); margin-top: 18px; cursor: pointer;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="color: #8A85A0; font-size: 11px;">▸</span>
+          <span style="font-size: 14px; font-weight: 500; color: #C8C4D6;">1.0.10</span>
+          <span style="font-size: 12px; color: #8A85A0;">Command palette, sidebar pinning</span>
+        </div>
+        <span style="font-size: 12px; color: #8A85A0;">Apr 1</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 1px solid rgba(138,133,160,0.08); background: rgba(26,23,38,0.6);">
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #8A85A0;">
+        <input type="checkbox" style="margin: 0;" />
+        Don't auto-open again
+      </label>
+      <button style="background: #7C6AF6; border: none; color: #fff; font-size: 13px; font-weight: 500; padding: 7px 16px; border-radius: 6px; cursor: pointer;">Got it</button>
+    </div>
+
+  </div>
+</div>
