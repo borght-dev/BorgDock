@@ -1,0 +1,37 @@
+import { expect, test } from '@playwright/test';
+import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
+
+test.describe('whats new', () => {
+  test.beforeEach(async ({ page }) => {
+    await injectCompletedSetup(page);
+    await page.goto('/?view=whats-new');
+    await waitForAppReady(page);
+  });
+
+  test('renders release header', async ({ page }) => {
+    await expect(page.locator('[data-release-version]').first()).toBeVisible();
+  });
+
+  test('highlight types render distinct pills', async ({ page }) => {
+    const newPill = page.locator('[data-highlight-kind="new"]').first();
+    const improvedPill = page.locator('[data-highlight-kind="improved"]').first();
+    const fixedPill = page.locator('[data-highlight-kind="fixed"]').first();
+    // At least two of three should be present across releases
+    const visible = [
+      await newPill.count(),
+      await improvedPill.count(),
+      await fixedPill.count(),
+    ].filter((c) => c > 0).length;
+    expect(visible).toBeGreaterThanOrEqual(2);
+  });
+
+  test('accordion expands/collapses', async ({ page }) => {
+    const accordion = page.locator('[data-fixed-accordion]').first();
+    if (!(await accordion.isVisible())) test.skip();
+    const headerBtn = accordion.locator('[role="button"]').first();
+    const isOpen = await accordion.getAttribute('data-open');
+    await headerBtn.click();
+    const afterOpen = await accordion.getAttribute('data-open');
+    expect(afterOpen).not.toBe(isOpen);
+  });
+});
