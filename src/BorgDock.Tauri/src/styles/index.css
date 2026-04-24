@@ -2906,6 +2906,31 @@ select.field-input option {
     transform: scale(0.92);
   }
 
+  /* ── StatusBar ───────────────────────────────────── */
+  .bd-statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 26px;
+    padding: 0 var(--space-3);
+    background: var(--color-status-bar-bg);
+    border-top: 1px solid var(--color-separator);
+    font-family: var(--font-mono);
+    font-size: var(--text-micro);
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+  .bd-statusbar__side {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+  .bd-statusbar__side--end {
+    flex-shrink: 0;
+  }
+
   /* ── Titlebar ────────────────────────────────────── */
   .bd-titlebar {
     display: flex;
