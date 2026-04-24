@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'react';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
+import { WindowControls } from '@/components/shared/chrome';
 import { ReleaseAccordion } from './ReleaseAccordion';
 import { useReleasesToShow } from './useReleasesToShow';
 
@@ -93,54 +94,12 @@ export function WhatsNewApp() {
         >
           What's new in BorgDock
         </span>
-        <div className="window-ctrl-group -my-1 -mr-1">
-          <button
-            type="button"
-            onClick={handleMinimize}
-            aria-label="Minimize"
-            title="Minimize"
-            className="window-ctrl-btn"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleMaximize}
-            aria-label="Maximize"
-            title="Maximize"
-            className="window-ctrl-btn"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <rect
-                x="1.5"
-                y="1.5"
-                width="7"
-                height="7"
-                rx="1"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={handleGotIt}
-            aria-label="Close"
-            title="Close"
-            className="window-ctrl-btn window-ctrl-btn--close"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <path
-                d="M2 2l6 6M8 2l-6 6"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
+        <WindowControls
+          onMinimize={handleMinimize}
+          onMaximize={handleToggleMaximize}
+          onClose={handleGotIt}
+          className="-my-1 -mr-1"
+        />
       </div>
       <header className="px-6 pt-6 pb-3.5">
         <div className="flex items-center justify-between mb-3">
