@@ -20,3 +20,5 @@ export { LinearProgress } from './LinearProgress';
 export type { LinearProgressProps, LinearProgressTone } from './LinearProgress';
 export { Tabs } from './Tabs';
 export type { TabDef, TabsProps } from './Tabs';
+export { Input } from './Input';
+export type { InputProps } from './Input';
