@@ -22,3 +22,5 @@ export { Tabs } from './Tabs';
 export type { TabDef, TabsProps } from './Tabs';
 export { Input } from './Input';
 export type { InputProps } from './Input';
+export { Card } from './Card';
+export type { CardPadding, CardProps, CardVariant } from './Card';
