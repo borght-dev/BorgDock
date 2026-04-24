@@ -4,3 +4,5 @@ export { Pill } from './Pill';
 export type { PillProps, PillTone } from './Pill';
 export { Dot } from './Dot';
 export type { DotProps, DotTone } from './Dot';
+export { Avatar } from './Avatar';
+export type { AvatarProps, AvatarSize, AvatarTone } from './Avatar';
