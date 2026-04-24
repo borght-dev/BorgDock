@@ -12,6 +12,7 @@ import { SqlWindow } from '~/components/screens/SqlWindow';
 import { CiLogPanel } from '~/components/screens/CiLogPanel';
 import { WorkItemsList } from '~/components/screens/WorkItemsList';
 import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
+import { ResponsiveMock } from '~/components/ui/ResponsiveMock';
 ---
 
 <Layout title="Gallery — BorgDock" description="Every BorgDock screen, at full fidelity.">
@@ -45,9 +46,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         to do is always on top.
       </p>
       <div class="gallery-shelf">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={420} designHeight={640}>
           <FocusSidebar width={420} height={640} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -59,9 +60,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         Ready to merge / Needs attention / In review.
       </p>
       <div class="gallery-shelf gallery-shelf--wide">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={1020} designHeight={720}>
           <MainPRsWindow width={1020} height={720} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -73,9 +74,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         or the PR base branch.
       </p>
       <div class="gallery-shelf gallery-shelf--wide">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={1180} designHeight={720}>
           <DiffViewer width={1180} height={720} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -87,9 +88,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         inline — it opens a worktree with the first real error as the prompt.
       </p>
       <div class="gallery-shelf gallery-shelf--wide">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={820} designHeight={840}>
           <PrDetail width={820} height={840} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -101,9 +102,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         PR that touched the file last.
       </p>
       <div class="gallery-shelf">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={780} designHeight={300}>
           <FilePalette width={780} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -115,9 +116,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         re-scroll, syntax matching the rest of the app.
       </p>
       <div class="gallery-shelf">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={620} designHeight={440}>
           <SqlWindow width={620} height={440} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -129,9 +130,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         prompt.
       </p>
       <div class="gallery-shelf">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={540} designHeight={360}>
           <CiLogPanel width={540} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -143,9 +144,9 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         one card.
       </p>
       <div class="gallery-shelf">
-        <div class="mockup-scroll">
+        <ResponsiveMock designWidth={420} designHeight={580}>
           <WorkItemsList width={420} height={580} />
-        </div>
+        </ResponsiveMock>
       </div>
     </article>
 
@@ -157,10 +158,16 @@ import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
         to reopen the dock.
       </p>
       <div class="gallery-shelf">
-        <div style="display: flex; flex-direction: column; gap: 18px; align-items: center;">
-          <FloatingBadgeMock status="red" count={23} failing={2} width={340} />
-          <FloatingBadgeMock status="yellow" count={18} failing={0} width={340} />
-          <FloatingBadgeMock status="green" count={11} failing={0} width={340} />
+        <div style="display: flex; flex-direction: column; gap: 18px; align-items: center; width: 100%;">
+          <ResponsiveMock designWidth={340} designHeight={96}>
+            <FloatingBadgeMock status="red" count={23} failing={2} width={340} />
+          </ResponsiveMock>
+          <ResponsiveMock designWidth={340} designHeight={96}>
+            <FloatingBadgeMock status="yellow" count={18} failing={0} width={340} />
+          </ResponsiveMock>
+          <ResponsiveMock designWidth={340} designHeight={96}>
+            <FloatingBadgeMock status="green" count={11} failing={0} width={340} />
+          </ResponsiveMock>
         </div>
       </div>
     </article>

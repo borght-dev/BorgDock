@@ -1,6 +1,7 @@
 import { PrDetail } from '../screens/PrDetail';
 import { WorkItemsList } from '../screens/WorkItemsList';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 export function DetailAndWork() {
   return (
@@ -18,11 +19,9 @@ export function DetailAndWork() {
             lede="Every run in a flat list — click Send to Claude on the red ones."
           />
           <div style={{ marginTop: 26 }}>
-            <div className="mockup-scroll">
-              <div style={{ transform: 'scale(0.72)', transformOrigin: 'top left' }}>
-                <PrDetail width={720} height={640} />
-              </div>
-            </div>
+            <ResponsiveMock designWidth={720} designHeight={640}>
+              <PrDetail width={720} height={640} />
+            </ResponsiveMock>
           </div>
         </div>
         <div>
@@ -37,11 +36,9 @@ export function DetailAndWork() {
             lede="Auto-linked by branch or commit. Sprint, state, tags, implementing PR."
           />
           <div style={{ marginTop: 26 }}>
-            <div className="mockup-scroll">
-              <div style={{ transform: 'scale(0.82)', transformOrigin: 'top left' }}>
-                <WorkItemsList width={400} height={560} />
-              </div>
-            </div>
+            <ResponsiveMock designWidth={400} designHeight={560}>
+              <WorkItemsList width={400} height={560} />
+            </ResponsiveMock>
           </div>
         </div>
       </div>

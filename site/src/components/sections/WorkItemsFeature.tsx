@@ -1,5 +1,6 @@
 import { WorkItemsList } from '../screens/WorkItemsList';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 export function WorkItemsFeature() {
   return (
@@ -17,9 +18,9 @@ export function WorkItemsFeature() {
           />
         </div>
         <div className="center-flex">
-          <div className="mockup-scroll">
+          <ResponsiveMock designWidth={420} designHeight={580}>
             <WorkItemsList width={420} height={580} />
-          </div>
+          </ResponsiveMock>
         </div>
       </div>
     </section>

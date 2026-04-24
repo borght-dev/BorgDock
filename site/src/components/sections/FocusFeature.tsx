@@ -1,6 +1,7 @@
 import { StatusDot } from '../ui/atoms';
 import { FocusSidebar } from '../screens/FocusSidebar';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 import type { StatusKind } from '../ui/types';
 
 const RULES: readonly [StatusKind, string, string][] = [
@@ -69,9 +70,9 @@ export function FocusFeature() {
           </div>
         </div>
         <div className="center-flex">
-          <div className="mockup-scroll">
+          <ResponsiveMock designWidth={400} designHeight={640}>
             <FocusSidebar width={400} height={640} />
-          </div>
+          </ResponsiveMock>
         </div>
       </div>
     </section>

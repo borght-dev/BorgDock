@@ -14,7 +14,13 @@
 /* ---- Skeleton ---- */
 
 html { scroll-behavior: smooth; }
-body { min-height: 100vh; }
+body {
+  min-height: 100vh;
+  /* Safety net so any stray wide element can't create horizontal scroll.
+     Kept off `html` because `overflow-x` on the root breaks position:sticky
+     on iOS Safari. */
+  overflow-x: clip;
+}
 
 a { color: inherit; }
 button { font: inherit; }
@@ -305,25 +311,31 @@ button { font: inherit; }
   align-items: center;
 }
 
-.mockup-scroll {
-  /* On narrow screens the desktop-shaped mockups become horizontally
-     scrollable at their natural size — honest about what they are and
-     readable at any width. */
+/* Fixed-design-width mock scaled to fit container via container queries.
+   Layout height collapses to the scaled visual height via aspect-ratio.
+   Scale math uses length/length in calc() (CSS Values 4) so no JS is needed.
+   The outer caps at designWidth so wider parents leave it centered via
+   margin-inline: auto; narrower parents shrink it and the inner scales
+   from top-left to fill. */
+.responsive-mock {
+  --mock-scale: min(1, calc(100cqi / (var(--mock-dw) * 1px)));
+  container-type: inline-size;
+  position: relative;
   width: 100%;
-  display: flex;
-  justify-content: center;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  max-width: calc(var(--mock-dw) * 1px);
+  aspect-ratio: var(--mock-dw) / var(--mock-dh);
+  margin-inline: auto;
+  overflow: hidden;
 }
 
-.mockup-scroll > * { flex-shrink: 0; }
-
-.mockup-scroll::-webkit-scrollbar { height: 6px; }
-.mockup-scroll::-webkit-scrollbar-track { background: transparent; }
-.mockup-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-strong-border);
-  border-radius: 3px;
+.responsive-mock__inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--mock-dw) * 1px);
+  height: calc(var(--mock-dh) * 1px);
+  transform-origin: top left;
+  transform: scale(var(--mock-scale));
 }
 
 /* ---- Flex helpers used inside sections ---- */
@@ -392,6 +404,81 @@ button { font: inherit; }
 
 .gallery-shelf--wide { padding: 28px 20px; }
 
+/* ---- Changelog teaser row (home page) ---- */
+
+.changelog-teaser-row {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  padding: 16px 20px;
+  align-items: baseline;
+}
+
+.changelog-teaser-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .changelog-teaser-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 14px 16px;
+  }
+}
+
+/* ---- Download page install rows ---- */
+
+.download-section {
+  max-width: 800px;
+  margin: 64px auto 0;
+  padding: 0 var(--site-gutter);
+}
+
+.download-section--install {
+  margin-top: 80px;
+}
+
+.install-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--color-code-block-bg, var(--color-surface-raised));
+  border: 1px solid var(--color-subtle-border);
+  font-family: var(--font-code);
+  font-size: 13px;
+  min-width: 0; /* allow children to shrink */
+}
+
+.install-row__os {
+  color: var(--color-text-muted);
+  width: 70px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.install-row__cmd {
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.install-row__copy {
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-family: var(--font-code);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ---- Changelog release row ---- */
 
 .changelog-row {
@@ -446,10 +533,18 @@ button { font: inherit; }
 
   .changelog-row {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 12px;
   }
 
-  .changelog-row__date { position: static; }
+  .changelog-row__date {
+    position: static;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .changelog-row__date > *:first-child { font-size: 15px !important; }
+  .changelog-row__date > * + * { margin-top: 0 !important; }
 }
 
 @media (max-width: 720px) {
@@ -530,4 +625,20 @@ button { font: inherit; }
   .mockup-frame { padding: 24px 0 32px; }
   .mockup-frame--padded,
   .mockup-frame--bordered { padding: 16px 12px; }
+
+  .download-section {
+    padding-left: var(--site-gutter-mobile);
+    padding-right: var(--site-gutter-mobile);
+  }
+
+  .install-row {
+    padding: 10px 12px;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .install-row__os {
+    width: auto;
+    min-width: 48px;
+  }
 }

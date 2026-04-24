@@ -77,22 +77,19 @@ export function ChangelogTeaser() {
         {ITEMS.map((item, i) => (
           <div
             key={item.v}
+            className="changelog-teaser-row"
             style={{
-              display: 'grid',
-              gridTemplateColumns: '140px 100px 1fr',
-              gap: 20,
-              padding: '16px 20px',
               borderTop: i === 0 ? 0 : '1px solid var(--color-separator)',
-              alignItems: 'baseline',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="changelog-teaser-row__meta">
               <span
                 style={{
                   width: 6,
                   height: 6,
                   borderRadius: 9999,
                   background: KIND_COLOR[item.kind],
+                  flexShrink: 0,
                 }}
               />
               <span
@@ -104,16 +101,25 @@ export function ChangelogTeaser() {
               >
                 {item.v}
               </span>
+              <span
+                style={{
+                  fontFamily: 'var(--font-code)',
+                  fontSize: 11,
+                  color: 'var(--color-text-faint)',
+                }}
+              >
+                ·
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: 'var(--color-text-muted)',
+                  fontFamily: 'var(--font-code)',
+                }}
+              >
+                {item.date}
+              </span>
             </div>
-            <span
-              style={{
-                fontSize: 11,
-                color: 'var(--color-text-muted)',
-                fontFamily: 'var(--font-code)',
-              }}
-            >
-              {item.date}
-            </span>
             <div>
               <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{item.title}</div>
               <div

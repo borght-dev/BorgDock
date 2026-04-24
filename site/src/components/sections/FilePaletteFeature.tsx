@@ -1,5 +1,6 @@
 import { FilePalette } from '../screens/FilePalette';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 export function FilePaletteFeature() {
   return (
@@ -18,9 +19,9 @@ export function FilePaletteFeature() {
         />
       </div>
       <div className="mockup-frame mockup-frame--padded">
-        <div className="mockup-scroll">
+        <ResponsiveMock designWidth={780} designHeight={300}>
           <FilePalette width={780} />
-        </div>
+        </ResponsiveMock>
       </div>
     </section>
   );

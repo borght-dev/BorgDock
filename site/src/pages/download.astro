@@ -83,7 +83,7 @@ const installCmds: readonly [string, string][] = [
     </div>
   </section>
 
-  <section style="max-width: 800px; margin: 80px auto 0; padding: 0 32px;">
+  <section class="download-section download-section--install">
     <div
       style="font-size: 11px; font-family: var(--font-code); color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;"
     >
@@ -92,16 +92,11 @@ const installCmds: readonly [string, string][] = [
     <div style="display: grid; gap: 10px;">
       {
         installCmds.map(([os, cmd]) => (
-          <div
-            style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; background: var(--color-code-block-bg, var(--color-surface-raised)); border: 1px solid var(--color-subtle-border); font-family: var(--font-code); font-size: 13px;"
-          >
-            <span style="color: var(--color-text-muted); width: 70px; font-size: 11px;">{os}</span>
+          <div class="install-row">
+            <span class="install-row__os">{os}</span>
             <span style="color: var(--color-syntax-keyword);">$</span>
-            <span style="color: var(--color-text-primary); flex: 1;">{cmd}</span>
-            <button
-              type="button"
-              style="background: transparent; border: 0; color: var(--color-text-muted); font-size: 10px; font-family: var(--font-code); cursor: pointer;"
-            >
+            <span class="install-row__cmd">{cmd}</span>
+            <button type="button" class="install-row__copy">
               copy
             </button>
           </div>
@@ -110,7 +105,7 @@ const installCmds: readonly [string, string][] = [
     </div>
   </section>
 
-  <section style="max-width: 800px; margin: 64px auto 0; padding: 0 32px;">
+  <section class="download-section">
     <div
       style="padding: 22px; border-radius: 12px; background: var(--color-surface-raised); border: 1px solid var(--color-subtle-border); display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start;"
     >

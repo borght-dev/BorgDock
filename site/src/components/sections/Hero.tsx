@@ -1,5 +1,6 @@
 import { StatusDot } from '../ui/atoms';
 import { FocusSidebar } from '../screens/FocusSidebar';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 interface HeroProps {
   scale?: number;
@@ -124,9 +125,9 @@ export function Hero({ scale = 1 }: HeroProps) {
           </div>
         </div>
         <div className="end-flex">
-          <div className="mockup-scroll">
+          <ResponsiveMock designWidth={420} designHeight={640}>
             <FocusSidebar width={420} height={640} />
-          </div>
+          </ResponsiveMock>
         </div>
       </div>
     </section>

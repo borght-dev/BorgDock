@@ -1,5 +1,6 @@
 import { FloatingBadgeMock } from '../screens/FloatingBadgeMock';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 export function BadgeFeature() {
   return (
@@ -18,9 +19,15 @@ export function BadgeFeature() {
         />
       </div>
       <div className="mockup-frame--column">
-        <FloatingBadgeMock status="red" count={23} failing={2} width={340} />
-        <FloatingBadgeMock status="yellow" count={18} failing={0} width={340} />
-        <FloatingBadgeMock status="green" count={11} failing={0} width={340} />
+        <ResponsiveMock designWidth={340} designHeight={96}>
+          <FloatingBadgeMock status="red" count={23} failing={2} width={340} />
+        </ResponsiveMock>
+        <ResponsiveMock designWidth={340} designHeight={96}>
+          <FloatingBadgeMock status="yellow" count={18} failing={0} width={340} />
+        </ResponsiveMock>
+        <ResponsiveMock designWidth={340} designHeight={96}>
+          <FloatingBadgeMock status="green" count={11} failing={0} width={340} />
+        </ResponsiveMock>
       </div>
     </section>
   );

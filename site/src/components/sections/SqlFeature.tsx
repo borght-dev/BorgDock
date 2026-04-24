@@ -1,5 +1,6 @@
 import { SqlWindow } from '../screens/SqlWindow';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 export function SqlFeature() {
   return (
@@ -18,9 +19,9 @@ export function SqlFeature() {
           />
         </div>
         <div className="center-flex">
-          <div className="mockup-scroll">
+          <ResponsiveMock designWidth={620} designHeight={440}>
             <SqlWindow width={620} height={440} />
-          </div>
+          </ResponsiveMock>
         </div>
       </div>
     </section>

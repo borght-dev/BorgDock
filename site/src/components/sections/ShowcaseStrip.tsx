@@ -1,4 +1,5 @@
 import { MainPRsWindow } from '../screens/MainPRsWindow';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 const STATS: readonly [string, string][] = [
   ['23', 'PRs across 4 repos ranked live by eight priority signals.'],
@@ -11,11 +12,9 @@ export function ShowcaseStrip() {
   return (
     <section style={{ maxWidth: 1280, margin: '40px auto 0', padding: '0 32px' }}>
       <div className="mockup-frame">
-        <div className="mockup-scroll">
-          <div style={{ transform: 'scale(0.82)', transformOrigin: 'top center' }}>
-            <MainPRsWindow width={1020} height={720} />
-          </div>
-        </div>
+        <ResponsiveMock designWidth={1020} designHeight={720}>
+          <MainPRsWindow width={1020} height={720} />
+        </ResponsiveMock>
       </div>
       <div className="stats-grid">
         {STATS.map(([n, d]) => (

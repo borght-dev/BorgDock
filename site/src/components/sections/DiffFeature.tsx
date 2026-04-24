@@ -1,5 +1,6 @@
 import { DiffViewer } from '../screens/DiffViewer';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 export function DiffFeature() {
   return (
@@ -18,11 +19,9 @@ export function DiffFeature() {
         />
       </div>
       <div className="mockup-frame mockup-frame--bordered">
-        <div className="mockup-scroll">
-          <div style={{ transform: 'scale(0.82)', transformOrigin: 'top center' }}>
-            <DiffViewer width={1180} height={720} />
-          </div>
-        </div>
+        <ResponsiveMock designWidth={1180} designHeight={720}>
+          <DiffViewer width={1180} height={720} />
+        </ResponsiveMock>
       </div>
     </section>
   );

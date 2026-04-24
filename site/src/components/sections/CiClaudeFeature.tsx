@@ -1,5 +1,6 @@
 import { CiLogPanel } from '../screens/CiLogPanel';
 import { SectionHeading } from '../SectionHeading';
+import { ResponsiveMock } from '../ui/ResponsiveMock';
 
 const ROWS: readonly [string, string][] = [
   ['log-parser.ts', 'Finds the real error in 2,847 lines in < 50ms'],
@@ -59,9 +60,9 @@ export function CiClaudeFeature() {
           </div>
         </div>
         <div className="center-flex">
-          <div className="mockup-scroll">
+          <ResponsiveMock designWidth={520} designHeight={360}>
             <CiLogPanel width={520} />
-          </div>
+          </ResponsiveMock>
         </div>
       </div>
     </section>

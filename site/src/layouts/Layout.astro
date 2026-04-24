@@ -14,7 +14,7 @@ const {
 ---
 
 <!doctype html>
-<html class="dark" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -29,14 +29,26 @@ const {
       href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
 
-    {/* Persist theme before paint to avoid FOUC. */}
+    {/* Apply theme before paint. System preference by default; explicit
+        localStorage value ('light' | 'dark') overrides. Track system changes
+        only when no explicit override is set. */}
     <script is:inline>
       (function () {
         try {
-          const saved = localStorage.getItem('prdock-theme');
-          if (saved === 'light') document.documentElement.classList.remove('dark');
-          else document.documentElement.classList.add('dark');
-        } catch {}
+          var mql = window.matchMedia('(prefers-color-scheme: dark)');
+          var apply = function () {
+            var saved = localStorage.getItem('prdock-theme');
+            var isDark = saved === 'dark' || (saved !== 'light' && mql.matches);
+            document.documentElement.classList.toggle('dark', isDark);
+          };
+          apply();
+          if (mql.addEventListener) {
+            mql.addEventListener('change', function () {
+              var s = localStorage.getItem('prdock-theme');
+              if (s !== 'light' && s !== 'dark') apply();
+            });
+          }
+        } catch (e) {}
       })();
     </script>
   </head>
