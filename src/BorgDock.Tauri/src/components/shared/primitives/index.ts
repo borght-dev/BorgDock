@@ -16,3 +16,5 @@ export { Chip } from './Chip';
 export type { ChipProps, ChipTone } from './Chip';
 export { Ring } from './Ring';
 export type { RingProps } from './Ring';
+export { LinearProgress } from './LinearProgress';
+export type { LinearProgressProps, LinearProgressTone } from './LinearProgress';
