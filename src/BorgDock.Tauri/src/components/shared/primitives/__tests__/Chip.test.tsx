@@ -49,6 +49,17 @@ describe('Chip', () => {
     expect(screen.getByText('0')).toBeInTheDocument();
   });
 
+  it('renders count with active background when active=true', () => {
+    render(
+      <Chip active count={3}>
+        Active
+      </Chip>,
+    );
+    const badge = screen.getByRole('button').querySelector('.bd-chip__count') as HTMLElement;
+    expect(badge).toBeInTheDocument();
+    expect(badge.style.background).toMatch(/rgba\(0,\s*0,\s*0,\s*0\.08\)/);
+  });
+
   it('fires onClick', () => {
     const onClick = vi.fn();
     render(<Chip onClick={onClick}>All</Chip>);
