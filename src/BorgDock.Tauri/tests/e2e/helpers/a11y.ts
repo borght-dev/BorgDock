@@ -29,12 +29,8 @@ export async function expectNoA11yViolations(
   if (opts.selector) builder.include(opts.selector);
   if (opts.disableRules?.length) builder.disableRules(opts.disableRules);
   const { violations } = await builder.analyze();
-  if (violations.length) {
-    const report = violations
-      .map((v) => `- [${v.id}] ${v.help} (${v.nodes.length} nodes)\n  ${v.helpUrl}`)
-      .join('\n');
-    expect.soft(violations, `Accessibility violations:\n${report}`).toHaveLength(0);
-    // Hard-fail at end so the full report is attached
-    expect(violations).toHaveLength(0);
-  }
+  const report = violations
+    .map((v) => `- [${v.id}] ${v.help} (${v.nodes.length} nodes)\n  ${v.helpUrl}`)
+    .join('\n');
+  expect(violations, `Accessibility violations:\n${report}`).toHaveLength(0);
 }
