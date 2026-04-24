@@ -46,6 +46,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@biomejs/biome": "^2.4.8",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.1.4",
