@@ -51,8 +51,13 @@ export default defineConfig({
       stderr: 'pipe',
     },
   ],
+  // Drop {testFileDir}/{testFileName} so every spec in the project shares
+  // one snapshot namespace. This lets `visual.spec.ts` compare against the
+  // baselines captured by `tests/e2e/scripts/capture-design-baselines.spec.ts`
+  // without path gymnastics — both pass `design/<id>-<theme>.png` as the
+  // {arg} and resolve to the same file on disk.
   snapshotPathTemplate:
-    '{testDir}/__screenshots__/{projectName}/{testFileDir}/{testFileName}/{arg}{ext}',
+    '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   projects: [
     {
       name: 'webview-mac',

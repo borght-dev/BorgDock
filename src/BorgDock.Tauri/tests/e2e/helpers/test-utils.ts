@@ -9,9 +9,19 @@ export const TAURI_MOCK_SCRIPT = `
   // Mock __TAURI_INTERNALS__ to prevent "not running in Tauri" errors
   window.__TAURI_INTERNALS__ = {
     invoke: async (cmd, args) => {
-      console.log('[mock] invoke', cmd, args);
+      // Do NOT log plugin:log|log invocations — the frontend's
+      // attachConsoleBridge (services/logger.ts) patches console.log to
+      // proxy through plugin-log, so logging here would re-enter the
+      // mock and recurse until the page crashes.
+      if (cmd !== 'plugin:log|log') {
+        console.log('[mock] invoke', cmd, args);
+      }
 
       switch (cmd) {
+        case 'plugin:log|log':
+          // Drop plugin-log calls on the floor; they are fire-and-forget
+          // in real Tauri and have no return value.
+          return null;
         case 'load_settings':
           return window.__BORGDOCK_MOCK_SETTINGS__ || {
             setupComplete: false,

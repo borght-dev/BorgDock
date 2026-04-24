@@ -171,9 +171,18 @@ test.describe('design-baseline capture', () => {
       const locator = page.locator(ab.selector);
       await expect(locator).toBeVisible({ timeout: 10_000 });
 
-      // Snapshot name stays flat — Playwright sanitizes '/' → '-', and we
-      // don't want a ghost `design/` subdirectory that doesn't exist on disk.
-      const snapshotName = `${ab.id}-${ab.theme}.png`;
+      // Baselines live under `__screenshots__/<project>/design/` thanks
+      // to the shared `snapshotPathTemplate` in `playwright.config.ts`.
+      // Pass the name as a tuple (`['design', '<file>.png']`) rather than
+      // a slash-joined string — Playwright sanitizes `/` → `-` in single
+      // string arguments, which would flatten the directory to a prefix
+      // in the filename. See `toHaveScreenshot(name: string | ReadonlyArray<string>)`
+      // in `@playwright/test`. Both this capture spec and `visual.spec.ts`
+      // pass the same tuple so they resolve to the same PNG on disk.
+      const snapshotName: readonly [string, string] = [
+        'design',
+        `${ab.id}-${ab.theme}.png`,
+      ];
       // First run (no baseline on disk) writes the PNG as the baseline.
       // Subsequent runs compare at maxDiffPixelRatio:0 (exact). Intended
       // workflow: run via `npm run test:e2e:capture-design` (passes
