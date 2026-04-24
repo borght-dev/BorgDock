@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
 import { seedDesignFixtures } from './helpers/seed';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('focus', () => {
   test.beforeEach(async ({ page }) => {
@@ -42,5 +43,9 @@ test.describe('focus', () => {
     const summary = page.locator('[data-quick-review-summary]');
     await expect(summary).toBeVisible();
     await expect(summary).toContainText(/of\s+\d+/);
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
 import { seedDesignFixturesIfAvailable } from './helpers/seed';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('file viewer', () => {
   test.beforeEach(async ({ page }) => {
@@ -36,5 +37,9 @@ test.describe('file viewer', () => {
     await page.locator('[data-action="copy-contents"]').click();
     const text = await page.evaluate(() => navigator.clipboard.readText());
     expect(text.length).toBeGreaterThan(0);
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

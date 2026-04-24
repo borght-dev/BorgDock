@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('worktree palette', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,5 +25,9 @@ test.describe('worktree palette', () => {
       await checkoutBtn.click();
       await expect(page.locator('[data-checkout-flow]')).toBeVisible();
     }
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

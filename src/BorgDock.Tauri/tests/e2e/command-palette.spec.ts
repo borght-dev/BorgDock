@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
 import { seedDesignFixtures } from './helpers/seed';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('command palette', () => {
   test.beforeEach(async ({ page }) => {
@@ -36,5 +37,9 @@ test.describe('command palette', () => {
     await page.keyboard.press('ControlOrMeta+K');
     await page.keyboard.press('Escape');
     await expect(page.locator('[data-command-palette]')).toBeHidden();
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

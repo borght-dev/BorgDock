@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
 import { seedDesignFixturesIfAvailable } from './helpers/seed';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('diff viewer', () => {
   test.beforeEach(async ({ page }) => {
@@ -39,5 +40,9 @@ test.describe('diff viewer', () => {
     await expect
       .poll(async () => page.evaluate(() => window.scrollY), { timeout: 2_000 })
       .not.toBe(scrollYBefore);
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

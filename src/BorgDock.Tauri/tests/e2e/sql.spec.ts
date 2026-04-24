@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('sql window', () => {
   test.beforeEach(async ({ page }) => {
@@ -39,5 +40,9 @@ test.describe('sql window', () => {
     await page.locator('[data-action="run-query"]').click();
     await expect(page.locator('[data-sql-results-table] tbody tr').first())
       .toBeVisible({ timeout: 3_000 });
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

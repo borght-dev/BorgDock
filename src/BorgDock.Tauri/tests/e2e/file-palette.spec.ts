@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
 import { seedDesignFixturesIfAvailable } from './helpers/seed';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('file palette', () => {
   test.beforeEach(async ({ page }) => {
@@ -46,5 +47,9 @@ test.describe('file palette', () => {
     // either the element is removed or `data-hidden="true"` is set.
     // PR #5 should pick one; until then we accept either.
     await expect(window).toBeHidden();
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

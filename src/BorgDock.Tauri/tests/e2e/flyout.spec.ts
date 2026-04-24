@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
 import { seedDesignFixturesIfAvailable } from './helpers/seed';
 import { DESIGN_PRS } from './fixtures/design-fixtures';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('flyout', () => {
   test.beforeEach(async ({ page }) => {
@@ -51,5 +52,9 @@ test.describe('flyout', () => {
         .findIndex((el) => el.matches('[data-active="true"]')),
     );
     expect(back).toBe(0);
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
+import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('whats new', () => {
   test.beforeEach(async ({ page }) => {
@@ -33,5 +34,9 @@ test.describe('whats new', () => {
     await headerBtn.click();
     const afterOpen = await accordion.getAttribute('data-open');
     expect(afterOpen).not.toBe(isOpen);
+  });
+
+  test('has no WCAG 2.1 AA violations', async ({ page }) => {
+    await expectNoA11yViolations(page);
   });
 });
