@@ -144,6 +144,20 @@ describe('Header', () => {
     expect(screen.getByTestId('feature-badge-focus-mode')).toBeTruthy();
   });
 
+  it('renders the focus count badge when focusCount > 0', () => {
+    usePrStore.setState({ focusCount: () => 3 });
+    render(<Header />);
+    const focusTab = screen.getAllByRole('tab').find((t) => t.textContent?.includes('Focus'));
+    expect(focusTab?.textContent).toContain('3');
+  });
+
+  it('omits the focus count badge when focusCount === 0', () => {
+    usePrStore.setState({ focusCount: () => 0 });
+    render(<Header />);
+    const focusTab = screen.getAllByRole('tab').find((t) => t.textContent?.includes('Focus'));
+    expect(focusTab?.textContent).toBe('Focus');
+  });
+
   it('handles drag start on header mousedown', () => {
     render(<Header />);
     const header = document.querySelector('.sidebar-header') as HTMLElement;

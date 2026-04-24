@@ -94,7 +94,7 @@ export function Header() {
           }))}
           dense
         />
-        <span className="pointer-events-none absolute -right-1 -top-1">
+        <span className="absolute -right-1 -top-1">
           <FeatureBadge badgeId="focus-mode" />
         </span>
       </div>
