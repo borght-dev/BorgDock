@@ -30,7 +30,10 @@ import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
+import { installTestSeed } from '@/test-support/test-seed';
 import type { RepoSettings } from '@/types';
+
+installTestSeed({ isDev: import.meta.env.DEV });
 
 const log = createLogger('app');
 
