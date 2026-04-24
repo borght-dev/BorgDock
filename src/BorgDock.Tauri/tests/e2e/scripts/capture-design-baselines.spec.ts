@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
+import { dirnameOf } from '../helpers/esm-paths';
 
 /**
  * Runs once to capture (and re-capture) every artboard in the frozen
@@ -21,8 +22,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
  */
 
 // ESM equivalent of CommonJS __dirname — the package is `"type": "module"`.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirnameOf(import.meta.url);
 
 const DESIGN_HTML = path.resolve(
   __dirname,
@@ -32,7 +32,15 @@ const DESIGN_HTML = path.resolve(
 type Artboard = {
   /** Stable surface id — used in the snapshot filename. */
   id: string;
-  /** CSS selector for the artboard root, must resolve to exactly one element. */
+  /**
+   * CSS selector for the artboard root, must resolve to exactly one element.
+   *
+   * NOTE: `data-dc-slot` is emitted by the `DCArtboardFrame` React
+   * component at runtime (see `design-bundle/borgdock/project/
+   * design-canvas.jsx` around line 467). A `grep` of the static HTML
+   * will find zero matches — that's expected. The attribute is only
+   * present after JS runs, which is fine for Playwright's navigation.
+   */
   selector: string;
   /** Theme scope of the artboard (light or dark). */
   theme: 'light' | 'dark';
@@ -137,14 +145,17 @@ test.describe('design-baseline capture', () => {
       // Fonts must be fully loaded — system font fallbacks differ
       // pixel-for-pixel from the bundled stack.
       await page.evaluate(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (document as any).fonts?.ready;
+        await document.fonts?.ready;
       });
 
       const locator = page.locator(ab.selector);
       await expect(locator).toBeVisible({ timeout: 10_000 });
 
       const snapshotName = `design/${ab.id}-${ab.theme}.png`;
+      // First run (no baseline on disk) writes the PNG as the baseline.
+      // Subsequent runs compare at maxDiffPixelRatio:0 (exact). Intended
+      // workflow: run via `npm run test:e2e:capture-design` (passes
+      // --update-snapshots so re-captures overwrite).
       await expect(locator).toHaveScreenshot(snapshotName, {
         // Exact capture: we're writing the reference, not comparing to it.
         maxDiffPixelRatio: 0,
