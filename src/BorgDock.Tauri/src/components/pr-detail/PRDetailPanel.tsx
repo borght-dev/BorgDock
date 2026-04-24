@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createLogger } from '@/services/logger';
+import { WindowControls } from '@/components/shared/chrome';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ChecksTab } from './ChecksTab';
@@ -146,51 +147,12 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
           </button>
         )}
         {popOutWindow && (
-          <div className="window-ctrl-group -my-1 -mr-1">
-            <button
-              onClick={handleMinimize}
-              aria-label="Minimize"
-              title="Minimize"
-              className="window-ctrl-btn"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10">
-                <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-            </button>
-            <button
-              onClick={handleToggleMaximize}
-              aria-label="Maximize"
-              title="Maximize"
-              className="window-ctrl-btn"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <rect
-                  x="1.5"
-                  y="1.5"
-                  width="7"
-                  height="7"
-                  rx="1"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={handleClose}
-              aria-label="Close"
-              title="Close"
-              className="window-ctrl-btn window-ctrl-btn--close"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10">
-                <path
-                  d="M2 2l6 6M8 2l-6 6"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
+          <WindowControls
+            onMinimize={handleMinimize}
+            onMaximize={handleToggleMaximize}
+            onClose={handleClose}
+            className="-my-1 -mr-1"
+          />
         )}
       </div>
 
