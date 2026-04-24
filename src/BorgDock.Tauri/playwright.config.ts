@@ -51,11 +51,18 @@ export default defineConfig({
       stderr: 'pipe',
     },
   ],
-  // Drop {testFileDir}/{testFileName} so every spec in the project shares
-  // one snapshot namespace. This lets `visual.spec.ts` compare against the
-  // baselines captured by `tests/e2e/scripts/capture-design-baselines.spec.ts`
-  // without path gymnastics — both pass `design/<id>-<theme>.png` as the
-  // {arg} and resolve to the same file on disk.
+  /**
+   * Snapshots are shared across every spec so the capture spec
+   * (tests/e2e/scripts/capture-design-baselines.spec.ts) and consumer
+   * specs (tests/e2e/visual.spec.ts, Tasks 10-18 behavioral specs) all
+   * reach the same baselines at `__screenshots__/<project>/design/…`.
+   *
+   * CONVENTION for behavioral specs: pass `toHaveScreenshot` a TUPLE
+   * whose first element is the spec's own directory, e.g.
+   * `['behavioral/<spec-name>', 'scroll-state.png']`. The string form
+   * `'behavioral/<spec-name>/scroll-state.png'` DOES NOT WORK —
+   * Playwright sanitizes the `/` to `-`, collapsing the namespace.
+   */
   snapshotPathTemplate:
     '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   projects: [

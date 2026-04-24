@@ -29,8 +29,8 @@ export const TAURI_MOCK_SCRIPT = `
             repos: [],
             ui: {
               sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380,
-              theme: 'dark', globalHotkey: 'Ctrl+Shift+P', editorCommand: 'code',
-              runAtStartup: false,
+              theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Shift+F',
+              editorCommand: 'code', runAtStartup: false,
             },
             notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
             claudeCode: { defaultPostFixAction: 'commitAndNotify' },
@@ -109,6 +109,7 @@ export function completedSettings() {
       sidebarWidthPx: 380,
       theme: 'dark',
       globalHotkey: 'Ctrl+Shift+P',
+      flyoutHotkey: 'Ctrl+Shift+F',
       editorCommand: 'code',
       runAtStartup: false,
     },

@@ -98,14 +98,13 @@ const SURFACES: Surface[] = [
   // ③ main
   {
     id: 'main-window',
-    // The current app throws a render-time error when seeded with
-    // design fixtures (missing fields trip `undefined.replace`). The
-    // ErrorBoundary swallows it, leaving no `header` in the DOM; we
-    // use `body` so the test still RUNS and emits a pixel diff.
-    // PR #1-#7 fix the seed/component wiring, at which point this can
-    // tighten to `header, [data-pr-list]`.
+    // Relaxed to `body` until PR #1-#7 lands the design. The real
+    // header + PR list selectors (`header, [data-pr-list]`) are the
+    // target once the main shell stabilizes — but the current shell
+    // may still be repainting or repositioning when we capture, so
+    // `body` keeps the pixel diff flowing as the progress signal.
     ready: 'body',
-    note: 'Main window; ready relaxed to body because ErrorBoundary eats the render crash under current fixtures — tighten once the design merges.',
+    note: 'Main window; ready relaxed to body until PR #1-#7 finalizes the header + PR list structure — tighten to `header, [data-pr-list]` then.',
   },
   {
     id: 'work-items',
