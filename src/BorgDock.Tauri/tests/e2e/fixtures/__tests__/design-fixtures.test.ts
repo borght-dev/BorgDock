@@ -8,6 +8,7 @@ import {
 describe('design-fixtures', () => {
   it('includes all PRs from the design canvas', () => {
     expect(DESIGN_PRS).toHaveLength(9);
+    // Numeric sort (not lexicographic) — `.sort()` alone would place 1362 before 708.
     const numbers = DESIGN_PRS.map((p) => p.pullRequest.number).sort((a, b) => a - b);
     expect(numbers).toEqual([708, 710, 713, 714, 715, 1362, 1384, 1394, 1398]);
   });
@@ -38,6 +39,12 @@ describe('design-fixtures', () => {
     for (const file of DESIGN_DIFF.files) {
       expect(file.path).toBeTruthy();
       expect(file.hunks.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('DesignWorkItem.title mirrors fields[System.Title]', () => {
+    for (const wi of DESIGN_WORK_ITEMS) {
+      expect(wi.title).toBe(wi.fields['System.Title']);
     }
   });
 });
