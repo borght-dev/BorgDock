@@ -1,9 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import clsx from 'clsx';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import { WindowControls } from '@/components/shared/chrome';
+import { Tabs } from '@/components/shared/primitives';
+import type { TabDef } from '@/components/shared/primitives';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ChecksTab } from './ChecksTab';
@@ -17,6 +18,8 @@ const log = createLogger('PRDetailPanel');
 
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
+
+const tabDefs: TabDef[] = tabs.map((id) => ({ id, label: id }));
 
 interface PRDetailPanelProps {
   pr: PullRequestWithChecks;
@@ -55,8 +58,6 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
   }, []);
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['Overview']));
-  const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
-  const [underline, setUnderline] = useState({ left: 0, width: 0 });
 
   // Mount tabs lazily on first activation, keep cached afterwards
   useEffect(() => {
@@ -80,14 +81,6 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
       })
       .catch((err) => log.error('pop-out invoke failed', err, { owner, repo, number }));
   }, [pr, selectPr]);
-
-  useEffect(() => {
-    const idx = tabs.indexOf(activeTab);
-    const el = tabsRef.current[idx];
-    if (el) {
-      setUnderline({ left: el.offsetLeft, width: el.offsetWidth });
-    }
-  }, [activeTab]);
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-[var(--color-background)]">
@@ -157,32 +150,12 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
       </div>
 
       {/* Tab bar */}
-      <div className="relative border-b border-[var(--color-separator)]">
-        <div className="flex px-3">
-          {tabs.map((tab, i) => (
-            <button
-              key={tab}
-              ref={(el) => {
-                tabsRef.current[i] = el;
-              }}
-              onClick={() => setActiveTab(tab)}
-              className={clsx(
-                'px-3 py-2 text-xs font-medium transition-colors',
-                activeTab === tab
-                  ? 'text-[var(--color-tab-active)]'
-                  : 'text-[var(--color-tab-inactive)] hover:text-[var(--color-text-secondary)]',
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        {/* Animated underline */}
-        <div
-          className="absolute bottom-0 h-0.5 bg-[var(--color-tab-active)] transition-all duration-200"
-          style={{ left: underline.left, width: underline.width }}
-        />
-      </div>
+      <Tabs
+        value={activeTab}
+        onChange={(id) => setActiveTab(id as Tab)}
+        tabs={tabDefs}
+        className="px-3"
+      />
 
       {/* Tab content — tabs mount lazily on first activation, cached afterwards */}
       <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
