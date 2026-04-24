@@ -18,3 +18,5 @@ export { Ring } from './Ring';
 export type { RingProps } from './Ring';
 export { LinearProgress } from './LinearProgress';
 export type { LinearProgressProps, LinearProgressTone } from './LinearProgress';
+export { Tabs } from './Tabs';
+export type { TabDef, TabsProps } from './Tabs';
