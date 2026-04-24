@@ -11,12 +11,12 @@ test.describe('command palette', () => {
   });
 
   test('Cmd+K opens the palette', async ({ page }) => {
-    await page.keyboard.press('Meta+K');
+    await page.keyboard.press('ControlOrMeta+K');
     await expect(page.locator('[data-command-palette]')).toBeVisible();
   });
 
   test('typing filters commands', async ({ page }) => {
-    await page.keyboard.press('Meta+K');
+    await page.keyboard.press('ControlOrMeta+K');
     const input = page.locator('[data-command-palette-input]');
     await input.fill('settings');
     const visible = page.locator('[data-command-item]:visible');
@@ -26,14 +26,14 @@ test.describe('command palette', () => {
   });
 
   test('Enter runs the first result', async ({ page }) => {
-    await page.keyboard.press('Meta+K');
+    await page.keyboard.press('ControlOrMeta+K');
     await page.locator('[data-command-palette-input]').fill('settings');
     await page.keyboard.press('Enter');
     await expect(page.locator('[data-flyout="settings"]')).toBeVisible();
   });
 
   test('Escape closes', async ({ page }) => {
-    await page.keyboard.press('Meta+K');
+    await page.keyboard.press('ControlOrMeta+K');
     await page.keyboard.press('Escape');
     await expect(page.locator('[data-command-palette]')).toBeHidden();
   });

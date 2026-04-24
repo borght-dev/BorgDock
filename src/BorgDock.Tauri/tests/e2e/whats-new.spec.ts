@@ -27,7 +27,7 @@ test.describe('whats new', () => {
 
   test('accordion expands/collapses', async ({ page }) => {
     const accordion = page.locator('[data-fixed-accordion]').first();
-    if (!(await accordion.isVisible())) test.skip();
+    await expect(accordion).toBeVisible();
     const headerBtn = accordion.locator('[role="button"]').first();
     const isOpen = await accordion.getAttribute('data-open');
     await headerBtn.click();

@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
-import { seedDesignFixtures } from './helpers/seed';
+import { seedDesignFixturesIfAvailable } from './helpers/seed';
 
 test.describe('file palette', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
     await page.goto('/palette.html?kind=files');
     await waitForAppReady(page);
-    await seedDesignFixtures(page);
+    await seedDesignFixturesIfAvailable(page);
   });
 
   test('renders the search input with placeholder', async ({ page }) => {
@@ -18,11 +18,12 @@ test.describe('file palette', () => {
 
   test('typing narrows the results list', async ({ page }) => {
     const input = page.getByPlaceholder(/search files/i);
-    const initialCount = await page.locator('[data-file-result]').count();
+    const results = page.locator('[data-file-result]');
+    const initialCount = await results.count();
     await input.fill('footer');
-    await page.waitForTimeout(150);
-    const filteredCount = await page.locator('[data-file-result]').count();
-    expect(filteredCount).toBeLessThanOrEqual(initialCount);
+    await expect
+      .poll(async () => results.count(), { timeout: 2_000 })
+      .toBeLessThanOrEqual(initialCount);
   });
 
   test('arrow keys move selection', async ({ page }) => {
@@ -39,13 +40,11 @@ test.describe('file palette', () => {
   });
 
   test('escape closes palette', async ({ page }) => {
+    const window = page.locator('[data-window="palette"]');
     await page.keyboard.press('Escape');
-    // palette is in its own window — closing should emit a close event
-    // (frontend pattern — verify window.close called, or element hidden)
-    const hidden = await page.evaluate(() =>
-      !document.querySelector('[data-window="palette"]') ||
-      document.querySelector('[data-window="palette"]')?.getAttribute('data-hidden') === 'true',
-    );
-    expect(hidden).toBe(true);
+    // Palette is in its own OS window — closing hides it. The contract is
+    // either the element is removed or `data-hidden="true"` is set.
+    // PR #5 should pick one; until then we accept either.
+    await expect(window).toBeHidden();
   });
 });

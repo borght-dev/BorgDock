@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
-import { seedDesignFixtures } from './helpers/seed';
+import { seedDesignFixturesIfAvailable } from './helpers/seed';
 
 test.describe('file viewer', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
     await page.goto('/file-viewer.html?file=src/quote/footer.tsx');
     await waitForAppReady(page);
-    await seedDesignFixtures(page);
+    await seedDesignFixturesIfAvailable(page);
   });
 
   test('renders the file path in the titlebar', async ({ page }) => {
@@ -27,7 +27,11 @@ test.describe('file viewer', () => {
     await expect(tokens.first()).toBeVisible({ timeout: 3_000 });
   });
 
-  test('copy button copies to clipboard', async ({ page, context }) => {
+  test('copy button copies to clipboard', async ({ page, context }, testInfo) => {
+    test.skip(
+      !testInfo.project.name.startsWith('webview-'),
+      'navigator.clipboard requires Chromium-like with permission grants.',
+    );
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.locator('[data-action="copy-contents"]').click();
     const text = await page.evaluate(() => navigator.clipboard.readText());

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
-import { seedDesignFixtures } from './helpers/seed';
+import { seedDesignFixturesIfAvailable } from './helpers/seed';
 import { DESIGN_PRS } from './fixtures/design-fixtures';
 
 test.describe('flyout', () => {
@@ -8,7 +8,7 @@ test.describe('flyout', () => {
     await injectCompletedSetup(page);
     await page.goto('/flyout.html');
     await waitForAppReady(page);
-    await seedDesignFixtures(page);
+    await seedDesignFixturesIfAvailable(page);
   });
 
   test('renders one row per seeded PR', async ({ page }) => {

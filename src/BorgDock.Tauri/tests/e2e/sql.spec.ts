@@ -26,6 +26,10 @@ test.describe('sql window', () => {
   });
 
   test('results table renders after mock run', async ({ page }) => {
+    // NOTE: This test is only half-real — the SQL store doesn't yet seed
+    // connections via __borgdock_test_seed, so the run effectively no-ops.
+    // PR #5 (palettes migration) will add connection fixtures; this test
+    // will then meaningfully assert result-table render.
     // With the mock connection seeded via completedSettings, a run should
     // return the mock result set.
     await page.selectOption('[data-sql-connection-select]', { index: 1 }).catch(() => {});

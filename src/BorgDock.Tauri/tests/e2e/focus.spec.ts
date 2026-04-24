@@ -13,8 +13,8 @@ test.describe('focus', () => {
 
   test('shows priority-ordered PR list', async ({ page }) => {
     const items = page.locator('[data-focus-item]');
-    await expect(items).toHaveCount(await items.count());
     await expect(items.first()).toBeVisible();
+    expect(await items.count()).toBeGreaterThan(0);
   });
 
   test('priority reason label is present on every item', async ({ page }) => {

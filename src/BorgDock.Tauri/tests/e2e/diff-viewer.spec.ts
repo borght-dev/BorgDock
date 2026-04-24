@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
-import { seedDesignFixtures } from './helpers/seed';
+import { seedDesignFixturesIfAvailable } from './helpers/seed';
 
 test.describe('diff viewer', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
     await page.goto('/pr-detail.html?number=714&tab=files');
     await waitForAppReady(page);
-    await seedDesignFixtures(page);
+    await seedDesignFixturesIfAvailable(page);
   });
 
   test('renders file list with additions/deletions counts', async ({ page }) => {
@@ -36,8 +36,8 @@ test.describe('diff viewer', () => {
     await page.locator('[data-diff-file]').first().click();
     const scrollYBefore = await page.evaluate(() => window.scrollY);
     await page.locator('[data-action="next-hunk"]').click();
-    await page.waitForTimeout(200);
-    const scrollYAfter = await page.evaluate(() => window.scrollY);
-    expect(scrollYAfter).not.toBe(scrollYBefore);
+    await expect
+      .poll(async () => page.evaluate(() => window.scrollY), { timeout: 2_000 })
+      .not.toBe(scrollYBefore);
   });
 });
