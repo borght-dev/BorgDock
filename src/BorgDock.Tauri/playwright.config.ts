@@ -43,7 +43,7 @@ export default defineConfig({
       // Babel's in-browser transformer needs http(s) to fetch them;
       // file:// navigation fails with CORS (only chrome/data/http/https
       // schemes are allowed by Chromium). Serving over http unblocks it.
-      command: 'npx http-server tests/e2e/design-bundle -p 1421 -s --cors -c-1',
+      command: 'npx http-server tests/e2e/design-bundle -p 1421 -s --cors -c-1 -d false',
       url: 'http://localhost:1421',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,

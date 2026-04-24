@@ -142,6 +142,11 @@ test.describe('design-baseline capture', () => {
 
       await page.goto(DESIGN_URL);
 
+      // Babel Standalone transpiles <script type="text/babel" src="..."> tags
+      // asynchronously and serially; wait for all of them to finish before
+      // checking render state.
+      await page.waitForLoadState('networkidle');
+
       // Wait for the React canvas to mount AND fonts to be ready.
       // The bundle transpiles JSX in-browser via Babel Standalone, so
       // #root is empty on initial load; we need to wait for children.
@@ -166,7 +171,9 @@ test.describe('design-baseline capture', () => {
       const locator = page.locator(ab.selector);
       await expect(locator).toBeVisible({ timeout: 10_000 });
 
-      const snapshotName = `design/${ab.id}-${ab.theme}.png`;
+      // Snapshot name stays flat — Playwright sanitizes '/' → '-', and we
+      // don't want a ghost `design/` subdirectory that doesn't exist on disk.
+      const snapshotName = `${ab.id}-${ab.theme}.png`;
       // First run (no baseline on disk) writes the PNG as the baseline.
       // Subsequent runs compare at maxDiffPixelRatio:0 (exact). Intended
       // workflow: run via `npm run test:e2e:capture-design` (passes
