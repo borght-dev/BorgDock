@@ -1,6 +1,273 @@
 @import "tailwindcss";
 
 /*
+ * @theme inline — promote every runtime CSS custom property into a Tailwind
+ * theme variable so utilities generate against BorgDock tokens (e.g. `bg-surface`,
+ * `text-primary`, `border-subtle-border`, `rounded-lg`, `p-5`, `text-body`).
+ * `inline` keeps the emitted utility CSS as `var(--…)` references rather than
+ * baking the literal value at build time, so `.dark` overrides keep working.
+ */
+@theme inline {
+  /* Reset Tailwind's default color palette so only BorgDock tokens surface */
+  --color-*: initial;
+
+  /* Brand / accent */
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-accent-subtle: var(--color-accent-subtle);
+  --color-purple: var(--color-purple);
+  --color-purple-soft: var(--color-purple-soft);
+  --color-purple-border: var(--color-purple-border);
+
+  /* Surfaces */
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-sidebar-gradient-top: var(--color-sidebar-gradient-top);
+  --color-sidebar-gradient-bottom: var(--color-sidebar-gradient-bottom);
+  --color-card-background: var(--color-card-background);
+  --color-card-border: var(--color-card-border);
+  --color-card-border-my-pr: var(--color-card-border-my-pr);
+
+  /* Text hierarchy */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-text-ghost: var(--color-text-ghost);
+
+  /* Borders + separators */
+  --color-subtle-border: var(--color-subtle-border);
+  --color-strong-border: var(--color-strong-border);
+  --color-separator: var(--color-separator);
+
+  /* Status */
+  --color-status-green: var(--color-status-green);
+  --color-status-red: var(--color-status-red);
+  --color-status-yellow: var(--color-status-yellow);
+  --color-status-gray: var(--color-status-gray);
+  --color-status-merged: var(--color-status-merged);
+
+  /* Filter chip + tracking */
+  --color-filter-chip-bg: var(--color-filter-chip-bg);
+  --color-filter-chip-fg: var(--color-filter-chip-fg);
+  --color-tracked-border: var(--color-tracked-border);
+  --color-tracked-soft: var(--color-tracked-soft);
+  --color-working-on-border: var(--color-working-on-border);
+  --color-working-on-soft: var(--color-working-on-soft);
+
+  /* Icon button */
+  --color-icon-btn-bg: var(--color-icon-btn-bg);
+  --color-icon-btn-hover: var(--color-icon-btn-hover);
+  --color-icon-btn-pressed: var(--color-icon-btn-pressed);
+  --color-icon-btn-fg: var(--color-icon-btn-fg);
+
+  /* Action buttons */
+  --color-action-secondary-bg: var(--color-action-secondary-bg);
+  --color-action-secondary-fg: var(--color-action-secondary-fg);
+  --color-action-success-bg: var(--color-action-success-bg);
+  --color-action-success-fg: var(--color-action-success-fg);
+  --color-action-danger-bg: var(--color-action-danger-bg);
+  --color-action-danger-fg: var(--color-action-danger-fg);
+
+  /* Scrollbar */
+  --color-scrollbar-thumb: var(--color-scrollbar-thumb);
+  --color-scrollbar-thumb-hover: var(--color-scrollbar-thumb-hover);
+
+  /* PR number badge */
+  --color-pr-badge-bg: var(--color-pr-badge-bg);
+  --color-pr-badge-fg: var(--color-pr-badge-fg);
+  --color-pr-my-badge-bg: var(--color-pr-my-badge-bg);
+  --color-pr-my-badge-fg: var(--color-pr-my-badge-fg);
+
+  /* Tone badges */
+  --color-success-badge-bg: var(--color-success-badge-bg);
+  --color-success-badge-fg: var(--color-success-badge-fg);
+  --color-success-badge-border: var(--color-success-badge-border);
+  --color-warning-badge-bg: var(--color-warning-badge-bg);
+  --color-warning-badge-fg: var(--color-warning-badge-fg);
+  --color-warning-badge-border: var(--color-warning-badge-border);
+  --color-error-badge-bg: var(--color-error-badge-bg);
+  --color-error-badge-fg: var(--color-error-badge-fg);
+  --color-error-badge-border: var(--color-error-badge-border);
+  --color-neutral-badge-bg: var(--color-neutral-badge-bg);
+  --color-neutral-badge-fg: var(--color-neutral-badge-fg);
+  --color-neutral-badge-border: var(--color-neutral-badge-border);
+  --color-draft-badge-bg: var(--color-draft-badge-bg);
+  --color-draft-badge-fg: var(--color-draft-badge-fg);
+  --color-draft-badge-border: var(--color-draft-badge-border);
+
+  /* Review states */
+  --color-review-approved: var(--color-review-approved);
+  --color-review-changes-requested: var(--color-review-changes-requested);
+  --color-review-required: var(--color-review-required);
+  --color-review-commented: var(--color-review-commented);
+  --color-comment-count-fg: var(--color-comment-count-fg);
+
+  /* Branch badges */
+  --color-branch-badge-bg: var(--color-branch-badge-bg);
+  --color-branch-badge-border: var(--color-branch-badge-border);
+  --color-target-badge-bg: var(--color-target-badge-bg);
+  --color-target-badge-border: var(--color-target-badge-border);
+
+  /* Input */
+  --color-input-bg: var(--color-input-bg);
+  --color-input-border: var(--color-input-border);
+
+  /* Row states */
+  --color-selected-row-bg: var(--color-selected-row-bg);
+  --color-expanded-row-bg: var(--color-expanded-row-bg);
+
+  /* Chrome */
+  --color-status-bar-bg: var(--color-status-bar-bg);
+  --color-title-bar-bg: var(--color-title-bar-bg);
+
+  /* Overlay / modal */
+  --color-overlay-bg: var(--color-overlay-bg);
+  --color-modal-bg: var(--color-modal-bg);
+  --color-modal-border: var(--color-modal-border);
+
+  /* Logo gradient */
+  --color-logo-gradient-start: var(--color-logo-gradient-start);
+  --color-logo-gradient-end: var(--color-logo-gradient-end);
+
+  /* Avatar */
+  --color-avatar-text: var(--color-avatar-text);
+
+  /* Checks */
+  --color-check-passed-bg: var(--color-check-passed-bg);
+  --color-check-passed-border: var(--color-check-passed-border);
+  --color-check-failed-bg: var(--color-check-failed-bg);
+  --color-check-failed-border: var(--color-check-failed-border);
+
+  /* Glow */
+  --color-green-glow: var(--color-green-glow);
+  --color-red-glow: var(--color-red-glow);
+
+  /* Floating badge */
+  --color-badge-glass: var(--color-badge-glass);
+  --color-badge-surface: var(--color-badge-surface);
+  --color-badge-border: var(--color-badge-border);
+  --color-badge-glow-green: var(--color-badge-glow-green);
+  --color-badge-glow-red: var(--color-badge-glow-red);
+  --color-badge-glow-yellow: var(--color-badge-glow-yellow);
+  --color-badge-progress-track: var(--color-badge-progress-track);
+
+  /* Diff */
+  --color-diff-added-bg: var(--color-diff-added-bg);
+  --color-diff-added-bg-highlight: var(--color-diff-added-bg-highlight);
+  --color-diff-added-gutter-bg: var(--color-diff-added-gutter-bg);
+  --color-diff-deleted-bg: var(--color-diff-deleted-bg);
+  --color-diff-deleted-bg-highlight: var(--color-diff-deleted-bg-highlight);
+  --color-diff-deleted-gutter-bg: var(--color-diff-deleted-gutter-bg);
+  --color-diff-context-bg: var(--color-diff-context-bg);
+  --color-diff-hunk-header-bg: var(--color-diff-hunk-header-bg);
+  --color-diff-hunk-header-text: var(--color-diff-hunk-header-text);
+  --color-diff-line-number: var(--color-diff-line-number);
+  --color-diff-file-header-bg: var(--color-diff-file-header-bg);
+  --color-diff-file-header-border: var(--color-diff-file-header-border);
+  --color-diff-border: var(--color-diff-border);
+  --color-diff-hunk-header: var(--color-diff-hunk-header);
+  --color-tab-active: var(--color-tab-active);
+  --color-tab-inactive: var(--color-tab-inactive);
+  --color-code-block-bg: var(--color-code-block-bg);
+
+  /* Syntax */
+  --color-syntax-keyword: var(--color-syntax-keyword);
+  --color-syntax-string: var(--color-syntax-string);
+  --color-syntax-comment: var(--color-syntax-comment);
+  --color-syntax-number: var(--color-syntax-number);
+  --color-syntax-type: var(--color-syntax-type);
+  --color-syntax-function: var(--color-syntax-function);
+  --color-syntax-variable: var(--color-syntax-variable);
+  --color-syntax-operator: var(--color-syntax-operator);
+  --color-syntax-punctuation: var(--color-syntax-punctuation);
+  --color-syntax-constant: var(--color-syntax-constant);
+  --color-syntax-property: var(--color-syntax-property);
+  --color-syntax-tag: var(--color-syntax-tag);
+  --color-syntax-attribute: var(--color-syntax-attribute);
+  --color-syntax-plain: var(--color-syntax-plain);
+
+  /* Wizard */
+  --color-wizard-step-active: var(--color-wizard-step-active);
+  --color-wizard-step-complete: var(--color-wizard-step-complete);
+  --color-wizard-step-inactive: var(--color-wizard-step-inactive);
+  --color-wizard-step-track: var(--color-wizard-step-track);
+
+  /* Splash */
+  --color-splash-gradient-end: var(--color-splash-gradient-end);
+
+  /* Toast */
+  --color-toast-bg: var(--color-toast-bg);
+  --color-toast-success-glow: var(--color-toast-success-glow);
+  --color-toast-error-glow: var(--color-toast-error-glow);
+  --color-toast-warning-glow: var(--color-toast-warning-glow);
+  --color-toast-info-glow: var(--color-toast-info-glow);
+  --color-toast-success-stripe: var(--color-toast-success-stripe);
+  --color-toast-error-stripe: var(--color-toast-error-stripe);
+  --color-toast-warning-stripe: var(--color-toast-warning-stripe);
+  --color-toast-info-stripe: var(--color-toast-info-stripe);
+  --color-toast-success-icon-bg: var(--color-toast-success-icon-bg);
+  --color-toast-error-icon-bg: var(--color-toast-error-icon-bg);
+  --color-toast-warning-icon-bg: var(--color-toast-warning-icon-bg);
+  --color-toast-info-icon-bg: var(--color-toast-info-icon-bg);
+  --color-toast-merged-glow: var(--color-toast-merged-glow);
+  --color-toast-merged-stripe: var(--color-toast-merged-stripe);
+  --color-toast-merged-icon-bg: var(--color-toast-merged-icon-bg);
+  --color-toast-merged-icon-fg: var(--color-toast-merged-icon-fg);
+
+  /* What's new */
+  --color-whats-new-new-fg: var(--color-whats-new-new-fg);
+  --color-whats-new-new-bg: var(--color-whats-new-new-bg);
+  --color-whats-new-new-border: var(--color-whats-new-new-border);
+  --color-whats-new-improved-fg: var(--color-whats-new-improved-fg);
+  --color-whats-new-improved-bg: var(--color-whats-new-improved-bg);
+  --color-whats-new-improved-border: var(--color-whats-new-improved-border);
+  --color-whats-new-fixed-fg: var(--color-whats-new-fixed-fg);
+  --color-whats-new-fixed-bg: var(--color-whats-new-fixed-bg);
+  --color-whats-new-fixed-border: var(--color-whats-new-fixed-border);
+  --color-whats-new-rail: var(--color-whats-new-rail);
+
+  /* Spacing — generates p-1..12, m-1..12, gap-1..12, etc. */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
+
+  /* Radii — generates rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-pill */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-pill: var(--radius-pill);
+
+  /* Type scale — generates text-micro, text-small, text-body, text-base, text-title */
+  --text-micro: var(--text-micro);
+  --text-small: var(--text-small);
+  --text-body: var(--text-body);
+  --text-base: var(--text-base);
+  --text-title: var(--text-title);
+
+  /* Motion — generates duration-press, duration-color, duration-ui, duration-tab, duration-breath */
+  --duration-press: var(--duration-press);
+  --duration-color: var(--duration-color);
+  --duration-ui: var(--duration-ui);
+  --duration-tab: var(--duration-tab);
+  --duration-breath: var(--duration-breath);
+
+  /* Fonts — generates font-sans, font-mono */
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+}
+
+/*
  * BorgDock theme variables.
  * Light theme is the default; dark overrides are applied via the `.dark` class on <html>.
  * Values are ported from WPF LightTheme.xaml / DarkTheme.xaml.
