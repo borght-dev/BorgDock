@@ -12,3 +12,5 @@ export { Button } from './Button';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
 export { IconButton } from './IconButton';
 export type { IconButtonProps, IconButtonSize } from './IconButton';
+export { Chip } from './Chip';
+export type { ChipProps, ChipTone } from './Chip';
