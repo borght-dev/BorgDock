@@ -12,6 +12,7 @@ import { SqlWindow } from '~/components/screens/SqlWindow';
 import { CiLogPanel } from '~/components/screens/CiLogPanel';
 import { WorkItemsList } from '~/components/screens/WorkItemsList';
 import { FloatingBadgeMock } from '~/components/screens/FloatingBadgeMock';
+import { WorktreePalette } from '~/components/screens/WorktreePalette';
 import { ResponsiveMock } from '~/components/ui/ResponsiveMock';
 ---
 
@@ -90,6 +91,20 @@ import { ResponsiveMock } from '~/components/ui/ResponsiveMock';
       <div class="gallery-shelf gallery-shelf--wide">
         <ResponsiveMock designWidth={820} designHeight={840}>
           <PrDetail width={820} height={840} />
+        </ResponsiveMock>
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Worktree palette · Ctrl+F7</p>
+      <h2 class="gallery-title">Every branch, <em>one palette.</em></h2>
+      <p class="gallery-lede">
+        Grouped by repo, sorted main → favorites → the rest. Terminal / folder /
+        editor actions inline on every row.
+      </p>
+      <div class="gallery-shelf">
+        <ResponsiveMock designWidth={520} designHeight={440}>
+          <WorktreePalette width={520} />
         </ResponsiveMock>
       </div>
     </article>
