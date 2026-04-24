@@ -8,3 +8,5 @@ export { Avatar } from './Avatar';
 export type { AvatarProps, AvatarSize, AvatarTone } from './Avatar';
 export { Kbd } from './Kbd';
 export type { KbdProps } from './Kbd';
+export { Button } from './Button';
+export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
