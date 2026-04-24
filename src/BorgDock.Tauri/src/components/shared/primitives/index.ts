@@ -14,3 +14,5 @@ export { IconButton } from './IconButton';
 export type { IconButtonProps, IconButtonSize } from './IconButton';
 export { Chip } from './Chip';
 export type { ChipProps, ChipTone } from './Chip';
+export { Ring } from './Ring';
+export type { RingProps } from './Ring';
