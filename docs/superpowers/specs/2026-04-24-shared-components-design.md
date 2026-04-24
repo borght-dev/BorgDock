@@ -291,7 +291,7 @@ At the close of each PR's work, the final commit in that PR updates the Delivery
 
 | PR | Branch | Status | Merge SHA | Date | Notes |
 |---|---|---|---|---|---|
-| #0 | `feat/streamline-00-regression-baseline` | Planned | — | — | — |
+| #0 | `feat/streamline-00-regression-baseline` | In review | — | 2026-04-24 | Regression safety net: behavioral specs, design baselines, a11y, perf, motion, cross-OS CI. |
 | #1 | `feat/streamline-01-foundation` | Planned | — | — | — |
 | #2 | `feat/streamline-02-chrome` | Planned | — | — | — |
 | #3 | `feat/streamline-03-pr-surfaces` | Planned | — | — | — |
