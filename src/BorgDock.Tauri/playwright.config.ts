@@ -28,14 +28,29 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:1420',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  webServer: [
+    {
+      command: 'npm run dev',
+      url: 'http://localhost:1420',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
+      // Static server for the vendored design bundle. The bundle's HTML
+      // loads sibling `.jsx` files via <script type="text/babel" src>.
+      // Babel's in-browser transformer needs http(s) to fetch them;
+      // file:// navigation fails with CORS (only chrome/data/http/https
+      // schemes are allowed by Chromium). Serving over http unblocks it.
+      command: 'npx http-server tests/e2e/design-bundle -p 1421 -s --cors -c-1',
+      url: 'http://localhost:1421',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
   snapshotPathTemplate:
     '{testDir}/__screenshots__/{projectName}/{testFileDir}/{testFileName}/{arg}{ext}',
   projects: [

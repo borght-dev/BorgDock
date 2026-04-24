@@ -1,7 +1,4 @@
 import { test, expect } from '@playwright/test';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { dirnameOf } from '../helpers/esm-paths';
 
 /**
  * Runs once to capture (and re-capture) every artboard in the frozen
@@ -13,6 +10,13 @@ import { dirnameOf } from '../helpers/esm-paths';
  * into a drift check — useful in CI to notice if someone edited the
  * design bundle without reviewing the PNG churn.
  *
+ * Navigation: the design bundle is served over HTTP by the second
+ * `webServer` entry in `playwright.config.ts` (http-server on :1421).
+ * We cannot use `file://` — the bundle's HTML loads sibling `.jsx`
+ * files via `<script type="text/babel" src="...">`, and Babel's
+ * in-browser transformer XHR-fetches them, which Chromium blocks
+ * under `file://` (only chrome/data/http/https schemes allowed).
+ *
  * Targeting strategy: the vendored `design-canvas.jsx` already stamps
  * each artboard root with `data-dc-slot="<id>"` (see
  * DCArtboardFrame). `LightDarkPair id="X"` expands to two artboards,
@@ -21,13 +25,10 @@ import { dirnameOf } from '../helpers/esm-paths';
  * is needed — we use the existing attribute directly.
  */
 
-// ESM equivalent of CommonJS __dirname — the package is `"type": "module"`.
-const __dirname = dirnameOf(import.meta.url);
-
-const DESIGN_HTML = path.resolve(
-  __dirname,
-  '../design-bundle/borgdock/project/BorgDock - Streamlined.html',
-);
+// Served by the static http-server webServer defined in
+// playwright.config.ts. Note the URL-encoded space in the filename.
+const DESIGN_URL =
+  'http://localhost:1421/borgdock/project/BorgDock%20-%20Streamlined.html';
 
 type Artboard = {
   /** Stable surface id — used in the snapshot filename. */
@@ -118,17 +119,16 @@ const ARTBOARDS: Artboard[] = [
 ];
 
 test.describe('design-baseline capture', () => {
-  test.beforeAll(async () => {
-    // Fail fast with a clear error if the vendored bundle is missing —
-    // otherwise every test below would mysteriously time out on file://.
-    const fs = await import('node:fs/promises');
-    try {
-      await fs.access(DESIGN_HTML);
-    } catch (err) {
+  test.beforeAll(async ({ request }) => {
+    // Fail fast with a clear error if the bundle isn't reachable via
+    // the static http-server — otherwise every test below would
+    // mysteriously time out waiting for #root to populate.
+    const res = await request.get(DESIGN_URL);
+    if (!res.ok()) {
       throw new Error(
-        `Design bundle HTML not found at ${DESIGN_HTML}. ` +
-          `The vendored design-bundle/ subtree may be missing — see ` +
-          `tests/e2e/design-bundle/README.md. Original error: ${(err as Error).message}`,
+        `Design bundle not reachable at ${DESIGN_URL} (HTTP ${res.status()}). ` +
+          `Check that playwright.config.ts starts the http-server on port 1421 ` +
+          `and that tests/e2e/design-bundle/borgdock/project/BorgDock - Streamlined.html exists.`,
       );
     }
   });
@@ -140,10 +140,25 @@ test.describe('design-baseline capture', () => {
       // for artboard reorder. We want a deterministic still frame.
       await page.emulateMedia({ reducedMotion: 'reduce' });
 
-      await page.goto(pathToFileURL(DESIGN_HTML).toString());
+      await page.goto(DESIGN_URL);
 
-      // Fonts must be fully loaded — system font fallbacks differ
-      // pixel-for-pixel from the bundled stack.
+      // Wait for the React canvas to mount AND fonts to be ready.
+      // The bundle transpiles JSX in-browser via Babel Standalone, so
+      // #root is empty on initial load; we need to wait for children.
+      // System font fallbacks differ pixel-for-pixel from the bundled
+      // stack, hence the extra fonts.ready gate.
+      await page.waitForFunction(
+        () => {
+          const root = document.querySelector('#root');
+          return !!root && root.children.length > 0;
+        },
+        undefined,
+        { timeout: 15_000 },
+      );
+      // Fonts gate (system fallbacks differ pixel-for-pixel from the
+      // bundled stack). Kept separate from the #root wait above because
+      // `document.fonts.ready` resolves to the FontFaceSet, not a
+      // boolean — mixing it into waitForFunction's predicate is brittle.
       await page.evaluate(async () => {
         await document.fonts?.ready;
       });
