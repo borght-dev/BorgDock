@@ -2,3 +2,5 @@
 // Keep this barrel append-only and alphabetical. Named exports only.
 export { Pill } from './Pill';
 export type { PillProps, PillTone } from './Pill';
+export { Dot } from './Dot';
+export type { DotProps, DotTone } from './Dot';
