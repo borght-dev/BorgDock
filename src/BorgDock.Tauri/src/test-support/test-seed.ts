@@ -54,10 +54,11 @@ export function installTestSeed({ isDev }: { isDev: boolean }): void {
 
   window.__borgdock_test_seed = (payload: TestSeedPayload) => {
     if (payload.prs) {
-      // Direct setState replaces the `pullRequests` slice without running
-      // the review-timestamp bookkeeping that `setPullRequests` performs —
-      // fixture data should render verbatim.
-      usePrStore.setState({ pullRequests: payload.prs });
+      // Route through the store's `setPullRequests` action so derived caches
+      // (`_cacheKey`, `_cachedPriorityScores`, `_cachedFilteredPrs`, etc.)
+      // are invalidated. Re-seeding within a single page lifetime would
+      // otherwise serve stale view data from the previous seed.
+      usePrStore.getState().setPullRequests(payload.prs);
     }
     if (payload.workItems) {
       useWorkItemsStore.setState({ workItems: payload.workItems });
@@ -69,6 +70,8 @@ export function installTestSeed({ isDev }: { isDev: boolean }): void {
     }
   };
 
+  // External param is `kind` to keep the test-API surface stable; maps 1:1
+  // to the notification store's `severity` field.
   window.__borgdock_test_toast = (args: TestToastArgs) => {
     useNotificationStore.getState().show({
       title: args.title,
