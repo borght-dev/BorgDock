@@ -19,6 +19,13 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e',
+  // Playwright specs are `.spec.ts`. The sibling `fixtures/__tests__/*.test.ts`
+  // files are vitest unit tests that happen to live under tests/e2e/ and
+  // import from `vitest` — loading them into Playwright crashes the whole run
+  // with "Cannot redefine property: Symbol($$jest-matchers-object)" before any
+  // test executes. Restricting testMatch to `.spec.ts` keeps the two runners
+  // cleanly separated.
+  testMatch: /.*\.spec\.ts$/,
   timeout: 30_000,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // single worker: tests share one Vite origin + Zustand store via __borgdock_test_seed, so parallel workers would race on shared state.
