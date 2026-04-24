@@ -2,6 +2,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback } from 'react';
 import { FeatureBadge } from '@/components/onboarding';
+import { Tabs } from '@/components/shared/primitives';
+import type { TabDef } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 
@@ -81,25 +83,20 @@ export function Header() {
       </div>
 
       {/* Center: Section switcher */}
-      <div className="sidebar-section-switcher">
-        {sections.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setActiveSection(s.key)}
-            className={clsx(
-              'sidebar-section-btn',
-              activeSection === s.key && 'sidebar-section-btn--active',
-            )}
-          >
-            {s.label}
-            {s.key === 'focus' && <FeatureBadge badgeId="focus-mode" />}
-            {s.key === 'focus' && focusCount > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-1.5 text-[9px] font-bold leading-none text-white min-w-[16px] h-[14px]">
-                {focusCount}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="sidebar-section-switcher relative">
+        <Tabs
+          value={activeSection}
+          onChange={(id) => setActiveSection(id as ActiveSection)}
+          tabs={sections.map<TabDef>((s) => ({
+            id: s.key,
+            label: s.label,
+            count: s.key === 'focus' && focusCount > 0 ? focusCount : undefined,
+          }))}
+          dense
+        />
+        <span className="pointer-events-none absolute -right-1 -top-1">
+          <FeatureBadge badgeId="focus-mode" />
+        </span>
       </div>
 
       {/* Right: Status dot + actions */}

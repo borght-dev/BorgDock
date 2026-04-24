@@ -68,10 +68,11 @@ describe('Header', () => {
 
   it('highlights the active section', () => {
     render(<Header />);
-    const prsButton = screen.getByText('PRs');
-    expect(prsButton.className).toContain('sidebar-section-btn--active');
-    const focusButton = screen.getByText('Focus');
-    expect(focusButton.className).not.toContain('sidebar-section-btn--active');
+    const tabs = screen.getAllByRole('tab');
+    const prsTab = tabs.find((t) => t.textContent?.includes('PRs'));
+    const focusTab = tabs.find((t) => t.textContent?.includes('Focus'));
+    expect(prsTab).toHaveAttribute('aria-selected', 'true');
+    expect(focusTab).toHaveAttribute('aria-selected', 'false');
   });
 
   it('switches section when a section button is clicked', () => {
