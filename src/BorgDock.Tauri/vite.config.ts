@@ -32,7 +32,16 @@ export default defineConfig({
   ],
   test: {
     environment: "jsdom",
-    exclude: ["tests/e2e/**", "node_modules/**"],
+    exclude: [
+      // Playwright e2e specs (run by Playwright, not vitest) — but keep
+      // vitest unit tests that live under tests/e2e/**/__tests__ (e.g.
+      // design-fixtures.test.ts) runnable via `npm test`.
+      "tests/e2e/**/*.spec.ts",
+      "tests/e2e/design-bundle/**",
+      "tests/e2e/scripts/**",
+      "tests/e2e/helpers/**",
+      "node_modules/**",
+    ],
     setupFiles: ["./src/test-setup.ts"],
     globals: true,
     coverage: {
