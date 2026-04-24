@@ -8,7 +8,7 @@ export function SqlFeature() {
       <div className="grid-2col grid-2col--sql">
         <div>
           <SectionHeading
-            kicker="QUERY · ⌘L"
+            kicker="QUERY · Ctrl+F10"
             title={
               <>
                 A SQL window{' '}

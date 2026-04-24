@@ -120,7 +120,7 @@ export function Hero({ scale = 1 }: HeroProps) {
                 color: 'var(--color-text-muted)',
               }}
             >
-              ⌘⇧P to toggle · free for individuals
+              Ctrl+Super+Shift+G to toggle · free for individuals
             </span>
           </div>
         </div>

@@ -12,7 +12,7 @@ export function BadgeSet({ width = 380, height = 620 }: BadgeSetProps) {
       title="Floating badge"
       width={width}
       height={height}
-      statusbar="always-on-top · drag to move · ⌘⇧B toggle"
+      statusbar="always-on-top · drag to move · Ctrl+Super+Shift+F toggle"
     >
       <div
         style={{

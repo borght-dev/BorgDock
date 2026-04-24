@@ -7,7 +7,7 @@ export function FilePaletteFeature() {
     <section className="section">
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
         <SectionHeading
-          kicker="FILE PALETTE · ⌘P"
+          kicker="FILE PALETTE · Ctrl+F8"
           align="center"
           title={
             <>

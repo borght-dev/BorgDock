@@ -60,10 +60,10 @@ interface Shortcut {
 }
 
 const SHORTCUTS: Shortcut[] = [
-  { keys: '⌘⇧P', label: 'Toggle dock' },
-  { keys: '⌘P', label: 'File palette' },
-  { keys: '⌘L', label: 'SQL window' },
-  { keys: '⌘⇧B', label: 'Floating badge' },
+  { keys: 'Ctrl+Super+Shift+G', label: 'Toggle dock' },
+  { keys: 'Ctrl+F8', label: 'File palette' },
+  { keys: 'Ctrl+F10', label: 'SQL window' },
+  { keys: 'Ctrl+Super+Shift+F', label: 'Toggle flyout' },
 ];
 
 const TRUST: string[] = [

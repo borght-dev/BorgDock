@@ -1,16 +1,16 @@
 import { SectionHeading } from '../SectionHeading';
 
 const ROWS: readonly [string, string][] = [
-  ['⌘⇧P', 'Toggle sidebar'],
-  ['⌘K', 'Command palette'],
-  ['⌘P', 'File palette (cross-repo)'],
-  ['⌘L', 'Query window'],
+  ['Ctrl+Super+Shift+G', 'Toggle dock'],
+  ['Ctrl+Super+Shift+F', 'Toggle flyout'],
+  ['Ctrl+F7', 'Worktree palette'],
+  ['Ctrl+F8', 'File palette (cross-repo)'],
+  ['Ctrl+F9', 'Command palette'],
+  ['Ctrl+F10', 'SQL workbench'],
   ['J / K', 'Next / previous PR'],
   ['O', 'Open PR on GitHub'],
-  ['A / R', 'Approve / request changes'],
+  ['A / S', 'Approve / skip (Quick Review)'],
   ['M', 'Merge when green'],
-  ['W', 'Open in worktree'],
-  ['C', 'Send context to Claude Code'],
 ];
 
 export function ShortcutsFeature() {
@@ -40,7 +40,7 @@ export function ShortcutsFeature() {
               key={k}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '120px 1fr',
+                gridTemplateColumns: '160px 1fr',
                 padding: '10px 18px',
                 alignItems: 'center',
                 borderTop: i === 0 ? 0 : '1px solid var(--color-separator)',

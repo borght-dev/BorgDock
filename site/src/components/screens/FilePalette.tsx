@@ -129,7 +129,7 @@ export function FilePalette({ width = 560 }: FilePaletteProps) {
       >
         <span>↑↓ navigate</span>
         <span>↵ open</span>
-        <span>⌘P toggle</span>
+        <span>Ctrl+F8 toggle</span>
         <span style={{ flex: 1 }} />
         <span>root: ~/src</span>
       </div>

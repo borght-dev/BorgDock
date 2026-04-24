@@ -7,7 +7,7 @@ export function BadgeFeature() {
     <section className="section">
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <SectionHeading
-          kicker="FLOATING BADGE · ⌘⇧B"
+          kicker="FLOATING BADGE · Ctrl+Super+Shift+F"
           align="center"
           title={
             <>
