@@ -1,0 +1,36 @@
+import { expect, test } from '@playwright/test';
+import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
+import { seedDesignFixtures } from './helpers/seed';
+
+test.describe('file viewer', () => {
+  test.beforeEach(async ({ page }) => {
+    await injectCompletedSetup(page);
+    await page.goto('/file-viewer.html?file=src/quote/footer.tsx');
+    await waitForAppReady(page);
+    await seedDesignFixtures(page);
+  });
+
+  test('renders the file path in the titlebar', async ({ page }) => {
+    await expect(page.locator('[data-titlebar-path]')).toContainText('footer.tsx');
+  });
+
+  test('renders line numbers', async ({ page }) => {
+    const gutter = page.locator('[data-line-gutter] [data-line-number]');
+    await expect(gutter.first()).toBeVisible();
+    const count = await gutter.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('syntax tokens get a class', async ({ page }) => {
+    // Tree-sitter applies class names like 'hl-keyword' to highlighted tokens
+    const tokens = page.locator('[class*="hl-"]');
+    await expect(tokens.first()).toBeVisible({ timeout: 3_000 });
+  });
+
+  test('copy button copies to clipboard', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.locator('[data-action="copy-contents"]').click();
+    const text = await page.evaluate(() => navigator.clipboard.readText());
+    expect(text.length).toBeGreaterThan(0);
+  });
+});
