@@ -24,3 +24,5 @@ export { Input } from './Input';
 export type { InputProps } from './Input';
 export { Card } from './Card';
 export type { CardPadding, CardProps, CardVariant } from './Card';
+export { Titlebar } from './Titlebar';
+export type { TitlebarProps } from './Titlebar';
