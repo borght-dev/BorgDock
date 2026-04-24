@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export interface TitlebarProps extends HTMLAttributes<HTMLDivElement> {
+export interface TitlebarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   /** Default middle-slot title text. Ignored when `left` is supplied. */
   title?: ReactNode;
   /** Numeric badge rendered next to the title. Ignored when `left` is supplied. */
