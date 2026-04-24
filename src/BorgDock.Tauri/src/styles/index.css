@@ -256,6 +256,50 @@
   --color-whats-new-fixed-border: rgba(124, 106, 246, 0.22);
 
   --color-whats-new-rail: rgba(124, 106, 246, 0.22);
+
+  /* ── Spacing scale (new — backing for @theme inline) ── */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-8: 16px;
+  --space-10: 20px;
+  --space-12: 24px;
+
+  /* ── Radii (new) ── */
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 9999px;
+
+  /* ── Type scale (new) ── */
+  --text-micro: 10px;
+  --text-small: 11px;
+  --text-body: 12px;
+  --text-base: 13px;
+  --text-title: 18px;
+
+  /* ── Motion durations (new) ── */
+  --duration-press: 80ms;
+  --duration-color: 120ms;
+  --duration-ui: 150ms;
+  --duration-tab: 200ms;
+  --duration-breath: 2600ms;
+
+  /* ── UI font family (new — paired with existing --font-code) ── */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* ── Elevation (new) ── */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elevation-2: 0 8px 32px rgba(26, 23, 38, 0.14);
+  --elevation-3: 0 20px 60px rgba(26, 23, 38, 0.28);
+
+  /* ── Status-merged (new — prototype uses this for merged PR pills) ── */
+  --color-status-merged: #8250df;
 }
 
 /* ---- Dark theme overrides ---- */
@@ -472,6 +516,13 @@
   --color-whats-new-fixed-border: rgba(184, 176, 248, 0.2);
 
   --color-whats-new-rail: rgba(124, 106, 246, 0.24);
+
+  /* Elevations darken on dark theme */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --elevation-2: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --elevation-3: 0 20px 60px rgba(0, 0, 0, 0.6);
+
+  --color-status-merged: #a371f7;
 }
 
 /* ════════════════════════════════════════════════════════
