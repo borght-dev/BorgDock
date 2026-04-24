@@ -5,8 +5,15 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * - Two OS projects (`webview-mac`, `webview-win`) so visual baselines
  *   are captured and compared per-platform.
+ * - Both projects run Playwright's bundled Chromium. This is a proxy
+ *   for WebView2 (Windows) / WKWebView (macOS) — we're catching
+ *   OS-level font rasterization differences, not WebView-engine
+ *   differences. Running the real WebView would require driving a
+ *   packaged Tauri build through WebDriver, which is out of scope.
  * - Auto-starts `npm run dev` (pure Vite, no Tauri) so CI does not
- *   require a second shell.
+ *   require a second shell. If `npm run tauri dev` is already running
+ *   locally, `reuseExistingServer: !process.env.CI` reuses its
+ *   bundled Vite at 1420 instead of starting a new one.
  * - Snapshot paths include {projectName} so mac/win baselines sit in
  *   separate folders under __screenshots__/.
  */
@@ -14,7 +21,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
   retries: process.env.CI ? 2 : 0,
-  workers: 1, // app is a single dev server — no parallelism gain
+  workers: 1, // single worker: tests share one Vite origin + Zustand store via __borgdock_test_seed, so parallel workers would race on shared state.
   reporter: process.env.CI ? [['github'], ['html']] : 'list',
   use: {
     baseURL: 'http://localhost:1420',
