@@ -24,12 +24,24 @@ export function WindowControls({
 }: WindowControlsProps) {
   return (
     <div className={clsx('bd-wc-group', className)}>
-      <button type="button" className="bd-wc" onClick={onMinimize} aria-label="Minimize">
+      <button
+        type="button"
+        className="bd-wc"
+        onClick={onMinimize}
+        aria-label="Minimize"
+        title="Minimize"
+      >
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
           <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
         </svg>
       </button>
-      <button type="button" className="bd-wc" onClick={onMaximize} aria-label="Maximize">
+      <button
+        type="button"
+        className="bd-wc"
+        onClick={onMaximize}
+        aria-label="Maximize"
+        title="Maximize"
+      >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
           <rect
             x="1.5"
@@ -47,6 +59,7 @@ export function WindowControls({
         className="bd-wc bd-wc--close"
         onClick={onClose}
         aria-label="Close"
+        title="Close"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
           <path
