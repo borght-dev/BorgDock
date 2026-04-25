@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { Avatar, Button, Card, Pill } from '@/components/shared/primitives';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { saveTabData } from '@/services/cache';
 import { getAllComments, postComment } from '@/services/github';
@@ -119,9 +120,10 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
     return (
       <div className="space-y-2 p-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div
+          <Card
             key={i}
-            className="animate-pulse rounded-lg border border-[var(--color-subtle-border)] p-3"
+            padding="sm"
+            className="animate-pulse"
             style={{ animationDelay: `${i * 120}ms` }}
           >
             <div className="flex items-center gap-2.5">
@@ -133,7 +135,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
               <div className="h-2.5 w-full rounded bg-[var(--color-surface-raised)]" />
               <div className="h-2.5 w-3/4 rounded bg-[var(--color-surface-raised)]" />
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     );
@@ -155,23 +157,30 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
           <div className="space-y-2 p-3">
             {/* Sort toggle */}
             <div className="flex items-center justify-end">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setSortNewest((v) => !v)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                leading={
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
+                    {sortNewest ? (
+                      <path d="M8 3v10M4 7l4-4 4 4" />
+                    ) : (
+                      <path d="M8 3v10M4 9l4 4 4-4" />
+                    )}
+                  </svg>
+                }
               >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                >
-                  {sortNewest ? <path d="M8 3v10M4 7l4-4 4 4" /> : <path d="M8 3v10M4 9l4 4 4-4" />}
-                </svg>
                 {sortNewest ? 'Newest first' : 'Oldest first'}
-              </button>
+              </Button>
             </div>
             {sorted.map((comment, idx) => {
               const color = authorColor(comment.author);
@@ -180,30 +189,34 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
               const prevSameAuthor = idx > 0 && sorted[idx - 1]?.author === comment.author;
 
               return (
-                <div
+                <Card
                   key={comment.id}
-                  className="comment-card-enter flex overflow-hidden rounded-lg border border-[var(--color-subtle-border)]"
+                  padding="sm"
+                  data-comment-card
+                  data-comment-id={comment.id}
+                  className="comment-card-enter flex overflow-hidden !p-0"
                   style={{
                     animationDelay: `${idx * 40}ms`,
                     marginTop: prevSameAuthor ? '4px' : undefined,
                   }}
                 >
-                  {/* Left author stripe */}
+                  {/* Left author stripe — chromatic decoration, kept inline */}
                   <div className="w-[3px] shrink-0" style={{ backgroundColor: color }} />
 
                   <div className="min-w-0 flex-1 px-3 py-2.5">
                     {/* Author header — hide if same as previous for visual grouping */}
                     {!prevSameAuthor && (
                       <div className="mb-1.5 flex items-center gap-2">
-                        {/* Avatar */}
-                        <span
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8px] font-bold"
-                          style={{
-                            backgroundColor: color,
-                            color: '#fff',
-                          }}
-                        >
-                          {bot ? (
+                        {/* Avatar — bots keep an inline span because Avatar primitive
+                            doesn't accept custom SVG children; humans use the shared Avatar. */}
+                        {bot ? (
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8px] font-bold"
+                            style={{
+                              backgroundColor: color,
+                              color: '#fff',
+                            }}
+                          >
                             <svg
                               width="12"
                               height="12"
@@ -219,10 +232,14 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                               <path d="M8 5V3" />
                               <circle cx="8" cy="2.5" r="0.5" fill="currentColor" stroke="none" />
                             </svg>
-                          ) : (
-                            avatarInitials(comment.author)
-                          )}
-                        </span>
+                          </span>
+                        ) : (
+                          <Avatar
+                            initials={avatarInitials(comment.author)}
+                            tone="them"
+                            size="sm"
+                          />
+                        )}
 
                         {/* Name + badges */}
                         <span className="text-xs font-semibold" style={{ color }}>
@@ -230,15 +247,9 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                         </span>
 
                         {bot && (
-                          <span
-                            className="rounded px-1 py-px text-[9px] font-medium leading-none"
-                            style={{
-                              color,
-                              backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
-                            }}
-                          >
+                          <Pill tone="neutral" data-bot-pill>
                             bot
-                          </span>
+                          </Pill>
                         )}
 
                         <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
@@ -293,7 +304,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                       </ReactMarkdown>
                     </div>
                   </div>
-                </div>
+                </Card>
               );
             })}
             <div ref={bottomRef} />
@@ -304,6 +315,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
       {/* Comment input */}
       <div className="border-t border-[var(--color-separator)] px-3 py-2.5">
         <div className="overflow-hidden rounded-lg border border-[var(--color-input-border)] transition-colors focus-within:border-[var(--color-accent)]">
+          {/* Kept as <textarea>: the shared Input primitive is single-line. */}
           <textarea
             className="block w-full resize-none bg-[var(--color-input-bg)] px-3 py-2 text-xs text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-ghost)]"
             rows={2}
@@ -318,13 +330,14 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
           />
           <div className="flex items-center justify-between bg-[var(--color-surface-raised)] px-3 py-1.5">
             <span className="text-[10px] text-[var(--color-text-faint)]">Ctrl+Enter to submit</span>
-            <button
-              className="rounded-md px-3 py-1 text-[11px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handlePost}
               disabled={posting || !newComment.trim()}
             >
               {posting ? 'Posting...' : 'Comment'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
