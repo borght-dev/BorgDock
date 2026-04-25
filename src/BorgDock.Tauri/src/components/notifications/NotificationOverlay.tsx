@@ -8,7 +8,7 @@ export function NotificationOverlay() {
   if (active.length === 0) return null;
 
   return (
-    <div className="fixed right-3 top-3 z-50 flex flex-col gap-2.5">
+    <div data-notification-overlay className="fixed right-3 top-3 z-50 flex flex-col gap-2.5">
       {active.map((item) => (
         <NotificationBubble
           key={item.id}
