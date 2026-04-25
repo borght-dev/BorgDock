@@ -1,6 +1,13 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback } from 'react';
+import {
+  Button,
+  Card,
+  LinearProgress,
+  type LinearProgressTone,
+  Pill,
+} from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 
@@ -58,6 +65,17 @@ function suiteStatus(runs: CheckRun[]): CheckState {
   if (runs.some((r) => classifyCheck(r) === 'pending')) return 'pending';
   if (runs.every((r) => classifyCheck(r) === 'skipped')) return 'skipped';
   return 'passed';
+}
+
+function summaryProgressTone(
+  passed: number,
+  failed: number,
+  pending: number,
+): LinearProgressTone {
+  if (failed > 0) return 'error';
+  if (pending > 0) return 'warning';
+  if (passed > 0) return 'success';
+  return 'accent';
 }
 
 /* ── Status icon SVGs ──────────────────────────────── */
@@ -149,64 +167,35 @@ function SummaryBar({ checks }: { checks: CheckRun[] }) {
   const skipped = checks.filter((c) => classifyCheck(c) === 'skipped').length;
   const total = checks.length;
   const relevant = total - skipped;
+  const percent = relevant > 0 ? (passed / relevant) * 100 : 0;
+  const tone = summaryProgressTone(passed, failed, pending);
 
   return (
-    <div className="checks-summary">
-      {/* Progress segments */}
-      <div className="checks-progress-bar">
-        {relevant > 0 ? (
-          <>
-            {passed > 0 && (
-              <div
-                className="checks-progress-segment checks-progress-passed"
-                style={{ width: `${(passed / relevant) * 100}%` }}
-              />
-            )}
-            {failed > 0 && (
-              <div
-                className="checks-progress-segment checks-progress-failed"
-                style={{ width: `${(failed / relevant) * 100}%` }}
-              />
-            )}
-            {pending > 0 && (
-              <div
-                className="checks-progress-segment checks-progress-pending"
-                style={{ width: `${(pending / relevant) * 100}%` }}
-              />
-            )}
-          </>
-        ) : (
-          <div
-            className="checks-progress-segment checks-progress-skipped"
-            style={{ width: '100%' }}
-          />
-        )}
-      </div>
-
-      {/* Count chips */}
-      <div className="checks-counts">
+    <Card padding="sm" className="space-y-2">
+      <LinearProgress value={percent} tone={tone} />
+      <div className="flex flex-wrap items-center gap-2">
         {passed > 0 && (
-          <span className="checks-count checks-count-passed">
-            <CheckIcon /> {passed} passed
-          </span>
+          <Pill tone="success" data-check-count="passed" icon={<CheckIcon />}>
+            {passed} passed
+          </Pill>
         )}
         {failed > 0 && (
-          <span className="checks-count checks-count-failed">
-            <FailIcon /> {failed} failed
-          </span>
+          <Pill tone="error" data-check-count="failed" icon={<FailIcon />}>
+            {failed} failed
+          </Pill>
         )}
         {pending > 0 && (
-          <span className="checks-count checks-count-pending">
-            <SpinnerIcon /> {pending} in progress
-          </span>
+          <Pill tone="warning" data-check-count="pending" icon={<SpinnerIcon />}>
+            {pending} in progress
+          </Pill>
         )}
         {skipped > 0 && (
-          <span className="checks-count checks-count-skipped">
-            <SkipIcon /> {skipped} skipped
-          </span>
+          <Pill tone="neutral" data-check-count="skipped" icon={<SkipIcon />}>
+            {skipped} skipped
+          </Pill>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -224,12 +213,13 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
     },
     [pr, fixWithClaude],
   );
+
   if (checks.length === 0) {
     return (
-      <div className="checks-empty">
+      <Card padding="md" className="m-3 flex items-center justify-center gap-2">
         <svg
-          width="28"
-          height="28"
+          width="20"
+          height="20"
           viewBox="0 0 16 16"
           fill="none"
           stroke="currentColor"
@@ -240,8 +230,8 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
         >
           <path d="m3 8.5 3.5 3.5 6.5-8" />
         </svg>
-        <span>No CI checks configured</span>
-      </div>
+        <span className="text-xs text-[var(--color-text-muted)]">No CI checks configured</span>
+      </Card>
     );
   }
 
@@ -254,24 +244,18 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
   );
 
   return (
-    <div className="checks-tab">
+    <div className="space-y-3 p-3" data-checks-tab="">
       <SummaryBar checks={checks} />
 
-      <div className="checks-suites">
-        {sortedEntries.map(([suiteId, runs], suiteIdx) => {
-          const status = suiteStatus(runs);
+      <div className="space-y-2">
+        {sortedEntries.map(([suiteId, runs]) => {
           // Sort within suite: failed first
           const sortedRuns = [...runs].sort(
             (a, b) => sortOrder[classifyCheck(a)] - sortOrder[classifyCheck(b)],
           );
 
           return (
-            <div
-              key={suiteId}
-              className={clsx('checks-suite', `checks-suite--${status}`)}
-              style={{ animationDelay: `${suiteIdx * 50}ms` }}
-            >
-              {/* Suite runs */}
+            <div key={suiteId} className="space-y-1">
               {sortedRuns.map((run) => {
                 const state = classifyCheck(run);
                 const duration = formatDuration(run.startedAt, run.completedAt);
@@ -279,33 +263,56 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
                 return (
                   <div
                     key={run.id}
-                    className={clsx('checks-run', `checks-run--${state}`)}
+                    data-check-row=""
+                    data-check-state={state}
                     role="button"
                     tabIndex={0}
                     onClick={() => openUrl(run.htmlUrl).catch(console.error)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') openUrl(run.htmlUrl).catch(console.error);
                     }}
-                  >
-                    <StatusSvg state={state} className="checks-run-icon" />
-                    <span className="checks-run-name">{run.name}</span>
-                    {state === 'pending' && (
-                      <span className="checks-run-status-label">running</span>
+                    className={clsx(
+                      'flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors',
+                      'hover:bg-[var(--color-surface-hover)]',
+                      state === 'failed' &&
+                        'bg-[color-mix(in_srgb,var(--color-status-red)_5%,transparent)]',
                     )}
-                    {duration && <span className="checks-run-duration">{duration}</span>}
+                  >
+                    <StatusSvg state={state} />
+                    <span
+                      className={clsx(
+                        'flex-1 truncate text-xs',
+                        state === 'failed'
+                          ? 'text-[var(--color-status-red)]'
+                          : 'text-[var(--color-text-primary)]',
+                        state === 'skipped' && 'text-[var(--color-text-muted)]',
+                      )}
+                    >
+                      {run.name}
+                    </span>
+                    {state === 'pending' && <Pill tone="warning">running</Pill>}
+                    {duration && (
+                      <span className="text-[10px] text-[var(--color-text-muted)]">
+                        {duration}
+                      </span>
+                    )}
                     {state === 'failed' && pr && (
-                      <button
-                        className="checks-run-fix-btn"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-check-action="fix"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleFixCheck(run.name);
                         }}
+                        leading={
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 1.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 1.5Z" />
+                          </svg>
+                        }
                       >
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M8 1.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 1.5Z" />
-                        </svg>
                         Fix
-                      </button>
+                      </Button>
                     )}
                     <svg
                       width="10"
@@ -315,7 +322,6 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
                       stroke="currentColor"
                       strokeWidth="1.5"
                       strokeLinecap="round"
-                      className="checks-run-arrow"
                     >
                       <path d="m6 4 4 4-4 4" />
                     </svg>
