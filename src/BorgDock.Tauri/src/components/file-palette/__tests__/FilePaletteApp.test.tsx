@@ -50,7 +50,7 @@ describe('FilePaletteApp', () => {
   it('arrow-down moves selection', async () => {
     render(<FilePaletteApp />);
     await waitFor(() => expect(screen.getByText('src/auth/login.tsx')).toBeTruthy());
-    const root = screen.getAllByText('FILES')[0]!.closest('.fp-root')!;
+    const root = screen.getAllByText('FILES')[0]!.closest('.bd-fp-root')!;
     await act(async () => {
       fireEvent.keyDown(root, { key: 'ArrowDown' });
     });
@@ -69,5 +69,11 @@ describe('FilePaletteApp', () => {
       expect(screen.queryByText('src/app.ts')).toBeNull();
       expect(screen.getByText('src/auth/login.tsx')).toBeTruthy();
     });
+  });
+
+  it('outer container carries data-window="palette"', async () => {
+    render(<FilePaletteApp />);
+    // The outer div is rendered synchronously even before the first invoke resolves
+    expect(document.querySelector('[data-window="palette"]')).not.toBeNull();
   });
 });
