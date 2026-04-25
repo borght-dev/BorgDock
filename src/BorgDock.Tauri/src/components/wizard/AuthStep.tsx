@@ -82,7 +82,7 @@ export function AuthStep({
                 {method === 'ghCli' ? 'GitHub CLI' : 'Access Token'}
               </div>
               <div className="mt-0.5 text-[10px] text-text-muted">
-                {method === 'ghCli' ? 'Use existing gh login' : 'Enter a personal access token'}
+                {method === 'ghCli' ? 'Use existing gh login' : 'Paste your GitHub token'}
               </div>
             </Card>
           </button>
