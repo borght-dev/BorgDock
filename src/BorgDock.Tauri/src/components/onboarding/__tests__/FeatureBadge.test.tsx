@@ -56,4 +56,9 @@ describe('FeatureBadge', () => {
     render(<FeatureBadge badgeId="review-mode" />);
     expect(screen.getByRole('button')).toBeTruthy();
   });
+
+  it('exposes feature badge data attributes', () => {
+    const { container } = render(<FeatureBadge badgeId="focus-mode" />);
+    expect(container.querySelector('[data-feature-badge][data-badge-id="focus-mode"]')).toBeInTheDocument();
+  });
 });
