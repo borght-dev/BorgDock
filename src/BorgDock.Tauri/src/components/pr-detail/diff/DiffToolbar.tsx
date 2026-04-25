@@ -1,5 +1,5 @@
-import clsx from 'clsx';
 import type { DiffViewMode, FileStatusFilter, PullRequestCommit } from '@/types';
+import { Chip, IconButton } from '@/components/shared/primitives';
 
 interface DiffToolbarProps {
   viewMode: DiffViewMode;
@@ -18,12 +18,60 @@ interface DiffToolbarProps {
   onCommitChange: (sha: string | null) => void;
 }
 
-const statusFilters: { value: FileStatusFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'added', label: 'Added' },
-  { value: 'modified', label: 'Modified' },
-  { value: 'deleted', label: 'Deleted' },
-];
+const STATUS_FILTERS = ['all', 'added', 'modified', 'deleted'] as const;
+
+function TreeIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M2 3h12M2 8h8M2 13h10" />
+    </svg>
+  );
+}
+
+function ExpandIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M4 4l4 4 4-4" />
+      <path d="M4 8l4 4 4-4" />
+    </svg>
+  );
+}
+
+function CollapseIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M4 6l4-4 4 4" />
+      <path d="M4 10l4 4 4-4" />
+    </svg>
+  );
+}
 
 export function DiffToolbar({
   viewMode,
@@ -42,117 +90,70 @@ export function DiffToolbar({
   onCommitChange,
 }: DiffToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-border)] bg-[var(--color-diff-file-header-bg)]">
-      {/* View mode toggle */}
-      <div className="flex rounded-md border border-[var(--color-subtle-border)] overflow-hidden">
-        <button
+    <div
+      className="flex flex-wrap items-center gap-2 border-b border-[var(--color-diff-border)] bg-[var(--color-diff-file-header-bg)] px-3 py-1.5"
+      data-diff-toolbar
+    >
+      <div className="flex gap-1">
+        <Chip
+          active={viewMode === 'unified'}
           onClick={() => onViewModeChange('unified')}
-          className={clsx(
-            'px-2 py-0.5 text-[10px] font-medium transition-colors',
-            viewMode === 'unified'
-              ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-          )}
+          data-diff-view-mode="unified"
         >
           Unified
-        </button>
-        <button
+        </Chip>
+        <Chip
+          active={viewMode === 'split'}
           onClick={() => onViewModeChange('split')}
-          className={clsx(
-            'px-2 py-0.5 text-[10px] font-medium transition-colors',
-            viewMode === 'split'
-              ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-          )}
+          data-diff-view-mode="split"
         >
           Split
-        </button>
+        </Chip>
       </div>
 
-      {/* File tree toggle */}
-      <button
+      <IconButton
+        icon={<TreeIcon />}
+        active={showFileTree}
+        tooltip={showFileTree ? 'Hide file tree' : 'Show file tree'}
+        size={22}
         onClick={onToggleFileTree}
-        className={clsx(
-          'p-1 rounded-md transition-colors',
-          showFileTree
-            ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
-            : 'text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)]',
-        )}
-        title={showFileTree ? 'Hide file tree' : 'Show file tree'}
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <path d="M2 3h12M2 8h8M2 13h10" />
-        </svg>
-      </button>
+        data-diff-toolbar-action="file-tree"
+      />
 
-      {/* Expand/collapse all */}
-      <button
+      <IconButton
+        icon={allExpanded ? <CollapseIcon /> : <ExpandIcon />}
+        active={allExpanded}
+        tooltip={allExpanded ? 'Collapse all' : 'Expand all'}
+        size={22}
         onClick={onToggleAllExpanded}
-        className="p-1 rounded-md text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
-        title={allExpanded ? 'Collapse all' : 'Expand all'}
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          {allExpanded ? (
-            <>
-              <path d="M4 6l4-4 4 4" />
-              <path d="M4 10l4 4 4-4" />
-            </>
-          ) : (
-            <>
-              <path d="M4 4l4 4 4-4" />
-              <path d="M4 8l4 4 4-4" />
-            </>
-          )}
-        </svg>
-      </button>
+        data-diff-toolbar-action="expand-collapse"
+      />
 
-      {/* Status filter chips */}
       <div className="flex gap-1">
-        {statusFilters.map(({ value, label }) => (
-          <button
-            key={value}
-            onClick={() => onStatusFilterChange(value)}
-            className={clsx(
-              'px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors',
-              statusFilter === value
-                ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-            )}
+        {STATUS_FILTERS.map((f) => (
+          <Chip
+            key={f}
+            active={statusFilter === f}
+            onClick={() => onStatusFilterChange(f)}
+            data-diff-filter={f}
           >
-            {label}
-          </button>
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </Chip>
         ))}
       </div>
 
-      {/* Stats */}
-      <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">
+      <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
         {fileCount} file{fileCount !== 1 ? 's' : ''},{' '}
         <span className="text-[var(--color-status-green)]">+{totalAdditions}</span>{' '}
         <span className="text-[var(--color-status-red)]">-{totalDeletions}</span>
       </span>
 
-      {/* Commit scope selector */}
       {commits.length > 0 && (
         <select
           value={selectedCommit ?? ''}
           onChange={(e) => onCommitChange(e.target.value || null)}
-          className="text-[10px] rounded border border-[var(--color-input-border)] bg-[var(--color-input-bg)] text-[var(--color-text-secondary)] px-1.5 py-0.5 outline-none max-w-[180px]"
+          className="max-w-[180px] rounded border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+          data-diff-commit-selector
         >
           <option value="">All changes</option>
           {commits.map((c) => (
