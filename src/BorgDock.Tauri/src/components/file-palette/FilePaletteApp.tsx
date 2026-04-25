@@ -321,7 +321,7 @@ export function FilePaletteApp() {
           collapsed={rootsCollapsed}
           onToggleCollapsed={toggleRootsCollapsed}
         />
-        <div className="fp-middle">
+        <div className="bd-fp-middle">
           <SearchPane
             query={query}
             onQueryChange={setQuery}
