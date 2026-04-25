@@ -348,6 +348,151 @@ fn compute_vs_base(repo: &Repository, base_branch: &str) -> (Vec<FileChange>, bo
     (out, false)
 }
 
+pub fn diff_worktree_vs_head_inner(
+    worktree_path: &str,
+    file_path: &str,
+) -> Result<UnifiedDiff, String> {
+    let repo = Repository::open(worktree_path).map_err(|e| e.to_string())?;
+    let mut opts = git2::DiffOptions::new();
+    opts.pathspec(file_path)
+        .context_lines(3)
+        .include_untracked(true)
+        .show_untracked_content(true);
+
+    // index → workdir captures the user's uncommitted edits.
+    let mut diff = repo
+        .diff_index_to_workdir(None, Some(&mut opts))
+        .map_err(|e| e.to_string())?;
+    let mut find_opts = git2::DiffFindOptions::new();
+    find_opts.renames(true);
+    let _ = diff.find_similar(Some(&mut find_opts));
+
+    Ok(unified_diff_from_diff(&diff, file_path))
+}
+
+pub fn diff_worktree_vs_base_inner(
+    worktree_path: &str,
+    base_branch: &str,
+    file_path: &str,
+) -> Result<UnifiedDiff, String> {
+    let repo = Repository::open(worktree_path).map_err(|e| e.to_string())?;
+    let head_commit = repo
+        .head()
+        .and_then(|r| r.peel_to_commit())
+        .map_err(|e| e.to_string())?;
+    let head_tree = head_commit.tree().map_err(|e| e.to_string())?;
+
+    let base_commit_oid = repo
+        .find_branch(base_branch, git2::BranchType::Local)
+        .or_else(|_| repo.find_branch(&format!("origin/{base_branch}"), git2::BranchType::Remote))
+        .map_err(|e| format!("base branch not found: {e}"))?
+        .into_reference()
+        .peel_to_commit()
+        .map_err(|e| e.to_string())?
+        .id();
+    let merge_base = repo
+        .merge_base(head_commit.id(), base_commit_oid)
+        .map_err(|e| format!("merge_base unavailable: {e}"))?;
+    let base_tree = repo
+        .find_commit(merge_base)
+        .and_then(|c| c.tree())
+        .map_err(|e| e.to_string())?;
+
+    let mut opts = git2::DiffOptions::new();
+    opts.pathspec(file_path).context_lines(3);
+    let mut diff = repo
+        .diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts))
+        .map_err(|e| e.to_string())?;
+    let mut find_opts = git2::DiffFindOptions::new();
+    find_opts.renames(true);
+    let _ = diff.find_similar(Some(&mut find_opts));
+
+    Ok(unified_diff_from_diff(&diff, file_path))
+}
+
+fn unified_diff_from_diff(diff: &git2::Diff, file_path: &str) -> UnifiedDiff {
+    use std::cell::RefCell;
+
+    let current_hunk: RefCell<Option<DiffHunk>> = RefCell::new(None);
+    let hunks: RefCell<Vec<DiffHunk>> = RefCell::new(Vec::new());
+    let binary: RefCell<Option<BinaryMarker>> = RefCell::new(None);
+    let is_submodule: RefCell<bool> = RefCell::new(false);
+    let previous_path: RefCell<Option<String>> = RefCell::new(None);
+
+    let _ = diff.foreach(
+        &mut |delta, _| {
+            if delta.new_file().mode() == git2::FileMode::Commit
+                || delta.old_file().mode() == git2::FileMode::Commit
+            {
+                *is_submodule.borrow_mut() = true;
+            }
+            let old_p = delta.old_file().path().map(|p| p.to_string_lossy().to_string());
+            let new_p = delta.new_file().path().map(|p| p.to_string_lossy().to_string());
+            if let (Some(o), Some(n)) = (old_p.as_ref(), new_p.as_ref()) {
+                if o != n {
+                    *previous_path.borrow_mut() = Some(o.clone());
+                }
+            }
+            if delta.new_file().is_binary() || delta.old_file().is_binary() {
+                *binary.borrow_mut() = Some(BinaryMarker {
+                    old_size: Some(delta.old_file().size()),
+                    new_size: Some(delta.new_file().size()),
+                });
+            }
+            true
+        },
+        None,
+        Some(&mut |_, hunk| {
+            if let Some(h) = current_hunk.borrow_mut().take() {
+                hunks.borrow_mut().push(h);
+            }
+            let header = String::from_utf8_lossy(hunk.header())
+                .trim_end()
+                .to_string();
+            *current_hunk.borrow_mut() = Some(DiffHunk {
+                header,
+                old_start: hunk.old_start(),
+                old_count: hunk.old_lines(),
+                new_start: hunk.new_start(),
+                new_count: hunk.new_lines(),
+                lines: Vec::new(),
+            });
+            true
+        }),
+        Some(&mut |_, _hunk, line| {
+            let kind = match line.origin() {
+                '+' => DiffLineKind::Add,
+                '-' => DiffLineKind::Delete,
+                _ => DiffLineKind::Context,
+            };
+            let content = String::from_utf8_lossy(line.content())
+                .trim_end_matches('\n')
+                .to_string();
+            let dl = DiffLine {
+                kind,
+                content,
+                old_line_number: line.old_lineno(),
+                new_line_number: line.new_lineno(),
+            };
+            if let Some(h) = current_hunk.borrow_mut().as_mut() {
+                h.lines.push(dl);
+            }
+            true
+        }),
+    );
+    if let Some(h) = current_hunk.borrow_mut().take() {
+        hunks.borrow_mut().push(h);
+    }
+
+    UnifiedDiff {
+        file_path: file_path.to_string(),
+        previous_path: previous_path.into_inner(),
+        hunks: hunks.into_inner(),
+        binary: binary.into_inner(),
+        is_submodule: is_submodule.into_inner(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -468,5 +613,21 @@ mod tests {
         // merge_base_unavailable is false (merge-base resolved trivially).
         assert!(result.vs_base.is_empty());
         assert!(!result.merge_base_unavailable);
+    }
+
+    #[test]
+    fn diff_worktree_vs_head_returns_empty_hunks_for_nonexistent_file() {
+        let tmp = TempDir::new().unwrap();
+        let repo = init_bare_repo(&tmp);
+        create_orphan_branch(&repo, "main");
+        drop(repo);
+
+        let result = diff_worktree_vs_head_inner(
+            tmp.path().to_str().unwrap(),
+            "nonexistent.rs",
+        ).unwrap();
+        assert!(result.hunks.is_empty());
+        assert!(result.binary.is_none());
+        assert_eq!(result.file_path, "nonexistent.rs");
     }
 }
