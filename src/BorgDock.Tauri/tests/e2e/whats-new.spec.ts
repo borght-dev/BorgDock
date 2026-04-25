@@ -5,7 +5,7 @@ import { expectNoA11yViolations } from './helpers/a11y';
 test.describe('whats new', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
-    await page.goto('/?view=whats-new');
+    await page.goto('/whats-new.html');
     await waitForAppReady(page);
   });
 
