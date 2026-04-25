@@ -194,7 +194,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                   padding="sm"
                   data-comment-card
                   data-comment-id={comment.id}
-                  className="comment-card-enter flex overflow-hidden !p-0"
+                  className="flex overflow-hidden !p-0 animate-[comment-enter_0.25s_ease-out_both]"
                   style={{
                     animationDelay: `${idx * 40}ms`,
                     marginTop: prevSameAuthor ? '4px' : undefined,

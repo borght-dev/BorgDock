@@ -653,31 +653,33 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
 function MergeCelebration({ prNumber, title }: { prNumber: number; title: string }) {
   return (
-    <div className="merge-celebration">
-      <div className="merge-celebration-inner">
-        <div className="merge-celebration-icon">
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-            <circle
-              cx="20"
-              cy="20"
-              r="19"
-              stroke="var(--color-status-green)"
-              strokeWidth="2"
-              fill="var(--color-action-success-bg)"
-            />
-            <path
-              d="M12 20.5l5.5 5.5L28 15"
-              stroke="var(--color-status-green)"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="merge-checkmark"
-            />
-          </svg>
-        </div>
-        <div className="merge-celebration-title">PR #{prNumber} merged!</div>
-        <div className="merge-celebration-subtitle">{title}</div>
+    <Card
+      padding="lg"
+      className="text-center my-3 animate-[fadeSlideIn_0.3s_ease-out]"
+      data-merge-celebration
+    >
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="mx-auto mb-2">
+        <circle
+          cx="20"
+          cy="20"
+          r="19"
+          stroke="var(--color-status-green)"
+          strokeWidth="2"
+          fill="var(--color-action-success-bg)"
+        />
+        <path
+          d="M12 20.5l5.5 5.5L28 15"
+          stroke="var(--color-status-green)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="animate-[merge-draw-check_0.4s_ease-out_forwards] [stroke-dasharray:30] [stroke-dashoffset:30]"
+        />
+      </svg>
+      <div className="text-sm font-semibold text-[var(--color-text-primary)]">
+        PR #{prNumber} merged!
       </div>
-    </div>
+      <div className="text-xs text-[var(--color-text-secondary)]">{title}</div>
+    </Card>
   );
 }
