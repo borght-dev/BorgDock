@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { Card } from '@/components/shared/primitives';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -13,14 +14,16 @@ const VIRTUALIZE_THRESHOLD = 50;
 
 function SkeletonCard() {
   return (
-    <div className="flex items-start gap-2.5 rounded-lg border border-[var(--color-card-border)] bg-[var(--color-card-background)] p-2.5 animate-pulse">
-      <div className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-surface-raised)]" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3 w-3/4 rounded bg-[var(--color-surface-raised)]" />
-        <div className="h-2.5 w-1/2 rounded bg-[var(--color-surface-raised)]" />
-        <div className="h-2 w-1/3 rounded bg-[var(--color-surface-raised)]" />
+    <Card padding="sm">
+      <div className="flex items-start gap-2.5 animate-pulse">
+        <div className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-surface-raised)]" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-3/4 rounded bg-[var(--color-surface-raised)]" />
+          <div className="h-2.5 w-1/2 rounded bg-[var(--color-surface-raised)]" />
+          <div className="h-2 w-1/3 rounded bg-[var(--color-surface-raised)]" />
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
