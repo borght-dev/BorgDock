@@ -157,4 +157,72 @@ describe('PRCard', () => {
     );
     expect(screen.getByTestId('custom-trailing')).toBeInTheDocument();
   });
+
+  it('renders the commented review pill with data-pill-tone="commented"', () => {
+    const { container } = render(
+      <PRCard pr={{ ...basePr, reviewState: 'commented' }} density="compact" />,
+    );
+    expect(
+      container.querySelector('[data-pill-tone="commented"]'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the pending review pill with data-pill-tone="pending"', () => {
+    const { container } = render(
+      <PRCard pr={{ ...basePr, reviewState: 'pending' }} density="compact" />,
+    );
+    expect(
+      container.querySelector('[data-pill-tone="pending"]'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the closed pill when isClosed is true and isMerged is false', () => {
+    render(
+      <PRCard
+        pr={{ ...basePr, isClosed: true, isMerged: false }}
+        density="normal"
+      />,
+    );
+    expect(screen.getByText(/closed/i)).toBeInTheDocument();
+  });
+
+  it('does not render the closed pill when isMerged is true', () => {
+    render(
+      <PRCard
+        pr={{ ...basePr, isClosed: true, isMerged: true }}
+        density="normal"
+      />,
+    );
+    expect(screen.queryByText(/closed/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/merged/i)).toBeInTheDocument();
+  });
+
+  it('renders the worktree slot pill when worktreeSlot is provided', () => {
+    render(
+      <PRCard
+        pr={{ ...basePr, worktreeSlot: 'wt-3' }}
+        density="normal"
+      />,
+    );
+    expect(screen.getByText('wt-3')).toBeInTheDocument();
+  });
+
+  it('fires onClick on Enter keypress in compact density', () => {
+    const onClick = vi.fn();
+    const { container } = render(
+      <PRCard pr={basePr} density="compact" onClick={onClick} />,
+    );
+    fireEvent.keyDown(container.querySelector('[data-pr-row]')!, { key: 'Enter' });
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('fires onClick on Space keypress in compact density and prevents default', () => {
+    const onClick = vi.fn();
+    const { container } = render(
+      <PRCard pr={basePr} density="compact" onClick={onClick} />,
+    );
+    const event = fireEvent.keyDown(container.querySelector('[data-pr-row]')!, { key: ' ' });
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(event).toBe(false); // preventDefault was called
+  });
 });

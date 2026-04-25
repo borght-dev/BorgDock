@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type { HTMLAttributes, MouseEvent, ReactNode } from 'react';
+import type { HTMLAttributes, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import {
   Avatar,
   Card,
@@ -96,9 +96,18 @@ export function PRCard({
   }
 
   if (isCompact) {
+    const handleKeyDown = onClick
+      ? (e: KeyboardEvent<HTMLDivElement>) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(e as unknown as MouseEvent<HTMLDivElement>);
+          }
+        }
+      : undefined;
     const compactProps: HTMLAttributes<HTMLDivElement> = {
       onClick,
       onContextMenu,
+      onKeyDown: handleKeyDown,
       role: onClick ? 'button' : undefined,
       tabIndex: onClick ? 0 : undefined,
     };
