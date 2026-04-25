@@ -1,6 +1,7 @@
-import clsx from 'clsx';
 import { useCallback, useState } from 'react';
 import type { RepoSettings } from '@/types';
+import { Button, Card, IconButton, Input } from '@/components/shared/primitives';
+import { ToggleSwitch } from './_ToggleSwitch';
 
 interface RepoSectionProps {
   repos: RepoSettings[];
@@ -28,8 +29,8 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
   }, [newOwner, newName, repos, onChange]);
 
   const toggleRepo = useCallback(
-    (index: number) => {
-      const updated = repos.map((r, i) => (i === index ? { ...r, enabled: !r.enabled } : r));
+    (index: number, next: boolean) => {
+      const updated = repos.map((r, i) => (i === index ? { ...r, enabled: next } : r));
       onChange(updated);
     },
     [repos, onChange],
@@ -53,29 +54,24 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" data-settings-section="repos">
       {/* Repo list */}
       {repos.map((repo, i) => (
-        <div
+        <Card
           key={`${repo.owner}/${repo.name}`}
-          className="rounded-md border border-[var(--color-subtle-border)] px-2.5 py-1.5"
+          variant="default"
+          padding="sm"
+          interactive
+          data-repo-row
+          data-repo-name={repo.name}
         >
           <div className="flex items-center gap-2">
             {/* Toggle */}
-            <button
-              className={clsx(
-                'h-4 w-7 rounded-full transition-colors relative shrink-0',
-                repo.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
-              )}
-              onClick={() => toggleRepo(i)}
-            >
-              <span
-                className={clsx(
-                  'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform shadow-sm',
-                  repo.enabled ? 'left-3.5' : 'left-0.5',
-                )}
-              />
-            </button>
+            <ToggleSwitch
+              checked={repo.enabled}
+              onChange={(next) => toggleRepo(i, next)}
+              aria-label={`Enable ${repo.name}`}
+            />
 
             <button
               className="flex-1 truncate text-xs text-[var(--color-text-primary)] text-left cursor-pointer hover:text-[var(--color-accent)] transition-colors"
@@ -84,12 +80,12 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
               {repo.owner}/{repo.name}
             </button>
 
-            <button
-              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-status-red)] transition-colors"
+            <IconButton
+              size={22}
+              icon={<span aria-hidden>&#10005;</span>}
+              aria-label="Remove"
               onClick={() => removeRepo(i)}
-            >
-              &#10005;
-            </button>
+            />
           </div>
 
           {/* Expanded settings */}
@@ -99,8 +95,8 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
                 <label className="text-[10px] text-[var(--color-text-muted)]">
                   Worktree base path
                 </label>
-                <input
-                  className="field-input w-full"
+                <Input
+                  className="w-full"
                   value={repo.worktreeBasePath}
                   onChange={(e) => updateRepo(i, { worktreeBasePath: e.target.value })}
                   placeholder="e.g. D:\repos\my-project"
@@ -124,15 +120,15 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
               </div>
             </div>
           )}
-        </div>
+        </Card>
       ))}
 
       {/* Add form */}
       <div className="flex items-end gap-1.5">
         <div className="flex-1">
           <label className="text-[10px] text-[var(--color-text-muted)]">Owner</label>
-          <input
-            className="field-input w-full"
+          <Input
+            className="w-full"
             value={newOwner}
             onChange={(e) => setNewOwner(e.target.value)}
             placeholder="owner"
@@ -140,21 +136,22 @@ export function RepoSection({ repos, onChange }: RepoSectionProps) {
         </div>
         <div className="flex-1">
           <label className="text-[10px] text-[var(--color-text-muted)]">Name</label>
-          <input
-            className="field-input w-full"
+          <Input
+            className="w-full"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="repo"
             onKeyDown={(e) => e.key === 'Enter' && addRepo()}
           />
         </div>
-        <button
-          className="shrink-0 rounded-md px-2 py-[7px] text-[11px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={addRepo}
           disabled={!newOwner.trim() || !newName.trim()}
         >
           Add
-        </button>
+        </Button>
       </div>
     </div>
   );
