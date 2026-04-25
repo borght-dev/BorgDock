@@ -98,6 +98,38 @@ export function FlyoutApp() {
     };
   }, []);
 
+  // Dev-only test seed — Playwright e2e drives FlyoutData + reducer state
+  // here without going through Tauri events (the test runs in pure Vite,
+  // not under Tauri, so the real listen() handlers never fire).
+  // Tree-shaken in production: `import.meta.env.DEV` is replaced with `false`.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    type FlyoutTestSeed = {
+      data?: Partial<FlyoutData> & { pullRequests?: FlyoutData['pullRequests'] };
+      mode?: 'glance' | 'idle' | 'initializing';
+    };
+    const seed = (payload: FlyoutTestSeed) => {
+      if (payload.data) {
+        setData((prev) => ({ ...prev, ...payload.data }));
+        hasReceivedData.current = true;
+        if (payload.data.theme) applyTheme(payload.data.theme);
+      }
+      // Always finish init so the splash isn't stuck.
+      dispatch({ type: 'init-complete' });
+      if (payload.mode === 'glance' || payload.mode === undefined) {
+        dispatch({ type: 'user-open' });
+      } else if (payload.mode === 'idle') {
+        dispatch({ type: 'close' });
+      }
+    };
+    (window as unknown as { __borgdock_test_flyout_seed?: typeof seed }).__borgdock_test_flyout_seed =
+      seed;
+    return () => {
+      delete (window as unknown as { __borgdock_test_flyout_seed?: typeof seed })
+        .__borgdock_test_flyout_seed;
+    };
+  }, []);
+
   // Close on blur — same as before, but also dispatch close so the reducer
   // returns to idle.
   useEffect(() => {

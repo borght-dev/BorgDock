@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useCallback, useState } from 'react';
+import { Card, Chip } from '@/components/shared/primitives';
 import type { AdoQuery } from '../../types';
 
 export interface AdoQueryTreeNode extends AdoQuery {
@@ -37,14 +38,20 @@ function QueryTreeItem({
 
   return (
     <div>
-      <div
+      <Card
+        interactive
+        padding="sm"
         className={clsx(
-          'group/item flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors cursor-pointer',
+          // Tree-row look: borderless, transparent, no shadow on hover.
+          // Card primitive provides cursor-pointer + hover highlight via CSS,
+          // but we keep the literal `cursor-pointer` class so existing tests
+          // and selectors that match on "cursor-pointer" still find this row.
+          'group/item flex w-full items-center gap-2 rounded-md text-left text-[13px] transition-colors !border-0 !bg-transparent !shadow-none cursor-pointer py-1.5',
           isSelected
-            ? 'bg-[var(--color-selected-row-bg)] text-[var(--color-accent)]'
+            ? 'bg-[var(--color-selected-row-bg)] !bg-[var(--color-selected-row-bg)] text-[var(--color-accent)]'
             : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]',
         )}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ paddingLeft: `${depth * 16 + 8}px`, paddingRight: 8 }}
         onClick={() => {
           if (node.isFolder) {
             onToggleExpand(node.id);
@@ -79,6 +86,7 @@ function QueryTreeItem({
         <span className="min-w-0 truncate">{node.name}</span>
         {!node.isFolder && (
           <button
+            type="button"
             className={clsx(
               'ml-auto shrink-0 p-0.5 transition-colors',
               node.isFavorite
@@ -101,7 +109,7 @@ function QueryTreeItem({
             </svg>
           </button>
         )}
-      </div>
+      </Card>
       {node.isFolder && node.isExpanded && node.children.length > 0 && (
         <div>
           {(node.children as AdoQueryTreeNode[]).map((child) => (
@@ -158,6 +166,7 @@ export function QueryBrowser({
       <div className="flex items-center justify-between border-b border-[var(--color-subtle-border)] px-4 py-3">
         <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Saved Queries</h2>
         <button
+          type="button"
           onClick={onClose}
           className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
         >
@@ -197,15 +206,10 @@ export function QueryBrowser({
                 </div>
                 <div className="flex flex-wrap gap-1.5 px-1">
                   {favoriteQueries.map((q) => (
-                    <button
+                    <Chip
                       key={q.id}
+                      active={q.id === selectedQueryId}
                       onClick={() => onSelectQuery(q.id)}
-                      className={clsx(
-                        'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors',
-                        q.id === selectedQueryId
-                          ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                          : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
-                      )}
                     >
                       <svg
                         className="h-3 w-3 text-[var(--color-status-yellow)]"
@@ -215,7 +219,7 @@ export function QueryBrowser({
                         <path d="M8 1.5l2 4.1 4.5.6-3.3 3.2.8 4.5L8 11.7l-4 2.2.8-4.5L1.5 6.2l4.5-.6z" />
                       </svg>
                       {q.name}
-                    </button>
+                    </Chip>
                   ))}
                 </div>
               </div>

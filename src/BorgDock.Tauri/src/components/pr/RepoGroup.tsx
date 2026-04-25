@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
+import { Pill } from '@/components/shared/primitives';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { PullRequestCard } from './PullRequestCard';
@@ -97,15 +98,9 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
               {'\u2716'}
             </span>
           )}
-          <span
-            className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
-            style={{
-              background: 'var(--color-filter-chip-bg)',
-              color: 'var(--color-text-muted)',
-            }}
-          >
+          <Pill tone="neutral" className="tabular-nums">
             {prs.length}
-          </span>
+          </Pill>
         </div>
       </button>
 

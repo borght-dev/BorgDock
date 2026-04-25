@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Card } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { AdoClient } from '@/services/ado/client';
 import {
@@ -475,9 +476,11 @@ export function WorkItemDetailApp() {
       <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-            {error}
-          </p>
+          <Card padding="md">
+            <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+              {error}
+            </p>
+          </Card>
         </div>
       </div>
     );
@@ -488,7 +491,9 @@ export function WorkItemDetailApp() {
       <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+          <Card padding="md">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+          </Card>
         </div>
       </div>
     );

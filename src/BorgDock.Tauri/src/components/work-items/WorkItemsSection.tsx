@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Button, Card } from '@/components/shared/primitives';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
 import type { WorkItemCardData } from '@/components/work-items/WorkItemCard';
@@ -156,7 +157,7 @@ export function WorkItemsSection() {
   if (!adoSettings.organization || !hasCredentials) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
-        <div className="text-center">
+        <Card padding="lg" className="text-center">
           <svg
             className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
             viewBox="0 0 16 16"
@@ -168,16 +169,12 @@ export function WorkItemsSection() {
             <path d="M5 6h6M5 9h4" />
           </svg>
           <p className="mb-3 text-[13px] text-[var(--color-text-muted)]">
-            Configure Azure DevOps to see work items
+            Configure Azure DevOps in Settings to see work items
           </p>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
-          >
+          <Button variant="primary" size="sm" onClick={() => setSettingsOpen(true)}>
             Open Settings
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
     );
   }

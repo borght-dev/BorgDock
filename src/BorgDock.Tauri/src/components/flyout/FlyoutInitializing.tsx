@@ -1,4 +1,5 @@
 import { SplashScreen } from '@/components/SplashScreen';
+import { Card } from '@/components/shared/primitives';
 
 /** Rendered inside the flyout frame while init is still running. */
 export function FlyoutInitializing() {
@@ -7,17 +8,16 @@ export function FlyoutInitializing() {
       className="flex h-screen w-screen items-end justify-end"
       style={{ background: 'transparent', padding: 16 }}
     >
-      <div
-        className="w-[380px] overflow-hidden rounded-[14px] border"
+      <Card
+        padding="md"
+        className="w-[380px] overflow-hidden rounded-[14px]"
         style={{
-          background: 'var(--color-surface)',
-          borderColor: 'var(--color-strong-border)',
           boxShadow: 'var(--flyout-shadow)',
           height: 480,
         }}
       >
         <SplashScreen />
-      </div>
+      </Card>
     </div>
   );
 }

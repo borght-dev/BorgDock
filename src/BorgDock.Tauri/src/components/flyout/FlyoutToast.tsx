@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Pill, type PillTone } from '@/components/shared/primitives';
 import type { ToastPayload } from './flyout-mode';
 import { TOAST_AUTOHIDE_MS } from './flyout-mode';
 
@@ -35,6 +36,7 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
         {queue.map((toast) => (
           <div
             key={toast.id}
+            data-toast=""
             data-testid={`flyout-toast-card-${toast.id}`}
             className="overflow-hidden rounded-[12px] border shadow-lg"
             style={{
@@ -57,10 +59,11 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
             }}
           >
             <div
-              className="px-3 py-2 text-[11px] font-semibold text-white"
-              style={{ background: severityColor(toast.severity) }}
+              className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold"
+              style={{ color: 'var(--color-text-primary)' }}
             >
-              {toast.title}
+              <Pill tone={severityTone(toast.severity)}>{toast.severity}</Pill>
+              <span>{toast.title}</span>
             </div>
             <div className="px-3 py-2 text-[12px]" style={{ color: 'var(--color-text-primary)' }}>
               {toast.body}
@@ -94,15 +97,16 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
   );
 }
 
-function severityColor(severity: ToastPayload['severity']): string {
+function severityTone(severity: ToastPayload['severity']): PillTone {
   switch (severity) {
     case 'error':
-      return 'linear-gradient(90deg,#dc2646,#b01834)';
+      return 'error';
     case 'warning':
-      return 'linear-gradient(90deg,#d97706,#b05800)';
+      return 'warning';
     case 'success':
-      return 'linear-gradient(90deg,#05966a,#046e4e)';
+      return 'success';
     case 'info':
-      return 'linear-gradient(90deg,#7c6af6,#5b45e8)';
+    default:
+      return 'neutral';
   }
 }

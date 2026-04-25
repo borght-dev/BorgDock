@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pill } from '@/components/shared/primitives';
 import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useNotificationStore } from '@/stores/notification-store';
@@ -90,11 +91,19 @@ export function MergeToast() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          data-toast=""
           className="flex items-center gap-3 rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 shadow-lg animate-[slideInRight_0.2s_ease-out]"
         >
-          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+          <Pill
+            tone="success"
+            icon={
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            }
+          >
+            Merging
+          </Pill>
           <span className="text-xs text-[var(--color-text-primary)]">
-            Merging PR #{toast.prNumber}...
+            PR #{toast.prNumber}...
           </span>
           <button
             onClick={() => undoMerge(toast.id)}
