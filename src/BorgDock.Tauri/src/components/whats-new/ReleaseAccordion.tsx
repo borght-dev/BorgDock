@@ -24,7 +24,7 @@ function Caret({ open }: { open: boolean }) {
 export function ReleaseAccordion({ release, defaultExpanded, isCurrent }: Props) {
   const [open, setOpen] = useState(defaultExpanded);
   return (
-    <section>
+    <section data-fixed-accordion data-open={String(open)}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -35,6 +35,7 @@ export function ReleaseAccordion({ release, defaultExpanded, isCurrent }: Props)
         <div className="flex items-center gap-2.5 min-w-0">
           <Caret open={open} />
           <span
+            data-release-version={release.version}
             className={`text-[14px] font-medium ${open ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-tertiary)]'}`}
           >
             {release.version}
