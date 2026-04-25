@@ -1,4 +1,4 @@
-import { LinearProgress, Pill, type PillTone } from '@/components/shared/primitives';
+import { LinearProgress, Pill } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -18,11 +18,11 @@ interface ChecklistItem {
 
 function scoreColor(score: number): string {
   if (score < 50) return 'var(--color-status-red)';
-  if (score <= 80) return 'var(--color-status-yellow)';
+  if (score < 80) return 'var(--color-status-yellow)';
   return 'var(--color-status-green)';
 }
 
-function scoreTone(score: number): PillTone {
+function scoreTone(score: number): 'success' | 'warning' | 'error' {
   if (score >= 80) return 'success';
   if (score >= 50) return 'warning';
   return 'error';
@@ -32,12 +32,6 @@ function scoreToneAttr(score: number): 'approved' | 'pending' | 'changes' {
   if (score >= 80) return 'approved';
   if (score >= 50) return 'pending';
   return 'changes';
-}
-
-function scoreLinearTone(score: number): 'success' | 'warning' | 'error' {
-  if (score >= 80) return 'success';
-  if (score >= 50) return 'warning';
-  return 'error';
 }
 
 function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
@@ -198,13 +192,13 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
           data-merge-score={clampedScore}
           data-pill-tone={scoreToneAttr(clampedScore)}
         >
-          {Math.round(clampedScore)} / 100
+          {clampedScore} / 100
         </Pill>
       </div>
 
       {/* Linear readiness bar */}
       <div className="mx-3 mb-2">
-        <LinearProgress value={clampedScore} tone={scoreLinearTone(clampedScore)} />
+        <LinearProgress value={clampedScore} tone={scoreTone(clampedScore)} />
       </div>
 
       {/* Checklist items */}
