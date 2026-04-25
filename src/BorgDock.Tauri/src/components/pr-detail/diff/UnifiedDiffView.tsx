@@ -54,7 +54,11 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
         {allLines.map((line, i) => {
           if (line.type === 'hunk-header') {
             return (
-              <tr key={i} style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)' }}>
+              <tr
+                key={i}
+                data-hunk-header=""
+                style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)' }}
+              >
                 <td
                   colSpan={3}
                   className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none"
@@ -93,8 +97,11 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
 
           const syntaxSpans = syntaxHighlights?.get(i);
 
+          const lineKind: 'add' | 'del' | 'context' =
+            line.type === 'add' ? 'add' : line.type === 'delete' ? 'del' : 'context';
+
           return (
-            <tr key={i} style={{ backgroundColor: bgColor }}>
+            <tr key={i} data-line-kind={lineKind} style={{ backgroundColor: bgColor }}>
               <td
                 className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
                 style={{ backgroundColor: gutterBg, userSelect: 'none' }}
@@ -160,6 +167,7 @@ function VirtualUnifiedDiff({
               <div
                 key={i}
                 data-index={i}
+                data-hunk-header=""
                 ref={virtualizer.measureElement}
                 style={{
                   position: 'absolute',
@@ -204,10 +212,14 @@ function VirtualUnifiedDiff({
             : undefined;
           const syntaxSpans = syntaxHighlights?.get(i);
 
+          const lineKind: 'add' | 'del' | 'context' =
+            line.type === 'add' ? 'add' : line.type === 'delete' ? 'del' : 'context';
+
           return (
             <div
               key={i}
               data-index={i}
+              data-line-kind={lineKind}
               ref={virtualizer.measureElement}
               style={{
                 position: 'absolute',

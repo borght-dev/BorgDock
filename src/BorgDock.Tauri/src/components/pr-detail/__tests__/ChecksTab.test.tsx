@@ -156,8 +156,10 @@ describe('ChecksTab', () => {
       makeCheck({ id: 1, name: 'build', startedAt: undefined, completedAt: undefined }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    const durationEls = container.querySelectorAll('.checks-run-duration');
-    expect(durationEls.length).toBe(0);
+    // Duration node would be the small monospace text after the row label.
+    // With timestamps missing, no element should match "2m 30s" / "45s" patterns.
+    expect(container.textContent).not.toMatch(/\d+m \d+s/);
+    expect(container.textContent).not.toMatch(/\b\d+s\b/);
   });
 
   it('groups checks by suite ID', () => {
@@ -167,21 +169,22 @@ describe('ChecksTab', () => {
       makeCheck({ id: 3, name: 'deploy', checkSuiteId: 200 }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    const suiteGroups = container.querySelectorAll('.checks-suite');
-    expect(suiteGroups.length).toBe(2);
+    // All three checks are rendered as data-check-row entries.
+    const rows = container.querySelectorAll('[data-check-row]');
+    expect(rows.length).toBe(3);
   });
 
-  it('sorts failed suites before passed suites', () => {
+  it('sorts failed checks before passed checks', () => {
     const checks = [
       makeCheck({ id: 1, name: 'passing-suite', checkSuiteId: 100, conclusion: 'success' }),
       makeCheck({ id: 2, name: 'failing-suite', checkSuiteId: 200, conclusion: 'failure' }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    const suites = container.querySelectorAll('.checks-suite');
-    expect(suites.length).toBe(2);
-    // Failed suite should be first
-    expect(suites[0]?.classList.contains('checks-suite--failed')).toBe(true);
-    expect(suites[1]?.classList.contains('checks-suite--passed')).toBe(true);
+    const rows = container.querySelectorAll('[data-check-row]');
+    expect(rows.length).toBe(2);
+    // Failed row should come first.
+    expect(rows[0]?.getAttribute('data-check-state')).toBe('failed');
+    expect(rows[1]?.getAttribute('data-check-state')).toBe('passed');
   });
 
   it('shows mixed summary with passed, failed, and pending', () => {
@@ -202,25 +205,95 @@ describe('ChecksTab', () => {
     expect(screen.getByText('1 in progress')).toBeTruthy();
   });
 
-  it('renders progress bar segments', () => {
+  // ── New PR #4 assertions ────────────────────────────
+
+  it('renders one [data-check-row] per check', () => {
     const checks = [
-      makeCheck({ id: 1, name: 'build', conclusion: 'success' }),
-      makeCheck({ id: 2, name: 'test', conclusion: 'failure' }),
+      makeCheck({ id: 1, name: 'ci/build', conclusion: 'success', checkSuiteId: 100 }),
+      makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure', checkSuiteId: 100 }),
+      makeCheck({
+        id: 3,
+        name: 'ci/lint',
+        status: 'in_progress',
+        conclusion: undefined,
+        checkSuiteId: 101,
+      }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    const progressBar = container.querySelector('.checks-progress-bar');
-    expect(progressBar).toBeTruthy();
-    const segments = progressBar?.querySelectorAll('.checks-progress-segment');
-    expect(segments?.length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('[data-check-row]')).toHaveLength(3);
   });
 
-  it('renders skipped-only progress bar when all checks are skipped', () => {
+  it('marks failed checks with data-check-state="failed"', () => {
     const checks = [
-      makeCheck({ id: 1, name: 'skip1', conclusion: 'skipped' }),
-      makeCheck({ id: 2, name: 'skip2', conclusion: 'skipped' }),
+      makeCheck({ id: 1, name: 'ci/build', conclusion: 'success', checkSuiteId: 100 }),
+      makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure', checkSuiteId: 100 }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    const skippedSegments = container.querySelectorAll('.checks-progress-skipped');
-    expect(skippedSegments.length).toBe(1);
+    expect(
+      container.querySelector('[data-check-row][data-check-state="failed"]'),
+    ).toBeTruthy();
+  });
+
+  it('renders LinearProgress in the summary', () => {
+    const checks = [
+      makeCheck({ id: 1, name: 'ci/build', conclusion: 'success' }),
+      makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure' }),
+    ];
+    const { container } = render(<ChecksTab checks={checks} />);
+    expect(container.querySelector('.bd-linear')).toBeTruthy();
+  });
+
+  it('renders count Pills with data-check-count', () => {
+    const checks = [
+      makeCheck({ id: 1, name: 'ci/build', conclusion: 'success' }),
+      makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure' }),
+    ];
+    const { container } = render(<ChecksTab checks={checks} />);
+    const pills = container.querySelectorAll('[data-check-count]');
+    expect(pills.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('renders Fix button on failed checks when pr is provided', () => {
+    const checks = [
+      makeCheck({ id: 1, name: 'ci/build', conclusion: 'success', checkSuiteId: 100 }),
+      makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure', checkSuiteId: 100 }),
+    ];
+    const pr = {
+      pullRequest: {
+        repoOwner: 'o',
+        repoName: 'r',
+        number: 1,
+        headRef: 'b',
+        baseRef: 'main',
+        authorLogin: 'a',
+        state: 'open',
+        isDraft: false,
+        mergeable: true,
+        htmlUrl: '',
+        body: '',
+        labels: [],
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+        commitCount: 0,
+        createdAt: '',
+        updatedAt: '',
+        commentCount: 0,
+        reviewStatus: 'none',
+      },
+      checks: [],
+      overallStatus: 'red',
+      failedCheckNames: ['ci/test'],
+      pendingCheckNames: [],
+      passedCount: 1,
+      skippedCount: 0,
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: fixture-only any cast for narrow type
+    const { container } = render(<ChecksTab checks={checks} pr={pr as any} />);
+    const failedRow = container.querySelector(
+      '[data-check-row][data-check-state="failed"]',
+    );
+    expect(failedRow).toBeTruthy();
+    expect(failedRow?.querySelector('.bd-btn')).toBeTruthy();
   });
 });

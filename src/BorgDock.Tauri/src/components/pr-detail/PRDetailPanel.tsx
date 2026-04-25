@@ -3,7 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import { WindowControls } from '@/components/shared/chrome';
-import { Tabs } from '@/components/shared/primitives';
+import { IconButton, Tabs } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -15,6 +15,38 @@ import { OverviewTab } from './OverviewTab';
 import { ReviewsTab } from './ReviewsTab';
 
 const log = createLogger('PRDetailPanel');
+
+const XIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <path d="m4 4 8 8M12 4 4 12" />
+  </svg>
+);
+
+const PopOutIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <path d="M9 2h5v5" />
+    <path d="m14 2-7 7" />
+    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
+  </svg>
+);
 
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
@@ -90,23 +122,15 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
         {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
       >
         {!popOutWindow && (
-          <button
-            onClick={handleClose}
-            className="tactile-icon-btn mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)]"
+          <IconButton
+            icon={<XIcon />}
+            tooltip="Close"
+            size={22}
             aria-label="Close"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
-              <path d="m4 4 8 8M12 4 4 12" />
-            </svg>
-          </button>
+            className="mt-0.5"
+            onClick={handleClose}
+            data-pr-detail-panel-close
+          />
         )}
         <div
           className="min-w-0 flex-1"
@@ -118,26 +142,15 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
           <span className="text-xs text-[var(--color-text-muted)]">#{pr.pullRequest.number}</span>
         </div>
         {!popOutWindow && (
-          <button
-            onClick={handlePopOut}
-            className="tactile-icon-btn mt-0.5 rounded-md p-1 text-[var(--color-icon-btn-fg)] hover:bg-[var(--color-icon-btn-hover)]"
+          <IconButton
+            icon={<PopOutIcon />}
+            tooltip="Open in new window"
+            size={22}
             aria-label="Pop out"
-            title="Open in new window"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
-              <path d="M9 2h5v5" />
-              <path d="m14 2-7 7" />
-              <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-            </svg>
-          </button>
+            className="mt-0.5"
+            onClick={handlePopOut}
+            data-pr-detail-panel-popout
+          />
         )}
         {popOutWindow && (
           <WindowControls

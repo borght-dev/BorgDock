@@ -57,7 +57,11 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
         {rows.map((row, i) => {
           if (row.isHunkHeader) {
             return (
-              <tr key={i} style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)' }}>
+              <tr
+                key={i}
+                data-hunk-header=""
+                style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)' }}
+              >
                 <td
                   colSpan={4}
                   className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none"
@@ -90,6 +94,21 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
           const rightGutterBg =
             row.right?.type === 'add' ? 'var(--color-diff-added-gutter-bg)' : 'transparent';
 
+          const leftKind: 'add' | 'del' | 'context' | undefined = row.left
+            ? row.left.type === 'delete'
+              ? 'del'
+              : row.left.type === 'add'
+                ? 'add'
+                : 'context'
+            : undefined;
+          const rightKind: 'add' | 'del' | 'context' | undefined = row.right
+            ? row.right.type === 'add'
+              ? 'add'
+              : row.right.type === 'delete'
+                ? 'del'
+                : 'context'
+            : undefined;
+
           return (
             <tr key={i}>
               {/* Left side */}
@@ -101,6 +120,7 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
               </td>
               <td
                 className="border-r border-[var(--color-diff-border)]"
+                data-line-kind={leftKind}
                 style={{ backgroundColor: leftBg, padding: 0, overflow: 'hidden' }}
               >
                 <div className="pl-2 whitespace-pre overflow-x-auto">
@@ -124,7 +144,10 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
               >
                 {row.right?.newLineNumber ?? ''}
               </td>
-              <td style={{ backgroundColor: rightBg, padding: 0, overflow: 'hidden' }}>
+              <td
+                data-line-kind={rightKind}
+                style={{ backgroundColor: rightBg, padding: 0, overflow: 'hidden' }}
+              >
                 <div className="pl-2 whitespace-pre overflow-x-auto">
                   {row.right && (
                     <DiffLineContent
@@ -268,6 +291,7 @@ function VirtualSplitDiff({
               <div
                 key={i}
                 data-index={i}
+                data-hunk-header=""
                 ref={virtualizer.measureElement}
                 style={{
                   position: 'absolute',
@@ -310,6 +334,21 @@ function VirtualSplitDiff({
           const rightGutterBg =
             row.right?.type === 'add' ? 'var(--color-diff-added-gutter-bg)' : 'transparent';
 
+          const leftKind: 'add' | 'del' | 'context' | undefined = row.left
+            ? row.left.type === 'delete'
+              ? 'del'
+              : row.left.type === 'add'
+                ? 'add'
+                : 'context'
+            : undefined;
+          const rightKind: 'add' | 'del' | 'context' | undefined = row.right
+            ? row.right.type === 'add'
+              ? 'add'
+              : row.right.type === 'delete'
+                ? 'del'
+                : 'context'
+            : undefined;
+
           return (
             <div
               key={i}
@@ -332,6 +371,7 @@ function VirtualSplitDiff({
                 </div>
                 <div
                   className="w-[calc(50%-40px)] shrink-0 pl-2 whitespace-pre overflow-x-auto border-r border-[var(--color-diff-border)]"
+                  data-line-kind={leftKind}
                   style={{ backgroundColor: leftBg }}
                 >
                   {row.left && (
@@ -354,6 +394,7 @@ function VirtualSplitDiff({
                 </div>
                 <div
                   className="flex-1 pl-2 whitespace-pre overflow-x-auto"
+                  data-line-kind={rightKind}
                   style={{ backgroundColor: rightBg }}
                 >
                   {row.right && (

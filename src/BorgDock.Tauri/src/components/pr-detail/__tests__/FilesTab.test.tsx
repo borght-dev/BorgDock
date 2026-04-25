@@ -102,6 +102,22 @@ describe('FilesTab', () => {
     });
   });
 
+  it('wraps the empty state in a Card primitive', async () => {
+    mockGetPRFiles.mockResolvedValue([]);
+    const { container } = render(
+      <FilesTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('No files changed in this pull request.')).toBeTruthy();
+    });
+    expect(container.querySelector('.bd-card')).toBeTruthy();
+  });
+
   it('renders diff sections for each file', async () => {
     mockGetPRFiles.mockResolvedValue([
       makeFile({ filename: 'src/app.ts' }),
@@ -227,6 +243,24 @@ describe('FilesTab', () => {
     await waitFor(() => {
       expect(screen.getByText(/This PR has 301 changed files/)).toBeTruthy();
     });
+  });
+
+  it('wraps the large-PR warning in a Card with a warning Pill', async () => {
+    const files = Array.from({ length: 301 }, (_, i) => makeFile({ filename: `file${i}.ts` }));
+    mockGetPRFiles.mockResolvedValue(files);
+    const { container } = render(
+      <FilesTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/This PR has 301 changed files/)).toBeTruthy();
+    });
+    expect(container.querySelector('.bd-card')).toBeTruthy();
+    expect(container.querySelector('.bd-pill--warning')).toBeTruthy();
   });
 
   it('does not show large PR warning for fewer than 300 files', async () => {

@@ -249,9 +249,11 @@ export function WorkItemDetailApp() {
 
   // Load settings and work item
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const settings = await invoke<AppSettings>('load_settings');
+        if (cancelled) return;
         setAdoSettings(settings.azureDevOps);
         // Populate the settings store so useAdoImageAuth can read the PAT
         useSettingsStore.setState({ settings, isLoading: false });
@@ -264,6 +266,7 @@ export function WorkItemDetailApp() {
         document.documentElement.classList.toggle('dark', isDark);
 
         if (!workItemId) {
+          if (cancelled) return;
           setError('No work item ID provided');
           setIsLoading(false);
           return;
@@ -278,6 +281,7 @@ export function WorkItemDetailApp() {
         );
 
         const item = await getWorkItem(client, workItemId);
+        if (cancelled) return;
         setWorkItem(item);
 
         // Set window title
@@ -291,33 +295,50 @@ export function WorkItemDetailApp() {
         if (itemType) {
           try {
             const states = await getWorkItemTypeStates(client, itemType);
+            if (cancelled) return;
             setAvailableStates(states);
           } catch {
+            if (cancelled) return;
             setAvailableStates([getField(item, 'System.State')]);
           }
         }
 
         // Load comments
+        if (cancelled) return;
         setIsLoadingComments(true);
         getWorkItemComments(client, workItemId)
-          .then((c) => setComments(c))
-          .catch((err) => console.error('Failed to load comments:', err))
-          .finally(() => setIsLoadingComments(false));
+          .then((c) => {
+            if (cancelled) return;
+            setComments(c);
+          })
+          .catch((err) => {
+            if (cancelled) return;
+            console.error('Failed to load comments:', err);
+          })
+          .finally(() => {
+            if (cancelled) return;
+            setIsLoadingComments(false);
+          });
 
         // Pre-process rich text images with ADO auth
         const pat = ado.personalAccessToken;
         if (pat) {
           const { richText } = classifyFields(item);
           const processed = await processFieldImages(richText, pat);
+          if (cancelled) return;
           setProcessedRichText(processed);
         }
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load work item:', err);
         setError('Failed to load work item');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [workItemId]);
 
   const handleSave = useCallback(

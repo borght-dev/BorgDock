@@ -184,4 +184,22 @@ describe('CommitsTab', () => {
       expect(screen.getByText('No commits found.')).toBeTruthy();
     });
   });
+
+  it('renders short SHA inside a Pill primitive with data-commit-sha attr', async () => {
+    mockGetPRCommits.mockResolvedValue([makeCommit({ sha: 'abc1234567890def' })]);
+    const { container } = render(
+      <CommitsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      const pill = container.querySelector('[data-commit-sha="abc1234567890def"]');
+      expect(pill).toBeTruthy();
+      expect(pill?.classList.contains('bd-pill')).toBe(true);
+      expect(pill?.textContent).toBe('abc1234');
+    });
+  });
 });

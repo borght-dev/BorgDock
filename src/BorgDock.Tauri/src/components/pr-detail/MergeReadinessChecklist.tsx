@@ -1,3 +1,4 @@
+import { LinearProgress, Pill } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -17,8 +18,20 @@ interface ChecklistItem {
 
 function scoreColor(score: number): string {
   if (score < 50) return 'var(--color-status-red)';
-  if (score <= 80) return 'var(--color-status-yellow)';
+  if (score < 80) return 'var(--color-status-yellow)';
   return 'var(--color-status-green)';
+}
+
+function scoreTone(score: number): 'success' | 'warning' | 'error' {
+  if (score >= 80) return 'success';
+  if (score >= 50) return 'warning';
+  return 'error';
+}
+
+function scoreToneAttr(score: number): 'approved' | 'pending' | 'changes' {
+  if (score >= 80) return 'approved';
+  if (score >= 50) return 'pending';
+  return 'changes';
 }
 
 function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
@@ -161,27 +174,10 @@ function StatusIcon({ status }: { status: CheckStatus }) {
   }
 }
 
-function ScoreBadge({ score }: { score: number }) {
-  const clamped = Math.max(0, Math.min(100, score));
-  const color = scoreColor(clamped);
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
-      style={{
-        color,
-        background: `color-mix(in srgb, ${color} 10%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${color} 20%, transparent)`,
-      }}
-    >
-      {clamped}
-    </span>
-  );
-}
-
 export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
   const items = getCheckItems(pr);
   const score = computeMergeScore(pr);
+  const clampedScore = Math.max(0, Math.min(100, score));
   const color = scoreColor(score);
 
   return (
@@ -191,28 +187,18 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
         <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
           Merge Readiness
         </span>
-        <ScoreBadge score={score} />
+        <Pill
+          tone={scoreTone(clampedScore)}
+          data-merge-score={clampedScore}
+          data-pill-tone={scoreToneAttr(clampedScore)}
+        >
+          {clampedScore} / 100
+        </Pill>
       </div>
 
-      {/* Compact progress bar */}
-      <div className="mx-3 mb-2 flex h-[3px] gap-px overflow-hidden rounded-full">
-        {items.map((item) => (
-          <span
-            key={item.label}
-            className="h-full flex-1 rounded-full transition-colors"
-            style={{
-              background:
-                item.status === 'pass'
-                  ? 'var(--color-status-green)'
-                  : item.status === 'fail'
-                    ? 'var(--color-status-red)'
-                    : item.status === 'pending'
-                      ? 'var(--color-status-yellow)'
-                      : 'var(--color-status-gray)',
-              opacity: item.status === 'none' ? 0.3 : 1,
-            }}
-          />
-        ))}
+      {/* Linear readiness bar */}
+      <div className="mx-3 mb-2">
+        <LinearProgress value={clampedScore} tone={scoreTone(clampedScore)} />
       </div>
 
       {/* Checklist items */}
