@@ -365,6 +365,7 @@ export function SqlApp() {
           </div>
           {hasConnections ? (
             <select
+              data-sql-connection-select
               className="sql-connection-select flex-1 min-w-0"
               value={selectedConnection}
               onChange={(e) => setSelectedConnection(e.target.value)}
@@ -385,6 +386,7 @@ export function SqlApp() {
 
         {/* Run button */}
         <button
+          data-action="run-query"
           className={clsx('sql-run-btn', isRunning && 'sql-run-btn--running')}
           onClick={runQuery}
           disabled={isRunning || !hasConnections || !query.trim()}
@@ -405,7 +407,12 @@ export function SqlApp() {
       </div>
 
       {/* ── Editor area ─────────────────────────────────── */}
-      <div id="sql-editor-area" className="sql-editor-area" style={{ height: editorHeight }}>
+      <div
+        id="sql-editor-area"
+        data-sql-editor
+        className="sql-editor-area"
+        style={{ height: editorHeight }}
+      >
         {/* Line numbers gutter */}
         <div className="sql-gutter" aria-hidden="true">
           {Array.from({ length: Math.max(lineCount, 6) }, (_, i) => (
