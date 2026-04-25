@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { IconButton } from '@/components/shared/primitives';
 import { loadCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
@@ -10,6 +11,17 @@ import { initClient } from '@/services/github/singleton';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
 import { PRDetailPanel } from './PRDetailPanel';
+
+const XIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+    <path
+      d="M2 2l6 6M8 2l-6 6"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
 
 export function PRDetailApp() {
   const [pr, setPr] = useState<PullRequestWithChecks | null>(null);
@@ -50,6 +62,7 @@ export function PRDetailApp() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (!owner || !repo || !number) {
       setError('Missing PR parameters (owner, repo, number)');
       setIsLoading(false);
@@ -60,6 +73,7 @@ export function PRDetailApp() {
       try {
         // Load settings for theme + auth
         const settings = await invoke<AppSettings>('load_settings');
+        if (cancelled) return;
         useSettingsStore.setState({ settings, isLoading: false });
 
         // Apply theme
@@ -67,16 +81,20 @@ export function PRDetailApp() {
         const isDark =
           t === 'dark' ||
           (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (cancelled) return;
         document.documentElement.classList.toggle('dark', isDark);
 
         // Try loading from cache first for instant display
         try {
           await invoke('cache_init');
+          if (cancelled) return;
           const cached = await loadCachedPRs(owner, repo);
+          if (cancelled) return;
           const cachedPr = cached.find(
             (raw) => (raw as PullRequestWithChecks).pullRequest?.number === number,
           ) as PullRequestWithChecks | undefined;
           if (cachedPr) {
+            if (cancelled) return;
             setPr(cachedPr);
             setIsLoading(false);
             getCurrentWindow()
@@ -87,6 +105,8 @@ export function PRDetailApp() {
           // Cache load is best-effort
         }
 
+        if (cancelled) return;
+
         // Initialize GitHub client
         const pat = settings.gitHub.personalAccessToken;
         const tokenGetter = () => getGitHubToken(pat);
@@ -94,9 +114,11 @@ export function PRDetailApp() {
 
         // Fetch the specific PR (refreshes cached data)
         const prs = await getOpenPRs(client, owner, repo);
+        if (cancelled) return;
         const targetPr = prs.find((p) => p.number === number);
 
         if (!targetPr) {
+          if (cancelled) return;
           if (!prRef.current) {
             setError(`PR #${number} not found in ${owner}/${repo}`);
             setIsLoading(false);
@@ -112,6 +134,7 @@ export function PRDetailApp() {
           checks = [];
         }
 
+        if (cancelled) return;
         const prWithChecks = aggregatePrWithChecks(targetPr, checks);
         setPr(prWithChecks);
 
@@ -120,12 +143,17 @@ export function PRDetailApp() {
           .setTitle(`PR #${number} - ${targetPr.title}`)
           .catch(console.debug); /* fire-and-forget */
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load PR:', err);
         if (!prRef.current) setError('Failed to load pull request');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [owner, repo, number]);
 
   // Thin header strip for pre-load states — stays draggable so the window
@@ -145,20 +173,14 @@ export function PRDetailApp() {
       <span data-tauri-drag-region className="truncate">
         {number ? `PR #${number}` : 'Pull Request'}
       </span>
-      <button
-        onClick={closeThisWindow}
+      <IconButton
+        icon={<XIcon />}
+        tooltip="Close"
+        size={22}
         aria-label="Close"
-        className="bd-wc bd-wc--close"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10">
-          <path
-            d="M2 2l6 6M8 2l-6 6"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
+        onClick={closeThisWindow}
+        data-pr-detail-close
+      />
     </div>
   );
 
