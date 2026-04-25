@@ -1,5 +1,5 @@
-import clsx from 'clsx';
 import { useCallback, useRef, useState } from 'react';
+import { Button, IconButton, Pill, type PillTone } from '@/components/shared/primitives';
 import { useAdoImageAuth } from '@/hooks/useAdoImageAuth';
 import { sanitizeHtml } from '@/utils/sanitize-html';
 import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '../../types';
@@ -61,6 +61,17 @@ function stateColor(state: string): string {
   if (['resolved', 'done', 'closed'].includes(s)) return 'var(--color-status-green)';
   if (s === 'removed') return 'var(--color-status-gray)';
   return 'var(--color-status-yellow)';
+}
+
+// Mirrored from WorkItemCard. Kept inline; if a third consumer appears, lift to
+// a shared `state-tones.ts` helper.
+function pillTone(state: string): PillTone {
+  const s = state.toLowerCase();
+  if (s === 'active' || s === 'committed' || s === 'in progress') return 'warning';
+  if (s === 'resolved' || s === 'done' || s === 'closed') return 'success';
+  if (s === 'removed') return 'neutral';
+  if (s === 'new') return 'neutral';
+  return 'neutral';
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -191,15 +202,9 @@ export function WorkItemDetailPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[var(--color-subtle-border)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <span
-            className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
-              color,
-            }}
-          >
+          <Pill tone={pillTone(state)}>
             {item.isNewItem ? newItemType : item.workItemType}
-          </span>
+          </Pill>
           {!item.isNewItem && item.id && (
             <span className="text-[13px] text-[var(--color-text-muted)]">#{item.id}</span>
           )}
@@ -209,40 +214,43 @@ export function WorkItemDetailPanel({
         </div>
         <div className="flex items-center gap-1">
           {!item.isNewItem && item.htmlUrl && (
-            <button
+            <IconButton
+              size={22}
+              tooltip="Open in browser"
               onClick={() => onOpenInBrowser(item.htmlUrl)}
-              className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
-              title="Open in browser"
-            >
+              icon={
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                >
+                  <path
+                    d="M6 3H3v10h10v-3M9 3h4v4M14 2L7 9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              }
+            />
+          )}
+          <IconButton
+            size={22}
+            tooltip="Close"
+            onClick={onClose}
+            icon={
               <svg
                 className="h-4 w-4"
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.3"
+                strokeWidth="1.5"
               >
-                <path
-                  d="M6 3H3v10h10v-3M9 3h4v4M14 2L7 9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M4 4l8 8M12 4l-8 8" />
               </svg>
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
+            }
+          />
         </div>
       </div>
 
@@ -482,18 +490,14 @@ export function WorkItemDetailPanel({
                   className="w-full resize-none rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
                 />
                 <div className="mt-1.5 flex justify-end">
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={handleAddComment}
                     disabled={isPostingComment || !commentText.trim()}
-                    className={clsx(
-                      'rounded-md px-3 py-1 text-[12px] font-medium transition-colors',
-                      isPostingComment || !commentText.trim()
-                        ? 'cursor-not-allowed bg-[var(--color-filter-chip-bg)] text-[var(--color-text-ghost)]'
-                        : 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90',
-                    )}
                   >
                     {isPostingComment ? 'Posting...' : 'Comment'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -505,30 +509,23 @@ export function WorkItemDetailPanel({
       <div className="flex items-center justify-between border-t border-[var(--color-subtle-border)] px-4 py-3">
         <div>
           {!item.isNewItem && onDelete && (
-            <button
-              onClick={onDelete}
-              className="rounded-md px-3 py-1.5 text-[13px] text-[var(--color-action-danger-fg)] transition-colors hover:bg-[var(--color-action-danger-bg)]"
-            >
+            <Button variant="danger" size="md" onClick={onDelete}>
               Delete
-            </button>
+            </Button>
           )}
         </div>
         <div className="flex items-center gap-3">
           {statusText && (
             <span className="text-[12px] text-[var(--color-text-muted)]">{statusText}</span>
           )}
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleSave}
             disabled={isSaving || !title.trim()}
-            className={clsx(
-              'rounded-md px-4 py-1.5 text-[13px] font-medium transition-colors',
-              isSaving || !title.trim()
-                ? 'cursor-not-allowed bg-[var(--color-filter-chip-bg)] text-[var(--color-text-ghost)]'
-                : 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90',
-            )}
           >
             {isSaving ? 'Saving...' : item.isNewItem ? 'Create' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
