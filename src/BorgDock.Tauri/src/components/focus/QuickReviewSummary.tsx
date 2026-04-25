@@ -1,3 +1,4 @@
+import { Button, Card } from '@/components/shared/primitives';
 import type { ReviewDecision } from '@/stores/quick-review-store';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -19,7 +20,7 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
   const skipped = [...decisions.values()].filter((d) => d === 'skipped').length;
 
   return (
-    <div className="space-y-4">
+    <div data-quick-review-summary="" className="space-y-4">
       <div className="text-center">
         <div className="text-lg font-semibold text-[var(--color-text-primary)]">
           Review Complete
@@ -61,29 +62,25 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
           const decision = decisions.get(pr.pullRequest.number);
           const info = decision ? DECISION_LABELS[decision] : null;
           return (
-            <div
-              key={pr.pullRequest.number}
-              className="flex items-center justify-between rounded-md px-3 py-1.5 text-xs"
-            >
-              <span className="text-[var(--color-text-secondary)] truncate mr-2">
-                #{pr.pullRequest.number} {pr.pullRequest.title}
-              </span>
-              {info && (
-                <span className="shrink-0 font-medium" style={{ color: info.color }}>
-                  {info.label}
+            <Card key={pr.pullRequest.number} padding="sm">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[var(--color-text-secondary)] truncate mr-2">
+                  #{pr.pullRequest.number} {pr.pullRequest.title}
                 </span>
-              )}
-            </div>
+                {info && (
+                  <span className="shrink-0 font-medium" style={{ color: info.color }}>
+                    {info.label}
+                  </span>
+                )}
+              </div>
+            </Card>
           );
         })}
       </div>
 
-      <button
-        onClick={onClose}
-        className="w-full rounded-md bg-[var(--color-accent)] px-4 py-2 text-xs font-medium text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
-      >
+      <Button variant="primary" size="md" onClick={onClose} className="w-full">
         Done
-      </button>
+      </Button>
     </div>
   );
 }
