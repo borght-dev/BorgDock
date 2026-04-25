@@ -10,6 +10,9 @@ test.describe('PR List', () => {
     await injectCompletedSetup(page);
     await page.goto('/');
     await waitForAppReady(page);
+    // Default activeSection is 'focus' (per ui-store). These tests assert the
+    // PR list surface, so switch to it first. Tabs primitive uses role="tab".
+    await page.getByRole('tab', { name: 'PRs' }).click();
   });
 
   test('shows "No pull requests found" when empty', async ({ page }) => {
@@ -32,8 +35,8 @@ test.describe('PR List', () => {
   });
 
   test('filter buttons are visible', async ({ page }) => {
-    // The FilterBar should render with all filter buttons
-    const filterLabels = ['All', 'My PRs', 'Failing', 'Ready', 'Reviewing', 'Closed'];
+    // FilterBar labels per the current Header/FilterBar (PR #1+#2 chrome).
+    const filterLabels = ['All', 'Needs Review', 'Mine', 'Failing', 'Ready', 'Review', 'Closed'];
     for (const label of filterLabels) {
       await expect(
         page.locator('button').filter({ hasText: label }).first()
@@ -45,14 +48,12 @@ test.describe('PR List', () => {
     // Click "Failing" filter
     const failingBtn = page.locator('button').filter({ hasText: 'Failing' }).first();
     await failingBtn.click();
-
-    // The failing button should now have the active style (accent color class)
-    // We check for the accent-colored border-b-2 indicator
-    await expect(failingBtn).toHaveCSS('border-bottom-width', '2px');
+    // Active filter renders with accent-subtle background (FilterBar.tsx).
+    await expect(failingBtn).toHaveClass(/bg-\[var\(--color-accent-subtle\)\]/);
   });
 
   test('search bar is visible and accepts input', async ({ page }) => {
-    const searchInput = page.getByPlaceholder('Search PRs...');
+    const searchInput = page.getByPlaceholder('Filter pull requests...');
     await expect(searchInput).toBeVisible();
 
     // Type into the search bar
@@ -61,7 +62,7 @@ test.describe('PR List', () => {
   });
 
   test('search bar clear button appears when text is entered', async ({ page }) => {
-    const searchInput = page.getByPlaceholder('Search PRs...');
+    const searchInput = page.getByPlaceholder('Filter pull requests...');
     await searchInput.fill('test');
 
     // Clear button should now be visible

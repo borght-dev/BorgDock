@@ -54,6 +54,21 @@ export const TAURI_MOCK_SCRIPT = `
         case 'init_cache':
           return null;
 
+        case 'open_pr_detail_window':
+          // In real Tauri this opens a separate WebviewWindow. The Playwright
+          // mock can't create a Tauri window, so we emit a real browser popup
+          // (page.waitForEvent('popup') consumes this) using the Vite-served
+          // pr-detail.html so the URL assertion holds.
+          try {
+            const url = '/pr-detail.html?owner=' + encodeURIComponent(args?.owner ?? '') +
+              '&repo=' + encodeURIComponent(args?.repo ?? '') +
+              '&number=' + (args?.number ?? '');
+            window.open(url, '_blank');
+          } catch {
+            // popup blockers etc. - swallow; the spec tolerates "no popup"
+          }
+          return null;
+
         case 'check_github_auth':
           return 'testuser';
 
@@ -513,9 +528,14 @@ export async function getPrCards(page: Page) {
 
 /**
  * Click a section tab in the header.
+ *
+ * The Header section switcher uses the Tabs primitive which renders
+ * `role="tab"` on the underlying buttons. Querying `getByRole('button', …)`
+ * does not match an element whose explicit `role` overrides the implicit
+ * one, so we must use `role="tab"`.
  */
-export async function switchSection(page: Page, section: 'PRs' | 'Work Items') {
-  await page.getByRole('button', { name: section }).click();
+export async function switchSection(page: Page, section: 'PRs' | 'Work Items' | 'Focus') {
+  await page.getByRole('tab', { name: section }).click();
 }
 
 /**
