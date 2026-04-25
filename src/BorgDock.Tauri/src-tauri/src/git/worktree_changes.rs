@@ -178,13 +178,15 @@ pub fn list_worktree_changes_inner(worktree_path: &str) -> Result<WorktreeChange
 
     let detached_head = repo.head_detached().unwrap_or(false);
 
+    let (vs_base, merge_base_unavailable) = compute_vs_base(&repo, &base_branch);
+
     Ok(WorktreeChangeSet {
         vs_head,
-        vs_base: Vec::new(),
+        vs_base,
         base_branch,
         base_branch_source,
         detached_head,
-        merge_base_unavailable: false,
+        merge_base_unavailable,
     })
 }
 
@@ -247,6 +249,103 @@ pub fn resolve_base_branch(repo: &Repository) -> Result<(String, BaseBranchSourc
     // 4. Hard fallback: master, even if it doesn't exist (caller will surface
     //    `merge_base_unavailable: true` when no merge-base resolves).
     Ok(("master".into(), BaseBranchSource::FallbackMaster))
+}
+
+fn compute_vs_base(repo: &Repository, base_branch: &str) -> (Vec<FileChange>, bool) {
+    // Resolve HEAD commit.
+    let head_commit = match repo.head().and_then(|h| h.peel_to_commit()) {
+        Ok(c) => c,
+        Err(_) => return (Vec::new(), false), // unborn HEAD — nothing to compare.
+    };
+    let head_tree = match head_commit.tree() {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), false),
+    };
+
+    // Resolve base ref (try local first, then remote).
+    let base_oid = repo
+        .find_branch(base_branch, git2::BranchType::Local)
+        .or_else(|_| repo.find_branch(&format!("origin/{base_branch}"), git2::BranchType::Remote))
+        .ok()
+        .and_then(|b| b.into_reference().peel_to_commit().ok())
+        .map(|c| c.id());
+    let base_oid = match base_oid {
+        Some(id) => id,
+        None => return (Vec::new(), true), // base ref not found → merge_base_unavailable.
+    };
+
+    // If HEAD already IS base (e.g. base branch points at HEAD), no commits-ahead.
+    if head_commit.id() == base_oid {
+        return (Vec::new(), false);
+    }
+
+    // Find merge-base. With a shallow clone or disjoint history this can fail.
+    let merge_base = match repo.merge_base(head_commit.id(), base_oid) {
+        Ok(id) => id,
+        Err(_) => return (Vec::new(), true),
+    };
+    let base_tree = match repo.find_commit(merge_base).and_then(|c| c.tree()) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), true),
+    };
+
+    // Diff merge-base tree → HEAD tree (commits ahead of base).
+    let mut opts = git2::DiffOptions::new();
+    opts.context_lines(3);
+    let mut diff = match repo.diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts)) {
+        Ok(d) => d,
+        Err(_) => return (Vec::new(), false),
+    };
+    let mut find_opts = git2::DiffFindOptions::new();
+    find_opts.renames(true).copies(false);
+    let _ = diff.find_similar(Some(&mut find_opts));
+
+    let mut out: Vec<FileChange> = Vec::new();
+    let _ = diff.foreach(
+        &mut |delta, _| {
+            let new_path = delta
+                .new_file()
+                .path()
+                .map(|p| p.to_string_lossy().to_string());
+            let old_path = delta
+                .old_file()
+                .path()
+                .map(|p| p.to_string_lossy().to_string());
+
+            let path = new_path
+                .clone()
+                .or_else(|| old_path.clone())
+                .unwrap_or_default();
+            let previous_path = match (&old_path, &new_path) {
+                (Some(o), Some(n)) if o != n => Some(o.clone()),
+                _ => None,
+            };
+            let status = match delta.status() {
+                git2::Delta::Added => FileChangeStatus::Added,
+                git2::Delta::Deleted => FileChangeStatus::Deleted,
+                git2::Delta::Renamed => FileChangeStatus::Renamed,
+                _ => FileChangeStatus::Modified,
+            };
+            let is_binary = delta.new_file().is_binary() || delta.old_file().is_binary();
+            let is_submodule = delta.new_file().mode() == git2::FileMode::Commit
+                || delta.old_file().mode() == git2::FileMode::Commit;
+            out.push(FileChange {
+                path,
+                previous_path,
+                status,
+                additions: 0,
+                deletions: 0,
+                is_binary,
+                is_submodule,
+            });
+            true
+        },
+        None,
+        None,
+        None,
+    );
+
+    (out, false)
 }
 
 #[cfg(test)]
@@ -354,5 +453,20 @@ mod tests {
         assert!(result.vs_base.is_empty());
         assert_eq!(result.base_branch, "main");
         assert!(matches!(result.base_branch_source, BaseBranchSource::FallbackMain));
+    }
+
+    #[test]
+    fn list_worktree_changes_marks_merge_base_unavailable_for_orphan_repo() {
+        let tmp = TempDir::new().unwrap();
+        let repo = init_bare_repo(&tmp);
+        // Branch 'main' exists but has no shared ancestry with HEAD (HEAD == main).
+        create_orphan_branch(&repo, "main");
+        drop(repo);
+
+        let result = list_worktree_changes_inner(tmp.path().to_str().unwrap()).unwrap();
+        // HEAD == base → merge_base IS HEAD, so vs_base is empty but
+        // merge_base_unavailable is false (merge-base resolved trivially).
+        assert!(result.vs_base.is_empty());
+        assert!(!result.merge_base_unavailable);
     }
 }
