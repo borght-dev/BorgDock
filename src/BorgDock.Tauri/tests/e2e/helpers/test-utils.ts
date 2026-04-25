@@ -63,6 +63,22 @@ export const TAURI_MOCK_SCRIPT = `
           // the release accordion mounts.
           return '1.1.0';
 
+        case 'execute_sql_query':
+          // Synthetic result so sql.spec.ts's "results table renders after mock
+          // run" can assert on the [data-sql-results-table] tbody.
+          return {
+            resultSets: [
+              {
+                columns: ['id', 'name'],
+                rows: [['1', 'alice'], ['2', 'bob']],
+                rowCount: 2,
+                truncated: false,
+              },
+            ],
+            executionTimeMs: 1,
+            totalRowCount: 2,
+          };
+
         case 'discover_repos':
           return [
             { owner: 'test-org', name: 'test-repo', localPath: '/home/user/repos/test-repo', isSelected: true, worktreeSubfolder: '.worktrees' },

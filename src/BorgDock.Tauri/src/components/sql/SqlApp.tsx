@@ -367,6 +367,7 @@ export function SqlApp() {
           {hasConnections ? (
             <select
               data-sql-connection-select
+              aria-label="Database connection"
               className="sql-connection-select flex-1 min-w-0"
               value={selectedConnection}
               onChange={(e) => setSelectedConnection(e.target.value)}
