@@ -64,11 +64,11 @@ export function FileViewerToolbar({
   const defaultLabel = defaultBranchLabel ?? 'default';
 
   return (
-    <div className="fv-toolbar" data-tauri-drag-region>
-      <span data-titlebar-path className="fv-path" title={path}>
+    <div className="bd-fv-toolbar" data-tauri-drag-region>
+      <span data-titlebar-path className="bd-fv-path" title={path}>
         {path}
       </span>
-      <div className="fv-actions">
+      <div className="bd-fv-actions">
         <div
           role="group"
           aria-label="View mode"
