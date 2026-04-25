@@ -162,6 +162,21 @@ export function completedSettings() {
       workingOnWorkItemIds: [],
       workItemWorktreePaths: {},
     },
+    sql: {
+      connections: [
+        {
+          name: 'test-db',
+          server: 'localhost',
+          port: 1433,
+          database: 'test',
+          authentication: 'sql',
+          username: 'sa',
+          password: 'pw',
+          trustServerCertificate: true,
+        },
+      ],
+      lastUsedConnection: 'test-db',
+    },
   };
 }
 
