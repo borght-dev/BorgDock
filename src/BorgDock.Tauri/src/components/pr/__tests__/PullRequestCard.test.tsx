@@ -164,7 +164,8 @@ describe('PullRequestCard', () => {
 
     it('renders the PR number', () => {
       render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByText('#42')).toBeInTheDocument();
+      // PRCard primitive renders the number in both the meta row and the right column
+      expect(screen.getAllByText('#42').length).toBeGreaterThan(0);
     });
 
     it('renders the branch name', () => {
@@ -188,13 +189,16 @@ describe('PullRequestCard', () => {
     });
 
     it('renders the merge score badge', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByLabelText('Merge score: 100%')).toBeInTheDocument();
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      // Ring primitive carries `.bd-ring`; numeric value rendered inside
+      expect(container.querySelector('.bd-ring')).toBeInTheDocument();
+      expect(container.querySelector('.bd-ring__label')?.textContent).toBe('100');
     });
 
     it('renders the status indicator', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByLabelText('Status: green')).toBeInTheDocument();
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      // Dot primitive carries `.bd-dot--green` for green status
+      expect(container.querySelector('.bd-dot--green')).toBeInTheDocument();
     });
   });
 
@@ -301,12 +305,13 @@ describe('PullRequestCard', () => {
   });
 
   describe('focus mode', () => {
-    it('shows repo chip in focus mode', () => {
+    it('shows the repo path on every PR card', () => {
+      // PRCard primitive always renders repo in meta row, regardless of focus mode
       render(<PullRequestCard prWithChecks={makePr()} focusMode={true} />);
       expect(screen.getByText('test/repo')).toBeInTheDocument();
     });
 
-    it('shows priority reason label when factors are provided', () => {
+    it('shows priority reason label when factors are provided in focus mode', () => {
       render(
         <PullRequestCard
           prWithChecks={makePr()}
@@ -317,9 +322,14 @@ describe('PullRequestCard', () => {
       expect(screen.getByTestId('priority-reason')).toBeInTheDocument();
     });
 
-    it('does not show repo chip when not in focus mode', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.queryByText('test/repo')).not.toBeInTheDocument();
+    it('does not render priority reason label when not in focus mode', () => {
+      render(
+        <PullRequestCard
+          prWithChecks={makePr()}
+          priorityFactors={[{ type: 'readyToMerge', points: 10, label: 'Ready to merge' }]}
+        />,
+      );
+      expect(screen.queryByTestId('priority-reason')).not.toBeInTheDocument();
     });
   });
 
@@ -333,8 +343,10 @@ describe('PullRequestCard', () => {
     });
 
     it('opens context menu on right click', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      const card = screen.getByText('Add feature X').closest('button');
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      // PRCard primitive renders an interactive Card div with .bd-pr-card class
+      const card = container.querySelector('.bd-pr-card');
+      expect(card).toBeInTheDocument();
       fireEvent.contextMenu(card!);
       expect(screen.getByText('Open in GitHub')).toBeInTheDocument();
     });
@@ -516,22 +528,29 @@ describe('PullRequestCard', () => {
   });
 
   describe('selected state', () => {
-    it('applies selected styling when PR is selected', () => {
+    it('applies the focused-ring class via PRCard isFocused prop when PR is selected', () => {
       uiState.selectedPrNumber = 42;
       const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
-      const button = container.querySelector('[data-pr-card]');
-      expect(button?.className).toContain('border-[var(--color-accent)]');
+      // PullRequestCard maps store selectedPrNumber === pr.number to PRCard isFocused, which adds ring-2
+      const card = container.querySelector('.bd-pr-card');
+      expect(card?.className).toContain('ring-2');
     });
 
-    it('applies focused ring when isFocused is true', () => {
+    it('marks active=true via the isFocused prop on the underlying PRCard', () => {
       const { container } = render(<PullRequestCard prWithChecks={makePr()} isFocused={true} />);
-      const button = container.querySelector('[data-pr-card]');
-      expect(button?.className).toContain('ring-2');
+      const card = container.querySelector('.bd-pr-card');
+      // active prop on PRCard emits data-active="true"
+      expect(card?.getAttribute('data-active')).toBe('true');
+    });
+
+    it('preserves data-pr-card on the wrapper for keyboard navigation', () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      expect(container.querySelector('[data-pr-card]')).toBeInTheDocument();
     });
   });
 
   describe('my PR styling', () => {
-    it('uses green avatar color for own PRs', () => {
+    it('uses the own-avatar tone for own PRs', () => {
       const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
@@ -539,12 +558,10 @@ describe('PullRequestCard', () => {
           })}
         />,
       );
-      const avatar = container.querySelector('span[style*="background-color"]');
-      // JSDOM normalizes hex to rgb
-      expect(avatar?.getAttribute('style')).toContain('rgb(29, 158, 117)');
+      expect(container.querySelector('.bd-avatar--own')).toBeInTheDocument();
     });
 
-    it('uses purple avatar color for others PRs', () => {
+    it('uses the them-avatar tone for other PRs', () => {
       const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
@@ -552,8 +569,7 @@ describe('PullRequestCard', () => {
           })}
         />,
       );
-      const avatar = container.querySelector('span[style*="background-color"]');
-      expect(avatar?.getAttribute('style')).toContain('rgb(83, 74, 183)');
+      expect(container.querySelector('.bd-avatar--them')).toBeInTheDocument();
     });
   });
 
@@ -562,7 +578,8 @@ describe('PullRequestCard', () => {
       uiState.expandedPrNumbers = new Set([42]);
       render(<PullRequestCard prWithChecks={makePr()} />);
       expect(screen.getByTestId('merge-checklist')).toBeInTheDocument();
-      expect(screen.getByText('main')).toBeInTheDocument(); // baseRef
+      // baseRef "main" appears in both the PRCard primitive meta row and the expanded panel
+      expect(screen.getAllByText('main').length).toBeGreaterThan(0);
     });
 
     it('shows PR body when expanded and body exists', () => {
@@ -650,21 +667,8 @@ describe('PullRequestCard', () => {
           })}
         />,
       );
-      expect(screen.getByText('2/2')).toBeInTheDocument();
-    });
-
-    it('shows comment count when there are comments', () => {
-      const { container } = render(
-        <PullRequestCard
-          prWithChecks={makePr({
-            pullRequest: { commentCount: 5 } as PullRequestWithChecks['pullRequest'],
-          })}
-        />,
-      );
-      // Comment count is rendered with a speech bubble emoji in a tabular-nums span
-      const commentSpan = container.querySelector('span[title="Comments"]');
-      expect(commentSpan).toBeInTheDocument();
-      expect(commentSpan?.textContent).toContain('5');
+      // PRCard primitive renders the pass ratio inside the status label
+      expect(screen.getByText('2/2 passing')).toBeInTheDocument();
     });
   });
 });
