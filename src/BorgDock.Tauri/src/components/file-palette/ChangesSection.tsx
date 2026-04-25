@@ -182,6 +182,7 @@ export function ChangesSection(props: ChangesSectionProps) {
         onMouseEnter={() => onHover(globalIdx)}
         onClick={() => onOpen(file, group)}
       >
+        {/* style: file-status-driven color — statusColor() returns a hex string computed per git status */}
         <span
           className="bd-fp-changes-status"
           style={{ color: statusColor(file.status) }}

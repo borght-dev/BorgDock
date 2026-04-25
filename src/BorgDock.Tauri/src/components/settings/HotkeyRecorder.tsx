@@ -1,5 +1,5 @@
-import clsx from 'clsx';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/shared/primitives/Button';
 
 interface HotkeyRecorderProps {
   value: string;
@@ -9,7 +9,6 @@ interface HotkeyRecorderProps {
 export function HotkeyRecorder({ value, onChange }: HotkeyRecorderProps) {
   const [recording, setRecording] = useState(false);
   const [currentKeys, setCurrentKeys] = useState<string[]>([]);
-  const inputRef = useRef<HTMLButtonElement>(null);
 
   const startRecording = useCallback(() => {
     setRecording(true);
@@ -65,29 +64,24 @@ export function HotkeyRecorder({ value, onChange }: HotkeyRecorderProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <button
-        ref={inputRef}
+      <Button
+        variant={recording ? 'primary' : 'secondary'}
+        size="sm"
+        className="flex-1 font-mono text-left"
         onClick={recording ? cancelRecording : startRecording}
-        className={clsx(
-          'flex-1 rounded-md border px-2.5 py-1.5 text-left text-[13px] font-mono transition-colors',
-          recording
-            ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
-            : 'border-[var(--color-input-border)] bg-[var(--color-input-bg)] text-[var(--color-text-primary)]',
-        )}
+        data-hotkey-recorder
+        data-recording={recording ? 'true' : 'false'}
       >
         {recording
           ? currentKeys.length > 0
             ? currentKeys.join(' + ')
             : 'Press a key combo...'
           : value || 'Not set'}
-      </button>
+      </Button>
       {recording && (
-        <button
-          onClick={cancelRecording}
-          className="rounded-md px-2 py-1 text-[12px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
-        >
+        <Button variant="ghost" size="sm" onClick={cancelRecording}>
           Cancel
-        </button>
+        </Button>
       )}
     </div>
   );

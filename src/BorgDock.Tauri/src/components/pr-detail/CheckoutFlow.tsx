@@ -258,6 +258,7 @@ export function CheckoutFlow({
       >
         <div
           className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+          // style: status-driven gradient stripe — color-mix percentage CSS gradient, no Tailwind equivalent
           style={{
             background:
               'linear-gradient(90deg, color-mix(in srgb, var(--color-status-green) 7%, transparent) 0%, transparent 40%)',
@@ -820,6 +821,7 @@ function StatusStrip({ mode, branchName }: { mode: Mode; branchName: string }) {
     return (
       <div
         className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+        // style: mode-driven gradient stripe (running/success/error) — color-mix CSS gradient, no Tailwind equivalent
         style={{
           background:
             'linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 7%, transparent) 0%, transparent 40%)',
@@ -842,6 +844,7 @@ function StatusStrip({ mode, branchName }: { mode: Mode; branchName: string }) {
     return (
       <div
         className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+        // style: mode-driven gradient stripe — color-mix CSS gradient, no Tailwind equivalent
         style={{
           background:
             'linear-gradient(90deg, color-mix(in srgb, var(--color-status-green) 7%, transparent) 0%, transparent 40%)',
@@ -866,6 +869,7 @@ function StatusStrip({ mode, branchName }: { mode: Mode; branchName: string }) {
   return (
     <div
       className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+      // style: mode-driven gradient stripe — color-mix CSS gradient, no Tailwind equivalent
       style={{
         background:
           'linear-gradient(90deg, color-mix(in srgb, var(--color-status-red) 7%, transparent) 0%, transparent 40%)',

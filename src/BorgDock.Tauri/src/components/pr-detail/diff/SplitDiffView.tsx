@@ -37,6 +37,7 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
   return (
     <table
       className="w-full border-collapse"
+      // style: var(--font-code) custom property + exact pixel fontSize/lineHeight/tableLayout for diff alignment
       style={{
         fontFamily: 'var(--font-code)',
         fontSize: '13px',
@@ -48,6 +49,7 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
       }}
     >
       <colgroup>
+        {/* style: gutter pixel widths + computed contentWidth — exact col sizing for split layout */}
         <col style={{ width: `${GUTTER_PX}px` }} />
         <col style={{ width: contentWidth }} />
         <col style={{ width: `${GUTTER_PX}px` }} />
@@ -56,6 +58,7 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
       <tbody>
         {rows.map((row, i) => {
           if (row.isHunkHeader) {
+            // style: hunk-header bg token + exact 28px height for diff row alignment
             return (
               <tr
                 key={i}
@@ -65,6 +68,7 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
                 <td
                   colSpan={4}
                   className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none"
+                  // style: exact 28px height matches diff line height
                   style={{ height: '28px' }}
                 >
                   {row.hunkContent}
@@ -112,12 +116,14 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
           return (
             <tr key={i}>
               {/* Left side */}
+              {/* style: line-type-driven gutter bg + userSelect CSS property */}
               <td
                 className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)] border-r border-[var(--color-diff-border)]"
                 style={{ backgroundColor: leftGutterBg, userSelect: 'none' }}
               >
                 {row.left?.oldLineNumber ?? ''}
               </td>
+              {/* style: line-type-driven cell bg + padding:0/overflow reset — cannot use className for per-row tokens */}
               <td
                 className="border-r border-[var(--color-diff-border)]"
                 data-line-kind={leftKind}
@@ -138,12 +144,14 @@ export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
                 </div>
               </td>
               {/* Right side */}
+              {/* style: line-type-driven gutter bg + userSelect CSS property */}
               <td
                 className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)] border-r border-[var(--color-diff-border)]"
                 style={{ backgroundColor: rightGutterBg, userSelect: 'none' }}
               >
                 {row.right?.newLineNumber ?? ''}
               </td>
+              {/* style: line-type-driven cell bg + padding:0/overflow reset — cannot use className for per-row tokens */}
               <td
                 data-line-kind={rightKind}
                 style={{ backgroundColor: rightBg, padding: 0, overflow: 'hidden' }}
@@ -277,8 +285,10 @@ function VirtualSplitDiff({
     <div
       ref={parentRef}
       className="overflow-auto h-full"
+      // style: var(--font-code) custom property + exact pixel fontSize/lineHeight for diff alignment
       style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
     >
+      {/* style: virtualizer total height computed per render */}
       <div
         style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
       >
@@ -293,6 +303,7 @@ function VirtualSplitDiff({
                 data-index={i}
                 data-hunk-header=""
                 ref={virtualizer.measureElement}
+                // style: virtualizer absolute positioning + translateY offset computed per row
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -303,6 +314,7 @@ function VirtualSplitDiff({
               >
                 <div
                   className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none"
+                  // style: hunk-header bg token + exact 28px height/lineHeight for diff row alignment
                   style={{
                     backgroundColor: 'var(--color-diff-hunk-header-bg)',
                     height: '28px',
@@ -354,6 +366,7 @@ function VirtualSplitDiff({
               key={i}
               data-index={i}
               ref={virtualizer.measureElement}
+              // style: virtualizer absolute positioning + translateY offset computed per row
               style={{
                 position: 'absolute',
                 top: 0,
@@ -365,6 +378,7 @@ function VirtualSplitDiff({
               <div className="flex">
                 <div
                   className="w-[40px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)] border-r border-[var(--color-diff-border)]"
+                  // style: line-type-driven gutter bg — computed per row
                   style={{ backgroundColor: leftGutterBg }}
                 >
                   {row.left?.oldLineNumber ?? ''}
@@ -372,6 +386,7 @@ function VirtualSplitDiff({
                 <div
                   className="w-[calc(50%-40px)] shrink-0 pl-2 whitespace-pre overflow-x-auto border-r border-[var(--color-diff-border)]"
                   data-line-kind={leftKind}
+                  // style: line-type-driven cell bg — computed per row
                   style={{ backgroundColor: leftBg }}
                 >
                   {row.left && (
@@ -388,6 +403,7 @@ function VirtualSplitDiff({
                 </div>
                 <div
                   className="w-[40px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)] border-r border-[var(--color-diff-border)]"
+                  // style: line-type-driven gutter bg — computed per row
                   style={{ backgroundColor: rightGutterBg }}
                 >
                   {row.right?.newLineNumber ?? ''}
@@ -395,6 +411,7 @@ function VirtualSplitDiff({
                 <div
                   className="flex-1 pl-2 whitespace-pre overflow-x-auto"
                   data-line-kind={rightKind}
+                  // style: line-type-driven cell bg — computed per row
                   style={{ backgroundColor: rightBg }}
                 >
                   {row.right && (

@@ -494,11 +494,11 @@ export function WorkItemDetailApp() {
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
           <Card padding="md">
-            <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="text-[13px] text-[var(--color-text-muted)]">
               {error}
             </p>
           </Card>
@@ -509,7 +509,7 @@ export function WorkItemDetailApp() {
 
   if (!detailData) {
     return (
-      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
           <Card padding="md">
@@ -521,7 +521,7 @@ export function WorkItemDetailApp() {
   }
 
   return (
-    <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <WindowTitleBar title={titleText} />
       <div className="flex-1 overflow-y-auto">
         <WorkItemDetailPanel

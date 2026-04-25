@@ -1,11 +1,12 @@
-import clsx from 'clsx';
 import type {
   SidebarEdge,
   SidebarMode,
   ThemeMode,
   UiSettings,
 } from '@/types';
+import { Chip, Input } from '@/components/shared/primitives';
 import { HotkeyRecorder } from './HotkeyRecorder';
+import { ToggleSwitch } from './_ToggleSwitch';
 
 interface AppearanceSectionProps {
   ui: UiSettings;
@@ -33,23 +34,21 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
   const update = (partial: Partial<UiSettings>) => onChange({ ...ui, ...partial });
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" data-settings-section="appearance">
       {/* Theme */}
       <FieldLabel label="Theme">
         <div className="flex gap-1">
           {THEME_OPTIONS.map(({ value, label }) => (
-            <button
+            <Chip
               key={value}
-              className={clsx(
-                'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
-                ui.theme === value
-                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
-              )}
+              active={ui.theme === value}
               onClick={() => update({ theme: value })}
+              data-segmented-option
+              data-active={ui.theme === value}
+              className="flex-1 justify-center"
             >
               {label}
-            </button>
+            </Chip>
           ))}
         </div>
       </FieldLabel>
@@ -58,18 +57,16 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
       <FieldLabel label="Sidebar Edge">
         <div className="flex gap-1">
           {EDGE_OPTIONS.map(({ value, label }) => (
-            <button
+            <Chip
               key={value}
-              className={clsx(
-                'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
-                ui.sidebarEdge === value
-                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
-              )}
+              active={ui.sidebarEdge === value}
               onClick={() => update({ sidebarEdge: value })}
+              data-segmented-option
+              data-active={ui.sidebarEdge === value}
+              className="flex-1 justify-center"
             >
               {label}
-            </button>
+            </Chip>
           ))}
         </div>
       </FieldLabel>
@@ -78,18 +75,16 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
       <FieldLabel label="Sidebar Mode">
         <div className="flex gap-1">
           {MODE_OPTIONS.map(({ value, label }) => (
-            <button
+            <Chip
               key={value}
-              className={clsx(
-                'flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors',
-                ui.sidebarMode === value
-                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
-              )}
+              active={ui.sidebarMode === value}
               onClick={() => update({ sidebarMode: value })}
+              data-segmented-option
+              data-active={ui.sidebarMode === value}
+              className="flex-1 justify-center"
             >
               {label}
-            </button>
+            </Chip>
           ))}
         </div>
       </FieldLabel>
@@ -99,6 +94,7 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         <input
           type="range"
           className="w-full accent-[var(--color-accent)]"
+          data-settings-control="sidebar-width"
           min={200}
           max={1200}
           step={10}
@@ -133,7 +129,7 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
       {/* Windows Terminal profile override (only meaningful on Windows, but the
           field is harmless on other platforms and will simply be ignored). */}
       <FieldLabel label="Windows Terminal profile">
-        <input
+        <Input
           type="text"
           value={ui.windowsTerminalProfile ?? ''}
           onChange={(e) =>
@@ -142,8 +138,8 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
             })
           }
           placeholder="Auto-detect"
-          className="field-input w-full"
           spellCheck={false}
+          className="w-full"
         />
         <div className="mt-1 text-[10px] text-[var(--color-text-ghost)]">
           Used by the "Claude" button in the checkout flow. Leave empty to auto-detect your default profile.
@@ -155,20 +151,11 @@ export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
         <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
           Run at startup
         </label>
-        <button
-          onClick={() => update({ runAtStartup: !ui.runAtStartup })}
-          className={clsx(
-            'relative h-5 w-9 rounded-full transition-colors',
-            ui.runAtStartup ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]',
-          )}
-        >
-          <div
-            className={clsx(
-              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
-              ui.runAtStartup ? 'translate-x-4' : 'translate-x-0.5',
-            )}
-          />
-        </button>
+        <ToggleSwitch
+          checked={ui.runAtStartup}
+          onChange={(next) => update({ runAtStartup: next })}
+          aria-label="Run at startup"
+        />
       </div>
     </div>
   );

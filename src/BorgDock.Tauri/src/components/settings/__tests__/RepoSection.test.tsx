@@ -120,8 +120,8 @@ describe('RepoSection', () => {
     const repos = [makeRepo(), makeRepo({ owner: 'acme', name: 'frontend' })];
     render(<RepoSection repos={repos} onChange={onChange} />);
 
-    // Find the remove button (x character) for the first repo
-    const removeButtons = screen.getAllByText('\u2715');
+    // Find the remove buttons by aria-label
+    const removeButtons = screen.getAllByRole('button', { name: 'Remove' });
     fireEvent.click(removeButtons[0]!);
 
     expect(onChange).toHaveBeenCalledWith([
@@ -133,10 +133,8 @@ describe('RepoSection', () => {
     const repos = [makeRepo({ enabled: true })];
     render(<RepoSection repos={repos} onChange={onChange} />);
 
-    // The toggle button is the first button in the repo row
-    const toggleButtons = screen.getAllByRole('button');
-    // First button should be the toggle (it has the rounded-full class)
-    const toggle = toggleButtons[0]!;
+    // ToggleSwitch renders with role="switch"
+    const toggle = screen.getByRole('switch', { name: 'Enable backend' });
     fireEvent.click(toggle);
 
     expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ enabled: false })]);

@@ -88,11 +88,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
         <div className="ml-auto flex items-center gap-1">
           {failing > 0 && (
             <span
-              className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
-              style={{
-                background: 'var(--color-action-danger-bg)',
-                color: 'var(--color-status-red)',
-              }}
+              className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]"
             >
               {failing}
               {'\u2716'}
@@ -105,6 +101,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
       </button>
 
       {/* Content */}
+      {/* style: maxHeight is raf-tweened via requestAnimationFrame for smooth collapse/expand animation */}
       <div
         ref={contentRef}
         className="overflow-hidden transition-[max-height] duration-200 ease-in-out"

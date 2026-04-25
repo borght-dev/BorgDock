@@ -140,6 +140,7 @@ function VirtualizedList({
 
   return (
     <div ref={parentRef} className="flex-1 overflow-y-auto px-2 py-2">
+      {/* style: virtualizer total height computed per render */}
       <div
         style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
       >
@@ -150,6 +151,7 @@ function VirtualizedList({
               key={item.id}
               ref={virtualizer.measureElement}
               data-index={virtualRow.index}
+              // style: virtualizer absolute positioning + translateY offset computed per row
               style={{
                 position: 'absolute',
                 top: 0,

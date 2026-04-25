@@ -30,6 +30,7 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
   return (
     <div
       className="flex h-screen w-screen items-end justify-end"
+      // style: transparent background required for Tauri transparent-window overlay; padding in px avoids Tailwind rounding
       style={{ background: 'transparent', padding: 16 }}
     >
       <div className="flex w-[320px] flex-col gap-2">
@@ -39,6 +40,7 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
             data-toast=""
             data-testid={`flyout-toast-card-${toast.id}`}
             className="overflow-hidden rounded-[12px] border shadow-lg"
+            // style: flyout-shadow custom property — no Tailwind shadow utility maps to this design token
             style={{
               background: 'var(--color-surface)',
               borderColor: 'var(--color-strong-border)',
@@ -59,31 +61,24 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
             }}
           >
             <div
-              className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold"
-              style={{ color: 'var(--color-text-primary)' }}
+              className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[var(--color-text-primary)]"
             >
               <Pill tone={severityTone(toast.severity)}>{toast.severity}</Pill>
               <span>{toast.title}</span>
             </div>
-            <div className="px-3 py-2 text-[12px]" style={{ color: 'var(--color-text-primary)' }}>
+            <div className="px-3 py-2 text-[12px] text-[var(--color-text-primary)]">
               {toast.body}
             </div>
             {toast.actions.length > 0 && (
               <div
-                className="flex gap-1.5 border-t px-3 py-2"
-                style={{ borderColor: 'var(--color-subtle-border)' }}
+                className="flex gap-1.5 border-t px-3 py-2 border-[var(--color-subtle-border)]"
               >
                 {toast.actions.map((a) => (
                   <button
                     key={`${toast.id}-${a.action}`}
                     type="button"
                     onClick={() => onActionClick(toast, a.action, a.url)}
-                    className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
-                    style={{
-                      background: 'var(--color-surface-hover)',
-                      color: 'var(--color-text-secondary)',
-                      border: '1px solid var(--color-subtle-border)',
-                    }}
+                    className="rounded-md px-2.5 py-1 text-[11px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border border-[var(--color-subtle-border)]"
                   >
                     {a.label}
                   </button>

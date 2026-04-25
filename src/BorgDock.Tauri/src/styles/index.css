@@ -51,8 +51,6 @@
   --color-status-merged: var(--color-status-merged);
 
   /* Filter chip + tracking */
-  --color-filter-chip-bg: var(--color-filter-chip-bg);
-  --color-filter-chip-fg: var(--color-filter-chip-fg);
   --color-tracked-border: var(--color-tracked-border);
   --color-tracked-soft: var(--color-tracked-soft);
   --color-working-on-border: var(--color-working-on-border);
@@ -284,7 +282,7 @@
   --color-text-primary: #1a1726;
   --color-text-secondary: #3a3550;
   --color-text-tertiary: #5a5670;
-  --color-text-muted: #8a85a0;
+  --color-text-muted: #6a6580;
   --color-text-faint: #b8b0c8;
   --color-text-ghost: #d8d4e3;
 
@@ -312,10 +310,6 @@
 
   /* Separator */
   --color-separator: rgba(90, 86, 112, 0.08);
-
-  /* Filter chip */
-  --color-filter-chip-bg: rgba(26, 23, 38, 0.04);
-  --color-filter-chip-fg: #5a5670;
 
   /* Surfaces — cool purple */
   --color-sidebar-gradient-top: #f7f5fb;
@@ -580,7 +574,7 @@
   --color-text-primary: #edeaf4;
   --color-text-secondary: #c8c4d6;
   --color-text-tertiary: #8a85a0;
-  --color-text-muted: #5a5670;
+  --color-text-muted: #9490a8;
   --color-text-faint: #3a3650;
   --color-text-ghost: #2a2640;
 
@@ -603,9 +597,6 @@
   --color-status-gray: #5a5670;
 
   --color-separator: rgba(138, 133, 160, 0.08);
-
-  --color-filter-chip-bg: rgba(138, 133, 160, 0.06);
-  --color-filter-chip-fg: #8a85a0;
 
   --color-sidebar-gradient-top: #110f1a;
   --color-sidebar-gradient-bottom: #1a1726;
@@ -1026,7 +1017,7 @@ body {
   font-weight: 600;
   font-family: var(--font-code);
   color: var(--color-text-muted);
-  background: var(--color-filter-chip-bg);
+  background: var(--color-surface-hover);
   padding: 1px 7px;
   border-radius: 10px;
   line-height: 1.4;

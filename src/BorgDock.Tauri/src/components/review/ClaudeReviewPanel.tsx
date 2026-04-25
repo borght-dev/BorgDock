@@ -88,6 +88,7 @@ export function ClaudeReviewPanel({ comments }: ClaudeReviewPanelProps) {
                 </svg>
               }
             >
+              {/* style: severity-group dot color — group.color is a severity-driven hex string computed per group */}
               <span
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: group.color }}

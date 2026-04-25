@@ -51,6 +51,7 @@ function QueryTreeItem({
             ? 'bg-[var(--color-selected-row-bg)] !bg-[var(--color-selected-row-bg)] text-[var(--color-accent)]'
             : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]',
         )}
+        // style: tree-depth-driven paddingLeft — depth * 16 + 8 computed per node level
         style={{ paddingLeft: `${depth * 16 + 8}px`, paddingRight: 8 }}
         onClick={() => {
           if (node.isFolder) {

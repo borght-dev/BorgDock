@@ -256,6 +256,7 @@ export default function App() {
   if (fadingOut) {
     return (
       <>
+        {/* style: custom animation keyframe name — no Tailwind utility for splash-fade-out */}
         <div
           className="pointer-events-none fixed inset-0 z-50"
           style={{

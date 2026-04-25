@@ -86,9 +86,7 @@ describe('AuthStep', () => {
 
   it('does not show auth status when empty', () => {
     const { container } = render(<AuthStep {...defaultProps} authStatus="" />);
-    expect(
-      container.querySelector('.border-\\[var\\(--color-success-badge-border\\)\\]'),
-    ).toBeNull();
+    expect(container.querySelector('[data-auth-status]')).toBeNull();
   });
 
   it('shows auth status when provided', () => {

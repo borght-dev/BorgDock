@@ -167,8 +167,7 @@ export function PRDetailApp() {
   const preloadHeader = (
     <div
       data-tauri-drag-region
-      className="flex h-9 items-center justify-between border-b border-[var(--color-separator)] px-3 text-xs"
-      style={{ color: 'var(--color-text-muted)' }}
+      className="flex h-9 items-center justify-between border-b border-[var(--color-separator)] px-3 text-xs text-[var(--color-text-muted)]"
     >
       <span data-tauri-drag-region className="truncate">
         {number ? `PR #${number}` : 'Pull Request'}
@@ -186,10 +185,10 @@ export function PRDetailApp() {
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="text-[13px] text-[var(--color-text-muted)]">
             {error}
           </p>
         </div>
@@ -199,7 +198,7 @@ export function PRDetailApp() {
 
   if (isLoading || !pr) {
     return (
-      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
@@ -209,7 +208,7 @@ export function PRDetailApp() {
   }
 
   return (
-    <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <div className="relative flex-1 overflow-y-auto">
         <PRDetailPanel pr={pr} popOutWindow />
       </div>

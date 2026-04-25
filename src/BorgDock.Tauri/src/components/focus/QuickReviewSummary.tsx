@@ -34,7 +34,7 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
       <div className="flex justify-center gap-6">
         {approved > 0 && (
           <div className="text-center">
-            <div className="text-xl font-bold" style={{ color: 'var(--color-status-green)' }}>
+            <div className="text-xl font-bold text-[var(--color-status-green)]">
               {approved}
             </div>
             <div className="text-[10px] text-[var(--color-text-muted)]">Approved</div>
@@ -42,7 +42,7 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
         )}
         {commented > 0 && (
           <div className="text-center">
-            <div className="text-xl font-bold" style={{ color: 'var(--color-status-yellow)' }}>
+            <div className="text-xl font-bold text-[var(--color-status-yellow)]">
               {commented}
             </div>
             <div className="text-[10px] text-[var(--color-text-muted)]">Commented</div>
@@ -68,6 +68,7 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
                   #{pr.pullRequest.number} {pr.pullRequest.title}
                 </span>
                 {info && (
+                  // style: decision-driven color — info.color maps to status token per decision type
                   <span className="shrink-0 font-medium" style={{ color: info.color }}>
                     {info.label}
                   </span>

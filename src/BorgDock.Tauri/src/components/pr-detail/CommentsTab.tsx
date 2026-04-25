@@ -120,6 +120,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
     return (
       <div className="space-y-2 p-3">
         {Array.from({ length: 3 }).map((_, i) => (
+          // style: staggered animation delay varies per skeleton index — computed at render
           <Card
             key={i}
             padding="sm"
@@ -195,12 +196,14 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                   data-comment-card
                   data-comment-id={comment.id}
                   className="flex overflow-hidden !p-0 animate-[comment-enter_0.25s_ease-out_both]"
+                  // style: animation delay and conditional top margin are comment-index + author-grouping driven — computed per render
                   style={{
                     animationDelay: `${idx * 40}ms`,
                     marginTop: prevSameAuthor ? '4px' : undefined,
                   }}
                 >
                   {/* Left author stripe — chromatic decoration, kept inline */}
+                  {/* style: author-driven color — distinct hex per login, cannot express in Tailwind */}
                   <div className="w-[3px] shrink-0" style={{ backgroundColor: color }} />
 
                   <div className="min-w-0 flex-1 px-3 py-2.5">
@@ -210,6 +213,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                         {/* Avatar — bots keep an inline span because Avatar primitive
                             doesn't accept custom SVG children; humans use the shared Avatar. */}
                         {bot ? (
+                          // style: author-driven background color — distinct hex per login, cannot express in Tailwind
                           <span
                             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8px] font-bold"
                             style={{
@@ -242,6 +246,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                         )}
 
                         {/* Name + badges */}
+                        {/* style: author-driven name color — distinct hex per login, cannot express in Tailwind */}
                         <span className="text-xs font-semibold" style={{ color }}>
                           {comment.author}
                         </span>
@@ -271,6 +276,7 @@ export function CommentsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Comm
                     {comment.filePath && (
                       <div
                         className="mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono"
+                        // style: author-driven color + color-mix background derived from it — both computed per render
                         style={{
                           color,
                           backgroundColor: `color-mix(in srgb, ${color} 6%, transparent)`,

@@ -1,6 +1,6 @@
-import clsx from 'clsx';
 import { useState } from 'react';
 import type { GitHubSettings } from '@/types';
+import { Button, Chip, Input } from '@/components/shared/primitives';
 
 interface GitHubSectionProps {
   github: GitHubSettings;
@@ -13,23 +13,21 @@ export function GitHubSection({ github, onChange }: GitHubSectionProps) {
   const update = (partial: Partial<GitHubSettings>) => onChange({ ...github, ...partial });
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" data-settings-section="github" data-auth-method={github.authMethod}>
       {/* Auth method */}
       <FieldLabel label="Auth Method">
         <div className="flex gap-1">
           {(['ghCli', 'pat'] as const).map((method) => (
-            <button
+            <Chip
               key={method}
-              className={clsx(
-                'flex-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-                github.authMethod === method
-                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
-              )}
+              active={github.authMethod === method}
               onClick={() => update({ authMethod: method })}
+              data-segmented-option
+              data-active={github.authMethod === method}
+              className="flex-1 justify-center"
             >
               {method === 'ghCli' ? 'GitHub CLI' : 'Personal Access Token'}
-            </button>
+            </Chip>
           ))}
         </div>
       </FieldLabel>
@@ -37,32 +35,32 @@ export function GitHubSection({ github, onChange }: GitHubSectionProps) {
       {/* PAT input */}
       {github.authMethod === 'pat' && (
         <FieldLabel label="Personal Access Token">
-          <div className="relative">
-            <input
-              type={showToken ? 'text' : 'password'}
-              className="field-input w-full pr-8"
-              value={github.personalAccessToken ?? ''}
-              onChange={(e) => update({ personalAccessToken: e.target.value })}
-              placeholder="ghp_..."
-            />
-            <button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              onClick={() => setShowToken((prev) => !prev)}
-              type="button"
-            >
-              {showToken ? 'Hide' : 'Show'}
-            </button>
-          </div>
+          <Input
+            type={showToken ? 'text' : 'password'}
+            value={github.personalAccessToken ?? ''}
+            onChange={(e) => update({ personalAccessToken: e.target.value })}
+            placeholder="ghp_..."
+            className="w-full"
+            trailing={
+              <button
+                className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                onClick={() => setShowToken((prev) => !prev)}
+                type="button"
+              >
+                {showToken ? 'Hide' : 'Show'}
+              </button>
+            }
+          />
         </FieldLabel>
       )}
 
       {/* Username */}
       <FieldLabel label="Username">
-        <input
-          className="field-input w-full"
+        <Input
           value={github.username}
           onChange={(e) => update({ username: e.target.value })}
           placeholder="GitHub username"
+          className="w-full"
         />
       </FieldLabel>
 
@@ -80,9 +78,9 @@ export function GitHubSection({ github, onChange }: GitHubSectionProps) {
       </FieldLabel>
 
       {/* Test connection */}
-      <button className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-action-secondary-fg)] bg-[var(--color-action-secondary-bg)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)] transition-colors">
+      <Button variant="secondary" size="sm">
         Test Connection
-      </button>
+      </Button>
     </div>
   );
 }

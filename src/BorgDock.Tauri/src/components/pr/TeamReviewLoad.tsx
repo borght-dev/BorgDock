@@ -29,8 +29,7 @@ function ReviewerRow({ reviewer }: { reviewer: ReviewerLoad }) {
       title={`${reviewer.login}: ${reviewer.pendingReviewCount} pending review${reviewer.pendingReviewCount !== 1 ? 's' : ''}${reviewer.stalePrCount > 0 ? `, ${reviewer.stalePrCount} stale` : ''}`}
     >
       <span
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-white"
-        style={{ backgroundColor: '#534AB7' }}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-white bg-[#534AB7]"
       >
         {avatarInitials(reviewer.login)}
       </span>
@@ -39,11 +38,13 @@ function ReviewerRow({ reviewer }: { reviewer: ReviewerLoad }) {
           <span className="truncate text-[11px] text-[var(--color-text-secondary)]">
             {reviewer.login}
           </span>
+          {/* style: load-driven color token (green/yellow/red) varies per reviewer count */}
           <span className="ml-2 shrink-0 text-[10px] font-medium tabular-nums" style={{ color }}>
             {reviewer.pendingReviewCount}
           </span>
         </div>
         <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-raised)]">
+          {/* style: bar width is computed (pendingReviewCount / maxBar) — dynamic, load-driven color token */}
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${barWidth}%`, background: color }}
@@ -89,10 +90,9 @@ export function TeamReviewLoad() {
         <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
           Review Load
         </span>
-        <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
+        <span className="h-px flex-1 bg-[var(--color-separator)]" />
         <span
-          className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
-          style={{ color: 'var(--color-text-ghost)', background: 'var(--color-surface-raised)' }}
+          className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]"
         >
           {reviewers.length}
         </span>
