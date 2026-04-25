@@ -54,8 +54,8 @@ describe('FilePaletteApp', () => {
     await act(async () => {
       fireEvent.keyDown(root, { key: 'ArrowDown' });
     });
-    const second = screen.getByText('src/auth/login.tsx').closest('.fp-result-row');
-    expect(second?.className).toContain('fp-result-row--selected');
+    const second = screen.getByText('src/auth/login.tsx').closest('[data-file-result]');
+    expect(second?.getAttribute('data-selected')).toBe('true');
   });
 
   it('typing filters the file list', async () => {
