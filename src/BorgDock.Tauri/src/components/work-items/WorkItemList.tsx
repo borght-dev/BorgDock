@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef } from 'react';
+import { Card } from '@/components/shared/primitives';
 import type { WorktreeInfo } from '../../types';
 import type { WorkItemCardData } from './WorkItemCard';
 import { WorkItemCard } from './WorkItemCard';
@@ -34,10 +35,10 @@ export function WorkItemList({
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+        <Card padding="md" className="flex flex-col items-center gap-3">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
           <span className="text-[13px] text-[var(--color-text-muted)]">Loading work items...</span>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -45,7 +46,7 @@ export function WorkItemList({
   if (!selectedQueryName) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
-        <div className="text-center">
+        <Card padding="md" className="text-center">
           <svg
             className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
             viewBox="0 0 16 16"
@@ -59,7 +60,7 @@ export function WorkItemList({
           <p className="text-[13px] text-[var(--color-text-muted)]">
             Select a saved query to load work items
           </p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -67,7 +68,7 @@ export function WorkItemList({
   if (isEmpty) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
-        <div className="text-center">
+        <Card padding="md" className="text-center">
           <svg
             className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
             viewBox="0 0 16 16"
@@ -81,7 +82,7 @@ export function WorkItemList({
           <p className="text-[13px] text-[var(--color-text-muted)]">
             No work items match the current filters
           </p>
-        </div>
+        </Card>
       </div>
     );
   }
