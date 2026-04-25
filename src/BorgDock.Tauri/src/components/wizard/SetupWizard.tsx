@@ -1,11 +1,11 @@
-import clsx from 'clsx';
 import { useCallback, useMemo, useState } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { AppSettings, RepoSettings } from '@/types';
+import type { AppSettings, RepoSettings, SidebarEdge, ThemeMode } from '@/types';
+import { Button, Card, Chip, Dot } from '@/components/shared/primitives';
 import { AuthStep } from './AuthStep';
 import { RepoStep } from './RepoStep';
 
-const STEPS = ['Auth', 'Repos'] as const;
+const STEPS = ['Auth', 'Repos', 'Appearance'] as const;
 
 interface DiscoveredRepo {
   owner: string;
@@ -30,18 +30,24 @@ export function SetupWizard() {
   const [repos, setRepos] = useState<DiscoveredRepo[]>([]);
   const [isScanning, setIsScanning] = useState(false);
 
+  // Appearance state
+  const [sidebarEdge, setSidebarEdge] = useState<SidebarEdge>(settings.ui.sidebarEdge);
+  const [theme, setTheme] = useState<ThemeMode>(settings.ui.theme);
+
   const canGoNext = useMemo(() => {
     switch (currentStep) {
       case 0:
         return isAuthValid || (authMethod === 'pat' && pat.trim().length > 0);
       case 1:
         return repos.some((r) => r.isSelected);
+      case 2:
+        return true;
       default:
         return false;
     }
   }, [currentStep, isAuthValid, authMethod, pat, repos]);
 
-  const isOnFinalStep = currentStep === 1;
+  const isOnFinalStep = currentStep === 2;
 
   const handleNext = useCallback(async () => {
     if (currentStep === 0) {
@@ -59,6 +65,8 @@ export function SetupWizard() {
       } finally {
         setIsScanning(false);
       }
+    } else if (currentStep === 1) {
+      setCurrentStep(2);
     } else if (isOnFinalStep) {
       // Finish — save settings and let App.tsx transition to main UI
       const selectedRepos: RepoSettings[] = repos
@@ -81,10 +89,15 @@ export function SetupWizard() {
           username,
         },
         repos: selectedRepos,
+        ui: {
+          ...settings.ui,
+          sidebarEdge,
+          theme,
+        },
       };
       await saveSettings(updated);
     }
-  }, [currentStep, isOnFinalStep, repos, settings, authMethod, pat, username, saveSettings]);
+  }, [currentStep, isOnFinalStep, repos, settings, authMethod, pat, username, sidebarEdge, theme, saveSettings]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) {
@@ -93,31 +106,32 @@ export function SetupWizard() {
   }, [currentStep]);
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-background)]">
-      <div
-        className="flex w-[580px] flex-col rounded-2xl bg-[var(--color-modal-bg)] border border-[var(--color-modal-border)] shadow-2xl overflow-hidden"
-        style={{ maxHeight: '520px' }}
+    // style: fixed fullscreen overlay — positioning; no Tailwind utility covers this combination
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-[var(--color-background)]"
+      data-wizard-overlay
+    >
+      <Card
+        padding="lg"
+        className="flex w-[580px] flex-col rounded-2xl overflow-hidden"
+        style={{ maxHeight: '520px' }} // style: dynamic max-height constraint
       >
         {/* Step indicators */}
         <div className="flex items-center justify-center gap-2 px-6 py-4">
           {STEPS.map((label, i) => (
             <div key={label} className="flex items-center gap-2">
-              <div
-                className={clsx(
-                  'rounded-full transition-all',
-                  i === currentStep && 'h-5 w-5 bg-[var(--color-wizard-step-active)]',
-                  i < currentStep && 'h-2 w-2 bg-[var(--color-wizard-step-complete)]',
-                  i > currentStep && 'h-2 w-2 bg-[var(--color-wizard-step-inactive)]',
-                )}
+              <Dot
+                tone={i === currentStep ? 'green' : i < currentStep ? 'green' : 'gray'}
+                size={i === currentStep ? 20 : 8}
+                className="transition-all"
               />
               {i < STEPS.length - 1 && (
                 <div
-                  className={clsx(
-                    'h-px w-8',
+                  className={
                     i < currentStep
-                      ? 'bg-[var(--color-wizard-step-complete)]'
-                      : 'bg-[var(--color-wizard-step-track)]',
-                  )}
+                      ? 'h-px w-8 bg-[var(--color-wizard-step-complete)]'
+                      : 'h-px w-8 bg-[var(--color-wizard-step-track)]'
+                  }
                 />
               )}
             </div>
@@ -125,7 +139,7 @@ export function SetupWizard() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-4">
+        <div className="flex-1 overflow-y-auto px-8 py-4" data-wizard-step={currentStep}>
           {currentStep === 0 && (
             <AuthStep
               authMethod={authMethod}
@@ -172,30 +186,88 @@ export function SetupWizard() {
               }
             />
           )}
+          {currentStep === 2 && (
+            <div className="flex flex-col gap-6">
+              <div>
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                  Customize Appearance
+                </h2>
+                <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                  You can change these any time in Settings.
+                </p>
+              </div>
+
+              {/* Sidebar Position */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  Sidebar Position
+                </span>
+                <div className="flex gap-2">
+                  {(['left', 'right'] as const).map((edge) => (
+                    <Chip
+                      key={edge}
+                      active={sidebarEdge === edge}
+                      onClick={() => setSidebarEdge(edge)}
+                    >
+                      {edge}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  Theme
+                </span>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      { value: 'system', label: 'System' },
+                      { value: 'light', label: 'Light' },
+                      { value: 'dark', label: 'Dark' },
+                    ] as { value: ThemeMode; label: string }[]
+                  ).map(({ value, label }) => (
+                    <Chip
+                      key={value}
+                      active={theme === value}
+                      onClick={() => setTheme(value)}
+                    >
+                      {label}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
         <div className="flex items-center justify-between border-t border-[var(--color-separator)] px-6 py-3">
           {currentStep > 0 ? (
-            <button
-              className="rounded-lg px-4 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            <Button
+              variant="ghost"
+              size="md"
               onClick={handleBack}
+              data-wizard-action="back"
             >
               Back
-            </button>
+            </Button>
           ) : (
             <div />
           )}
 
-          <button
-            className="rounded-lg px-4 py-1.5 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40"
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleNext}
             disabled={!canGoNext}
+            data-wizard-action={isOnFinalStep ? 'finish' : 'next'}
           >
             {isOnFinalStep ? 'Finish' : 'Next'}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
