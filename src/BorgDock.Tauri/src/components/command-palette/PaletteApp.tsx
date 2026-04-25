@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
 import { PaletteRow } from '@/components/command-palette/PaletteRow';
+import { Kbd } from '@/components/shared/primitives';
 import { saveCurrentPosition, usePaletteSearch } from '@/hooks/usePaletteSearch';
 
 export function PaletteApp() {
@@ -106,30 +107,18 @@ export function PaletteApp() {
   let globalOffset = 0;
 
   return (
-    <div
-      className="h-screen w-screen overflow-hidden"
-      style={{ backgroundColor: 'var(--color-card-background)' }}
-    >
+    <div className="h-screen w-screen overflow-hidden bg-[var(--color-card-background)]">
       <div className="flex h-full w-full flex-col">
         {/* Drag handle */}
         <div
-          className="flex h-7 cursor-grab items-center justify-center active:cursor-grabbing"
-          style={{ backgroundColor: 'var(--color-surface-raised)' }}
+          className="flex h-7 cursor-grab items-center justify-center active:cursor-grabbing bg-[var(--color-surface-raised)]"
           onMouseDown={startDrag}
         >
+          {/* drag handle: bespoke 3-dot grip, no primitive maps */}
           <div className="flex gap-1">
-            <div
-              className="h-1 w-1 rounded-full"
-              style={{ backgroundColor: 'var(--color-text-ghost)' }}
-            />
-            <div
-              className="h-1 w-1 rounded-full"
-              style={{ backgroundColor: 'var(--color-text-ghost)' }}
-            />
-            <div
-              className="h-1 w-1 rounded-full"
-              style={{ backgroundColor: 'var(--color-text-ghost)' }}
-            />
+            <div className="h-1 w-1 rounded-full bg-[var(--color-text-ghost)]" />
+            <div className="h-1 w-1 rounded-full bg-[var(--color-text-ghost)]" />
+            <div className="h-1 w-1 rounded-full bg-[var(--color-text-ghost)]" />
           </div>
         </div>
 
@@ -142,13 +131,7 @@ export function PaletteApp() {
             onChange={(e) => setSearchText(e.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder="Search by ID, title, or assigned to..."
-            className="w-full rounded-lg border px-3 py-2.5 text-base outline-none"
-            style={{
-              backgroundColor: 'var(--color-input-bg)',
-              borderColor: 'var(--color-input-border)',
-              color: 'var(--color-text-primary)',
-              caretColor: 'var(--color-accent)',
-            }}
+            className="bd-input w-full rounded-lg border px-3 py-2.5 text-base outline-none bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)]"
           />
         </div>
 
@@ -169,32 +152,21 @@ export function PaletteApp() {
             /* Browse sections */
             <>
               {browseSections.length === 0 && !isLoadingBrowse && (
-                <div
-                  className="px-4 py-6 text-center text-[13px]"
-                  style={{ color: 'var(--color-text-muted)' }}
-                >
+                <div className="px-4 py-6 text-center text-[13px] text-[var(--color-text-muted)]">
                   Type to search work items
                 </div>
               )}
               {isLoadingBrowse && browseSections.length === 0 && (
                 <div className="flex items-center justify-center py-6">
-                  <span
-                    className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
-                    style={{ color: 'var(--color-text-muted)' }}
-                  />
-                  <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-                    Loading...
-                  </span>
+                  <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent text-[var(--color-text-muted)]" />
+                  <span className="text-[13px] text-[var(--color-text-muted)]">Loading...</span>
                 </div>
               )}
               {browseSections.map((section) => {
                 const sectionStart = globalOffset;
                 const rendered = (
                   <div key={section.label}>
-                    <div
-                      className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--color-text-tertiary)' }}
-                    >
+                    <div className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
                       {section.label}
                     </div>
                     {section.items.map((item, localIndex) => {
@@ -220,20 +192,20 @@ export function PaletteApp() {
 
         {/* Separator */}
         {(navItems.length > 0 || browseSections.length > 0) && (
-          <div className="h-px" style={{ backgroundColor: 'var(--color-separator)' }} />
+          <div className="h-px bg-[var(--color-separator)]" />
         )}
 
         {/* Status bar */}
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="text-xs text-[var(--color-text-muted)]">
             {isSearching && (
               <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent align-middle" />
             )}
             {statusText ||
               (navItems.length > 0 ? '\u2191\u2193 navigate \u00b7 \u23ce select' : '')}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-faint)' }}>
-            Esc to close
+          <span className="text-[11px] text-[var(--color-text-faint)]">
+            <Kbd>Esc</Kbd> to close
           </span>
         </div>
       </div>
