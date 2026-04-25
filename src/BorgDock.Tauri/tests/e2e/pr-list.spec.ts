@@ -45,11 +45,11 @@ test.describe('PR List', () => {
   });
 
   test('clicking a filter changes the active filter', async ({ page }) => {
-    // Click "Failing" filter
-    const failingBtn = page.locator('button').filter({ hasText: 'Failing' }).first();
+    // Click "Failing" filter — FilterBar uses Chip primitive (PR #4), so active
+    // state surfaces as data-filter-active="true" + aria-pressed="true".
+    const failingBtn = page.locator('[data-filter-chip][data-filter-key="failing"]');
     await failingBtn.click();
-    // Active filter renders with accent-subtle background (FilterBar.tsx).
-    await expect(failingBtn).toHaveClass(/bg-\[var\(--color-accent-subtle\)\]/);
+    await expect(failingBtn).toHaveAttribute('data-filter-active', 'true');
   });
 
   test('search bar is visible and accepts input', async ({ page }) => {
