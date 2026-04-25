@@ -90,6 +90,132 @@ pub struct BinaryMarker {
     pub new_size: Option<u64>,
 }
 
+/// Inner sync implementation — returned to callers via the async tauri command
+/// in `list_worktree_changes`. Split out so it's straightforward to unit-test
+/// without spinning up a tokio runtime.
+pub fn list_worktree_changes_inner(worktree_path: &str) -> Result<WorktreeChangeSet, String> {
+    let repo = Repository::open(worktree_path)
+        .map_err(|e| format!("failed to open worktree at {worktree_path}: {e}"))?;
+
+    let (base_branch, base_branch_source) = resolve_base_branch(&repo)?;
+
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .renames_head_to_index(true)
+        .renames_index_to_workdir(true);
+
+    let statuses = repo
+        .statuses(Some(&mut status_opts))
+        .map_err(|e| format!("git statuses failed: {e}"))?;
+
+    let mut vs_head: Vec<FileChange> = Vec::new();
+    for entry in statuses.iter() {
+        let s = entry.status();
+        if s.is_ignored() {
+            continue;
+        }
+        let head_to_index = entry.head_to_index();
+        let index_to_workdir = entry.index_to_workdir();
+
+        let path = entry.path().unwrap_or("").to_string();
+        let mut previous_path: Option<String> = None;
+        let mut effective_path = path.clone();
+
+        let status = if s.is_conflicted() {
+            FileChangeStatus::Modified
+        } else if s.is_wt_new() && !s.is_index_new() {
+            FileChangeStatus::Untracked
+        } else if s.is_wt_new() || s.is_index_new() {
+            FileChangeStatus::Added
+        } else if s.is_wt_deleted() || s.is_index_deleted() {
+            FileChangeStatus::Deleted
+        } else if s.is_wt_renamed() || s.is_index_renamed() {
+            if let Some(diff) = head_to_index.as_ref().or(index_to_workdir.as_ref()) {
+                if let (Some(old), Some(new)) =
+                    (diff.old_file().path(), diff.new_file().path())
+                {
+                    let old_s = old.to_string_lossy().to_string();
+                    let new_s = new.to_string_lossy().to_string();
+                    if old_s != new_s {
+                        previous_path = Some(old_s);
+                        effective_path = new_s;
+                    }
+                }
+            }
+            FileChangeStatus::Renamed
+        } else {
+            FileChangeStatus::Modified
+        };
+
+        let is_submodule = head_to_index
+            .as_ref()
+            .or(index_to_workdir.as_ref())
+            .map(|d| d.new_file().mode() == git2::FileMode::Commit
+                || d.old_file().mode() == git2::FileMode::Commit)
+            .unwrap_or(false);
+
+        let is_binary = head_to_index
+            .as_ref()
+            .or(index_to_workdir.as_ref())
+            .map(|d| d.new_file().is_binary() || d.old_file().is_binary())
+            .unwrap_or(false);
+
+        let (additions, deletions) =
+            count_line_changes(&repo, &effective_path).unwrap_or((0, 0));
+
+        vs_head.push(FileChange {
+            path: effective_path,
+            previous_path,
+            status,
+            additions,
+            deletions,
+            is_binary,
+            is_submodule,
+        });
+    }
+
+    let detached_head = repo.head_detached().unwrap_or(false);
+
+    Ok(WorktreeChangeSet {
+        vs_head,
+        vs_base: Vec::new(),
+        base_branch,
+        base_branch_source,
+        detached_head,
+        merge_base_unavailable: false,
+    })
+}
+
+fn count_line_changes(repo: &Repository, path: &str) -> Result<(u32, u32), String> {
+    let mut opts = git2::DiffOptions::new();
+    opts.pathspec(path)
+        .context_lines(0)
+        .include_untracked(true)
+        .show_untracked_content(true);
+    let diff = repo
+        .diff_index_to_workdir(None, Some(&mut opts))
+        .map_err(|e| format!("diff_index_to_workdir failed: {e}"))?;
+    let mut adds = 0u32;
+    let mut dels = 0u32;
+    diff.foreach(
+        &mut |_, _| true,
+        None,
+        None,
+        Some(&mut |_, _, line| {
+            match line.origin() {
+                '+' => adds += 1,
+                '-' => dels += 1,
+                _ => {}
+            }
+            true
+        }),
+    )
+    .map_err(|e| format!("diff foreach failed: {e}"))?;
+    Ok((adds, dels))
+}
+
 /// Resolve the base branch using the documented fallback chain.
 /// Order: origin/HEAD symbolic ref → repo config init.defaultBranch →
 /// local `main` if it exists → `master` (last resort, even if absent).
@@ -214,5 +340,19 @@ mod tests {
         let (name, source) = resolve_base_branch(&repo).unwrap();
         assert_eq!(name, "main");
         assert!(matches!(source, BaseBranchSource::FallbackMain));
+    }
+
+    #[test]
+    fn list_worktree_changes_reports_empty_for_clean_repo() {
+        let tmp = TempDir::new().unwrap();
+        let repo = init_bare_repo(&tmp);
+        create_orphan_branch(&repo, "main");
+        drop(repo);
+
+        let result = list_worktree_changes_inner(tmp.path().to_str().unwrap()).unwrap();
+        assert!(result.vs_head.is_empty());
+        assert!(result.vs_base.is_empty());
+        assert_eq!(result.base_branch, "main");
+        assert!(matches!(result.base_branch_source, BaseBranchSource::FallbackMain));
     }
 }
