@@ -5,6 +5,15 @@ import { expectNoA11yViolations } from './helpers/a11y';
 test.describe('whats new', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
+    // Pin the expanded release to one that has multiple highlight kinds so the
+    // [data-highlight-kind="new"|"improved"|"fixed"] assertions can find them.
+    // The newest release ('1.1.0') has empty highlights; '1.0.15' has both
+    // 'new' and 'improved'.
+    await page.addInitScript(() => {
+      (window as unknown as { __BORGDOCK_WHATS_NEW__: { version: string } }).__BORGDOCK_WHATS_NEW__ = {
+        version: '1.0.15',
+      };
+    });
     await page.goto('/whats-new.html');
     await waitForAppReady(page);
   });
