@@ -53,6 +53,7 @@ grep-searcher = "0.1"
 grep-regex = "0.1"
 grep-matcher = "0.1"
 blake3 = "1"
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
 
 [dev-dependencies]
 tempfile = "3"
