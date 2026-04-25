@@ -1,5 +1,6 @@
-import clsx from 'clsx';
 import { useState } from 'react';
+import { Button, Card, Dot, Pill } from '../shared/primitives';
+import { Input } from '../shared/primitives';
 
 interface AuthStepProps {
   authMethod: 'ghCli' | 'pat';
@@ -24,44 +25,41 @@ export function AuthStep({
 }: AuthStepProps) {
   const [showToken, setShowToken] = useState(false);
 
+  const authStatusTone = isAuthValid
+    ? 'success'
+    : authStatus === 'Checking...'
+      ? 'warning'
+      : 'error';
+
+  const dotTone = isAuthValid ? 'green' : authStatus === 'Checking...' ? 'yellow' : 'red';
+
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-6" data-wizard-step="auth">
       <div className="text-center">
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-          Connect to GitHub
-        </h2>
-        <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+        <h2 className="text-lg font-semibold text-text-primary">Connect to GitHub</h2>
+        <p className="mt-1 text-xs text-text-tertiary">
           Choose how BorgDock authenticates with GitHub
         </p>
       </div>
 
       {/* Auth status indicator */}
       {authStatus && (
-        <div
-          className={clsx(
-            'flex items-center gap-2 rounded-lg border px-4 py-2 text-xs w-full max-w-sm',
-            isAuthValid
-              ? 'border-[var(--color-success-badge-border)] bg-[var(--color-success-badge-bg)] text-[var(--color-status-green)]'
-              : authStatus === 'Checking...'
-                ? 'border-[var(--color-warning-badge-border)] bg-[var(--color-warning-badge-bg)] text-[var(--color-status-yellow)]'
-                : 'border-[var(--color-error-badge-border)] bg-[var(--color-error-badge-bg)] text-[var(--color-status-red)]',
-          )}
+        <Pill
+          tone={authStatusTone}
+          icon={
+            <Dot
+              tone={dotTone}
+              pulse={authStatus === 'Checking...'}
+              className="shrink-0"
+            />
+          }
+          className="w-full max-w-sm"
+          data-auth-status={
+            isAuthValid ? 'valid' : authStatus === 'Checking...' ? 'pending' : 'invalid'
+          }
         >
-          <span
-            className={clsx(
-              'h-2 w-2 rounded-full shrink-0',
-              isAuthValid && 'bg-[var(--color-status-green)]',
-              !isAuthValid &&
-                authStatus === 'Checking...' &&
-                'bg-[var(--color-status-yellow)] animate-pulse',
-              !isAuthValid &&
-                authStatus !== 'Checking...' &&
-                authStatus &&
-                'bg-[var(--color-status-red)]',
-            )}
-          />
           {authStatus}
-        </div>
+        </Pill>
       )}
 
       {/* Auth method selection */}
@@ -69,20 +67,24 @@ export function AuthStep({
         {(['ghCli', 'pat'] as const).map((method) => (
           <button
             key={method}
-            className={clsx(
-              'flex-1 rounded-lg border-2 px-4 py-3 text-center transition-all',
-              authMethod === method
-                ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)]'
-                : 'border-[var(--color-subtle-border)] hover:border-[var(--color-strong-border)]',
-            )}
+            className="flex-1 rounded-none border-0 bg-transparent p-0 text-left"
             onClick={() => onAuthMethodChange(method)}
+            type="button"
+            data-auth-method={method}
           >
-            <div className="text-sm font-medium text-[var(--color-text-primary)]">
-              {method === 'ghCli' ? 'GitHub CLI' : 'Access Token'}
-            </div>
-            <div className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">
-              {method === 'ghCli' ? 'Use existing gh login' : 'Enter a personal access token'}
-            </div>
+            <Card
+              variant={authMethod === method ? 'own' : 'default'}
+              padding="md"
+              interactive
+              className="pointer-events-none w-full text-center"
+            >
+              <div className="text-sm font-medium text-text-primary">
+                {method === 'ghCli' ? 'GitHub CLI' : 'Access Token'}
+              </div>
+              <div className="mt-0.5 text-[10px] text-text-muted">
+                {method === 'ghCli' ? 'Use existing gh login' : 'Enter a personal access token'}
+              </div>
+            </Card>
           </button>
         ))}
       </div>
@@ -90,35 +92,32 @@ export function AuthStep({
       {/* PAT input */}
       {authMethod === 'pat' && (
         <div className="w-full max-w-sm">
-          <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
+          <label className="text-[11px] font-medium text-text-tertiary">
             Personal Access Token
           </label>
-          <div className="relative mt-1">
-            <input
-              type={showToken ? 'text' : 'password'}
-              className="field-input w-full pr-12"
-              value={pat}
-              onChange={(e) => onPatChange(e.target.value)}
-              placeholder="ghp_..."
-            />
-            <button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              onClick={() => setShowToken((prev) => !prev)}
-              type="button"
-            >
-              {showToken ? 'Hide' : 'Show'}
-            </button>
-          </div>
+          <Input
+            className="mt-1"
+            type={showToken ? 'text' : 'password'}
+            value={pat}
+            onChange={(e) => onPatChange(e.target.value)}
+            placeholder="ghp_..."
+            trailing={
+              <button
+                className="text-[10px] text-text-muted hover:text-text-primary"
+                onClick={() => setShowToken((prev) => !prev)}
+                type="button"
+              >
+                {showToken ? 'Hide' : 'Show'}
+              </button>
+            }
+          />
         </div>
       )}
 
-      {/* Validate button */}
-      <button
-        className="rounded-lg px-6 py-2 text-xs font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)] hover:opacity-90 transition-opacity"
-        onClick={onValidateAuth}
-      >
+      {/* Verify Connection button */}
+      <Button variant="primary" size="md" onClick={onValidateAuth}>
         Verify Connection
-      </button>
+      </Button>
     </div>
   );
 }
