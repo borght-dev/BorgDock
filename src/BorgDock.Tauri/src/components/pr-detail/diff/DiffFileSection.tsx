@@ -108,11 +108,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
       >
         {/* Sticky file header */}
         <div
-          className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)]"
-          style={{
-            backgroundColor: 'var(--color-diff-file-header-bg)',
-            backdropFilter: 'blur(8px)',
-          }}
+          className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)] bg-[var(--color-diff-file-header-bg)] backdrop-blur-[8px]"
         >
           <IconButton
             icon={collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
@@ -126,6 +122,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
             {statusBadgeLetter(file.status)}
           </Pill>
 
+          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
             className="flex-1 min-w-0 truncate text-[11px] font-medium text-[var(--color-text-secondary)]"
             style={{ fontFamily: 'var(--font-code)' }}

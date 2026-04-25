@@ -202,6 +202,7 @@ function TestNotificationRow() {
             key={entry.severity}
             title={`Send ${entry.severity} notification`}
             className="h-5 w-5 rounded-md text-[9px] font-bold transition-all duration-150 hover:scale-110"
+            // style: severity-driven bg/fg colors + color-mix border — all vary on lastFired state and entry.severity
             style={{
               background:
                 lastFired === entry.severity

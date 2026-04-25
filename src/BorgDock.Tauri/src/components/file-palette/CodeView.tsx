@@ -113,6 +113,7 @@ function renderLine(text: string, spans: HighlightSpan[] | null) {
   spans.forEach((span, idx) => {
     if (span.start > cursor) out.push(text.slice(cursor, span.start));
     out.push(
+      // style: syntax-highlight category-driven CSS variable name — token name varies per span.category
       <span
         key={idx}
         className={`hl-${span.category}`}

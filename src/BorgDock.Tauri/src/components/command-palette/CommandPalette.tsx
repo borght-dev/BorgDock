@@ -310,7 +310,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
     <div
       ref={backdropRef}
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]"
-      // inline rgba: backdrop overlay, no token covers semi-transparent overlay
+      // style: semi-transparent rgba backdrop — no design token covers this overlay value
       style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onMouseDown={(e) => {
         if (e.target === backdropRef.current) setOpen(false);

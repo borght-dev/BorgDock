@@ -247,6 +247,7 @@ export function WorkItemCard({
         <div
           ref={menuRef}
           className="fixed z-50 min-w-[180px] rounded-lg border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] py-1 shadow-lg"
+          // style: context menu anchor coords from right-click event position — dynamic pixel values
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button

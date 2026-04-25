@@ -34,19 +34,17 @@ export function StatusBar() {
           {counts.failing > 0 && (
             <span className="flex items-center gap-1">
               <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: 'var(--color-status-red)' }}
+                className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-status-red)]"
               />
-              <span style={{ color: 'var(--color-status-red)' }}>{counts.failing} failing</span>
+              <span className="text-[var(--color-status-red)]">{counts.failing} failing</span>
             </span>
           )}
           {counts.ready > 0 && (
             <span className="flex items-center gap-1">
               <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: 'var(--color-status-green)' }}
+                className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-status-green)]"
               />
-              <span style={{ color: 'var(--color-status-green)' }}>{counts.ready} ready</span>
+              <span className="text-[var(--color-status-green)]">{counts.ready} ready</span>
             </span>
           )}
         </>

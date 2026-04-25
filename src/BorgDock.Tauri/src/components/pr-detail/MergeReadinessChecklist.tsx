@@ -219,6 +219,7 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
       </div>
 
       {/* Bottom accent line showing score */}
+      {/* style: score-driven gradient stop position — computed per render, no Tailwind utility */}
       <div
         className="h-[2px]"
         style={{

@@ -43,8 +43,7 @@ export function SqlSection({ sql, onChange }: SqlSectionProps) {
         <div key={index}>
           <div className="flex items-center justify-between">
             <button
-              className="text-xs font-medium truncate text-left flex-1"
-              style={{ color: 'var(--color-text-primary)' }}
+              className="text-xs font-medium truncate text-left flex-1 text-[var(--color-text-primary)]"
               onClick={() => setEditingIndex(editingIndex === index ? null : index)}
             >
               {conn.name || 'Unnamed'}
@@ -75,7 +74,7 @@ export function SqlSection({ sql, onChange }: SqlSectionProps) {
           )}
 
           {index < sql.connections.length - 1 && (
-            <div className="mt-2 h-px" style={{ backgroundColor: 'var(--color-separator)' }} />
+            <div className="mt-2 h-px bg-[var(--color-separator)]" />
           )}
         </div>
       ))}
@@ -214,8 +213,7 @@ function ConnectionEditor({
       )}
 
       <label
-        className="flex items-center gap-2 text-[11px]"
-        style={{ color: 'var(--color-text-secondary)' }}
+        className="flex items-center gap-2 text-[11px] text-[var(--color-text-secondary)]"
       >
         <input
           type="checkbox"
@@ -253,7 +251,7 @@ function ConnectionEditor({
 function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-medium" style={{ color: 'var(--color-text-tertiary)' }}>
+      <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
         {label}
       </label>
       {children}

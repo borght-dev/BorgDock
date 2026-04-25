@@ -141,6 +141,7 @@ export function PRCard({
           'cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)]',
           active && 'bg-[var(--color-surface-hover)]',
         )}
+        // style: grid layout requires exact 24px avatar column — no Tailwind grid-cols preset covers this
         style={{ gridTemplateColumns: '24px 1fr auto' }}
       >
         <Avatar
@@ -150,14 +151,12 @@ export function PRCard({
         />
         <div className="min-w-0">
           <div
-            className="truncate text-[12px] font-medium"
-            style={{ color: 'var(--color-text-primary)' }}
+            className="truncate text-[12px] font-medium text-[var(--color-text-primary)]"
           >
             {pr.title}
           </div>
           <div
-            className="mt-0.5 flex items-center gap-1.5 text-[11px]"
-            style={{ color: 'var(--color-text-tertiary)' }}
+            className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--color-text-tertiary)]"
           >
             <span className="font-mono">
               {pr.repoOwner}/{pr.repoName}
@@ -200,8 +199,7 @@ export function PRCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span
-              className="truncate text-[13px] font-semibold"
-              style={{ color: 'var(--color-text-primary)' }}
+              className="truncate text-[13px] font-semibold text-[var(--color-text-primary)]"
             >
               {pr.title}
             </span>
@@ -212,8 +210,7 @@ export function PRCard({
             )}
           </div>
           <div
-            className="mt-1 flex flex-wrap items-center gap-2 text-[11px]"
-            style={{ color: 'var(--color-text-tertiary)' }}
+            className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-tertiary)]"
           >
             <span className="font-mono">
               {pr.repoOwner}/{pr.repoName}
@@ -234,8 +231,7 @@ export function PRCard({
             pr.additions !== undefined ||
             (pr.commentCount !== undefined && pr.commentCount > 0)) && (
             <div
-              className="mt-2 flex flex-wrap items-center gap-2 text-[11px]"
-              style={{ color: 'var(--color-text-secondary)' }}
+              className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-secondary)]"
             >
               {pr.branch && <span className="font-mono">{pr.branch}</span>}
               {pr.baseBranch && (
@@ -245,12 +241,12 @@ export function PRCard({
                 </>
               )}
               {pr.additions !== undefined && pr.additions > 0 && (
-                <span style={{ color: 'var(--color-status-green)' }}>
+                <span className="text-[var(--color-status-green)]">
                   +{pr.additions.toLocaleString()}
                 </span>
               )}
               {pr.deletions !== undefined && pr.deletions > 0 && (
-                <span style={{ color: 'var(--color-status-red)' }}>
+                <span className="text-[var(--color-status-red)]">
                   {'\u2212'}
                   {pr.deletions.toLocaleString()}
                 </span>
@@ -286,8 +282,7 @@ export function PRCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <span
-            className="font-mono text-[11px]"
-            style={{ color: 'var(--color-text-muted)' }}
+            className="font-mono text-[11px] text-[var(--color-text-muted)]"
           >
             #{pr.number}
           </span>

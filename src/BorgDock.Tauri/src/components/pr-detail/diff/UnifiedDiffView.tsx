@@ -43,9 +43,11 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
   return (
     <table
       className="w-full border-collapse"
+      // style: var(--font-code) custom property + exact pixel fontSize/lineHeight for diff alignment
       style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
     >
       <colgroup>
+        {/* style: exact gutter pixel widths — diff layout requires precise col sizing */}
         <col style={{ width: '44px' }} />
         <col style={{ width: '44px' }} />
         <col />
@@ -53,6 +55,7 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
       <tbody>
         {allLines.map((line, i) => {
           if (line.type === 'hunk-header') {
+            // style: hunk-header bg token + exact 28px height for diff row alignment
             return (
               <tr
                 key={i}
@@ -62,6 +65,7 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
                 <td
                   colSpan={3}
                   className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none"
+                  // style: exact 28px height matches diff line height for visual alignment
                   style={{ height: '28px' }}
                 >
                   {line.content}
@@ -101,15 +105,18 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
             line.type === 'add' ? 'add' : line.type === 'delete' ? 'del' : 'context';
 
           return (
+            // style: line-type-driven bg color (add/delete/context) — computed per line
             <tr key={i} data-line-kind={lineKind} style={{ backgroundColor: bgColor }}>
               <td
                 className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                // style: line-type-driven gutter bg + userSelect CSS property with no Tailwind equivalent
                 style={{ backgroundColor: gutterBg, userSelect: 'none' }}
               >
                 {line.oldLineNumber ?? ''}
               </td>
               <td
                 className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                // style: line-type-driven gutter bg + userSelect CSS property with no Tailwind equivalent
                 style={{ backgroundColor: gutterBg, userSelect: 'none' }}
               >
                 {line.newLineNumber ?? ''}
@@ -153,8 +160,10 @@ function VirtualUnifiedDiff({
     <div
       ref={parentRef}
       className="overflow-auto"
+      // style: var(--font-code) custom property + exact pixel fontSize/lineHeight for diff alignment
       style={{ fontFamily: 'var(--font-code)', fontSize: '13px', lineHeight: '20px' }}
     >
+      {/* style: virtualizer total height computed per render */}
       <div
         style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
       >
@@ -169,6 +178,7 @@ function VirtualUnifiedDiff({
                 data-index={i}
                 data-hunk-header=""
                 ref={virtualizer.measureElement}
+                // style: virtualizer absolute positioning + translateY offset computed per row
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -179,6 +189,7 @@ function VirtualUnifiedDiff({
               >
                 <div
                   className="flex"
+                  // style: hunk-header bg token + exact 28px height for diff row alignment
                   style={{ backgroundColor: 'var(--color-diff-hunk-header-bg)', height: '28px' }}
                 >
                   <div className="px-2 text-[11px] text-[var(--color-diff-hunk-header-text)] select-none leading-[28px]">
@@ -221,6 +232,7 @@ function VirtualUnifiedDiff({
               data-index={i}
               data-line-kind={lineKind}
               ref={virtualizer.measureElement}
+              // style: virtualizer absolute positioning + line-type-driven bg — both computed per row
               style={{
                 position: 'absolute',
                 top: 0,
@@ -233,12 +245,14 @@ function VirtualUnifiedDiff({
               <div className="flex">
                 <div
                   className="w-[44px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                  // style: line-type-driven gutter bg — computed per line
                   style={{ backgroundColor: gutterBg }}
                 >
                   {line.oldLineNumber ?? ''}
                 </div>
                 <div
                   className="w-[44px] shrink-0 select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+                  // style: line-type-driven gutter bg — computed per line
                   style={{ backgroundColor: gutterBg }}
                 >
                   {line.newLineNumber ?? ''}

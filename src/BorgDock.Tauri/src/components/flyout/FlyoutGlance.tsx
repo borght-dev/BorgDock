@@ -173,12 +173,14 @@ export function FlyoutGlance({
   return (
     <div
       className="flex h-screen w-screen items-end justify-end"
+      // style: transparent background required for Tauri transparent-window overlay; padding in px avoids Tailwind rounding
       style={{ background: 'transparent', padding: 16 }}
       onMouseDown={handleBackdropMouseDown}
     >
       <div
         ref={panelRef}
         className="w-[380px] overflow-hidden rounded-[14px] border"
+        // style: animation keyframe + flyout-shadow custom property cannot be expressed as Tailwind utilities
         style={{
           background: 'var(--color-surface)',
           borderColor: 'var(--color-strong-border)',
@@ -189,6 +191,7 @@ export function FlyoutGlance({
         {/* Header */}
         <div
           className="border-b px-4 pt-3.5 pb-3"
+          // style: gradient background — no Tailwind utility covers multi-stop CSS gradients with tokens
           style={{
             borderColor: 'var(--color-subtle-border)',
             background: 'linear-gradient(135deg, var(--color-surface-raised), transparent)',
@@ -199,6 +202,7 @@ export function FlyoutGlance({
               {/* Brand icon — heartbeat pulse line matching sidebar header */}
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-lg"
+                // style: gradient background + color-mix box-shadow — no Tailwind utilities for these
                 style={{
                   background:
                     'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
@@ -218,14 +222,12 @@ export function FlyoutGlance({
               </div>
               <div>
                 <div
-                  className="text-[13px] font-bold tracking-tight"
-                  style={{ color: 'var(--color-text-primary)' }}
+                  className="text-[13px] font-bold tracking-tight text-[var(--color-text-primary)]"
                 >
                   BorgDock
                 </div>
                 <div
-                  className="mt-0.5 text-[10.5px]"
-                  style={{ color: 'var(--color-text-tertiary)' }}
+                  className="mt-0.5 text-[10.5px] text-[var(--color-text-tertiary)]"
                 >
                   {totalCount} open pull request{totalCount !== 1 ? 's' : ''}
                 </div>
@@ -254,36 +256,33 @@ export function FlyoutGlance({
             <div className="flex items-center gap-1.5">
               <Dot tone="red" pulse={failingCount > 0} />
               <span
-                className="text-[11px] font-semibold"
-                style={{ color: 'var(--color-text-secondary)' }}
+                className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
               >
                 {failingCount}
               </span>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">
                 failing
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Dot tone="yellow" />
               <span
-                className="text-[11px] font-semibold"
-                style={{ color: 'var(--color-text-secondary)' }}
+                className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
               >
                 {pendingCount}
               </span>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">
                 running
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Dot tone="green" />
               <span
-                className="text-[11px] font-semibold"
-                style={{ color: 'var(--color-text-secondary)' }}
+                className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
               >
                 {passingCount}
               </span>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">
                 passing
               </span>
             </div>
@@ -293,6 +292,7 @@ export function FlyoutGlance({
         {banner && (
           <div
             className="px-4 py-2 text-[11px] font-semibold text-white"
+            // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
             style={{ background: bannerColor(banner.severity) }}
             data-testid="flyout-glance-banner"
           >
@@ -301,6 +301,7 @@ export function FlyoutGlance({
         )}
 
         {/* PR list */}
+        {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
         <div className="max-h-[360px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {pullRequests.map((pr, i) => (
             <PRRow
@@ -314,8 +315,7 @@ export function FlyoutGlance({
           ))}
           {pullRequests.length === 0 && (
             <div
-              className="py-8 text-center text-[12px]"
-              style={{ color: 'var(--color-text-muted)' }}
+              className="py-8 text-center text-[12px] text-[var(--color-text-muted)]"
             >
               No open pull requests
             </div>
@@ -324,21 +324,19 @@ export function FlyoutGlance({
 
         {/* Footer */}
         <div
-          className="flex items-center justify-between border-t px-3.5 py-2"
-          style={{
-            borderColor: 'var(--color-subtle-border)',
-            background: 'var(--color-surface-raised)',
-          }}
+          className="flex items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
         >
+          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
-            className="text-[10px]"
-            style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-code)' }}
+            className="text-[10px] text-[var(--color-text-muted)]"
+            style={{ fontFamily: 'var(--font-code)' }}
           >
             synced {data.lastSyncAgo}
           </span>
+          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
-            className="text-[10px]"
-            style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-code)' }}
+            className="text-[10px] text-[var(--color-text-muted)]"
+            style={{ fontFamily: 'var(--font-code)' }}
           >
             {data.hotkey}
           </span>

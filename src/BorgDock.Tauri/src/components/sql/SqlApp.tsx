@@ -407,6 +407,7 @@ export function SqlApp() {
         id="sql-editor-area"
         data-sql-editor
         className="sql-editor-area"
+        // style: editorHeight is user-resizable (drag-to-resize handle) — dynamic pixel value
         style={{ height: editorHeight }}
       >
         {/* Line numbers gutter */}

@@ -196,6 +196,7 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
                 )}
               </div>
 
+              {/* style: file-status badge color — badge.color is status-driven (added/modified/deleted), computed per file */}
               <span className="shrink-0 text-[8px] font-bold" style={{ color: badge.color }}>
                 {badge.letter}
               </span>

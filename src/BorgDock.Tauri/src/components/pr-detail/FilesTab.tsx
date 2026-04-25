@@ -370,8 +370,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
         {/* File tree sidebar */}
         {showFileTree && (
           <div
-            className="shrink-0"
-            style={{ width: '220px', minWidth: '160px', maxWidth: '320px' }}
+            className="shrink-0 w-[220px] min-w-[160px] max-w-[320px]"
           >
             <DiffFileTree
               files={files}

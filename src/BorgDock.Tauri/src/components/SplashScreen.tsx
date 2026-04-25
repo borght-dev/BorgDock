@@ -52,6 +52,7 @@ function StepIcon({ state }: { state: InitStepState }) {
     );
   if (state === 'active')
     return (
+      // style: custom keyframe animation — no Tailwind utility for splash-spin
       <svg {...p} style={{ animation: 'splash-spin 1.2s linear infinite' }}>
         <circle cx="6" cy="6" r="5" stroke="var(--color-wizard-step-active)" strokeWidth="1.2" strokeDasharray="6 4" strokeLinecap="round" fill="none" />
       </svg>
@@ -77,6 +78,7 @@ export function SplashScreen() {
   const reset = useInitStore((s) => s.reset);
   const version = useUpdateStore((s) => s.currentVersion);
 
+  // style: 0.5px sub-pixel border — no Tailwind border-width utility resolves below 1px
   return (
     <div
       className="flex h-screen w-screen flex-col"
@@ -86,6 +88,7 @@ export function SplashScreen() {
       }}
     >
       {/* Accent strip */}
+      {/* style: multi-stop gradient background — no Tailwind utility covers this */}
       <div
         className="w-full shrink-0"
         style={{
@@ -98,6 +101,7 @@ export function SplashScreen() {
       {/* Center content */}
       <div className="flex flex-1 flex-col items-center justify-center">
         {/* Logo tile */}
+        {/* style: gradient background + custom animation keyframe splash-breathe — no Tailwind utilities cover these */}
         <div
           className="flex items-center justify-center"
           style={{
@@ -122,6 +126,7 @@ export function SplashScreen() {
         </div>
 
         {/* Wordmark */}
+        {/* style: sub-unit letterSpacing (-0.3px) — Tailwind tracking utilities use em-based presets that don't match */}
         <div
           style={{
             marginTop: 20,
@@ -135,6 +140,7 @@ export function SplashScreen() {
         </div>
 
         {/* Step list */}
+        {/* style: pixel-exact marginTop/gap/maxWidth — avoids Tailwind rounding on this layout-critical splash */}
         <div className="flex flex-col" style={{ marginTop: 32, maxWidth: 220, gap: 10 }}>
           {INIT_STEPS.map((step) => {
             const state = getStepState(step.id, currentStep, completedSteps, error);
@@ -142,12 +148,12 @@ export function SplashScreen() {
             return (
               <div
                 key={step.id}
-                className="flex items-center"
-                style={{ gap: 10 }}
+                className="flex items-center gap-[10px]"
                 data-testid={`splash-step-${step.id}`}
                 data-state={state}
               >
                 <StepIcon state={state} />
+                {/* style: state-driven color token + conditional keyframe animation + var(--font-code) — all vary per render */}
                 <span
                   style={{
                     fontSize: 11,
@@ -166,7 +172,9 @@ export function SplashScreen() {
 
         {/* Error message + Retry */}
         {error && (
+          // style: pixel-exact marginTop/maxWidth on error section — splash layout consistency
           <div className="flex flex-col items-center" style={{ marginTop: 16, maxWidth: 220 }}>
+            {/* style: var(--font-code) + margin:0 override + sub-px fontSize — cannot cleanly express in Tailwind */}
             <p
               data-testid="splash-error-message"
               style={{
@@ -183,8 +191,7 @@ export function SplashScreen() {
               type="button"
               data-testid="splash-retry-button"
               onClick={reset}
-              className="mt-3 cursor-pointer border-none bg-transparent"
-              style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-wizard-step-active)' }}
+              className="mt-3 cursor-pointer border-none bg-transparent text-[12px] font-medium text-[var(--color-wizard-step-active)]"
             >
               Retry
             </button>
@@ -194,8 +201,7 @@ export function SplashScreen() {
 
       {/* Version footer */}
       <div
-        className="shrink-0 text-center"
-        style={{ padding: 16, fontSize: 10, color: 'var(--color-text-faint)' }}
+        className="shrink-0 text-center p-4 text-[10px] text-[var(--color-text-faint)]"
       >
         {version ? `v${version}` : ''}
       </div>
