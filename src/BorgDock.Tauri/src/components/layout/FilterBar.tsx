@@ -1,7 +1,7 @@
-import clsx from 'clsx';
+import { Chip } from '@/components/shared/primitives';
 import { type PrFilter, usePrStore } from '@/stores/pr-store';
 
-const filters: { key: PrFilter; label: string; icon?: string }[] = [
+const filters: { key: PrFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'needsReview', label: 'Needs Review' },
   { key: 'mine', label: 'Mine' },
@@ -23,42 +23,20 @@ export function FilterBar() {
       {filters.map((f) => {
         const isActive = filter === f.key;
         const count = c[f.key];
-        const isFailing = f.key === 'failing' && count > 0;
-        const isNeedsReview = f.key === 'needsReview' && count > 0;
-
+        const tone = f.key === 'failing' ? 'error' : 'neutral';
         return (
-          <button
+          <Chip
             key={f.key}
+            active={isActive}
+            tone={tone}
+            count={count > 0 ? count : undefined}
             onClick={() => setFilter(f.key)}
-            className={clsx(
-              'flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium transition-all duration-150',
-              isActive
-                ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)] shadow-sm'
-                : isFailing
-                  ? 'text-[var(--color-status-red)] hover:bg-[var(--color-action-danger-bg)]'
-                  : isNeedsReview
-                    ? 'text-[var(--color-status-yellow)] hover:bg-[color-mix(in_srgb,var(--color-status-yellow)_10%,transparent)]'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]',
-            )}
+            data-filter-chip
+            data-filter-key={f.key}
+            data-filter-active={isActive ? 'true' : 'false'}
           >
             {f.label}
-            {count > 0 && (
-              <span
-                className={clsx(
-                  'min-w-[16px] rounded-full px-1 text-center text-[9px] font-semibold leading-[16px]',
-                  isActive
-                    ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                    : isFailing
-                      ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]'
-                      : isNeedsReview
-                        ? 'bg-[color-mix(in_srgb,var(--color-status-yellow)_15%,transparent)] text-[var(--color-status-yellow)]'
-                        : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)]',
-                )}
-              >
-                {count}
-              </span>
-            )}
-          </button>
+          </Chip>
         );
       })}
     </div>
