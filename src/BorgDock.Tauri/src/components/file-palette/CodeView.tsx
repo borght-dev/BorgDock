@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import {
   getHighlightClass,
   highlightLines as runHighlighter,
 } from '@/services/syntax-highlighter';
 import type { HighlightSpan } from '@/types';
-import './CodeView.css';
 
 // Must match the `line-height` on `.code-view` in file-palette.css (see
 // var(--code-line-height) fallback). scrollToLine relies on this.
@@ -77,7 +77,7 @@ export function CodeView({
   return (
     <div
       ref={rootRef}
-      className="code-view"
+      className="bd-code-view"
       data-testid="code-view-root"
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -89,12 +89,14 @@ export function CodeView({
           <div
             key={lineNo}
             data-testid="code-line-row"
-            className={`code-line-row${isHit ? ' code-line-row--hit' : ''}`}
+            className={clsx('bd-code-line-row', isHit && 'bd-code-line-row--hit')}
           >
-            <span className="code-line-number" data-testid="code-line-number">
-              {lineNo}
+            <span data-line-gutter className="bd-code-line-gutter">
+              <span data-line-number data-testid="code-line-number" className="bd-code-line-number">
+                {lineNo}
+              </span>
             </span>
-            <span className="code-line-text" data-testid="code-line-text">
+            <span className="bd-code-line-text" data-testid="code-line-text">
               {renderLine(text, spans?.get(i) ?? null)}
             </span>
           </div>
@@ -111,7 +113,11 @@ function renderLine(text: string, spans: HighlightSpan[] | null) {
   spans.forEach((span, idx) => {
     if (span.start > cursor) out.push(text.slice(cursor, span.start));
     out.push(
-      <span key={idx} style={{ color: `var(${getHighlightClass(span.category)})` }}>
+      <span
+        key={idx}
+        className={`hl-${span.category}`}
+        style={{ color: `var(${getHighlightClass(span.category)})` }}
+      >
         {text.slice(span.start, span.end)}
       </span>,
     );
