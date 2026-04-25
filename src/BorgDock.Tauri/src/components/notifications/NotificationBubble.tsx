@@ -2,6 +2,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InAppNotification, NotificationSeverity } from '@/types';
+import { Card, IconButton, Pill } from '@/components/shared/primitives';
 
 const SEVERITY_CONFIG: Record<
   NotificationSeverity,
@@ -128,8 +129,10 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
 
   return (
     <div
-      data-toast=""
+      data-toast
+      data-notification-severity={severity}
       className={clsx('relative', isMerged ? 'w-[400px]' : 'w-[380px]')}
+      // style: severity-driven glow color token names (--color-toast-{severity}-glow) vary per render
       style={{
         animation:
           phase === 'enter' || phase === 'visible'
@@ -138,10 +141,13 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      role="alert"
+      aria-live={isMerged ? 'assertive' : 'polite'}
     >
       {/* Outer glow — bigger and more intense for merged */}
       <div
         className={clsx('absolute rounded-2xl blur-lg', isMerged ? '-inset-2' : '-inset-1')}
+        // style: severity-driven glow background — token name varies per render
         style={{
           background: config.glow,
           animation: isMerged
@@ -150,9 +156,11 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
         }}
       />
 
-      {/* Card */}
-      <div
-        className="relative overflow-hidden rounded-xl"
+      {/* Card shell — elevation + backdrop */}
+      <Card
+        variant="default"
+        className="relative overflow-hidden rounded-xl p-0 shadow-[var(--elevation-2)]"
+        // style: severity-driven border + box-shadow — token names (--color-toast-{severity}-stripe/glow) vary per render
         style={{
           background: 'var(--color-toast-bg)',
           backdropFilter: 'blur(20px) saturate(1.4)',
@@ -161,16 +169,16 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
             ? `1.5px solid color-mix(in srgb, ${config.stripe} 40%, transparent)`
             : `1px solid color-mix(in srgb, ${config.stripe} 25%, transparent)`,
           boxShadow: isMerged
-            ? `0 12px 40px -4px rgba(0,0,0,0.22), 0 0 0 1px color-mix(in srgb, ${config.stripe} 15%, transparent), 0 0 24px -4px ${config.glow}`
-            : `0 8px 32px -4px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, ${config.stripe} 10%, transparent)`,
+            ? `0 0 0 1px color-mix(in srgb, ${config.stripe} 15%, transparent), 0 0 24px -4px ${config.glow}`
+            : `0 0 0 1px color-mix(in srgb, ${config.stripe} 10%, transparent)`,
         }}
       >
         {/* Shimmer overlay for merged — sweeps across the card */}
         {isMerged && (
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0 pointer-events-none bg-[var(--color-toast-merged-shimmer)]"
+            // style: animation — no Tailwind utility for custom keyframe
             style={{
-              background: 'var(--color-toast-merged-shimmer)',
               animation: 'toast-shimmer-sweep 2s ease-in-out infinite',
             }}
           />
@@ -179,6 +187,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
         {/* Top severity stripe */}
         <div
           className={clsx('w-full', isMerged ? 'h-[4px]' : 'h-[3px]')}
+          // style: severity-driven stripe gradient — token names vary per render
           style={{
             background: isMerged
               ? `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 80%, #F5B73B), ${config.stripe})`
@@ -193,6 +202,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
               'flex shrink-0 items-center justify-center font-black',
               isMerged ? 'h-11 w-11 rounded-xl text-xl' : 'h-9 w-9 rounded-lg text-sm',
             )}
+            // style: severity-driven icon-disc colors + border — token names vary per render
             style={{
               backgroundColor: config.iconBg,
               color: config.iconColor,
@@ -213,6 +223,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
                 'font-bold uppercase leading-none',
                 isMerged ? 'text-[10px] tracking-[0.12em]' : 'text-[9px] tracking-[0.08em]',
               )}
+              // style: severity-driven label color — token name varies per render
               style={{ color: config.iconColor }}
             >
               {isMerged ? '🚀 Merged' : config.label}
@@ -221,89 +232,70 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
             {/* Title */}
             <div
               className={clsx(
-                'mt-0.5 font-semibold leading-snug line-clamp-2',
+                'mt-0.5 font-semibold leading-snug line-clamp-2 text-[var(--color-text-primary)]',
                 isMerged ? 'text-[14px]' : 'text-[13px]',
               )}
-              style={{ color: 'var(--color-text-primary)' }}
             >
               {notification.title}
             </div>
 
             {/* Message */}
             <div
-              className="mt-0.5 text-[11px] leading-relaxed line-clamp-2"
-              style={{ color: 'var(--color-text-tertiary)' }}
+              className="mt-0.5 text-[11px] leading-relaxed line-clamp-2 text-[var(--color-text-tertiary)]"
             >
               {notification.message}
             </div>
 
             {/* Action buttons */}
             {notification.actions.length > 0 && (
-              <div className="mt-2 flex gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {notification.actions.map((action, i) => (
-                  <button
-                    key={i}
-                    className={clsx(
-                      'rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all duration-150',
-                      i === 0 ? 'hover:brightness-110 hover:shadow-md' : 'hover:brightness-110',
-                    )}
-                    style={
-                      i === 0
-                        ? {
-                            background: config.stripe,
-                            color: '#fff',
-                            boxShadow: `0 2px 8px -2px color-mix(in srgb, ${config.stripe} 50%, transparent)`,
-                          }
-                        : {
-                            background: 'var(--color-surface-raised)',
-                            color: 'var(--color-text-secondary)',
-                            border: '1px solid var(--color-subtle-border)',
-                          }
-                    }
-                    onClick={() => {
-                      openUrl(action.url).catch(console.error);
-                      handleDismiss();
-                    }}
-                  >
-                    {action.label}
-                  </button>
+                  <Pill key={i} tone="ghost">
+                    <a
+                      href={action.url}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openUrl(action.url).catch(console.error);
+                        handleDismiss();
+                      }}
+                    >
+                      {action.label}
+                    </a>
+                  </Pill>
                 ))}
               </div>
             )}
           </div>
 
           {/* Dismiss button */}
-          <button
-            className="shrink-0 rounded-md p-1.5 transition-all duration-150 hover:scale-110"
-            style={{
-              color: 'var(--color-text-muted)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-primary)';
-              e.currentTarget.style.background = 'var(--color-icon-btn-hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-muted)';
-              e.currentTarget.style.background = 'transparent';
-            }}
+          <IconButton
+            size={22}
+            icon={
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                <path
+                  d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            }
+            aria-label="Dismiss"
+            data-testid="dismiss-notification"
             onClick={() => handleDismiss()}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path
-                d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+          />
         </div>
 
         {/* Progress bar */}
-        <div className="h-[2px]" style={{ background: 'var(--color-badge-progress-track)' }}>
+        <div
+          className="h-[2px]"
+          // style: progress track background — static token but required inline for co-location with fill below
+          style={{ background: 'var(--color-badge-progress-track)' }}
+        >
           <div
             ref={progressRef}
             className="h-full origin-left"
+            // style: severity-driven progress-fill gradient + raf-tweened transform — token names and values vary per render
             style={{
               background: isMerged
                 ? `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 80%, #F5B73B), ${config.stripe})`
@@ -312,7 +304,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
             }}
           />
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

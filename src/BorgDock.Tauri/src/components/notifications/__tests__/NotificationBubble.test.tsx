@@ -200,4 +200,15 @@ describe('NotificationBubble', () => {
     );
     expect(screen.getByText('\u2713')).toBeDefined();
   });
+
+  it('exposes severity via data-notification-severity', () => {
+    const { container } = render(
+      <NotificationBubble
+        notification={makeNotification({ severity: 'success' })}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[data-notification-severity="success"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-toast]')).toBeInTheDocument();
+  });
 });
