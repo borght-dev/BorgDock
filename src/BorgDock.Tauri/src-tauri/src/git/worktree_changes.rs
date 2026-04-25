@@ -156,14 +156,20 @@ pub fn list_worktree_changes_inner(worktree_path: &str) -> Result<WorktreeChange
                 || d.old_file().mode() == git2::FileMode::Commit)
             .unwrap_or(false);
 
-        let is_binary = head_to_index
+        // Status-entry delta flags aren't reliable for binary detection because
+        // git2's status scan doesn't read file content. Use the real diff result
+        // from count_line_changes (which calls diff_index_to_workdir) as the
+        // authoritative binary flag; fall back to the status delta hint.
+        let status_binary = head_to_index
             .as_ref()
             .or(index_to_workdir.as_ref())
             .map(|d| d.new_file().is_binary() || d.old_file().is_binary())
             .unwrap_or(false);
 
-        let (additions, deletions) =
-            count_line_changes(&repo, &effective_path).unwrap_or((0, 0));
+        let (additions, deletions, diff_binary) =
+            count_line_changes(&repo, &effective_path).unwrap_or((0, 0, false));
+
+        let is_binary = status_binary || diff_binary;
 
         vs_head.push(FileChange {
             path: effective_path,
@@ -190,7 +196,12 @@ pub fn list_worktree_changes_inner(worktree_path: &str) -> Result<WorktreeChange
     })
 }
 
-fn count_line_changes(repo: &Repository, path: &str) -> Result<(u32, u32), String> {
+/// Returns (additions, deletions, is_binary).
+/// Running a real diff (not just status) is necessary for binary detection,
+/// since git2 status entries don't read file content to set the binary flag.
+fn count_line_changes(repo: &Repository, path: &str) -> Result<(u32, u32, bool), String> {
+    use std::cell::Cell;
+
     let mut opts = git2::DiffOptions::new();
     opts.pathspec(path)
         .context_lines(0)
@@ -199,23 +210,32 @@ fn count_line_changes(repo: &Repository, path: &str) -> Result<(u32, u32), Strin
     let diff = repo
         .diff_index_to_workdir(None, Some(&mut opts))
         .map_err(|e| format!("diff_index_to_workdir failed: {e}"))?;
-    let mut adds = 0u32;
-    let mut dels = 0u32;
+    let adds: Cell<u32> = Cell::new(0);
+    let dels: Cell<u32> = Cell::new(0);
+    let is_binary: Cell<bool> = Cell::new(false);
     diff.foreach(
-        &mut |_, _| true,
-        None,
+        &mut |delta, _| {
+            if delta.new_file().is_binary() || delta.old_file().is_binary() {
+                is_binary.set(true);
+            }
+            true
+        },
+        Some(&mut |_, _| {
+            is_binary.set(true);
+            true
+        }),
         None,
         Some(&mut |_, _, line| {
             match line.origin() {
-                '+' => adds += 1,
-                '-' => dels += 1,
+                '+' => adds.set(adds.get() + 1),
+                '-' => dels.set(dels.get() + 1),
                 _ => {}
             }
             true
         }),
     )
     .map_err(|e| format!("diff foreach failed: {e}"))?;
-    Ok((adds, dels))
+    Ok((adds.get(), dels.get(), is_binary.get()))
 }
 
 /// Resolve the base branch using the documented fallback chain.

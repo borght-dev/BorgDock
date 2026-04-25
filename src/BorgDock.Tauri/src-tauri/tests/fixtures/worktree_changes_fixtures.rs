@@ -40,8 +40,15 @@ pub fn build_clean_repo() -> Fixture {
     let tmp = TempDir::new().unwrap();
     let repo = Repository::init(tmp.path()).unwrap();
     write(&tmp.path().join("README.md"), b"hello\n");
-    commit_all(&repo, "initial");
-    repo.set_head("refs/heads/main").ok();
+    let oid = commit_all(&repo, "initial");
+    // Rename master → main: create refs/heads/main pointing at the commit,
+    // then point HEAD at it so git2 treats it as the current branch.
+    repo.reference("refs/heads/main", oid, false, "rename to main").unwrap();
+    repo.set_head("refs/heads/main").unwrap();
+    // Delete master so `resolve_base_branch` doesn't see it as a fallback.
+    if let Ok(mut r) = repo.find_reference("refs/heads/master") {
+        r.delete().ok();
+    }
     Fixture { tmp }
 }
 
@@ -124,22 +131,41 @@ pub fn build_detached_head_repo() -> Fixture {
 }
 
 /// Repo where the merge-base genuinely cannot be resolved (orphan history).
+/// HEAD is on `feature` (no `main` branch exists locally), so
+/// `resolve_base_branch` falls all the way through to `FallbackMaster`.
+/// `master` has a completely disjoint root commit, so merge_base fails.
 pub fn build_shallow_no_mergebase_repo() -> Fixture {
     let tmp = TempDir::new().unwrap();
     let repo = Repository::init(tmp.path()).unwrap();
-    write(&tmp.path().join("a.txt"), b"a\n");
-    commit_all(&repo, "main 1");
-    repo.set_head("refs/heads/main").ok();
-
-    // create an orphan branch `master` with disjoint history.
     let s = sig();
-    let mut idx = repo.index().unwrap();
-    idx.clear().unwrap();
+
+    // First orphan root: commit to refs/heads/feature (HEAD will point here).
+    write(&tmp.path().join("a.txt"), b"a\n");
+    {
+        let mut idx = repo.index().unwrap();
+        idx.add_path(Path::new("a.txt")).unwrap();
+        idx.write().unwrap();
+        let tree_oid = idx.write_tree().unwrap();
+        let tree = repo.find_tree(tree_oid).unwrap();
+        repo.commit(Some("refs/heads/feature"), &s, &s, "feature root", &tree, &[]).unwrap();
+    }
+
+    // Second orphan root: commit to refs/heads/master with no parents.
     write(&tmp.path().join("b.txt"), b"b\n");
-    idx.add_path(Path::new("b.txt")).unwrap();
-    idx.write().unwrap();
-    let tree_oid = idx.write_tree().unwrap();
-    let tree = repo.find_tree(tree_oid).unwrap();
-    repo.commit(Some("refs/heads/master"), &s, &s, "master root", &tree, &[]).unwrap();
+    {
+        let mut idx = repo.index().unwrap();
+        idx.clear().unwrap();
+        idx.add_path(Path::new("b.txt")).unwrap();
+        idx.write().unwrap();
+        let tree_oid = idx.write_tree().unwrap();
+        let tree = repo.find_tree(tree_oid).unwrap();
+        repo.commit(Some("refs/heads/master"), &s, &s, "master root", &tree, &[]).unwrap();
+    }
+
+    // Point HEAD at feature. No `main` branch exists → resolve_base_branch
+    // falls through to FallbackMaster. feature and master share no ancestor
+    // → merge_base_unavailable: true.
+    repo.set_head("refs/heads/feature").unwrap();
+
     Fixture { tmp }
 }
