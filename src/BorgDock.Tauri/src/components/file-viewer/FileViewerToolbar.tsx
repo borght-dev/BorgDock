@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useState } from 'react';
+import { Button, Chip, IconButton } from '@/components/shared/primitives';
 import type { Baseline, Mode, ViewMode } from './types';
 
 interface Props {
@@ -14,6 +15,23 @@ interface Props {
   onSelectViewMode: (v: ViewMode) => void;
   inRepo: boolean;
   defaultBranchLabel: string | null;
+}
+
+function XIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="m4 4 8 8M12 4l-8 8" />
+    </svg>
+  );
 }
 
 export function FileViewerToolbar({
@@ -46,82 +64,79 @@ export function FileViewerToolbar({
   const defaultLabel = defaultBranchLabel ?? 'default';
 
   return (
-    <div className="fv-toolbar" data-tauri-drag-region>
-      <span className="fv-path" title={path}>
+    <div className="bd-fv-toolbar" data-tauri-drag-region>
+      <span data-titlebar-path className="bd-fv-path" title={path}>
         {path}
       </span>
-      <div className="fv-actions">
+      <div className="bd-fv-actions">
         <div
-          className="fv-segment"
           role="group"
           aria-label="View mode"
+          className="flex items-center gap-1"
           title={inRepo ? undefined : 'Not in a git repository'}
         >
-          <button
-            type="button"
-            className={`fv-seg-btn${diffVsHeadActive ? ' fv-seg-btn--active' : ''}`}
+          <Chip
+            active={diffVsHeadActive}
             onClick={() => onSelectBaseline('HEAD')}
             disabled={!inRepo}
           >
             vs HEAD
-          </button>
-          <button
-            type="button"
-            className={`fv-seg-btn${diffVsDefaultActive ? ' fv-seg-btn--active' : ''}`}
+          </Chip>
+          <Chip
+            active={diffVsDefaultActive}
             onClick={() => onSelectBaseline('mergeBaseDefault')}
             disabled={!inRepo}
             title={`Diff against merge-base with origin/${defaultLabel}`}
           >
             vs {defaultLabel}
-          </button>
-          <button
-            type="button"
-            className={`fv-seg-btn${contentActive ? ' fv-seg-btn--active' : ''}`}
-            onClick={onSelectContent}
-          >
+          </Chip>
+          <Chip active={contentActive} onClick={onSelectContent}>
             File
-          </button>
+          </Chip>
         </div>
 
         {mode === 'diff' && (
-          <div className="fv-segment" role="group" aria-label="Diff layout">
-            <button
-              type="button"
-              className={`fv-seg-btn${viewMode === 'unified' ? ' fv-seg-btn--active' : ''}`}
+          <div role="group" aria-label="Diff layout" className="flex items-center gap-1">
+            <Chip
+              active={viewMode === 'unified'}
               onClick={() => onSelectViewMode('unified')}
               title="Unified diff (Ctrl+Shift+M)"
             >
               Unified
-            </button>
-            <button
-              type="button"
-              className={`fv-seg-btn${viewMode === 'split' ? ' fv-seg-btn--active' : ''}`}
+            </Chip>
+            <Chip
+              active={viewMode === 'split'}
               onClick={() => onSelectViewMode('split')}
               title="Split diff (Ctrl+Shift+M)"
             >
               Split
-            </button>
+            </Chip>
           </div>
         )}
 
-        <button type="button" className="fv-btn" onClick={copyAll} disabled={!content}>
+        <Button
+          variant="secondary"
+          size="sm"
+          data-action="copy-contents"
+          onClick={copyAll}
+          disabled={!content}
+        >
           {copied ? 'Copied' : 'Copy all'}
-        </button>
-        <button
-          type="button"
-          className="fv-btn"
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => invoke('open_in_editor', { path })}
         >
           Open in editor
-        </button>
-        <button
-          type="button"
-          className="fv-btn fv-btn--close"
-          onClick={() => getCurrentWindow().close()}
+        </Button>
+        <IconButton
+          icon={<XIcon />}
+          tooltip="Close"
           aria-label="Close"
-        >
-          ×
-        </button>
+          size={22}
+          onClick={() => getCurrentWindow().close()}
+        />
       </div>
     </div>
   );

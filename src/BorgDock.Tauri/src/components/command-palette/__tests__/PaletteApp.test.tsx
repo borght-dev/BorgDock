@@ -76,6 +76,20 @@ describe('PaletteApp', () => {
     expect(screen.getByPlaceholderText('Search by ID, title, or assigned to...')).toBeTruthy();
   });
 
+  it('renders search input with bd-input class hook', async () => {
+    await act(async () => {
+      render(<PaletteApp />);
+    });
+    expect(document.querySelector('.bd-input')).not.toBeNull();
+  });
+
+  it('renders Esc hint via Kbd primitive (bd-kbd class)', async () => {
+    await act(async () => {
+      render(<PaletteApp />);
+    });
+    expect(document.querySelector('.bd-kbd')).not.toBeNull();
+  });
+
   it('renders the drag handle', async () => {
     await act(async () => {
       render(<PaletteApp />);
@@ -88,7 +102,8 @@ describe('PaletteApp', () => {
     await act(async () => {
       render(<PaletteApp />);
     });
-    expect(screen.getByText('Esc to close')).toBeTruthy();
+    expect(screen.getByText('Esc')).toBeTruthy();
+    expect(screen.getByText(/to close/)).toBeTruthy();
   });
 
   it('shows empty browse message when no data', async () => {

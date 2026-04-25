@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';
-import './styles/file-palette.css';
 import { FilePaletteApp } from './components/file-palette/FilePaletteApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';

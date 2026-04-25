@@ -582,6 +582,31 @@ describe('SqlApp', () => {
     expect(document.body.style.cursor).toBe('');
   });
 
+  it('exposes [data-sql-editor] and [data-sql-connection-select] hooks', async () => {
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(document.querySelector('[data-sql-editor]')).not.toBeNull();
+    expect(document.querySelector('[data-sql-connection-select]')).not.toBeNull();
+  });
+
+  it('Run button carries data-action="run-query"', async () => {
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(document.querySelector('[data-action="run-query"]')).not.toBeNull();
+  });
+
   it('changes connection selector', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Card, IconButton, LinearProgress, Pill } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { WorktreeInfo } from '@/types';
@@ -31,14 +32,14 @@ function statusLabel(status: WorktreeStatus): string {
   }
 }
 
-function statusClasses(status: WorktreeStatus): string {
+function pillTone(status: WorktreeStatus): 'success' | 'draft' | 'error' {
   switch (status) {
     case 'open':
-      return 'bg-[var(--color-success-badge-bg)] text-[var(--color-success-badge-fg)] border border-[var(--color-success-badge-border)]';
+      return 'success';
     case 'closed':
-      return 'bg-[var(--color-draft-badge-bg)] text-[var(--color-draft-badge-fg)] border border-[var(--color-draft-badge-border)]';
+      return 'draft';
     case 'orphaned':
-      return 'bg-[var(--color-error-badge-bg)] text-[var(--color-error-badge-fg)] border border-[var(--color-error-badge-border)]';
+      return 'error';
   }
 }
 
@@ -205,44 +206,47 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="pointer-events-auto flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="prune-dialog-title"
+          className="pointer-events-auto flex max-h-[80vh] w-full max-w-lg flex-col"
           onClick={(e) => e.stopPropagation()}
         >
+          <Card variant="default" padding="sm" className="flex h-full flex-col p-0">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-5 py-3.5">
-            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+            <h2
+              id="prune-dialog-title"
+              className="text-sm font-semibold text-[var(--color-text-primary)]"
+            >
               Prune Worktrees
             </h2>
-            <button
-              className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+            <IconButton
+              size={22}
               onClick={onClose}
-            >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
-            </button>
+              aria-label="Close"
+              icon={
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              }
+            />
           </div>
 
           {/* Toolbar */}
           <div className="flex items-center gap-2 border-b border-[var(--color-separator)] px-5 py-2.5">
-            <button
-              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-accent)] bg-[var(--color-accent-subtle)] hover:opacity-80 transition-opacity"
-              onClick={selectAllOrphaned}
-            >
+            <Button variant="secondary" size="sm" onClick={selectAllOrphaned}>
               Select all orphaned
-            </button>
-            <button
-              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] transition-colors"
-              onClick={deselectAll}
-            >
+            </Button>
+            <Button variant="ghost" size="sm" onClick={deselectAll}>
               Deselect all
-            </button>
+            </Button>
             <span className="ml-auto text-[11px] text-[var(--color-text-muted)]">
               {rows.length} worktree{rows.length !== 1 ? 's' : ''} found
             </span>
@@ -285,14 +289,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                         <span className="font-mono text-[12px] font-medium text-[var(--color-text-primary)]">
                           {row.worktree.branchName.replace(/^refs\/heads\//, '')}
                         </span>
-                        <span
-                          className={clsx(
-                            'inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none',
-                            statusClasses(row.status),
-                          )}
-                        >
-                          {statusLabel(row.status)}
-                        </span>
+                        <Pill tone={pillTone(row.status)}>{statusLabel(row.status)}</Pill>
                       </div>
                       <div
                         className="mt-0.5 text-[11px] text-[var(--color-text-muted)]"
@@ -319,38 +316,28 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                     {removeProgress}/{removeTotal}
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-raised)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300"
-                    style={{
-                      width: removeTotal > 0 ? `${(removeProgress / removeTotal) * 100}%` : '0%',
-                    }}
-                  />
-                </div>
+                <LinearProgress
+                  value={removeTotal > 0 ? (removeProgress / removeTotal) * 100 : 0}
+                  tone="accent"
+                />
               </div>
             )}
 
             <div className="flex justify-end gap-2">
-              <button
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                onClick={onClose}
-              >
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 Close
-              </button>
-              <button
-                className={clsx(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity',
-                  selectedCount > 0
-                    ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-action-danger-fg)] hover:opacity-80'
-                    : 'bg-[var(--color-surface-raised)] text-[var(--color-text-ghost)] cursor-not-allowed',
-                )}
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 disabled={selectedCount === 0 || isRemoving}
                 onClick={removeSelected}
               >
                 Remove selected ({selectedCount})
-              </button>
+              </Button>
             </div>
           </div>
+          </Card>
         </div>
       </div>
     </>

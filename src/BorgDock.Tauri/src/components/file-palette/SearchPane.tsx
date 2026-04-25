@@ -24,21 +24,26 @@ export function SearchPane({ query, onQueryChange, parsed, resultCount }: Props)
     parsed.mode === 'filename' ? 'file' : parsed.mode === 'content' ? 'content' : 'symbol';
 
   return (
-    <div className="fp-search-pane">
-      <div className="fp-search-input-wrap">
+    <div className="bd-fp-search-pane">
+      <div className="bd-fp-search-input-wrap relative">
         <input
           ref={inputRef}
-          className="fp-search-input"
-          placeholder="Filename · prefix > for content · @ for symbol"
+          className="bd-input bd-fp-search-input w-full rounded-lg border px-3 py-2 outline-none bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)] text-[13px] pr-[70px]"
+          placeholder="Search files..."
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           aria-label="File palette search"
         />
-        <span className="fp-search-mode" title={`Mode: ${modeLabel}`}>
+        <span className="bd-fp-search-mode absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)]" title={`Mode: ${modeLabel}`}>
           {modeLabel}
         </span>
       </div>
-      <div className="fp-search-count">{resultCount} result{resultCount === 1 ? '' : 's'}</div>
+      <div className="bd-fp-search-hint mt-1.5 text-[10px] text-[var(--color-text-muted)] opacity-60">
+        Filename · prefix &gt; for content · @ for symbol
+      </div>
+      <div className="bd-fp-search-count mt-1 text-[10px] opacity-50">
+        {resultCount} result{resultCount === 1 ? '' : 's'}
+      </div>
     </div>
   );
 }
