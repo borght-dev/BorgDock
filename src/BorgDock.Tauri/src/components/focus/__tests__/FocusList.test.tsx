@@ -238,4 +238,16 @@ describe('FocusList', () => {
     render(<FocusList />);
     expect(screen.queryByText(/Start Quick Review/)).toBeNull();
   });
+
+  it('marks each focus PR row with [data-focus-item]', () => {
+    const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
+    const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
+    const pr3 = makePr({ title: 'C', authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr1, pr2, pr3] });
+    const { container } = render(<FocusList />);
+    const rows = container.querySelectorAll('[data-focus-item]');
+    const focusPrs = usePrStore.getState().focusPrs();
+    expect(rows.length).toBe(focusPrs.length);
+    expect(rows.length).toBe(3);
+  });
 });
