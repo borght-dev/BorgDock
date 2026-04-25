@@ -57,6 +57,12 @@ export const TAURI_MOCK_SCRIPT = `
         case 'check_github_auth':
           return 'testuser';
 
+        case 'plugin:app|version':
+          // Used by @tauri-apps/api/app's getVersion(). Returning the latest
+          // RELEASES entry's version unblocks WhatsNewApp's "ready" gate so
+          // the release accordion mounts.
+          return '1.1.0';
+
         case 'discover_repos':
           return [
             { owner: 'test-org', name: 'test-repo', localPath: '/home/user/repos/test-repo', isSelected: true, worktreeSubfolder: '.worktrees' },
