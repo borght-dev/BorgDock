@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useState } from 'react';
+import { Button, Chip } from '@/components/shared/primitives';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 import { ReviewCommentCard } from './ReviewCommentCard';
 
@@ -62,34 +63,40 @@ export function ClaudeReviewPanel({ comments }: ClaudeReviewPanelProps) {
 
         return (
           <div key={group.key}>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => toggleGroup(group.key)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[var(--color-surface-hover)] transition-colors"
+              data-review-group={group.key}
+              className="w-full justify-start"
+              leading={
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={clsx(
+                    'shrink-0 transition-transform duration-200',
+                    isCollapsed ? 'rotate-0' : 'rotate-90',
+                  )}
+                >
+                  <path d="m6 4 4 4-4 4" />
+                </svg>
+              }
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={clsx(
-                  'shrink-0 transition-transform duration-200',
-                  isCollapsed ? 'rotate-0' : 'rotate-90',
-                )}
-              >
-                <path d="m6 4 4 4-4 4" />
-              </svg>
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: group.color }} />
-              <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: group.color }}
+              />
+              <span className="flex-1 text-left text-xs font-medium text-[var(--color-text-secondary)]">
                 {group.label}
               </span>
-              <span className="rounded-full bg-[var(--color-filter-chip-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-filter-chip-fg)]">
-                {items.length}
-              </span>
-            </button>
+              <Chip>{items.length}</Chip>
+            </Button>
 
             {!isCollapsed && (
               <div className="space-y-1.5 pl-4 pt-1">

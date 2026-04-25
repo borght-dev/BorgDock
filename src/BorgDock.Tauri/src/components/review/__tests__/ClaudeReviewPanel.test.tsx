@@ -117,4 +117,27 @@ describe('ClaudeReviewPanel', () => {
     const cards = screen.getAllByTestId('review-comment-card');
     expect(cards).toHaveLength(3);
   });
+
+  it('renders each group with data-review-group', () => {
+    const comments = [
+      makeComment({ id: '1', severity: 'critical', body: 'Critical issue' }),
+      makeComment({ id: '2', severity: 'suggestion', body: 'Consider this' }),
+      makeComment({ id: '3', severity: 'praise', body: 'Nice work' }),
+    ];
+    const { container } = render(<ClaudeReviewPanel comments={comments} />);
+    expect(container.querySelector('[data-review-group="critical"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-review-group="suggestion"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-review-group="praise"]')).toBeInTheDocument();
+  });
+
+  it('renders count as a Chip primitive (no --color-filter-chip-bg reference)', () => {
+    const comments = [
+      makeComment({ id: '1', severity: 'critical', body: 'Issue 1' }),
+      makeComment({ id: '2', severity: 'critical', body: 'Issue 2' }),
+    ];
+    const { container } = render(<ClaudeReviewPanel comments={comments} />);
+    expect(container.querySelector('.bd-chip')).toBeInTheDocument();
+    // Ensure the old token reference is gone:
+    expect(container.innerHTML).not.toMatch(/var\(--color-filter-chip-bg\)/);
+  });
 });
