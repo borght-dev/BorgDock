@@ -13,7 +13,7 @@ export function AlsoFixedList({ items }: Props) {
       <div className="text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)] mb-2">
         Also fixed
       </div>
-      <ul className="list-disc pl-4 text-[12.5px] leading-[1.7] text-[var(--color-text-secondary)]">
+      <ul data-also-fixed-list className="list-disc pl-4 text-[12.5px] leading-[1.7] text-[var(--color-text-secondary)]">
         {items.map((body, i) => (
           <li key={i}>
             <ReactMarkdown
