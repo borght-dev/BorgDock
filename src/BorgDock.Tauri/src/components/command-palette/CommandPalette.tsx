@@ -1,4 +1,6 @@
+import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Kbd } from '@/components/shared/primitives';
 import { AdoClient } from '@/services/ado/client';
 import { getWorkItems, searchWorkItemsByIdPrefix } from '@/services/ado/workitems';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -308,17 +310,14 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
     <div
       ref={backdropRef}
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]"
+      // inline rgba: backdrop overlay, no token covers semi-transparent overlay
       style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onMouseDown={(e) => {
         if (e.target === backdropRef.current) setOpen(false);
       }}
     >
       <div
-        className="w-[460px] rounded-xl border shadow-2xl"
-        style={{
-          backgroundColor: 'var(--color-card-background)',
-          borderColor: 'var(--color-strong-border)',
-        }}
+        className="w-[460px] rounded-xl border bg-[var(--color-card-background)] border-[var(--color-strong-border)] shadow-2xl"
         onKeyDown={handleKeyDown}
       >
         {/* Search input */}
@@ -329,13 +328,7 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder="Search work item by ID..."
-            className="w-full rounded-lg border px-3 py-2.5 text-base outline-none"
-            style={{
-              backgroundColor: 'var(--color-input-bg)',
-              borderColor: 'var(--color-input-border)',
-              color: 'var(--color-text-primary)',
-              caretColor: 'var(--color-accent)',
-            }}
+            className="bd-input w-full rounded-lg border px-3 py-2.5 text-base outline-none bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)]"
           />
         </div>
 
@@ -356,32 +349,21 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
             /* Browse sections */
             <>
               {browseSections.length === 0 && !isLoadingRecent && (
-                <div
-                  className="px-4 py-6 text-center text-[13px]"
-                  style={{ color: 'var(--color-text-muted)' }}
-                >
+                <div className="px-4 py-6 text-center text-[13px] text-[var(--color-text-muted)]">
                   Type a work item ID to search
                 </div>
               )}
               {isLoadingRecent && browseSections.length === 0 && (
                 <div className="flex items-center justify-center py-6">
-                  <span
-                    className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
-                    style={{ color: 'var(--color-text-muted)' }}
-                  />
-                  <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-                    Loading...
-                  </span>
+                  <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent text-[var(--color-text-muted)]" />
+                  <span className="text-[13px] text-[var(--color-text-muted)]">Loading...</span>
                 </div>
               )}
               {browseSections.map((section) => {
                 const sectionStart = globalOffset;
                 const rendered = (
                   <div key={section.label}>
-                    <div
-                      className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--color-text-tertiary)' }}
-                    >
+                    <div className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
                       {section.label}
                     </div>
                     {section.items.map((item, localIndex) => {
@@ -407,19 +389,19 @@ export function CommandPalette({ onSelectWorkItem }: CommandPaletteProps) {
 
         {/* Separator */}
         {(navItems.length > 0 || browseSections.length > 0) && (
-          <div className="h-px" style={{ backgroundColor: 'var(--color-separator)' }} />
+          <div className="h-px bg-[var(--color-separator)]" />
         )}
 
         {/* Status bar */}
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="text-xs text-[var(--color-text-muted)]">
             {isSearching && (
               <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent align-middle" />
             )}
             {statusText || (isSearchMode ? '' : `\u2191\u2193 navigate \u00b7 \u23ce select`)}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-faint)' }}>
-            Esc to close
+          <span className="text-[11px] text-[var(--color-text-faint)]">
+            <Kbd>Esc</Kbd> to close
           </span>
         </div>
       </div>
@@ -440,28 +422,25 @@ function PaletteRow({
 }) {
   return (
     <div
-      className="flex cursor-pointer items-center justify-between px-4 py-2 transition-colors"
-      style={{
-        backgroundColor: isSelected ? 'var(--color-accent-subtle)' : 'transparent',
-      }}
+      data-palette-row
+      className={clsx(
+        'flex cursor-pointer items-center justify-between px-4 py-2 transition-colors',
+        isSelected
+          ? 'bg-[var(--color-accent-subtle)]'
+          : 'bg-transparent hover:bg-[var(--color-surface-hover)]',
+      )}
       onMouseEnter={onMouseEnter}
       onMouseDown={() => onSelect(item.id)}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <span className="shrink-0 text-[13px] font-bold" style={{ color: 'var(--color-accent)' }}>
+        <span className="shrink-0 text-[13px] font-bold text-[var(--color-accent)]">
           #{item.id}
         </span>
-        <span className="truncate text-[13px]" style={{ color: 'var(--color-text-primary)' }}>
-          {item.title}
-        </span>
+        <span className="truncate text-[13px] text-[var(--color-text-primary)]">{item.title}</span>
       </div>
       <div className="ml-2 flex shrink-0 items-center gap-1.5">
-        <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
-          {item.workItemType}
-        </span>
-        <span className="text-[11px] font-semibold" style={{ color: 'var(--color-accent)' }}>
-          {item.state}
-        </span>
+        <span className="text-[11px] text-[var(--color-text-tertiary)]">{item.workItemType}</span>
+        <span className="text-[11px] font-semibold text-[var(--color-accent)]">{item.state}</span>
       </div>
     </div>
   );
