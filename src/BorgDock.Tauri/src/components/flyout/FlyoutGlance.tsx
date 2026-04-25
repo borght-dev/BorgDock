@@ -135,6 +135,41 @@ export function FlyoutGlance({
     [onClose],
   );
 
+  const handleFixPr = useCallback(
+    async (pr: FlyoutPr) => {
+      try {
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('main', 'flyout-fix-pr', {
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          number: pr.number,
+          failedCheckNames: pr.failedCheckNames ?? [],
+        });
+      } catch {
+        // ignore
+      }
+      onClose();
+    },
+    [onClose],
+  );
+
+  const handleMonitorPr = useCallback(
+    async (pr: FlyoutPr) => {
+      try {
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('main', 'flyout-monitor-pr', {
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          number: pr.number,
+        });
+      } catch {
+        // ignore
+      }
+      onClose();
+    },
+    [onClose],
+  );
+
   return (
     <div
       className="flex h-screen w-screen items-end justify-end"
@@ -273,6 +308,8 @@ export function FlyoutGlance({
               pr={pr}
               active={i === activeIndex}
               onClick={handleClickPr}
+              onFix={handleFixPr}
+              onMonitor={handleMonitorPr}
             />
           ))}
           {pullRequests.length === 0 && (

@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PRRow } from '../PRRow';
 import type { FlyoutPr } from '../FlyoutGlance';
@@ -47,5 +47,51 @@ describe('PRRow', () => {
     expect(
       container.querySelector('[data-pill-tone="approved"]'),
     ).toBeInTheDocument();
+  });
+
+  it('renders Fix button on hover when failedCount > 0', async () => {
+    const onFix = vi.fn();
+    const failingPr = { ...sample, failedCount: 2, overallStatus: 'red' as const };
+    const { container } = render(
+      <PRRow pr={failingPr} onClick={vi.fn()} onFix={onFix} />,
+    );
+    fireEvent.mouseEnter(container.querySelector('.relative')!);
+    const fixBtn = await screen.findByText(/^Fix$/);
+    fireEvent.click(fixBtn);
+    expect(onFix).toHaveBeenCalledWith(failingPr);
+  });
+
+  it('does not render Fix button when failedCount is 0', () => {
+    const onFix = vi.fn();
+    const { container } = render(
+      <PRRow pr={{ ...sample, failedCount: 0 }} onClick={vi.fn()} onFix={onFix} />,
+    );
+    fireEvent.mouseEnter(container.querySelector('.relative')!);
+    expect(screen.queryByText(/^Fix$/)).not.toBeInTheDocument();
+  });
+
+  it('renders Monitor button on hover when status is not green', async () => {
+    const onMonitor = vi.fn();
+    const yellowPr = { ...sample, overallStatus: 'yellow' as const, totalChecks: 5 };
+    const { container } = render(
+      <PRRow pr={yellowPr} onClick={vi.fn()} onMonitor={onMonitor} />,
+    );
+    fireEvent.mouseEnter(container.querySelector('.relative')!);
+    const btn = await screen.findByText(/^Monitor$/);
+    fireEvent.click(btn);
+    expect(onMonitor).toHaveBeenCalledWith(yellowPr);
+  });
+
+  it('does not render Monitor button when status is green', () => {
+    const onMonitor = vi.fn();
+    const { container } = render(
+      <PRRow
+        pr={{ ...sample, overallStatus: 'green', totalChecks: 5 }}
+        onClick={vi.fn()}
+        onMonitor={onMonitor}
+      />,
+    );
+    fireEvent.mouseEnter(container.querySelector('.relative')!);
+    expect(screen.queryByText(/^Monitor$/)).not.toBeInTheDocument();
   });
 });
