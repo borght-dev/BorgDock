@@ -493,6 +493,36 @@ fn unified_diff_from_diff(diff: &git2::Diff, file_path: &str) -> UnifiedDiff {
     }
 }
 
+#[tauri::command]
+pub async fn list_worktree_changes(worktree_path: String) -> Result<WorktreeChangeSet, String> {
+    tokio::task::spawn_blocking(move || list_worktree_changes_inner(&worktree_path))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+}
+
+#[tauri::command]
+pub async fn diff_worktree_vs_head(
+    worktree_path: String,
+    file_path: String,
+) -> Result<UnifiedDiff, String> {
+    tokio::task::spawn_blocking(move || diff_worktree_vs_head_inner(&worktree_path, &file_path))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+}
+
+#[tauri::command]
+pub async fn diff_worktree_vs_base(
+    worktree_path: String,
+    base_branch: String,
+    file_path: String,
+) -> Result<UnifiedDiff, String> {
+    tokio::task::spawn_blocking(move || {
+        diff_worktree_vs_base_inner(&worktree_path, &base_branch, &file_path)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

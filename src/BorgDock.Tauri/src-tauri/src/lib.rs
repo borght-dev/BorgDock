@@ -208,6 +208,9 @@ pub fn run() {
             git::commands::run_gh_command,
             git::diff::git_file_diff,
             git::diff::git_changed_files,
+            git::worktree_changes::list_worktree_changes,
+            git::worktree_changes::diff_worktree_vs_head,
+            git::worktree_changes::diff_worktree_vs_base,
             // Window
             platform::window::show_setup_wizard,
             platform::window::open_pr_detail_window,
