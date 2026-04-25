@@ -76,6 +76,23 @@ describe('FileViewerApp', () => {
     await waitFor(() => expect(screen.getByText(/x = 1/)).toBeTruthy());
   });
 
+  it('outer container uses bd-fv-root + bd-fv-body classes', async () => {
+    await setInvoke((cmd) => {
+      if (cmd === 'read_text_file') return Promise.resolve('export const x = 1;');
+      if (cmd === 'git_file_diff') {
+        return Promise.resolve({ patch: '', baselineRef: '', inRepo: false });
+      }
+      if (cmd === 'load_settings') return Promise.resolve({ ui: {} });
+      return Promise.reject(new Error(`unexpected ${cmd}`));
+    });
+
+    const { container } = render(<FileViewerApp />);
+    await waitFor(() => {
+      expect(container.querySelector('.bd-fv-root')).not.toBeNull();
+      expect(container.querySelector('.bd-fv-body')).not.toBeNull();
+    });
+  });
+
   it('starts in mergeBaseDefault mode when ?baseline=mergeBaseDefault is in the URL', async () => {
     window.history.replaceState(
       null,
