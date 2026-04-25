@@ -155,4 +155,20 @@ describe('ResultsTable', () => {
     const nullCells = container.querySelectorAll('.sql-cell--null');
     expect(nullCells.length).toBe(1);
   });
+
+  it('exposes [data-sql-results-table] and one tbody row per data row', () => {
+    const { container } = render(
+      <ResultsTable
+        columns={['a', 'b']}
+        rows={[
+          ['1', '2'],
+          ['3', null],
+        ]}
+        selectedRows={new Set()}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[data-sql-results-table]')).not.toBeNull();
+    expect(container.querySelectorAll('tbody tr').length).toBe(2);
+  });
 });
