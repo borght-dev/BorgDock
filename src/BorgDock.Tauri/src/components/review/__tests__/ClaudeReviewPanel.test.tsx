@@ -130,14 +130,17 @@ describe('ClaudeReviewPanel', () => {
     expect(container.querySelector('[data-review-group="praise"]')).toBeInTheDocument();
   });
 
-  it('renders count as a Chip primitive (no --color-filter-chip-bg reference)', () => {
+  it('renders count as a Pill primitive (no --color-filter-chip-bg reference, no nested button)', () => {
     const comments = [
       makeComment({ id: '1', severity: 'critical', body: 'Issue 1' }),
       makeComment({ id: '2', severity: 'critical', body: 'Issue 2' }),
     ];
     const { container } = render(<ClaudeReviewPanel comments={comments} />);
-    expect(container.querySelector('.bd-chip')).toBeInTheDocument();
+    expect(container.querySelector('.bd-pill')).toBeInTheDocument();
     // Ensure the old token reference is gone:
     expect(container.innerHTML).not.toMatch(/var\(--color-filter-chip-bg\)/);
+    // Pill is a span (non-interactive), avoiding the <button> nested in <button> hydration warning.
+    const reviewGroupBtn = container.querySelector('[data-review-group="critical"]');
+    expect(reviewGroupBtn?.querySelector('button')).toBeNull();
   });
 });

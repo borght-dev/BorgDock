@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { useState } from 'react';
-import { Button, Chip } from '@/components/shared/primitives';
+import { Button, Pill } from '@/components/shared/primitives';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 import { ReviewCommentCard } from './ReviewCommentCard';
 
@@ -95,7 +95,7 @@ export function ClaudeReviewPanel({ comments }: ClaudeReviewPanelProps) {
               <span className="flex-1 text-left text-xs font-medium text-[var(--color-text-secondary)]">
                 {group.label}
               </span>
-              <Chip>{items.length}</Chip>
+              <Pill tone="neutral">{items.length}</Pill>
             </Button>
 
             {!isCollapsed && (
