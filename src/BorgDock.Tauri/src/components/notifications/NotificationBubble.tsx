@@ -128,6 +128,7 @@ export function NotificationBubble({ notification, onDismiss }: NotificationBubb
 
   return (
     <div
+      data-toast=""
       className={clsx('relative', isMerged ? 'w-[400px]' : 'w-[380px]')}
       style={{
         animation:
