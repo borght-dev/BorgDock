@@ -531,7 +531,7 @@ export function WorktreePaletteApp() {
         </div>
         <div className="bd-wt-titlebar-right">
           <IconButton
-            size={24}
+            size={26}
             active={favoritesOnly}
             tooltip={favoritesOnly ? 'Showing favorites only' : 'Show favorites only'}
             aria-pressed={favoritesOnly}
@@ -552,7 +552,7 @@ export function WorktreePaletteApp() {
             }
           />
           <IconButton
-            size={24}
+            size={26}
             tooltip="Refresh"
             onClick={handleRefresh}
             icon={
@@ -573,7 +573,7 @@ export function WorktreePaletteApp() {
             }
           />
           <IconButton
-            size={24}
+            size={26}
             tooltip="Close (Esc)"
             onClick={() => getCurrentWindow().close()}
             icon={
