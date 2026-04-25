@@ -136,17 +136,17 @@ export function ChangesSection(props: ChangesSectionProps) {
 
   if (data && !data.inRepo) {
     return (
-      <div className="fp-changes">
-        <div className="fp-changes-header">Changes</div>
-        <div className="fp-changes-empty">Not a git repo</div>
+      <div className="bd-fp-changes">
+        <div className="bd-fp-changes-header">Changes</div>
+        <div className="bd-fp-changes-empty">Not a git repo</div>
       </div>
     );
   }
 
   if (loading && !data) {
     return (
-      <div className="fp-changes">
-        <div className="fp-changes-header">Changes…</div>
+      <div className="bd-fp-changes">
+        <div className="bd-fp-changes-header">Changes…</div>
       </div>
     );
   }
@@ -156,9 +156,9 @@ export function ChangesSection(props: ChangesSectionProps) {
   const total = filteredLocal.length + filteredVsBase.length;
   if (total === 0) {
     return (
-      <div className="fp-changes">
-        <div className="fp-changes-header">Changes</div>
-        <div className="fp-changes-empty">No changes on this branch</div>
+      <div className="bd-fp-changes">
+        <div className="bd-fp-changes-header">Changes</div>
+        <div className="bd-fp-changes-empty">No changes on this branch</div>
       </div>
     );
   }
@@ -178,31 +178,31 @@ export function ChangesSection(props: ChangesSectionProps) {
         key={`${group}:${file.path}`}
         type="button"
         ref={(el) => rowRef?.(el, globalIdx)}
-        className={`fp-changes-row${selected ? ' fp-changes-row--selected' : ''}`}
+        className={`bd-fp-changes-row${selected ? ' bd-fp-changes-row--selected' : ''}`}
         onMouseEnter={() => onHover(globalIdx)}
         onClick={() => onOpen(file, group)}
       >
         <span
-          className="fp-changes-status"
+          className="bd-fp-changes-status"
           style={{ color: statusColor(file.status) }}
           title={file.status}
         >
           {file.status}
         </span>
-        <span className="fp-changes-path">{label}</span>
+        <span className="bd-fp-changes-path">{label}</span>
       </button>
     );
   };
 
   return (
-    <div className="fp-changes">
-      <div className="fp-changes-header">
+    <div className="bd-fp-changes">
+      <div className="bd-fp-changes-header">
         {data.baseRef ? `Changes (${total}) · vs ${data.baseRef}` : `Changes (${total})`}
       </div>
 
       <button
         type="button"
-        className="fp-changes-subheader"
+        className="bd-fp-changes-subheader"
         onClick={() => onToggleCollapse('local')}
       >
         <span>{localCollapsed ? '▸' : '▾'} Local ({filteredLocal.length})</span>
@@ -211,7 +211,7 @@ export function ChangesSection(props: ChangesSectionProps) {
 
       <button
         type="button"
-        className="fp-changes-subheader"
+        className="bd-fp-changes-subheader"
         onClick={() => onToggleCollapse('vsBase')}
         title={`vs ${data.baseRef || 'base'}`}
       >
