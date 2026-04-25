@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BorgDock — streamlined</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="styles/tokens.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: #e8e4ef; height: 100%; }
+  html.dark, html.dark body { background: #0a0810; }
+  .bd-root { width: 100%; min-height: 100%; }
+  /* Tweaks panel */
+  .tweaks {
+    position: fixed; right: 16px; bottom: 16px;
+    display: none; flex-direction: column; gap: 12px;
+    width: 240px;
+    padding: 14px 14px 16px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-strong-border);
+    border-radius: 12px;
+    box-shadow: var(--elevation-3);
+    z-index: 50;
+    font-family: var(--font-ui);
+    color: var(--color-text-primary);
+  }
+  .tweaks.open { display: flex; }
+  .tweaks h4 { margin: 0 0 2px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); }
+  .tweaks .row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tweaks .label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 5px; display: block; }
+  .tweaks button {
+    padding: 4px 9px; font-size: 11px;
+    border-radius: 999px; border: 1px solid var(--color-subtle-border);
+    background: transparent; color: var(--color-text-tertiary); cursor: pointer;
+    font-family: inherit;
+  }
+  .tweaks button.on { background: var(--color-accent-subtle); color: var(--color-accent); border-color: var(--color-purple-border); font-weight: 600; }
+</style>
+</head>
+<body class="bd-root density-compact">
+<template id="__bundler_thumbnail" data-bg-color="#e8e4ef">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#e8e4ef"/>
+    <g transform="translate(420, 220)">
+      <rect x="0" y="0" width="360" height="360" rx="36" fill="#ffffff" stroke="#d4cce0" stroke-width="2"/>
+      <rect x="0" y="0" width="360" height="52" rx="36" fill="#6655d4"/>
+      <rect x="0" y="26" width="360" height="26" fill="#6655d4"/>
+      <circle cx="28" cy="26" r="7" fill="#ffffff" opacity="0.9"/>
+      <circle cx="52" cy="26" r="7" fill="#ffffff" opacity="0.6"/>
+      <circle cx="76" cy="26" r="7" fill="#ffffff" opacity="0.6"/>
+      <rect x="28" y="80" width="240" height="14" rx="4" fill="#d4cce0"/>
+      <rect x="28" y="108" width="180" height="10" rx="3" fill="#ebe4f2"/>
+      <circle cx="300" cy="90" r="10" fill="#3ba68e"/>
+      <rect x="28" y="148" width="304" height="48" rx="8" fill="#f6f2fb" stroke="#ebe4f2"/>
+      <circle cx="48" cy="172" r="6" fill="#3ba68e"/>
+      <rect x="64" y="166" width="140" height="10" rx="3" fill="#c7bfd6"/>
+      <rect x="28" y="208" width="304" height="48" rx="8" fill="#f6f2fb" stroke="#ebe4f2"/>
+      <circle cx="48" cy="232" r="6" fill="#f5b73b"/>
+      <rect x="64" y="226" width="120" height="10" rx="3" fill="#c7bfd6"/>
+      <rect x="28" y="268" width="304" height="48" rx="8" fill="#f6f2fb" stroke="#ebe4f2"/>
+      <circle cx="48" cy="292" r="6" fill="#e54065"/>
+      <rect x="64" y="286" width="160" height="10" rx="3" fill="#c7bfd6"/>
+    </g>
+    <text x="600" y="660" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="28" font-weight="600" fill="#6655d4" letter-spacing="2">BORGDOCK</text>
+  </svg>
+</template>
+<div id="root"></div>
+
+<script>
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "theme": "light",
+    "density": "comfortable",
+    "accent": "violet"
+  }/*EDITMODE-END*/;
+
+  function applyTweaks(t) {
+    document.documentElement.classList.toggle("dark", t.theme === "dark");
+    document.body.classList.toggle("density-compact", t.density === "compact");
+    document.body.classList.toggle("density-comfortable", t.density === "comfortable");
+    document.documentElement.classList.remove("accent-teal", "accent-amber");
+    if (t.accent === "teal") document.documentElement.classList.add("accent-teal");
+    if (t.accent === "amber") document.documentElement.classList.add("accent-amber");
+  }
+  window.__tweaks = { ...TWEAK_DEFAULTS };
+  applyTweaks(window.__tweaks);
+</script>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="components/icons.jsx"></script>
+<script type="text/babel" src="components/primitives.jsx"></script>
+<script type="text/babel" src="components/data.jsx"></script>
+<script type="text/babel" src="components/pr-card.jsx"></script>
+<script type="text/babel" src="components/flyout.jsx"></script>
+<script type="text/babel" src="components/main-window.jsx"></script>
+<script type="text/babel" src="components/pr-detail.jsx"></script>
+<script type="text/babel" src="components/pr-detail-tabs.jsx"></script>
+<script type="text/babel" src="components/palette.jsx"></script>
+<script type="text/babel" src="components/focus.jsx"></script>
+<script type="text/babel" src="components/file-palette.jsx"></script>
+<script type="text/babel" src="components/work-items.jsx"></script>
+<script type="text/babel" src="components/settings-and-extras.jsx"></script>
+<script type="text/babel" src="components/diff-viewer.jsx"></script>
+
+<script type="text/babel">
+  const { useState } = React;
+
+  // Dark-mode wrapper: scopes the .dark token overrides so this subtree renders
+  // in dark while the rest of the page stays light. Also paints its own bg
+  // so artboards look like a real dark-themed window.
+  function DarkWrap({ children, style }) {
+    return (
+      <div className="dark" style={{
+        background: "#0a0810",
+        width: "100%", height: "100%",
+        display: "flex", alignItems: "stretch", justifyContent: "stretch",
+        ...style,
+      }}>{children}</div>
+    );
+  }
+
+  // Pair of light + dark artboards for a single design.
+  function LightDarkPair({ id, label, width, height, children }) {
+    return (
+      <>
+        <DCArtboard id={id} label={`${label} · light`} width={width} height={height}>
+          {children}
+        </DCArtboard>
+        <DCArtboard id={`${id}-dark`} label={`${label} · dark`} width={width} height={height}>
+          <DarkWrap>{children}</DarkWrap>
+        </DCArtboard>
+      </>
+    );
+  }
+
+  function App() {
+    return (
+      <>
+        <DesignCanvas storageKey="borgdock-unified-v3" initialScale={0.55}>
+
+          <DCSection id="system" title="① One design vocabulary — light & dark" subtitle="Every surface shares the same titlebar, pill system, tab bar, keyboard footer and card. Each design is shown in both modes.">
+            <LightDarkPair id="flyout" label="Docked sidebar" width={380} height={620}>
+              <Flyout />
+            </LightDarkPair>
+            <LightDarkPair id="palette" label="Worktree palette" width={560} height={620}>
+              <Palette />
+            </LightDarkPair>
+            <DCArtboard id="badges" label="Floating badge (5 styles, always on dark)" width={380} height={620}>
+              <div className="bd-window" style={{ width: 380, height: 620 }}>
+                <div className="bd-titlebar"><span className="bd-titlebar__logo"><Icons.Logo /></span><span className="bd-titlebar__title">Badge styles</span><span className="bd-titlebar__spacer" /><button className="bd-wc bd-wc--close"><Icons.X size={14}/></button></div>
+                <FloatingBadges />
+              </div>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="focus" title="② Focus — the new home screen" subtitle="Ranked by priority score. Primary reason surfaced as a pill. Quick Review overlay batches approvals.">
+            <LightDarkPair id="focus-tab" label="Focus tab" width={1020} height={760}>
+              <FocusTab />
+            </LightDarkPair>
+          </DCSection>
+
+          <DCSection id="main" title="③ Main window" subtitle="Section tabs in the titlebar, filter pills below, grouped PR cards. Same vocabulary as the sidebar — just wider.">
+            <LightDarkPair id="main-window" label="Main window · PRs" width={1020} height={760}>
+              <MainWindow />
+            </LightDarkPair>
+            <LightDarkPair id="work-items" label="Main window · Work Items" width={1020} height={760}>
+              <WorkItems />
+            </LightDarkPair>
+          </DCSection>
+
+          <DCSection id="detail" title="④ PR detail" subtitle="Shared titlebar, shared tab bar, shared action button vocabulary. Every tab lives in the same shell.">
+            <LightDarkPair id="pr-detail-overview" label="PR detail · Overview" width={820} height={960}>
+              <PRDetail />
+            </LightDarkPair>
+            <LightDarkPair id="pr-detail-tabs" label="PR detail · tabs" width={820} height={960}>
+              <PRDetailAllTabs />
+            </LightDarkPair>
+          </DCSection>
+
+          <DCSection id="palettes" title="⑤ Palettes & code surfaces" subtitle="File palette (Ctrl+F8) and File Viewer share the same chrome as the worktree palette. Syntax colours come from the shared token palette.">
+            <LightDarkPair id="file-palette" label="File Palette (Ctrl+F8)" width={1080} height={680}>
+              <FilePalette />
+            </LightDarkPair>
+            <LightDarkPair id="file-viewer" label="File Viewer (↵)" width={860} height={620}>
+              <FileViewer />
+            </LightDarkPair>
+            <LightDarkPair id="sql" label="SQL window (Ctrl+F10)" width={980} height={640}>
+              <SQLWindow />
+            </LightDarkPair>
+          </DCSection>
+
+          <DCSection id="diff" title="⑥ Worktree changes & diff viewer" subtitle="Worktree shows both uncommitted edits (vs HEAD) and everything ahead of the base branch. Click a file to open a full diff viewer with split/unified views and HEAD/base toggle.">
+            <LightDarkPair id="worktree-changes" label="Changes panel" width={860} height={620}>
+              <WorktreeChanges />
+            </LightDarkPair>
+            <LightDarkPair id="diff-viewer" label="Diff viewer · vs HEAD" width={1180} height={760}>
+              <DiffViewer />
+            </LightDarkPair>
+          </DCSection>
+
+          <DCSection id="settings" title="⑦ Settings, wizard, notifications" subtitle="Settings, setup wizard and toast notifications all reuse the same primitives. No bolted-on chrome.">
+            <LightDarkPair id="settings" label="Settings" width={720} height={640}>
+              <Settings />
+            </LightDarkPair>
+            <LightDarkPair id="wizard" label="Setup wizard" width={680} height={560}>
+              <SetupWizard />
+            </LightDarkPair>
+            <LightDarkPair id="toasts" label="Notifications" width={360} height={520}>
+              <Notifications />
+            </LightDarkPair>
+          </DCSection>
+
+        </DesignCanvas>
+
+        <TweaksPanel />
+      </>
+    );
+  }
+
+  // Tabs demo for PR detail — cycles through non-overview tabs
+  function PRDetailAllTabs() {
+    const [tab, setTab] = useState("checks");
+    const tabs = [
+      { id: "overview", label: "Overview" },
+      { id: "commits", label: "Commits", count: 1 },
+      { id: "files", label: "Files", count: 6 },
+      { id: "checks", label: "Checks", count: 10 },
+      { id: "reviews", label: "Reviews", count: 3 },
+      { id: "comments", label: "Comments", count: 3 },
+    ];
+    const pr = PRS[2];
+    return (
+      <div className="bd-window" style={{ width: 820, height: 960 }}>
+        <div className="bd-titlebar">
+          <span className="bd-titlebar__logo"><Icons.Logo /></span>
+          <span className="bd-titlebar__title">BorgDock</span>
+          <span className="bd-pill bd-pill--neutral" style={{ height: 18, fontSize: 10 }}>9 open</span>
+          <span className="bd-titlebar__spacer" />
+          <button className="bd-wc"><Icons.External size={13} /></button>
+          <button className="bd-wc"><Icons.Minus size={14} /></button>
+          <button className="bd-wc"><Icons.Maximize size={12} /></button>
+          <button className="bd-wc bd-wc--close"><Icons.X size={14} /></button>
+        </div>
+        <div style={{ padding: "14px 22px 10px", borderBottom: "1px solid var(--color-subtle-border)", background: "var(--color-surface)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span className="bd-mono" style={{ color: "var(--color-text-muted)", fontSize: 11 }}>#{pr.number}</span>
+            <Pill tone="success">{pr.statusLabel}</Pill>
+            <Pill tone="neutral">in review</Pill>
+          </div>
+          <h1 style={{ margin: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: "var(--color-text-primary)", letterSpacing: "-0.01em" }}>{pr.title}</h1>
+        </div>
+        <div style={{ padding: "0 22px", background: "var(--color-surface)", borderBottom: "1px solid var(--color-subtle-border)" }}>
+          <Tabs value={tab} onChange={setTab} tabs={tabs} />
+        </div>
+        <div className="bd-scroll" style={{ flex: 1, overflow: "auto", padding: "16px 22px", background: "var(--color-background)" }}>
+          {tab === "commits" && <CommitsTab />}
+          {tab === "files" && <FilesTab />}
+          {tab === "checks" && <ChecksTab />}
+          {tab === "reviews" && <ReviewsTab />}
+          {tab === "comments" && <CommentsTab />}
+          {tab === "overview" && <div style={{ color: "var(--color-text-muted)", fontSize: 12, padding: 20, textAlign: "center" }}>See adjacent artboard for Overview</div>}
+        </div>
+      </div>
+    );
+  }
+
+  function TweaksPanel() {
+    const [open, setOpen] = useState(false);
+    const [state, setState] = useState(window.__tweaks);
+
+    React.useEffect(() => {
+      function onMsg(e) {
+        const d = e.data || {};
+        if (d.type === "__activate_edit_mode") setOpen(true);
+        if (d.type === "__deactivate_edit_mode") setOpen(false);
+      }
+      window.addEventListener("message", onMsg);
+      window.parent.postMessage({ type: "__edit_mode_available" }, "*");
+      return () => window.removeEventListener("message", onMsg);
+    }, []);
+
+    function setKey(k, v) {
+      const next = { ...state, [k]: v };
+      setState(next);
+      window.__tweaks = next;
+      applyTweaks(next);
+      window.parent.postMessage({ type: "__edit_mode_set_keys", edits: { [k]: v } }, "*");
+    }
+
+    const Seg = ({ keyName, value, label }) => (
+      <button className={state[keyName] === value ? "on" : ""} onClick={() => setKey(keyName, value)}>{label}</button>
+    );
+
+    return (
+      <div className={`tweaks ${open ? "open" : ""}`}>
+        <h4>Tweaks</h4>
+        <div>
+          <span className="label">Theme</span>
+          <div className="row">
+            <Seg keyName="theme" value="light" label="Light" />
+            <Seg keyName="theme" value="dark" label="Dark" />
+          </div>
+        </div>
+        <div>
+          <span className="label">Density</span>
+          <div className="row">
+            <Seg keyName="density" value="compact" label="Compact" />
+            <Seg keyName="density" value="comfortable" label="Comfortable" />
+          </div>
+        </div>
+        <div>
+          <span className="label">Accent hue</span>
+          <div className="row">
+            <Seg keyName="accent" value="violet" label="Violet" />
+            <Seg keyName="accent" value="teal" label="Teal" />
+            <Seg keyName="accent" value="amber" label="Amber" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

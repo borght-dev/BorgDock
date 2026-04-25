@@ -29,6 +29,7 @@ export function HighlightCard({ highlight }: Props) {
       <HeroBanner hero={hero} kind={kind} />
       <div className="flex flex-wrap items-center gap-2 mb-1">
         <span
+          data-highlight-kind={kind}
           className={`text-[10px] font-medium uppercase tracking-[0.04em] px-1.5 py-0.5 rounded border ${KIND_CLASSES[kind]}`}
         >
           {KIND_LABEL[kind]}
