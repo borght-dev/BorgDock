@@ -107,6 +107,42 @@ export const TAURI_MOCK_SCRIPT = `
         case 'get_cached_prs':
           return [];
 
+        case 'list_worktrees_bare':
+          return [
+            { path: '/home/user/repos/test-repo/.worktrees/feat-x', branchName: 'feat-x', isMainWorktree: false },
+            { path: '/home/user/repos/test-repo', branchName: 'main', isMainWorktree: true },
+          ];
+
+        case 'list_worktree_changes':
+          return {
+            vsHead: [
+              { path: 'src/a.ts', previousPath: null, status: 'modified', additions: 3, deletions: 1, isBinary: false, isSubmodule: false },
+              { path: 'src/new.ts', previousPath: null, status: 'added', additions: 12, deletions: 0, isBinary: false, isSubmodule: false },
+            ],
+            vsBase: [
+              { path: 'README.md', previousPath: null, status: 'modified', additions: 1, deletions: 1, isBinary: false, isSubmodule: false },
+            ],
+            baseBranch: 'main',
+            baseBranchSource: 'origin-head',
+            detachedHead: false,
+            mergeBaseUnavailable: false,
+          };
+
+        case 'diff_worktree_vs_head':
+        case 'diff_worktree_vs_base':
+          return {
+            filePath: args?.filePath ?? 'src/a.ts',
+            previousPath: null,
+            hunks: [{
+              header: '@@ -1 +1,2 @@', oldStart: 1, oldCount: 1, newStart: 1, newCount: 2,
+              lines: [
+                { kind: 'context', content: 'a', oldLineNumber: 1, newLineNumber: 1 },
+                { kind: 'add', content: 'b', oldLineNumber: null, newLineNumber: 2 },
+              ],
+            }],
+            binary: null, isSubmodule: false,
+          };
+
         default:
           console.warn('[mock] unhandled invoke:', cmd);
           return null;

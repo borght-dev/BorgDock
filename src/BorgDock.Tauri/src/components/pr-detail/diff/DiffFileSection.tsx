@@ -50,9 +50,10 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
     useImperativeHandle(ref, () => sectionRef.current as HTMLDivElement, []);
 
     const hunks = useMemo(() => {
+      if (file.hunks && file.hunks.length > 0) return file.hunks;
       if (!file.patch) return [];
       return parsePatch(file.patch);
-    }, [file.patch]);
+    }, [file.hunks, file.patch]);
 
     const syntaxHighlights = useSyntaxHighlight(file.filename, hunks);
 

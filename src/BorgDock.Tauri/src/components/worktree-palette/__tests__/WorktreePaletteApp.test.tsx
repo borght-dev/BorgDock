@@ -526,3 +526,81 @@ describe('WorktreePaletteApp', () => {
     expect(branchTexts).not.toContain('feature-b');
   });
 });
+
+describe('WorktreePaletteApp \u2014 palette tabs', () => {
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          repos: [
+            {
+              owner: 'org',
+              name: 'repo',
+              enabled: true,
+              worktreeBasePath: '/home/user/repo',
+              worktreeSubfolder: '.worktrees',
+            },
+          ],
+        });
+      }
+      if (cmd === 'list_worktrees_bare') {
+        return Promise.resolve([
+          {
+            path: '/home/user/repo/.worktrees/feature-a',
+            branchName: 'feature-a',
+            isMainWorktree: false,
+          },
+          {
+            path: '/home/user/repo',
+            branchName: 'main',
+            isMainWorktree: true,
+          },
+        ]);
+      }
+      return Promise.resolve();
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('shows the worktrees section by default and renders Changes tab', async () => {
+    await act(async () => {
+      render(<WorktreePaletteApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /worktrees/i })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('tab', { name: /changes/i })).toBeInTheDocument();
+    expect(document.querySelector('[data-worktree-row]')).toBeTruthy();
+    expect(document.querySelector('[data-worktree-changes-panel]')).toBeFalsy();
+  });
+
+  it('switches to the Changes tab when the user clicks it', async () => {
+    await act(async () => {
+      render(<WorktreePaletteApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /worktrees/i })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: /changes/i }));
+    await waitFor(() =>
+      // Even with no worktree selected yet, the Changes tab body renders SOMETHING.
+      // Either a "select a worktree" prompt or a panel — both are valid.
+      expect(
+        document.querySelector('[data-worktree-changes-tab-body]'),
+      ).toBeTruthy(),
+    );
+  });
+});

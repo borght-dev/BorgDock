@@ -2,6 +2,7 @@ pub mod commands;
 pub mod diff;
 pub mod process;
 pub mod worktree;
+pub mod worktree_changes;
 
 pub use commands::{git_checkout, git_current_branch, git_fetch};
 pub use diff::{git_changed_files, git_file_diff};
