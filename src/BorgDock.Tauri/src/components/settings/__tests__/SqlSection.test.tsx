@@ -243,9 +243,8 @@ describe('SqlSection', () => {
     render(<SqlSection sql={sql} onChange={onChange} />);
     fireEvent.click(screen.getByText('Edit'));
 
-    fireEvent.change(screen.getByDisplayValue('Windows Integrated'), {
-      target: { value: 'sql' },
-    });
+    // Auth method is now a Chip pair — click the "SQL Server" chip
+    fireEvent.click(screen.getByText('SQL Server'));
 
     expect(onChange).toHaveBeenCalledWith({
       connections: [expect.objectContaining({ authentication: 'sql' })],
