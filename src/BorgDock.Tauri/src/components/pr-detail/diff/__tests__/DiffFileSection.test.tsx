@@ -249,4 +249,55 @@ describe('DiffFileSection', () => {
     render(<DiffFileSection {...makeProps({ defaultCollapsed: true })} />);
     expect(screen.getByLabelText('Expand')).toBeDefined();
   });
+
+  it('renders data-diff-file on the file root', () => {
+    const { container } = render(<DiffFileSection {...makeProps()} />);
+    expect(container.querySelector('[data-diff-file]')).not.toBeNull();
+  });
+
+  it('renders data-diff-stat="added" with the additions count', () => {
+    const { container } = render(
+      <DiffFileSection
+        {...makeProps({ file: makeFile({ additions: 42, deletions: 5 }) })}
+      />,
+    );
+    const added = container.querySelector('[data-diff-stat="added"]');
+    expect(added).not.toBeNull();
+    expect(added?.textContent).toContain('42');
+  });
+
+  it('renders data-diff-stat="deleted" with the deletions count', () => {
+    const { container } = render(
+      <DiffFileSection
+        {...makeProps({ file: makeFile({ additions: 42, deletions: 5 }) })}
+      />,
+    );
+    const deleted = container.querySelector('[data-diff-stat="deleted"]');
+    expect(deleted).not.toBeNull();
+    expect(deleted?.textContent).toContain('5');
+  });
+
+  it('renders prev/next hunk IconButtons with data-action', () => {
+    const { container } = render(<DiffFileSection {...makeProps()} />);
+    expect(container.querySelector('[data-action="prev-hunk"]')).not.toBeNull();
+    expect(container.querySelector('[data-action="next-hunk"]')).not.toBeNull();
+  });
+
+  it('scrolls to next hunk when next-hunk button is clicked', () => {
+    const { container } = render(<DiffFileSection {...makeProps()} />);
+    // Inject a fake hunk-header element so the handler has something to find.
+    // Task 9 will add real [data-hunk-header] markers to UnifiedDiffView/SplitDiffView.
+    const fakeHeader = document.createElement('div');
+    fakeHeader.setAttribute('data-hunk-header', '');
+    fakeHeader.textContent = '@@ -1,3 +1,3 @@';
+    container.querySelector('[data-diff-file]')?.appendChild(fakeHeader);
+
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const nextBtn = container.querySelector('[data-action="next-hunk"]') as HTMLButtonElement;
+    nextBtn.click();
+
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+  });
 });
