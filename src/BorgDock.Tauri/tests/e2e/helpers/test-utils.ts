@@ -86,6 +86,38 @@ export const TAURI_MOCK_SCRIPT = `
 
   // Prevent Tauri event listeners from throwing
   window.__TAURI_INTERNALS__.metadata = { currentWindow: { label: 'main' }, currentWebview: { label: 'main' }, windows: [] };
+
+  // Intercept fetch to api.github.com so the init flow ('auth' → 'discover-repos' →
+  // 'fetch-prs' → 'fetch-checks') doesn't 401 against real GitHub. Without this
+  // the splash screen stalls on "GitHub API authentication failed (401)" and
+  // every spec fails at waitForAppReady. Routes return synthetic empty lists so
+  // the main sidebar renders; seedPrStore can override after init completes.
+  (function mockGitHubFetch() {
+    const realFetch = window.fetch.bind(window);
+    const jsonOk = (body) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '4999',
+          'X-RateLimit-Limit': '5000',
+          'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + 3600),
+        },
+      });
+    window.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input.url || String(input);
+      if (/^https:\\/\\/api\\.github\\.com\\//.test(url)) {
+        if (/\\/graphql\\b/.test(url)) return jsonOk({ data: {} });
+        // /repos/:owner/:repo/pulls, /issues, /commits, /files, /reviews, etc.
+        if (/\\/(pulls|issues|commits|files|reviews|check-runs|check-suites|comments)\\b/.test(url))
+          return jsonOk([]);
+        // /repos/:owner/:repo  (repo metadata)
+        return jsonOk({});
+      }
+      return realFetch(input, init);
+    };
+  })();
 `;
 
 /**
@@ -180,8 +212,13 @@ export async function waitForAppReady(page: Page) {
   await page
     .waitForSelector('[class*="animate-spin"]', { state: 'detached', timeout: 10_000 })
     .catch(() => {});
-  // Wait for either the setup wizard or the sidebar header to appear
-  await page.waitForSelector('header, [class*="fixed inset-0"]', { timeout: 10_000 });
+  // Wait for the app root to mount. Cover three shapes:
+  //   - main sidebar: <header>
+  //   - setup wizard / splash overlay: .fixed.inset-0
+  //   - chromeless windows (sql / whats-new / pr-detail / work-item): drag region titlebar
+  await page.waitForSelector('header, [class*="fixed inset-0"], [data-tauri-drag-region]', {
+    timeout: 10_000,
+  });
 }
 
 /**

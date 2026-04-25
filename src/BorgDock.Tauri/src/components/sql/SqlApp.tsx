@@ -4,6 +4,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { StatusBar } from '@/components/shared/chrome';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { ResultsTable } from './ResultsTable';
@@ -519,9 +520,9 @@ export function SqlApp() {
       )}
 
       {/* ── Status bar ──────────────────────────────────── */}
-      <div className="sql-status-bar">
-        <div className="sql-status-left">
-          {result && (
+      <StatusBar
+        left={
+          result && (
             <>
               <span className="sql-status-rows">
                 {result.totalRowCount.toLocaleString()} row{result.totalRowCount !== 1 ? 's' : ''}
@@ -544,32 +545,33 @@ export function SqlApp() {
                 </>
               )}
             </>
-          )}
-        </div>
-
-        <div className="sql-status-right">
-          {copyFlash && (
-            <span className="sql-copy-flash">
-              <CheckIcon />
-              {copyFlash}
-            </span>
-          )}
-          {result && totalRows > 0 && (
-            <div className="sql-copy-group">
-              <CopyIcon />
-              <button className="sql-copy-btn" onClick={copyValues}>
-                Values
-              </button>
-              <button className="sql-copy-btn" onClick={copyWithHeaders}>
-                + Headers
-              </button>
-              <button className="sql-copy-btn" onClick={copyAll}>
-                All
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+        right={
+          <>
+            {copyFlash && (
+              <span className="sql-copy-flash">
+                <CheckIcon />
+                {copyFlash}
+              </span>
+            )}
+            {result && totalRows > 0 && (
+              <div className="sql-copy-group">
+                <CopyIcon />
+                <button className="sql-copy-btn" onClick={copyValues}>
+                  Values
+                </button>
+                <button className="sql-copy-btn" onClick={copyWithHeaders}>
+                  + Headers
+                </button>
+                <button className="sql-copy-btn" onClick={copyAll}>
+                  All
+                </button>
+              </div>
+            )}
+          </>
+        }
+      />
     </div>
   );
 }

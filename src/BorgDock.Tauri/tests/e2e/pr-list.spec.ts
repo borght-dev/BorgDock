@@ -76,9 +76,9 @@ test.describe('PR List', () => {
   test('header contains BorgDock logo and section switcher', async ({ page }) => {
     await expect(page.getByText('BorgDock')).toBeVisible();
 
-    // Section switcher buttons
-    await expect(page.getByRole('button', { name: 'PRs' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Work Items' })).toBeVisible();
+    // Section switcher tabs
+    await expect(page.getByRole('tab', { name: 'PRs' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Work Items' })).toBeVisible();
   });
 
   test('shows loading skeletons during first load', async ({ page }) => {

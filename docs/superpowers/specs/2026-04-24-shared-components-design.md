@@ -293,7 +293,7 @@ At the close of each PR's work, the final commit in that PR updates the Delivery
 |---|---|---|---|---|---|
 | #0 | `feat/streamline-00-regression-baseline` | In review | — | 2026-04-24 | Regression safety net: behavioral specs, design baselines, a11y, perf, motion, cross-OS CI. |
 | #1 | `feat/streamline-01-foundation` | In review | — | 2026-04-24 | Foundation: `@theme inline` token promotion + 13 shared primitives (Avatar, Button, Card, Chip, Dot, IconButton, Input, Kbd, LinearProgress, Pill, Ring, Tabs, Titlebar). Opened as stacked PR against `feat/streamline-00-regression-baseline`. No consumer migration in this PR. |
-| #2 | `feat/streamline-02-chrome` | Planned | — | — | — |
+| #2 | `feat/streamline-02-chrome` | In review | — | 2026-04-24 | Chrome migration: new `WindowControls` + `StatusBar` under `shared/chrome/`; `WindowTitleBar` rewritten on `Titlebar` + `WindowControls` primitives; PR-detail pop-out, What's-New, and PR-detail-preload migrated; `layout/StatusBar` + SQL window footer migrated to shared `StatusBar`; PR-detail tabs and Header section switcher migrated to `Tabs` primitive; legacy `.window-titlebar*`, `.window-ctrl-btn*`, `.sidebar-section-btn*`, `.sql-status-bar` CSS deleted (~150 lines). Review / Settings / Focus sub-tabs don't exist in code today — their tabification is deferred to the feature PRs (#3 / #4 / #6) that redesign those surfaces. Playwright e2e suite remains blocked by pre-existing Tauri mock auth failure (independent of this PR's scope). |
 | #3 | `feat/streamline-03-pr-surfaces` | Planned | — | — | — |
 | #4 | `feat/streamline-04-pr-detail` | Planned | — | — | — |
 | #5 | `feat/streamline-05-palettes` | Planned | — | — | — |

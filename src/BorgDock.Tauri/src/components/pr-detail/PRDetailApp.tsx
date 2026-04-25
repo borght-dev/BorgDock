@@ -148,7 +148,7 @@ export function PRDetailApp() {
       <button
         onClick={closeThisWindow}
         aria-label="Close"
-        className="window-ctrl-btn window-ctrl-btn--close"
+        className="bd-wc bd-wc--close"
       >
         <svg width="10" height="10" viewBox="0 0 10 10">
           <path

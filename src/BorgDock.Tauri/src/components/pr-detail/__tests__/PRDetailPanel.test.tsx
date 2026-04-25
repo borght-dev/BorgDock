@@ -91,12 +91,12 @@ describe('PRDetailPanel', () => {
 
   it('renders all tab buttons', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    expect(screen.getByRole('button', { name: 'Overview' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Commits' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Files' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Checks' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Reviews' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Comments' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Overview' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Commits' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Files' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Checks' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Reviews' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Comments' })).toBeTruthy();
   });
 
   it('shows Overview tab content by default', () => {
@@ -112,7 +112,7 @@ describe('PRDetailPanel', () => {
 
   it('switches to Commits tab on click', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Commits' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Commits' }));
     const commitsTab = screen.getByTestId('commits-tab');
     expect(commitsTab.closest('.hidden')).toBeNull();
     const overviewTab = screen.getByTestId('overview-tab');
@@ -121,21 +121,21 @@ describe('PRDetailPanel', () => {
 
   it('switches to Files tab on click', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Files' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Files' }));
     const filesTab = screen.getByTestId('files-tab');
     expect(filesTab.closest('.hidden')).toBeNull();
   });
 
   it('switches to Checks tab on click', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Checks' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Checks' }));
     const checksTab = screen.getByTestId('checks-tab');
     expect(checksTab.closest('.hidden')).toBeNull();
   });
 
   it('switches to Reviews tab on click', () => {
     render(<PRDetailPanel pr={makePr()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Reviews' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Reviews' }));
     const reviewsTab = screen.getByTestId('reviews-tab');
     expect(reviewsTab.closest('.hidden')).toBeNull();
   });
@@ -191,10 +191,12 @@ describe('PRDetailPanel', () => {
     expect(selectPrSpy).not.toHaveBeenCalled();
   });
 
-  it('renders animated underline element', () => {
-    const { container } = render(<PRDetailPanel pr={makePr()} />);
-    const underline = container.querySelector('.bg-\\[var\\(--color-tab-active\\)\\]');
-    expect(underline).toBeTruthy();
+  it('marks the active tab with aria-selected', () => {
+    render(<PRDetailPanel pr={makePr()} />);
+    const overviewTab = screen.getByRole('tab', { name: 'Overview' });
+    expect(overviewTab.getAttribute('aria-selected')).toBe('true');
+    const commitsTab = screen.getByRole('tab', { name: 'Commits' });
+    expect(commitsTab.getAttribute('aria-selected')).toBe('false');
   });
 
   it('mounts tabs lazily and keeps them cached after activation', () => {
@@ -202,10 +204,10 @@ describe('PRDetailPanel', () => {
     expect(screen.getByTestId('overview-tab')).toBeTruthy();
     expect(screen.queryByTestId('commits-tab')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Commits' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Commits' }));
     expect(screen.getByTestId('commits-tab')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(screen.getByTestId('commits-tab')).toBeTruthy();
   });
 });
