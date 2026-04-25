@@ -53,6 +53,39 @@ describe('QuickReviewOverlay', () => {
     expect(screen.getByText('Quick Review')).toBeDefined();
   });
 
+  it('marks the dialog panel with data-overlay="quick-review"', () => {
+    const pr = makePr();
+    useQuickReviewStore.getState().startSession([pr]);
+    const { container } = render(<QuickReviewOverlay />);
+    const panel = container.querySelector('[data-overlay="quick-review"]');
+    expect(panel).not.toBeNull();
+    expect(panel?.getAttribute('role')).toBe('dialog');
+  });
+
+  it('action buttons use the Button primitive (.bd-btn)', () => {
+    const pr = makePr();
+    useQuickReviewStore.getState().startSession([pr]);
+    render(<QuickReviewOverlay />);
+    const approve = screen.getByText(/Approve \(A\)/);
+    expect(approve.classList.contains('bd-btn')).toBe(true);
+    expect(approve.classList.contains('bd-btn--primary')).toBe(true);
+    const requestChanges = screen.getByText(/Request Changes \(X\)/);
+    expect(requestChanges.classList.contains('bd-btn--danger')).toBe(true);
+    const comment = screen.getByText(/Comment \(C\)/);
+    expect(comment.classList.contains('bd-btn--ghost')).toBe(true);
+    const skip = screen.getByText(/Skip/);
+    expect(skip.classList.contains('bd-btn--ghost')).toBe(true);
+  });
+
+  it('close button uses the IconButton primitive (.bd-icon-btn)', () => {
+    const pr = makePr();
+    useQuickReviewStore.getState().startSession([pr]);
+    const { container } = render(<QuickReviewOverlay />);
+    const closeBtn = container.querySelector('.bd-icon-btn');
+    expect(closeBtn).not.toBeNull();
+    expect(closeBtn?.getAttribute('title')).toBe('Close');
+  });
+
   it('shows current index and total count', () => {
     const pr1 = makePr();
     const pr2 = makePr();
@@ -213,8 +246,10 @@ describe('QuickReviewOverlay', () => {
   it('clicking close button ends session', () => {
     const pr = makePr();
     useQuickReviewStore.getState().startSession([pr]);
-    render(<QuickReviewOverlay />);
-    fireEvent.click(screen.getByText('\u2715'));
+    const { container } = render(<QuickReviewOverlay />);
+    const closeBtn = container.querySelector('.bd-icon-btn');
+    expect(closeBtn).not.toBeNull();
+    fireEvent.click(closeBtn!);
     expect(useQuickReviewStore.getState().state).toBe('idle');
   });
 
