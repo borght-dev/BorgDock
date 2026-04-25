@@ -32,8 +32,28 @@ export interface PRCardData {
   deletions?: number;
   changedFiles?: number;
   commitCount?: number;
+  commentCount?: number;
   labels?: string[];
   worktreeSlot?: string;
+}
+
+function CommentIcon() {
+  return (
+    <svg
+      data-comment-icon=""
+      width="11"
+      height="11"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14 8a5 5 0 0 1-5 5H5l-3 2v-9a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5z" />
+    </svg>
+  );
 }
 
 export interface PRCardProps {
@@ -210,7 +230,9 @@ export function PRCard({
             {pr.isMerged && <Pill tone="success">merged</Pill>}
             {pr.isClosed && !pr.isMerged && <Pill tone="neutral">closed</Pill>}
           </div>
-          {(pr.branch || pr.additions !== undefined) && (
+          {(pr.branch ||
+            pr.additions !== undefined ||
+            (pr.commentCount !== undefined && pr.commentCount > 0)) && (
             <div
               className="mt-2 flex flex-wrap items-center gap-2 text-[11px]"
               style={{ color: 'var(--color-text-secondary)' }}
@@ -238,6 +260,12 @@ export function PRCard({
               )}
               {pr.changedFiles !== undefined && pr.changedFiles > 0 && (
                 <span>{pr.changedFiles} files</span>
+              )}
+              {pr.commentCount !== undefined && pr.commentCount > 0 && (
+                <span className="inline-flex items-center gap-0.5" title="Comments">
+                  <CommentIcon />
+                  {pr.commentCount}
+                </span>
               )}
             </div>
           )}

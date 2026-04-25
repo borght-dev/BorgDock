@@ -70,6 +70,7 @@ function mapToPRCardData(
     deletions: pr.deletions ?? 0,
     changedFiles: pr.changedFiles ?? 0,
     commitCount: pr.commitCount ?? 0,
+    commentCount: pr.commentCount,
     labels: pr.labels,
     worktreeSlot,
   };
@@ -93,15 +94,7 @@ function HoverActionBar({
   const canMerge = isOpen && !pr.isDraft && overallStatus === 'green';
 
   return (
-    <div className="flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-      {pr.mergeable === false && (
-        <ActionButton
-          label="Resolve Conflicts"
-          icon={'\u2726'}
-          onClick={actions.handleResolveConflicts}
-          variant="accent"
-        />
-      )}
+    <>
       {overallStatus === 'red' && actions.failedCheck && (
         <ActionButton
           label="Re-run"
@@ -183,7 +176,7 @@ function HoverActionBar({
           {isExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
         </svg>
       </Button>
-    </div>
+    </>
   );
 }
 
@@ -231,17 +224,27 @@ export const PullRequestCard = memo(function PullRequestCard({
           onContextMenu={actions.handleContextMenu}
           active={isFocused}
           isFocused={isSelected}
-          trailing={
-            <HoverActionBar
-              prWithChecks={prWithChecks}
-              actions={actions}
-              isExpanded={isExpanded}
-              onToggleExpand={() => togglePrExpanded(pr.number)}
-            />
-          }
         />
+        {pr.mergeable === false && (
+          <div className="mt-2">
+            <ActionButton
+              label="Resolve Conflicts"
+              icon={'\u2726'}
+              onClick={actions.handleResolveConflicts}
+              variant="accent"
+            />
+          </div>
+        )}
+        <div className="mt-2 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <HoverActionBar
+            prWithChecks={prWithChecks}
+            actions={actions}
+            isExpanded={isExpanded}
+            onToggleExpand={() => togglePrExpanded(pr.number)}
+          />
+        </div>
         {workItemIds.length > 0 && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 px-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {workItemIds.map((id) => (
               <LinkedWorkItemBadge key={id} workItemId={id} compact />
             ))}

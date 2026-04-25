@@ -639,6 +639,37 @@ describe('PullRequestCard', () => {
     });
   });
 
+  describe('resolve conflicts visibility', () => {
+    it('renders Resolve Conflicts button outside the opacity-0 hover overlay', () => {
+      const pr = makePr({
+        pullRequest: { mergeable: false } as PullRequestWithChecks['pullRequest'],
+      });
+      render(<PullRequestCard prWithChecks={pr} />);
+      const resolveBtn = screen.getByText(/resolve conflicts/i);
+      // Walk up ancestors; none should have the opacity-0 class.
+      let el: HTMLElement | null = resolveBtn.parentElement;
+      while (el) {
+        expect(el.className || '').not.toMatch(/opacity-0/);
+        el = el.parentElement;
+      }
+    });
+  });
+
+  describe('comment count', () => {
+    it('shows comment count when there are comments', () => {
+      const { container } = render(
+        <PullRequestCard
+          prWithChecks={makePr({
+            pullRequest: { commentCount: 5 } as PullRequestWithChecks['pullRequest'],
+          })}
+        />,
+      );
+      // Comment count is rendered via the PRCard primitive's stats row, marked with data-comment-icon
+      expect(container.querySelector('[data-comment-icon]')).toBeInTheDocument();
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+  });
+
   describe('checks display', () => {
     it('shows check pass ratio when checks exist', () => {
       render(

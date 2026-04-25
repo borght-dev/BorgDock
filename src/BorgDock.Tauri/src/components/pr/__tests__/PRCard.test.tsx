@@ -225,4 +225,16 @@ describe('PRCard', () => {
     expect(onClick).toHaveBeenCalledOnce();
     expect(event).toBe(false); // preventDefault was called
   });
+
+  it('renders comment count when commentCount is greater than zero', () => {
+    render(<PRCard pr={{ ...basePr, commentCount: 5 }} density="normal" />);
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
+
+  it('does not render comment count when commentCount is zero', () => {
+    const { container } = render(
+      <PRCard pr={{ ...basePr, commentCount: 0 }} density="normal" />,
+    );
+    expect(container.querySelector('[data-comment-icon]')).toBeNull();
+  });
 });
