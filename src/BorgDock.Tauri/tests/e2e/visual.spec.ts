@@ -72,7 +72,7 @@ const SURFACES: Surface[] = [
     id: 'flyout',
     path: '/flyout.html',
     ready: 'body',
-    note: 'Flyout window entry; FlyoutApp and its sub-components (FlyoutGlance, FlyoutInitializing) have no data-tauri-drag-region — falls back to body until the attribute is added in a follow-up PR.',
+    note: 'Flyout window entry. The flyout is a floating glance card, not a movable windowed app — data-tauri-drag-region would be semantically inappropriate (the OS chrome / drag-region pattern fits surfaces that act as movable windows, not floating cards). body fallback is the permanent ready selector; the React tree mounting under body proves the surface rendered, and pixel diff is the actual progress signal (PR #9 decision).',
   },
   {
     id: 'palette',
