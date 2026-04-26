@@ -159,8 +159,9 @@ const SURFACES: Surface[] = [
   // ⑦ settings, wizard, notifications
   {
     id: 'settings',
-    ready: 'header',
-    note: 'Settings flyout within main window; requires a click to open so deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
+    path: '/?settings=open',
+    ready: '[data-flyout="settings"]',
+    note: 'Settings flyout opened via ?settings=open URL deep-link (PR #9). App.tsx mount effect calls useUiStore.setSettingsOpen(true) when the param is present.',
   },
   {
     id: 'wizard',

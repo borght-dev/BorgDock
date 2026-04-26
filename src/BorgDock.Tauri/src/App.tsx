@@ -242,6 +242,19 @@ export default function App() {
     };
   }, []);
 
+  // Dev/test-only deep-link: ?settings=open opens the settings flyout
+  // on mount so visual.spec.ts can capture it without simulating a click.
+  useEffect(() => {
+    const isTest =
+      import.meta.env.DEV ||
+      (typeof window !== 'undefined' &&
+        (window as { __PLAYWRIGHT__?: boolean }).__PLAYWRIGHT__ === true);
+    if (!isTest) return;
+    if (new URLSearchParams(window.location.search).get('settings') === 'open') {
+      useUiStore.getState().setSettingsOpen(true);
+    }
+  }, []);
+
   // Show wizard when setup is needed (skip splash)
   if (!isLoading && needsSetup) {
     return <SetupWizard />;

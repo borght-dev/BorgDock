@@ -11,14 +11,26 @@ test.describe('Settings Flyout', () => {
   test('clicking settings icon opens the flyout', async ({ page }) => {
     await openSettings(page);
 
+    // Assert the flyout panel itself is visible — same contract as the
+    // `?settings=open` URL-routed visual surface in visual.spec.ts (PR #9).
+    // Both paths converge on `useUiStore.setSettingsOpen(true)` → render
+    // the panel marked with `data-flyout="settings"`.
+    await expect(page.locator('[data-flyout="settings"]')).toBeVisible();
+
     // The flyout header should show "Settings"
     await expect(
       page.locator('span').filter({ hasText: /^Settings$/ }).first()
     ).toBeVisible();
 
-    // The Save and Cancel buttons should be visible
-    await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    // The flyout's close affordance ("Close settings" IconButton) should
+    // be present. The settings flyout intentionally has NO Save/Cancel
+    // buttons — see commit 423cfc7e: settings auto-save via debounced
+    // timer, and the close button flushes any pending save. The earlier
+    // Save/Cancel assertions in this test were aspirational against an
+    // older design and never matched the shipped UI.
+    await expect(
+      page.getByRole('button', { name: 'Close settings' })
+    ).toBeVisible();
   });
 
   test('flyout shows all sections', async ({ page }) => {
