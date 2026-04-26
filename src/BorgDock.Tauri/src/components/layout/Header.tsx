@@ -38,8 +38,7 @@ export function Header() {
   useEffect(() => {
     const isTest =
       import.meta.env.DEV ||
-      (typeof window !== 'undefined' &&
-        (window as { __PLAYWRIGHT__?: boolean }).__PLAYWRIGHT__ === true);
+      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
     if (!isTest) return;
     const param = new URLSearchParams(window.location.search).get('section');
     if (!param) return;

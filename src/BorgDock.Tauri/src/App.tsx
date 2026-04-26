@@ -41,9 +41,7 @@ installTestSeed({ isDev: import.meta.env.DEV });
 // Playwright harness sets __PLAYWRIGHT__ via injectCompletedSetup.
 const forceWizardFromUrl = (() => {
   if (typeof window === 'undefined') return false;
-  const isTest =
-    import.meta.env.DEV ||
-    (window as { __PLAYWRIGHT__?: boolean }).__PLAYWRIGHT__ === true;
+  const isTest = import.meta.env.DEV || window.__PLAYWRIGHT__ === true;
   if (!isTest) return false;
   return new URLSearchParams(window.location.search).get('wizard') === 'force';
 })();
@@ -261,8 +259,7 @@ export default function App() {
   useEffect(() => {
     const isTest =
       import.meta.env.DEV ||
-      (typeof window !== 'undefined' &&
-        (window as { __PLAYWRIGHT__?: boolean }).__PLAYWRIGHT__ === true);
+      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
     if (!isTest) return;
     if (new URLSearchParams(window.location.search).get('settings') === 'open') {
       useUiStore.getState().setSettingsOpen(true);

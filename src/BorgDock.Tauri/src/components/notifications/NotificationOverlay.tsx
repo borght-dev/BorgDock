@@ -12,8 +12,7 @@ export function NotificationOverlay() {
   useEffect(() => {
     const isTest =
       import.meta.env.DEV ||
-      (typeof window !== 'undefined' &&
-        (window as { __PLAYWRIGHT__?: boolean }).__PLAYWRIGHT__ === true);
+      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
     if (!isTest) return;
     if (new URLSearchParams(window.location.search).get('toast') === 'test') {
       useNotificationStore.getState().show({
