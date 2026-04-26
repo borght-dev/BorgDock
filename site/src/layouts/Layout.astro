@@ -51,6 +51,39 @@ const {
         } catch (e) {}
       })();
     </script>
+
+    {/* Detect platform and rewrite the hero download CTA before paint.
+        Defaults (in markup) target macOS; overridden client-side for
+        Windows/Linux. Sizes mirror the cards on /download. */}
+    <script is:inline>
+      (function () {
+        function apply() {
+          try {
+            var ua = navigator.userAgent || '';
+            var uaPlat = (navigator.userAgentData && navigator.userAgentData.platform) || '';
+            var plat = (uaPlat || navigator.platform || '').toLowerCase();
+            var os = 'mac';
+            if (/win/.test(plat) || /windows/i.test(ua)) os = 'win';
+            else if (/linux/.test(plat) || /linux/i.test(ua)) os = 'linux';
+            if (os === 'mac') return;
+            var labels = { win: 'Download for Windows', linux: 'Download for Linux' };
+            var sizes = { win: '42 MB', linux: '46 MB' };
+            var others = { win: 'macOS · Linux', linux: 'macOS · Windows' };
+            var label = document.querySelector('[data-download-label]');
+            var size = document.querySelector('[data-download-size]');
+            var other = document.querySelector('[data-download-other]');
+            if (label) label.textContent = labels[os];
+            if (size) size.textContent = sizes[os];
+            if (other) other.textContent = others[os];
+          } catch (e) {}
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', apply);
+        } else {
+          apply();
+        }
+      })();
+    </script>
   </head>
 
   <body>

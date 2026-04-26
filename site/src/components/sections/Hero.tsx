@@ -85,8 +85,9 @@ export function Hero({ scale = 1 }: HeroProps) {
                 gap: 10,
               }}
             >
-              Download for macOS
+              <span data-download-label>Download for macOS</span>
               <span
+                data-download-size
                 style={{
                   opacity: 0.7,
                   fontFamily: 'var(--font-code)',
@@ -110,7 +111,7 @@ export function Hero({ scale = 1 }: HeroProps) {
                 background: 'var(--color-surface)',
               }}
             >
-              Windows · Linux
+              <span data-download-other>Windows · Linux</span>
             </a>
             <span style={{ width: 10 }} />
             <span
