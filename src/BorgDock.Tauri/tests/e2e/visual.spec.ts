@@ -173,8 +173,9 @@ const SURFACES: Surface[] = [
   },
   {
     id: 'toasts',
-    ready: 'header',
-    note: 'Toast stack requires a runtime trigger to populate; deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
+    path: '/?toast=test',
+    ready: '[data-toast]',
+    note: 'Synthetic test toast pushed via ?toast=test URL deep-link (PR #9). NotificationOverlay mount effect calls useNotificationStore.show() with severity:info.',
   },
 ];
 
