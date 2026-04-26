@@ -1,6 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { FeatureBadge } from '@/components/onboarding';
 import { Tabs } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
@@ -29,6 +29,29 @@ const sections: { key: ActiveSection; label: string }[] = [
 export function Header() {
   const activeSection = useUiStore((s) => s.activeSection);
   const setActiveSection = useUiStore((s) => s.setActiveSection);
+
+  // Dev/test-only deep-link: ?section=focus|prs|work-items dispatches the
+  // existing section-store action on mount so visual.spec.ts can land on
+  // the right surface without simulating a click. Production navigation
+  // is unaffected — neither import.meta.env.DEV nor __PLAYWRIGHT__ is true
+  // in shipped builds.
+  useEffect(() => {
+    const isTest =
+      import.meta.env.DEV ||
+      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
+    if (!isTest) return;
+    const param = new URLSearchParams(window.location.search).get('section');
+    if (!param) return;
+    const map: Record<string, ActiveSection> = {
+      focus: 'focus',
+      prs: 'prs',
+      'work-items': 'workitems',
+    };
+    const target = map[param];
+    if (target) setActiveSection(target);
+    // Run once on mount; subsequent in-app navigation is user-driven.
+  }, [setActiveSection]);
+
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const isPolling = usePrStore((s) => s.isPolling);
   const getCounts = usePrStore((s) => s.counts);
