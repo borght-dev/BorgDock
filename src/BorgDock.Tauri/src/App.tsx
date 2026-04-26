@@ -35,6 +35,19 @@ import type { RepoSettings } from '@/types';
 
 installTestSeed({ isDev: import.meta.env.DEV });
 
+// Read once at module scope so the value is stable across renders
+// and impossible to change after the app boots. Production bundles
+// tree-shake this entirely (DEV is statically false) unless the
+// Playwright harness sets __PLAYWRIGHT__ via injectCompletedSetup.
+const forceWizardFromUrl = (() => {
+  if (typeof window === 'undefined') return false;
+  const isTest =
+    import.meta.env.DEV ||
+    (window as { __PLAYWRIGHT__?: boolean }).__PLAYWRIGHT__ === true;
+  if (!isTest) return false;
+  return new URLSearchParams(window.location.search).get('wizard') === 'force';
+})();
+
 const log = createLogger('app');
 
 export default function App() {
@@ -74,6 +87,7 @@ export default function App() {
 
   // GitHub polling (only when setup complete)
   const needsSetup =
+    forceWizardFromUrl ||
     !settings.setupComplete ||
     settings.repos.length === 0 ||
     (settings.gitHub.authMethod === 'pat' && !settings.gitHub.personalAccessToken);

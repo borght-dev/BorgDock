@@ -167,8 +167,9 @@ const SURFACES: Surface[] = [
   },
   {
     id: 'wizard',
-    ready: 'header',
-    note: 'Setup wizard requires setupComplete=false which injectCompletedSetup skips; deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
+    path: '/?wizard=force',
+    ready: '[data-wizard-step]',
+    note: 'Setup wizard forced via ?wizard=force URL deep-link (PR #9). App.tsx forceWizardFromUrl short-circuits the needsSetup gate; the dev/test guard prevents production bundles from honoring it.',
   },
   {
     id: 'toasts',
