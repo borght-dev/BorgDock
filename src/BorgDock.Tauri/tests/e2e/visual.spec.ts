@@ -91,8 +91,9 @@ const SURFACES: Surface[] = [
   // ② focus
   {
     id: 'focus-tab',
-    ready: 'header',
-    note: 'Main window; Sidebar renders Header unconditionally so <header> fails fast if the main shell errors during mount.',
+    path: '/?section=focus',
+    ready: '[data-section="focus"]',
+    note: 'Main window with Focus section forced via ?section=focus URL deep-link (PR #9). Header reads URLSearchParams on mount and dispatches setActiveSection.',
   },
 
   // ③ main
@@ -103,8 +104,9 @@ const SURFACES: Surface[] = [
   },
   {
     id: 'work-items',
-    ready: 'header',
-    note: 'Work Items section within main window. Section switch requires URL routing (deferred to PR #9); <header> is the tightest unconditional selector available.',
+    path: '/?section=work-items',
+    ready: '[data-section="workitems"]',
+    note: 'Main window with Work Items section forced via ?section=work-items URL deep-link (PR #9). Note: URL param is kebab-case, store value is concatenated.',
   },
 
   // ④ detail
