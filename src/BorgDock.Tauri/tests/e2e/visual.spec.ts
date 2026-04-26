@@ -146,7 +146,8 @@ const SURFACES: Surface[] = [
     id: 'worktree-changes',
     path: '/worktree.html',
     ready: '[data-tauri-drag-region]',
-    note: 'Worktree changes window; WorktreePaletteApp titlebar has data-tauri-drag-region so this fails fast if the app errors during mount.',
+    clipTo: '.bd-wt-palette',
+    note: 'Worktree changes window; clipped to .bd-wt-palette to exclude scrollbars and any debug overlays.',
   },
   {
     id: 'diff-viewer',
