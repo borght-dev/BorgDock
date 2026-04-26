@@ -70,7 +70,8 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
         const rect = (h as HTMLElement).getBoundingClientRect();
         return rect.top > 80; // 80px = sticky header height + buffer
       });
-      (target ?? headers[0]).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const first = headers[0];
+      if (first) (target ?? first).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
     const handlePrevHunk = useCallback(() => {
@@ -82,7 +83,8 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
           const rect = (h as HTMLElement).getBoundingClientRect();
           return rect.bottom < 80;
         });
-      (target ?? headers[headers.length - 1]).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const last = headers[headers.length - 1];
+      if (last) (target ?? last).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
     const handleKeyDown = useCallback(
