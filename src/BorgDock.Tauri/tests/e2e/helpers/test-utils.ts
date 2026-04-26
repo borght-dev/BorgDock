@@ -33,6 +33,7 @@ export const TAURI_MOCK_SCRIPT = `
               editorCommand: 'code', runAtStartup: false,
             },
             notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
+            claudeApi: { apiKey: '' },
             claudeCode: { defaultPostFixAction: 'commitAndNotify' },
             claudeReview: { botUsername: 'claude-code' },
             updates: { autoCheckEnabled: false, autoDownload: false },
@@ -250,6 +251,107 @@ export const TAURI_MOCK_SCRIPT = `
       const url = typeof input === 'string' ? input : input.url || String(input);
       if (/^https:\\/\\/api\\.github\\.com\\//.test(url)) {
         if (/\\/graphql\\b/.test(url)) return jsonOk({ data: {} });
+        // Specific fixtures for PR #714 used by diff-viewer.spec.ts.
+        // The PR object is shared between the list (pulls?state=open) and the
+        // detail (pulls/714) endpoints — both need the same shape so that
+        // PRDetailApp can find the PR in the list and then hydrate its details.
+        // These routes only activate when __BORGDOCK_PR_DETAIL__ is seeded so
+        // other specs (pr-list, pr-detail, etc.) that hit the same endpoints
+        // keep receiving the existing empty-list behaviour.
+        const pr714Detail = (window).__BORGDOCK_PR_DETAIL__;
+        if (pr714Detail) {
+          const pr714 = {
+            number: 714, state: 'open', title: 'Add quote footer',
+            user: { login: 'testuser', avatar_url: '' },
+            head: { ref: 'feat/footer', sha: 'abc1234' },
+            base: { ref: 'main' },
+            body: 'Adds the footer component.',
+            html_url: 'https://github.com/test-org/test-repo/pull/714',
+            additions: 5, deletions: 2, changed_files: 2, commits: 1,
+            comments: 0, review_comments: 0,
+            mergeable: true, mergeable_state: 'clean', draft: false,
+            labels: [], requested_reviewers: [],
+            created_at: '2026-04-20T10:00:00Z',
+            updated_at: '2026-04-25T14:00:00Z',
+            closed_at: null, merged_at: null,
+          };
+          if (/\\/pulls\\/714\\/files/.test(url)) {
+            // The patch for footer.tsx has 30+ context lines between the two hunks
+            // so the content overflows the viewport and the "Next hunk" scroll is
+            // actually observable (scrollIntoView moves the diff pane container).
+            const footerPatch = '@@ -1,3 +1,5 @@\\n' +
+              ' import * as React from "react";\\n' +
+              '+\\n' +
+              '+const YEAR = 2026;\\n' +
+              ' export function Footer() {\\n' +
+              '-  return <footer>\\u00a9 2025</footer>;\\n' +
+              '+  return <footer>\\u00a9 {YEAR}</footer>;\\n' +
+              ' }\\n' +
+              ' // context line 1\\n' +
+              ' // context line 2\\n' +
+              ' // context line 3\\n' +
+              ' // context line 4\\n' +
+              ' // context line 5\\n' +
+              ' // context line 6\\n' +
+              ' // context line 7\\n' +
+              ' // context line 8\\n' +
+              ' // context line 9\\n' +
+              ' // context line 10\\n' +
+              ' // context line 11\\n' +
+              ' // context line 12\\n' +
+              ' // context line 13\\n' +
+              ' // context line 14\\n' +
+              ' // context line 15\\n' +
+              ' // context line 16\\n' +
+              ' // context line 17\\n' +
+              ' // context line 18\\n' +
+              ' // context line 19\\n' +
+              ' // context line 20\\n' +
+              ' // context line 21\\n' +
+              ' // context line 22\\n' +
+              ' // context line 23\\n' +
+              ' // context line 24\\n' +
+              ' // context line 25\\n' +
+              '@@ -40,3 +42,4 @@\\n' +
+              ' // second hunk context\\n' +
+              '-const OLD = true;\\n' +
+              '+const NEW = true;\\n' +
+              '+const EXTRA = false;\\n';
+            return jsonOk([
+              {
+                filename: 'src/quote/footer.tsx', status: 'modified',
+                additions: 4, deletions: 2, changes: 6,
+                patch: footerPatch,
+              },
+              {
+                filename: 'src/quote/header.tsx', status: 'modified',
+                additions: 2, deletions: 1, changes: 3,
+                patch: '@@ -1,2 +1,3 @@\\n+// New comment\\n export function Header() {\\n-  return <header>Quote</header>;\\n+  return <header>Quote 2026</header>;\\n }\\n',
+              },
+            ]);
+          }
+          if (/\\/pulls\\/714\\/commits/.test(url)) {
+            return jsonOk([
+              {
+                sha: 'abc1234',
+                commit: {
+                  author: { name: 'testuser', email: 'testuser@example.com', date: '2026-04-20T10:00:00Z' },
+                  message: 'Add quote footer',
+                },
+                author: { login: 'testuser', avatar_url: '' },
+              },
+            ]);
+          }
+          // /pulls/714 exact detail (NOT sub-resources like /reviews, /comments)
+          if (/\\/pulls\\/714$/.test(url)) {
+            return jsonOk(pr714);
+          }
+          // List endpoint: /repos/.../pulls?state=open — return [pr714] so
+          // PRDetailApp.getOpenPRs() finds PR #714 in the list.
+          if (/\\/pulls\\?/.test(url)) {
+            return jsonOk([pr714]);
+          }
+        }
         // /repos/:owner/:repo/pulls, /issues, /commits, /files, /reviews, etc.
         if (/\\/(pulls|issues|commits|files|reviews|check-runs|check-suites|comments)\\b/.test(url))
           return jsonOk([]);
@@ -297,6 +399,7 @@ export function completedSettings() {
       toastOnNewPR: true,
       toastOnReviewUpdate: true,
     },
+    claudeApi: { apiKey: '' },
     claudeCode: { defaultPostFixAction: 'commitAndNotify' },
     claudeReview: { botUsername: 'claude-code' },
     updates: { autoCheckEnabled: false, autoDownload: false },
