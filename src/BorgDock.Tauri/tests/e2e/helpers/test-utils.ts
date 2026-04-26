@@ -445,6 +445,7 @@ export async function injectCompletedSetup(page: Page) {
   await page.addInitScript(`
     ${TAURI_MOCK_SCRIPT}
     window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+    window.__PLAYWRIGHT__ = true;
   `);
 }
 
