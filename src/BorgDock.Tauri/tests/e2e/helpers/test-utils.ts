@@ -114,7 +114,43 @@ export const TAURI_MOCK_SCRIPT = `
         case 'palette_ready':
         case 'open_in_terminal':
         case 'open_in_editor':
+        case 'open_file_viewer_window':
           return null;
+
+        case 'list_root_files':
+          // FileIndexState / use-file-index.ts: { entries: FileEntry[], truncated: boolean }
+          // FileEntry fields are not camelCase-renamed in the Rust struct, so rel_path stays as-is.
+          return {
+            entries: [
+              { rel_path: 'src/quote/footer.tsx', size: 120 },
+              { rel_path: 'src/App.tsx', size: 840 },
+              { rel_path: 'src/main.ts', size: 200 },
+            ],
+            truncated: false,
+          };
+
+        case 'read_text_file':
+          // FileViewerApp.tsx: invoke<string>('read_text_file', { path })
+          // The Rust command returns Result<String, ReadFileError>; on success Tauri
+          // serialises that as the bare string (not wrapped in { kind, content }).
+          // Use \\n (double-escaped) so the TS template literal emits literal \\n
+          // into the injected JS, where it is interpreted as a newline escape.
+          return "import * as React from 'react';\\nexport function Footer() {\\n  return <footer>\\u00a9 2026</footer>;\\n}\\n";
+
+        case 'git_file_diff':
+          // FileViewerApp.tsx: invoke<DiffOutput>('git_file_diff', { path, baseline })
+          // FileDiffOutput is rename_all = "camelCase": { patch, baselineRef, inRepo }
+          return { patch: '', baselineRef: 'HEAD', inRepo: false };
+
+        case 'search_content':
+          // use-content-search.ts: invoke<ContentFileResult[]>('search_content', { root, pattern, cancel_token })
+          // ContentFileResult fields are NOT camelCase-renamed: rel_path, match_count, matches
+          return [];
+
+        case 'git_changed_files':
+          // ChangesSection.tsx: invoke<ChangedFilesOutput>('git_changed_files', { root })
+          // ChangedFilesOutput is rename_all = "camelCase": { local, vsBase, baseRef, inRepo }
+          return { local: [], vsBase: [], baseRef: 'HEAD', inRepo: false };
 
         case 'execute_sql_query':
           // Synthetic result so sql.spec.ts's "results table renders after mock
