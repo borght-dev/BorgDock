@@ -72,13 +72,13 @@ const SURFACES: Surface[] = [
     id: 'flyout',
     path: '/flyout.html',
     ready: 'body',
-    note: 'Flyout window entry; secondary window has no test-seed hook, so uses whatever the FlyoutApp renders unseeded.',
+    note: 'Flyout window entry; FlyoutApp and its sub-components (FlyoutGlance, FlyoutInitializing) have no data-tauri-drag-region — falls back to body until the attribute is added in a follow-up PR.',
   },
   {
     id: 'palette',
     path: '/palette.html',
-    ready: 'body',
-    note: 'Command palette window entry; secondary window has no test-seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Command palette window; PaletteApp drag-handle has data-tauri-drag-region so this fails fast if PaletteApp errors during mount.',
   },
   {
     id: 'badges',
@@ -91,90 +91,85 @@ const SURFACES: Surface[] = [
   // ② focus
   {
     id: 'focus-tab',
-    ready: 'body',
-    note: 'Main window; focus-tab view not yet switchable via URL. Ready selector relaxed to body until the design lands.',
+    ready: 'header',
+    note: 'Main window; Sidebar renders Header unconditionally so <header> fails fast if the main shell errors during mount.',
   },
 
   // ③ main
   {
     id: 'main-window',
-    // Relaxed to `body` until PR #1-#7 lands the design. The real
-    // header + PR list selectors (`header, [data-pr-list]`) are the
-    // target once the main shell stabilizes — but the current shell
-    // may still be repainting or repositioning when we capture, so
-    // `body` keeps the pixel diff flowing as the progress signal.
-    ready: 'body',
-    note: 'Main window; ready relaxed to body until PR #1-#7 finalizes the header + PR list structure — tighten to `header, [data-pr-list]` then.',
+    ready: 'header',
+    note: 'Main window; <header> renders unconditionally via Sidebar — tighter than body, defers to PR #9 for deep PR-list selector.',
   },
   {
     id: 'work-items',
-    ready: 'body',
-    note: 'Work Items section within main window. Today requires a button click; deferred to a follow-up that wires deep-link navigation.',
+    ready: 'header',
+    note: 'Work Items section within main window. Section switch requires URL routing (deferred to PR #9); <header> is the tightest unconditional selector available.',
   },
 
   // ④ detail
   {
     id: 'pr-detail-overview',
     path: '/pr-detail.html',
-    ready: 'body',
-    note: 'PR detail window, Overview tab default. No test-seed hook in secondary window yet.',
+    ready: '[data-tauri-drag-region]',
+    note: 'PR detail window, Overview tab default; PRDetailApp titlebar has data-tauri-drag-region so this fails fast if PRDetailApp errors during mount.',
   },
   {
     id: 'pr-detail-tabs',
     path: '/pr-detail.html?tab=files',
-    ready: 'body',
-    note: 'PR detail window with Files tab active. Query param may not be honored yet.',
+    ready: '[data-tauri-drag-region]',
+    note: 'PR detail window with Files tab active; same titlebar drag-region as pr-detail-overview.',
   },
 
   // ⑤ palettes & code
   {
     id: 'file-palette',
     path: '/file-palette.html',
-    ready: 'body',
-    note: 'Files picker palette; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Files picker palette; FilePaletteApp titlebar has data-tauri-drag-region so this fails fast if the app errors during mount.',
   },
   {
     id: 'file-viewer',
     path: '/file-viewer.html',
-    ready: 'body',
-    note: 'Single-file viewer window; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Single-file viewer window; FileViewerToolbar has data-tauri-drag-region so this fails fast if the app errors during mount.',
   },
   {
     id: 'sql',
     path: '/sql.html',
-    ready: 'body',
-    note: 'SQL runner window; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'SQL runner window; SqlApp uses WindowTitleBar which has data-tauri-drag-region so this fails fast if SqlApp errors during mount.',
   },
 
   // ⑥ worktree changes & diff viewer
   {
     id: 'worktree-changes',
     path: '/worktree.html',
-    ready: 'body',
-    note: 'Worktree changes window; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Worktree changes window; WorktreePaletteApp titlebar has data-tauri-drag-region so this fails fast if the app errors during mount.',
   },
   {
     id: 'diff-viewer',
     path: '/pr-detail.html?tab=files&diff=1',
-    ready: 'body',
-    note: 'Diff viewer view of PR detail. Query params may not route yet.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Diff viewer view of PR detail; same PRDetailApp titlebar drag-region as pr-detail-overview.',
   },
 
   // ⑦ settings, wizard, notifications
   {
     id: 'settings',
-    ready: 'body',
-    note: 'Settings flyout within main window. Requires a click to open today — deferred.',
+    ready: 'header',
+    note: 'Settings flyout within main window; requires a click to open so deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
   },
   {
     id: 'wizard',
-    ready: 'body',
-    note: 'Setup wizard; normally shown when setupComplete=false. injectCompletedSetup skips it today, so this baseline will diff heavily until deep-link via query param lands.',
+    ready: 'header',
+    note: 'Setup wizard requires setupComplete=false which injectCompletedSetup skips; deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
   },
   {
     id: 'toasts',
-    ready: 'body',
-    note: 'Toast stack rendered on top of main window; requires a test-toast call to populate.',
+    ready: 'header',
+    note: 'Toast stack requires a runtime trigger to populate; deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
   },
 ];
 
