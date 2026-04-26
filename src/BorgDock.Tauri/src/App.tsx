@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -31,7 +31,6 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { installTestSeed } from '@/test-support/test-seed';
-import type { RepoSettings } from '@/types';
 
 installTestSeed({ isDev: import.meta.env.DEV });
 
@@ -122,13 +121,10 @@ export default function App() {
     })();
   }, [needsSetup]);
 
-  // Stable empty array so the polling hook's deps don't change every render
-  const emptyRepos = useMemo<RepoSettings[]>(() => [], []);
-  const pollingSettings = useMemo(
-    () => (needsSetup || !isInitComplete ? { ...settings, repos: emptyRepos } : settings),
-    [needsSetup, isInitComplete, settings, emptyRepos],
-  );
-  const { pollNow } = useGitHubPolling(pollingSettings);
+  // Defer polling until init completes — otherwise the first cycle runs
+  // before repos/auth are ready and idles for a full interval (~60s).
+  const pollingEnabled = !needsSetup && isInitComplete;
+  const { pollNow } = useGitHubPolling(settings, pollingEnabled);
 
   // Listen for manual refresh requests (from Header button and keyboard shortcut)
   useEffect(() => {
