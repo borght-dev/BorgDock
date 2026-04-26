@@ -78,6 +78,44 @@ export const TAURI_MOCK_SCRIPT = `
           // the release accordion mounts.
           return '1.1.0';
 
+        case 'plugin:event|listen':
+        case 'plugin:event|unlisten':
+          // onMoved() / listen() callers guard the returned unlisten fn with
+          // unlisten?.() so returning null is safe (see PaletteApp.tsx:97).
+          return null;
+
+        case 'plugin:window|inner_size':
+          // Real Tauri returns a PhysicalSize { type: 'Physical', width, height }.
+          return { type: 'Physical', width: 800, height: 600 };
+
+        case 'plugin:window|scale_factor':
+          return 1;
+
+        case 'plugin:window|current_monitor':
+          return {
+            name: 'mock-monitor',
+            size: { type: 'Physical', width: 1440, height: 900 },
+            scaleFactor: 1,
+            position: { type: 'Physical', x: 0, y: 0 },
+          };
+
+        case 'plugin:window|set_size':
+          return null;
+
+        case 'plugin:window|close':
+          // Browsers may block window.close() on non-script-opened windows; that's
+          // fine — the test side effect is "command was invoked", not "window
+          // actually closed".
+          return null;
+
+        case 'plugin:window|start_dragging':
+          return null;
+
+        case 'palette_ready':
+        case 'open_in_terminal':
+        case 'open_in_editor':
+          return null;
+
         case 'execute_sql_query':
           // Synthetic result so sql.spec.ts's "results table renders after mock
           // run" can assert on the [data-sql-results-table] tbody.
