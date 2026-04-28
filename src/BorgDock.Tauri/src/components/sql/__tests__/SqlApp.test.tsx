@@ -2,6 +2,31 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqlApp } from '../SqlApp';
 
+vi.mock('../SqlEditor', () => ({
+  SqlEditor: ({
+    value,
+    onChange,
+    onRunQuery,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    onRunQuery: () => void;
+  }) => (
+    <textarea
+      data-testid="sql-editor-stub"
+      placeholder="SELECT * FROM ..."
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          onRunQuery();
+        }
+      }}
+    />
+  ),
+}));
+
 const mockClose = vi.fn(() => Promise.resolve());
 const mockOnMoved = vi.fn(() => Promise.resolve(() => {}));
 const mockOuterPosition = vi.fn(() => Promise.resolve({ x: 100, y: 200 }));
@@ -81,6 +106,15 @@ describe('SqlApp', () => {
           totalRowCount: 2,
         });
       }
+      if (cmd === 'cache_load_sql_schema') return Promise.resolve(null);
+      if (cmd === 'fetch_sql_schema') {
+        return Promise.resolve({
+          database: 'TestDb',
+          fetchedAt: '2026-04-28T00:00:00Z',
+          tables: [],
+        });
+      }
+      if (cmd === 'cache_save_sql_schema') return Promise.resolve(undefined);
       return Promise.resolve();
     });
   });
@@ -315,13 +349,12 @@ describe('SqlApp', () => {
     expect(localStorage.getItem('borgdock-sql-last-query')).toBe('SELECT * FROM users');
   });
 
-  it('renders line numbers in the gutter', async () => {
+  it('renders the SqlEditor component', async () => {
     await act(async () => {
       render(<SqlApp />);
     });
 
-    const gutterLines = document.querySelectorAll('.sql-gutter-line');
-    expect(gutterLines.length).toBeGreaterThanOrEqual(6);
+    expect(document.querySelector('[data-testid="sql-editor-stub"]')).not.toBeNull();
   });
 
   it('renders the resize handle', async () => {

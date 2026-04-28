@@ -9,6 +9,8 @@ import { Button, Card, Kbd } from '@/components/shared/primitives';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { ResultsTable } from './ResultsTable';
+import { SqlEditor } from './SqlEditor';
+import { useSqlSchema } from './use-sql-schema';
 
 interface ResultSet {
   columns: string[];
@@ -141,13 +143,13 @@ function CheckIcon() {
 export function SqlApp() {
   const [sqlSettings, setSqlSettings] = useState<SqlSettings | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string>('');
+  const { schema, status: schemaStatus, refresh: refreshSchema } = useSqlSchema(selectedConnection);
   const [query, setQuery] = useState(() => localStorage.getItem(QUERY_KEY) ?? '');
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [selectedRowsMap, setSelectedRowsMap] = useState<Map<number, Set<number>>>(new Map());
   const [copyFlash, setCopyFlash] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [editorHeight, setEditorHeight] = useState(140);
   const isDragging = useRef(false);
 
@@ -258,13 +260,7 @@ export function SqlApp() {
 
   const runQuery = useCallback(async () => {
     if (!selectedConnection) return;
-
-    const ta = textareaRef.current;
-    const selected =
-      ta && ta.selectionStart !== ta.selectionEnd
-        ? query.slice(ta.selectionStart, ta.selectionEnd)
-        : '';
-    const toRun = (selected || query).trim();
+    const toRun = query.trim();
     if (!toRun) return;
 
     setIsRunning(true);
@@ -284,16 +280,6 @@ export function SqlApp() {
       setIsRunning(false);
     }
   }, [selectedConnection, query]);
-
-  const handleTextareaKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        runQuery();
-      }
-    },
-    [runQuery],
-  );
 
   const flash = useCallback((msg: string) => {
     setCopyFlash(msg);
@@ -351,7 +337,6 @@ export function SqlApp() {
     0,
   );
   const totalRows = result ? result.resultSets.reduce((sum, rs) => sum + rs.rows.length, 0) : 0;
-  const lineCount = query.split('\n').length;
 
   return (
     <div className="sql-app flex h-screen w-screen flex-col overflow-hidden">
@@ -384,6 +369,37 @@ export function SqlApp() {
           )}
         </div>
 
+        {schemaStatus === 'cold' && hasConnections && (
+          <span className="sql-schema-status sql-schema-status--cold" title="Loading schema…">
+            <SpinnerIcon /> schema
+          </span>
+        )}
+        {schemaStatus === 'refreshing' && (
+          <span className="sql-schema-status sql-schema-status--refreshing" title="Refreshing schema…">
+            <SpinnerIcon />
+          </span>
+        )}
+        {schemaStatus === 'error' && (
+          <span
+            className="sql-schema-status sql-schema-status--error"
+            title="Couldn't refresh schema (using cached version if available)"
+          >
+            ⚠
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          data-action="refresh-schema"
+          className="sql-refresh-schema"
+          disabled={!hasConnections || schemaStatus === 'cold' || schemaStatus === 'refreshing'}
+          onClick={refreshSchema}
+          aria-label="Refresh schema"
+          title="Refresh schema (re-fetch tables and columns)"
+        >
+          ↻
+        </Button>
+
         {/* Separator */}
         <div className="sql-toolbar-separator" />
 
@@ -407,28 +423,14 @@ export function SqlApp() {
         id="sql-editor-area"
         data-sql-editor
         className="sql-editor-area"
-        // style: editorHeight is user-resizable (drag-to-resize handle) — dynamic pixel value
         style={{ height: editorHeight }}
       >
-        {/* Line numbers gutter */}
-        <div className="sql-gutter" aria-hidden="true">
-          {Array.from({ length: Math.max(lineCount, 6) }, (_, i) => (
-            <div key={i} className="sql-gutter-line">
-              {i + 1}
-            </div>
-          ))}
-        </div>
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          className="sql-textarea"
+        <SqlEditor
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleTextareaKeyDown}
-          placeholder="SELECT * FROM ..."
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
+          onChange={setQuery}
+          onRunQuery={runQuery}
+          schema={schema}
+          height={editorHeight}
         />
       </div>
 
