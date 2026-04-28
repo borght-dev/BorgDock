@@ -19,17 +19,24 @@ export function useSqlSchema(connectionName: string): UseSqlSchemaResult {
     async (hadCache: boolean) => {
       if (!connectionName) return;
       setStatus(hadCache ? 'refreshing' : 'cold');
+      let payload: SqlSchemaPayload;
       try {
-        const payload = await invoke<SqlSchemaPayload>('fetch_sql_schema', { connectionName });
-        if (cancelledRef.current) return;
-        setSchema(payload);
-        setStatus('fresh');
-        await invoke('cache_save_sql_schema', { connectionName, payload });
+        payload = await invoke<SqlSchemaPayload>('fetch_sql_schema', { connectionName });
       } catch (err) {
         if (cancelledRef.current) return;
         setStatus(hadCache ? 'cached' : 'error');
         // eslint-disable-next-line no-console
         console.warn('fetch_sql_schema failed:', err);
+        return;
+      }
+      if (cancelledRef.current) return;
+      setSchema(payload);
+      setStatus('fresh');
+      try {
+        await invoke('cache_save_sql_schema', { connectionName, payload });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('cache_save_sql_schema failed (schema is fresh in memory):', err);
       }
     },
     [connectionName],
