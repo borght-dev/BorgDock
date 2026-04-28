@@ -368,3 +368,149 @@ pub async fn test_sql_connection(
 
     Ok("Connection successful".to_string())
 }
+
+#[tauri::command]
+pub async fn fetch_sql_schema(
+    window: tauri::Window,
+    connection_name: String,
+) -> Result<schema::SqlSchemaPayload, String> {
+    if window.label() != "sql" {
+        return Err("SQL commands can only be executed from the SQL window".to_string());
+    }
+    log::info!("fetch_sql_schema: connection '{}'", connection_name);
+
+    let settings = settings::load_settings_internal()
+        .map_err(|e| format!("Failed to load settings: {e}"))?;
+
+    let conn_config = settings
+        .sql
+        .connections
+        .iter()
+        .find(|c| c.name == connection_name)
+        .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+
+    let hydrated_password = if conn_config.authentication == "sql" {
+        conn_config
+            .password
+            .clone()
+            .or_else(|| load_sql_password(&conn_config.name))
+    } else {
+        None
+    };
+    if conn_config.authentication == "sql" && hydrated_password.is_none() {
+        return Err(format!(
+            "No password stored in keychain for SQL connection '{}'.",
+            conn_config.name
+        ));
+    }
+
+    let config = build_config(
+        &conn_config.server,
+        conn_config.port,
+        &conn_config.database,
+        &conn_config.authentication,
+        conn_config.username.as_deref(),
+        hydrated_password.as_deref(),
+        conn_config.trust_server_certificate,
+    )?;
+
+    let server = conn_config.server.clone();
+    let port = conn_config.port;
+    let database = conn_config.database.clone();
+
+    // Same panic-isolation as execute_sql_query — INFORMATION_SCHEMA is
+    // built-in types so we don't expect tiberius UDT panics here, but the
+    // pattern is cheap and matches the sibling command.
+    let handle = tokio::spawn(async move {
+        let mut client = connect(&server, port, config).await?;
+
+        let tables_stream = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            client.query(
+                "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE \
+                 FROM INFORMATION_SCHEMA.TABLES \
+                 ORDER BY TABLE_SCHEMA, TABLE_NAME",
+                &[],
+            ),
+        )
+        .await
+        .map_err(|_| "Schema (tables) query timed out".to_string())?
+        .map_err(|e| format!("Tables query failed: {e}"))?;
+
+        let table_rows = tables_stream
+            .into_first_result()
+            .await
+            .map_err(|e| format!("Failed to read tables: {e}"))?;
+
+        let raw_tables: Vec<schema::RawTableRow> = table_rows
+            .iter()
+            .filter_map(|r| {
+                let schema_s: &str = r.try_get("TABLE_SCHEMA").ok().flatten()?;
+                let name: &str = r.try_get("TABLE_NAME").ok().flatten()?;
+                let table_type: &str = r.try_get("TABLE_TYPE").ok().flatten()?;
+                Some(schema::RawTableRow {
+                    schema: schema_s.to_string(),
+                    name: name.to_string(),
+                    table_type: table_type.to_string(),
+                })
+            })
+            .collect();
+
+        let cols_stream = tokio::time::timeout(
+            std::time::Duration::from_secs(60),
+            client.query(
+                "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION \
+                 FROM INFORMATION_SCHEMA.COLUMNS \
+                 ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION",
+                &[],
+            ),
+        )
+        .await
+        .map_err(|_| "Schema (columns) query timed out".to_string())?
+        .map_err(|e| format!("Columns query failed: {e}"))?;
+
+        let col_rows = cols_stream
+            .into_first_result()
+            .await
+            .map_err(|e| format!("Failed to read columns: {e}"))?;
+
+        let raw_columns: Vec<schema::RawColumnRow> = col_rows
+            .iter()
+            .filter_map(|r| {
+                let schema_s: &str = r.try_get("TABLE_SCHEMA").ok().flatten()?;
+                let table: &str = r.try_get("TABLE_NAME").ok().flatten()?;
+                let name: &str = r.try_get("COLUMN_NAME").ok().flatten()?;
+                let data_type: &str = r.try_get("DATA_TYPE").ok().flatten()?;
+                Some(schema::RawColumnRow {
+                    schema: schema_s.to_string(),
+                    table: table.to_string(),
+                    name: name.to_string(),
+                    data_type: data_type.to_string(),
+                })
+            })
+            .collect();
+
+        let now = chrono::Utc::now().to_rfc3339();
+        Ok::<schema::SqlSchemaPayload, String>(schema::stitch_schema(
+            database,
+            now,
+            raw_tables,
+            raw_columns,
+        ))
+    });
+
+    match handle.await {
+        Ok(result) => result,
+        Err(join_err) if join_err.is_panic() => {
+            let panic = join_err.into_panic();
+            let msg = panic
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()))
+                .unwrap_or_else(|| "unknown panic".to_string());
+            log::error!("fetch_sql_schema: tiberius panic caught: {msg}");
+            Err(format!("Schema fetch failed: {msg}"))
+        }
+        Err(join_err) => Err(format!("Schema fetch task failed: {join_err}")),
+    }
+}

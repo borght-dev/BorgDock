@@ -233,6 +233,7 @@ pub fn run() {
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,
+            sql::fetch_sql_schema,
             // Keychain
             keychain::get_credential,
             keychain::set_credential,
