@@ -1,11 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
-import { openPath } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IconButton, Kbd, Pill, Tabs } from '@/components/shared/primitives';
-import { WorktreeChangesPanel } from '@/components/worktree-changes';
+import { IconButton, Kbd, Pill } from '@/components/shared/primitives';
 import type { AppSettings, RepoSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 
@@ -104,7 +102,23 @@ function WorktreeRow({
       onMouseEnter={onSelect}
     >
       {isMain ? (
-        <span className="bd-wt-star-placeholder" aria-hidden />
+        <span className="bd-wt-main-icon" aria-hidden>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 2v12M12 8c0-3-2-4-4-4" />
+            <circle cx="4" cy="14" r="1.6" fill="currentColor" />
+            <circle cx="4" cy="2" r="1.6" fill="currentColor" />
+            <circle cx="12" cy="8" r="1.6" fill="currentColor" />
+          </svg>
+        </span>
       ) : (
         <IconButton
           size={22}
@@ -240,9 +254,6 @@ export function WorktreePaletteApp() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [tab, setTab] = useState<'worktrees' | 'changes'>('worktrees');
-  const [selectedWorktree, setSelectedWorktree] = useState<FlatEntry | null>(null);
-
   const searchRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
@@ -404,19 +415,13 @@ export function WorktreePaletteApp() {
     el?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  // Mirror the keyboard/hover selection to selectedWorktree so the Changes tab
-  // knows which path to show.
-  useEffect(() => {
-    setSelectedWorktree(filtered[selectedIndex] ?? null);
-  }, [filtered, selectedIndex]);
-
   // ── Actions ──
   const handleOpenTerminal = useCallback((path: string) => {
     invoke('open_in_terminal', { path }).catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenFolder = useCallback((path: string) => {
-    openPath(path).catch(console.debug); /* fire-and-forget */
+    invoke('reveal_in_file_manager', { path }).catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenEditor = useCallback((path: string) => {
@@ -641,102 +646,76 @@ export function WorktreePaletteApp() {
         )}
       </div>
 
-      {/* Tab strip */}
-      <Tabs
-        value={tab}
-        onChange={(id) => setTab(id as 'worktrees' | 'changes')}
-        tabs={[
-          { id: 'worktrees', label: 'Worktrees', count: filtered.length },
-          { id: 'changes', label: 'Changes' },
-        ]}
-        data-worktree-palette-tabs
-      />
+      {/* Content */}
+      <div className="bd-wt-content">
+        {loading && (
+          <div className="bd-wt-loading">
+            <span className="bd-wt-spinner" />
+            <span>Scanning worktrees...</span>
+          </div>
+        )}
 
-      {/* Content — Worktrees tab */}
-      {tab === 'worktrees' && (
-        <div className="bd-wt-content">
-          {loading && (
-            <div className="bd-wt-loading">
-              <span className="bd-wt-spinner" />
-              <span>Scanning worktrees...</span>
-            </div>
-          )}
+        {!loading && allEntries.length === 0 && errors.size === 0 && (
+          <div className="bd-wt-empty">
+            <span className="bd-wt-empty-title">No worktrees configured</span>
+            <span className="bd-wt-empty-detail">
+              Set a worktree base path under Settings &rarr; Repos
+            </span>
+          </div>
+        )}
 
-          {!loading && allEntries.length === 0 && errors.size === 0 && (
-            <div className="bd-wt-empty">
-              <span className="bd-wt-empty-title">No worktrees configured</span>
-              <span className="bd-wt-empty-detail">
-                Set a worktree base path under Settings &rarr; Repos
-              </span>
-            </div>
-          )}
+        {!loading && allEntries.length > 0 && filtered.length === 0 && query && (
+          <div className="bd-wt-empty">
+            <span className="bd-wt-empty-title">
+              No worktrees matching &lsquo;<strong>{query}</strong>&rsquo;
+            </span>
+          </div>
+        )}
 
-          {!loading && allEntries.length > 0 && filtered.length === 0 && query && (
-            <div className="bd-wt-empty">
-              <span className="bd-wt-empty-title">
-                No worktrees matching &lsquo;<strong>{query}</strong>&rsquo;
-              </span>
-            </div>
-          )}
+        {!loading && allEntries.length > 0 && filtered.length === 0 && !query && favoritesOnly && (
+          <div className="bd-wt-empty">
+            <span className="bd-wt-empty-title">No favorite worktrees</span>
+            <span className="bd-wt-empty-detail">
+              Click the star on any worktree to mark it as a favorite
+            </span>
+          </div>
+        )}
 
-          {!loading && allEntries.length > 0 && filtered.length === 0 && !query && favoritesOnly && (
-            <div className="bd-wt-empty">
-              <span className="bd-wt-empty-title">No favorite worktrees</span>
-              <span className="bd-wt-empty-detail">
-                Click the star on any worktree to mark it as a favorite
-              </span>
-            </div>
-          )}
-
-          {!loading &&
-            [...grouped.entries()].map(([repoKey, entries]) => (
-              <div key={repoKey} className="bd-wt-group">
-                <div className="bd-wt-group-header">
-                  <span className="bd-wt-group-name">{repoKey}</span>
-                  <Pill tone="ghost">{entries.length}</Pill>
-                  {errors.has(repoKey) && <Pill tone="error">error</Pill>}
-                </div>
-                {errors.has(repoKey) && (
-                  <div className="bd-wt-error-detail">{errors.get(repoKey)}</div>
-                )}
-                <div className="bd-wt-list">
-                  {entries.map((entry) => {
-                    const idx = flatIndex++;
-                    return (
-                      <WorktreeRow
-                        key={entry.wt.path}
-                        entry={entry}
-                        isSelected={idx === selectedIndex}
-                        isFavorite={favoritePaths.has(entry.wt.path)}
-                        onSelect={() => setSelectedIndex(idx)}
-                        onOpenTerminal={() => handleOpenTerminal(entry.wt.path)}
-                        onOpenFolder={() => handleOpenFolder(entry.wt.path)}
-                        onOpenEditor={() => handleOpenEditor(entry.wt.path)}
-                        onToggleFavorite={() => handleToggleFavorite(entry)}
-                        rowRef={(el) => {
-                          rowRefs.current.set(idx, el);
-                        }}
-                      />
-                    );
-                  })}
-                </div>
+        {!loading &&
+          [...grouped.entries()].map(([repoKey, entries]) => (
+            <div key={repoKey} className="bd-wt-group">
+              <div className="bd-wt-group-header">
+                <span className="bd-wt-group-name">{repoKey}</span>
+                <Pill tone="ghost">{entries.length}</Pill>
+                {errors.has(repoKey) && <Pill tone="error">error</Pill>}
               </div>
-            ))}
-        </div>
-      )}
-
-      {/* Content — Changes tab */}
-      {tab === 'changes' && (
-        <div data-worktree-changes-tab-body className="bd-wt-content flex-1 overflow-hidden">
-          {selectedWorktree ? (
-            <WorktreeChangesPanel worktreePath={selectedWorktree.wt.path} />
-          ) : (
-            <div className="p-3 text-[12px] text-[var(--color-text-muted)]">
-              Select a worktree on the Worktrees tab to view its changes.
+              {errors.has(repoKey) && (
+                <div className="bd-wt-error-detail">{errors.get(repoKey)}</div>
+              )}
+              <div className="bd-wt-list">
+                {entries.map((entry) => {
+                  const idx = flatIndex++;
+                  return (
+                    <WorktreeRow
+                      key={entry.wt.path}
+                      entry={entry}
+                      isSelected={idx === selectedIndex}
+                      isFavorite={favoritePaths.has(entry.wt.path)}
+                      onSelect={() => setSelectedIndex(idx)}
+                      onOpenTerminal={() => handleOpenTerminal(entry.wt.path)}
+                      onOpenFolder={() => handleOpenFolder(entry.wt.path)}
+                      onOpenEditor={() => handleOpenEditor(entry.wt.path)}
+                      onToggleFavorite={() => handleToggleFavorite(entry)}
+                      rowRef={(el) => {
+                        rowRefs.current.set(idx, el);
+                      }}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          )}
-        </div>
-      )}
+          ))}
+      </div>
 
       {/* Footer */}
       <div className="bd-wt-footer">

@@ -2851,7 +2851,7 @@ select.field-input option {
     position: relative;
     width: 100vw;
     height: 100vh;
-    background: var(--color-card-background);
+    background: var(--color-background);
     border: 1px solid var(--color-subtle-border);
     border-radius: 12px;
     overflow: hidden;
@@ -2888,6 +2888,7 @@ select.field-input option {
     display: flex;
     align-items: center;
     justify-content: center;
+    transform: rotate(180deg);
   }
   .bd-wt-title {
     font-size: 11px;
@@ -3100,6 +3101,16 @@ select.field-input option {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
+  }
+  .bd-wt-main-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: var(--color-accent);
+    transform: rotate(180deg);
   }
   .bd-wt-footer {
     display: flex;
