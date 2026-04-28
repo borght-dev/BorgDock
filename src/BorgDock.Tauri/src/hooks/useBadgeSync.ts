@@ -32,6 +32,7 @@ function buildFlyoutPayload(
   theme: string,
   hotkey: string,
   lastPollTime: number | null,
+  focusCount: number,
 ) {
   const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
@@ -62,6 +63,7 @@ function buildFlyoutPayload(
     pendingCount,
     passingCount,
     totalCount: pullRequests.length,
+    focusCount,
     username,
     theme,
     lastSyncAgo,
@@ -122,6 +124,7 @@ export function useBadgeSync() {
         theme,
         hotkey || 'Ctrl+Win+Shift+G',
         lastPollTime,
+        usePrStore.getState().focusCount(),
       );
       try {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -162,6 +165,7 @@ export function useBadgeSync() {
             st.ui.theme,
             st.ui.globalHotkey || 'Ctrl+Win+Shift+G',
             pollRaw ? pollRaw.getTime() : null,
+            usePrStore.getState().focusCount(),
           );
           console.log('[BadgeSync] Responding to flyout-request-data, PRs:', prs.length);
           const { emitTo } = await import('@tauri-apps/api/event');

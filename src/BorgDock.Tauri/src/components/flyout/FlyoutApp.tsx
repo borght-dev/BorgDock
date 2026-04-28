@@ -26,6 +26,7 @@ export function FlyoutApp() {
     pendingCount: 0,
     passingCount: 0,
     totalCount: 0,
+    focusCount: 0,
     username: '',
     theme: 'system',
     lastSyncAgo: '...',

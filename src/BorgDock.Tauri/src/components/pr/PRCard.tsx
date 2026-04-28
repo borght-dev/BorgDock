@@ -10,6 +10,59 @@ import {
 } from '@/components/shared/primitives';
 import type { OverallStatus } from '@/types';
 
+function StatusGlyph({ status }: { status: OverallStatus }) {
+  // 13px circle icon coloured via currentColor — matches the surrounding
+  // status text so the glyph + label read as a single tone.
+  const common = {
+    width: 13,
+    height: 13,
+    viewBox: '0 0 24 24',
+    fill: 'none' as const,
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+  switch (status) {
+    case 'red':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      );
+    case 'yellow':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
+    case 'green':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+        </svg>
+      );
+  }
+}
+
+const STATUS_TEXT_CLASS: Record<OverallStatus, string> = {
+  red: 'text-[var(--color-status-red)]',
+  yellow: 'text-[var(--color-status-yellow)]',
+  green: 'text-[var(--color-status-green)]',
+  gray: 'text-[var(--color-status-gray)]',
+};
+
 export type PRCardDensity = 'compact' | 'normal';
 
 export interface PRCardData {
@@ -72,6 +125,8 @@ export interface PRCardProps {
   isFocused?: boolean;
   /** Optional trailing slot for action buttons / score / etc. (normal density only). */
   trailing?: ReactNode;
+  /** Show "owner/repo" in the secondary line (compact density only). Default true. */
+  showRepo?: boolean;
 }
 
 const REVIEW_PILL: Record<
@@ -102,6 +157,7 @@ export function PRCard({
   active,
   isFocused,
   trailing,
+  showRepo = true,
 }: PRCardProps) {
   const review = REVIEW_PILL[pr.reviewState];
   const isCompact = density === 'compact';
@@ -137,7 +193,8 @@ export function PRCard({
         {...dataAttrs}
         className={clsx(
           'bd-pr-row',
-          'grid items-center gap-2.5 px-3 py-2',
+          'grid items-center gap-3 px-4 py-3',
+          'border-b border-[var(--color-subtle-border)] last:border-b-0',
           'cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)]',
           active && 'bg-[var(--color-surface-hover)]',
         )}
@@ -156,16 +213,22 @@ export function PRCard({
             {pr.title}
           </div>
           <div
-            className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--color-text-tertiary)]"
+            className="mt-1 flex items-center gap-2 text-[10.5px] text-[var(--color-text-tertiary)]"
           >
-            <span className="font-mono">
-              {pr.repoOwner}/{pr.repoName}
+            {showRepo && (
+              <>
+                <span className="font-normal">
+                  {pr.repoOwner}/{pr.repoName}
+                </span>
+                <span aria-hidden>·</span>
+              </>
+            )}
+            <span className="font-normal">#{pr.number}</span>
+            <span aria-hidden>·</span>
+            <span className={clsx('inline-flex items-center gap-1', STATUS_TEXT_CLASS[pr.status])}>
+              <StatusGlyph status={pr.status} />
+              <span>{pr.statusLabel}</span>
             </span>
-            <span aria-hidden>·</span>
-            <span className="font-mono">#{pr.number}</span>
-            <span aria-hidden>·</span>
-            <Dot tone={statusDotTone(pr.status)} pulse={pr.status === 'yellow'} />
-            <span>{pr.statusLabel}</span>
           </div>
         </div>
         {review && (

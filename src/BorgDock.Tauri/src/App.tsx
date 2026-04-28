@@ -250,6 +250,31 @@ export default function App() {
     };
   }, []);
 
+  // Listen for open-focus event from the flyout
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const fn = await listen('open-focus', () => {
+          useUiStore.getState().setActiveSection('focus');
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
   // Dev/test-only deep-link: ?settings=open opens the settings flyout
   // on mount so visual.spec.ts can capture it without simulating a click.
   useEffect(() => {

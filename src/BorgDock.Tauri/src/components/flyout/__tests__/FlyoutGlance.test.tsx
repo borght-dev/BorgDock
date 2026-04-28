@@ -43,6 +43,7 @@ const data: FlyoutData = {
   pendingCount: 1,
   passingCount: 1,
   totalCount: 2,
+  focusCount: 0,
   username: 'me',
   theme: 'dark',
   lastSyncAgo: 'just now',

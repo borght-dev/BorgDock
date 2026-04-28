@@ -13,6 +13,8 @@ export interface FlyoutData {
   pendingCount: number;
   passingCount: number;
   totalCount: number;
+  /** Count of PRs the priority scorer flagged as needing attention. */
+  focusCount: number;
   username: string;
   theme: string;
   lastSyncAgo: string;
@@ -48,7 +50,13 @@ export function FlyoutGlance({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const { failingCount, pendingCount, passingCount, pullRequests, totalCount } = data;
+  const { failingCount, pendingCount, passingCount, pullRequests, totalCount, focusCount } = data;
+
+  // Only show the repository slug per row when the user is monitoring more
+  // than one — single-repo setups make every row's "owner/repo" identical and
+  // wastes the space.
+  const uniqueRepos = new Set(pullRequests.map((p) => `${p.repoOwner}/${p.repoName}`));
+  const showRepoPerRow = uniqueRepos.size > 1;
 
   // Active-row tracking for j/k keyboard nav. Initial active row = 0 so e2e
   // assertion `pressing j advances from 0 → 1` holds.
@@ -101,6 +109,18 @@ export function FlyoutGlance({
       const { invoke } = await import('@tauri-apps/api/core');
       const { emitTo } = await import('@tauri-apps/api/event');
       await emitTo('main', 'open-settings', {});
+      await invoke('toggle_sidebar');
+    } catch {
+      // ignore
+    }
+    onClose();
+  }, [onClose]);
+
+  const handleOpenFocus = useCallback(async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { emitTo } = await import('@tauri-apps/api/event');
+      await emitTo('main', 'open-focus', {});
       await invoke('toggle_sidebar');
     } catch {
       // ignore
@@ -227,7 +247,7 @@ export function FlyoutGlance({
                   BorgDock
                 </div>
                 <div
-                  className="mt-0.5 text-[10.5px] text-[var(--color-text-tertiary)]"
+                  className="mt-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]"
                 >
                   {totalCount} open pull request{totalCount !== 1 ? 's' : ''}
                 </div>
@@ -252,40 +272,59 @@ export function FlyoutGlance({
           </div>
 
           {/* Stat strip */}
-          <div className="mt-3 flex gap-3.5">
-            <div className="flex items-center gap-1.5">
-              <Dot tone="red" pulse={failingCount > 0} />
-              <span
-                className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
-              >
-                {failingCount}
-              </span>
-              <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                failing
-              </span>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3.5">
+              <div className="flex items-center gap-1.5">
+                <Dot tone="red" pulse={failingCount > 0} />
+                <span
+                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                >
+                  {failingCount}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                  failing
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Dot tone="yellow" />
+                <span
+                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                >
+                  {pendingCount}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                  running
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Dot tone="green" />
+                <span
+                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                >
+                  {passingCount}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                  passing
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Dot tone="yellow" />
-              <span
-                className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+            {focusCount > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenFocus}
+                aria-label={`Open focus tab — ${focusCount} need attention`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                // style: accent-tinted pill — color-mix backgrounds + accent token are not in the Tailwind config
+                style={{
+                  background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+                  color: 'var(--color-accent)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                }}
               >
-                {pendingCount}
-              </span>
-              <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                running
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Dot tone="green" />
-              <span
-                className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
-              >
-                {passingCount}
-              </span>
-              <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                passing
-              </span>
-            </div>
+                <FocusBoltIcon />
+                <span>Focus {focusCount}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -311,6 +350,7 @@ export function FlyoutGlance({
               onClick={handleClickPr}
               onFix={handleFixPr}
               onMonitor={handleMonitorPr}
+              showRepo={showRepoPerRow}
             />
           ))}
           {pullRequests.length === 0 && (
@@ -376,6 +416,20 @@ function PanelRightOpenIcon() {
       <rect width="18" height="18" x="3" y="3" rx="2" />
       <path d="M15 3v18" />
       <path d="m10 15-3-3 3-3" />
+    </svg>
+  );
+}
+
+function FocusBoltIcon() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
     </svg>
   );
 }

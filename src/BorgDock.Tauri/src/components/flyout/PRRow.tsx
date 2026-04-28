@@ -11,6 +11,8 @@ interface PRRowProps {
   onFix?: (pr: FlyoutPr) => void;
   /** Shown on hover when overallStatus !== 'green' && totalChecks > 0. */
   onMonitor?: (pr: FlyoutPr) => void;
+  /** Show "owner/repo" in the secondary line. Defaults to true. */
+  showRepo?: boolean;
 }
 
 function mapFlyoutPr(pr: FlyoutPr): PRCardData {
@@ -47,7 +49,7 @@ function mapFlyoutPr(pr: FlyoutPr): PRCardData {
   };
 }
 
-export function PRRow({ pr, active, onClick, onFix, onMonitor }: PRRowProps) {
+export function PRRow({ pr, active, onClick, onFix, onMonitor, showRepo = true }: PRRowProps) {
   const [hovered, setHovered] = useState(false);
   const showFix = !!onFix && pr.failedCount > 0;
   const showMonitor = !!onMonitor && pr.overallStatus !== 'green' && pr.totalChecks > 0;
@@ -64,6 +66,7 @@ export function PRRow({ pr, active, onClick, onFix, onMonitor }: PRRowProps) {
         density="compact"
         active={active}
         onClick={() => onClick(pr)}
+        showRepo={showRepo}
       />
       {showActions && (
         <div className="absolute right-3 top-1/2 flex -translate-y-1/2 gap-1">
