@@ -101,8 +101,8 @@ export function RootsColumn({
                 <path d="M8 3v10M3 8h10" />
               </svg>
             }
-            tooltip="Add custom path"
-            aria-label="Add custom path"
+            tooltip="Add custom path…"
+            aria-label="Add custom path…"
             size={22}
             onClick={onAddCustomRoot}
           />

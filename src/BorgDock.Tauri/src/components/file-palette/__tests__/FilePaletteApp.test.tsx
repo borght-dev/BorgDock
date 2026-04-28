@@ -88,7 +88,7 @@ describe('FilePaletteApp', () => {
     render(<FilePaletteApp />);
     await waitFor(() => expect(screen.getByText('wt1')).toBeTruthy());
 
-    const addBtn = screen.getByLabelText('Add custom path');
+    const addBtn = screen.getByLabelText('Add custom path…');
     await act(async () => {
       fireEvent.click(addBtn);
     });
@@ -119,7 +119,7 @@ describe('FilePaletteApp', () => {
     ).length;
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('Add custom path'));
+      fireEvent.click(screen.getByLabelText('Add custom path…'));
     });
     // Allow the picker promise + dedup short-circuit to run.
     await new Promise((r) => setTimeout(r, 30));
@@ -128,6 +128,7 @@ describe('FilePaletteApp', () => {
       ([cmd]) => cmd === 'save_settings',
     ).length;
     expect(afterCount).toBe(beforeCount);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it('does not add a path that is already a custom root', async () => {
@@ -160,7 +161,7 @@ describe('FilePaletteApp', () => {
     ).length;
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('Add custom path'));
+      fireEvent.click(screen.getByLabelText('Add custom path…'));
     });
     await new Promise((r) => setTimeout(r, 30));
 
@@ -168,6 +169,7 @@ describe('FilePaletteApp', () => {
       ([cmd]) => cmd === 'save_settings',
     ).length;
     expect(afterCount).toBe(beforeCount);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it('does not save when the picker is cancelled', async () => {
@@ -183,7 +185,7 @@ describe('FilePaletteApp', () => {
     ).length;
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('Add custom path'));
+      fireEvent.click(screen.getByLabelText('Add custom path…'));
     });
     await new Promise((r) => setTimeout(r, 30));
 
@@ -191,6 +193,7 @@ describe('FilePaletteApp', () => {
       ([cmd]) => cmd === 'save_settings',
     ).length;
     expect(afterCount).toBe(beforeCount);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it('clicking × on a custom row removes it from filePaletteRoots', async () => {
@@ -221,7 +224,8 @@ describe('FilePaletteApp', () => {
     await waitFor(() => {
       const saves = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
         ([cmd, a]) =>
-          cmd === 'save_settings' && Array.isArray((a as any).settings?.filePaletteRoots),
+          cmd === 'save_settings' &&
+          Array.isArray((a as { settings?: { filePaletteRoots?: unknown } }).settings?.filePaletteRoots),
       );
       expect(saves.length).toBeGreaterThanOrEqual(1);
       const last = saves[saves.length - 1]![1];
