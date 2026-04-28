@@ -48,7 +48,11 @@ export function Tabs({
             onClick={() => onChange(tab.id)}
           >
             {tab.label}
-            {tab.count !== undefined && <span className="bd-tab__count">{tab.count}</span>}
+            {tab.count !== undefined && (
+              <span className="bd-tab__count" aria-hidden="true">
+                {tab.count}
+              </span>
+            )}
           </button>
         );
       })}

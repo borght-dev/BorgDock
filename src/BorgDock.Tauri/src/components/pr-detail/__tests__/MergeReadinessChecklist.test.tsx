@@ -83,14 +83,14 @@ describe('MergeReadinessChecklist', () => {
       },
     });
     render(<MergeReadinessChecklist pr={pr} />);
-    expect(screen.getByText('100 / 100')).toBeTruthy();
+    expect(screen.getByText('100')).toBeTruthy();
   });
 
   it('shows score of 100 for PR with no checks', () => {
     // No checks = full marks for CI (25%) + approved (25%) + mergeable (25%) + not draft (25%)
     const pr = makePr();
     render(<MergeReadinessChecklist pr={pr} />);
-    expect(screen.getByText('100 / 100')).toBeTruthy();
+    expect(screen.getByText('100')).toBeTruthy();
   });
 
   it('shows "No CI checks configured" when no checks', () => {
@@ -201,7 +201,7 @@ describe('MergeReadinessChecklist', () => {
       },
     });
     render(<MergeReadinessChecklist pr={pr} />);
-    expect(screen.getByText('75 / 100')).toBeTruthy();
+    expect(screen.getByText('75')).toBeTruthy();
   });
 
   it('shows 0 score for worst-case PR', () => {
@@ -217,14 +217,14 @@ describe('MergeReadinessChecklist', () => {
       },
     });
     render(<MergeReadinessChecklist pr={pr} />);
-    expect(screen.getByText('0 / 100')).toBeTruthy();
+    expect(screen.getByText('0')).toBeTruthy();
   });
 
-  it('renders score as a Pill primitive with data-merge-score attr', () => {
+  it('exposes the score via data-merge-score attribute', () => {
     const { container } = render(<MergeReadinessChecklist pr={makePr()} />);
     const scoreEl = container.querySelector('[data-merge-score]');
     expect(scoreEl).toBeTruthy();
-    expect(scoreEl?.classList.contains('bd-pill')).toBe(true);
+    expect(scoreEl?.getAttribute('data-merge-score')).toBe('100');
   });
 
   it('renders the readiness bar as a LinearProgress primitive', () => {

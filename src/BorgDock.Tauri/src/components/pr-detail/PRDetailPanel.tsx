@@ -3,8 +3,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import { WindowControls } from '@/components/shared/chrome';
-import { IconButton, Tabs } from '@/components/shared/primitives';
+import { Avatar, IconButton, Pill, Ring, Tabs } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
+import { computeMergeScore } from '@/services/merge-score';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ChecksTab } from './ChecksTab';
@@ -48,10 +49,89 @@ const PopOutIcon = () => (
   </svg>
 );
 
+const BranchIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="4" cy="3.5" r="1.5" />
+    <circle cx="4" cy="12.5" r="1.5" />
+    <circle cx="12" cy="6.5" r="1.5" />
+    <path d="M4 5v6" />
+    <path d="M12 8c0 2-2 3-4 3s-4-.5-4-2" />
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3 8h10" />
+    <path d="m9 4 4 4-4 4" />
+  </svg>
+);
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatAge(iso: string): string {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+function reviewStatusLabel(status: PullRequestWithChecks['pullRequest']['reviewStatus']): string | null {
+  switch (status) {
+    case 'approved':
+      return 'approved';
+    case 'changesRequested':
+      return 'changes requested';
+    case 'pending':
+      return 'in review';
+    case 'commented':
+      return 'commented';
+    default:
+      return null;
+  }
+}
+
+function initialsFor(login: string): string {
+  const trimmed = login.trim();
+  if (!trimmed) return '??';
+  const parts = trimmed.split(/[\s_-]+/).filter(Boolean);
+  const first = parts[0]?.[0];
+  const second = parts[1]?.[0];
+  if (first && second) return (first + second).toUpperCase();
+  return trimmed.slice(0, 2).toUpperCase();
+}
+
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
-
-const tabDefs: TabDef[] = tabs.map((id) => ({ id, label: id }));
 
 interface PRDetailPanelProps {
   pr: PullRequestWithChecks;
@@ -114,52 +194,134 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
       .catch((err) => log.error('pop-out invoke failed', err, { owner, repo, number }));
   }, [pr, selectPr]);
 
+  const p = pr.pullRequest;
+  const score = computeMergeScore(pr);
+  const reviewLabel = reviewStatusLabel(p.reviewStatus);
+  const passedCount = pr.passedCount;
+  const totalChecks = pr.checks.length - pr.skippedCount;
+
+  const tabDefs: TabDef[] = [
+    { id: 'Overview', label: 'Overview' },
+    { id: 'Commits', label: 'Commits', count: p.commitCount },
+    { id: 'Files', label: 'Files', count: p.changedFiles },
+    { id: 'Checks', label: 'Checks', count: pr.checks.length },
+    { id: 'Reviews', label: 'Reviews' },
+    { id: 'Comments', label: 'Comments' },
+  ];
+
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-[var(--color-background)]">
       {/* Header — doubles as the window drag region when in pop-out mode */}
       <div
-        className="flex items-start gap-2 border-b border-[var(--color-separator)] px-3 py-2.5"
+        className="relative border-b border-[var(--color-separator)] px-6 pt-4 pb-3"
         {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
       >
-        {!popOutWindow && (
-          <IconButton
-            icon={<XIcon />}
-            tooltip="Close"
-            size={22}
-            aria-label="Close"
-            className="mt-0.5"
-            onClick={handleClose}
-            data-pr-detail-panel-close
-          />
-        )}
+        {/* Top-right corner: window controls (pop-out mode) or pop-out button (inline) */}
+        <div className="absolute right-3 top-3 flex items-center gap-1">
+          {!popOutWindow && (
+            <IconButton
+              icon={<PopOutIcon />}
+              tooltip="Open in new window"
+              size={22}
+              aria-label="Pop out"
+              onClick={handlePopOut}
+              data-pr-detail-panel-popout
+            />
+          )}
+          {popOutWindow && (
+            <WindowControls
+              onMinimize={handleMinimize}
+              onMaximize={handleToggleMaximize}
+              onClose={handleClose}
+            />
+          )}
+        </div>
+
         <div
-          className="min-w-0 flex-1"
+          className="flex items-start gap-4"
           {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
         >
-          <h2 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-            {pr.pullRequest.title}
-          </h2>
-          <span className="text-xs text-[var(--color-text-muted)]">#{pr.pullRequest.number}</span>
+          {/* Merge readiness gauge */}
+          <Ring
+            value={score}
+            size={60}
+            stroke={4}
+            className="mt-1 [&_.bd-ring__label]:text-[16px]"
+            data-pr-header-score={score}
+          />
+
+          <div
+            className="min-w-0 flex-1"
+            {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
+          >
+            {/* Status pills row */}
+            <div className="flex flex-wrap items-center gap-2 pr-20">
+              <span className="text-xs font-medium text-[var(--color-text-tertiary)]">
+                #{p.number}
+              </span>
+              {p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
+              {p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
+              {totalChecks > 0 && (
+                <Pill tone="success">
+                  {passedCount} passed
+                </Pill>
+              )}
+              {p.isDraft && <Pill tone="draft">Draft</Pill>}
+              {reviewLabel && <Pill tone="neutral">{reviewLabel}</Pill>}
+            </div>
+
+            {/* Title */}
+            <h2 className="mt-2 text-base font-semibold leading-snug text-[var(--color-text-primary)]">
+              {p.title}
+            </h2>
+
+            {/* Author + date + branches */}
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--color-text-tertiary)]">
+              <Avatar initials={initialsFor(p.authorLogin)} size="sm" />
+              <span>{p.authorLogin}</span>
+              <span aria-hidden>·</span>
+              <span>{formatDate(p.createdAt)}</span>
+              <span aria-hidden>·</span>
+              <span title="Age">{formatAge(p.createdAt)} old</span>
+              <span aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1">
+                <BranchIcon />
+                <span className="font-mono text-[11px]">{p.headRef}</span>
+                <ArrowRightIcon />
+                <span className="font-mono text-[11px]">{p.baseRef}</span>
+              </span>
+            </div>
+
+            {/* Stats + close X */}
+            <div className="mt-3 flex items-center gap-3 text-xs text-[var(--color-text-tertiary)]">
+              <span className="font-medium text-[var(--color-status-green)]">+{p.additions}</span>
+              <span className="font-medium text-[var(--color-status-red)]">−{p.deletions}</span>
+              <span aria-hidden>·</span>
+              <span>
+                {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
+              </span>
+              {!popOutWindow && (
+                <IconButton
+                  icon={<XIcon />}
+                  tooltip="Close"
+                  size={22}
+                  aria-label="Close"
+                  className="ml-auto"
+                  onClick={handleClose}
+                  data-pr-detail-panel-close
+                />
+              )}
+            </div>
+          </div>
         </div>
-        {!popOutWindow && (
-          <IconButton
-            icon={<PopOutIcon />}
-            tooltip="Open in new window"
-            size={22}
-            aria-label="Pop out"
-            className="mt-0.5"
-            onClick={handlePopOut}
-            data-pr-detail-panel-popout
-          />
-        )}
-        {popOutWindow && (
-          <WindowControls
-            onMinimize={handleMinimize}
-            onMaximize={handleToggleMaximize}
-            onClose={handleClose}
-            className="-my-1 -mr-1"
-          />
-        )}
       </div>
 
       {/* Tab bar */}
@@ -167,7 +329,7 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
         value={activeTab}
         onChange={(id) => setActiveTab(id as Tab)}
         tabs={tabDefs}
-        className="px-3"
+        className="px-6"
       />
 
       {/* Tab content — tabs mount lazily on first activation, cached afterwards */}

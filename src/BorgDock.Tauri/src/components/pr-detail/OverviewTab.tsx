@@ -6,7 +6,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Button, Card, Input, Pill } from '@/components/shared/primitives';
+import { Button, Card, Input } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import {
@@ -34,24 +34,97 @@ interface OverviewTabProps {
   pr: PullRequestWithChecks;
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
+const MergeIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="3" cy="8" r="1.5" />
+    <circle cx="13" cy="3" r="1.5" />
+    <circle cx="13" cy="13" r="1.5" />
+    <path d="M3 9.5v3" />
+    <path d="M3 6.5C3 6.5 5 5 8 5h3.5" />
+    <path d="M3 9.5C3 9.5 5 11 8 11h3.5" />
+  </svg>
+);
 
-function formatAge(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
+const ExternalIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M9 2h5v5" />
+    <path d="m14 2-7 7" />
+    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+    <path d="M11 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2" />
+  </svg>
+);
+
+const BranchIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="4" cy="3.5" r="1.5" />
+    <circle cx="4" cy="12.5" r="1.5" />
+    <circle cx="12" cy="6.5" r="1.5" />
+    <path d="M4 5v6" />
+    <path d="M12 8c0 2-2 3-4 3s-4-.5-4-2" />
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M11 2.5 13.5 5 5 13.5l-3 .5.5-3z" />
+  </svg>
+);
 
 async function handleOpenInBrowser(url: string) {
   log.info('open-in-browser clicked', { url });
@@ -271,59 +344,107 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     p.reviewStatus === 'approved';
 
   return (
-    <div className="p-3 space-y-4">
-      {/* Metadata */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-tertiary)]">
-        <span>
-          by <strong className="text-[var(--color-text-secondary)]">{p.authorLogin}</strong>
-        </span>
-        <span>{formatDate(p.createdAt)}</span>
-        <span title="Age">({formatAge(p.createdAt)} old)</span>
-        <div className="flex items-center gap-1">
-          <Pill tone="neutral" data-branch-pill="head">
-            {p.headRef}
-          </Pill>
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
+    <div className="px-6 py-5 space-y-5">
+      {/* Action buttons — primary action on the left, danger pair pushed right.
+          Resolve Conflicts (purple-soft) and Bypass Merge (dashed danger) keep className
+          overrides because Button's variant vocabulary doesn't cover those bespoke treatments. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {isReady ? (
+          <Button
+            variant="primary"
+            size="sm"
+            leading={<MergeIcon />}
+            onClick={handleMerge}
+            data-overview-action="merge"
           >
-            <path d="m5 8 6 0M9 5l3 3-3 3" />
-          </svg>
-          <Pill tone="neutral" data-branch-pill="base">
-            {p.baseRef}
-          </Pill>
+            Merge
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            size="sm"
+            leading={<MergeIcon />}
+            onClick={handleMerge}
+            disabled
+            data-overview-action="merge"
+          >
+            Merge
+          </Button>
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          leading={<ExternalIcon />}
+          onClick={() => handleOpenInBrowser(p.htmlUrl)}
+          data-overview-action="browser"
+        >
+          Open in Browser
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          leading={<CopyIcon />}
+          onClick={() => handleCopyBranch(p.headRef)}
+          data-overview-action="copy"
+        >
+          Copy Branch
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          leading={<BranchIcon />}
+          onClick={handleCheckout}
+          aria-expanded={checkoutOpen}
+          data-overview-action="checkout"
+          className={clsx(
+            checkoutOpen &&
+              'bg-[var(--color-accent-soft)] text-[var(--color-accent)] border border-[var(--color-purple-border)]',
+          )}
+        >
+          Checkout
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          leading={<EditIcon />}
+          onClick={handleToggleDraft}
+          data-overview-action="draft"
+        >
+          {p.isDraft ? 'Mark Ready' : 'Mark Draft'}
+        </Button>
+        {p.mergeable === false && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResolveConflicts}
+            data-overview-action="resolve"
+            className="border border-[var(--color-purple-border)] bg-[var(--color-purple-soft)] text-[var(--color-purple)]"
+          >
+            {'✦'} Resolve Conflicts
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleBypassConfirm}
+            data-overview-action="bypass"
+            className="border-2 border-dashed bg-transparent"
+          >
+            Bypass Merge
+          </Button>
+          {p.state === 'open' && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleCloseConfirm}
+              data-overview-action="close"
+              className="bg-transparent"
+            >
+              Close PR
+            </Button>
+          )}
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="flex flex-wrap items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
-        <span title="Additions" className="text-[var(--color-status-green)]">
-          +{p.additions}
-        </span>
-        <span title="Deletions" className="text-[var(--color-status-red)]">
-          -{p.deletions}
-        </span>
-        <span>
-          {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
-        </span>
-        <span>
-          {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
-        </span>
-        <span>
-          {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
-        </span>
-      </div>
-
-      {/* Merge status */}
-      <div className="flex items-center gap-2">
-        {p.mergeable === false && <Pill tone="error">Merge Conflicts</Pill>}
-        {p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
-        {p.isDraft && <Pill tone="draft">Draft</Pill>}
       </div>
 
       {/* Merge Readiness Checklist */}
@@ -441,90 +562,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           )}
         </div>
       )}
-
-      {/* Action buttons — layered hierarchy: primary > secondary > ghost > danger.
-          Resolve Conflicts (purple-soft) and Bypass Merge (dashed danger) keep className
-          overrides because Button's variant vocabulary doesn't cover those bespoke treatments. */}
-      <div className="flex flex-wrap gap-2">
-        {isReady && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleMerge}
-            data-overview-action="merge"
-          >
-            Squash &amp; Merge
-          </Button>
-        )}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => handleOpenInBrowser(p.htmlUrl)}
-          data-overview-action="browser"
-        >
-          Open in Browser
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCopyBranch(p.headRef)}
-          data-overview-action="copy"
-        >
-          Copy Branch
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCheckout}
-          aria-expanded={checkoutOpen}
-          data-overview-action="checkout"
-          className={clsx(
-            checkoutOpen &&
-              'bg-[var(--color-accent-soft)] text-[var(--color-accent)] border border-[var(--color-purple-border)]',
-          )}
-        >
-          Checkout
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleToggleDraft}
-          data-overview-action="draft"
-        >
-          {p.isDraft ? 'Mark Ready' : 'Mark Draft'}
-        </Button>
-        {p.mergeable === false && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResolveConflicts}
-            data-overview-action="resolve"
-            className="border border-[var(--color-purple-border)] bg-[var(--color-purple-soft)] text-[var(--color-purple)]"
-          >
-            {'\u2726'} Resolve Conflicts
-          </Button>
-        )}
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={handleBypassConfirm}
-          data-overview-action="bypass"
-          className="border-2 border-dashed bg-transparent"
-        >
-          Bypass Merge
-        </Button>
-        {p.state === 'open' && (
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={handleCloseConfirm}
-            data-overview-action="close"
-            className="bg-transparent"
-          >
-            Close PR
-          </Button>
-        )}
-      </div>
 
       {/* Action status */}
       {actionStatus && !mergeSuccess && (

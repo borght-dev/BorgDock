@@ -1224,32 +1224,36 @@ select.field-input option {
   color: inherit;
 }
 
-/* Lists — card-style items */
+/* Lists — standard bullet/numbered items */
 .markdown-body ul,
 .markdown-body ol {
   margin: 0 0 12px;
-  padding-left: 0;
-  list-style: none;
+  padding-left: 1.4em;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+.markdown-body ul {
+  list-style: disc outside;
+}
+.markdown-body ol {
+  list-style: decimal outside;
+}
 .markdown-body li {
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--color-surface-raised);
+  font-size: 13px;
+  line-height: 1.55;
   color: var(--color-text-secondary);
+}
+.markdown-body li::marker {
+  color: var(--color-text-primary);
 }
 .markdown-body li > ul,
 .markdown-body li > ol {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 }
 .markdown-body li strong {
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-right: 4px;
 }
 
 /* Task lists (GFM) — special checkbox style */

@@ -185,7 +185,7 @@ export function PRDetailApp() {
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+      <div className="flex h-screen flex-col bg-[var(--color-background)]">
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <p className="text-[13px] text-[var(--color-text-muted)]">
@@ -198,7 +198,7 @@ export function PRDetailApp() {
 
   if (isLoading || !pr) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+      <div className="flex h-screen flex-col bg-[var(--color-background)]">
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
@@ -208,7 +208,7 @@ export function PRDetailApp() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <div className="flex h-screen flex-col bg-[var(--color-background)]">
       <div className="relative flex-1 overflow-y-auto">
         <PRDetailPanel pr={pr} popOutWindow />
       </div>
