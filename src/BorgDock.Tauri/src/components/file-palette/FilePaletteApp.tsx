@@ -147,6 +147,21 @@ export function FilePaletteApp() {
     }
   }, [roots, selectRoot]);
 
+  const removeCustomRoot = useCallback(async (root: RootEntry) => {
+    if (root.source !== 'custom') return;
+    try {
+      const s = await invoke<AppSettings>('load_settings');
+      const next: AppSettings = {
+        ...s,
+        filePaletteRoots: (s.filePaletteRoots ?? []).filter((r) => r.path !== root.path),
+      };
+      await invoke('save_settings', { settings: next });
+      setSettings(next);
+    } catch (e) {
+      console.error('removeCustomRoot: save failed', e);
+    }
+  }, []);
+
   const toggleRootsCollapsed = useCallback(async () => {
     const next = !rootsCollapsed;
     setRootsCollapsed(next);
@@ -355,6 +370,7 @@ export function FilePaletteApp() {
           collapsed={rootsCollapsed}
           onToggleCollapsed={toggleRootsCollapsed}
           onAddCustomRoot={addCustomRoot}
+          onRemoveCustomRoot={removeCustomRoot}
         />
         <div className="bd-fp-middle">
           <SearchPane

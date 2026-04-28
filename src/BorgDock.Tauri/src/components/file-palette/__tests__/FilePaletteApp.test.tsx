@@ -192,4 +192,40 @@ describe('FilePaletteApp', () => {
     ).length;
     expect(afterCount).toBe(beforeCount);
   });
+
+  it('clicking × on a custom row removes it from filePaletteRoots', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          repos: [{ owner: 'org', name: 'r', enabled: true, worktreeBasePath: '/repo' }],
+          ui: {},
+          filePaletteRoots: [{ path: '/my/scratch' }],
+        });
+      }
+      if (cmd === 'list_worktrees_bare') {
+        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+      }
+      if (cmd === 'list_root_files') return Promise.resolve({ entries: [], truncated: false });
+      if (cmd === 'save_settings') return Promise.resolve(null);
+      return Promise.reject(new Error(`unexpected ${cmd}`));
+    });
+
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getByText('scratch')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Remove custom path'));
+    });
+
+    await waitFor(() => {
+      const saves = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([cmd, a]) =>
+          cmd === 'save_settings' && Array.isArray((a as any).settings?.filePaletteRoots),
+      );
+      expect(saves.length).toBeGreaterThanOrEqual(1);
+      const last = saves[saves.length - 1]![1];
+      expect(last.settings.filePaletteRoots).toEqual([]);
+    });
+  });
 });

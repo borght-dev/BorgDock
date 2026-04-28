@@ -21,6 +21,7 @@ interface RootsColumnProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onAddCustomRoot: () => void;
+  onRemoveCustomRoot: (root: RootEntry) => void;
 }
 
 export function RootsColumn({
@@ -34,6 +35,7 @@ export function RootsColumn({
   collapsed,
   onToggleCollapsed,
   onAddCustomRoot,
+  onRemoveCustomRoot,
 }: RootsColumnProps) {
   const isFav = (r: RootEntry) => r.source === 'worktree' && favoritePaths.has(r.path);
 
@@ -181,6 +183,7 @@ export function RootsColumn({
               onSelect={onSelect}
               onToggleFavorite={onToggleFavorite}
               showStar={false}
+              onRemove={() => onRemoveCustomRoot(root)}
             />
           ))}
         </div>
@@ -199,9 +202,18 @@ interface RootRowProps {
   onSelect: (path: string) => void;
   onToggleFavorite: (root: RootEntry) => void;
   showStar: boolean;
+  onRemove?: () => void;
 }
 
-function RootRow({ root, active, favorite, onSelect, onToggleFavorite, showStar }: RootRowProps) {
+function RootRow({
+  root,
+  active,
+  favorite,
+  onSelect,
+  onToggleFavorite,
+  showStar,
+  onRemove,
+}: RootRowProps) {
   return (
     <div className={`bd-fp-root-row-wrap${active ? ' bd-fp-root-row-wrap--active' : ''}`}>
       {showStar ? (
@@ -229,6 +241,32 @@ function RootRow({ root, active, favorite, onSelect, onToggleFavorite, showStar 
           onClick={(e) => {
             e.stopPropagation();
             onToggleFavorite(root);
+          }}
+        />
+      ) : onRemove ? (
+        <IconButton
+          className="bd-fp-root-remove-btn"
+          icon={
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="m4 4 8 8M12 4l-8 8" />
+            </svg>
+          }
+          tooltip="Remove custom path"
+          aria-label="Remove custom path"
+          size={22}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
           }}
         />
       ) : (

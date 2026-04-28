@@ -2642,6 +2642,14 @@ select.field-input option {
     height: 22px;
     flex-shrink: 0;
   }
+  .bd-fp-root-remove-btn {
+    opacity: 0;
+    transition: opacity 80ms ease;
+  }
+  .bd-fp-root-row-wrap:hover .bd-fp-root-remove-btn,
+  .bd-fp-root-remove-btn:focus-visible {
+    opacity: 1;
+  }
   .bd-fp-roots-empty {
     padding: 14px 12px;
     color: var(--color-text-muted);
