@@ -152,7 +152,7 @@ export function FileViewerApp() {
         cycleBaseline();
       }
     },
-    [effectiveMode, cycleBaseline],
+    [effectiveMode, cycleBaseline, setViewMode],
   );
 
   return (

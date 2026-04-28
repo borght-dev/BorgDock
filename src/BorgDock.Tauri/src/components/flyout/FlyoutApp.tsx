@@ -245,10 +245,9 @@ export function FlyoutApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         if (mode.kind === 'toast') {
-          const n = mode.queue.length;
           // Per-card budget + outer padding. Generous to fit title + body + optional action row.
           const width = 340;
-          const height = n * 160 + 32;
+          const height = toastQueueLen * 160 + 32;
           if (!cancelled) await invoke('resize_flyout', { width, height });
         } else if (mode.kind === 'glance' || mode.kind === 'initializing') {
           // Match the glance-mode constants from Rust (FLYOUT_GLANCE_W/H).

@@ -87,6 +87,7 @@ export function ChangesSection(props: ChangesSectionProps) {
   const [data, setData] = useState<ChangedFilesOutput | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshTick is a re-fetch trigger, not a value the effect reads
   useEffect(() => {
     if (!rootPath) {
       setData(null);

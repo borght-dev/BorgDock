@@ -24,6 +24,7 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
   const update = (partial: Partial<AzureDevOpsSettings>) =>
     onChange({ ...azureDevOps, ...partial });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run-once-on-mount detection; capturing azureDevOps/update would re-fire on every settings change
   useEffect(() => {
     if (azureDevOps.authAutoDetected) return;
     let cancelled = false;
@@ -43,8 +44,6 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
     return () => {
       cancelled = true;
     };
-    // Run once per mount when autoDetected flips to true.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTestConnection = async () => {

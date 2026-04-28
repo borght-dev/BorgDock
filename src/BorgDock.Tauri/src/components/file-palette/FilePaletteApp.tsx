@@ -93,6 +93,7 @@ export function FilePaletteApp() {
     }
   }, [roots, activeRoot, favoritesOnly, favoritePaths]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are reset triggers — selection should clear when query, root, or visible-rows count changes
   useEffect(() => setSelectedIndex(0), [query, activeRoot, changesVisibleRows.length]);
 
   const selectRoot = useCallback(async (path: string) => {
