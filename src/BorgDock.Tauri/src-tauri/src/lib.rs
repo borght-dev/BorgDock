@@ -230,6 +230,8 @@ pub fn run() {
             cache::cache_load_tab_data,
             cache::cache_save_etags,
             cache::cache_load_etags,
+            cache::cache_load_sql_schema,
+            cache::cache_save_sql_schema,
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,

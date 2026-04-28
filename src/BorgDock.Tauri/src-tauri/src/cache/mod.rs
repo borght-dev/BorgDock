@@ -361,3 +361,64 @@ fn seven_days_ago() -> String {
     let cutoff = now.as_secs().saturating_sub(seven_days);
     format!("{cutoff}")
 }
+
+#[tauri::command]
+pub fn cache_load_sql_schema(
+    state: State<'_, PrCache>,
+    connection_name: String,
+) -> Result<Option<crate::sql::schema::SqlSchemaPayload>, String> {
+    let lock = state
+        .conn
+        .lock()
+        .map_err(|e| format!("Lock poisoned: {e}"))?;
+    let conn = lock.as_ref().ok_or("Cache not initialized")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT json_data FROM cached_sql_schema WHERE connection_name = ?1",
+        )
+        .map_err(|e| format!("Failed to prepare query: {e}"))?;
+
+    let result = stmt.query_row(rusqlite::params![connection_name], |row| {
+        let json_str: String = row.get(0)?;
+        Ok(json_str)
+    });
+
+    match result {
+        Ok(json_str) => {
+            let payload: crate::sql::schema::SqlSchemaPayload =
+                serde_json::from_str(&json_str)
+                    .map_err(|e| format!("JSON parse error: {e}"))?;
+            Ok(Some(payload))
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format!("Failed to load schema cache: {e}")),
+    }
+}
+
+#[tauri::command]
+pub fn cache_save_sql_schema(
+    state: State<'_, PrCache>,
+    connection_name: String,
+    payload: crate::sql::schema::SqlSchemaPayload,
+) -> Result<(), String> {
+    let lock = state
+        .conn
+        .lock()
+        .map_err(|e| format!("Lock poisoned: {e}"))?;
+    let conn = lock.as_ref().ok_or("Cache not initialized")?;
+
+    let json_str = serde_json::to_string(&payload)
+        .map_err(|e| format!("JSON serialize error: {e}"))?;
+    let now = chrono_now();
+
+    conn.execute(
+        "INSERT OR REPLACE INTO cached_sql_schema
+         (connection_name, database_name, json_data, cached_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![connection_name, payload.database, json_str, now],
+    )
+    .map_err(|e| format!("Failed to save schema cache: {e}"))?;
+
+    Ok(())
+}
