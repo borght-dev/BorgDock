@@ -1594,41 +1594,61 @@ select.field-input option {
   overflow: hidden;
 }
 
-.sql-gutter {
-  flex-shrink: 0;
-  width: 36px;
-  padding: 8px 0;
-  text-align: right;
+.sql-editor-area .sql-editor-cm {
+  height: 100%;
+  width: 100%;
+}
+
+.sql-editor-cm .cm-editor {
+  height: 100%;
+  background: var(--color-card-background);
+  color: var(--color-text-primary);
+}
+
+.sql-editor-cm .cm-gutters {
   background: var(--color-surface-raised);
   border-right: 1px solid var(--color-separator);
-  user-select: none;
-  overflow: hidden;
-}
-
-.sql-gutter-line {
-  font-family: var(--font-code);
-  font-size: 11px;
-  line-height: 18px;
-  padding-right: 8px;
   color: var(--color-text-ghost);
 }
 
-.sql-textarea {
-  flex: 1;
-  resize: none;
-  border: none;
+.sql-editor-cm .cm-activeLineGutter,
+.sql-editor-cm .cm-activeLine {
+  background: var(--color-surface-hover);
+}
+
+.sql-editor-cm .cm-focused {
   outline: none;
-  padding: 8px 12px;
-  font-family: var(--font-code);
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--color-text-primary);
-  background: var(--color-card-background);
-  caret-color: var(--color-accent);
-  tab-size: 2;
 }
-.sql-textarea::placeholder {
+
+.sql-editor-cm .cm-tooltip-autocomplete {
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sql-editor-cm .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.sql-schema-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
   color: var(--color-text-ghost);
+  padding: 0 4px;
+}
+
+.sql-schema-status--error {
+  color: var(--color-status-red);
+}
+
+.sql-refresh-schema {
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
 }
 
 /* ── Resize handle ───────────────────────────────────── */
