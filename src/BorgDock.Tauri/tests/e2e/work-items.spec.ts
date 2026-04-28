@@ -34,14 +34,13 @@ test.describe('Work Items Section', () => {
   });
 
   test('Work Items tab becomes active when clicked', async ({ page }) => {
-    const workItemsBtn = page.getByRole('button', { name: 'Work Items' });
+    // Section switcher uses Tabs primitive (role="tab"). Click toggles the
+    // active tab; we verify activation by `aria-selected`, which the primitive
+    // sets on the matching tab.
+    const workItemsBtn = page.getByRole('tab', { name: 'Work Items' });
     await workItemsBtn.click();
     await page.waitForTimeout(200);
-
-    // The button should have the active styling (accent background)
-    // We verify by checking the class contains the accent color
-    const classes = await workItemsBtn.getAttribute('class');
-    expect(classes).toContain('bg-[var(--color-accent)]');
+    await expect(workItemsBtn).toHaveAttribute('aria-selected', 'true');
   });
 
   test('switching back to PRs tab shows PR content', async ({ page }) => {
@@ -54,7 +53,7 @@ test.describe('Work Items Section', () => {
     await page.waitForTimeout(200);
 
     // The filter bar and search should be visible again
-    await expect(page.getByPlaceholder('Search PRs...')).toBeVisible();
+    await expect(page.getByPlaceholder('Filter pull requests...')).toBeVisible();
   });
 
   test('Work Items section renders filter bar when ADO is configured', async ({ page }) => {
@@ -64,7 +63,7 @@ test.describe('Work Items Section', () => {
         setupComplete: true,
         gitHub: { authMethod: 'pat', personalAccessToken: 'ghp_test123', pollIntervalSeconds: 60, username: 'testuser' },
         repos: [{ owner: 'test-org', name: 'test-repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '.worktrees' }],
-        ui: { sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380, theme: 'dark', globalHotkey: 'Ctrl+Shift+P', editorCommand: 'code', runAtStartup: false },
+        ui: { sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380, theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Win+Shift+F', editorCommand: 'code', runAtStartup: false },
         notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
         claudeCode: { defaultPostFixAction: 'commitAndNotify' },
         claudeReview: { botUsername: 'claude-code' },
@@ -98,7 +97,7 @@ test.describe('Work Items Section', () => {
         setupComplete: true,
         gitHub: { authMethod: 'pat', personalAccessToken: 'ghp_test123', pollIntervalSeconds: 60, username: 'testuser' },
         repos: [{ owner: 'test-org', name: 'test-repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '.worktrees' }],
-        ui: { sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380, theme: 'dark', globalHotkey: 'Ctrl+Shift+P', editorCommand: 'code', runAtStartup: false },
+        ui: { sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380, theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Win+Shift+F', editorCommand: 'code', runAtStartup: false },
         notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
         claudeCode: { defaultPostFixAction: 'commitAndNotify' },
         claudeReview: { botUsername: 'claude-code' },

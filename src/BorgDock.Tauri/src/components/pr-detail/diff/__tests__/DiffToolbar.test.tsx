@@ -43,10 +43,16 @@ describe('DiffToolbar', () => {
     vi.clearAllMocks();
   });
 
-  it('renders unified and split view mode buttons', () => {
-    render(<DiffToolbar {...makeProps()} />);
-    expect(screen.getByText('Unified')).toBeDefined();
-    expect(screen.getByText('Split')).toBeDefined();
+  it('renders Unified/Split mode chips', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ viewMode: 'unified' })} />);
+    const chips = container.querySelectorAll('[data-diff-view-mode]');
+    expect(chips).toHaveLength(2);
+    expect(
+      container.querySelector('[data-diff-view-mode="unified"][aria-pressed="true"]'),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-diff-view-mode="split"][aria-pressed="false"]'),
+    ).toBeInTheDocument();
   });
 
   it('calls onViewModeChange when clicking Unified', () => {
@@ -63,46 +69,78 @@ describe('DiffToolbar', () => {
     expect(props.onViewModeChange).toHaveBeenCalledWith('split');
   });
 
-  it('renders file tree toggle with correct title when hidden', () => {
-    render(<DiffToolbar {...makeProps({ showFileTree: false })} />);
-    expect(screen.getByTitle('Show file tree')).toBeDefined();
+  it('renders the file-tree IconButton with correct tooltip when hidden', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ showFileTree: false })} />);
+    const btn = container.querySelector('[data-diff-toolbar-action="file-tree"]');
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveAttribute('title', 'Show file tree');
   });
 
-  it('renders file tree toggle with correct title when shown', () => {
-    render(<DiffToolbar {...makeProps({ showFileTree: true })} />);
-    expect(screen.getByTitle('Hide file tree')).toBeDefined();
+  it('renders the file-tree IconButton with active state when shown', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ showFileTree: true })} />);
+    const btn = container.querySelector('[data-diff-toolbar-action="file-tree"]');
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveAttribute('title', 'Hide file tree');
+    expect(btn?.className).toContain('bd-icon-btn--active');
   });
 
   it('calls onToggleFileTree when clicking file tree button', () => {
     const props = makeProps();
-    render(<DiffToolbar {...props} />);
-    fireEvent.click(screen.getByTitle('Show file tree'));
+    const { container } = render(<DiffToolbar {...props} />);
+    const btn = container.querySelector('[data-diff-toolbar-action="file-tree"]') as HTMLElement;
+    fireEvent.click(btn);
     expect(props.onToggleFileTree).toHaveBeenCalledOnce();
   });
 
-  it('renders expand/collapse button with correct title when expanded', () => {
-    render(<DiffToolbar {...makeProps({ allExpanded: true })} />);
-    expect(screen.getByTitle('Collapse all')).toBeDefined();
+  it('renders expand/collapse IconButton with correct tooltip when expanded', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ allExpanded: true })} />);
+    const btn = container.querySelector('[data-diff-toolbar-action="expand-collapse"]');
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveAttribute('title', 'Collapse all');
   });
 
-  it('renders expand/collapse button with correct title when collapsed', () => {
-    render(<DiffToolbar {...makeProps({ allExpanded: false })} />);
-    expect(screen.getByTitle('Expand all')).toBeDefined();
+  it('renders expand/collapse IconButton with correct tooltip when collapsed', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ allExpanded: false })} />);
+    const btn = container.querySelector('[data-diff-toolbar-action="expand-collapse"]');
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveAttribute('title', 'Expand all');
   });
 
   it('calls onToggleAllExpanded when clicking expand/collapse button', () => {
     const props = makeProps({ allExpanded: true });
-    render(<DiffToolbar {...props} />);
-    fireEvent.click(screen.getByTitle('Collapse all'));
+    const { container } = render(<DiffToolbar {...props} />);
+    const btn = container.querySelector(
+      '[data-diff-toolbar-action="expand-collapse"]',
+    ) as HTMLElement;
+    fireEvent.click(btn);
     expect(props.onToggleAllExpanded).toHaveBeenCalledOnce();
   });
 
-  it('renders all status filter chips', () => {
-    render(<DiffToolbar {...makeProps()} />);
-    expect(screen.getByText('All')).toBeDefined();
-    expect(screen.getByText('Added')).toBeDefined();
-    expect(screen.getByText('Modified')).toBeDefined();
-    expect(screen.getByText('Deleted')).toBeDefined();
+  it('renders the four status filter chips', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ statusFilter: 'all' })} />);
+    expect(container.querySelectorAll('[data-diff-filter]')).toHaveLength(4);
+    expect(
+      container.querySelector('[data-diff-filter="all"][aria-pressed="true"]'),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-diff-filter="added"][aria-pressed="false"]'),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-diff-filter="modified"][aria-pressed="false"]'),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-diff-filter="deleted"][aria-pressed="false"]'),
+    ).toBeInTheDocument();
+  });
+
+  it('marks the active status filter via aria-pressed', () => {
+    const { container } = render(<DiffToolbar {...makeProps({ statusFilter: 'modified' })} />);
+    expect(
+      container.querySelector('[data-diff-filter="modified"][aria-pressed="true"]'),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-diff-filter="all"][aria-pressed="false"]'),
+    ).toBeInTheDocument();
   });
 
   it('calls onStatusFilterChange when clicking a filter chip', () => {
@@ -143,13 +181,14 @@ describe('DiffToolbar', () => {
   });
 
   it('does not render commit selector when commits is empty', () => {
-    render(<DiffToolbar {...makeProps({ commits: [] })} />);
-    expect(screen.queryByText('All changes')).toBeNull();
+    const { container } = render(<DiffToolbar {...makeProps({ commits: [] })} />);
+    expect(container.querySelector('[data-diff-commit-selector]')).toBeNull();
   });
 
   it('renders commit selector when commits are provided', () => {
     const commits = [makeCommit()];
-    render(<DiffToolbar {...makeProps({ commits })} />);
+    const { container } = render(<DiffToolbar {...makeProps({ commits })} />);
+    expect(container.querySelector('[data-diff-commit-selector]')).toBeInTheDocument();
     expect(screen.getByText('All changes')).toBeDefined();
   });
 

@@ -70,7 +70,21 @@ describe('MergeToast', () => {
     act(() => {
       requireQueueMerge()('owner', 'repo', 42);
     });
-    expect(screen.getByText('Merging PR #42...')).toBeDefined();
+    expect(screen.getByText(/PR #42/)).toBeDefined();
+    expect(screen.getByText('Merging')).toBeDefined();
+  });
+
+  it('renders the toast inside a [data-toast] container with a success Pill', () => {
+    const { container } = render(<MergeToast />);
+    act(() => {
+      requireQueueMerge()('owner', 'repo', 42);
+    });
+    const toast = container.querySelector('[data-toast]');
+    expect(toast).not.toBeNull();
+    const pill = toast?.querySelector('.bd-pill');
+    expect(pill).not.toBeNull();
+    expect(pill?.classList.contains('bd-pill--success')).toBe(true);
+    expect(pill?.textContent).toContain('Merging');
   });
 
   it('shows Undo button on toast', () => {
@@ -87,7 +101,7 @@ describe('MergeToast', () => {
       requireQueueMerge()('owner', 'repo', 42);
     });
     fireEvent.click(screen.getByText('Undo'));
-    expect(screen.queryByText('Merging PR #42...')).toBeNull();
+    expect(screen.queryByText(/PR #42/)).toBeNull();
   });
 
   it('does not merge when Undo is clicked before timeout fires', async () => {
@@ -165,12 +179,13 @@ describe('MergeToast', () => {
   });
 
   it('supports multiple concurrent toasts', () => {
-    render(<MergeToast />);
+    const { container } = render(<MergeToast />);
     act(() => {
       requireQueueMerge()('owner', 'repo', 10);
       requireQueueMerge()('owner', 'repo', 20);
     });
-    expect(screen.getByText('Merging PR #10...')).toBeDefined();
-    expect(screen.getByText('Merging PR #20...')).toBeDefined();
+    expect(screen.getByText(/PR #10/)).toBeDefined();
+    expect(screen.getByText(/PR #20/)).toBeDefined();
+    expect(container.querySelectorAll('[data-toast]').length).toBe(2);
   });
 });

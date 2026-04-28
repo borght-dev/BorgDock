@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createLogger } from '@/services/logger';
+import { Button, Card, Chip, IconButton, Input, Pill } from '@/components/shared/primitives';
 
 const log = createLogger('CheckoutFlow');
 
@@ -251,9 +252,19 @@ export function CheckoutFlow({
   if (mode.kind === 'ready') {
     const wt = nonMainWorktrees.find((w) => w.path === mode.worktreePath);
     return (
-      <div className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden">
-        <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)] bg-[linear-gradient(90deg,#5fd39b11_0%,transparent_40%)]">
-          <span className="inline-flex w-[14px] h-[14px] rounded-full items-center justify-center bg-[#5fd39b22] text-[var(--color-status-green)] text-[10px]">
+      <div
+        className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden"
+        data-checkout-stage="done"
+      >
+        <div
+          className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+          // style: status-driven gradient stripe — color-mix percentage CSS gradient, no Tailwind equivalent
+          style={{
+            background:
+              'linear-gradient(90deg, color-mix(in srgb, var(--color-status-green) 7%, transparent) 0%, transparent 40%)',
+          }}
+        >
+          <span className="inline-flex w-[14px] h-[14px] rounded-full items-center justify-center text-[var(--color-status-green)] text-[10px] bg-[color-mix(in_srgb,var(--color-status-green)_14%,transparent)]">
             ✓
           </span>
           <span>
@@ -262,13 +273,16 @@ export function CheckoutFlow({
               {branchName}
             </strong>
           </span>
-          <button
-            onClick={onDismiss}
-            aria-label="Dismiss"
-            className="ml-auto text-[14px] leading-none text-[var(--color-text-ghost)] hover:text-[var(--color-text-primary)] bg-transparent border-none cursor-pointer"
-          >
-            ✕
-          </button>
+          <span className="ml-auto">
+            <IconButton
+              icon={<XIcon />}
+              tooltip="Dismiss"
+              size={22}
+              aria-label="Dismiss"
+              onClick={onDismiss}
+              data-checkout-dismiss
+            />
+          </span>
         </div>
         <div className="px-3.5 py-2 text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5 flex-wrap">
           <span className="font-mono text-[var(--color-text-secondary)]">
@@ -293,18 +307,47 @@ export function CheckoutFlow({
           )}
         </div>
         <div className="grid grid-cols-4 gap-1.5 px-3 pb-2 pt-1">
-          <ActionChip label="Explorer" onClick={() => runAction('reveal_in_file_manager', mode.worktreePath)} icon={iconFolder} />
-          <ActionChip label="Terminal" onClick={() => runAction('open_in_terminal', mode.worktreePath)} icon={iconTerminal} />
-          <ActionChip label="Claude" onClick={() => runAction('launch_claude_in_terminal', mode.worktreePath)} icon={iconSparkle} />
-          <ActionChip label="VSCode" onClick={() => runAction('open_in_editor', mode.worktreePath)} icon={iconCode} />
+          <Chip
+            onClick={() => runAction('reveal_in_file_manager', mode.worktreePath)}
+            data-checkout-launch="explorer"
+            className="!flex-col !gap-1 !py-2.5"
+          >
+            <span className="w-4 h-4">{iconFolder}</span>
+            Explorer
+          </Chip>
+          <Chip
+            onClick={() => runAction('open_in_terminal', mode.worktreePath)}
+            data-checkout-launch="terminal"
+            className="!flex-col !gap-1 !py-2.5"
+          >
+            <span className="w-4 h-4">{iconTerminal}</span>
+            Terminal
+          </Chip>
+          <Chip
+            onClick={() => runAction('launch_claude_in_terminal', mode.worktreePath)}
+            data-checkout-launch="claude"
+            className="!flex-col !gap-1 !py-2.5"
+          >
+            <span className="w-4 h-4">{iconSparkle}</span>
+            Claude
+          </Chip>
+          <Chip
+            onClick={() => runAction('open_in_editor', mode.worktreePath)}
+            data-checkout-launch="vscode"
+            className="!flex-col !gap-1 !py-2.5"
+          >
+            <span className="w-4 h-4">{iconCode}</span>
+            VSCode
+          </Chip>
         </div>
         <div className="flex justify-end px-3 pb-2.5">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setMode({ kind: 'picking' })}
-            className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text-secondary)] bg-transparent border-none cursor-pointer"
           >
             pick a different worktree
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -313,8 +356,12 @@ export function CheckoutFlow({
   // ───────── Running & done surfaces ─────────
   if (mode.kind === 'running' || mode.kind === 'success' || mode.kind === 'error') {
     const steps = mode.kind === 'success' ? mode.steps : [];
+    const stageAttr = mode.kind === 'running' ? 'running' : 'done';
     return (
-      <div className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden">
+      <div
+        className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden"
+        data-checkout-stage={stageAttr}
+      >
         <StatusStrip mode={mode} branchName={branchName} />
         {mode.kind !== 'running' && <LogBlock steps={steps} error={mode.kind === 'error' ? mode.error : undefined} />}
         {mode.kind === 'running' && (
@@ -337,36 +384,70 @@ export function CheckoutFlow({
         )}
         {mode.kind === 'success' && (
           <div className="grid grid-cols-4 gap-1.5 px-3 pb-3 pt-2">
-            <ActionChip label="Explorer" onClick={() => runAction('reveal_in_file_manager', mode.worktreePath)} icon={iconFolder} />
-            <ActionChip label="Terminal" onClick={() => runAction('open_in_terminal', mode.worktreePath)} icon={iconTerminal} />
-            <ActionChip label="Claude" onClick={() => runAction('launch_claude_in_terminal', mode.worktreePath)} icon={iconSparkle} />
-            <ActionChip label="VSCode" onClick={() => runAction('open_in_editor', mode.worktreePath)} icon={iconCode} />
+            <Chip
+              onClick={() => runAction('reveal_in_file_manager', mode.worktreePath)}
+              data-checkout-launch="explorer"
+              className="!flex-col !gap-1 !py-2.5"
+            >
+              <span className="w-4 h-4">{iconFolder}</span>
+              Explorer
+            </Chip>
+            <Chip
+              onClick={() => runAction('open_in_terminal', mode.worktreePath)}
+              data-checkout-launch="terminal"
+              className="!flex-col !gap-1 !py-2.5"
+            >
+              <span className="w-4 h-4">{iconTerminal}</span>
+              Terminal
+            </Chip>
+            <Chip
+              onClick={() => runAction('launch_claude_in_terminal', mode.worktreePath)}
+              data-checkout-launch="claude"
+              className="!flex-col !gap-1 !py-2.5"
+            >
+              <span className="w-4 h-4">{iconSparkle}</span>
+              Claude
+            </Chip>
+            <Chip
+              onClick={() => runAction('open_in_editor', mode.worktreePath)}
+              data-checkout-launch="vscode"
+              className="!flex-col !gap-1 !py-2.5"
+            >
+              <span className="w-4 h-4">{iconCode}</span>
+              VSCode
+            </Chip>
           </div>
         )}
         {mode.kind === 'error' && (
           <div className="flex justify-between gap-2 px-3 py-2 border-t border-[var(--color-separator)]">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onDismiss}
-              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-icon-btn-hover)]"
+              data-checkout-action="cancel"
             >
               Dismiss
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setMode({ kind: 'picking' })}
-              className="rounded-md border border-[#7a8dff40] bg-[var(--color-accent-soft,#7a8dff18)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:brightness-110"
+              data-checkout-action="retry"
             >
               Retry
-            </button>
+            </Button>
           </div>
         )}
         {mode.kind === 'success' && (
           <div className="flex justify-end px-3 pb-3">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onDismiss}
-              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text-secondary)]"
+              data-checkout-action="done"
             >
               dismiss
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -376,19 +457,23 @@ export function CheckoutFlow({
   // ───────── Create new worktree form ─────────
   if (mode.kind === 'creating') {
     return (
-      <div className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden">
+      <div
+        className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden"
+        data-checkout-stage="form"
+      >
         <DrawerHeader branchName={branchName} label="New worktree for" onDismiss={onDismiss} />
         <div className="px-3 py-3 grid gap-3">
           <div className="grid gap-1.5">
             <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
               Name
             </label>
-            <input
-              className="font-mono text-[12px] text-[var(--color-text-primary)] bg-[var(--color-background)] border border-[var(--color-subtle-border)] rounded-md px-2.5 py-2 outline-none focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_#7a8dff22]"
+            <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               autoFocus
               spellCheck={false}
+              placeholder="my-feature-branch"
+              data-checkout-input="worktree-name"
             />
             <div className="font-mono text-[10.5px] text-[var(--color-text-ghost)]">
               Slashes in the branch name are replaced with dashes.
@@ -404,19 +489,24 @@ export function CheckoutFlow({
           </div>
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-2 px-3 pb-3 pt-2 border-t border-[var(--color-separator)]">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            leading={<ArrowLeftIcon />}
             onClick={() => setMode({ kind: 'picking' })}
-            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-icon-btn-hover)]"
           >
-            ← Back
-          </button>
-          <button
+            Back
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            trailing={<ArrowRightIcon />}
             disabled={!repoBasePath || !newName.trim()}
             onClick={() => runCheckout({ kind: 'new', name: newName.trim() })}
-            className="rounded-md border border-[#7a8dff40] bg-[var(--color-accent-soft,#7a8dff18)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:brightness-110 disabled:opacity-40"
+            data-checkout-action="create"
           >
-            Create &amp; check out →
-          </button>
+            Create &amp; check out
+          </Button>
         </div>
       </div>
     );
@@ -428,26 +518,24 @@ export function CheckoutFlow({
   const isListLoading = worktrees === null && !worktreesError;
 
   return (
-    <div className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden">
+    <div
+      className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden"
+      data-checkout-stage="picker"
+    >
       <DrawerHeader branchName={branchName} label="Checkout" suffix="into…" onDismiss={onDismiss} />
 
       <div className="flex items-center gap-2 px-3.5 pt-3 pb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
         <span>Existing worktrees</span>
         <span className="flex-1 h-px bg-[var(--color-separator)]" />
         {favoriteSet.size > 0 && (
-          <button
+          <IconButton
+            icon={<StarIcon filled={favoritesOnly} />}
+            active={favoritesOnly}
+            tooltip={favoritesOnly ? 'Showing favorites only — click to show all' : 'Show favorites only'}
+            size={22}
             onClick={() => setFavoritesOnly((v) => !v)}
-            aria-pressed={favoritesOnly}
-            title={favoritesOnly ? 'Showing favorites only — click to show all' : 'Show favorites only'}
-            className={clsx(
-              'font-mono text-[10px] uppercase tracking-[0.12em] px-1.5 py-[2px] rounded-sm border bg-transparent cursor-pointer transition-colors',
-              favoritesOnly
-                ? 'border-[#7a8dff40] text-[var(--color-accent)] bg-[var(--color-accent-soft,#7a8dff18)]'
-                : 'border-[var(--color-subtle-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-            )}
-          >
-            ★ favorites
-          </button>
+            data-checkout-favorites-toggle
+          />
         )}
       </div>
 
@@ -471,6 +559,7 @@ export function CheckoutFlow({
         <div className="mx-[6px] mb-2 rounded-md border border-dashed border-[var(--color-subtle-border)] px-3 py-2.5 text-[11.5px] leading-[1.5] text-[var(--color-text-muted)]">
           No favorited worktrees. Star a worktree in the palette, or{' '}
           <button
+            type="button"
             onClick={() => setFavoritesOnly(false)}
             className="underline decoration-dotted underline-offset-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] bg-transparent border-none cursor-pointer p-0"
           >
@@ -487,17 +576,19 @@ export function CheckoutFlow({
             const isCurrent = w.branchName === branchName;
             const isFav = favoriteSet.has(w.path);
             return (
-              <button
+              <Card
                 key={w.path}
+                variant={selected ? 'own' : 'default'}
+                padding="sm"
+                interactive
                 onClick={() => setSelection({ kind: 'existing', path: w.path })}
+                data-worktree-row
+                data-worktree-slot={w.path}
                 className={clsx(
-                  'relative grid grid-cols-[16px_1fr_auto] items-center gap-2.5 rounded-md px-2 py-2.5 text-left transition-colors',
-                  selected ? 'bg-[var(--color-accent-soft,#7a8dff18)]' : 'hover:bg-[var(--color-icon-btn-hover)]',
+                  '!grid grid-cols-[16px_1fr_auto] items-center gap-2.5',
+                  selected && 'border-[var(--color-accent)]',
                 )}
               >
-                {selected && (
-                  <span className="absolute left-[-6px] top-2 bottom-2 w-[2px] rounded-[2px] bg-[var(--color-accent)]" />
-                )}
                 <span
                   className={clsx(
                     'font-mono text-[12px] leading-none',
@@ -540,10 +631,12 @@ export function CheckoutFlow({
                     )}
                   </div>
                 </div>
-                <span className="font-mono text-[10px] text-[var(--color-text-ghost)] px-1.5 py-[2px] border border-[var(--color-subtle-border)] rounded-sm whitespace-nowrap">
-                  {isCurrent ? 'current' : selected ? 'selected' : 'switch'}
+                <span className="flex items-center gap-1">
+                  {isCurrent && <Pill tone="success">current</Pill>}
+                  {!isCurrent && selected && <Pill tone="neutral">selected</Pill>}
+                  {!isCurrent && !selected && <Pill tone="ghost">switch</Pill>}
                 </span>
-              </button>
+              </Card>
             );
           })}
         </div>
@@ -560,6 +653,7 @@ export function CheckoutFlow({
         <SectionLabel>Or create a new one</SectionLabel>
         <div className="px-3 pb-2.5">
           <button
+            type="button"
             onClick={() => {
               setSelection({ kind: 'new', name: newName });
               setMode({ kind: 'creating' });
@@ -567,7 +661,7 @@ export function CheckoutFlow({
             className={clsx(
               'w-full rounded-md border px-3 py-2 text-left text-[11.5px] font-medium transition-colors',
               selection.kind === 'new'
-                ? 'bg-[var(--color-accent-soft,#7a8dff18)] border-[#7a8dff40] text-[var(--color-text-primary)]'
+                ? 'bg-[var(--color-accent-soft)] border-[color-mix(in_srgb,var(--color-accent)_25%,transparent)] text-[var(--color-text-primary)]'
                 : 'bg-[var(--color-surface)] border-[var(--color-subtle-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-icon-btn-hover)]',
             )}
           >
@@ -582,6 +676,7 @@ export function CheckoutFlow({
       {mainWorktree && (
         <>
           <button
+            type="button"
             onClick={() => setShowMain((v) => !v)}
             className="w-full text-left font-mono text-[10.5px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-transparent border-none cursor-pointer px-3.5 pb-2.5"
           >
@@ -590,14 +685,15 @@ export function CheckoutFlow({
           {showMain && (
             <div className="px-1.5 pb-2.5">
               <button
+                type="button"
                 onClick={() =>
                   setSelection({ kind: 'existing', path: mainWorktree.path })
                 }
                 className={clsx(
                   'relative grid grid-cols-[16px_1fr_auto] items-center gap-2.5 rounded-md px-2 py-2.5 text-left transition-colors border border-dashed w-full',
                   selection.kind === 'existing' && selection.path === mainWorktree.path
-                    ? 'border-[#f17a7a55] bg-[#f17a7a14]'
-                    : 'border-[#f17a7a40] bg-[#f17a7a0a] hover:bg-[#f17a7a14]',
+                    ? 'border-[color-mix(in_srgb,var(--color-status-red)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-status-red)_8%,transparent)]'
+                    : 'border-[color-mix(in_srgb,var(--color-status-red)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-status-red)_4%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-red)_8%,transparent)]',
                 )}
               >
                 <span className="font-mono text-[12px] leading-none text-[var(--color-status-red)]">
@@ -623,9 +719,7 @@ export function CheckoutFlow({
                     <span className="text-[var(--color-status-red)]">overwrites your current branch</span>
                   </div>
                 </div>
-                <span className="font-mono text-[10px] text-[var(--color-status-red)] px-1.5 py-[2px] border border-dashed border-[#f17a7a40] rounded-sm whitespace-nowrap">
-                  unsafe
-                </span>
+                <Pill tone="error">unsafe</Pill>
               </button>
             </div>
           )}
@@ -633,13 +727,18 @@ export function CheckoutFlow({
       )}
 
       <div className="grid grid-cols-[auto_1fr] gap-2 px-3 pb-3 pt-2 border-t border-[var(--color-separator)]">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onDismiss}
-          className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-icon-btn-hover)]"
+          data-checkout-action="cancel"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          trailing={<ArrowRightIcon />}
           disabled={selection.kind === 'existing' ? false : !newName.trim()}
           onClick={() => {
             if (selection.kind === 'new') {
@@ -649,10 +748,10 @@ export function CheckoutFlow({
               runCheckout(selection);
             }
           }}
-          className="rounded-md border border-[#7a8dff40] bg-[var(--color-accent-soft,#7a8dff18)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:brightness-110 disabled:opacity-40"
+          data-checkout-action={selection.kind === 'existing' ? 'check-out-here' : 'configure'}
         >
-          {selection.kind === 'existing' ? 'Check out here →' : 'Configure & check out →'}
-        </button>
+          {selection.kind === 'existing' ? 'Check out here' : 'Configure & check out'}
+        </Button>
       </div>
     </div>
   );
@@ -680,13 +779,16 @@ function DrawerHeader({
         </span>
         {suffix && <span>{suffix}</span>}
       </div>
-      <button
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        className="ml-auto text-[14px] leading-none text-[var(--color-text-ghost)] hover:text-[var(--color-text-primary)] bg-transparent border-none cursor-pointer"
-      >
-        ✕
-      </button>
+      <span className="ml-auto">
+        <IconButton
+          icon={<XIcon />}
+          tooltip="Dismiss"
+          size={22}
+          aria-label="Dismiss"
+          onClick={onDismiss}
+          data-checkout-dismiss
+        />
+      </span>
     </div>
   );
 }
@@ -707,17 +809,24 @@ function Sep() {
 function StatusDot({ status }: { status: WorktreeEntry['status'] }) {
   const color =
     status === 'conflict'
-      ? 'bg-[var(--color-status-red,#f17a7a)]'
+      ? 'bg-[var(--color-status-red)]'
       : status === 'dirty'
-        ? 'bg-[var(--color-status-amber,#f1c06a)]'
-        : 'bg-[var(--color-status-green,#5fd39b)]';
+        ? 'bg-[var(--color-status-amber)]'
+        : 'bg-[var(--color-status-green)]';
   return <span className={clsx('inline-block w-[6px] h-[6px] rounded-full', color)} />;
 }
 
 function StatusStrip({ mode, branchName }: { mode: Mode; branchName: string }) {
   if (mode.kind === 'running') {
     return (
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)] bg-[linear-gradient(90deg,#7a8dff11_0%,transparent_40%)]">
+      <div
+        className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+        // style: mode-driven gradient stripe (running/success/error) — color-mix CSS gradient, no Tailwind equivalent
+        style={{
+          background:
+            'linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 7%, transparent) 0%, transparent 40%)',
+        }}
+      >
         <span className="inline-block w-[11px] h-[11px] rounded-full border-[1.5px] border-[var(--color-text-ghost)] border-t-[var(--color-accent)] animate-spin" />
         <span>
           Staging{' '}
@@ -733,8 +842,15 @@ function StatusStrip({ mode, branchName }: { mode: Mode; branchName: string }) {
   }
   if (mode.kind === 'success') {
     return (
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)] bg-[linear-gradient(90deg,#5fd39b11_0%,transparent_40%)]">
-        <span className="inline-flex w-[14px] h-[14px] rounded-full items-center justify-center bg-[#5fd39b22] text-[var(--color-status-green)] text-[10px]">
+      <div
+        className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+        // style: mode-driven gradient stripe — color-mix CSS gradient, no Tailwind equivalent
+        style={{
+          background:
+            'linear-gradient(90deg, color-mix(in srgb, var(--color-status-green) 7%, transparent) 0%, transparent 40%)',
+        }}
+      >
+        <span className="inline-flex w-[14px] h-[14px] rounded-full items-center justify-center text-[var(--color-status-green)] text-[10px] bg-[color-mix(in_srgb,var(--color-status-green)_14%,transparent)]">
           ✓
         </span>
         <span>
@@ -751,8 +867,15 @@ function StatusStrip({ mode, branchName }: { mode: Mode; branchName: string }) {
   }
   // error
   return (
-    <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)] bg-[linear-gradient(90deg,#f17a7a11_0%,transparent_40%)]">
-      <span className="inline-flex w-[14px] h-[14px] rounded-full items-center justify-center bg-[#f17a7a22] text-[var(--color-status-red)] text-[10px]">
+    <div
+      className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-separator)]"
+      // style: mode-driven gradient stripe — color-mix CSS gradient, no Tailwind equivalent
+      style={{
+        background:
+          'linear-gradient(90deg, color-mix(in srgb, var(--color-status-red) 7%, transparent) 0%, transparent 40%)',
+      }}
+    >
+      <span className="inline-flex w-[14px] h-[14px] rounded-full items-center justify-center text-[var(--color-status-red)] text-[10px] bg-[color-mix(in_srgb,var(--color-status-red)_14%,transparent)]">
         ✕
       </span>
       <span>Checkout failed</span>
@@ -793,25 +916,46 @@ function LogBlock({ steps, error }: { steps: GitStep[]; error?: string }) {
   );
 }
 
-function ActionChip({
-  label,
-  onClick,
-  icon,
-}: {
-  label: string;
-  onClick: () => void;
-  icon: ReactNode;
-}) {
+// ─────────────────────────────── Inline icons ───────────────────────────────
+
+function XIcon() {
   return (
-    <button
-      onClick={onClick}
-      className="group flex flex-col items-center justify-center gap-1 rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-1 py-2.5 text-[10.5px] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+      <path d="M3 3l6 6M9 3l-6 6" />
+    </svg>
+  );
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7.5 2.5L4 6l3.5 3.5M4 6h6" />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 2.5L8 6l-3.5 3.5M2 6h6" />
+    </svg>
+  );
+}
+
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <span className="w-4 h-4 text-[var(--color-text-secondary)] group-hover:text-[var(--color-accent)] transition-colors">
-        {icon}
-      </span>
-      {label}
-    </button>
+      <path d="M6 1.5l1.4 3 3.1.4-2.3 2.1.6 3.1L6 8.6 3.2 10.1l.6-3.1L1.5 4.9l3.1-.4z" />
+    </svg>
   );
 }
 

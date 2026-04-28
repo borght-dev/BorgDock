@@ -18,6 +18,7 @@
 
 import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { AppSettings, NotificationSeverity, PullRequestWithChecks, WorkItem } from '@/types';
@@ -38,10 +39,26 @@ export type TestToastArgs = {
 
 export type TestToastFn = (args: TestToastArgs) => void;
 
+/**
+ * Starts a Quick Review session over the first N PRs in the pr-store.
+ * Mirrors the keyboard-driven path (Shift+R / focusPrs) but without requiring
+ * the seeded fixtures to set `requestedReviewers` to the test username.
+ */
+export type TestStartQuickReviewFn = (count?: number) => void;
+
 declare global {
   interface Window {
     __borgdock_test_seed?: TestSeedFn;
     __borgdock_test_toast?: TestToastFn;
+    __borgdock_test_start_quick_review?: TestStartQuickReviewFn;
+    /**
+     * Set by Playwright's `injectCompletedSetup` so the dev/test-only URL
+     * deep-links (`?section=`, `?settings=open`, `?wizard=force`,
+     * `?toast=test`) activate inside production-mode bundles too. Always
+     * undefined in shipped builds; the Vite production bundle drops the
+     * code that reads it because it's gated behind `import.meta.env.DEV`.
+     */
+    __PLAYWRIGHT__?: boolean;
   }
 }
 
@@ -79,5 +96,11 @@ export function installTestSeed({ isDev }: { isDev: boolean }): void {
       severity: args.kind,
       actions: [],
     });
+  };
+
+  window.__borgdock_test_start_quick_review = (count = 3) => {
+    const all = usePrStore.getState().pullRequests;
+    if (all.length === 0) return;
+    useQuickReviewStore.getState().startSession(all.slice(0, Math.max(2, count)));
   };
 }

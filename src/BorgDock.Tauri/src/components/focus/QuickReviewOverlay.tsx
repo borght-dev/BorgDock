@@ -1,12 +1,26 @@
 import FocusTrap from 'focus-trap-react';
 import { useCallback, useState } from 'react';
 import { InlineHint } from '@/components/onboarding';
+import { Button, IconButton } from '@/components/shared/primitives';
 import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { parseError } from '@/utils/parse-error';
 import { QuickReviewCard } from './QuickReviewCard';
 import { QuickReviewSummary } from './QuickReviewSummary';
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+      <path
+        d="m4 4 8 8M12 4 4 12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export function QuickReviewOverlay() {
   const state = useQuickReviewStore((s) => s.state);
@@ -82,6 +96,7 @@ export function QuickReviewOverlay() {
           role="dialog"
           aria-modal="true"
           aria-label="Quick Review"
+          data-overlay="quick-review"
           className="fixed inset-x-4 top-8 bottom-8 z-[81] mx-auto max-w-[600px] flex flex-col rounded-xl border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] shadow-2xl overflow-hidden"
         >
           {/* Header bar */}
@@ -99,12 +114,7 @@ export function QuickReviewOverlay() {
                 </span>
               )}
             </div>
-            <button
-              onClick={endSession}
-              className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
-            >
-              &#10005;
-            </button>
+            <IconButton icon={<CloseIcon />} tooltip="Close" onClick={endSession} />
           </div>
 
           {/* Content */}
@@ -126,18 +136,12 @@ export function QuickReviewOverlay() {
               <div className="mt-3 rounded-md border border-[var(--color-error-badge-border)] bg-[var(--color-error-badge-bg)] px-3 py-2 text-xs text-[var(--color-error-badge-fg)]">
                 {error}
                 <div className="mt-1 flex gap-2">
-                  <button
-                    onClick={clearError}
-                    className="text-[var(--color-accent)] hover:underline"
-                  >
+                  <Button variant="ghost" size="sm" onClick={clearError}>
                     Retry
-                  </button>
-                  <button
-                    onClick={handleSkip}
-                    className="text-[var(--color-text-muted)] hover:underline"
-                  >
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleSkip}>
                     Skip
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -145,6 +149,7 @@ export function QuickReviewOverlay() {
             {/* Comment input */}
             {commentMode && state === 'reviewing' && (
               <div className="mt-3 space-y-2">
+                {/* Input is single-line — textarea stays raw until a Textarea primitive lands */}
                 <textarea
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
@@ -158,22 +163,24 @@ export function QuickReviewOverlay() {
                   className="w-full resize-none rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
                 />
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="primary"
+                    size="md"
                     onClick={handleSubmitComment}
                     disabled={!commentBody.trim()}
-                    className="rounded-md bg-[var(--color-accent)] px-3 py-1 text-xs font-medium text-[var(--color-accent-foreground)] hover:opacity-90 disabled:opacity-40"
                   >
                     Submit {commentMode === 'changes' ? 'Request Changes' : 'Comment'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="md"
                     onClick={() => {
                       setCommentMode(null);
                       setCommentBody('');
                     }}
-                    className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1 text-xs text-[var(--color-text-muted)]"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -183,38 +190,23 @@ export function QuickReviewOverlay() {
           {state === 'reviewing' && !commentMode && (
             <div className="border-t border-[var(--color-separator)] px-4 py-3 flex items-center gap-2">
               {currentIndex > 0 && (
-                <button
-                  onClick={goBack}
-                  className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
-                >
+                <Button variant="ghost" size="md" onClick={goBack}>
                   {'\u2190'} Back
-                </button>
+                </Button>
               )}
               <div className="flex-1" />
-              <button
-                onClick={handleSkip}
-                className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
-              >
+              <Button variant="ghost" size="md" onClick={handleSkip}>
                 Skip {'\u2192'}
-              </button>
-              <button
-                onClick={() => setCommentMode('comment')}
-                className="rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-              >
+              </Button>
+              <Button variant="ghost" size="md" onClick={() => setCommentMode('comment')}>
                 Comment (C)
-              </button>
-              <button
-                onClick={() => setCommentMode('changes')}
-                className="rounded-md border border-[var(--color-status-red)] px-3 py-1.5 text-xs font-medium text-[var(--color-action-danger-fg)] hover:bg-[var(--color-action-danger-bg)]"
-              >
+              </Button>
+              <Button variant="danger" size="md" onClick={() => setCommentMode('changes')}>
                 Request Changes (X)
-              </button>
-              <button
-                onClick={handleApprove}
-                className="rounded-md bg-[var(--color-status-green)] px-4 py-1.5 text-xs font-semibold text-white hover:brightness-110"
-              >
+              </Button>
+              <Button variant="primary" size="md" onClick={handleApprove}>
                 Approve (A)
-              </button>
+              </Button>
             </div>
           )}
 

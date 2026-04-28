@@ -1,7 +1,9 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { FeatureBadge } from '@/components/onboarding';
+import { Tabs } from '@/components/shared/primitives';
+import type { TabDef } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 
@@ -27,6 +29,29 @@ const sections: { key: ActiveSection; label: string }[] = [
 export function Header() {
   const activeSection = useUiStore((s) => s.activeSection);
   const setActiveSection = useUiStore((s) => s.setActiveSection);
+
+  // Dev/test-only deep-link: ?section=focus|prs|work-items dispatches the
+  // existing section-store action on mount so visual.spec.ts can land on
+  // the right surface without simulating a click. Production navigation
+  // is unaffected — neither import.meta.env.DEV nor __PLAYWRIGHT__ is true
+  // in shipped builds.
+  useEffect(() => {
+    const isTest =
+      import.meta.env.DEV ||
+      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
+    if (!isTest) return;
+    const param = new URLSearchParams(window.location.search).get('section');
+    if (!param) return;
+    const map: Record<string, ActiveSection> = {
+      focus: 'focus',
+      prs: 'prs',
+      'work-items': 'workitems',
+    };
+    const target = map[param];
+    if (target) setActiveSection(target);
+    // Run once on mount; subsequent in-app navigation is user-driven.
+  }, [setActiveSection]);
+
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const isPolling = usePrStore((s) => s.isPolling);
   const getCounts = usePrStore((s) => s.counts);
@@ -81,25 +106,20 @@ export function Header() {
       </div>
 
       {/* Center: Section switcher */}
-      <div className="sidebar-section-switcher">
-        {sections.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setActiveSection(s.key)}
-            className={clsx(
-              'sidebar-section-btn',
-              activeSection === s.key && 'sidebar-section-btn--active',
-            )}
-          >
-            {s.label}
-            {s.key === 'focus' && <FeatureBadge badgeId="focus-mode" />}
-            {s.key === 'focus' && focusCount > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-1.5 text-[9px] font-bold leading-none text-white min-w-[16px] h-[14px]">
-                {focusCount}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="sidebar-section-switcher relative">
+        <Tabs
+          value={activeSection}
+          onChange={(id) => setActiveSection(id as ActiveSection)}
+          tabs={sections.map<TabDef>((s) => ({
+            id: s.key,
+            label: s.label,
+            count: s.key === 'focus' && focusCount > 0 ? focusCount : undefined,
+          }))}
+          dense
+        />
+        <span className="absolute -right-1 -top-1">
+          <FeatureBadge badgeId="focus-mode" />
+        </span>
       </div>
 
       {/* Right: Status dot + actions */}

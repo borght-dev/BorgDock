@@ -526,4 +526,33 @@ describe('OverviewTab', () => {
     fireEvent.click(within(dialog).getByText('Cancel'));
     expect(closePullRequest).not.toHaveBeenCalled();
   });
+
+  // ---- Primitive migration assertions (PR #4 / Task 4) ----
+
+  it('renders branch + base pills with data-branch-pill', () => {
+    const { container } = render(<OverviewTab pr={makePr()} />);
+    expect(container.querySelector('[data-branch-pill="head"]')).toBeTruthy();
+    expect(container.querySelector('[data-branch-pill="base"]')).toBeTruthy();
+  });
+
+  it('renders action buttons with data-overview-action', () => {
+    const { container } = render(<OverviewTab pr={makePr()} />);
+    expect(container.querySelector('[data-overview-action="browser"]')).toBeTruthy();
+    expect(container.querySelector('[data-overview-action="copy"]')).toBeTruthy();
+    expect(container.querySelector('[data-overview-action="checkout"]')).toBeTruthy();
+  });
+
+  it('renders Squash & Merge primary button when ready', () => {
+    const pr = makePr({
+      overallStatus: 'green',
+      pullRequest: {
+        ...makePr().pullRequest,
+        isDraft: false,
+        mergeable: true,
+        reviewStatus: 'approved',
+      },
+    });
+    const { container } = render(<OverviewTab pr={pr} />);
+    expect(container.querySelector('[data-overview-action="merge"]')).toBeTruthy();
+  });
 });

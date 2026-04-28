@@ -72,13 +72,13 @@ const SURFACES: Surface[] = [
     id: 'flyout',
     path: '/flyout.html',
     ready: 'body',
-    note: 'Flyout window entry; secondary window has no test-seed hook, so uses whatever the FlyoutApp renders unseeded.',
+    note: 'Flyout window entry. The flyout is a floating glance card, not a movable windowed app — data-tauri-drag-region would be semantically inappropriate (the OS chrome / drag-region pattern fits surfaces that act as movable windows, not floating cards). body fallback is the permanent ready selector; the React tree mounting under body proves the surface rendered, and pixel diff is the actual progress signal (PR #9 decision).',
   },
   {
     id: 'palette',
     path: '/palette.html',
-    ready: 'body',
-    note: 'Command palette window entry; secondary window has no test-seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Command palette window; PaletteApp drag-handle has data-tauri-drag-region so this fails fast if PaletteApp errors during mount.',
   },
   {
     id: 'badges',
@@ -91,90 +91,91 @@ const SURFACES: Surface[] = [
   // ② focus
   {
     id: 'focus-tab',
-    ready: 'body',
-    note: 'Main window; focus-tab view not yet switchable via URL. Ready selector relaxed to body until the design lands.',
+    path: '/?section=focus',
+    ready: '[data-section="focus"]',
+    note: 'Main window with Focus section forced via ?section=focus URL deep-link (PR #9). Header reads URLSearchParams on mount and dispatches setActiveSection.',
   },
 
   // ③ main
   {
     id: 'main-window',
-    // Relaxed to `body` until PR #1-#7 lands the design. The real
-    // header + PR list selectors (`header, [data-pr-list]`) are the
-    // target once the main shell stabilizes — but the current shell
-    // may still be repainting or repositioning when we capture, so
-    // `body` keeps the pixel diff flowing as the progress signal.
-    ready: 'body',
-    note: 'Main window; ready relaxed to body until PR #1-#7 finalizes the header + PR list structure — tighten to `header, [data-pr-list]` then.',
+    ready: 'header',
+    note: 'Main window; <header> renders unconditionally via Sidebar — tighter than body, defers to PR #9 for deep PR-list selector.',
   },
   {
     id: 'work-items',
-    ready: 'body',
-    note: 'Work Items section within main window. Today requires a button click; deferred to a follow-up that wires deep-link navigation.',
+    path: '/?section=work-items',
+    ready: '[data-section="workitems"]',
+    note: 'Main window with Work Items section forced via ?section=work-items URL deep-link (PR #9). Note: URL param is kebab-case, store value is concatenated.',
   },
 
   // ④ detail
   {
     id: 'pr-detail-overview',
     path: '/pr-detail.html',
-    ready: 'body',
-    note: 'PR detail window, Overview tab default. No test-seed hook in secondary window yet.',
+    ready: '[data-tauri-drag-region]',
+    note: 'PR detail window, Overview tab default; PRDetailApp titlebar has data-tauri-drag-region so this fails fast if PRDetailApp errors during mount.',
   },
   {
     id: 'pr-detail-tabs',
     path: '/pr-detail.html?tab=files',
-    ready: 'body',
-    note: 'PR detail window with Files tab active. Query param may not be honored yet.',
+    ready: '[data-tauri-drag-region]',
+    note: 'PR detail window with Files tab active; same titlebar drag-region as pr-detail-overview.',
   },
 
   // ⑤ palettes & code
   {
     id: 'file-palette',
     path: '/file-palette.html',
-    ready: 'body',
-    note: 'Files picker palette; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Files picker palette; FilePaletteApp titlebar has data-tauri-drag-region so this fails fast if the app errors during mount.',
   },
   {
     id: 'file-viewer',
     path: '/file-viewer.html',
-    ready: 'body',
-    note: 'Single-file viewer window; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Single-file viewer window; FileViewerToolbar has data-tauri-drag-region so this fails fast if the app errors during mount.',
   },
   {
     id: 'sql',
     path: '/sql.html',
-    ready: 'body',
-    note: 'SQL runner window; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    note: 'SQL runner window; SqlApp uses WindowTitleBar which has data-tauri-drag-region so this fails fast if SqlApp errors during mount.',
   },
 
   // ⑥ worktree changes & diff viewer
   {
     id: 'worktree-changes',
     path: '/worktree.html',
-    ready: 'body',
-    note: 'Worktree changes window; secondary window, no seed hook.',
+    ready: '[data-tauri-drag-region]',
+    clipTo: '.bd-wt-palette',
+    note: 'Worktree changes window; clipped to .bd-wt-palette to exclude scrollbars and any debug overlays.',
   },
   {
     id: 'diff-viewer',
     path: '/pr-detail.html?tab=files&diff=1',
-    ready: 'body',
-    note: 'Diff viewer view of PR detail. Query params may not route yet.',
+    ready: '[data-tauri-drag-region]',
+    note: 'Diff viewer view of PR detail; same PRDetailApp titlebar drag-region as pr-detail-overview.',
   },
 
   // ⑦ settings, wizard, notifications
   {
     id: 'settings',
-    ready: 'body',
-    note: 'Settings flyout within main window. Requires a click to open today — deferred.',
+    path: '/?settings=open',
+    ready: '[data-flyout="settings"]',
+    note: 'Settings flyout opened via ?settings=open URL deep-link (PR #9). App.tsx mount effect calls useUiStore.setSettingsOpen(true) when the param is present.',
   },
   {
     id: 'wizard',
-    ready: 'body',
-    note: 'Setup wizard; normally shown when setupComplete=false. injectCompletedSetup skips it today, so this baseline will diff heavily until deep-link via query param lands.',
+    path: '/?wizard=force',
+    ready: '[data-wizard-step]',
+    note: 'Setup wizard forced via ?wizard=force URL deep-link (PR #9). App.tsx forceWizardFromUrl short-circuits the needsSetup gate; the dev/test guard prevents production bundles from honoring it.',
   },
   {
     id: 'toasts',
-    ready: 'body',
-    note: 'Toast stack rendered on top of main window; requires a test-toast call to populate.',
+    path: '/?toast=test',
+    ready: '[data-toast]',
+    note: 'Synthetic test toast pushed via ?toast=test URL deep-link (PR #9). NotificationOverlay mount effect calls useNotificationStore.show() with severity:info.',
   },
 ];
 

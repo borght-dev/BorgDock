@@ -305,11 +305,11 @@ export function FilePaletteApp() {
   }, [selectedIndex]);
 
   return (
-    <div className="fp-root" onKeyDown={handleKey} tabIndex={-1}>
-      <div className="fp-titlebar" data-tauri-drag-region>
-        <span className="fp-title">FILES</span>
+    <div data-window="palette" className="bd-fp-root" onKeyDown={handleKey} tabIndex={-1}>
+      <div className="bd-fp-titlebar" data-tauri-drag-region>
+        <span className="bd-fp-title">FILES</span>
       </div>
-      <div className={`fp-body${rootsCollapsed ? ' fp-body--collapsed' : ''}`}>
+      <div className={`bd-fp-body${rootsCollapsed ? ' bd-fp-body--collapsed' : ''}`}>
         <RootsColumn
           roots={roots}
           activePath={activeRoot}
@@ -321,7 +321,7 @@ export function FilePaletteApp() {
           collapsed={rootsCollapsed}
           onToggleCollapsed={toggleRootsCollapsed}
         />
-        <div className="fp-middle">
+        <div className="bd-fp-middle">
           <SearchPane
             query={query}
             onQueryChange={setQuery}
@@ -351,24 +351,24 @@ export function FilePaletteApp() {
             rowRef={(el, i) => { rowRefs.current.set(i, el); }}
           />
           {loadError ? (
-            <div className="fp-empty">Load error: {loadError}</div>
+            <div className="bd-fp-empty">Load error: {loadError}</div>
           ) : roots.length === 0 ? (
-            <div className="fp-empty">No roots configured. Add worktrees or paths under Settings.</div>
+            <div className="bd-fp-empty">No roots configured. Add worktrees or paths under Settings.</div>
           ) : fileIndex.loading && parsed.mode === 'filename' ? (
-            <div className="fp-empty">Loading file index…</div>
+            <div className="bd-fp-empty">Loading file index…</div>
           ) : parsed.mode === 'symbol' && indexer.indexing && results.length === 0 ? (
-            <div className="fp-empty">
+            <div className="bd-fp-empty">
               Indexing symbols… {indexer.processed} / {indexer.total}
             </div>
           ) : parsed.mode === 'content' && contentSearch.loading && results.length === 0 ? (
-            <div className="fp-empty">Searching…</div>
+            <div className="bd-fp-empty">Searching…</div>
           ) : results.length === 0 && parsed.query ? (
             parsed.mode === 'filename' ? (
-              <div className="fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
+              <div className="bd-fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
             ) : parsed.mode === 'content' ? (
-              <div className="fp-empty">No content matches for &lsquo;{parsed.query}&rsquo;.</div>
+              <div className="bd-fp-empty">No content matches for &lsquo;{parsed.query}&rsquo;.</div>
             ) : (
-              <div className="fp-empty">
+              <div className="bd-fp-empty">
                 No implementations found for &lsquo;{parsed.query}&rsquo; in this root. v1 supports TS, JS, C#, Rust.
               </div>
             )

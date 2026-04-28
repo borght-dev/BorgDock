@@ -25,6 +25,14 @@ describe('QuickReviewCard', () => {
     expect(screen.getByText('Fix critical bug')).toBeDefined();
   });
 
+  it('marks the title with data-pr-title', () => {
+    const pr = makePr({ title: 'Fix critical bug' });
+    const { container } = render(<QuickReviewCard pr={pr} />);
+    const title = container.querySelector('[data-pr-title]');
+    expect(title).not.toBeNull();
+    expect(title?.textContent).toBe('Fix critical bug');
+  });
+
   it('renders repo owner/name and PR number', () => {
     const pr = makePr({ repoOwner: 'acme', repoName: 'widget', number: 42 });
     render(<QuickReviewCard pr={pr} />);
@@ -80,10 +88,18 @@ describe('QuickReviewCard', () => {
   });
 
   it('does not render labels section when empty', () => {
-    const pr = makePr({ labels: [] });
-    const { container } = render(<QuickReviewCard pr={pr} />);
-    const labels = container.querySelectorAll('.rounded-full');
-    expect(labels.length).toBe(0);
+    const pr = makePr({ labels: ['only-label'] });
+    const { container, rerender } = render(<QuickReviewCard pr={pr} />);
+    // Sanity: labels render as Pill primitives when present
+    expect(container.querySelectorAll('.bd-pill').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('only-label')).toBeDefined();
+    // Now rerender with empty labels — only the headRef + baseRef pills remain
+    const prEmpty = makePr({ labels: [], headRef: 'h', baseRef: 'b' });
+    rerender(<QuickReviewCard pr={prEmpty} />);
+    const pills = container.querySelectorAll('.bd-pill');
+    // Two pills (headRef + baseRef) and nothing else
+    expect(pills.length).toBe(2);
+    expect(screen.queryByText('only-label')).toBeNull();
   });
 
   it('renders body as markdown when present', () => {

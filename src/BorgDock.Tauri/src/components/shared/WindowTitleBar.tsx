@@ -1,6 +1,8 @@
 import type { Window } from '@tauri-apps/api/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useRef } from 'react';
+import { WindowControls } from './chrome/WindowControls';
+import { Titlebar } from './primitives/Titlebar';
 
 interface WindowTitleBarProps {
   title: string;
@@ -42,45 +44,17 @@ export function WindowTitleBar({ title }: WindowTitleBarProps) {
   }, [win]);
 
   return (
-    <div className="window-titlebar" data-tauri-drag-region onDoubleClick={handleMaximize}>
-      <span className="window-titlebar-title" data-tauri-drag-region>
-        {title}
-      </span>
-      <div className="window-titlebar-controls">
-        <button className="window-titlebar-btn" onClick={handleMinimize} aria-label="Minimize">
-          <svg width="10" height="10" viewBox="0 0 10 10">
-            <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
-          </svg>
-        </button>
-        <button className="window-titlebar-btn" onClick={handleMaximize} aria-label="Maximize">
-          <svg width="10" height="10" viewBox="0 0 10 10">
-            <rect
-              x="1.5"
-              y="1.5"
-              width="7"
-              height="7"
-              rx="1"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              fill="none"
-            />
-          </svg>
-        </button>
-        <button
-          className="window-titlebar-btn window-titlebar-btn--close"
-          onClick={handleClose}
-          aria-label="Close"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10">
-            <path
-              d="M2 2l6 6M8 2l-6 6"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-    </div>
+    <Titlebar
+      data-tauri-drag-region
+      onDoubleClick={handleMaximize}
+      left={<span className="bd-titlebar__title">{title}</span>}
+      right={
+        <WindowControls
+          onMinimize={handleMinimize}
+          onMaximize={handleMaximize}
+          onClose={handleClose}
+        />
+      }
+    />
   );
 }

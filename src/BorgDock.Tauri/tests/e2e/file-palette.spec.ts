@@ -6,7 +6,7 @@ import { expectNoA11yViolations } from './helpers/a11y';
 test.describe('file palette', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
-    await page.goto('/palette.html?kind=files');
+    await page.goto('/file-palette.html');
     await waitForAppReady(page);
     await seedDesignFixturesIfAvailable(page);
   });

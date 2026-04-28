@@ -19,6 +19,13 @@ describe('QuickReviewSummary', () => {
     expect(screen.getByText('Review Complete')).toBeDefined();
   });
 
+  it('marks the outer container with data-quick-review-summary', () => {
+    const { container } = render(
+      <QuickReviewSummary queue={[]} decisions={new Map()} onClose={onClose} />,
+    );
+    expect(container.querySelector('[data-quick-review-summary]')).not.toBeNull();
+  });
+
   it('shows correct plural count for multiple PRs', () => {
     const queue = [makePr(), makePr(), makePr()];
     render(<QuickReviewSummary queue={queue} decisions={new Map()} onClose={onClose} />);

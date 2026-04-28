@@ -6,7 +6,7 @@ import { expectNoA11yViolations } from './helpers/a11y';
 test.describe('file viewer', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
-    await page.goto('/file-viewer.html?file=src/quote/footer.tsx');
+    await page.goto('/file-viewer.html?path=src/quote/footer.tsx');
     await waitForAppReady(page);
     await seedDesignFixturesIfAvailable(page);
   });

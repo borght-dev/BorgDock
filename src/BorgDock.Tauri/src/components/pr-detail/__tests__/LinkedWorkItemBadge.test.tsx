@@ -78,6 +78,14 @@ describe('LinkedWorkItemBadge', () => {
     expect(screen.queryByText(/assigned to/)).toBeNull();
   });
 
+  it('renders full branch inside a Card primitive with data-linked-work-item attr', () => {
+    const wi = makeWorkItem();
+    const { container } = render(<LinkedWorkItemBadge workItemId={42} workItem={wi} />);
+    const card = container.querySelector('[data-linked-work-item="42"]');
+    expect(card).toBeTruthy();
+    expect(card?.classList.contains('bd-card')).toBe(true);
+  });
+
   describe('compact mode', () => {
     it('renders compact badge with AB# prefix', () => {
       render(<LinkedWorkItemBadge workItemId={42} compact />);
@@ -123,6 +131,13 @@ describe('LinkedWorkItemBadge', () => {
       render(<LinkedWorkItemBadge workItemId={42} workItem={wi} compact />);
       expect(screen.queryByText('Fix login bug')).toBeNull();
       expect(screen.queryByText('assigned to Alice')).toBeNull();
+    });
+
+    it('renders compact branch as a Pill primitive with data-linked-work-item attr', () => {
+      const { container } = render(<LinkedWorkItemBadge workItemId={42} compact />);
+      const pill = container.querySelector('[data-linked-work-item="42"]');
+      expect(pill).toBeTruthy();
+      expect(pill?.classList.contains('bd-pill')).toBe(true);
     });
   });
 });

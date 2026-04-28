@@ -231,8 +231,9 @@ describe('QueryBrowser', () => {
     props.selectedQueryId = 'q-fav';
     render(<QueryBrowser {...props} />);
 
+    // Chip primitive surfaces the selection state via aria-pressed.
     const selectedBtn = screen.getByText('Fav Query').closest('button')!;
-    expect(selectedBtn.className).toContain('bg-[var(--color-accent)]');
+    expect(selectedBtn.getAttribute('aria-pressed')).toBe('true');
   });
 
   // ---- Nested folder structure ----

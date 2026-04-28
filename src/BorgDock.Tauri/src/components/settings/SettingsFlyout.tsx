@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import FocusTrap from 'focus-trap-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Card, IconButton } from '@/components/shared/primitives';
 import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -79,13 +80,18 @@ export function SettingsFlyout() {
     <FocusTrap focusTrapOptions={{ allowOutsideClick: true, escapeDeactivates: false }}>
       <div>
         {/* Overlay */}
-        <div className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]" onClick={close} />
+        <div
+          className="fixed inset-0 z-40 bg-[var(--color-overlay-bg)]"
+          onClick={close}
+          data-settings-overlay
+        />
 
         {/* Flyout panel */}
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Settings"
+          data-flyout="settings"
           className={clsx(
             'fixed right-0 top-0 z-50 flex h-full w-[360px] flex-col',
             'bg-[var(--color-modal-bg)] border-l border-[var(--color-modal-border)]',
@@ -95,12 +101,13 @@ export function SettingsFlyout() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-3">
             <span className="text-sm font-semibold text-[var(--color-text-primary)]">Settings</span>
-            <button
-              className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
+            <IconButton
+              size={26}
+              icon={<span aria-hidden>&#10005;</span>}
+              aria-label="Close settings"
+              data-settings-close
               onClick={close}
-            >
-              &#10005;
-            </button>
+            />
           </div>
 
           {/* Scrollable content */}
@@ -159,18 +166,24 @@ export function SettingsFlyout() {
             {/* Maintenance */}
             <SectionCard title="Maintenance">
               <div className="flex flex-col gap-2">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  data-settings-action="prune-worktrees"
                   onClick={() => setIsPruneOpen(true)}
-                  className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                  className="w-full"
                 >
                   Prune Worktrees
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  data-settings-action="reset-onboarding"
                   onClick={() => useOnboardingStore.getState().resetAll()}
-                  className="w-full rounded-md border border-[var(--color-subtle-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                  className="w-full"
                 >
                   Reset Onboarding
-                </button>
+                </Button>
               </div>
             </SectionCard>
           </div>
@@ -185,11 +198,11 @@ export function SettingsFlyout() {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[10px] bg-[var(--color-surface-raised)] border border-[var(--color-subtle-border)] px-3.5 py-3">
+    <Card variant="default" padding="md">
       <h3 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)]">
         {title}
       </h3>
       {children}
-    </div>
+    </Card>
   );
 }

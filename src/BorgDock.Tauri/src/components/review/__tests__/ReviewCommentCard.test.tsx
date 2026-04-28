@@ -57,33 +57,49 @@ describe('ReviewCommentCard', () => {
     const { container } = render(
       <ReviewCommentCard comment={makeComment({ severity: 'critical' })} />,
     );
-    const dot = container.querySelector('span[style*="background"]');
-    expect(dot).toBeDefined();
-    expect(dot?.getAttribute('style')).toContain('var(--color-status-red)');
+    const dot = container.querySelector('.bd-dot');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('bd-dot--red');
   });
 
   it('renders severity dot for suggestion comments', () => {
     const { container } = render(
       <ReviewCommentCard comment={makeComment({ severity: 'suggestion' })} />,
     );
-    const dot = container.querySelector('span[style*="background"]');
-    expect(dot?.getAttribute('style')).toContain('var(--color-purple)');
+    const dot = container.querySelector('.bd-dot');
+    expect(dot?.className).toContain('bd-dot--yellow');
   });
 
   it('renders severity dot for praise comments', () => {
     const { container } = render(
       <ReviewCommentCard comment={makeComment({ severity: 'praise' })} />,
     );
-    const dot = container.querySelector('span[style*="background"]');
-    expect(dot?.getAttribute('style')).toContain('var(--color-status-green)');
+    const dot = container.querySelector('.bd-dot');
+    expect(dot?.className).toContain('bd-dot--green');
   });
 
   it('renders severity dot for unknown severity', () => {
     const { container } = render(
       <ReviewCommentCard comment={makeComment({ severity: 'unknown' })} />,
     );
-    const dot = container.querySelector('span[style*="background"]');
-    expect(dot?.getAttribute('style')).toContain('var(--color-status-gray)');
+    const dot = container.querySelector('.bd-dot');
+    expect(dot?.className).toContain('bd-dot--gray');
+  });
+
+  it('emits data-review-card and data-review-severity', () => {
+    const { container } = render(
+      <ReviewCommentCard comment={makeComment({ severity: 'critical' })} />,
+    );
+    const card = container.querySelector('[data-review-card]');
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveAttribute('data-review-severity', 'critical');
+  });
+
+  it('renders the severity Dot primitive', () => {
+    const { container } = render(
+      <ReviewCommentCard comment={makeComment({ severity: 'critical' })} />,
+    );
+    expect(container.querySelector('.bd-dot')).toBeInTheDocument();
   });
 
   it('renders the markdown body container', () => {

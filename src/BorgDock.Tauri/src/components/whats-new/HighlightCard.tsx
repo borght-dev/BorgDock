@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import type { Highlight, Kind } from '@/types/whats-new';
+import { Pill, type PillTone } from '@/components/shared/primitives/Pill';
 import { HeroBanner } from './HeroBanner';
 
 const KIND_LABEL: Record<Kind, string> = {
@@ -10,12 +11,10 @@ const KIND_LABEL: Record<Kind, string> = {
   fixed: 'Fixed',
 };
 
-const KIND_CLASSES: Record<Kind, string> = {
-  new: 'text-[var(--color-whats-new-new-fg)] bg-[var(--color-whats-new-new-bg)] border-[var(--color-whats-new-new-border)]',
-  improved:
-    'text-[var(--color-whats-new-improved-fg)] bg-[var(--color-whats-new-improved-bg)] border-[var(--color-whats-new-improved-border)]',
-  fixed:
-    'text-[var(--color-whats-new-fixed-fg)] bg-[var(--color-whats-new-fixed-bg)] border-[var(--color-whats-new-fixed-border)]',
+const KIND_TONE: Record<Kind, PillTone> = {
+  new: 'success',
+  improved: 'neutral',
+  fixed: 'warning',
 };
 
 interface Props {
@@ -28,12 +27,13 @@ export function HighlightCard({ highlight }: Props) {
     <div className="mb-4 last:mb-1">
       <HeroBanner hero={hero} kind={kind} />
       <div className="flex flex-wrap items-center gap-2 mb-1">
-        <span
+        <Pill
+          tone={KIND_TONE[kind]}
           data-highlight-kind={kind}
-          className={`text-[10px] font-medium uppercase tracking-[0.04em] px-1.5 py-0.5 rounded border ${KIND_CLASSES[kind]}`}
+          data-pill-tone={KIND_TONE[kind]}
         >
           {KIND_LABEL[kind]}
-        </span>
+        </Pill>
         <span className="text-[14px] font-medium text-[var(--color-text-primary)]">{title}</span>
         {keyboard && (
           <kbd className="font-mono text-[11px] px-1.5 py-[1px] rounded border bg-[var(--color-surface-raised)] border-[var(--color-strong-border)] text-[var(--color-text-primary)]">

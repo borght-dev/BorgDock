@@ -211,4 +211,43 @@ describe('PRDetailApp', () => {
       expect(screen.getByText('Failed to load pull request')).toBeTruthy();
     });
   });
+
+  it('does not call setState after unmount when invoke resolves late', async () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, search: '?owner=test&repo=app&number=42' },
+    });
+
+    let resolveSettings: (s: unknown) => void = () => {};
+    const settingsPromise = new Promise((r) => {
+      resolveSettings = r;
+    });
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') return settingsPromise;
+      return Promise.resolve(null);
+    });
+
+    const consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { unmount } = render(<PRDetailApp />);
+    unmount();
+    resolveSettings({ azureDevOps: {}, gitHub: {}, repos: [], ui: {}, claudeApi: {} });
+
+    // wait a tick for any pending setState
+    await new Promise((r) => setTimeout(r, 50));
+    expect(consoleErrSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('not wrapped in act'),
+    );
+    consoleErrSpy.mockRestore();
+  });
+
+  it('renders the close button as an IconButton', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, search: '?owner=test&repo=app&number=42' },
+    });
+    mockInvoke.mockImplementation(() => new Promise(() => {}));
+    const { container } = render(<PRDetailApp />);
+    expect(container.querySelector('.bd-icon-btn')).toBeInTheDocument();
+    expect(container.querySelector('[data-pr-detail-close]')).toBeInTheDocument();
+  });
 });

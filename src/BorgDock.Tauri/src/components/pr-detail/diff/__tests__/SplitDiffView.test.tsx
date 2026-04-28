@@ -258,4 +258,41 @@ describe('SplitDiffView', () => {
     const rows = container.querySelectorAll('tr');
     expect(rows.length).toBe(0);
   });
+
+  it('renders data-line-kind="add" on the right cell of an addition row', () => {
+    const lines: DiffLine[] = [{ type: 'add', content: 'new line', newLineNumber: 1 }];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelector('[data-line-kind="add"]')).not.toBeNull();
+  });
+
+  it('renders data-line-kind="del" on the left cell of a deletion row', () => {
+    const lines: DiffLine[] = [{ type: 'delete', content: 'old line', oldLineNumber: 1 }];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelector('[data-line-kind="del"]')).not.toBeNull();
+  });
+
+  it('renders data-line-kind="context" on both cells of a context row', () => {
+    const lines: DiffLine[] = [
+      { type: 'context', content: 'same', oldLineNumber: 1, newLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelectorAll('[data-line-kind="context"]').length).toBe(2);
+  });
+
+  it('renders data-line-kind="del" on left and "add" on right for paired modified row', () => {
+    const lines: DiffLine[] = [
+      { type: 'delete', content: 'old', oldLineNumber: 1 },
+      { type: 'add', content: 'new', newLineNumber: 1 },
+    ];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelector('[data-line-kind="del"]')).not.toBeNull();
+    expect(container.querySelector('[data-line-kind="add"]')).not.toBeNull();
+  });
+
+  it('renders data-hunk-header on hunk header rows', () => {
+    const lines: DiffLine[] = [{ type: 'hunk-header', content: '@@ -1,3 +1,5 @@ module' }];
+    const { container } = render(<SplitDiffView hunks={[makeHunk(lines)]} />);
+    const headers = container.querySelectorAll('[data-hunk-header]');
+    expect(headers.length).toBeGreaterThanOrEqual(1);
+  });
 });

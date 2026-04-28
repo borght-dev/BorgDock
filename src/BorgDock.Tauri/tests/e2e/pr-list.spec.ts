@@ -10,6 +10,9 @@ test.describe('PR List', () => {
     await injectCompletedSetup(page);
     await page.goto('/');
     await waitForAppReady(page);
+    // Default activeSection is 'focus' (per ui-store). These tests assert the
+    // PR list surface, so switch to it first. Tabs primitive uses role="tab".
+    await page.getByRole('tab', { name: 'PRs' }).click();
   });
 
   test('shows "No pull requests found" when empty', async ({ page }) => {
@@ -32,8 +35,8 @@ test.describe('PR List', () => {
   });
 
   test('filter buttons are visible', async ({ page }) => {
-    // The FilterBar should render with all filter buttons
-    const filterLabels = ['All', 'My PRs', 'Failing', 'Ready', 'Reviewing', 'Closed'];
+    // FilterBar labels per the current Header/FilterBar (PR #1+#2 chrome).
+    const filterLabels = ['All', 'Needs Review', 'Mine', 'Failing', 'Ready', 'Review', 'Closed'];
     for (const label of filterLabels) {
       await expect(
         page.locator('button').filter({ hasText: label }).first()
@@ -42,17 +45,15 @@ test.describe('PR List', () => {
   });
 
   test('clicking a filter changes the active filter', async ({ page }) => {
-    // Click "Failing" filter
-    const failingBtn = page.locator('button').filter({ hasText: 'Failing' }).first();
+    // Click "Failing" filter — FilterBar uses Chip primitive (PR #4), so active
+    // state surfaces as data-filter-active="true" + aria-pressed="true".
+    const failingBtn = page.locator('[data-filter-chip][data-filter-key="failing"]');
     await failingBtn.click();
-
-    // The failing button should now have the active style (accent color class)
-    // We check for the accent-colored border-b-2 indicator
-    await expect(failingBtn).toHaveCSS('border-bottom-width', '2px');
+    await expect(failingBtn).toHaveAttribute('data-filter-active', 'true');
   });
 
   test('search bar is visible and accepts input', async ({ page }) => {
-    const searchInput = page.getByPlaceholder('Search PRs...');
+    const searchInput = page.getByPlaceholder('Filter pull requests...');
     await expect(searchInput).toBeVisible();
 
     // Type into the search bar
@@ -61,7 +62,7 @@ test.describe('PR List', () => {
   });
 
   test('search bar clear button appears when text is entered', async ({ page }) => {
-    const searchInput = page.getByPlaceholder('Search PRs...');
+    const searchInput = page.getByPlaceholder('Filter pull requests...');
     await searchInput.fill('test');
 
     // Clear button should now be visible
@@ -76,9 +77,9 @@ test.describe('PR List', () => {
   test('header contains BorgDock logo and section switcher', async ({ page }) => {
     await expect(page.getByText('BorgDock')).toBeVisible();
 
-    // Section switcher buttons
-    await expect(page.getByRole('button', { name: 'PRs' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Work Items' })).toBeVisible();
+    // Section switcher tabs
+    await expect(page.getByRole('tab', { name: 'PRs' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Work Items' })).toBeVisible();
   });
 
   test('shows loading skeletons during first load', async ({ page }) => {

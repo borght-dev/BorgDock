@@ -1,3 +1,4 @@
+import { Card } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 
@@ -15,7 +16,7 @@ export function FocusEmptyState() {
   const pendingCi = pullRequests.filter((pr) => pr.overallStatus === 'yellow').length;
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+    <Card padding="lg" className="flex flex-col items-center justify-center text-center">
       <div className="text-[var(--color-text-ghost)] mb-3">
         <svg
           width="40"
@@ -47,6 +48,6 @@ export function FocusEmptyState() {
           {filteredOut} PR{filteredOut !== 1 ? 's' : ''} filtered out — switch to All view
         </button>
       )}
-    </div>
+    </Card>
   );
 }

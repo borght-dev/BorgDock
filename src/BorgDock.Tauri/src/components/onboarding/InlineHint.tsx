@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { useCallback, useEffect, useState } from 'react';
 import { type HintId, useOnboardingStore } from '@/stores/onboarding-store';
 
@@ -28,8 +29,15 @@ export function InlineHint({ hintId, text, timeoutMs = 10000 }: InlineHintProps)
   return (
     <button
       onClick={dismiss}
-      className="mb-2 flex w-full items-center gap-2 rounded-md border-l-2 border-[var(--color-accent)] bg-[var(--color-accent-subtle)] px-3 py-1.5 text-left text-[10px] text-[var(--color-text-secondary)] transition-opacity duration-200"
-      style={{ opacity: fading ? 0 : 1 }}
+      className={clsx(
+        'mb-2 flex w-full items-center gap-2 rounded-md border-l-2',
+        'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] px-3 py-1.5',
+        'text-left text-[10px] text-[var(--color-text-secondary)]',
+        'transition-opacity duration-[var(--duration-ui)]',
+        fading ? 'opacity-0' : 'opacity-100',
+      )}
+      data-onboarding-hint
+      data-hint-id={hintId}
     >
       <svg
         width="12"
