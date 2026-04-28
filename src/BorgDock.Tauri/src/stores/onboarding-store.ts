@@ -20,15 +20,22 @@ function persist(state: {
   dismissedBadges: Set<BadgeId>;
   dismissedHints: Set<HintId>;
 }) {
+  // Skip when the Tauri runtime isn't available (jsdom under vitest, browser
+  // preview, etc.). Without this guard the fire-and-forget dynamic import can
+  // resolve to the real module after the test env is torn down, causing
+  // unhandled rejections inside @tauri-apps/api/core's invoke().
+  if (typeof window === 'undefined' || !(window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
+    return;
+  }
   import('@tauri-apps/plugin-store')
-    .then(({ load }) => {
-      load('onboarding-state.json').then((store) => {
-        store.set('hasSeenFocusOverlay', state.hasSeenFocusOverlay);
-        store.set('dismissedBadges', [...state.dismissedBadges]);
-        store.set('dismissedHints', [...state.dismissedHints]);
-        store.save();
-      });
-    })
+    .then(({ load }) =>
+      load('onboarding-state.json').then(async (store) => {
+        await store.set('hasSeenFocusOverlay', state.hasSeenFocusOverlay);
+        await store.set('dismissedBadges', [...state.dismissedBadges]);
+        await store.set('dismissedHints', [...state.dismissedHints]);
+        await store.save();
+      }),
+    )
     .catch((err) => console.warn('Failed to persist onboarding state:', err));
 }
 
