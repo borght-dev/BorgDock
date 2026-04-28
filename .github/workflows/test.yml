@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [master]
 
+# Cancel an in-progress run when a newer one is queued for the same ref
+# (PR push, master push). Master keeps its own group via refs/heads/master,
+# so master commits don't cancel each other across runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   vitest:
     name: vitest (${{ matrix.os }})
