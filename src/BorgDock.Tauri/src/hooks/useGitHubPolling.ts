@@ -12,7 +12,7 @@ import type { AppSettings, PullRequestWithChecks } from '@/types';
 
 const log = createLogger('polling');
 
-export function useGitHubPolling(settings: AppSettings) {
+export function useGitHubPolling(settings: AppSettings, enabled: boolean = true) {
   const pollingRef = useRef<PollingManager<PullRequestWithChecks[]> | null>(null);
   // Keep settings in a ref so the poll function always reads the latest
   // without recreating the PollingManager on every settings change.
@@ -21,6 +21,10 @@ export function useGitHubPolling(settings: AppSettings) {
 
   // Initialize client and start polling
   useEffect(() => {
+    if (!enabled) {
+      log.debug('polling deferred — not yet enabled');
+      return;
+    }
     const pat = settings.gitHub.personalAccessToken;
     const tokenGetter = () => getGitHubToken(pat);
 
@@ -196,10 +200,10 @@ export function useGitHubPolling(settings: AppSettings) {
       manager.stop();
       pollingRef.current = null;
     };
-    // Only restart polling when auth or interval changes.
+    // Only restart polling when auth, interval, or enabled changes.
     // Repo list changes are picked up via the ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.gitHub.personalAccessToken, settings.gitHub.pollIntervalSeconds]);
+  }, [enabled, settings.gitHub.personalAccessToken, settings.gitHub.pollIntervalSeconds]);
 
   const pollNow = useCallback(async () => {
     if (pollingRef.current) {
