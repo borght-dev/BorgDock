@@ -32,16 +32,20 @@ pub async fn search_content(
     cancel_token: u32,
 ) -> Result<Vec<ContentFileResult>, String> {
     CURRENT_TOKEN.store(cancel_token, Ordering::SeqCst);
-    tokio::task::spawn_blocking(move || search(&PathBuf::from(root), &pattern, cancel_token))
-        .await
-        .map_err(|e| format!("Task join error: {e}"))?
+    let my_token = cancel_token;
+    tokio::task::spawn_blocking(move || {
+        search(&PathBuf::from(root), &pattern, move || {
+            CURRENT_TOKEN.load(Ordering::SeqCst) != my_token
+        })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
-fn is_cancelled(my_token: u32) -> bool {
-    CURRENT_TOKEN.load(Ordering::SeqCst) != my_token
-}
-
-fn search(root: &Path, pattern: &str, my_token: u32) -> Result<Vec<ContentFileResult>, String> {
+fn search<F>(root: &Path, pattern: &str, is_cancelled: F) -> Result<Vec<ContentFileResult>, String>
+where
+    F: Fn() -> bool + Sync + Send + Clone + 'static,
+{
     if pattern.is_empty() {
         return Ok(Vec::new());
     }
@@ -57,8 +61,9 @@ fn search(root: &Path, pattern: &str, my_token: u32) -> Result<Vec<ContentFileRe
         let matcher = matcher.clone();
         let results = Arc::clone(&results);
         let root = root.to_path_buf();
+        let is_cancelled = is_cancelled.clone();
         Box::new(move |entry| {
-            if is_cancelled(my_token) {
+            if is_cancelled() {
                 return WalkState::Quit;
             }
             let entry = match entry {
@@ -97,7 +102,7 @@ fn search(root: &Path, pattern: &str, my_token: u32) -> Result<Vec<ContentFileRe
         })
     });
 
-    if is_cancelled(my_token) {
+    if is_cancelled() {
         return Ok(Vec::new());
     }
 
@@ -158,8 +163,7 @@ mod tests {
         write(dir.path(), "a.ts", "const x = handleLogin();\nhandleLogin();\n");
         write(dir.path(), "b.ts", "// unrelated\n");
 
-        CURRENT_TOKEN.store(1, Ordering::SeqCst);
-        let results = search(dir.path(), "handleLogin", 1).unwrap();
+        let results = search(dir.path(), "handleLogin", || false).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].rel_path, "a.ts");
         assert_eq!(results[0].match_count, 2);
@@ -171,8 +175,7 @@ mod tests {
     fn smart_case_insensitive_when_lowercase() {
         let dir = tempdir().unwrap();
         write(dir.path(), "a.ts", "const MyThing = 1;\n");
-        CURRENT_TOKEN.store(2, Ordering::SeqCst);
-        let results = search(dir.path(), "mything", 2).unwrap();
+        let results = search(dir.path(), "mything", || false).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].match_count, 1);
     }
@@ -181,8 +184,7 @@ mod tests {
     fn smart_case_case_sensitive_when_mixed() {
         let dir = tempdir().unwrap();
         write(dir.path(), "a.ts", "const MyThing = 1;\nconst mything = 2;\n");
-        CURRENT_TOKEN.store(3, Ordering::SeqCst);
-        let results = search(dir.path(), "MyThing", 3).unwrap();
+        let results = search(dir.path(), "MyThing", || false).unwrap();
         assert_eq!(results[0].match_count, 1);
     }
 
@@ -194,8 +196,7 @@ mod tests {
             body.push_str("foo\n");
         }
         write(dir.path(), "a.ts", &body);
-        CURRENT_TOKEN.store(4, Ordering::SeqCst);
-        let results = search(dir.path(), "foo", 4).unwrap();
+        let results = search(dir.path(), "foo", || false).unwrap();
         assert_eq!(results[0].match_count, 12);
         assert_eq!(results[0].matches.len(), MAX_PREVIEWS_PER_FILE);
     }
@@ -204,7 +205,7 @@ mod tests {
     fn empty_pattern_returns_empty() {
         let dir = tempdir().unwrap();
         write(dir.path(), "a.ts", "anything");
-        let results = search(dir.path(), "", 5).unwrap();
+        let results = search(dir.path(), "", || false).unwrap();
         assert!(results.is_empty());
     }
 
@@ -212,7 +213,7 @@ mod tests {
     fn bad_regex_returns_error() {
         let dir = tempdir().unwrap();
         write(dir.path(), "a.ts", "x");
-        let err = search(dir.path(), "(unclosed", 6).unwrap_err();
+        let err = search(dir.path(), "(unclosed", || false).unwrap_err();
         assert!(err.contains("bad regex"));
     }
 
@@ -222,8 +223,7 @@ mod tests {
         for i in 0..10 {
             write(dir.path(), &format!("f{i}.ts"), "foo\n");
         }
-        CURRENT_TOKEN.store(999, Ordering::SeqCst);
-        let results = search(dir.path(), "foo", 7).unwrap();
+        let results = search(dir.path(), "foo", || true).unwrap();
         assert!(results.is_empty(), "cancelled search returned results");
     }
 }

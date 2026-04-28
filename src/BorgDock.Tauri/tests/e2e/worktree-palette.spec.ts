@@ -5,7 +5,7 @@ import { expectNoA11yViolations } from './helpers/a11y';
 test.describe('worktree palette', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
-    await page.goto('/palette.html?kind=worktrees');
+    await page.goto('/worktree.html');
     await waitForAppReady(page);
   });
 

@@ -304,7 +304,10 @@ describe('WorktreePruneDialog (wrapper)', () => {
     render(<TestDialog {...baseProps} onClose={onClose} />);
     // Use getAllByRole and pick the first (header ×) vs footer Close
     const closeButtons = screen.getAllByRole('button', { name: /close/i });
-    fireEvent.click(closeButtons[0]);
+    expect(closeButtons.length).toBeGreaterThan(0);
+    const headerCloseBtn = closeButtons[0];
+    if (!headerCloseBtn) throw new Error('Expected at least one close button');
+    fireEvent.click(headerCloseBtn);
     expect(onClose).toHaveBeenCalled();
   });
 

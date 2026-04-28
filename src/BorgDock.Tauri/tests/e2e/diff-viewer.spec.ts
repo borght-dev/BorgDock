@@ -1,13 +1,18 @@
 import { expect, test } from '@playwright/test';
 import { injectCompletedSetup, waitForAppReady } from './helpers/test-utils';
-import { seedDesignFixturesIfAvailable } from './helpers/seed';
+import { seedDesignFixturesIfAvailable, seedPrDetail } from './helpers/seed';
 import { expectNoA11yViolations } from './helpers/a11y';
 
 test.describe('diff viewer', () => {
   test.beforeEach(async ({ page }) => {
     await injectCompletedSetup(page);
+    await seedPrDetail(page, { owner: 'test-org', repo: 'test-repo', number: 714 });
     await page.goto('/pr-detail.html?number=714&tab=files');
     await waitForAppReady(page);
+    // The panel defaults to the Overview tab; navigate to Files to mount
+    // the diff viewer so [data-diff-file] elements become assertable.
+    await page.getByRole('tab', { name: 'Files' }).click();
+    await page.waitForTimeout(200);
     await seedDesignFixturesIfAvailable(page);
   });
 
@@ -35,11 +40,21 @@ test.describe('diff viewer', () => {
 
   test('hunk nav (next/prev) scrolls', async ({ page }) => {
     await page.locator('[data-diff-file]').first().click();
-    const scrollYBefore = await page.evaluate(() => window.scrollY);
-    await page.locator('[data-action="next-hunk"]').click();
+    // Two files means two "[data-action="next-hunk"]" buttons; scope to the first file.
+    // scrollIntoView targets the diff pane overflow-y-auto container.
+    // We capture the second hunk-header's viewport position before and after clicking
+    // "Next hunk" — after the scroll it should be closer to the top of the viewport.
+    const secondHunk = page.locator('[data-diff-file]').first().locator('[data-hunk-header]').nth(1);
+    const topBefore = await secondHunk.evaluate((el) => el.getBoundingClientRect().top);
+    await page.locator('[data-diff-file]').first().locator('[data-action="next-hunk"]').click();
+    // After smooth-scrolling the second hunk into view its top should be closer to 0
+    // (i.e. less than its original position, since it scrolled up).
     await expect
-      .poll(async () => page.evaluate(() => window.scrollY), { timeout: 2_000 })
-      .not.toBe(scrollYBefore);
+      .poll(
+        async () => secondHunk.evaluate((el) => el.getBoundingClientRect().top),
+        { timeout: 2_000 },
+      )
+      .toBeLessThan(topBefore);
   });
 
   test('has no WCAG 2.1 AA violations', async ({ page }) => {

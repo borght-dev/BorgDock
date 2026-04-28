@@ -112,6 +112,7 @@ export function PaletteApp() {
         {/* Drag handle */}
         <div
           className="flex h-7 cursor-grab items-center justify-center active:cursor-grabbing bg-[var(--color-surface-raised)]"
+          data-tauri-drag-region
           onMouseDown={startDrag}
         >
           {/* drag handle: bespoke 3-dot grip, no primitive maps */}

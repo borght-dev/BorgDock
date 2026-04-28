@@ -175,3 +175,22 @@ export async function setDensity(page: Page, density: 'compact' | 'comfortable')
     document.body.classList.add(`density-${d}`);
   }, density);
 }
+
+/**
+ * Seed window.__BORGDOCK_PR_DETAIL__ before pr-detail.html mounts.
+ * Mirrors the production initialization_script Rust injects so PRDetailApp
+ * picks up owner / repo / number from the global instead of the URL query
+ * string (URL params don't round-trip on Windows; see PRDetailApp.tsx:38-46).
+ *
+ * Must be called BEFORE page.goto() so the global is visible when the
+ * component's useMemo runs at mount time.
+ */
+export async function seedPrDetail(
+  page: Page,
+  args: { owner: string; repo: string; number: number },
+) {
+  await page.addInitScript((payload) => {
+    (window as unknown as { __BORGDOCK_PR_DETAIL__: typeof payload }).__BORGDOCK_PR_DETAIL__ =
+      payload;
+  }, args);
+}

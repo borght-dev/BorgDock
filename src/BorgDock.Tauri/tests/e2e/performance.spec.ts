@@ -54,7 +54,7 @@ test.describe('performance', () => {
   test('file palette keystroke to first result under budget', async ({ page }, testInfo) => {
     const budget = budgetForProject(testInfo.project.name);
     await injectCompletedSetup(page);
-    await page.goto('/palette.html?kind=files');
+    await page.goto('/file-palette.html');
     await waitForAppReady(page);
     await seedDesignFixturesIfAvailable(page);
 
