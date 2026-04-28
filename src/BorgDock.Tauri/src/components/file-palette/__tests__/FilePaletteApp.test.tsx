@@ -105,4 +105,91 @@ describe('FilePaletteApp', () => {
       expect(lastSaveArgs.settings.ui.filePaletteActiveRootPath).toBe('/some/new/scratch');
     });
   });
+
+  it('does not add a path that is already an existing worktree', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    (open as ReturnType<typeof vi.fn>).mockResolvedValueOnce('/repo/.worktrees/wt1');
+
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getByText('wt1')).toBeTruthy());
+
+    const beforeCount = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'save_settings',
+    ).length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Add custom path'));
+    });
+    // Allow the picker promise + dedup short-circuit to run.
+    await new Promise((r) => setTimeout(r, 30));
+
+    const afterCount = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'save_settings',
+    ).length;
+    expect(afterCount).toBe(beforeCount);
+  });
+
+  it('does not add a path that is already a custom root', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    // Override load_settings for this test only — start with one custom root.
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          repos: [{ owner: 'org', name: 'r', enabled: true, worktreeBasePath: '/repo' }],
+          ui: {},
+          filePaletteRoots: [{ path: '/my/scratch' }],
+        });
+      }
+      if (cmd === 'list_worktrees_bare') {
+        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+      }
+      if (cmd === 'list_root_files') return Promise.resolve({ entries: [], truncated: false });
+      if (cmd === 'save_settings') return Promise.resolve(null);
+      return Promise.reject(new Error(`unexpected ${cmd}`));
+    });
+
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    (open as ReturnType<typeof vi.fn>).mockResolvedValueOnce('/my/scratch');
+
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getByText('scratch')).toBeTruthy());
+
+    const beforeCount = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'save_settings',
+    ).length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Add custom path'));
+    });
+    await new Promise((r) => setTimeout(r, 30));
+
+    const afterCount = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'save_settings',
+    ).length;
+    expect(afterCount).toBe(beforeCount);
+  });
+
+  it('does not save when the picker is cancelled', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    (open as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getByText('wt1')).toBeTruthy());
+
+    const beforeCount = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'save_settings',
+    ).length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Add custom path'));
+    });
+    await new Promise((r) => setTimeout(r, 30));
+
+    const afterCount = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'save_settings',
+    ).length;
+    expect(afterCount).toBe(beforeCount);
+  });
 });
