@@ -16,6 +16,8 @@ describe('RootsColumn', () => {
         onToggleFavoritesOnly={vi.fn()}
         collapsed={false}
         onToggleCollapsed={vi.fn()}
+        onAddCustomRoot={vi.fn()}
+        onRemoveCustomRoot={vi.fn()}
       />,
     );
     // bd-icon-btn is the IconButton primitive class
