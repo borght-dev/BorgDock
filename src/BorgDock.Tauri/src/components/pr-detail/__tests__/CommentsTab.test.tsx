@@ -328,4 +328,92 @@ describe('CommentsTab', () => {
       expect(mockGetAllComments).not.toHaveBeenCalled();
     });
   });
+
+  it('renders comment cards with [data-comment-card] and [data-comment-id]', async () => {
+    mockGetAllComments.mockResolvedValue([
+      makeComment({ id: 'c-1', author: 'alice' }),
+      makeComment({ id: 'c-2', author: 'bob' }),
+    ]);
+    render(
+      <CommentsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('alice')).toBeTruthy();
+    });
+    const cards = document.querySelectorAll('[data-comment-card]');
+    expect(cards.length).toBe(2);
+    const ids = Array.from(cards).map((el) => el.getAttribute('data-comment-id'));
+    expect(ids).toContain('c-1');
+    expect(ids).toContain('c-2');
+  });
+
+  it('renders [data-bot-pill] for bot authors', async () => {
+    mockGetAllComments.mockResolvedValue([makeComment({ author: 'dependabot[bot]' })]);
+    render(
+      <CommentsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('bot')).toBeTruthy();
+    });
+    expect(document.querySelector('[data-bot-pill]')).toBeTruthy();
+  });
+
+  it('does not render [data-bot-pill] for non-bot authors', async () => {
+    mockGetAllComments.mockResolvedValue([makeComment({ author: 'alice' })]);
+    render(
+      <CommentsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('alice')).toBeTruthy();
+    });
+    expect(document.querySelector('[data-bot-pill]')).toBeNull();
+  });
+
+  it('uses Avatar primitive for non-bot authors (bd-avatar class)', async () => {
+    mockGetAllComments.mockResolvedValue([makeComment({ author: 'alice' })]);
+    render(
+      <CommentsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('AL')).toBeTruthy();
+    });
+    expect(document.querySelector('.bd-avatar')).toBeTruthy();
+  });
+
+  it('renders submit button via Button primitive (bd-btn class)', async () => {
+    mockGetAllComments.mockResolvedValue([]);
+    render(
+      <CommentsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Comment')).toBeTruthy();
+    });
+    const submitBtn = screen.getByText('Comment').closest('button');
+    expect(submitBtn?.classList.contains('bd-btn')).toBe(true);
+  });
 });

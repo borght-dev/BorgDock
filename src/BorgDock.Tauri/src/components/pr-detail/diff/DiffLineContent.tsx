@@ -20,6 +20,7 @@ export function DiffLineContent({ content, inlineChanges, syntaxSpans }: DiffLin
             change.type === 'added'
               ? 'var(--color-diff-added-bg-highlight)'
               : 'var(--color-diff-deleted-bg-highlight)';
+          // style: inline-change type-driven bg token (added/deleted highlight) — computed per change
           return (
             <span key={i} style={{ backgroundColor: bg, borderRadius: '2px' }}>
               {change.text}
@@ -53,6 +54,7 @@ function renderSyntaxHighlighted(text: string, spans: HighlightSpan[]): React.Re
 
     // Highlighted span
     if (start < end) {
+      // style: syntax-highlight category-driven CSS variable name — token name varies per span.category
       nodes.push(
         <span key={`s${i}`} style={{ color: `var(${getHighlightClass(span.category)})` }}>
           {text.slice(start, end)}

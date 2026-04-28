@@ -100,4 +100,9 @@ describe('InlineHint', () => {
     );
     expect(container.innerHTML).toBe('');
   });
+
+  it('exposes hint id via data-hint-id', () => {
+    const { container } = render(<InlineHint hintId="focus-priority-ranking" text="Click me" />);
+    expect(container.querySelector('[data-onboarding-hint][data-hint-id="focus-priority-ranking"]')).toBeInTheDocument();
+  });
 });

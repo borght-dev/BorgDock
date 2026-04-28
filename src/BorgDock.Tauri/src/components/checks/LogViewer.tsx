@@ -80,6 +80,7 @@ export function LogViewer({ log }: LogViewerProps) {
         onScroll={handleScroll}
         className="flex-1 overflow-auto bg-[var(--color-code-block-bg)] p-2"
       >
+        {/* style: virtualizer total height is computed per render — cannot be expressed as a Tailwind class */}
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const line = lines[virtualRow.index]!;
@@ -87,6 +88,7 @@ export function LogViewer({ log }: LogViewerProps) {
               <div
                 key={virtualRow.index}
                 className="flex hover:bg-[var(--color-surface-hover)]"
+                // style: virtualizer absolute positioning + row height/translateY — all computed per row
                 style={{
                   position: 'absolute',
                   top: 0,

@@ -27,6 +27,7 @@ const tierStyles: Record<ReviewSlaTier, { dot: string; text: string; label: stri
 export function ReviewSlaIndicator({ tier, waitTime }: ReviewSlaIndicatorProps) {
   const style = tierStyles[tier];
 
+  // style: tier-driven color-mix border and background — tier name selects the token used in color-mix, computed per render
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"

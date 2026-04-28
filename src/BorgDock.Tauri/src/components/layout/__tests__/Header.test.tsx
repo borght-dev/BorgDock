@@ -68,10 +68,11 @@ describe('Header', () => {
 
   it('highlights the active section', () => {
     render(<Header />);
-    const prsButton = screen.getByText('PRs');
-    expect(prsButton.className).toContain('sidebar-section-btn--active');
-    const focusButton = screen.getByText('Focus');
-    expect(focusButton.className).not.toContain('sidebar-section-btn--active');
+    const tabs = screen.getAllByRole('tab');
+    const prsTab = tabs.find((t) => t.textContent?.includes('PRs'));
+    const focusTab = tabs.find((t) => t.textContent?.includes('Focus'));
+    expect(prsTab).toHaveAttribute('aria-selected', 'true');
+    expect(focusTab).toHaveAttribute('aria-selected', 'false');
   });
 
   it('switches section when a section button is clicked', () => {
@@ -141,6 +142,20 @@ describe('Header', () => {
   it('renders FeatureBadge for focus mode', () => {
     render(<Header />);
     expect(screen.getByTestId('feature-badge-focus-mode')).toBeTruthy();
+  });
+
+  it('renders the focus count badge when focusCount > 0', () => {
+    usePrStore.setState({ focusCount: () => 3 });
+    render(<Header />);
+    const focusTab = screen.getAllByRole('tab').find((t) => t.textContent?.includes('Focus'));
+    expect(focusTab?.textContent).toContain('3');
+  });
+
+  it('omits the focus count badge when focusCount === 0', () => {
+    usePrStore.setState({ focusCount: () => 0 });
+    render(<Header />);
+    const focusTab = screen.getAllByRole('tab').find((t) => t.textContent?.includes('Focus'));
+    expect(focusTab?.textContent).toBe('Focus');
   });
 
   it('handles drag start on header mousedown', () => {

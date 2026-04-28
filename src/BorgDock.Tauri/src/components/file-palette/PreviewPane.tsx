@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/shared/primitives';
 import { CodeView } from './CodeView';
 import { joinRootAndRel } from './join-path';
 
@@ -49,50 +50,52 @@ export function PreviewPane({
   }, [absPath]);
 
   if (state.kind === 'idle') {
-    return <div className="fp-preview-empty">Select a file to preview</div>;
+    return <div className="bd-fp-preview-empty">Select a file to preview</div>;
   }
   if (state.kind === 'loading') {
-    return <div className="fp-preview-empty">Loading…</div>;
+    return <div className="bd-fp-preview-empty">Loading…</div>;
   }
   if (state.kind === 'binary') {
     return (
-      <div className="fp-preview-empty">
+      <div className="bd-fp-preview-empty">
         Binary file — preview disabled.
-        <button
-          type="button"
-          className="fp-preview-action"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => absPath && invoke('open_in_editor', { path: absPath })}
         >
           Open in editor
-        </button>
+        </Button>
       </div>
     );
   }
   if (state.kind === 'too_large') {
     return (
-      <div className="fp-preview-empty">
+      <div className="bd-fp-preview-empty">
         File too large ({(state.size / 1024).toFixed(0)} KB &gt; {(state.limit / 1024).toFixed(0)} KB).
-        <button
-          type="button"
-          className="fp-preview-action"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => absPath && invoke('open_in_editor', { path: absPath })}
         >
           Open in editor
-        </button>
+        </Button>
       </div>
     );
   }
   if (state.kind === 'error') {
-    return <div className="fp-preview-empty">Could not read file: {state.message}</div>;
+    return <div className="bd-fp-preview-empty">Could not read file: {state.message}</div>;
   }
   return (
-    <CodeView
-      path={relPath ?? ''}
-      content={state.content}
-      scrollToLine={scrollToLine}
-      highlightedLines={highlightedLines}
-      onIdentifierJump={onIdentifierJump}
-    />
+    <div data-file-preview className="h-full">
+      <CodeView
+        path={relPath ?? ''}
+        content={state.content}
+        scrollToLine={scrollToLine}
+        highlightedLines={highlightedLines}
+        onIdentifierJump={onIdentifierJump}
+      />
+    </div>
   );
 }
 

@@ -3,6 +3,8 @@ import { useCallback, useEffect } from 'react';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
+import { WindowControls } from '@/components/shared/chrome';
+import { Button, Titlebar } from '@/components/shared/primitives';
 import { ReleaseAccordion } from './ReleaseAccordion';
 import { useReleasesToShow } from './useReleasesToShow';
 
@@ -78,76 +80,35 @@ export function WhatsNewApp() {
   const behindLabel = displayBehind === 1 ? '1 version behind' : `${displayBehind} versions behind`;
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-primary)] font-sans">
+    <div
+      data-whats-new-app
+      className="h-screen w-full flex flex-col bg-background text-text-primary font-sans"
+    >
       {/* Title bar — mirrors PRDetailPanel's pop-out header so it feels like
-       *  the same app. Drag region on the parent + title span. The X button
-       *  routes through handleGotIt so closing via the title bar marks
-       *  lastSeenVersion the same way the footer "Got it" button does. */}
-      <div
+       *  the same app. The X button routes through handleGotIt so closing via
+       *  the title bar marks lastSeenVersion the same way the footer "Got it"
+       *  button does (can't delegate to WindowTitleBar which owns its close). */}
+      <Titlebar
         data-tauri-drag-region
-        className="flex items-center justify-between border-b border-[var(--color-separator)] px-3 py-2"
-      >
-        <span
-          data-tauri-drag-region
-          className="truncate text-sm font-semibold text-[var(--color-text-primary)]"
-        >
-          What's new in BorgDock
-        </span>
-        <div className="window-ctrl-group -my-1 -mr-1">
-          <button
-            type="button"
-            onClick={handleMinimize}
-            aria-label="Minimize"
-            title="Minimize"
-            className="window-ctrl-btn"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleMaximize}
-            aria-label="Maximize"
-            title="Maximize"
-            className="window-ctrl-btn"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <rect
-                x="1.5"
-                y="1.5"
-                width="7"
-                height="7"
-                rx="1"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={handleGotIt}
-            aria-label="Close"
-            title="Close"
-            className="window-ctrl-btn window-ctrl-btn--close"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <path
-                d="M2 2l6 6M8 2l-6 6"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
+        left={
+          <span data-tauri-drag-region className="bd-titlebar__title">
+            What's new in BorgDock
+          </span>
+        }
+        right={
+          <WindowControls
+            onMinimize={handleMinimize}
+            onMaximize={handleToggleMaximize}
+            onClose={handleGotIt}
+          />
+        }
+      />
       <header className="px-6 pt-6 pb-3.5">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10.5px] uppercase tracking-[0.14em] text-[var(--color-text-muted)] inline-flex items-center gap-2 before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[var(--color-status-green)]">
+          <span className="text-[10.5px] uppercase tracking-[0.14em] text-text-muted inline-flex items-center gap-2 before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-status-green">
             Release notes
           </span>
-          <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+          <span className="text-[11px] text-text-muted tabular-nums">
             {displayBehind > 0 ? behindLabel : 'Up to date'}
           </span>
         </div>
@@ -168,15 +129,15 @@ export function WhatsNewApp() {
          * screen-reader emphasis; visual styling for the version number can be
          * achieved with a CSS [data-version] pseudo-element if desired later.
          */}
-        <h1 className="text-[22px] font-medium tracking-[-0.015em] mb-1 text-[var(--color-text-primary)]">
+        <h1 className="text-[22px] font-medium tracking-[-0.015em] mb-1 text-text-primary">
           {`What's new in ${headTitle}`}
         </h1>
-        {headSummary && <p className="text-[13px] text-[var(--color-text-muted)]">{headSummary}</p>}
+        {headSummary && <p className="text-[13px] text-text-muted">{headSummary}</p>}
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 pb-3.5">
         {!ready ? null : releases.length === 0 ? (
-          <div className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">
+          <div className="py-10 text-center text-[13px] text-text-muted">
             No release notes yet.
           </div>
         ) : (
@@ -191,7 +152,7 @@ export function WhatsNewApp() {
         )}
       </div>
 
-      <footer className="px-6 py-3 border-t border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] flex items-center justify-between">
+      <footer className="px-6 py-3 border-t border-subtle-border bg-surface-raised flex items-center justify-between">
         {/*
          * Deviation from plan: aria-label moved from <label> to <input>.
          *
@@ -203,11 +164,11 @@ export function WhatsNewApp() {
          * means both paths resolve to the same element; Set() deduplication
          * yields exactly one result.
          */}
-        <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-muted)] cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-[12px] text-text-muted cursor-pointer select-none">
           <input
             type="checkbox"
             aria-label="Don't auto-open again"
-            className="h-[13px] w-[13px] accent-[var(--color-accent)] cursor-pointer"
+            className="h-[13px] w-[13px] accent-accent cursor-pointer"
             onChange={(e) => handleDisable(e.target.checked)}
           />
           Don't auto-open again
@@ -217,17 +178,13 @@ export function WhatsNewApp() {
             href="https://github.com/KoenvdB/BorgDock/releases"
             target="_blank"
             rel="noreferrer"
-            className="text-[12px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
+            className="text-[12px] text-text-muted hover:text-accent"
           >
             View on GitHub →
           </a>
-          <button
-            type="button"
-            onClick={handleGotIt}
-            className="bg-[var(--color-accent)] text-white border-0 rounded-md px-4 py-[7px] text-[13px] font-medium cursor-pointer hover:brightness-110 transition"
-          >
+          <Button variant="primary" size="md" onClick={handleGotIt}>
             Got it
-          </button>
+          </Button>
         </div>
       </footer>
     </div>

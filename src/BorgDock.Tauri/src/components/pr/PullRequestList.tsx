@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { Card } from '@/components/shared/primitives';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -13,14 +14,16 @@ const VIRTUALIZE_THRESHOLD = 50;
 
 function SkeletonCard() {
   return (
-    <div className="flex items-start gap-2.5 rounded-lg border border-[var(--color-card-border)] bg-[var(--color-card-background)] p-2.5 animate-pulse">
-      <div className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-surface-raised)]" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3 w-3/4 rounded bg-[var(--color-surface-raised)]" />
-        <div className="h-2.5 w-1/2 rounded bg-[var(--color-surface-raised)]" />
-        <div className="h-2 w-1/3 rounded bg-[var(--color-surface-raised)]" />
+    <Card padding="sm">
+      <div className="flex items-start gap-2.5 animate-pulse">
+        <div className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-surface-raised)]" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-3/4 rounded bg-[var(--color-surface-raised)]" />
+          <div className="h-2.5 w-1/2 rounded bg-[var(--color-surface-raised)]" />
+          <div className="h-2 w-1/3 rounded bg-[var(--color-surface-raised)]" />
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -94,16 +97,15 @@ export function PullRequestList() {
       {showReviewQueue && (
         <>
           <div
-            className="flex items-center gap-2 px-3 pt-2 pb-1"
-            style={{ borderColor: 'var(--color-separator)' }}
+            className="flex items-center gap-2 px-3 pt-2 pb-1 border-[var(--color-separator)]"
           >
             <span
-              className="text-[10px] font-semibold uppercase tracking-widest"
-              style={{ color: 'var(--color-status-yellow)' }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-status-yellow)]"
             >
               Needs Your Review
             </span>
-            <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
+            <span className="h-px flex-1 bg-[var(--color-separator)]" />
+            {/* style: color-mix background + yellow text — no Tailwind utility for color-mix percentage blends */}
             <span
               className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
               style={{
@@ -130,7 +132,7 @@ export function PullRequestList() {
               );
             })}
           </div>
-          <div className="mb-1 h-px mx-3" style={{ background: 'var(--color-separator)' }} />
+          <div className="mb-1 h-px mx-3 bg-[var(--color-separator)]" />
         </>
       )}
 
@@ -143,22 +145,16 @@ export function PullRequestList() {
       {showRecentlyClosed && (
         <>
           <div
-            className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1"
-            style={{ borderColor: 'var(--color-separator)' }}
+            className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1 border-[var(--color-separator)]"
           >
             <span
-              className="text-[10px] font-semibold uppercase tracking-widest"
-              style={{ color: 'var(--color-text-ghost)' }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]"
             >
               Recently Closed
             </span>
-            <span className="h-px flex-1" style={{ background: 'var(--color-separator)' }} />
+            <span className="h-px flex-1 bg-[var(--color-separator)]" />
             <span
-              className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
-              style={{
-                color: 'var(--color-text-ghost)',
-                background: 'var(--color-surface-raised)',
-              }}
+              className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]"
             >
               {closedPullRequests.length}
             </span>
@@ -191,6 +187,7 @@ function VirtualizedPrCards({ prs }: { prs: PullRequestWithChecks[] }) {
 
   return (
     <div ref={parentRef} className="max-h-[400px] overflow-y-auto">
+      {/* style: virtualizer total height is computed per render — cannot be expressed as a Tailwind class */}
       <div
         style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
       >
@@ -201,6 +198,7 @@ function VirtualizedPrCards({ prs }: { prs: PullRequestWithChecks[] }) {
               key={pr.pullRequest.number}
               ref={virtualizer.measureElement}
               data-index={virtualRow.index}
+              // style: virtualizer absolute positioning + translateY offset computed per row
               style={{
                 position: 'absolute',
                 top: 0,

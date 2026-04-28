@@ -9,9 +9,9 @@ vi.mock('@tauri-apps/plugin-store', () => ({
 
 import { FilterBar } from '../FilterBar';
 
-/** Get the count badge span inside a filter button, or null if none */
+/** Get the count badge span inside a filter chip, or null if none */
 function getCountBadge(button: HTMLElement): HTMLElement | null {
-  return button.querySelector('span');
+  return button.querySelector('span.bd-chip__count');
 }
 
 describe('FilterBar', () => {
@@ -43,10 +43,10 @@ describe('FilterBar', () => {
     expect(screen.getByText('Closed')).toBeTruthy();
   });
 
-  it('highlights the active filter', () => {
+  it('highlights the active filter via aria-pressed', () => {
     render(<FilterBar />);
     const allBtn = screen.getByText('All').closest('button') as HTMLElement;
-    expect(allBtn.className).toContain('bg-[var(--color-accent-subtle)]');
+    expect(allBtn.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('changes filter when a filter button is clicked', () => {
@@ -80,13 +80,15 @@ describe('FilterBar', () => {
     render(<FilterBar />);
     fireEvent.click(screen.getByText('Mine'));
     const mineBtn = screen.getByText('Mine').closest('button') as HTMLElement;
-    expect(mineBtn.className).toContain('bg-[var(--color-accent-subtle)]');
+    expect(mineBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(mineBtn.getAttribute('data-filter-active')).toBe('true');
   });
 
-  it('applies danger styling to failing filter with count > 0 when not active', () => {
+  it('applies error tone to failing filter via Chip primitive', () => {
+    usePrStore.setState({ filter: 'failing' });
     render(<FilterBar />);
     const failingBtn = screen.getByText('Failing').closest('button') as HTMLElement;
-    expect(failingBtn.className).toContain('text-[var(--color-status-red)]');
+    expect(failingBtn.className).toContain('bd-pill--error');
   });
 
   it('does not show count badge when count is 0', () => {
@@ -104,13 +106,19 @@ describe('FilterBar', () => {
     expect(badge?.textContent).toBe('1');
   });
 
-  it('applies needs-review styling when count > 0 and not active', () => {
-    usePrStore.setState({
-      pullRequests: [makePr(1, { requestedReviewers: ['me'] })],
-      username: 'me',
-    });
-    render(<FilterBar />);
-    const needsReviewBtn = screen.getByText('Needs Review').closest('button') as HTMLElement;
-    expect(needsReviewBtn.className).toContain('text-[var(--color-status-yellow)]');
+  it('renders one Chip per filter key', () => {
+    const { container } = render(<FilterBar />);
+    expect(container.querySelectorAll('[data-filter-chip]').length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('marks the active filter with data-filter-active="true"', () => {
+    const { container } = render(<FilterBar />);
+    expect(container.querySelector('[data-filter-chip][data-filter-active="true"]')).toBeInTheDocument();
+  });
+
+  it('uses Chip primitive (no --color-filter-chip-bg token reference)', () => {
+    const { container } = render(<FilterBar />);
+    expect(container.querySelector('.bd-chip')).toBeInTheDocument();
+    expect(container.innerHTML).not.toMatch(/var\(--color-filter-chip-bg\)/);
   });
 });

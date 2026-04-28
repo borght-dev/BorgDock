@@ -1,9 +1,9 @@
-import clsx from 'clsx';
 import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { Avatar, Chip, Pill, type PillTone } from '@/components/shared/primitives';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getReviews } from '@/services/github/reviews';
 import { getClient } from '@/services/github/singleton';
@@ -23,16 +23,20 @@ interface ReviewsTabProps {
   prUpdatedAt: string;
 }
 
-function stateLabel(state: string): { label: string; color: string } {
+type ReviewToneAttr = 'approved' | 'changes' | 'commented' | 'pending';
+
+function statePill(
+  state: string,
+): { tone: PillTone; toneAttr: ReviewToneAttr; label: string } | null {
   switch (state) {
     case 'APPROVED':
-      return { label: 'Approved', color: 'var(--color-review-approved)' };
+      return { tone: 'success', toneAttr: 'approved', label: 'Approved' };
     case 'CHANGES_REQUESTED':
-      return { label: 'Changes Requested', color: 'var(--color-review-changes-requested)' };
+      return { tone: 'error', toneAttr: 'changes', label: 'Changes Requested' };
     case 'COMMENTED':
-      return { label: 'Commented', color: 'var(--color-review-commented)' };
+      return { tone: 'draft', toneAttr: 'commented', label: 'Commented' };
     default:
-      return { label: state, color: 'var(--color-text-muted)' };
+      return null;
   }
 }
 
@@ -136,49 +140,44 @@ export function ReviewsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: Revie
 
   return (
     <div>
-      {/* Sort buttons */}
+      {/* Sort chips */}
       <div className="flex gap-1 px-3 py-1.5 border-b border-[var(--color-separator)]">
         {SORT_MODES.map((mode) => (
-          <button
+          <Chip
             key={mode}
+            active={sortMode === mode}
             onClick={() => setSortMode(mode)}
-            className={clsx(
-              'px-2 py-0.5 text-[10px] rounded transition-colors',
-              sortMode === mode
-                ? 'bg-[var(--color-accent)] text-[var(--color-avatar-text)]'
-                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
-            )}
+            data-sort-mode={mode}
           >
             {mode.charAt(0).toUpperCase() + mode.slice(1)}
-          </button>
+          </Chip>
         ))}
       </div>
 
       <div className="divide-y divide-[var(--color-separator)]">
         {sortedReviews.map((review) => {
-          const { label, color } = stateLabel(review.state);
+          const pill = statePill(review.state);
           return (
             <div key={review.id} className="px-3 py-2.5 space-y-1.5">
               {/* Header */}
               <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]">
-                  {avatarInitials(review.user)}
-                </span>
+                <Avatar
+                  initials={avatarInitials(review.user)}
+                  tone="them"
+                  size="sm"
+                  data-review-author={review.user}
+                />
                 <span className="text-xs font-medium text-[var(--color-text-primary)]">
                   {review.user}
                 </span>
                 <span className="text-[10px] text-[var(--color-text-muted)]">
                   {formatRelativeDate(review.submittedAt)}
                 </span>
-                <span
-                  className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium"
-                  style={{
-                    color,
-                    backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
-                  }}
-                >
-                  {label}
-                </span>
+                {pill && (
+                  <Pill tone={pill.tone} data-pill-tone={pill.toneAttr} className="ml-auto">
+                    {pill.label}
+                  </Pill>
+                )}
               </div>
               {/* Body */}
               {review.body && (

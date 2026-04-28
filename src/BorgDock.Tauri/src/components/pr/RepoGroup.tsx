@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
+import { Pill } from '@/components/shared/primitives';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { PullRequestCard } from './PullRequestCard';
@@ -87,29 +88,20 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
         <div className="ml-auto flex items-center gap-1">
           {failing > 0 && (
             <span
-              className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
-              style={{
-                background: 'var(--color-action-danger-bg)',
-                color: 'var(--color-status-red)',
-              }}
+              className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]"
             >
               {failing}
               {'\u2716'}
             </span>
           )}
-          <span
-            className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums"
-            style={{
-              background: 'var(--color-filter-chip-bg)',
-              color: 'var(--color-text-muted)',
-            }}
-          >
+          <Pill tone="neutral" className="tabular-nums">
             {prs.length}
-          </span>
+          </Pill>
         </div>
       </button>
 
       {/* Content */}
+      {/* style: maxHeight is raf-tweened via requestAnimationFrame for smooth collapse/expand animation */}
       <div
         ref={contentRef}
         className="overflow-hidden transition-[max-height] duration-200 ease-in-out"

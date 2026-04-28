@@ -160,4 +160,34 @@ describe('UnifiedDiffView', () => {
     );
     expect(container.querySelector('table')).not.toBeNull();
   });
+
+  it('renders data-line-kind="add" on added lines', () => {
+    const lines: DiffLine[] = [{ type: 'add', content: 'new line', newLineNumber: 1 }];
+    const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelector('[data-line-kind="add"]')).not.toBeNull();
+  });
+
+  it('renders data-line-kind="del" on deleted lines', () => {
+    const lines: DiffLine[] = [{ type: 'delete', content: 'old line', oldLineNumber: 1 }];
+    const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelector('[data-line-kind="del"]')).not.toBeNull();
+  });
+
+  it('renders data-line-kind="context" on context lines', () => {
+    const lines: DiffLine[] = [
+      { type: 'context', content: 'same', oldLineNumber: 1, newLineNumber: 1 },
+    ];
+    const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
+    expect(container.querySelector('[data-line-kind="context"]')).not.toBeNull();
+  });
+
+  it('renders data-hunk-header on hunk header rows', () => {
+    const lines: DiffLine[] = [
+      { type: 'hunk-header', content: '@@ -1,3 +1,3 @@ function test()' },
+    ];
+    const { container } = render(<UnifiedDiffView hunks={[makeHunk(lines)]} />);
+    const header = container.querySelector('[data-hunk-header]');
+    expect(header).not.toBeNull();
+    expect(header?.textContent).toContain('@@');
+  });
 });

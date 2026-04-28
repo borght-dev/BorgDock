@@ -1,5 +1,13 @@
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Avatar,
+  type AvatarTone,
+  Card,
+  IconButton,
+  Pill,
+  type PillTone,
+} from '@/components/shared/primitives';
 import type { WorktreeInfo } from '../../types';
 
 export interface WorkItemCardData {
@@ -36,13 +44,24 @@ const TYPE_LETTERS: Record<string, string> = {
   'User Story': 'U',
 };
 
-function stateColor(state: string): string {
+// State → Pill tone. Two-letter mapping kept narrow on purpose.
+// Color-tone refinement (e.g. distinct "warning-blue" for active) belongs in a
+// future Pill primitive variant rather than here.
+function pillTone(state: string): PillTone {
   const s = state.toLowerCase();
-  if (s === 'new') return 'var(--color-accent)';
-  if (['active', 'committed', 'in progress'].includes(s)) return 'var(--color-accent)';
-  if (['resolved', 'done', 'closed'].includes(s)) return 'var(--color-status-green)';
-  if (s === 'removed') return 'var(--color-status-gray)';
-  return 'var(--color-status-yellow)';
+  if (s === 'active' || s === 'committed' || s === 'in progress') return 'warning';
+  if (s === 'resolved' || s === 'done' || s === 'closed') return 'success';
+  if (s === 'removed') return 'neutral';
+  if (s === 'new') return 'neutral';
+  return 'neutral';
+}
+
+// State → Avatar tone. Heuristic — a fully matching mapping would need a real
+// "neutral" Avatar tone variant, but those are the visual buckets we have today.
+function avatarTone(state: string): AvatarTone {
+  const s = state.toLowerCase();
+  if (['resolved', 'done', 'closed'].includes(s)) return 'own';
+  return 'them';
 }
 
 function priorityIcon(priority?: number): { label: string; icon: string } | null {
@@ -91,37 +110,38 @@ export function WorkItemCard({
     return () => document.removeEventListener('mousedown', close);
   }, [contextMenu]);
 
-  const color = stateColor(item.state);
   const typeLetter = TYPE_LETTERS[item.workItemType] ?? '?';
   const pri = priorityIcon(item.priority);
 
+  // The Card primitive's `variant="own"` handles the my-PR stripe; the
+  // workingOn / tracked / selected colour rules ride through className so we
+  // don't lose visual state.
+  const stateClass = item.isWorkingOn
+    ? 'border-[var(--color-working-on-border)] bg-[var(--color-working-on-soft)]'
+    : item.isTracked
+      ? 'border-[var(--color-tracked-border)] bg-[var(--color-tracked-soft)]'
+      : item.isSelected
+        ? 'border-[var(--color-accent)] bg-[var(--color-selected-row-bg)]'
+        : 'hover:bg-[var(--color-surface-hover)]';
+
   return (
     <>
-      <div
-        className={clsx(
-          'group/card relative cursor-pointer rounded-lg border px-3 py-2.5 transition-colors',
-          item.isWorkingOn
-            ? 'border-[var(--color-working-on-border)] bg-[var(--color-working-on-soft)]'
-            : item.isTracked
-              ? 'border-[var(--color-tracked-border)] bg-[var(--color-tracked-soft)]'
-              : item.isSelected
-                ? 'border-[var(--color-accent)] bg-[var(--color-selected-row-bg)]'
-                : 'border-[var(--color-card-border)] bg-[var(--color-card-background)] hover:bg-[var(--color-surface-hover)]',
-        )}
+      <Card
+        variant={item.isWorkingOn ? 'own' : 'default'}
+        interactive
+        padding="sm"
+        className={clsx('group/card relative', stateClass)}
         onClick={() => onSelect(item.id)}
         onContextMenu={handleContextMenu}
       >
         <div className="flex gap-3">
           {/* Type icon */}
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[13px] font-bold"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
-              color,
-            }}
-          >
-            {typeLetter}
-          </div>
+          <Avatar
+            initials={typeLetter}
+            tone={avatarTone(item.state)}
+            size="md"
+            className="shrink-0 text-[13px] font-bold"
+          />
 
           {/* Content */}
           <div className="min-w-0 flex-1">
@@ -160,68 +180,54 @@ export function WorkItemCard({
                   'opacity-0 transition-opacity group-hover/card:opacity-100',
               )}
             >
-              <button
-                title={item.isTracked ? 'Stop tracking' : 'Track this item'}
-                className={clsx(
-                  'rounded p-1 transition-colors',
-                  item.isTracked
-                    ? 'text-[var(--color-tracked-border)]'
-                    : 'text-[var(--color-text-ghost)] hover:text-[var(--color-tracked-border)]',
-                )}
+              <IconButton
+                size={22}
+                active={item.isTracked}
+                tooltip={item.isTracked ? 'Stop tracking' : 'Track this item'}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleTracked(item.id);
                 }}
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 16 16"
-                  fill={item.isTracked ? 'currentColor' : 'none'}
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                >
-                  <path d="M8 1.5C4.5 1.5 1.5 8 1.5 8s3 6.5 6.5 6.5S14.5 8 14.5 8s-3-6.5-6.5-6.5z" />
-                  <circle cx="8" cy="8" r="2.5" />
-                </svg>
-              </button>
-              <button
-                title={item.isWorkingOn ? 'Stop working on' : 'Mark as working on'}
-                className={clsx(
-                  'rounded p-1 transition-colors',
-                  item.isWorkingOn
-                    ? 'text-[var(--color-working-on-border)]'
-                    : 'text-[var(--color-text-ghost)] hover:text-[var(--color-working-on-border)]',
-                )}
+                icon={
+                  <svg
+                    className="h-3.5 w-3.5"
+                    viewBox="0 0 16 16"
+                    fill={item.isTracked ? 'currentColor' : 'none'}
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  >
+                    <path d="M8 1.5C4.5 1.5 1.5 8 1.5 8s3 6.5 6.5 6.5S14.5 8 14.5 8s-3-6.5-6.5-6.5z" />
+                    <circle cx="8" cy="8" r="2.5" />
+                  </svg>
+                }
+              />
+              <IconButton
+                size={22}
+                active={item.isWorkingOn}
+                tooltip={item.isWorkingOn ? 'Stop working on' : 'Mark as working on'}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleWorkingOn(item.id);
                 }}
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                >
-                  <path d="M2 5l3.5 3.5L14 2" strokeLinecap="round" strokeLinejoin="round" />
-                  {item.isWorkingOn && (
-                    <path d="M2 10l3.5 3.5L14 7" strokeLinecap="round" strokeLinejoin="round" />
-                  )}
-                </svg>
-              </button>
+                icon={
+                  <svg
+                    className="h-3.5 w-3.5"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  >
+                    <path d="M2 5l3.5 3.5L14 2" strokeLinecap="round" strokeLinejoin="round" />
+                    {item.isWorkingOn && (
+                      <path d="M2 10l3.5 3.5L14 7" strokeLinecap="round" strokeLinejoin="round" />
+                    )}
+                  </svg>
+                }
+              />
             </div>
 
             {/* State badge */}
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-              style={{
-                backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
-                color,
-              }}
-            >
-              {item.state}
-            </span>
+            <Pill tone={pillTone(item.state)}>{item.state}</Pill>
 
             {/* Priority + age */}
             <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-text-ghost)]">
@@ -234,16 +240,18 @@ export function WorkItemCard({
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Context menu */}
       {contextMenu && (
         <div
           ref={menuRef}
           className="fixed z-50 min-w-[180px] rounded-lg border border-[var(--color-modal-border)] bg-[var(--color-modal-bg)] py-1 shadow-lg"
+          // style: context menu anchor coords from right-click event position — dynamic pixel values
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button
+            type="button"
             className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             onClick={() => {
               onToggleTracked(item.id);
@@ -253,6 +261,7 @@ export function WorkItemCard({
             {item.isTracked ? 'Stop tracking' : 'Track this item'}
           </button>
           <button
+            type="button"
             className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             onClick={() => {
               onToggleWorkingOn(item.id);
@@ -271,6 +280,7 @@ export function WorkItemCard({
               {worktrees.map((wt) => (
                 <button
                   key={wt.path}
+                  type="button"
                   className={clsx(
                     'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)]',
                     wt.path === item.worktreePath
@@ -301,6 +311,7 @@ export function WorkItemCard({
 
           <div className="my-1 h-px bg-[var(--color-separator)]" />
           <button
+            type="button"
             className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             onClick={() => {
               onOpenInBrowser(item.htmlUrl);

@@ -4,6 +4,8 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { StatusBar } from '@/components/shared/chrome';
+import { Button, Card, Kbd } from '@/components/shared/primitives';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { ResultsTable } from './ResultsTable';
@@ -366,6 +368,7 @@ export function SqlApp() {
           {hasConnections ? (
             <select
               data-sql-connection-select
+              aria-label="Database connection"
               className="sql-connection-select flex-1 min-w-0"
               value={selectedConnection}
               onChange={(e) => setSelectedConnection(e.target.value)}
@@ -385,25 +388,18 @@ export function SqlApp() {
         <div className="sql-toolbar-separator" />
 
         {/* Run button */}
-        <button
+        <Button
+          variant="primary"
+          size="sm"
           data-action="run-query"
           className={clsx('sql-run-btn', isRunning && 'sql-run-btn--running')}
-          onClick={runQuery}
+          leading={isRunning ? <SpinnerIcon /> : <PlayIcon />}
           disabled={isRunning || !hasConnections || !query.trim()}
+          onClick={runQuery}
         >
-          {isRunning ? (
-            <>
-              <SpinnerIcon />
-              <span>Running</span>
-            </>
-          ) : (
-            <>
-              <PlayIcon />
-              <span>Run</span>
-            </>
-          )}
-        </button>
-        <kbd className="sql-kbd">Ctrl+Enter</kbd>
+          {isRunning ? 'Running' : 'Run'}
+        </Button>
+        <Kbd>Ctrl+Enter</Kbd>
       </div>
 
       {/* ── Editor area ─────────────────────────────────── */}
@@ -411,6 +407,7 @@ export function SqlApp() {
         id="sql-editor-area"
         data-sql-editor
         className="sql-editor-area"
+        // style: editorHeight is user-resizable (drag-to-resize handle) — dynamic pixel value
         style={{ height: editorHeight }}
       >
         {/* Line numbers gutter */}
@@ -449,21 +446,27 @@ export function SqlApp() {
 
       {/* ── Error display ───────────────────────────────── */}
       {error && (
-        <div className="sql-error">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          >
-            <circle cx="8" cy="8" r="6.5" />
-            <path d="M8 5v3.5M8 10.5v.5" />
-          </svg>
-          <span>{error}</span>
-        </div>
+        <Card
+          variant="default"
+          padding="sm"
+          className="mx-3 my-2 border border-[var(--color-status-red)]"
+        >
+          <div className="flex items-center gap-2 text-[var(--color-status-red)]">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <circle cx="8" cy="8" r="6.5" />
+              <path d="M8 5v3.5M8 10.5v.5" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        </Card>
       )}
 
       {/* ── Results ─────────────────────────────────────── */}
@@ -519,9 +522,9 @@ export function SqlApp() {
       )}
 
       {/* ── Status bar ──────────────────────────────────── */}
-      <div className="sql-status-bar">
-        <div className="sql-status-left">
-          {result && (
+      <StatusBar
+        left={
+          result && (
             <>
               <span className="sql-status-rows">
                 {result.totalRowCount.toLocaleString()} row{result.totalRowCount !== 1 ? 's' : ''}
@@ -544,32 +547,33 @@ export function SqlApp() {
                 </>
               )}
             </>
-          )}
-        </div>
-
-        <div className="sql-status-right">
-          {copyFlash && (
-            <span className="sql-copy-flash">
-              <CheckIcon />
-              {copyFlash}
-            </span>
-          )}
-          {result && totalRows > 0 && (
-            <div className="sql-copy-group">
-              <CopyIcon />
-              <button className="sql-copy-btn" onClick={copyValues}>
-                Values
-              </button>
-              <button className="sql-copy-btn" onClick={copyWithHeaders}>
-                + Headers
-              </button>
-              <button className="sql-copy-btn" onClick={copyAll}>
-                All
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+        right={
+          <>
+            {copyFlash && (
+              <span className="sql-copy-flash">
+                <CheckIcon />
+                {copyFlash}
+              </span>
+            )}
+            {result && totalRows > 0 && (
+              <div className="sql-copy-group">
+                <CopyIcon />
+                <Button variant="ghost" size="sm" onClick={copyValues}>
+                  Values
+                </Button>
+                <Button variant="ghost" size="sm" onClick={copyWithHeaders}>
+                  + Headers
+                </Button>
+                <Button variant="ghost" size="sm" onClick={copyAll}>
+                  All
+                </Button>
+              </div>
+            )}
+          </>
+        }
+      />
     </div>
   );
 }

@@ -307,4 +307,93 @@ describe('ReviewsTab', () => {
       expect(mockGetReviews).toHaveBeenCalledWith(expect.anything(), 'myorg', 'myrepo', 42);
     });
   });
+
+  it('renders 4 sort chips with [data-sort-mode]', async () => {
+    mockGetReviews.mockResolvedValue([makeRawReview()]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Newest')).toBeTruthy();
+    });
+    const chips = document.querySelectorAll('[data-sort-mode]');
+    expect(chips.length).toBe(4);
+    const modes = Array.from(chips).map((el) => el.getAttribute('data-sort-mode'));
+    expect(modes).toEqual(['newest', 'oldest', 'severity', 'file']);
+  });
+
+  it('marks the active sort chip with aria-pressed=true', async () => {
+    mockGetReviews.mockResolvedValue([makeRawReview()]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Newest')).toBeTruthy();
+    });
+    const newest = document.querySelector('[data-sort-mode="newest"]');
+    const oldest = document.querySelector('[data-sort-mode="oldest"]');
+    expect(newest?.getAttribute('aria-pressed')).toBe('true');
+    expect(oldest?.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(oldest as Element);
+    expect(newest?.getAttribute('aria-pressed')).toBe('false');
+    expect(oldest?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('renders [data-pill-tone="approved"] for APPROVED review', async () => {
+    mockGetReviews.mockResolvedValue([makeRawReview({ state: 'APPROVED' })]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Approved')).toBeTruthy();
+    });
+    expect(document.querySelector('[data-pill-tone="approved"]')).toBeTruthy();
+  });
+
+  it('renders [data-pill-tone="changes"] for CHANGES_REQUESTED review', async () => {
+    mockGetReviews.mockResolvedValue([makeRawReview({ state: 'CHANGES_REQUESTED' })]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Changes Requested')).toBeTruthy();
+    });
+    expect(document.querySelector('[data-pill-tone="changes"]')).toBeTruthy();
+  });
+
+  it('renders [data-pill-tone="commented"] for COMMENTED review', async () => {
+    mockGetReviews.mockResolvedValue([makeRawReview({ state: 'COMMENTED' })]);
+    render(
+      <ReviewsTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Commented')).toBeTruthy();
+    });
+    expect(document.querySelector('[data-pill-tone="commented"]')).toBeTruthy();
+  });
 });

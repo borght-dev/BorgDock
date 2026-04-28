@@ -43,6 +43,7 @@ export function ParsedErrorCard({ error }: ParsedErrorCardProps) {
   const severity = severityStyle(error.category);
   const badge = severityBadgeColor(error.category);
 
+  // style: severity-driven background + border — bg and border token names vary per error category
   return (
     <div
       className={clsx('rounded-md border p-2.5 space-y-1.5')}
@@ -60,6 +61,7 @@ export function ParsedErrorCard({ error }: ParsedErrorCardProps) {
         </span>
         <span
           className="rounded px-1.5 py-0.5 text-[10px] font-medium border"
+          // style: severity-driven badge fg/bg/border — all three token values vary per error category
           style={{ color: badge.fg, backgroundColor: badge.bg, borderColor: badge.border }}
         >
           {severity.label}

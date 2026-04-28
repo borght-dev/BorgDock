@@ -61,4 +61,10 @@ describe('CodeView', () => {
     });
     expect(writeText).toHaveBeenCalledWith('hello');
   });
+
+  it('row gutter carries data-line-gutter and number carries data-line-number', () => {
+    const { container } = render(<CodeView path="src/foo.ts" content={'line1\nline2'} />);
+    expect(container.querySelector('[data-line-gutter]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-line-number]').length).toBeGreaterThan(0);
+  });
 });

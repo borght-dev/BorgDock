@@ -31,6 +31,19 @@ describe('FlyoutToast', () => {
     expect(screen.getByText('Title b')).toBeDefined();
   });
 
+  it('renders the toast container with data-toast', () => {
+    const { container } = render(
+      <FlyoutToast
+        queue={[makeToast('a')]}
+        onHoverEnter={vi.fn()}
+        onHoverLeave={vi.fn()}
+        onExpire={vi.fn()}
+        onActionClick={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[data-toast]')).toBeInTheDocument();
+  });
+
   it('fires onExpire after TOAST_AUTOHIDE_MS', () => {
     const onExpire = vi.fn();
     render(

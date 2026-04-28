@@ -1,3 +1,4 @@
+import { Input } from '@/components/shared/primitives';
 import type { ClaudeCodeSettings, PostFixAction } from '@/types';
 
 const POST_FIX_OPTIONS: { value: PostFixAction; label: string }[] = [
@@ -16,7 +17,7 @@ export function ClaudeSection({ claudeCode, onChange }: ClaudeSectionProps) {
   const update = (partial: Partial<ClaudeCodeSettings>) => onChange({ ...claudeCode, ...partial });
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" data-settings-section="claude">
       <div className="flex flex-col gap-1">
         <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
           Post-Fix Action
@@ -38,8 +39,8 @@ export function ClaudeSection({ claudeCode, onChange }: ClaudeSectionProps) {
         <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
           Claude Code Path
         </label>
-        <input
-          className="field-input w-full"
+        <Input
+          className="w-full"
           value={claudeCode.claudeCodePath ?? ''}
           onChange={(e) => update({ claudeCodePath: e.target.value || undefined })}
           placeholder="claude (default)"
