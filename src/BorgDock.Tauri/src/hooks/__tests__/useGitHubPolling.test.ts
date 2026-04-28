@@ -201,44 +201,6 @@ describe('useGitHubPolling', () => {
     expect(mockInitClient).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  describe('enabled gate', () => {
-    it('does not initialize client or start polling when disabled', async () => {
-      renderHook(() => useGitHubPolling(makeSettings(), false));
-
-      await act(async () => {
-        vi.advanceTimersByTime(60_000);
-      });
-
-      expect(mockInitClient).not.toHaveBeenCalled();
-      expect(mockGetOpenPRs).not.toHaveBeenCalled();
-      expect(mockFetchFn).not.toHaveBeenCalled();
-      expect(usePrStore.getState().isPolling).toBe(false);
-    });
-
-    it('starts polling immediately when enabled flips from false to true', async () => {
-      mockGetOpenPRs.mockResolvedValue([makePr()]);
-
-      const { rerender } = renderHook(
-        ({ enabled }: { enabled: boolean }) => useGitHubPolling(makeSettings(), enabled),
-        { initialProps: { enabled: false } },
-      );
-
-      expect(mockInitClient).not.toHaveBeenCalled();
-
-      rerender({ enabled: true });
-
-      // First poll fires on the next tick (PollingManager scheduleNext(0)).
-      await act(async () => {
-        vi.advanceTimersByTime(0);
-      });
-
-      await vi.waitFor(() => {
-        expect(mockInitClient).toHaveBeenCalledTimes(1);
-        expect(mockGetOpenPRs).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
-      });
-    });
-  });
-
   it('detects username via /user API', async () => {
     renderHook(() => useGitHubPolling(makeSettings()));
 

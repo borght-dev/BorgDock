@@ -28,7 +28,7 @@ export function Sidebar({ children }: SidebarProps) {
           <SearchBar />
         </div>
       )}
-      <div className="sidebar-content" data-section={activeSection}>
+      <div className="sidebar-content">
         {selectedPr ? (
           <PRDetailPanel key={selectedPr.pullRequest.number} pr={selectedPr} />
         ) : (

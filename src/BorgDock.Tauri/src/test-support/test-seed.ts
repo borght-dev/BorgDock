@@ -51,14 +51,6 @@ declare global {
     __borgdock_test_seed?: TestSeedFn;
     __borgdock_test_toast?: TestToastFn;
     __borgdock_test_start_quick_review?: TestStartQuickReviewFn;
-    /**
-     * Set by Playwright's `injectCompletedSetup` so the dev/test-only URL
-     * deep-links (`?section=`, `?settings=open`, `?wizard=force`,
-     * `?toast=test`) activate inside production-mode bundles too. Always
-     * undefined in shipped builds; the Vite production bundle drops the
-     * code that reads it because it's gated behind `import.meta.env.DEV`.
-     */
-    __PLAYWRIGHT__?: boolean;
   }
 }
 

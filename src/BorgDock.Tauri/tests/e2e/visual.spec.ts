@@ -72,7 +72,7 @@ const SURFACES: Surface[] = [
     id: 'flyout',
     path: '/flyout.html',
     ready: 'body',
-    note: 'Flyout window entry. The flyout is a floating glance card, not a movable windowed app — data-tauri-drag-region would be semantically inappropriate (the OS chrome / drag-region pattern fits surfaces that act as movable windows, not floating cards). body fallback is the permanent ready selector; the React tree mounting under body proves the surface rendered, and pixel diff is the actual progress signal (PR #9 decision).',
+    note: 'Flyout window entry; FlyoutApp and its sub-components (FlyoutGlance, FlyoutInitializing) have no data-tauri-drag-region — falls back to body until the attribute is added in a follow-up PR.',
   },
   {
     id: 'palette',
@@ -91,9 +91,8 @@ const SURFACES: Surface[] = [
   // ② focus
   {
     id: 'focus-tab',
-    path: '/?section=focus',
-    ready: '[data-section="focus"]',
-    note: 'Main window with Focus section forced via ?section=focus URL deep-link (PR #9). Header reads URLSearchParams on mount and dispatches setActiveSection.',
+    ready: 'header',
+    note: 'Main window; Sidebar renders Header unconditionally so <header> fails fast if the main shell errors during mount.',
   },
 
   // ③ main
@@ -104,9 +103,8 @@ const SURFACES: Surface[] = [
   },
   {
     id: 'work-items',
-    path: '/?section=work-items',
-    ready: '[data-section="workitems"]',
-    note: 'Main window with Work Items section forced via ?section=work-items URL deep-link (PR #9). Note: URL param is kebab-case, store value is concatenated.',
+    ready: 'header',
+    note: 'Work Items section within main window. Section switch requires URL routing (deferred to PR #9); <header> is the tightest unconditional selector available.',
   },
 
   // ④ detail
@@ -161,21 +159,18 @@ const SURFACES: Surface[] = [
   // ⑦ settings, wizard, notifications
   {
     id: 'settings',
-    path: '/?settings=open',
-    ready: '[data-flyout="settings"]',
-    note: 'Settings flyout opened via ?settings=open URL deep-link (PR #9). App.tsx mount effect calls useUiStore.setSettingsOpen(true) when the param is present.',
+    ready: 'header',
+    note: 'Settings flyout within main window; requires a click to open so deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
   },
   {
     id: 'wizard',
-    path: '/?wizard=force',
-    ready: '[data-wizard-step]',
-    note: 'Setup wizard forced via ?wizard=force URL deep-link (PR #9). App.tsx forceWizardFromUrl short-circuits the needsSetup gate; the dev/test guard prevents production bundles from honoring it.',
+    ready: 'header',
+    note: 'Setup wizard requires setupComplete=false which injectCompletedSetup skips; deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
   },
   {
     id: 'toasts',
-    path: '/?toast=test',
-    ready: '[data-toast]',
-    note: 'Synthetic test toast pushed via ?toast=test URL deep-link (PR #9). NotificationOverlay mount effect calls useNotificationStore.show() with severity:info.',
+    ready: 'header',
+    note: 'Toast stack requires a runtime trigger to populate; deferred to PR #9 URL routing — <header> is the tightest unconditional selector.',
   },
 ];
 
