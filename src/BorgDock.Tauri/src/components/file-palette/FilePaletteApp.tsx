@@ -114,6 +114,39 @@ export function FilePaletteApp() {
     } catch { /* ignore */ }
   }, []);
 
+  const addCustomRoot = useCallback(async () => {
+    let chosen: string | null;
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const result = await open({ directory: true, multiple: false });
+      chosen = typeof result === 'string' ? result : null;
+    } catch (e) {
+      console.error('addCustomRoot: picker failed', e);
+      return;
+    }
+    if (!chosen) return;
+
+    const norm = chosen.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
+    const isDup = roots.some((r) => {
+      const n = r.path.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
+      return n === norm;
+    });
+    if (isDup) return;
+
+    try {
+      const s = await invoke<AppSettings>('load_settings');
+      const next: AppSettings = {
+        ...s,
+        filePaletteRoots: [...(s.filePaletteRoots ?? []), { path: chosen }],
+      };
+      await invoke('save_settings', { settings: next });
+      setSettings(next);
+      await selectRoot(chosen);
+    } catch (e) {
+      console.error('addCustomRoot: save failed', e);
+    }
+  }, [roots, selectRoot]);
+
   const toggleRootsCollapsed = useCallback(async () => {
     const next = !rootsCollapsed;
     setRootsCollapsed(next);
@@ -321,6 +354,7 @@ export function FilePaletteApp() {
           onToggleFavoritesOnly={toggleFavoritesOnly}
           collapsed={rootsCollapsed}
           onToggleCollapsed={toggleRootsCollapsed}
+          onAddCustomRoot={addCustomRoot}
         />
         <div className="bd-fp-middle">
           <SearchPane

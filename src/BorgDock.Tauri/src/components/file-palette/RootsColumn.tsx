@@ -20,6 +20,7 @@ interface RootsColumnProps {
   onToggleFavoritesOnly: () => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  onAddCustomRoot: () => void;
 }
 
 export function RootsColumn({
@@ -32,6 +33,7 @@ export function RootsColumn({
   onToggleFavoritesOnly,
   collapsed,
   onToggleCollapsed,
+  onAddCustomRoot,
 }: RootsColumnProps) {
   const isFav = (r: RootEntry) => r.source === 'worktree' && favoritePaths.has(r.path);
 
@@ -81,6 +83,27 @@ export function RootsColumn({
       <div className="bd-fp-roots-toolbar">
         <span className="bd-fp-roots-toolbar-title">ROOTS</span>
         <div className="bd-fp-roots-toolbar-actions">
+          <IconButton
+            icon={
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M8 3v10M3 8h10" />
+              </svg>
+            }
+            tooltip="Add custom path"
+            aria-label="Add custom path"
+            size={22}
+            onClick={onAddCustomRoot}
+          />
           <IconButton
             icon={
               <svg

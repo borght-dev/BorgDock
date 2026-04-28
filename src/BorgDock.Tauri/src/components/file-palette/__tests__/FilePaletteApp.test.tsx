@@ -12,6 +12,7 @@ vi.mock('@tauri-apps/api/window', () => ({
 vi.mock('../use-background-indexer', () => ({
   useBackgroundIndexer: () => ({ entries: [], processed: 0, total: 0, indexing: false }),
 }));
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }));
 
 describe('FilePaletteApp', () => {
   beforeEach(async () => {
@@ -39,6 +40,8 @@ describe('FilePaletteApp', () => {
       if (cmd === 'save_settings') return Promise.resolve(null);
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    (open as ReturnType<typeof vi.fn>).mockReset();
   });
 
   it('renders roots and the file index after settings load', async () => {
@@ -75,5 +78,31 @@ describe('FilePaletteApp', () => {
     render(<FilePaletteApp />);
     // The outer div is rendered synchronously even before the first invoke resolves
     expect(document.querySelector('[data-window="palette"]')).not.toBeNull();
+  });
+
+  it('clicking + adds the picked folder and makes it active', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    (open as ReturnType<typeof vi.fn>).mockResolvedValueOnce('/some/new/scratch');
+
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getByText('wt1')).toBeTruthy());
+
+    const addBtn = screen.getByLabelText('Add custom path');
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
+
+    await waitFor(() => {
+      const saves = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([cmd]) => cmd === 'save_settings',
+      );
+      // First save adds the new root; second save (from selectRoot) sets it active.
+      expect(saves.length).toBeGreaterThanOrEqual(2);
+      const firstSaveArgs = saves[0]![1];
+      expect(firstSaveArgs.settings.filePaletteRoots).toEqual([{ path: '/some/new/scratch' }]);
+      const lastSaveArgs = saves[saves.length - 1]![1];
+      expect(lastSaveArgs.settings.ui.filePaletteActiveRootPath).toBe('/some/new/scratch');
+    });
   });
 });
