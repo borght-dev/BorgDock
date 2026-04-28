@@ -228,4 +228,41 @@ describe('FilePaletteApp', () => {
       expect(last.settings.filePaletteRoots).toEqual([]);
     });
   });
+
+  it('removing the active custom root falls back to the first remaining root', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        return Promise.resolve({
+          repos: [{ owner: 'org', name: 'r', enabled: true, worktreeBasePath: '/repo' }],
+          ui: { filePaletteActiveRootPath: '/my/scratch' },
+          filePaletteRoots: [{ path: '/my/scratch' }],
+        });
+      }
+      if (cmd === 'list_worktrees_bare') {
+        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+      }
+      if (cmd === 'list_root_files') return Promise.resolve({ entries: [], truncated: false });
+      if (cmd === 'save_settings') return Promise.resolve(null);
+      return Promise.reject(new Error(`unexpected ${cmd}`));
+    });
+
+    render(<FilePaletteApp />);
+    // Custom root starts active.
+    await waitFor(() => {
+      const row = screen.getByText('scratch').closest('.bd-fp-root-row-wrap');
+      expect(row?.className).toContain('bd-fp-root-row-wrap--active');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Remove custom path'));
+    });
+
+    // After remove: scratch row is gone, wt1 row is active.
+    await waitFor(() => {
+      expect(screen.queryByText('scratch')).toBeNull();
+      const wt = screen.getByText('wt1').closest('.bd-fp-root-row-wrap');
+      expect(wt?.className).toContain('bd-fp-root-row-wrap--active');
+    });
+  });
 });
