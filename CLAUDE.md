@@ -77,6 +77,14 @@ pub async fn my_window_command(app: tauri::AppHandle, /* args */) -> Result<T, S
 
 The command has to be `async` so it can `.await` the oneshot. `toggle_flyout` is the one exception — it's a non-command internal helper called synchronously from the tray event handler, which already runs on the main thread via `run_on_main_thread`.
 
+## Tauri capabilities are per-window — plugin permissions don't auto-propagate
+
+Each pop-out window (`file-palette`, `workitem-detail`, `pr-detail`, `sql`, etc.) has its own JSON file in `src-tauri/capabilities/`, and Tauri only honors plugin invocations that the **specific window's** capabilities file allows. Registering a plugin globally in `lib.rs::run` and adding it to `Cargo.toml` is necessary but NOT sufficient — the per-window capabilities file must also list `<plugin>:default` (or a tighter allowlist) for that window to call it.
+
+Symptom of the missing grant: `await import('@tauri-apps/plugin-<x>')` resolves fine, but the actual call (e.g. `open(...)`, `save(...)`) rejects with a permission error. If the call site has a `try/catch` that swallows errors with just a `console.error`, the user-facing failure is "button does nothing." Check the devtools console first — the error message names the window and the missing permission.
+
+Existing precedent: when adding a feature that uses `@tauri-apps/plugin-dialog` (or any other plugin), search `src-tauri/capabilities/*.json` for which windows currently have `dialog:default`. If your target window isn't in that list, add it before testing — the dev server has to rebuild Rust after a capabilities edit, so a missed grant burns a full rebuild cycle.
+
 ## Spawning Windows CLI wrappers (`az.cmd`, etc.) from Rust
 
 Rust's `std::process::Command::new("az")` on Windows uses `CreateProcessW`, which only auto-appends `.exe` — not `.cmd`, `.bat`, or the rest of `PATHEXT`. Azure CLI ships as `az.cmd` (a batch wrapper around the Python entry point), so bare `"az"` fails with `NotFound` even when `az` works in Windows Terminal, cmd.exe, or PowerShell (those honor `PATHEXT`).
