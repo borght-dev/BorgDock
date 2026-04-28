@@ -430,8 +430,13 @@ pub async fn open_in_terminal(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn open_in_editor(path: String) -> Result<(), String> {
+    // VS Code on Windows installs as `code.cmd` (a batch wrapper). Rust's
+    // CreateProcessW only auto-appends `.exe`, so bare "code" returns NotFound
+    // even when `code` works in a shell. See CLAUDE.md → "Spawning Windows CLI
+    // wrappers (`az.cmd`, etc.) from Rust".
+    let program = if cfg!(windows) { "code.cmd" } else { "code" };
     tokio::task::spawn_blocking(move || {
-        hidden_command("code")
+        hidden_command(program)
             .arg(&path)
             .spawn()
             .map_err(|e| format!("Failed to open editor: {e}"))?;
@@ -446,8 +451,14 @@ pub async fn reveal_in_file_manager(path: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         #[cfg(target_os = "windows")]
         {
+            // explorer.exe parses forward-slash arguments as flags. Paths from
+            // `git worktree list --porcelain` use forward slashes on Windows,
+            // so `explorer.exe /D:/repo/.worktrees/...` is read as an unknown
+            // flag and explorer silently falls back to opening Documents.
+            // Normalize to backslashes before spawning.
+            let win_path = path.replace('/', "\\");
             hidden_command("explorer.exe")
-                .arg(&path)
+                .arg(&win_path)
                 .spawn()
                 .map_err(|e| format!("Failed to open explorer: {e}"))?;
         }

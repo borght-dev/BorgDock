@@ -199,6 +199,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     });
   });
 
+  // style: context menu anchor coords from right-click event position — dynamic pixel values
   return (
     <div
       ref={menuRef}

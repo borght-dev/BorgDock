@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { Card, Pill } from '@/components/shared/primitives';
 import type { PullRequestWithChecks } from '@/types';
 
 interface QuickReviewCardProps {
@@ -16,7 +17,10 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
+          <div
+            data-pr-title=""
+            className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug"
+          >
             {p.title}
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
@@ -34,13 +38,9 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
 
       {/* Branch flow */}
       <div className="flex items-center gap-2 text-xs">
-        <span className="rounded bg-[var(--color-surface-raised)] px-2 py-0.5 font-mono text-[var(--color-text-secondary)]">
-          {p.headRef}
-        </span>
+        <Pill tone="neutral">{p.headRef}</Pill>
         <span className="text-[var(--color-text-muted)]">{'\u2192'}</span>
-        <span className="rounded bg-[var(--color-surface-raised)] px-2 py-0.5 font-mono text-[var(--color-text-secondary)]">
-          {p.baseRef}
-        </span>
+        <Pill tone="neutral">{p.baseRef}</Pill>
       </div>
 
       {/* Stats */}
@@ -59,25 +59,22 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
       {p.labels.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {p.labels.map((l) => (
-            <span
-              key={l}
-              className="rounded-full bg-[var(--color-surface-raised)] px-2 py-0.5 text-[10px] text-[var(--color-text-secondary)]"
-            >
+            <Pill key={l} tone="neutral">
               {l}
-            </span>
+            </Pill>
           ))}
         </div>
       )}
 
       {/* Body */}
       {p.body && (
-        <div className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-3 max-h-[200px] overflow-y-auto">
+        <Card padding="sm" className="max-h-[200px] overflow-y-auto">
           <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
               {p.body}
             </ReactMarkdown>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

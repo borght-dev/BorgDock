@@ -49,7 +49,7 @@ export function ResultsTable({
   if (columns.length === 0) return null;
 
   return (
-    <table ref={tableRef} className="sql-results-table">
+    <table ref={tableRef} data-sql-results-table className="sql-results-table">
       <thead>
         <tr>
           <th className="sql-row-num-header">#</th>

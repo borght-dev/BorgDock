@@ -1,5 +1,19 @@
+import { LinearProgress } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import type { PullRequestWithChecks } from '@/types';
+
+const BoltIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    aria-hidden="true"
+    className="text-[var(--color-accent)]"
+  >
+    <path d="M9 1 3 9h4l-1 6 6-8H8z" />
+  </svg>
+);
 
 interface MergeReadinessChecklistProps {
   pr: PullRequestWithChecks;
@@ -17,8 +31,14 @@ interface ChecklistItem {
 
 function scoreColor(score: number): string {
   if (score < 50) return 'var(--color-status-red)';
-  if (score <= 80) return 'var(--color-status-yellow)';
+  if (score < 80) return 'var(--color-status-yellow)';
   return 'var(--color-status-green)';
+}
+
+function scoreTone(score: number): 'success' | 'warning' | 'error' {
+  if (score >= 80) return 'success';
+  if (score >= 50) return 'warning';
+  return 'error';
 }
 
 function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
@@ -102,7 +122,7 @@ function StatusIcon({ status }: { status: CheckStatus }) {
   switch (status) {
     case 'pass':
       return (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
           <circle cx="8" cy="8" r="7" fill="var(--color-status-green)" opacity="0.12" />
           <path
             d="M5 8.5l2 2 4-4"
@@ -115,7 +135,7 @@ function StatusIcon({ status }: { status: CheckStatus }) {
       );
     case 'fail':
       return (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
           <circle cx="8" cy="8" r="7" fill="var(--color-status-red)" opacity="0.12" />
           <path
             d="M5.5 5.5l5 5M10.5 5.5l-5 5"
@@ -127,7 +147,7 @@ function StatusIcon({ status }: { status: CheckStatus }) {
       );
     case 'pending':
       return (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
           <circle cx="8" cy="8" r="7" fill="var(--color-status-yellow)" opacity="0.12" />
           <circle
             cx="8"
@@ -148,7 +168,7 @@ function StatusIcon({ status }: { status: CheckStatus }) {
       );
     case 'none':
       return (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
           <circle cx="8" cy="8" r="7" fill="var(--color-status-gray)" opacity="0.12" />
           <path
             d="M5.5 8h5"
@@ -161,71 +181,51 @@ function StatusIcon({ status }: { status: CheckStatus }) {
   }
 }
 
-function ScoreBadge({ score }: { score: number }) {
-  const clamped = Math.max(0, Math.min(100, score));
-  const color = scoreColor(clamped);
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
-      style={{
-        color,
-        background: `color-mix(in srgb, ${color} 10%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${color} 20%, transparent)`,
-      }}
-    >
-      {clamped}
-    </span>
-  );
-}
-
 export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
   const items = getCheckItems(pr);
   const score = computeMergeScore(pr);
+  const clampedScore = Math.max(0, Math.min(100, score));
   const color = scoreColor(score);
 
   return (
-    <div className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] overflow-hidden">
-      {/* Header with inline score */}
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
-          Merge Readiness
+    <div
+      className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface)] overflow-hidden"
+      data-merge-score={clampedScore}
+    >
+      {/* Header: bolt + label on the left, score on the right */}
+      <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-2">
+        <div className="flex items-center gap-2">
+          <BoltIcon />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-ghost)]">
+            Merge Readiness
+          </span>
+        </div>
+        <span
+          className="text-base font-semibold tabular-nums"
+          style={{ color }}
+        >
+          {clampedScore}
         </span>
-        <ScoreBadge score={score} />
       </div>
 
-      {/* Compact progress bar */}
-      <div className="mx-3 mb-2 flex h-[3px] gap-px overflow-hidden rounded-full">
-        {items.map((item) => (
-          <span
-            key={item.label}
-            className="h-full flex-1 rounded-full transition-colors"
-            style={{
-              background:
-                item.status === 'pass'
-                  ? 'var(--color-status-green)'
-                  : item.status === 'fail'
-                    ? 'var(--color-status-red)'
-                    : item.status === 'pending'
-                      ? 'var(--color-status-yellow)'
-                      : 'var(--color-status-gray)',
-              opacity: item.status === 'none' ? 0.3 : 1,
-            }}
-          />
-        ))}
+      {/* Linear readiness bar */}
+      <div className="mx-4 mb-3">
+        <LinearProgress value={clampedScore} tone={scoreTone(clampedScore)} />
       </div>
 
       {/* Checklist items */}
-      <div className="flex flex-col gap-0.5 px-3 pb-2.5">
+      <div className="flex flex-col px-4 pb-3">
         {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-2 py-0.5">
+          <div
+            key={item.label}
+            className="flex items-center gap-2.5 py-1.5"
+            data-merge-check={item.label}
+          >
             <StatusIcon status={item.status} />
-            <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-medium text-[var(--color-text-primary)]">
-                {item.label}
-              </span>
-            </div>
-            <span className="shrink-0 text-[9px] text-[var(--color-text-muted)]">
+            <span className="flex-1 text-[13px] font-medium text-[var(--color-text-primary)]">
+              {item.label}
+            </span>
+            <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
               {item.description}
             </span>
           </div>
@@ -233,6 +233,7 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
       </div>
 
       {/* Bottom accent line showing score */}
+      {/* style: score-driven gradient stop position — computed per render, no Tailwind utility */}
       <div
         className="h-[2px]"
         style={{

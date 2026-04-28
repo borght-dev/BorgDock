@@ -46,22 +46,28 @@ describe('LinkedWorkItemBadge', () => {
     expect(screen.getByText('Active')).toBeTruthy();
   });
 
-  it('shows assigned user when available', () => {
-    const wi = makeWorkItem();
+  it('renders work item type and priority alongside state', () => {
+    const wi = makeWorkItem({
+      fields: {
+        'System.Title': 'Fix login bug',
+        'System.State': 'Active',
+        'System.WorkItemType': 'Bug',
+        'Microsoft.VSTS.Common.Priority': 2,
+      },
+    });
     render(<LinkedWorkItemBadge workItemId={42} workItem={wi} />);
-    expect(screen.getByText('assigned to Alice')).toBeTruthy();
+    expect(screen.getByText('Active · Bug · P2')).toBeTruthy();
   });
 
-  it('handles string assignedTo field', () => {
+  it('omits missing metadata segments cleanly', () => {
     const wi = makeWorkItem({
       fields: {
         'System.Title': 'Some task',
         'System.State': 'New',
-        'System.AssignedTo': 'Bob',
       },
     });
     render(<LinkedWorkItemBadge workItemId={42} workItem={wi} />);
-    expect(screen.getByText('assigned to Bob')).toBeTruthy();
+    expect(screen.getByText('New')).toBeTruthy();
   });
 
   it('shows "Untitled" when title is missing', () => {
@@ -70,12 +76,20 @@ describe('LinkedWorkItemBadge', () => {
     expect(screen.getByText('Untitled')).toBeTruthy();
   });
 
-  it('does not show assignee section when not assigned', () => {
+  it('does not include assignee in metadata segments', () => {
     const wi = makeWorkItem({
       fields: { 'System.Title': 'Task', 'System.State': 'Active' },
     });
     render(<LinkedWorkItemBadge workItemId={42} workItem={wi} />);
     expect(screen.queryByText(/assigned to/)).toBeNull();
+  });
+
+  it('renders full branch inside a Card primitive with data-linked-work-item attr', () => {
+    const wi = makeWorkItem();
+    const { container } = render(<LinkedWorkItemBadge workItemId={42} workItem={wi} />);
+    const card = container.querySelector('[data-linked-work-item="42"]');
+    expect(card).toBeTruthy();
+    expect(card?.classList.contains('bd-card')).toBe(true);
   });
 
   describe('compact mode', () => {
@@ -122,7 +136,13 @@ describe('LinkedWorkItemBadge', () => {
       const wi = makeWorkItem();
       render(<LinkedWorkItemBadge workItemId={42} workItem={wi} compact />);
       expect(screen.queryByText('Fix login bug')).toBeNull();
-      expect(screen.queryByText('assigned to Alice')).toBeNull();
+    });
+
+    it('renders compact branch as a Pill primitive with data-linked-work-item attr', () => {
+      const { container } = render(<LinkedWorkItemBadge workItemId={42} compact />);
+      const pill = container.querySelector('[data-linked-work-item="42"]');
+      expect(pill).toBeTruthy();
+      expect(pill?.classList.contains('bd-pill')).toBe(true);
     });
   });
 });

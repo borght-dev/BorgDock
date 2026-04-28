@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorktreePaletteApp } from '../WorktreePaletteApp';
 
@@ -28,10 +28,6 @@ vi.mock('@tauri-apps/api/dpi', () => ({
       public height: number,
     ) {}
   },
-}));
-
-vi.mock('@tauri-apps/plugin-opener', () => ({
-  openPath: vi.fn(() => Promise.resolve()),
 }));
 
 describe('WorktreePaletteApp', () => {
@@ -105,7 +101,7 @@ describe('WorktreePaletteApp', () => {
     expect(screen.getByText('Scanning worktrees...')).toBeTruthy();
   });
 
-  it('displays worktree count (including main)', async () => {
+  it('renders rows with data-worktree-row + data-tree-path contracts', async () => {
     await act(async () => {
       render(<WorktreePaletteApp />);
     });
@@ -113,8 +109,15 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const countBadge = document.querySelector('.wt-count');
-    expect(countBadge?.textContent).toBe('3');
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-worktree-row]').length).toBeGreaterThanOrEqual(1);
+    });
+
+    const paths = Array.from(document.querySelectorAll('[data-worktree-row]')).map((el) =>
+      el.getAttribute('data-tree-path'),
+    );
+    expect(paths).toContain('/home/user/repo/.worktrees/feature-a');
+    expect(paths).toContain('/home/user/repo');
   });
 
   it('renders all worktree branches including main as the repo anchor', async () => {
@@ -125,7 +128,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const branches = document.querySelectorAll('.wt-branch');
+    const branches = document.querySelectorAll('.bd-wt-branch');
     const branchTexts = Array.from(branches).map((b) => b.textContent);
     expect(branchTexts).toContain('feature-a');
     expect(branchTexts).toContain('feature-b');
@@ -133,8 +136,8 @@ describe('WorktreePaletteApp', () => {
 
     // Main should be pinned to the top of the repo group
     expect(branchTexts[0]).toBe('main');
-    // And flagged with the MAIN badge
-    expect(document.querySelector('.wt-main-badge')).toBeTruthy();
+    // And flagged with the MAIN pill
+    expect(screen.getByText(/^main$/i, { selector: '.bd-pill' })).toBeTruthy();
   });
 
   it('renders repo group header', async () => {
@@ -148,7 +151,7 @@ describe('WorktreePaletteApp', () => {
     expect(screen.getByText('org/repo')).toBeTruthy();
   });
 
-  it('shows search input after loading', async () => {
+  it('shows search input after loading with expected placeholder', async () => {
     await act(async () => {
       render(<WorktreePaletteApp />);
     });
@@ -156,7 +159,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    expect(screen.getByPlaceholderText('Filter by branch, folder, or repo...')).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Filter by branch/i)).toBeTruthy();
   });
 
   it('filters worktrees by search query', async () => {
@@ -167,12 +170,12 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText('Filter by branch, folder, or repo...');
+    const input = screen.getByPlaceholderText(/Filter by branch/i);
     await act(async () => {
       fireEvent.change(input, { target: { value: 'feature-a' } });
     });
 
-    const branches = document.querySelectorAll('.wt-branch');
+    const branches = document.querySelectorAll('.bd-wt-branch');
     const branchTexts = Array.from(branches).map((b) => b.textContent);
     expect(branchTexts).toContain('feature-a');
     expect(branchTexts).not.toContain('feature-b');
@@ -186,7 +189,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText('Filter by branch, folder, or repo...');
+    const input = screen.getByPlaceholderText(/Filter by branch/i);
     await act(async () => {
       fireEvent.change(input, { target: { value: 'nonexistent' } });
     });
@@ -202,17 +205,17 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText('Filter by branch, folder, or repo...');
+    const input = screen.getByPlaceholderText(/Filter by branch/i);
     await act(async () => {
       fireEvent.change(input, { target: { value: 'feature-a' } });
     });
 
-    const clearBtn = document.querySelector('.wt-search-clear');
+    const clearBtn = document.querySelector('.bd-wt-search-clear');
     await act(async () => {
       if (clearBtn) fireEvent.click(clearBtn);
     });
 
-    const branches = document.querySelectorAll('.wt-branch');
+    const branches = document.querySelectorAll('.bd-wt-branch');
     const branchTexts = Array.from(branches).map((b) => b.textContent);
     expect(branchTexts).toContain('feature-a');
     expect(branchTexts).toContain('feature-b');
@@ -226,7 +229,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const palette = document.querySelector('.wt-palette');
+    const palette = document.querySelector('.bd-wt-palette');
     if (palette) {
       await act(async () => {
         fireEvent.keyDown(palette, { key: 'ArrowDown' });
@@ -242,7 +245,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const palette = document.querySelector('.wt-palette');
+    const palette = document.querySelector('.bd-wt-palette');
     if (palette) {
       await act(async () => {
         fireEvent.keyDown(palette, { key: 'ArrowUp' });
@@ -260,7 +263,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const palette = document.querySelector('.wt-palette');
+    const palette = document.querySelector('.bd-wt-palette');
     if (palette) {
       await act(async () => {
         fireEvent.keyDown(palette, { key: 'Enter' });
@@ -280,12 +283,12 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText('Filter by branch, folder, or repo...');
+    const input = screen.getByPlaceholderText(/Filter by branch/i);
     await act(async () => {
       fireEvent.change(input, { target: { value: 'test' } });
     });
 
-    const palette = document.querySelector('.wt-palette');
+    const palette = document.querySelector('.bd-wt-palette');
     if (palette) {
       await act(async () => {
         fireEvent.keyDown(palette, { key: 'Escape' });
@@ -369,8 +372,8 @@ describe('WorktreePaletteApp', () => {
     expect(screen.getByText('No worktrees configured')).toBeTruthy();
   });
 
-  it('opens folder via openPath', async () => {
-    const { openPath } = await import('@tauri-apps/plugin-opener');
+  it('opens folder via reveal_in_file_manager using data-action="open-folder"', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
 
     await act(async () => {
       render(<WorktreePaletteApp />);
@@ -380,17 +383,20 @@ describe('WorktreePaletteApp', () => {
     });
 
     // First folder button corresponds to main (which sorts first).
-    const folderBtns = document.querySelectorAll('[title="Open folder"]');
+    const folderBtns = document.querySelectorAll('[data-action="open-folder"]');
+    expect(folderBtns.length).toBeGreaterThan(0);
     if (folderBtns[0]) {
       await act(async () => {
         fireEvent.click(folderBtns[0]!);
       });
     }
 
-    expect(openPath).toHaveBeenCalledWith('/home/user/repo');
+    expect(invoke).toHaveBeenCalledWith('reveal_in_file_manager', {
+      path: '/home/user/repo',
+    });
   });
 
-  it('opens editor via invoke', async () => {
+  it('opens editor via invoke using data-action="open-editor"', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
 
     await act(async () => {
@@ -401,7 +407,8 @@ describe('WorktreePaletteApp', () => {
     });
 
     // First editor button corresponds to main (which sorts first).
-    const editorBtns = document.querySelectorAll('[title="Open in editor"]');
+    const editorBtns = document.querySelectorAll('[data-action="open-editor"]');
+    expect(editorBtns.length).toBeGreaterThan(0);
     if (editorBtns[0]) {
       await act(async () => {
         fireEvent.click(editorBtns[0]!);
@@ -421,11 +428,12 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    // 2 non-main rows → 2 star buttons; main gets a placeholder instead.
-    const stars = document.querySelectorAll('.wt-star-btn');
+    // Star buttons live on non-main rows; main gets a repo icon instead.
+    const mainIcons = document.querySelectorAll('.bd-wt-main-icon');
+    expect(mainIcons.length).toBe(1);
+    // 2 non-main rows → 2 toggleable star buttons (favorites toggles) inside data-worktree-row.
+    const stars = document.querySelectorAll('[data-worktree-row] [aria-pressed]');
     expect(stars.length).toBe(2);
-    const placeholders = document.querySelectorAll('.wt-star-placeholder');
-    expect(placeholders.length).toBe(1);
   });
 
   it('toggling a star saves the updated favoriteWorktreePaths to settings', async () => {
@@ -439,8 +447,10 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    // Click the first non-main star (belongs to feature-a since it sorts alphabetically first).
-    const firstStar = document.querySelector('.wt-star-btn') as HTMLElement | null;
+    // First non-main star (sorted: main first, then favorites, then alpha).
+    const firstStar = document.querySelector(
+      '[data-worktree-row] [aria-pressed]',
+    ) as HTMLElement | null;
     expect(firstStar).toBeTruthy();
     await act(async () => {
       if (firstStar) fireEvent.click(firstStar);
@@ -505,7 +515,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const branchTexts = Array.from(document.querySelectorAll('.wt-branch')).map(
+    const branchTexts = Array.from(document.querySelectorAll('.bd-wt-branch')).map(
       (b) => b.textContent,
     );
     // feature-a is starred, main is always visible, feature-b is hidden.

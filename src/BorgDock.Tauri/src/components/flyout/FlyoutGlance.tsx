@@ -1,6 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Dot, IconButton } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
 import type { ToastPayload } from './flyout-mode';
+import { PRRow } from './PRRow';
 
 const log = createLogger('FlyoutGlance');
 
@@ -11,6 +13,8 @@ export interface FlyoutData {
   pendingCount: number;
   passingCount: number;
   totalCount: number;
+  /** Count of PRs the priority scorer flagged as needing attention. */
+  focusCount: number;
   username: string;
   theme: string;
   lastSyncAgo: string;
@@ -46,7 +50,40 @@ export function FlyoutGlance({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const { failingCount, pendingCount, passingCount, pullRequests, totalCount } = data;
+  const { failingCount, pendingCount, passingCount, pullRequests, totalCount, focusCount } = data;
+
+  // Only show the repository slug per row when the user is monitoring more
+  // than one — single-repo setups make every row's "owner/repo" identical and
+  // wastes the space.
+  const uniqueRepos = new Set(pullRequests.map((p) => `${p.repoOwner}/${p.repoName}`));
+  const showRepoPerRow = uniqueRepos.size > 1;
+
+  // Active-row tracking for j/k keyboard nav. Initial active row = 0 so e2e
+  // assertion `pressing j advances from 0 → 1` holds.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const lastLength = useRef(pullRequests.length);
+  useEffect(() => {
+    // Clamp activeIndex if list shrinks.
+    if (pullRequests.length !== lastLength.current) {
+      lastLength.current = pullRequests.length;
+      setActiveIndex((i) => Math.min(i, Math.max(0, pullRequests.length - 1)));
+    }
+  }, [pullRequests.length]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (pullRequests.length === 0) return;
+      if (e.key === 'j') {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, pullRequests.length - 1));
+      } else if (e.key === 'k') {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, 0));
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [pullRequests.length]);
 
   const handleBackdropMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -72,6 +109,18 @@ export function FlyoutGlance({
       const { invoke } = await import('@tauri-apps/api/core');
       const { emitTo } = await import('@tauri-apps/api/event');
       await emitTo('main', 'open-settings', {});
+      await invoke('toggle_sidebar');
+    } catch {
+      // ignore
+    }
+    onClose();
+  }, [onClose]);
+
+  const handleOpenFocus = useCallback(async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { emitTo } = await import('@tauri-apps/api/event');
+      await emitTo('main', 'open-focus', {});
       await invoke('toggle_sidebar');
     } catch {
       // ignore
@@ -144,12 +193,14 @@ export function FlyoutGlance({
   return (
     <div
       className="flex h-screen w-screen items-end justify-end"
+      // style: transparent background required for Tauri transparent-window overlay; padding in px avoids Tailwind rounding
       style={{ background: 'transparent', padding: 16 }}
       onMouseDown={handleBackdropMouseDown}
     >
       <div
         ref={panelRef}
         className="w-[380px] overflow-hidden rounded-[14px] border"
+        // style: animation keyframe + flyout-shadow custom property cannot be expressed as Tailwind utilities
         style={{
           background: 'var(--color-surface)',
           borderColor: 'var(--color-strong-border)',
@@ -160,6 +211,7 @@ export function FlyoutGlance({
         {/* Header */}
         <div
           className="border-b px-4 pt-3.5 pb-3"
+          // style: gradient background — no Tailwind utility covers multi-stop CSS gradients with tokens
           style={{
             borderColor: 'var(--color-subtle-border)',
             background: 'linear-gradient(135deg, var(--color-surface-raised), transparent)',
@@ -170,6 +222,7 @@ export function FlyoutGlance({
               {/* Brand icon — heartbeat pulse line matching sidebar header */}
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-lg"
+                // style: gradient background + color-mix box-shadow — no Tailwind utilities for these
                 style={{
                   background:
                     'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
@@ -189,45 +242,96 @@ export function FlyoutGlance({
               </div>
               <div>
                 <div
-                  className="text-[13px] font-bold tracking-tight"
-                  style={{ color: 'var(--color-text-primary)' }}
+                  className="text-[13px] font-bold tracking-tight text-[var(--color-text-primary)]"
                 >
                   BorgDock
                 </div>
                 <div
-                  className="mt-0.5 text-[10.5px]"
-                  style={{ color: 'var(--color-text-tertiary)' }}
+                  className="mt-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]"
                 >
                   {totalCount} open pull request{totalCount !== 1 ? 's' : ''}
                 </div>
               </div>
             </div>
             <div className="flex gap-1">
-              <IconButton title="Open sidebar" onClick={handleOpenSidebar}>
-                <PanelRightOpenIcon />
-              </IconButton>
-              <IconButton title="Settings" onClick={handleOpenSettings}>
-                <SettingsIcon />
-              </IconButton>
+              <IconButton
+                icon={<PanelRightOpenIcon />}
+                tooltip="Open sidebar"
+                aria-label="Open sidebar"
+                size={26}
+                onClick={handleOpenSidebar}
+              />
+              <IconButton
+                icon={<SettingsIcon />}
+                tooltip="Settings"
+                aria-label="Settings"
+                size={26}
+                onClick={handleOpenSettings}
+              />
             </div>
           </div>
 
           {/* Stat strip */}
-          <div className="mt-3 flex gap-3.5">
-            <StatDot
-              color="var(--color-status-red)"
-              count={failingCount}
-              label="failing"
-              pulse={failingCount > 0}
-            />
-            <StatDot color="var(--color-status-yellow)" count={pendingCount} label="running" />
-            <StatDot color="var(--color-status-green)" count={passingCount} label="passing" />
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3.5">
+              <div className="flex items-center gap-1.5">
+                <Dot tone="red" pulse={failingCount > 0} />
+                <span
+                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                >
+                  {failingCount}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                  failing
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Dot tone="yellow" />
+                <span
+                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                >
+                  {pendingCount}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                  running
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Dot tone="green" />
+                <span
+                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                >
+                  {passingCount}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                  passing
+                </span>
+              </div>
+            </div>
+            {focusCount > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenFocus}
+                aria-label={`Open focus tab — ${focusCount} need attention`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                // style: accent-tinted pill — color-mix backgrounds + accent token are not in the Tailwind config
+                style={{
+                  background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+                  color: 'var(--color-accent)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                }}
+              >
+                <FocusBoltIcon />
+                <span>Focus {focusCount}</span>
+              </button>
+            )}
           </div>
         </div>
 
         {banner && (
           <div
             className="px-4 py-2 text-[11px] font-semibold text-white"
+            // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
             style={{ background: bannerColor(banner.severity) }}
             data-testid="flyout-glance-banner"
           >
@@ -236,21 +340,22 @@ export function FlyoutGlance({
         )}
 
         {/* PR list */}
+        {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
         <div className="max-h-[360px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {pullRequests.map((pr, i) => (
-            <PrRow
+            <PRRow
               key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
               pr={pr}
+              active={i === activeIndex}
               onClick={handleClickPr}
               onFix={handleFixPr}
               onMonitor={handleMonitorPr}
-              index={i}
+              showRepo={showRepoPerRow}
             />
           ))}
           {pullRequests.length === 0 && (
             <div
-              className="py-8 text-center text-[12px]"
-              style={{ color: 'var(--color-text-muted)' }}
+              className="py-8 text-center text-[12px] text-[var(--color-text-muted)]"
             >
               No open pull requests
             </div>
@@ -259,21 +364,19 @@ export function FlyoutGlance({
 
         {/* Footer */}
         <div
-          className="flex items-center justify-between border-t px-3.5 py-2"
-          style={{
-            borderColor: 'var(--color-subtle-border)',
-            background: 'var(--color-surface-raised)',
-          }}
+          className="flex items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
         >
+          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
-            className="text-[10px]"
-            style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-code)' }}
+            className="text-[10px] text-[var(--color-text-muted)]"
+            style={{ fontFamily: 'var(--font-code)' }}
           >
             synced {data.lastSyncAgo}
           </span>
+          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
-            className="text-[10px]"
-            style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-code)' }}
+            className="text-[10px] text-[var(--color-text-muted)]"
+            style={{ fontFamily: 'var(--font-code)' }}
           >
             {data.hotkey}
           </span>
@@ -291,340 +394,12 @@ export function FlyoutGlance({
           0% { opacity: 0; transform: translateY(8px) scale(0.98); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-        @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.55; }
-        }
       `}</style>
     </div>
   );
 }
 
-// --- Sub-components ---
-
-function PrRow({
-  pr,
-  onClick,
-  onFix,
-  onMonitor,
-  index,
-}: {
-  pr: FlyoutPr;
-  onClick: (pr: FlyoutPr) => void;
-  onFix: (pr: FlyoutPr) => void;
-  onMonitor: (pr: FlyoutPr) => void;
-  index: number;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  const statusColor =
-    pr.overallStatus === 'red'
-      ? 'var(--color-status-red)'
-      : pr.overallStatus === 'yellow'
-        ? 'var(--color-status-yellow)'
-        : 'var(--color-status-green)';
-
-  const checksLabel =
-    pr.failedCount > 0
-      ? `${pr.failedCount} failing`
-      : pr.pendingCount > 0
-        ? `${pr.pendingCount} running`
-        : `${pr.passedCount} passed`;
-
-  const reviewMap: Record<string, { label: string; colorVar: string }> = {
-    approved: { label: 'approved', colorVar: '--color-review-approved' },
-    changesRequested: { label: 'changes', colorVar: '--color-review-changes-requested' },
-    pending: { label: 'review needed', colorVar: '--color-review-required' },
-    commented: { label: 'commented', colorVar: '--color-review-commented' },
-    none: { label: '', colorVar: '' },
-  };
-
-  const noReview = { label: '', colorVar: '' };
-  const review = reviewMap[pr.reviewStatus] ?? noReview;
-
-  const showFix = pr.failedCount > 0;
-  const showMonitor = pr.overallStatus !== 'green' && pr.totalChecks > 0;
-
-  return (
-    <div
-      className="flex w-full cursor-pointer items-start gap-2.5 text-left transition-colors"
-      style={{
-        padding: '10px 14px',
-        background: hovered ? 'var(--color-surface-hover)' : 'transparent',
-        borderLeft: pr.isMine ? '2px solid var(--color-accent)' : '2px solid transparent',
-        animation: `fadeSlide 320ms ${index * 30}ms cubic-bezier(.2,.8,.2,1) both`,
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={() => onClick(pr)}
-    >
-      {/* Author avatar */}
-      <div
-        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-        style={{
-          background: avatarColor(pr.authorLogin),
-          boxShadow: `0 0 0 2px var(--color-surface)`,
-          marginTop: 1,
-        }}
-      >
-        {pr.authorLogin.slice(0, 2).toUpperCase()}
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <div
-            className="min-w-0 flex-1 truncate text-[12.5px] font-medium leading-snug"
-            style={{ color: 'var(--color-text-primary)' }}
-          >
-            {pr.title}
-          </div>
-          {/* Action buttons — visible on hover */}
-          {hovered && (showFix || showMonitor) && (
-            <div className="flex shrink-0 gap-1">
-              {showFix && (
-                <button
-                  type="button"
-                  title="Fix failing checks with Claude"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onFix(pr);
-                  }}
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    padding: '1px 6px',
-                    borderRadius: 4,
-                    background: 'color-mix(in srgb, #ef4444 12%, transparent)',
-                    color: '#ef4444',
-                    border: 'none',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Fix
-                </button>
-              )}
-              {showMonitor && (
-                <button
-                  type="button"
-                  title="Monitor PR with Claude"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMonitor(pr);
-                  }}
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    padding: '1px 6px',
-                    borderRadius: 4,
-                    background: 'color-mix(in srgb, #8b5cf6 12%, transparent)',
-                    color: '#8b5cf6',
-                    border: 'none',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Monitor
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="mt-1 flex items-center gap-2">
-          <span
-            className="text-[10.5px] font-medium"
-            style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-code)' }}
-          >
-            {pr.repoOwner}/{pr.repoName} #{pr.number}
-          </span>
-          <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-            ·
-          </span>
-          <div className="flex items-center gap-1">
-            <StatusIcon status={pr.overallStatus} color={statusColor} />
-            <span
-              className="text-[10.5px]"
-              style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-code)' }}
-            >
-              {checksLabel}
-            </span>
-          </div>
-          {pr.commentCount > 0 && (
-            <>
-              <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                ·
-              </span>
-              <div
-                className="flex items-center gap-0.5"
-                style={{ color: 'var(--color-text-tertiary)' }}
-              >
-                <CommentIcon />
-                <span className="text-[10.5px]">{pr.commentCount}</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Review badge */}
-      {review.label && (
-        <div className="mt-0.5">
-          <ReviewBadge label={review.label} colorVar={review.colorVar} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ReviewBadge({ label, colorVar }: { label: string; colorVar: string }) {
-  return (
-    <span
-      className="rounded-full px-[7px] py-[2px] text-[10px] font-semibold lowercase tracking-wide"
-      style={{
-        color: `var(${colorVar})`,
-        background: `color-mix(in srgb, var(${colorVar}) 8%, transparent)`,
-        border: `1px solid color-mix(in srgb, var(${colorVar}) 20%, transparent)`,
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function StatDot({
-  color,
-  count,
-  label,
-  pulse,
-}: {
-  color: string;
-  count: number;
-  label: string;
-  pulse?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{
-          background: color,
-          animation: pulse ? 'pulse 1.8s ease-in-out infinite' : 'none',
-          boxShadow: pulse ? `0 0 8px ${color}` : 'none',
-        }}
-      />
-      <span className="text-[11px] font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-        {count}
-      </span>
-      <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function IconButton({
-  title,
-  onClick,
-  children,
-}: {
-  title: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
-      style={{ color: 'var(--color-text-tertiary)' }}
-      title={title}
-      onClick={onClick}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.background = 'var(--color-icon-btn-hover)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.background = 'transparent';
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-// --- Inline SVG icons (small, no dependency on lucide) ---
-
-function StatusIcon({ status, color }: { status: string; color: string }) {
-  if (status === 'red') {
-    return (
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={color}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="m15 9-6 6M9 9l6 6" />
-      </svg>
-    );
-  }
-  if (status === 'yellow') {
-    return (
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={color}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    );
-  }
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-function CommentIcon() {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
+// --- Inline SVG-only icons (consumed by primitive IconButton via icon prop) ---
 
 function PanelRightOpenIcon() {
   return (
@@ -641,6 +416,20 @@ function PanelRightOpenIcon() {
       <rect width="18" height="18" x="3" y="3" rx="2" />
       <path d="M15 3v18" />
       <path d="m10 15-3-3 3-3" />
+    </svg>
+  );
+}
+
+function FocusBoltIcon() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
     </svg>
   );
 }
@@ -674,14 +463,4 @@ function bannerColor(severity: ToastPayload['severity']): string {
     default:
       return 'linear-gradient(90deg,#7c6af6,#5b45e8)';
   }
-}
-
-/** Deterministic color from author login */
-function avatarColor(login: string): string {
-  const colors = ['#7C6AF6', '#3BA68E', '#C7324F', '#B07D09', '#8250DF', '#0078D4'];
-  let hash = 0;
-  for (let i = 0; i < login.length; i++) {
-    hash = login.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length]!;
 }

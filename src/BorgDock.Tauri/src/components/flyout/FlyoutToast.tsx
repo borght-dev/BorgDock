@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Pill, type PillTone } from '@/components/shared/primitives';
 import type { ToastPayload } from './flyout-mode';
 import { TOAST_AUTOHIDE_MS } from './flyout-mode';
 
@@ -29,14 +30,17 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
   return (
     <div
       className="flex h-screen w-screen items-end justify-end"
+      // style: transparent background required for Tauri transparent-window overlay; padding in px avoids Tailwind rounding
       style={{ background: 'transparent', padding: 16 }}
     >
       <div className="flex w-[320px] flex-col gap-2">
         {queue.map((toast) => (
           <div
             key={toast.id}
+            data-toast=""
             data-testid={`flyout-toast-card-${toast.id}`}
             className="overflow-hidden rounded-[12px] border shadow-lg"
+            // style: flyout-shadow custom property — no Tailwind shadow utility maps to this design token
             style={{
               background: 'var(--color-surface)',
               borderColor: 'var(--color-strong-border)',
@@ -57,30 +61,24 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
             }}
           >
             <div
-              className="px-3 py-2 text-[11px] font-semibold text-white"
-              style={{ background: severityColor(toast.severity) }}
+              className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[var(--color-text-primary)]"
             >
-              {toast.title}
+              <Pill tone={severityTone(toast.severity)}>{toast.severity}</Pill>
+              <span>{toast.title}</span>
             </div>
-            <div className="px-3 py-2 text-[12px]" style={{ color: 'var(--color-text-primary)' }}>
+            <div className="px-3 py-2 text-[12px] text-[var(--color-text-primary)]">
               {toast.body}
             </div>
             {toast.actions.length > 0 && (
               <div
-                className="flex gap-1.5 border-t px-3 py-2"
-                style={{ borderColor: 'var(--color-subtle-border)' }}
+                className="flex gap-1.5 border-t px-3 py-2 border-[var(--color-subtle-border)]"
               >
                 {toast.actions.map((a) => (
                   <button
                     key={`${toast.id}-${a.action}`}
                     type="button"
                     onClick={() => onActionClick(toast, a.action, a.url)}
-                    className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
-                    style={{
-                      background: 'var(--color-surface-hover)',
-                      color: 'var(--color-text-secondary)',
-                      border: '1px solid var(--color-subtle-border)',
-                    }}
+                    className="rounded-md px-2.5 py-1 text-[11px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border border-[var(--color-subtle-border)]"
                   >
                     {a.label}
                   </button>
@@ -94,15 +92,16 @@ export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onExpire, onAct
   );
 }
 
-function severityColor(severity: ToastPayload['severity']): string {
+function severityTone(severity: ToastPayload['severity']): PillTone {
   switch (severity) {
     case 'error':
-      return 'linear-gradient(90deg,#dc2646,#b01834)';
+      return 'error';
     case 'warning':
-      return 'linear-gradient(90deg,#d97706,#b05800)';
+      return 'warning';
     case 'success':
-      return 'linear-gradient(90deg,#05966a,#046e4e)';
+      return 'success';
     case 'info':
-      return 'linear-gradient(90deg,#7c6af6,#5b45e8)';
+    default:
+      return 'neutral';
   }
 }

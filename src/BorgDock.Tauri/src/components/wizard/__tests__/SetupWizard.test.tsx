@@ -74,16 +74,16 @@ describe('SetupWizard', () => {
 
   it('renders step indicators', () => {
     const { container } = render(<SetupWizard />);
-    // There should be step indicator dots
-    const dots = container.querySelectorAll('.rounded-full');
-    expect(dots.length).toBeGreaterThanOrEqual(2);
+    // There should be step indicator dots (bd-dot spans)
+    const dots = container.querySelectorAll('.bd-dot');
+    expect(dots.length).toBeGreaterThanOrEqual(3);
   });
 
   it('has a disabled Next button initially (no auth validated)', () => {
     render(<SetupWizard />);
     const nextBtn = screen.getByText('Next');
     expect(nextBtn).toBeTruthy();
-    expect((nextBtn as HTMLButtonElement).disabled).toBe(true);
+    expect((nextBtn.closest('button') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('enables Next when PAT method has a token entered', () => {
@@ -93,7 +93,7 @@ describe('SetupWizard', () => {
     fireEvent.change(input, { target: { value: 'ghp_test123' } });
 
     const nextBtn = screen.getByText('Next');
-    expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
+    expect((nextBtn.closest('button') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('navigates to Repos step when Next is clicked', async () => {
@@ -151,9 +151,11 @@ describe('SetupWizard', () => {
     expect(screen.getByText('Connect to GitHub')).toBeTruthy();
   });
 
-  it('shows Finish button on the final step', async () => {
+  it('navigates to Appearance step on second Next click', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
-    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { owner: 'test', name: 'repo', localPath: '/path', isSelected: true },
+    ]);
 
     render(<SetupWizard />);
 
@@ -164,7 +166,73 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
+      expect(screen.getByText('Select Repositories')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Customize Appearance')).toBeTruthy();
+    });
+  });
+
+  it('shows Finish button on the Appearance step (final step)', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { owner: 'test', name: 'repo', localPath: '/path', isSelected: true },
+    ]);
+
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_test' },
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Select Repositories')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
       expect(screen.getByText('Finish')).toBeTruthy();
+    });
+  });
+
+  it('shows Sidebar Position and Theme pickers on Appearance step', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { owner: 'test', name: 'repo', localPath: '/path', isSelected: true },
+    ]);
+
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_test' },
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    // Wait for both the Repos step heading AND the discovered repo row —
+    // discover_repos resolves async, and clicking Next before it lands hits
+    // a disabled button on slow CI runners.
+    await waitFor(() => {
+      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('test/repo')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Sidebar Position')).toBeTruthy();
+      expect(screen.getByText('Theme')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'left' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'right' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'System' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Light' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Dark' })).toBeTruthy();
     });
   });
 
@@ -250,6 +318,13 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
+      expect(screen.getByText('Select Repositories')).toBeTruthy();
+    });
+
+    // Go to Appearance step
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
       expect(screen.getByText('Finish')).toBeTruthy();
     });
 
@@ -262,7 +337,7 @@ describe('SetupWizard', () => {
     });
   });
 
-  it('disables Finish when no repos are selected', async () => {
+  it('disables Next on Repos step when no repos are selected', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
 
@@ -275,8 +350,8 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      const finishBtn = screen.getByText('Finish');
-      expect((finishBtn as HTMLButtonElement).disabled).toBe(true);
+      const nextBtn = screen.getByText('Next');
+      expect((nextBtn.closest('button') as HTMLButtonElement).disabled).toBe(true);
     });
   });
 
@@ -314,7 +389,7 @@ describe('SetupWizard', () => {
     });
 
     const nextBtn = screen.getByText('Next');
-    expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
+    expect((nextBtn.closest('button') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('does not show Back button on first step', () => {
@@ -338,6 +413,58 @@ describe('SetupWizard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('myorg/myrepo')).toBeTruthy();
+    });
+  });
+
+  it('renders the wizard overlay with data-wizard-overlay attribute', () => {
+    const { container } = render(<SetupWizard />);
+    expect(container.querySelector('[data-wizard-overlay]')).toBeTruthy();
+  });
+
+  it('renders step container with data-wizard-step attribute', () => {
+    const { container } = render(<SetupWizard />);
+    expect(container.querySelector('[data-wizard-step="0"]')).toBeTruthy();
+  });
+
+  it('saves sidebarEdge and theme from Appearance step', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { owner: 'test', name: 'repo', localPath: '/path/repo', isSelected: true },
+    ]);
+
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
+      target: { value: 'ghp_test' },
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Select Repositories')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Sidebar Position')).toBeTruthy();
+    });
+
+    // Change sidebar to 'left' and theme to 'dark'
+    fireEvent.click(screen.getByRole('button', { name: 'left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
+    fireEvent.click(screen.getByText('Finish'));
+
+    const { saveSettings } = useSettingsStore.getState();
+    await waitFor(() => {
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ui: expect.objectContaining({
+            sidebarEdge: 'left',
+            theme: 'dark',
+          }),
+        }),
+      );
     });
   });
 });

@@ -11,6 +11,7 @@ import type {
   PullRequestCommit,
   PullRequestFileChange,
 } from '@/types';
+import { Button, Card, Pill } from '@/components/shared/primitives';
 import { DiffFileSection } from './diff/DiffFileSection';
 import { DiffFileTree } from './diff/DiffFileTree';
 import { DiffToolbar } from './diff/DiffToolbar';
@@ -295,39 +296,42 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
 
   if (loading) {
     return (
-      <div className="space-y-2 p-3">
+      <Card padding="md" className="m-3 space-y-2">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="space-y-1">
             <div className="h-6 w-full rounded bg-[var(--color-surface-raised)] animate-pulse" />
             <div className="h-16 w-full rounded bg-[var(--color-surface-raised)] animate-pulse opacity-50" />
           </div>
         ))}
-      </div>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 text-center">
+      <Card padding="md" className="m-3 text-center">
         <p className="text-xs text-[var(--color-status-red)] mb-2">{error}</p>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => {
             setError(null);
             setRetryKey((k) => k + 1);
           }}
-          className="px-3 py-1 text-[10px] rounded bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
         >
           Retry
-        </button>
-      </div>
+        </Button>
+      </Card>
     );
   }
 
   if (files.length === 0) {
     return (
-      <p className="p-4 text-center text-xs text-[var(--color-text-muted)]">
-        No files changed in this pull request.
-      </p>
+      <Card padding="md" className="m-3 text-center">
+        <p className="text-xs text-[var(--color-text-muted)]">
+          No files changed in this pull request.
+        </p>
+      </Card>
     );
   }
 
@@ -353,9 +357,12 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
 
       {/* Large PR warning */}
       {files.length > 300 && (
-        <div className="px-3 py-1.5 text-[10px] text-[var(--color-status-yellow)] bg-[var(--color-warning-badge-bg)] border-b border-[var(--color-diff-border)]">
-          This PR has {files.length} changed files. Large PRs may be slow.
-        </div>
+        <Card padding="sm" className="m-3 flex items-center gap-2">
+          <Pill tone="warning">{files.length} files</Pill>
+          <span className="text-[10px] text-[var(--color-status-yellow)]">
+            This PR has {files.length} changed files. Large PRs may be slow.
+          </span>
+        </Card>
       )}
 
       {/* Main content: file tree + diff pane */}
@@ -363,8 +370,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
         {/* File tree sidebar */}
         {showFileTree && (
           <div
-            className="shrink-0"
-            style={{ width: '220px', minWidth: '160px', maxWidth: '320px' }}
+            className="shrink-0 w-[220px] min-w-[160px] max-w-[320px]"
           >
             <DiffFileTree
               files={files}

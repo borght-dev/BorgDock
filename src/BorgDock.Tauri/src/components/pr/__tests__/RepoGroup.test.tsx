@@ -119,8 +119,10 @@ describe('RepoGroup', () => {
   });
 
   it('renders the repo key in the header', () => {
-    render(<RepoGroup repoKey="test/repo" prs={[makePr(1)]} />);
-    expect(screen.getByText('test/repo')).toBeInTheDocument();
+    const { container } = render(<RepoGroup repoKey="test/repo" prs={[makePr(1)]} />);
+    // The header is the only <button> at this layer; PR cards use a div interactively.
+    const header = container.querySelector('button');
+    expect(header?.textContent).toContain('test/repo');
   });
 
   it('shows the PR count badge', () => {
@@ -135,30 +137,29 @@ describe('RepoGroup', () => {
   });
 
   it('shows failing count badge when PRs are failing', () => {
-    render(
+    const { container } = render(
       <RepoGroup
         repoKey="test/repo"
         prs={[makePr(1, 'red'), makePr(2, 'red'), makePr(3, 'green')]}
       />,
     );
-    // The header button should contain a failing count badge
-    const headerButton = screen.getByText('test/repo').closest('button')!;
+    const headerButton = container.querySelector('button')!;
     const badges = headerButton.querySelectorAll('[class*="tabular-nums"]');
     // Should have 2 badges in header: failing count and total count
     expect(badges.length).toBe(2);
   });
 
   it('does not show failing badge when no PRs are failing', () => {
-    render(<RepoGroup repoKey="test/repo" prs={[makePr(1, 'green')]} />);
-    // Only one badge: the count badge (1). No failing badge.
-    const headerButton = screen.getByText('test/repo').closest('button')!;
+    const { container } = render(<RepoGroup repoKey="test/repo" prs={[makePr(1, 'green')]} />);
+    // Only one badge: the count Pill. No failing badge.
+    const headerButton = container.querySelector('button')!;
     const badges = headerButton.querySelectorAll('[class*="tabular-nums"]');
     expect(badges).toHaveLength(1);
   });
 
   it('has a clickable header button', () => {
-    render(<RepoGroup repoKey="test/repo" prs={[makePr(1)]} />);
-    const header = screen.getByText('test/repo').closest('button');
+    const { container } = render(<RepoGroup repoKey="test/repo" prs={[makePr(1)]} />);
+    const header = container.querySelector('button');
     expect(header).toBeInTheDocument();
     // Click should not throw
     fireEvent.click(header!);

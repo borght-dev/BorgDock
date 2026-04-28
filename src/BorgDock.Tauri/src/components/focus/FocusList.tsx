@@ -56,7 +56,11 @@ export function FocusList() {
       {focusPrs.map((pr) => {
         const score = priorityScores.get(pr.pullRequest.number);
         return (
-          <div key={pr.pullRequest.number} className="animate-[fadeSlideIn_0.2s_ease-out]">
+          <div
+            key={pr.pullRequest.number}
+            data-focus-item=""
+            className="animate-[fadeSlideIn_0.2s_ease-out]"
+          >
             <PullRequestCard
               prWithChecks={pr}
               isFocused={selectedPrNumber === pr.pullRequest.number}

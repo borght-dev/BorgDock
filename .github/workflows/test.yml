@@ -1,0 +1,80 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel an in-progress run when a newer one is queued for the same ref
+# (PR push, master push). Master keeps its own group via refs/heads/master,
+# so master commits don't cancel each other across runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vitest:
+    name: vitest (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: src/BorgDock.Tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/BorgDock.Tauri/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --reporter=verbose
+
+  playwright:
+    name: playwright (${{ matrix.os }})
+    # Non-blocking: e2e suite has accumulated failures we haven't triaged yet.
+    # Keep the signal in the CI summary so regressions are visible, but don't
+    # block PRs on it until the suite is brought back to green.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            project: webview-mac
+          - os: windows-latest
+            project: webview-win
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: src/BorgDock.Tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/BorgDock.Tauri/package-lock.json
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+      - run: npm run test:e2e -- --project=${{ matrix.project }}
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.os }}
+          path: src/BorgDock.Tauri/playwright-report
+          retention-days: 14
+      - name: Upload visual diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs-${{ matrix.os }}
+          path: src/BorgDock.Tauri/test-results
+          retention-days: 14

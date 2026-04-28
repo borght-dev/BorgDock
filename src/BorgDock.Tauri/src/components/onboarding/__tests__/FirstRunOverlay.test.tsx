@@ -49,4 +49,9 @@ describe('FirstRunOverlay', () => {
     expect(screen.getByText('New feature available')).toBeTruthy();
     expect(screen.getByText('Try Now')).toBeTruthy();
   });
+
+  it('exposes data-first-run-overlay attribute', () => {
+    const { container } = render(<FirstRunOverlay {...defaultProps} />);
+    expect(container.querySelector('[data-first-run-overlay]')).toBeInTheDocument();
+  });
 });

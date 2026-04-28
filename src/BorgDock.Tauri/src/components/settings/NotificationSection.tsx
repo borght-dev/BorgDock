@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNotificationStore } from '@/stores/notification-store';
 import type { InAppNotification, NotificationSettings, NotificationSeverity } from '@/types';
+import { ToggleSwitch } from './_ToggleSwitch';
 
 const TEST_NOTIFICATIONS: { severity: NotificationSeverity; notification: InAppNotification }[] = [
   {
@@ -78,24 +79,28 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
     onChange({ ...notifications, ...partial });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-settings-section="notifications">
       <ToggleRow
         label="Check status changes"
+        notificationType="toastOnCheckStatusChange"
         checked={notifications.toastOnCheckStatusChange}
         onChange={(v) => update({ toastOnCheckStatusChange: v })}
       />
       <ToggleRow
         label="New pull requests"
+        notificationType="toastOnNewPR"
         checked={notifications.toastOnNewPR}
         onChange={(v) => update({ toastOnNewPR: v })}
       />
       <ToggleRow
         label="Review updates"
+        notificationType="toastOnReviewUpdate"
         checked={notifications.toastOnReviewUpdate}
         onChange={(v) => update({ toastOnReviewUpdate: v })}
       />
       <ToggleRow
         label="PR becomes mergeable"
+        notificationType="toastOnMergeable"
         checked={notifications.toastOnMergeable}
         onChange={(v) => update({ toastOnMergeable: v })}
       />
@@ -104,6 +109,7 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
 
       <ToggleRow
         label="Only notify for my PRs"
+        notificationType="onlyMyPRs"
         checked={notifications.onlyMyPRs}
         onChange={(v) => update({ onlyMyPRs: v })}
       />
@@ -115,6 +121,7 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
       </div>
       <ToggleRow
         label="Nudge for pending reviews"
+        notificationType="reviewNudgeEnabled"
         checked={notifications.reviewNudgeEnabled}
         onChange={(v) => update({ reviewNudgeEnabled: v })}
       />
@@ -135,6 +142,7 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
           </div>
           <ToggleRow
             label="Escalate urgency over time"
+            notificationType="reviewNudgeEscalation"
             checked={notifications.reviewNudgeEscalation}
             onChange={(v) => update({ reviewNudgeEscalation: v })}
           />
@@ -150,28 +158,19 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
 
 function ToggleRow({
   label,
+  notificationType,
   checked,
   onChange,
 }: {
   label: string;
+  notificationType: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between" data-notification-type={notificationType}>
       <span className="text-xs text-[var(--color-text-primary)]">{label}</span>
-      <button
-        className={`h-4 w-7 rounded-full transition-colors relative shrink-0 ${
-          checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-filter-chip-bg)]'
-        }`}
-        onClick={() => onChange(!checked)}
-      >
-        <span
-          className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? 'left-3.5' : 'left-0.5'
-          }`}
-        />
-      </button>
+      <ToggleSwitch checked={checked} onChange={onChange} aria-label={label} />
     </div>
   );
 }
@@ -203,6 +202,7 @@ function TestNotificationRow() {
             key={entry.severity}
             title={`Send ${entry.severity} notification`}
             className="h-5 w-5 rounded-md text-[9px] font-bold transition-all duration-150 hover:scale-110"
+            // style: severity-driven bg/fg colors + color-mix border — all vary on lastFired state and entry.severity
             style={{
               background:
                 lastFired === entry.severity

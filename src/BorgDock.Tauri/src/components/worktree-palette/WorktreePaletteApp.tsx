@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
-import { openPath } from '@tauri-apps/plugin-opener';
+import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import '@/styles/worktree-palette.css';
+import { IconButton, Kbd, Pill } from '@/components/shared/primitives';
 import type { AppSettings, RepoSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 
@@ -91,118 +91,153 @@ function WorktreeRow({
     <div
       ref={rowRef}
       data-palette-row
-      className={`wt-row${isSelected ? ' wt-row--selected' : ''}${isMain ? ' wt-row--main' : ''}`}
+      data-worktree-row
+      data-tree-path={wt.path}
+      className={clsx(
+        'bd-wt-row',
+        isSelected && 'bd-wt-row--selected',
+        isMain && 'bd-wt-row--main',
+      )}
       onClick={onOpenTerminal}
       onMouseEnter={onSelect}
     >
       {isMain ? (
-        <span className="wt-star-placeholder" aria-hidden />
-      ) : (
-        <button
-          className={`wt-star-btn${isFavorite ? ' wt-star-btn--active' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite();
-          }}
-          title={isFavorite ? 'Unmark as favorite' : 'Mark as favorite'}
-          aria-pressed={isFavorite}
-        >
+        <span className="bd-wt-main-icon" aria-hidden>
           <svg
-            width="13"
-            height="13"
+            width="14"
+            height="14"
             viewBox="0 0 16 16"
-            fill={isFavorite ? 'currentColor' : 'none'}
+            fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
+            <path d="M4 2v12M12 8c0-3-2-4-4-4" />
+            <circle cx="4" cy="14" r="1.6" fill="currentColor" />
+            <circle cx="4" cy="2" r="1.6" fill="currentColor" />
+            <circle cx="12" cy="8" r="1.6" fill="currentColor" />
           </svg>
-        </button>
+        </span>
+      ) : (
+        <IconButton
+          size={22}
+          active={isFavorite}
+          tooltip={isFavorite ? 'Unmark as favorite' : 'Mark as favorite'}
+          aria-pressed={isFavorite}
+          className="bd-wt-star-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          icon={
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill={isFavorite ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
+            </svg>
+          }
+        />
       )}
-      <div className="wt-row-body">
-        <div className="wt-row-primary">
-          <span className={`wt-branch${hasBranch ? '' : ' wt-branch--detached'}`}>
+      <div className="bd-wt-row-body">
+        <div className="bd-wt-row-primary">
+          <span className={clsx('bd-wt-branch', !hasBranch && 'bd-wt-branch--detached')}>
             {hasBranch ? wt.branchName : '(detached)'}
           </span>
-          {isMain && <span className="wt-main-badge">main</span>}
+          {isMain && (
+            <Pill tone="success" className="text-[9px] uppercase tracking-wider">
+              main
+            </Pill>
+          )}
         </div>
-        <div className="wt-row-secondary">
-          <span className="wt-folder">{folder}</span>
+        <div className="bd-wt-row-secondary">
+          <span className="bd-wt-folder">{folder}</span>
           {parent && (
-            <span className="wt-parent" title={parent}>
+            <span className="bd-wt-parent" title={parent}>
               {parent}
             </span>
           )}
         </div>
       </div>
-      <div className="wt-row-actions">
-        <button
-          className="wt-action-btn"
+      <div className="bd-wt-row-actions">
+        <IconButton
+          size={26}
+          tooltip="Open terminal here"
+          data-action="open-terminal"
           onClick={(e) => {
             e.stopPropagation();
             onOpenTerminal();
           }}
-          title="Open terminal here"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 5l4 3-4 3" />
-            <path d="M9 12h4" />
-          </svg>
-        </button>
-        <button
-          className="wt-action-btn"
+          icon={
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 5l4 3-4 3" />
+              <path d="M9 12h4" />
+            </svg>
+          }
+        />
+        <IconButton
+          size={26}
+          tooltip="Open folder"
+          data-action="open-folder"
           onClick={(e) => {
             e.stopPropagation();
             onOpenFolder();
           }}
-          title="Open folder"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5H3A1 1 0 002 4.5z" />
-          </svg>
-        </button>
-        <button
-          className="wt-action-btn"
+          icon={
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5H3A1 1 0 002 4.5z" />
+            </svg>
+          }
+        />
+        <IconButton
+          size={26}
+          tooltip="Open in editor"
+          data-action="open-editor"
           onClick={(e) => {
             e.stopPropagation();
             onOpenEditor();
           }}
-          title="Open in editor"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
-            <path d="M9.5 3.5l3 3" />
-          </svg>
-        </button>
+          icon={
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
+              <path d="M9.5 3.5l3 3" />
+            </svg>
+          }
+        />
       </div>
     </div>
   );
@@ -219,7 +254,6 @@ export function WorktreePaletteApp() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-
   const searchRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
@@ -298,7 +332,7 @@ export function WorktreePaletteApp() {
       if (cancelled) return;
 
       try {
-        const contentEl = document.querySelector('.wt-content') as HTMLElement | null;
+        const contentEl = document.querySelector('.bd-wt-content') as HTMLElement | null;
         if (!contentEl) return;
 
         const win = getCurrentWindow();
@@ -387,7 +421,7 @@ export function WorktreePaletteApp() {
   }, []);
 
   const handleOpenFolder = useCallback((path: string) => {
-    openPath(path).catch(console.debug); /* fire-and-forget */
+    invoke('reveal_in_file_manager', { path }).catch(console.debug); /* fire-and-forget */
   }, []);
 
   const handleOpenEditor = useCallback((path: string) => {
@@ -489,11 +523,11 @@ export function WorktreePaletteApp() {
   let flatIndex = 0;
 
   return (
-    <div className="wt-palette" onKeyDown={handleKeyDown}>
+    <div className="bd-wt-palette" onKeyDown={handleKeyDown}>
       {/* Titlebar */}
-      <div className="wt-titlebar" data-tauri-drag-region>
-        <div className="wt-titlebar-left">
-          <div className="wt-logo">
+      <div className="bd-wt-titlebar" data-tauri-drag-region>
+        <div className="bd-wt-titlebar-left">
+          <div className="bd-wt-logo">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
               <path
                 d="M4 2v12M12 8c0-3-2-4-4-4"
@@ -506,72 +540,77 @@ export function WorktreePaletteApp() {
               <circle cx="12" cy="8" r="1.6" fill="currentColor" />
             </svg>
           </div>
-          <span className="wt-title">WORKTREES</span>
-          <span className="wt-count">{filtered.length}</span>
+          <span className="bd-wt-title">WORKTREES</span>
+          <Pill tone="ghost">{filtered.length}</Pill>
         </div>
-        <div className="wt-titlebar-right">
-          <button
-            className={`wt-btn-icon${favoritesOnly ? ' wt-btn-icon--active' : ''}`}
-            onClick={handleToggleFavoritesOnly}
-            title={favoritesOnly ? 'Showing favorites only' : 'Show favorites only'}
+        <div className="bd-wt-titlebar-right">
+          <IconButton
+            size={26}
+            active={favoritesOnly}
+            tooltip={favoritesOnly ? 'Showing favorites only' : 'Show favorites only'}
             aria-pressed={favoritesOnly}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill={favoritesOnly ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
-            </svg>
-          </button>
-          <button
-            className={`wt-btn-icon${refreshing ? ' wt-spin' : ''}`}
+            onClick={handleToggleFavoritesOnly}
+            icon={
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill={favoritesOnly ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
+              </svg>
+            }
+          />
+          <IconButton
+            size={26}
+            tooltip="Refresh"
             onClick={handleRefresh}
-            title="Refresh"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" />
-              <path d="M12.5 1v3.5H9M3.5 15v-3.5H7" />
-            </svg>
-          </button>
-          <button
-            className="wt-btn-icon"
+            icon={
+              <svg
+                className={refreshing ? 'animate-spin' : undefined}
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" />
+                <path d="M12.5 1v3.5H9M3.5 15v-3.5H7" />
+              </svg>
+            }
+          />
+          <IconButton
+            size={26}
+            tooltip="Close (Esc)"
             onClick={() => getCurrentWindow().close()}
-            title="Close (Esc)"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            >
-              <path d="m4 4 8 8M12 4l-8 8" />
-            </svg>
-          </button>
+            icon={
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              >
+                <path d="m4 4 8 8M12 4l-8 8" />
+              </svg>
+            }
+          />
         </div>
       </div>
 
       {/* Search */}
-      <div className="wt-search-wrap">
+      <div className="bd-wt-search-wrap relative">
         <svg
-          className="wt-search-icon"
+          className="bd-wt-search-icon absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
           width="13"
           height="13"
           viewBox="0 0 16 16"
@@ -579,13 +618,14 @@ export function WorktreePaletteApp() {
           stroke="currentColor"
           strokeWidth="1.6"
           strokeLinecap="round"
+          aria-hidden
         >
           <circle cx="7" cy="7" r="4.5" />
           <path d="m10.5 10.5 3 3" />
         </svg>
         <input
           ref={searchRef}
-          className="wt-search"
+          className="bd-input bd-wt-search w-full px-[33px] py-2 text-[13px] rounded-lg border bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)] outline-none disabled:opacity-55"
           placeholder="Filter by branch, folder, or repo..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -593,7 +633,8 @@ export function WorktreePaletteApp() {
         />
         {query && (
           <button
-            className="wt-search-clear"
+            type="button"
+            className="bd-wt-search-clear absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center border-none bg-transparent text-[var(--color-text-muted)] cursor-pointer rounded hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
             onClick={() => {
               setQuery('');
               searchRef.current?.focus();
@@ -606,35 +647,35 @@ export function WorktreePaletteApp() {
       </div>
 
       {/* Content */}
-      <div className="wt-content">
+      <div className="bd-wt-content">
         {loading && (
-          <div className="wt-loading">
-            <span className="wt-spinner" />
+          <div className="bd-wt-loading">
+            <span className="bd-wt-spinner" />
             <span>Scanning worktrees...</span>
           </div>
         )}
 
         {!loading && allEntries.length === 0 && errors.size === 0 && (
-          <div className="wt-empty">
-            <span className="wt-empty-title">No worktrees configured</span>
-            <span className="wt-empty-detail">
+          <div className="bd-wt-empty">
+            <span className="bd-wt-empty-title">No worktrees configured</span>
+            <span className="bd-wt-empty-detail">
               Set a worktree base path under Settings &rarr; Repos
             </span>
           </div>
         )}
 
         {!loading && allEntries.length > 0 && filtered.length === 0 && query && (
-          <div className="wt-empty">
-            <span className="wt-empty-title">
+          <div className="bd-wt-empty">
+            <span className="bd-wt-empty-title">
               No worktrees matching &lsquo;<strong>{query}</strong>&rsquo;
             </span>
           </div>
         )}
 
         {!loading && allEntries.length > 0 && filtered.length === 0 && !query && favoritesOnly && (
-          <div className="wt-empty">
-            <span className="wt-empty-title">No favorite worktrees</span>
-            <span className="wt-empty-detail">
+          <div className="bd-wt-empty">
+            <span className="bd-wt-empty-title">No favorite worktrees</span>
+            <span className="bd-wt-empty-detail">
               Click the star on any worktree to mark it as a favorite
             </span>
           </div>
@@ -642,14 +683,16 @@ export function WorktreePaletteApp() {
 
         {!loading &&
           [...grouped.entries()].map(([repoKey, entries]) => (
-            <div key={repoKey} className="wt-group">
-              <div className="wt-group-header">
-                <span className="wt-group-name">{repoKey}</span>
-                <span className="wt-group-count">{entries.length}</span>
-                {errors.has(repoKey) && <span className="wt-group-error">error</span>}
+            <div key={repoKey} className="bd-wt-group">
+              <div className="bd-wt-group-header">
+                <span className="bd-wt-group-name">{repoKey}</span>
+                <Pill tone="ghost">{entries.length}</Pill>
+                {errors.has(repoKey) && <Pill tone="error">error</Pill>}
               </div>
-              {errors.has(repoKey) && <div className="wt-error-detail">{errors.get(repoKey)}</div>}
-              <div className="wt-list">
+              {errors.has(repoKey) && (
+                <div className="bd-wt-error-detail">{errors.get(repoKey)}</div>
+              )}
+              <div className="bd-wt-list">
                 {entries.map((entry) => {
                   const idx = flatIndex++;
                   return (
@@ -675,19 +718,19 @@ export function WorktreePaletteApp() {
       </div>
 
       {/* Footer */}
-      <div className="wt-footer">
-        <span className="wt-hint">
-          <kbd className="wt-kbd">{'\u2191\u2193'}</kbd>
+      <div className="bd-wt-footer">
+        <span className="bd-wt-hint">
+          <Kbd>{'\u2191\u2193'}</Kbd>
           navigate
         </span>
-        <span className="wt-sep">{'\u00B7'}</span>
-        <span className="wt-hint">
-          <kbd className="wt-kbd">{'\u23CE'}</kbd>
+        <span className="bd-wt-sep">{'\u00B7'}</span>
+        <span className="bd-wt-hint">
+          <Kbd>{'\u23CE'}</Kbd>
           open
         </span>
-        <span className="wt-sep">{'\u00B7'}</span>
-        <span className="wt-hint">
-          <kbd className="wt-kbd">esc</kbd>
+        <span className="bd-wt-sep">{'\u00B7'}</span>
+        <span className="bd-wt-hint">
+          <Kbd>esc</Kbd>
           close
         </span>
       </div>

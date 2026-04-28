@@ -152,11 +152,11 @@ export function FileViewerApp() {
         cycleBaseline();
       }
     },
-    [effectiveMode, cycleBaseline],
+    [effectiveMode, cycleBaseline, setViewMode],
   );
 
   return (
-    <div className="fv-root" onKeyDown={handleKey} tabIndex={-1}>
+    <div className="bd-fv-root" onKeyDown={handleKey} tabIndex={-1}>
       <FileViewerToolbar
         path={path}
         content={contentState.kind === 'ok' ? contentState.content : null}
@@ -169,7 +169,7 @@ export function FileViewerApp() {
         inRepo={inRepo}
         defaultBranchLabel={defaultBranchLabel}
       />
-      <div className="fv-body">
+      <div className="bd-fv-body">
         {renderBody({
           effectiveMode,
           contentState,
@@ -198,16 +198,16 @@ function renderBody(args: RenderBodyArgs) {
   const { effectiveMode, contentState, diffState, hunks, path, viewMode, syntaxHighlights } = args;
 
   if (effectiveMode === 'content') {
-    if (contentState.kind === 'loading') return <div className="fv-empty">Loading…</div>;
-    if (contentState.kind === 'error') return <div className="fv-empty">{contentState.message}</div>;
+    if (contentState.kind === 'loading') return <div className="bd-fv-empty">Loading…</div>;
+    if (contentState.kind === 'error') return <div className="bd-fv-empty">{contentState.message}</div>;
     return <CodeView path={path} content={contentState.content} />;
   }
 
-  if (diffState.kind === 'loading') return <div className="fv-empty">Loading diff…</div>;
-  if (diffState.kind === 'error') return <div className="fv-empty">{diffState.message}</div>;
-  if (!diffState.inRepo) return <div className="fv-empty">Not in a git repository</div>;
+  if (diffState.kind === 'loading') return <div className="bd-fv-empty">Loading diff…</div>;
+  if (diffState.kind === 'error') return <div className="bd-fv-empty">{diffState.message}</div>;
+  if (!diffState.inRepo) return <div className="bd-fv-empty">Not in a git repository</div>;
   if (hunks.length === 0) {
-    return <div className="fv-empty">No changes vs {diffState.baselineRef}</div>;
+    return <div className="bd-fv-empty">No changes vs {diffState.baselineRef}</div>;
   }
   return viewMode === 'unified' ? (
     <UnifiedDiffView hunks={hunks} syntaxHighlights={syntaxHighlights} />

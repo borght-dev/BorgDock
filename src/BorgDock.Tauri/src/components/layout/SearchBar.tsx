@@ -34,6 +34,7 @@ export function SearchBar() {
 
   return (
     <div className="px-2.5 pb-2 pt-1">
+      {/* style: focus-state-driven borderColor + color-mix boxShadow — both vary on isFocused boolean */}
       <div
         className="relative flex items-center rounded-lg border transition-all duration-200"
         style={{
@@ -45,6 +46,7 @@ export function SearchBar() {
         }}
       >
         {/* Search icon */}
+        {/* style: focus-state-driven icon color — varies on isFocused boolean */}
         <svg
           className="pointer-events-none absolute left-2.5"
           style={{ color: isFocused ? 'var(--color-accent)' : 'var(--color-text-ghost)' }}

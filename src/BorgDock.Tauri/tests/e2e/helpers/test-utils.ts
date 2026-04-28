@@ -9,9 +9,19 @@ export const TAURI_MOCK_SCRIPT = `
   // Mock __TAURI_INTERNALS__ to prevent "not running in Tauri" errors
   window.__TAURI_INTERNALS__ = {
     invoke: async (cmd, args) => {
-      console.log('[mock] invoke', cmd, args);
+      // Do NOT log plugin:log|log invocations — the frontend's
+      // attachConsoleBridge (services/logger.ts) patches console.log to
+      // proxy through plugin-log, so logging here would re-enter the
+      // mock and recurse until the page crashes.
+      if (cmd !== 'plugin:log|log') {
+        console.log('[mock] invoke', cmd, args);
+      }
 
       switch (cmd) {
+        case 'plugin:log|log':
+          // Drop plugin-log calls on the floor; they are fire-and-forget
+          // in real Tauri and have no return value.
+          return null;
         case 'load_settings':
           return window.__BORGDOCK_MOCK_SETTINGS__ || {
             setupComplete: false,
@@ -19,10 +29,11 @@ export const TAURI_MOCK_SCRIPT = `
             repos: [],
             ui: {
               sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380,
-              theme: 'dark', globalHotkey: 'Ctrl+Shift+P', editorCommand: 'code',
-              runAtStartup: false,
+              theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Shift+F',
+              editorCommand: 'code', runAtStartup: false,
             },
             notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
+            claudeApi: { apiKey: '' },
             claudeCode: { defaultPostFixAction: 'commitAndNotify' },
             claudeReview: { botUsername: 'claude-code' },
             updates: { autoCheckEnabled: false, autoDownload: false },
@@ -44,8 +55,119 @@ export const TAURI_MOCK_SCRIPT = `
         case 'init_cache':
           return null;
 
+        case 'open_pr_detail_window':
+          // In real Tauri this opens a separate WebviewWindow. The Playwright
+          // mock can't create a Tauri window, so we emit a real browser popup
+          // (page.waitForEvent('popup') consumes this) using the Vite-served
+          // pr-detail.html so the URL assertion holds.
+          try {
+            const url = '/pr-detail.html?owner=' + encodeURIComponent(args?.owner ?? '') +
+              '&repo=' + encodeURIComponent(args?.repo ?? '') +
+              '&number=' + (args?.number ?? '');
+            window.open(url, '_blank');
+          } catch {
+            // popup blockers etc. - swallow; the spec tolerates "no popup"
+          }
+          return null;
+
         case 'check_github_auth':
           return 'testuser';
+
+        case 'plugin:app|version':
+          // Used by @tauri-apps/api/app's getVersion(). Returning the latest
+          // RELEASES entry's version unblocks WhatsNewApp's "ready" gate so
+          // the release accordion mounts.
+          return '1.1.0';
+
+        case 'plugin:event|listen':
+        case 'plugin:event|unlisten':
+          // onMoved() / listen() callers guard the returned unlisten fn with
+          // unlisten?.() so returning null is safe (see PaletteApp.tsx:97).
+          return null;
+
+        case 'plugin:window|inner_size':
+          // Real Tauri returns a PhysicalSize { type: 'Physical', width, height }.
+          return { type: 'Physical', width: 800, height: 600 };
+
+        case 'plugin:window|scale_factor':
+          return 1;
+
+        case 'plugin:window|current_monitor':
+          return {
+            name: 'mock-monitor',
+            size: { type: 'Physical', width: 1440, height: 900 },
+            scaleFactor: 1,
+            position: { type: 'Physical', x: 0, y: 0 },
+          };
+
+        case 'plugin:window|set_size':
+          return null;
+
+        case 'plugin:window|close':
+          // Browsers may block window.close() on non-script-opened windows; that's
+          // fine — the test side effect is "command was invoked", not "window
+          // actually closed".
+          return null;
+
+        case 'plugin:window|start_dragging':
+          return null;
+
+        case 'palette_ready':
+        case 'open_in_terminal':
+        case 'open_in_editor':
+        case 'open_file_viewer_window':
+          return null;
+
+        case 'list_root_files':
+          // FileIndexState / use-file-index.ts: { entries: FileEntry[], truncated: boolean }
+          // FileEntry fields are not camelCase-renamed in the Rust struct, so rel_path stays as-is.
+          return {
+            entries: [
+              { rel_path: 'src/quote/footer.tsx', size: 120 },
+              { rel_path: 'src/App.tsx', size: 840 },
+              { rel_path: 'src/main.ts', size: 200 },
+            ],
+            truncated: false,
+          };
+
+        case 'read_text_file':
+          // FileViewerApp.tsx: invoke<string>('read_text_file', { path })
+          // The Rust command returns Result<String, ReadFileError>; on success Tauri
+          // serialises that as the bare string (not wrapped in { kind, content }).
+          // Use \\n (double-escaped) so the TS template literal emits literal \\n
+          // into the injected JS, where it is interpreted as a newline escape.
+          return "import * as React from 'react';\\nexport function Footer() {\\n  return <footer>\\u00a9 2026</footer>;\\n}\\n";
+
+        case 'git_file_diff':
+          // FileViewerApp.tsx: invoke<DiffOutput>('git_file_diff', { path, baseline })
+          // FileDiffOutput is rename_all = "camelCase": { patch, baselineRef, inRepo }
+          return { patch: '', baselineRef: 'HEAD', inRepo: false };
+
+        case 'search_content':
+          // use-content-search.ts: invoke<ContentFileResult[]>('search_content', { root, pattern, cancel_token })
+          // ContentFileResult fields are NOT camelCase-renamed: rel_path, match_count, matches
+          return [];
+
+        case 'git_changed_files':
+          // ChangesSection.tsx: invoke<ChangedFilesOutput>('git_changed_files', { root })
+          // ChangedFilesOutput is rename_all = "camelCase": { local, vsBase, baseRef, inRepo }
+          return { local: [], vsBase: [], baseRef: 'HEAD', inRepo: false };
+
+        case 'execute_sql_query':
+          // Synthetic result so sql.spec.ts's "results table renders after mock
+          // run" can assert on the [data-sql-results-table] tbody.
+          return {
+            resultSets: [
+              {
+                columns: ['id', 'name'],
+                rows: [['1', 'alice'], ['2', 'bob']],
+                rowCount: 2,
+                truncated: false,
+              },
+            ],
+            executionTimeMs: 1,
+            totalRowCount: 2,
+          };
 
         case 'discover_repos':
           return [
@@ -60,6 +182,42 @@ export const TAURI_MOCK_SCRIPT = `
         case 'get_cached_prs':
           return [];
 
+        case 'list_worktrees_bare':
+          return [
+            { path: '/home/user/repos/test-repo/.worktrees/feat-x', branchName: 'feat-x', isMainWorktree: false },
+            { path: '/home/user/repos/test-repo', branchName: 'main', isMainWorktree: true },
+          ];
+
+        case 'list_worktree_changes':
+          return {
+            vsHead: [
+              { path: 'src/a.ts', previousPath: null, status: 'modified', additions: 3, deletions: 1, isBinary: false, isSubmodule: false },
+              { path: 'src/new.ts', previousPath: null, status: 'added', additions: 12, deletions: 0, isBinary: false, isSubmodule: false },
+            ],
+            vsBase: [
+              { path: 'README.md', previousPath: null, status: 'modified', additions: 1, deletions: 1, isBinary: false, isSubmodule: false },
+            ],
+            baseBranch: 'main',
+            baseBranchSource: 'origin-head',
+            detachedHead: false,
+            mergeBaseUnavailable: false,
+          };
+
+        case 'diff_worktree_vs_head':
+        case 'diff_worktree_vs_base':
+          return {
+            filePath: args?.filePath ?? 'src/a.ts',
+            previousPath: null,
+            hunks: [{
+              header: '@@ -1 +1,2 @@', oldStart: 1, oldCount: 1, newStart: 1, newCount: 2,
+              lines: [
+                { kind: 'context', content: 'a', oldLineNumber: 1, newLineNumber: 1 },
+                { kind: 'add', content: 'b', oldLineNumber: null, newLineNumber: 2 },
+              ],
+            }],
+            binary: null, isSubmodule: false,
+          };
+
         default:
           console.warn('[mock] unhandled invoke:', cmd);
           return null;
@@ -70,6 +228,139 @@ export const TAURI_MOCK_SCRIPT = `
 
   // Prevent Tauri event listeners from throwing
   window.__TAURI_INTERNALS__.metadata = { currentWindow: { label: 'main' }, currentWebview: { label: 'main' }, windows: [] };
+
+  // Intercept fetch to api.github.com so the init flow ('auth' → 'discover-repos' →
+  // 'fetch-prs' → 'fetch-checks') doesn't 401 against real GitHub. Without this
+  // the splash screen stalls on "GitHub API authentication failed (401)" and
+  // every spec fails at waitForAppReady. Routes return synthetic empty lists so
+  // the main sidebar renders; seedPrStore can override after init completes.
+  (function mockGitHubFetch() {
+    const realFetch = window.fetch.bind(window);
+    const jsonOk = (body) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '4999',
+          'X-RateLimit-Limit': '5000',
+          'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + 3600),
+        },
+      });
+    window.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input.url || String(input);
+      if (/^https:\\/\\/api\\.github\\.com\\//.test(url)) {
+        if (/\\/graphql\\b/.test(url)) return jsonOk({ data: {} });
+        // Specific fixtures for PR #714 used by diff-viewer.spec.ts.
+        // The PR object is shared between the list (pulls?state=open) and the
+        // detail (pulls/714) endpoints — both need the same shape so that
+        // PRDetailApp can find the PR in the list and then hydrate its details.
+        // These routes only activate when __BORGDOCK_PR_DETAIL__ is seeded so
+        // other specs (pr-list, pr-detail, etc.) that hit the same endpoints
+        // keep receiving the existing empty-list behaviour.
+        const pr714Detail = (window).__BORGDOCK_PR_DETAIL__;
+        if (pr714Detail) {
+          const pr714 = {
+            number: 714, state: 'open', title: 'Add quote footer',
+            user: { login: 'testuser', avatar_url: '' },
+            head: { ref: 'feat/footer', sha: 'abc1234' },
+            base: { ref: 'main' },
+            body: 'Adds the footer component.',
+            html_url: 'https://github.com/test-org/test-repo/pull/714',
+            additions: 5, deletions: 2, changed_files: 2, commits: 1,
+            comments: 0, review_comments: 0,
+            mergeable: true, mergeable_state: 'clean', draft: false,
+            labels: [], requested_reviewers: [],
+            created_at: '2026-04-20T10:00:00Z',
+            updated_at: '2026-04-25T14:00:00Z',
+            closed_at: null, merged_at: null,
+          };
+          if (/\\/pulls\\/714\\/files/.test(url)) {
+            // The patch for footer.tsx has 30+ context lines between the two hunks
+            // so the content overflows the viewport and the "Next hunk" scroll is
+            // actually observable (scrollIntoView moves the diff pane container).
+            const footerPatch = '@@ -1,3 +1,5 @@\\n' +
+              ' import * as React from "react";\\n' +
+              '+\\n' +
+              '+const YEAR = 2026;\\n' +
+              ' export function Footer() {\\n' +
+              '-  return <footer>\\u00a9 2025</footer>;\\n' +
+              '+  return <footer>\\u00a9 {YEAR}</footer>;\\n' +
+              ' }\\n' +
+              ' // context line 1\\n' +
+              ' // context line 2\\n' +
+              ' // context line 3\\n' +
+              ' // context line 4\\n' +
+              ' // context line 5\\n' +
+              ' // context line 6\\n' +
+              ' // context line 7\\n' +
+              ' // context line 8\\n' +
+              ' // context line 9\\n' +
+              ' // context line 10\\n' +
+              ' // context line 11\\n' +
+              ' // context line 12\\n' +
+              ' // context line 13\\n' +
+              ' // context line 14\\n' +
+              ' // context line 15\\n' +
+              ' // context line 16\\n' +
+              ' // context line 17\\n' +
+              ' // context line 18\\n' +
+              ' // context line 19\\n' +
+              ' // context line 20\\n' +
+              ' // context line 21\\n' +
+              ' // context line 22\\n' +
+              ' // context line 23\\n' +
+              ' // context line 24\\n' +
+              ' // context line 25\\n' +
+              '@@ -40,3 +42,4 @@\\n' +
+              ' // second hunk context\\n' +
+              '-const OLD = true;\\n' +
+              '+const NEW = true;\\n' +
+              '+const EXTRA = false;\\n';
+            return jsonOk([
+              {
+                filename: 'src/quote/footer.tsx', status: 'modified',
+                additions: 4, deletions: 2, changes: 6,
+                patch: footerPatch,
+              },
+              {
+                filename: 'src/quote/header.tsx', status: 'modified',
+                additions: 2, deletions: 1, changes: 3,
+                patch: '@@ -1,2 +1,3 @@\\n+// New comment\\n export function Header() {\\n-  return <header>Quote</header>;\\n+  return <header>Quote 2026</header>;\\n }\\n',
+              },
+            ]);
+          }
+          if (/\\/pulls\\/714\\/commits/.test(url)) {
+            return jsonOk([
+              {
+                sha: 'abc1234',
+                commit: {
+                  author: { name: 'testuser', email: 'testuser@example.com', date: '2026-04-20T10:00:00Z' },
+                  message: 'Add quote footer',
+                },
+                author: { login: 'testuser', avatar_url: '' },
+              },
+            ]);
+          }
+          // /pulls/714 exact detail (NOT sub-resources like /reviews, /comments)
+          if (/\\/pulls\\/714$/.test(url)) {
+            return jsonOk(pr714);
+          }
+          // List endpoint: /repos/.../pulls?state=open — return [pr714] so
+          // PRDetailApp.getOpenPRs() finds PR #714 in the list.
+          if (/\\/pulls\\?/.test(url)) {
+            return jsonOk([pr714]);
+          }
+        }
+        // /repos/:owner/:repo/pulls, /issues, /commits, /files, /reviews, etc.
+        if (/\\/(pulls|issues|commits|files|reviews|check-runs|check-suites|comments)\\b/.test(url))
+          return jsonOk([]);
+        // /repos/:owner/:repo  (repo metadata)
+        return jsonOk({});
+      }
+      return realFetch(input, init);
+    };
+  })();
 `;
 
 /**
@@ -99,6 +390,7 @@ export function completedSettings() {
       sidebarWidthPx: 380,
       theme: 'dark',
       globalHotkey: 'Ctrl+Shift+P',
+      flyoutHotkey: 'Ctrl+Shift+F',
       editorCommand: 'code',
       runAtStartup: false,
     },
@@ -107,6 +399,7 @@ export function completedSettings() {
       toastOnNewPR: true,
       toastOnReviewUpdate: true,
     },
+    claudeApi: { apiKey: '' },
     claudeCode: { defaultPostFixAction: 'commitAndNotify' },
     claudeReview: { botUsername: 'claude-code' },
     updates: { autoCheckEnabled: false, autoDownload: false },
@@ -118,6 +411,21 @@ export function completedSettings() {
       trackedWorkItemIds: [],
       workingOnWorkItemIds: [],
       workItemWorktreePaths: {},
+    },
+    sql: {
+      connections: [
+        {
+          name: 'test-db',
+          server: 'localhost',
+          port: 1433,
+          database: 'test',
+          authentication: 'sql',
+          username: 'sa',
+          password: 'pw',
+          trustServerCertificate: true,
+        },
+      ],
+      lastUsedConnection: 'test-db',
     },
   };
 }
@@ -137,6 +445,7 @@ export async function injectCompletedSetup(page: Page) {
   await page.addInitScript(`
     ${TAURI_MOCK_SCRIPT}
     window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
+    window.__PLAYWRIGHT__ = true;
   `);
 }
 
@@ -148,8 +457,13 @@ export async function waitForAppReady(page: Page) {
   await page
     .waitForSelector('[class*="animate-spin"]', { state: 'detached', timeout: 10_000 })
     .catch(() => {});
-  // Wait for either the setup wizard or the sidebar header to appear
-  await page.waitForSelector('header, [class*="fixed inset-0"]', { timeout: 10_000 });
+  // Wait for the app root to mount. Cover three shapes:
+  //   - main sidebar: <header>
+  //   - setup wizard / splash overlay: .fixed.inset-0
+  //   - chromeless windows (sql / whats-new / pr-detail / work-item): drag region titlebar
+  await page.waitForSelector('header, [class*="fixed inset-0"], [data-tauri-drag-region]', {
+    timeout: 10_000,
+  });
 }
 
 /**
@@ -428,9 +742,14 @@ export async function getPrCards(page: Page) {
 
 /**
  * Click a section tab in the header.
+ *
+ * The Header section switcher uses the Tabs primitive which renders
+ * `role="tab"` on the underlying buttons. Querying `getByRole('button', …)`
+ * does not match an element whose explicit `role` overrides the implicit
+ * one, so we must use `role="tab"`.
  */
-export async function switchSection(page: Page, section: 'PRs' | 'Work Items') {
-  await page.getByRole('button', { name: section }).click();
+export async function switchSection(page: Page, section: 'PRs' | 'Work Items' | 'Focus') {
+  await page.getByRole('tab', { name: section }).click();
 }
 
 /**

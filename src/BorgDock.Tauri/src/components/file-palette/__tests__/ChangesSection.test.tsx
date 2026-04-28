@@ -115,3 +115,27 @@ describe('ChangesSection', () => {
     await waitFor(() => expect(mock).toHaveBeenCalledTimes(2));
   });
 });
+
+describe('ChangesSection bd-fp-* class contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders rows with bd-fp-changes-row class and applies --selected when global index matches', async () => {
+    await setInvoke(() =>
+      Promise.resolve({
+        local: [{ path: 'src/foo.ts', status: 'M', oldPath: null }],
+        vsBase: [],
+        baseRef: 'main',
+        inRepo: true,
+      }),
+    );
+    const { container } = render(
+      <ChangesSection {...BASE_PROPS} selectedGlobalIndex={0} baseIndex={0} />,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('.bd-fp-changes-row').length).toBeGreaterThanOrEqual(1);
+      expect(container.querySelector('.bd-fp-changes-row--selected')).not.toBeNull();
+    });
+  });
+});

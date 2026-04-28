@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -30,7 +30,20 @@ import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { RepoSettings } from '@/types';
+import { installTestSeed } from '@/test-support/test-seed';
+
+installTestSeed({ isDev: import.meta.env.DEV });
+
+// Read once at module scope so the value is stable across renders
+// and impossible to change after the app boots. Production bundles
+// tree-shake this entirely (DEV is statically false) unless the
+// Playwright harness sets __PLAYWRIGHT__ via injectCompletedSetup.
+const forceWizardFromUrl = (() => {
+  if (typeof window === 'undefined') return false;
+  const isTest = import.meta.env.DEV || window.__PLAYWRIGHT__ === true;
+  if (!isTest) return false;
+  return new URLSearchParams(window.location.search).get('wizard') === 'force';
+})();
 
 const log = createLogger('app');
 
@@ -71,6 +84,7 @@ export default function App() {
 
   // GitHub polling (only when setup complete)
   const needsSetup =
+    forceWizardFromUrl ||
     !settings.setupComplete ||
     settings.repos.length === 0 ||
     (settings.gitHub.authMethod === 'pat' && !settings.gitHub.personalAccessToken);
@@ -107,13 +121,10 @@ export default function App() {
     })();
   }, [needsSetup]);
 
-  // Stable empty array so the polling hook's deps don't change every render
-  const emptyRepos = useMemo<RepoSettings[]>(() => [], []);
-  const pollingSettings = useMemo(
-    () => (needsSetup || !isInitComplete ? { ...settings, repos: emptyRepos } : settings),
-    [needsSetup, isInitComplete, settings, emptyRepos],
-  );
-  const { pollNow } = useGitHubPolling(pollingSettings);
+  // Defer polling until init completes — otherwise the first cycle runs
+  // before repos/auth are ready and idles for a full interval (~60s).
+  const pollingEnabled = !needsSetup && isInitComplete;
+  const { pollNow } = useGitHubPolling(settings, pollingEnabled);
 
   // Listen for manual refresh requests (from Header button and keyboard shortcut)
   useEffect(() => {
@@ -239,6 +250,43 @@ export default function App() {
     };
   }, []);
 
+  // Listen for open-focus event from the flyout
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const fn = await listen('open-focus', () => {
+          useUiStore.getState().setActiveSection('focus');
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Dev/test-only deep-link: ?settings=open opens the settings flyout
+  // on mount so visual.spec.ts can capture it without simulating a click.
+  useEffect(() => {
+    const isTest =
+      import.meta.env.DEV ||
+      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
+    if (!isTest) return;
+    if (new URLSearchParams(window.location.search).get('settings') === 'open') {
+      useUiStore.getState().setSettingsOpen(true);
+    }
+  }, []);
+
   // Show wizard when setup is needed (skip splash)
   if (!isLoading && needsSetup) {
     return <SetupWizard />;
@@ -253,6 +301,7 @@ export default function App() {
   if (fadingOut) {
     return (
       <>
+        {/* style: custom animation keyframe name — no Tailwind utility for splash-fade-out */}
         <div
           className="pointer-events-none fixed inset-0 z-50"
           style={{

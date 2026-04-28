@@ -117,7 +117,7 @@ describe('WorkItemsSection', () => {
   it('shows configuration message when ADO not configured', () => {
     setupStores({ configured: false });
     render(<WorkItemsSection />);
-    expect(screen.getByText('Configure Azure DevOps to see work items')).toBeDefined();
+    expect(screen.getByText('Configure Azure DevOps in Settings to see work items')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open Settings' })).toBeDefined();
   });
 

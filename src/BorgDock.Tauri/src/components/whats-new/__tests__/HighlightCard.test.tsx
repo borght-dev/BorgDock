@@ -33,4 +33,24 @@ describe('HighlightCard', () => {
     render(<HighlightCard highlight={{ ...base, kind: 'fixed' }} />);
     expect(screen.getByText('Fixed')).toBeTruthy();
   });
+
+  it('Pill carries data-highlight-kind matching the kind', () => {
+    const { container } = render(<HighlightCard highlight={base} />);
+    expect(container.querySelector('[data-highlight-kind="new"]')).toBeTruthy();
+  });
+
+  it('Pill carries data-pill-tone="success" for kind "new"', () => {
+    const { container } = render(<HighlightCard highlight={base} />);
+    expect(container.querySelector('[data-pill-tone="success"]')).toBeTruthy();
+  });
+
+  it('Pill carries data-pill-tone="neutral" for kind "improved"', () => {
+    const { container } = render(<HighlightCard highlight={{ ...base, kind: 'improved' }} />);
+    expect(container.querySelector('[data-pill-tone="neutral"]')).toBeTruthy();
+  });
+
+  it('Pill carries data-pill-tone="warning" for kind "fixed"', () => {
+    const { container } = render(<HighlightCard highlight={{ ...base, kind: 'fixed' }} />);
+    expect(container.querySelector('[data-pill-tone="warning"]')).toBeTruthy();
+  });
 });

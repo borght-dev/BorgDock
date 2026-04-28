@@ -1,3 +1,4 @@
+import { Input } from '@/components/shared/primitives';
 import type { ClaudeApiSettings } from '@/types';
 
 const MODEL_OPTIONS = [
@@ -15,12 +16,12 @@ export function ClaudeApiSection({ claudeApi, onChange }: ClaudeApiSectionProps)
   const update = (partial: Partial<ClaudeApiSettings>) => onChange({ ...claudeApi, ...partial });
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" data-settings-section="claude-api">
       <div className="flex flex-col gap-1">
         <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">API Key</label>
-        <input
+        <Input
           type="password"
-          className="field-input w-full"
+          className="w-full"
           value={claudeApi.apiKey ?? ''}
           onChange={(e) => update({ apiKey: e.target.value || undefined })}
           placeholder="sk-ant-..."
@@ -46,9 +47,9 @@ export function ClaudeApiSection({ claudeApi, onChange }: ClaudeApiSectionProps)
         <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
           Max Tokens
         </label>
-        <input
+        <Input
           type="number"
-          className="field-input w-full"
+          className="w-full"
           value={claudeApi.maxTokens}
           onChange={(e) => update({ maxTokens: Number(e.target.value) || 1024 })}
           min={256}

@@ -101,7 +101,8 @@ describe('CommandPalette', () => {
   it('shows "Esc to close" text', () => {
     useUiStore.setState({ isCommandPaletteOpen: true });
     render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
-    expect(screen.getByText('Esc to close')).toBeTruthy();
+    expect(screen.getByText(/to close/)).toBeTruthy();
+    expect(screen.getByText('Esc')).toBeTruthy();
   });
 
   it('shows empty browse message when no items', () => {
@@ -477,5 +478,17 @@ describe('CommandPalette', () => {
 
     const newInput = screen.getByPlaceholderText('Search work item by ID...');
     expect((newInput as HTMLInputElement).value).toBe('');
+  });
+
+  it('renders the search Input primitive', () => {
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+    expect(document.querySelector('.bd-input')).not.toBeNull();
+  });
+
+  it('renders Esc hint via Kbd primitive', () => {
+    useUiStore.setState({ isCommandPaletteOpen: true });
+    render(<CommandPalette onSelectWorkItem={onSelectWorkItem} />);
+    expect(document.querySelector('.bd-kbd')).not.toBeNull();
   });
 });

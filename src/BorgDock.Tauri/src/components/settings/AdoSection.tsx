@@ -1,8 +1,8 @@
-import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AdoClient } from '@/services/ado/client';
 import type { AzureDevOpsSettings, AdoAuthMethod } from '@/types';
+import { Button, Chip, Dot, Input, Pill } from '@/components/shared/primitives';
 
 interface AdoSectionProps {
   azureDevOps: AzureDevOpsSettings;
@@ -24,6 +24,7 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
   const update = (partial: Partial<AzureDevOpsSettings>) =>
     onChange({ ...azureDevOps, ...partial });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run-once-on-mount detection; capturing azureDevOps/update would re-fire on every settings change
   useEffect(() => {
     if (azureDevOps.authAutoDetected) return;
     let cancelled = false;
@@ -43,8 +44,6 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
     return () => {
       cancelled = true;
     };
-    // Run once per mount when autoDetected flips to true.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTestConnection = async () => {
@@ -89,42 +88,40 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" data-settings-section="azure-devops">
       <FieldLabel label="Organization">
-        <input
-          className="field-input w-full"
+        <Input
           value={azureDevOps.organization}
           onChange={(e) => update({ organization: e.target.value })}
           placeholder="my-org"
+          className="w-full"
         />
       </FieldLabel>
 
       <FieldLabel label="Project">
-        <input
-          className="field-input w-full"
+        <Input
           value={azureDevOps.project}
           onChange={(e) => update({ project: e.target.value })}
           placeholder="my-project"
+          className="w-full"
         />
       </FieldLabel>
 
       <FieldLabel label="Auth Method">
         <div className="flex gap-1">
           {(['azCli', 'pat'] as const).map((method) => (
-            <button
+            <Chip
               key={method}
-              className={clsx(
-                'flex-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-                azureDevOps.authMethod === method
-                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-                  : 'bg-[var(--color-filter-chip-bg)] text-[var(--color-filter-chip-fg)] hover:bg-[var(--color-surface-hover)]',
-              )}
+              active={azureDevOps.authMethod === method}
               onClick={() =>
                 update({ authMethod: method as AdoAuthMethod, authAutoDetected: true })
               }
+              data-segmented-option
+              data-active={azureDevOps.authMethod === method}
+              className="flex-1 justify-center"
             >
               {method === 'azCli' ? 'Azure CLI' : 'Personal Access Token'}
-            </button>
+            </Chip>
           ))}
         </div>
       </FieldLabel>
@@ -132,46 +129,58 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
       {azureDevOps.authMethod === 'azCli' && detectedStatus && (
         <div className="text-[10px]">
           {detectedStatus.kind === 'ok' && (
-            <span className="text-[var(--color-status-green)]">
-              Using your <code>az login</code> session.
-            </span>
+            <div className="flex items-center gap-1">
+              <Dot tone="success" />
+              <Pill tone="success">
+                Using your <code>az login</code> session.
+              </Pill>
+            </div>
           )}
           {detectedStatus.kind === 'az_not_installed' && (
-            <span className="text-[var(--color-status-red)]">
-              Azure CLI not found on PATH. Install <code>az</code> or switch to Personal Access Token.
-            </span>
+            <div className="flex items-center gap-1">
+              <Dot tone="error" />
+              <Pill tone="error">
+                Azure CLI not found on PATH. Install <code>az</code> or switch to Personal Access Token.
+              </Pill>
+            </div>
           )}
           {detectedStatus.kind === 'az_not_logged_in' && (
-            <span className="text-[var(--color-status-red)]">
-              Not logged in to Azure. Run <code>az login</code> in a terminal, then click Test Connection.
-            </span>
+            <div className="flex items-center gap-1">
+              <Dot tone="error" />
+              <Pill tone="error">
+                Not logged in to Azure. Run <code>az login</code> in a terminal, then click Test Connection.
+              </Pill>
+            </div>
           )}
           {detectedStatus.kind === 'token_fetch_failed' && (
-            <span className="text-[var(--color-status-red)]">
-              Couldn&apos;t fetch Azure token: {detectedStatus.message}
-            </span>
+            <div className="flex items-center gap-1">
+              <Dot tone="error" />
+              <Pill tone="error">
+                Couldn&apos;t fetch Azure token: {detectedStatus.message}
+              </Pill>
+            </div>
           )}
         </div>
       )}
 
       {azureDevOps.authMethod === 'pat' && (
         <FieldLabel label="Personal Access Token">
-          <div className="relative">
-            <input
-              type={showToken ? 'text' : 'password'}
-              className="field-input w-full pr-8"
-              value={azureDevOps.personalAccessToken ?? ''}
-              onChange={(e) => update({ personalAccessToken: e.target.value })}
-              placeholder="ADO PAT"
-            />
-            <button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              onClick={() => setShowToken((prev) => !prev)}
-              type="button"
-            >
-              {showToken ? 'Hide' : 'Show'}
-            </button>
-          </div>
+          <Input
+            type={showToken ? 'text' : 'password'}
+            value={azureDevOps.personalAccessToken ?? ''}
+            onChange={(e) => update({ personalAccessToken: e.target.value })}
+            placeholder="ADO PAT"
+            className="w-full"
+            trailing={
+              <button
+                className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                onClick={() => setShowToken((prev) => !prev)}
+                type="button"
+              >
+                {showToken ? 'Hide' : 'Show'}
+              </button>
+            }
+          />
         </FieldLabel>
       )}
 
@@ -188,20 +197,25 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
       </FieldLabel>
 
       <div className="flex items-center gap-2">
-        <button
-          className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--color-action-secondary-fg)] bg-[var(--color-action-secondary-bg)] border border-[var(--color-subtle-border)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={handleTestConnection}
           disabled={testStatus === 'testing'}
         >
           {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
-        </button>
+        </Button>
         {testStatus === 'success' && (
-          <span className="text-[10px] text-[var(--color-status-green)]">Connected</span>
+          <div className="flex items-center gap-1">
+            <Dot tone="success" />
+            <Pill tone="success">Connected</Pill>
+          </div>
         )}
         {testStatus === 'error' && (
-          <span className="text-[10px] text-[var(--color-status-red)]">
-            {testError || 'Failed'}
-          </span>
+          <div className="flex items-center gap-1">
+            <Dot tone="error" />
+            <Pill tone="error">{testError || 'Failed'}</Pill>
+          </div>
         )}
       </div>
     </div>

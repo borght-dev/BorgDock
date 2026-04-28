@@ -73,14 +73,26 @@ pub fn write(conn: &Connection, root: &str, result: &ListFilesResult) -> rusqlit
 }
 
 /// Canonicalize a root path for use as the cache key. Forward slashes only,
-/// no trailing slash, and lower-case on Windows so path-case differences
-/// between callers collapse to one row.
+/// no trailing slash, and lower-case for Windows-style paths so path-case
+/// differences between callers collapse to one row. Lowercasing applies
+/// whenever the path has a Windows drive-letter prefix (e.g. "C:/...") —
+/// independent of the host OS — so cross-OS tests and mixed-origin cache
+/// keys all agree on a single canonical form.
 pub fn normalize_root(raw: &str) -> String {
     let mut s = raw.replace('\\', "/");
     while s.ends_with('/') && s.len() > 1 {
         s.pop();
     }
-    if cfg!(target_os = "windows") {
+    // Lowercase if either:
+    //   1. We're on Windows (filesystem is case-insensitive everywhere), OR
+    //   2. The path starts with a Windows-style drive letter (e.g. "C:/...").
+    //      Such paths can appear in cache keys even on unix — collapse case so
+    //      callers passing the same root with different drive-letter casing
+    //      collide on a single row.
+    let has_drive_prefix = s.len() >= 2
+        && s.as_bytes()[0].is_ascii_alphabetic()
+        && s.as_bytes()[1] == b':';
+    if cfg!(target_os = "windows") || has_drive_prefix {
         s = s.to_ascii_lowercase();
     }
     s

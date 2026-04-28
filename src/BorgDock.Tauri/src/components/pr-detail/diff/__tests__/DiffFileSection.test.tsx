@@ -249,4 +249,94 @@ describe('DiffFileSection', () => {
     render(<DiffFileSection {...makeProps({ defaultCollapsed: true })} />);
     expect(screen.getByLabelText('Expand')).toBeDefined();
   });
+
+  it('renders data-diff-file on the file root', () => {
+    const { container } = render(<DiffFileSection {...makeProps()} />);
+    expect(container.querySelector('[data-diff-file]')).not.toBeNull();
+  });
+
+  it('renders data-diff-stat="added" with the additions count', () => {
+    const { container } = render(
+      <DiffFileSection
+        {...makeProps({ file: makeFile({ additions: 42, deletions: 5 }) })}
+      />,
+    );
+    const added = container.querySelector('[data-diff-stat="added"]');
+    expect(added).not.toBeNull();
+    expect(added?.textContent).toContain('42');
+  });
+
+  it('renders data-diff-stat="deleted" with the deletions count', () => {
+    const { container } = render(
+      <DiffFileSection
+        {...makeProps({ file: makeFile({ additions: 42, deletions: 5 }) })}
+      />,
+    );
+    const deleted = container.querySelector('[data-diff-stat="deleted"]');
+    expect(deleted).not.toBeNull();
+    expect(deleted?.textContent).toContain('5');
+  });
+
+  it('renders prev/next hunk IconButtons with data-action', () => {
+    const { container } = render(<DiffFileSection {...makeProps()} />);
+    expect(container.querySelector('[data-action="prev-hunk"]')).not.toBeNull();
+    expect(container.querySelector('[data-action="next-hunk"]')).not.toBeNull();
+  });
+
+  it('scrolls to next hunk when next-hunk button is clicked', () => {
+    const { container } = render(<DiffFileSection {...makeProps()} />);
+    // Inject a fake hunk-header element so the handler has something to find.
+    // Task 9 will add real [data-hunk-header] markers to UnifiedDiffView/SplitDiffView.
+    const fakeHeader = document.createElement('div');
+    fakeHeader.setAttribute('data-hunk-header', '');
+    fakeHeader.textContent = '@@ -1,3 +1,3 @@';
+    container.querySelector('[data-diff-file]')?.appendChild(fakeHeader);
+
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const nextBtn = container.querySelector('[data-action="next-hunk"]') as HTMLButtonElement;
+    nextBtn.click();
+
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+  });
+});
+
+describe('DiffFileSection — pre-parsed hunks', () => {
+  it('uses provided hunks instead of parsing patch when both are present', () => {
+    const file: DiffFile = {
+      filename: 'a.ts',
+      status: 'modified',
+      additions: 1,
+      deletions: 0,
+      isBinary: false,
+      isTruncated: false,
+      sha: '',
+      hunks: [
+        {
+          header: '@@ -1,1 +1,2 @@',
+          oldStart: 1,
+          oldCount: 1,
+          newStart: 1,
+          newCount: 2,
+          lines: [
+            { type: 'hunk-header', content: '@@ -1,1 +1,2 @@' },
+            { type: 'context', content: 'a', oldLineNumber: 1, newLineNumber: 1 },
+            { type: 'add', content: 'b', newLineNumber: 2 },
+          ],
+        },
+      ],
+      // intentionally provide a *bogus* patch string to prove pre-parsed hunks
+      // win when present:
+      patch: 'this would never parse correctly',
+    };
+    render(
+      <DiffFileSection
+        file={file}
+        viewMode="unified"
+        onCopyPath={() => {}}
+      />,
+    );
+    expect(screen.getByText('@@ -1,1 +1,2 @@')).toBeInTheDocument();
+  });
 });

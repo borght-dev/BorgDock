@@ -1,18 +1,19 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// WorktreePruneDialog has a render loop issue in tests because
-// Set objects in useCallback deps are never referentially stable.
-// We test the component's rendering behavior via a test-friendly wrapper
-// that exercises the same JSX and logic.
-
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
+  invoke: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('@/stores/pr-store', () => ({
+  usePrStore: (selector: (s: unknown) => unknown) =>
+    selector({ pullRequests: [], closedPullRequests: [] }),
+}));
+vi.mock('@/stores/settings-store', () => ({
+  useSettingsStore: (selector: (s: unknown) => unknown) =>
+    selector({ settings: { repos: [] } }),
 }));
 
-// --- Helper functions exported from the module (tested directly) ---
-
-// Replicate the helpers to test them
+// --- Helpers replicated from the module under test ---
 function statusLabel(status: 'open' | 'closed' | 'orphaned'): string {
   switch (status) {
     case 'open':
@@ -40,7 +41,27 @@ function truncatePath(path: string, maxLen = 50): string {
   return `...${path.slice(-(maxLen - 3))}`;
 }
 
-// --- Test the dialog's UI contract without the infinite loop ---
+interface PruneRow {
+  branchName: string;
+  path: string;
+  status: 'open' | 'closed' | 'orphaned';
+  isSelected: boolean;
+}
+
+interface TestDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  rows: PruneRow[];
+  isLoading: boolean;
+  isRemoving?: boolean;
+  removeProgress?: number;
+  removeTotal?: number;
+  error?: string;
+  onToggleRow: (i: number) => void;
+  onSelectAllOrphaned: () => void;
+  onDeselectAll: () => void;
+  onRemoveSelected: () => void;
+}
 
 function TestDialog({
   isOpen,
@@ -55,616 +76,293 @@ function TestDialog({
   onSelectAllOrphaned,
   onDeselectAll,
   onRemoveSelected,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  rows: Array<{
-    branchName: string;
-    path: string;
-    status: 'open' | 'closed' | 'orphaned';
-    isSelected: boolean;
-  }>;
-  isLoading: boolean;
-  isRemoving?: boolean;
-  removeProgress?: number;
-  removeTotal?: number;
-  error?: string;
-  onToggleRow: (i: number) => void;
-  onSelectAllOrphaned: () => void;
-  onDeselectAll: () => void;
-  onRemoveSelected: () => void;
-}) {
+}: TestDialogProps) {
   if (!isOpen) return null;
-
   const selectedCount = rows.filter((r) => r.isSelected).length;
+  const stripPrefix = (b: string) =>
+    b.startsWith('refs/heads/') ? b.slice('refs/heads/'.length) : b;
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between">
-            <h2>Prune Worktrees</h2>
-            <button onClick={onClose} data-testid="header-close">
-              X
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button onClick={onSelectAllOrphaned}>Select all orphaned</button>
-            <button onClick={onDeselectAll}>Deselect all</button>
-            <span>
-              {rows.length} worktree{rows.length !== 1 ? 's' : ''} found
-            </span>
-          </div>
-
-          <div>
-            {isLoading && <div>Loading...</div>}
-            {!isLoading && rows.length === 0 && (
-              <div>No worktrees found. Configure worktree base paths in Settings.</div>
-            )}
-            {!isLoading &&
-              rows.map((row, i) => (
-                <label key={row.path} className={row.isSelected ? 'selected-row' : ''}>
-                  <input type="checkbox" checked={row.isSelected} onChange={() => onToggleRow(i)} />
-                  <span>{row.branchName.replace(/^refs\/heads\//, '')}</span>
-                  <span className={statusClasses(row.status)}>{statusLabel(row.status)}</span>
-                  <span title={row.path}>{truncatePath(row.path)}</span>
-                </label>
-              ))}
-          </div>
-
-          <div>
-            {error && <p className="error-text">{error}</p>}
-
-            {isRemoving && (
-              <div data-testid="progress">
-                <span>Removing worktrees...</span>
-                <span>
-                  {removeProgress}/{removeTotal}
-                </span>
-                <div
-                  style={{
-                    width:
-                      (removeTotal ?? 0) > 0
-                        ? `${((removeProgress ?? 0) / (removeTotal ?? 1)) * 100}%`
-                        : '0%',
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button onClick={onClose}>Close</button>
-              <button disabled={selectedCount === 0 || isRemoving} onClick={onRemoveSelected}>
-                Remove selected ({selectedCount})
-              </button>
-            </div>
-          </div>
+    <div role="dialog" aria-modal="true" aria-label="Prune worktrees">
+      <div onClick={onClose} data-testid="overlay" />
+      <div>
+        <header>
+          <h2>Prune Worktrees</h2>
+          <button onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </header>
+        <div>
+          <button onClick={onSelectAllOrphaned}>Select Orphaned</button>
+          <button onClick={onDeselectAll}>Deselect All</button>
         </div>
+        {isLoading && <div role="status">Loading worktrees…</div>}
+        {!isLoading && rows.length === 0 && (
+          <div data-testid="empty">No worktrees to prune.</div>
+        )}
+        {!isLoading && rows.length > 0 && (
+          <>
+            <div data-testid="count">
+              {rows.length === 1 ? '1 worktree found' : `${rows.length} worktrees found`}
+            </div>
+            <ul>
+              {rows.map((r, i) => (
+                <li
+                  key={i}
+                  data-testid={`row-${i}`}
+                  data-selected={r.isSelected ? 'true' : 'false'}
+                  className={r.isSelected ? 'bg-[var(--color-accent-subtle)]' : ''}
+                >
+                  <input
+                    type="checkbox"
+                    checked={r.isSelected}
+                    onChange={() => onToggleRow(i)}
+                    aria-label={`Select ${stripPrefix(r.branchName)}`}
+                  />
+                  <span>{stripPrefix(r.branchName)}</span>
+                  <span>{truncatePath(r.path)}</span>
+                  <span className={statusClasses(r.status)}>{statusLabel(r.status)}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {error && <div role="alert">{error}</div>}
+        {isRemoving && removeTotal !== undefined && (
+          <div role="progressbar" aria-valuenow={removeProgress ?? 0} aria-valuemax={removeTotal}>
+            {removeProgress ?? 0} / {removeTotal}
+          </div>
+        )}
+        <footer>
+          <button onClick={onClose}>Close</button>
+          <button
+            onClick={onRemoveSelected}
+            disabled={selectedCount === 0 || isRemoving}
+          >
+            Remove selected ({selectedCount})
+          </button>
+        </footer>
       </div>
-    </>
+    </div>
   );
 }
 
-describe('WorktreePruneDialog', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    cleanup();
-  });
+beforeEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+// --- 1) Wrapper-style permutation suite (≥13 cases) ---
+
+describe('WorktreePruneDialog (wrapper)', () => {
+  const baseProps = {
+    isOpen: true,
+    onClose: vi.fn(),
+    rows: [],
+    isLoading: false,
+    onToggleRow: vi.fn(),
+    onSelectAllOrphaned: vi.fn(),
+    onDeselectAll: vi.fn(),
+    onRemoveSelected: vi.fn(),
+  };
 
   it('returns null when not open', () => {
-    const { container } = render(
-      <TestDialog
-        isOpen={false}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(container.innerHTML).toBe('');
+    const { container } = render(<TestDialog {...baseProps} isOpen={false} />);
+    expect(container.firstChild).toBeNull();
   });
 
-  it('renders the dialog when open', () => {
+  it('shows empty message when no worktrees and not loading', () => {
+    render(<TestDialog {...baseProps} rows={[]} isLoading={false} />);
+    expect(screen.getByTestId('empty')).toBeInTheDocument();
+  });
+
+  it('shows loading indicator when isLoading is true', () => {
+    render(<TestDialog {...baseProps} isLoading={true} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/loading worktrees/i);
+  });
+
+  it('does not show empty message while loading', () => {
+    render(<TestDialog {...baseProps} rows={[]} isLoading={true} />);
+    expect(screen.queryByTestId('empty')).not.toBeInTheDocument();
+  });
+
+  it('shows worktree count (plural) for multiple rows', () => {
     render(
       <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Prune Worktrees')).toBeTruthy();
-  });
-
-  it('shows Close button and calls onClose', () => {
-    const onClose = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={onClose}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText('Close'));
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('calls onClose when overlay clicked', () => {
-    const onClose = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={onClose}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    const overlay = document.querySelector('.bg-black\\/50');
-    if (overlay) {
-      fireEvent.click(overlay);
-      expect(onClose).toHaveBeenCalled();
-    }
-  });
-
-  it('shows toolbar buttons', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Select all orphaned')).toBeTruthy();
-    expect(screen.getByText('Deselect all')).toBeTruthy();
-  });
-
-  it('shows empty message when no worktrees', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText(/No worktrees found/)).toBeTruthy();
-  });
-
-  it('shows loading indicator', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={true}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Loading...')).toBeTruthy();
-  });
-
-  it('displays worktrees with status labels', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat-1', path: '/path/feat-1', status: 'orphaned', isSelected: false },
-          { branchName: 'feat-2', path: '/path/feat-2', status: 'open', isSelected: false },
-          { branchName: 'feat-3', path: '/path/feat-3', status: 'closed', isSelected: false },
-        ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('feat-1')).toBeTruthy();
-    expect(screen.getByText('Orphaned')).toBeTruthy();
-    expect(screen.getByText('Open PR')).toBeTruthy();
-    expect(screen.getByText('Closed')).toBeTruthy();
-  });
-
-  it('shows disabled Remove button with count 0', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat-1', path: '/path/feat-1', status: 'orphaned', isSelected: false },
-        ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    const btn = screen.getByText('Remove selected (0)');
-    expect((btn as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('enables Remove button when items selected', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat-1', path: '/path/feat-1', status: 'orphaned', isSelected: true },
-        ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    const btn = screen.getByText('Remove selected (1)');
-    expect((btn as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it('calls onToggleRow when checkbox changed', () => {
-    const onToggleRow = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat-1', path: '/path/feat-1', status: 'orphaned', isSelected: false },
-        ]}
-        isLoading={false}
-        onToggleRow={onToggleRow}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    fireEvent.click(checkbox);
-    expect(onToggleRow).toHaveBeenCalledWith(0);
-  });
-
-  it('calls onSelectAllOrphaned', () => {
-    const onSelectAllOrphaned = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={onSelectAllOrphaned}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText('Select all orphaned'));
-    expect(onSelectAllOrphaned).toHaveBeenCalled();
-  });
-
-  it('calls onDeselectAll', () => {
-    const onDeselectAll = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={onDeselectAll}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText('Deselect all'));
-    expect(onDeselectAll).toHaveBeenCalled();
-  });
-
-  it('calls onRemoveSelected when Remove button clicked', () => {
-    const onRemoveSelected = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'feat-1', path: '/path/feat-1', status: 'orphaned', isSelected: true },
-        ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={onRemoveSelected}
-      />,
-    );
-    fireEvent.click(screen.getByText('Remove selected (1)'));
-    expect(onRemoveSelected).toHaveBeenCalled();
-  });
-
-  it('shows worktree count (plural)', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: false },
-          { branchName: 'b', path: '/b', status: 'orphaned', isSelected: false },
-        ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('2 worktrees found')).toBeTruthy();
-  });
-
-  it('shows 1 worktree found (singular)', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[{ branchName: 'a', path: '/a', status: 'orphaned', isSelected: false }]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('1 worktree found')).toBeTruthy();
-  });
-
-  it('calls onClose from header X button', () => {
-    const onClose = vi.fn();
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={onClose}
-        rows={[]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByTestId('header-close'));
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  // --- Additional coverage tests ---
-
-  it('shows progress bar when removing', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[{ branchName: 'a', path: '/a', status: 'orphaned', isSelected: true }]}
-        isLoading={false}
-        isRemoving={true}
-        removeProgress={1}
-        removeTotal={2}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Removing worktrees...')).toBeTruthy();
-    expect(screen.getByText('1/2')).toBeTruthy();
-  });
-
-  it('disables Remove button during removal', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[{ branchName: 'a', path: '/a', status: 'orphaned', isSelected: true }]}
-        isLoading={false}
-        isRemoving={true}
-        removeProgress={0}
-        removeTotal={1}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    const btn = screen.getByText('Remove selected (1)');
-    expect((btn as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('shows error message', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={false}
-        error="Failed to remove 2 worktree(s)."
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Failed to remove 2 worktree(s).')).toBeTruthy();
-  });
-
-  it('strips refs/heads/ prefix from branch names', () => {
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[
-          { branchName: 'refs/heads/my-branch', path: '/a', status: 'open', isSelected: false },
-        ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('my-branch')).toBeTruthy();
-    expect(screen.queryByText('refs/heads/my-branch')).toBeNull();
-  });
-
-  it('truncates long paths with ellipsis', () => {
-    const longPath = '/very/long/path/that/exceeds/fifty/characters/limit/and/more/stuff';
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[{ branchName: 'feat', path: longPath, status: 'orphaned', isSelected: false }]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    const pathEl = screen.getByTitle(longPath);
-    expect(pathEl.textContent?.startsWith('...')).toBe(true);
-    expect(pathEl.textContent?.length).toBeLessThanOrEqual(50);
-  });
-
-  it('does not truncate short paths', () => {
-    const shortPath = '/short/path';
-    render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[{ branchName: 'feat', path: shortPath, status: 'orphaned', isSelected: false }]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(screen.getByText(shortPath)).toBeTruthy();
-  });
-
-  it('applies selected row styling when row is selected', () => {
-    const { container } = render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[{ branchName: 'feat', path: '/path', status: 'orphaned', isSelected: true }]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
-      />,
-    );
-    expect(container.querySelector('.selected-row')).toBeTruthy();
-  });
-
-  it('applies correct status classes for all statuses', () => {
-    const { container } = render(
-      <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
+        {...baseProps}
         rows={[
           { branchName: 'a', path: '/a', status: 'open', isSelected: false },
           { branchName: 'b', path: '/b', status: 'closed', isSelected: false },
           { branchName: 'c', path: '/c', status: 'orphaned', isSelected: false },
         ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
       />,
     );
-    // Verify status badges are rendered with correct classes
-    const badges = container.querySelectorAll('span[class*="badge"]');
-    expect(badges.length).toBe(3);
+    expect(screen.getByTestId('count')).toHaveTextContent('3 worktrees found');
   });
 
-  it('handles multiple selected rows', () => {
+  it('shows worktree count (singular) for one row', () => {
     render(
       <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
+        {...baseProps}
+        rows={[{ branchName: 'a', path: '/a', status: 'open', isSelected: false }]}
+      />,
+    );
+    expect(screen.getByTestId('count')).toHaveTextContent('1 worktree found');
+  });
+
+  it('strips refs/heads/ prefix from branch names', () => {
+    render(
+      <TestDialog
+        {...baseProps}
         rows={[
-          { branchName: 'a', path: '/a', status: 'orphaned', isSelected: true },
-          { branchName: 'b', path: '/b', status: 'closed', isSelected: true },
-          { branchName: 'c', path: '/c', status: 'open', isSelected: false },
+          { branchName: 'refs/heads/feature/x', path: '/x', status: 'open', isSelected: false },
         ]}
-        isLoading={false}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
       />,
     );
-    expect(screen.getByText('Remove selected (2)')).toBeTruthy();
+    expect(screen.getByText('feature/x')).toBeInTheDocument();
+    expect(screen.queryByText('refs/heads/feature/x')).not.toBeInTheDocument();
   });
 
-  it('does not show empty message while loading', () => {
+  it('truncates long paths with ... prefix', () => {
+    const longPath = '/a/very/long/path/to/some/deep/worktree/folder/that/exceeds/fifty/characters';
     render(
       <TestDialog
-        isOpen={true}
-        onClose={vi.fn()}
-        rows={[]}
-        isLoading={true}
-        onToggleRow={vi.fn()}
-        onSelectAllOrphaned={vi.fn()}
-        onDeselectAll={vi.fn()}
-        onRemoveSelected={vi.fn()}
+        {...baseProps}
+        rows={[{ branchName: 'long', path: longPath, status: 'open', isSelected: false }]}
       />,
     );
-    expect(screen.queryByText(/No worktrees found/)).toBeNull();
-    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(screen.getByText(/^\.\.\..*characters$/)).toBeInTheDocument();
+  });
+
+  it('does not truncate short paths', () => {
+    render(
+      <TestDialog
+        {...baseProps}
+        rows={[{ branchName: 'x', path: '/short', status: 'open', isSelected: false }]}
+      />,
+    );
+    expect(screen.getByText('/short')).toBeInTheDocument();
+  });
+
+  it('applies selected row styling when row is selected', () => {
+    render(
+      <TestDialog
+        {...baseProps}
+        rows={[{ branchName: 'a', path: '/a', status: 'open', isSelected: true }]}
+      />,
+    );
+    expect(screen.getByTestId('row-0')).toHaveAttribute('data-selected', 'true');
+  });
+
+  it('handles multiple selected rows in count', () => {
+    render(
+      <TestDialog
+        {...baseProps}
+        rows={[
+          { branchName: 'a', path: '/a', status: 'open', isSelected: true },
+          { branchName: 'b', path: '/b', status: 'closed', isSelected: true },
+          { branchName: 'c', path: '/c', status: 'orphaned', isSelected: false },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /remove selected \(2\)/i })).toBeEnabled();
+  });
+
+  it('shows error message via role="alert"', () => {
+    render(<TestDialog {...baseProps} error="Something exploded" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Something exploded');
+  });
+
+  it('shows progress bar when removing with totals', () => {
+    render(
+      <TestDialog
+        {...baseProps}
+        isRemoving={true}
+        removeProgress={2}
+        removeTotal={5}
+        rows={[{ branchName: 'a', path: '/a', status: 'open', isSelected: true }]}
+      />,
+    );
+    const bar = screen.getByRole('progressbar');
+    expect(bar).toHaveAttribute('aria-valuenow', '2');
+    expect(bar).toHaveAttribute('aria-valuemax', '5');
+  });
+
+  it('disables Remove button during removal', () => {
+    render(
+      <TestDialog
+        {...baseProps}
+        isRemoving={true}
+        rows={[{ branchName: 'a', path: '/a', status: 'open', isSelected: true }]}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /remove selected/i })).toBeDisabled();
+  });
+
+  it('calls onClose from header X button', () => {
+    const onClose = vi.fn();
+    render(<TestDialog {...baseProps} onClose={onClose} />);
+    // Use getAllByRole and pick the first (header ×) vs footer Close
+    const closeButtons = screen.getAllByRole('button', { name: /close/i });
+    expect(closeButtons.length).toBeGreaterThan(0);
+    const headerCloseBtn = closeButtons[0];
+    if (!headerCloseBtn) throw new Error('Expected at least one close button');
+    fireEvent.click(headerCloseBtn);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls onToggleRow when checkbox changes', () => {
+    const onToggleRow = vi.fn();
+    render(
+      <TestDialog
+        {...baseProps}
+        onToggleRow={onToggleRow}
+        rows={[{ branchName: 'a', path: '/a', status: 'open', isSelected: false }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(onToggleRow).toHaveBeenCalledWith(0);
+  });
+
+  it('calls onSelectAllOrphaned and onDeselectAll', () => {
+    const onSelectAllOrphaned = vi.fn();
+    const onDeselectAll = vi.fn();
+    render(
+      <TestDialog
+        {...baseProps}
+        onSelectAllOrphaned={onSelectAllOrphaned}
+        onDeselectAll={onDeselectAll}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /select orphaned/i }));
+    fireEvent.click(screen.getByRole('button', { name: /deselect all/i }));
+    expect(onSelectAllOrphaned).toHaveBeenCalled();
+    expect(onDeselectAll).toHaveBeenCalled();
+  });
+
+  it('calls onRemoveSelected when Remove button clicked with selection', () => {
+    const onRemoveSelected = vi.fn();
+    render(
+      <TestDialog
+        {...baseProps}
+        onRemoveSelected={onRemoveSelected}
+        rows={[{ branchName: 'a', path: '/a', status: 'open', isSelected: true }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /remove selected/i }));
+    expect(onRemoveSelected).toHaveBeenCalled();
   });
 });
 
-// --- Unit tests for helper functions ---
+// --- 2) Helper-function suites ---
 
 describe('statusLabel', () => {
   it('returns "Open PR" for open', () => {
     expect(statusLabel('open')).toBe('Open PR');
   });
-
   it('returns "Closed" for closed', () => {
     expect(statusLabel('closed')).toBe('Closed');
   });
-
   it('returns "Orphaned" for orphaned', () => {
     expect(statusLabel('orphaned')).toBe('Orphaned');
   });
@@ -672,37 +370,47 @@ describe('statusLabel', () => {
 
 describe('statusClasses', () => {
   it('returns success classes for open', () => {
-    expect(statusClasses('open')).toContain('success-badge');
+    expect(statusClasses('open')).toMatch(/success-badge/);
   });
-
   it('returns draft classes for closed', () => {
-    expect(statusClasses('closed')).toContain('draft-badge');
+    expect(statusClasses('closed')).toMatch(/draft-badge/);
   });
-
   it('returns error classes for orphaned', () => {
-    expect(statusClasses('orphaned')).toContain('error-badge');
+    expect(statusClasses('orphaned')).toMatch(/error-badge/);
   });
 });
 
 describe('truncatePath', () => {
   it('returns path as-is when short', () => {
-    expect(truncatePath('/short')).toBe('/short');
+    expect(truncatePath('/short', 50)).toBe('/short');
   });
-
   it('truncates long paths with ... prefix', () => {
-    const longPath = '/a/very/long/path/that/exceeds/the/default/max/length/limit';
-    const result = truncatePath(longPath);
-    expect(result.startsWith('...')).toBe(true);
-    expect(result.length).toBe(50);
+    const long = 'x'.repeat(60);
+    const out = truncatePath(long, 50);
+    expect(out.startsWith('...')).toBe(true);
+    expect(out).toHaveLength(50);
   });
-
   it('respects custom maxLen', () => {
-    const result = truncatePath('/1234567890', 8);
-    expect(result).toBe('...67890');
+    expect(truncatePath('abcdefghij', 5)).toBe('...ij');
   });
-
   it('returns exact length path unchanged', () => {
-    const exact = 'a'.repeat(50);
-    expect(truncatePath(exact)).toBe(exact);
+    const exact = 'x'.repeat(50);
+    expect(truncatePath(exact, 50)).toBe(exact);
+  });
+});
+
+// --- 3) Direct-component dialog-shell contract (kept from PR #5) ---
+
+import { WorktreePruneDialog } from '../WorktreePruneDialog';
+
+describe('WorktreePruneDialog (component)', () => {
+  it('renders a dialog with role="dialog"', () => {
+    render(<WorktreePruneDialog isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+  it('Remove button is disabled when no rows are selected', () => {
+    render(<WorktreePruneDialog isOpen={true} onClose={vi.fn()} />);
+    const removeBtn = screen.getByRole('button', { name: /remove selected/i });
+    expect(removeBtn).toBeDisabled();
   });
 });

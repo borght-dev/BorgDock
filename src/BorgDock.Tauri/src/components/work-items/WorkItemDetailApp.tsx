@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Card } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { AdoClient } from '@/services/ado/client';
 import {
@@ -248,9 +249,11 @@ export function WorkItemDetailApp() {
 
   // Load settings and work item
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const settings = await invoke<AppSettings>('load_settings');
+        if (cancelled) return;
         setAdoSettings(settings.azureDevOps);
         // Populate the settings store so useAdoImageAuth can read the PAT
         useSettingsStore.setState({ settings, isLoading: false });
@@ -263,6 +266,7 @@ export function WorkItemDetailApp() {
         document.documentElement.classList.toggle('dark', isDark);
 
         if (!workItemId) {
+          if (cancelled) return;
           setError('No work item ID provided');
           setIsLoading(false);
           return;
@@ -277,6 +281,7 @@ export function WorkItemDetailApp() {
         );
 
         const item = await getWorkItem(client, workItemId);
+        if (cancelled) return;
         setWorkItem(item);
 
         // Set window title
@@ -290,33 +295,50 @@ export function WorkItemDetailApp() {
         if (itemType) {
           try {
             const states = await getWorkItemTypeStates(client, itemType);
+            if (cancelled) return;
             setAvailableStates(states);
           } catch {
+            if (cancelled) return;
             setAvailableStates([getField(item, 'System.State')]);
           }
         }
 
         // Load comments
+        if (cancelled) return;
         setIsLoadingComments(true);
         getWorkItemComments(client, workItemId)
-          .then((c) => setComments(c))
-          .catch((err) => console.error('Failed to load comments:', err))
-          .finally(() => setIsLoadingComments(false));
+          .then((c) => {
+            if (cancelled) return;
+            setComments(c);
+          })
+          .catch((err) => {
+            if (cancelled) return;
+            console.error('Failed to load comments:', err);
+          })
+          .finally(() => {
+            if (cancelled) return;
+            setIsLoadingComments(false);
+          });
 
         // Pre-process rich text images with ADO auth
         const pat = ado.personalAccessToken;
         if (pat) {
           const { richText } = classifyFields(item);
           const processed = await processFieldImages(richText, pat);
+          if (cancelled) return;
           setProcessedRichText(processed);
         }
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load work item:', err);
         setError('Failed to load work item');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [workItemId]);
 
   const handleSave = useCallback(
@@ -472,12 +494,14 @@ export function WorkItemDetailApp() {
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-            {error}
-          </p>
+          <Card padding="md">
+            <p className="text-[13px] text-[var(--color-text-muted)]">
+              {error}
+            </p>
+          </Card>
         </div>
       </div>
     );
@@ -485,17 +509,19 @@ export function WorkItemDetailApp() {
 
   if (!detailData) {
     return (
-      <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+          <Card padding="md">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col" style={{ backgroundColor: 'var(--color-surface)' }}>
+    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <WindowTitleBar title={titleText} />
       <div className="flex-1 overflow-y-auto">
         <WorkItemDetailPanel

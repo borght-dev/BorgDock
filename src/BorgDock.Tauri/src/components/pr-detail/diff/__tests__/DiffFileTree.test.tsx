@@ -238,4 +238,20 @@ describe('DiffFileTree', () => {
     expect(screen.queryByText('App.tsx')).toBeNull();
     expect(screen.queryByText('index.ts')).toBeNull();
   });
+
+  it('renders the search field as Input primitive', () => {
+    const { container } = render(<DiffFileTree {...makeProps()} />);
+    expect(container.querySelector('.bd-input')).not.toBeNull();
+  });
+
+  it('renders the tree-mode toggle as IconButton', () => {
+    const { container } = render(<DiffFileTree {...makeProps()} />);
+    expect(container.querySelector('[data-file-tree-toggle]')).not.toBeNull();
+  });
+
+  it('emits data-file-tree-row on each file row', () => {
+    const props = makeProps();
+    const { container } = render(<DiffFileTree {...props} />);
+    expect(container.querySelectorAll('[data-file-tree-row]').length).toBe(props.files.length);
+  });
 });

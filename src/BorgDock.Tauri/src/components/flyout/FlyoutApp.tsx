@@ -26,6 +26,7 @@ export function FlyoutApp() {
     pendingCount: 0,
     passingCount: 0,
     totalCount: 0,
+    focusCount: 0,
     username: '',
     theme: 'system',
     lastSyncAgo: '...',
@@ -44,11 +45,13 @@ export function FlyoutApp() {
 
   // Data fetch + flyout-update event listener — same as the pre-refactor shell.
   useEffect(() => {
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const cached = await invoke<string | null>('get_flyout_data');
+        if (cancelled) return;
         if (cached) {
           try {
             const parsed = JSON.parse(cached) as FlyoutData;
@@ -60,16 +63,26 @@ export function FlyoutApp() {
           }
         }
         const { listen } = await import('@tauri-apps/api/event');
+        if (cancelled) return;
         unlisten = await listen<FlyoutData>('flyout-update', (event) => {
+          if (cancelled) return;
           hasReceivedData.current = true;
           setData(event.payload);
           if (event.payload.theme) applyTheme(event.payload.theme);
         });
+        if (cancelled) {
+          unlisten?.();
+          unlisten = undefined;
+        }
       } catch (err) {
+        if (cancelled) return;
         console.error('[Flyout] Failed to initialize:', err);
       }
     })();
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // Listen for new reducer-driving events from Rust.
@@ -98,23 +111,62 @@ export function FlyoutApp() {
     };
   }, []);
 
+  // Dev-only test seed — Playwright e2e drives FlyoutData + reducer state
+  // here without going through Tauri events (the test runs in pure Vite,
+  // not under Tauri, so the real listen() handlers never fire).
+  // Tree-shaken in production: `import.meta.env.DEV` is replaced with `false`.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    type FlyoutTestSeed = {
+      data?: Partial<FlyoutData> & { pullRequests?: FlyoutData['pullRequests'] };
+      mode?: 'glance' | 'idle' | 'initializing';
+    };
+    const seed = (payload: FlyoutTestSeed) => {
+      if (payload.data) {
+        setData((prev) => ({ ...prev, ...payload.data }));
+        hasReceivedData.current = true;
+        if (payload.data.theme) applyTheme(payload.data.theme);
+      }
+      // Always finish init so the splash isn't stuck.
+      dispatch({ type: 'init-complete' });
+      if (payload.mode === 'glance' || payload.mode === undefined) {
+        dispatch({ type: 'user-open' });
+      } else if (payload.mode === 'idle') {
+        dispatch({ type: 'close' });
+      }
+    };
+    (window as unknown as { __borgdock_test_flyout_seed?: typeof seed }).__borgdock_test_flyout_seed =
+      seed;
+    return () => {
+      delete (window as unknown as { __borgdock_test_flyout_seed?: typeof seed })
+        .__borgdock_test_flyout_seed;
+    };
+  }, []);
+
   // Close on blur — same as before, but also dispatch close so the reducer
   // returns to idle.
   useEffect(() => {
+    let cancelled = false;
     let hidden = false;
     const hide = async () => {
       if (hidden) return;
       hidden = true;
+      if (cancelled) return;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
+        if (cancelled) return;
         await invoke('hide_flyout');
       } catch {
         // ignore
       }
+      if (cancelled) return;
       dispatch({ type: 'close' });
     };
     window.addEventListener('blur', hide);
-    return () => window.removeEventListener('blur', hide);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('blur', hide);
+    };
   }, []);
 
   // Shared close handler used by FlyoutGlance so every hide path also resets
@@ -193,10 +245,9 @@ export function FlyoutApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         if (mode.kind === 'toast') {
-          const n = mode.queue.length;
           // Per-card budget + outer padding. Generous to fit title + body + optional action row.
           const width = 340;
-          const height = n * 160 + 32;
+          const height = toastQueueLen * 160 + 32;
           if (!cancelled) await invoke('resize_flyout', { width, height });
         } else if (mode.kind === 'glance' || mode.kind === 'initializing') {
           // Match the glance-mode constants from Rust (FLYOUT_GLANCE_W/H).

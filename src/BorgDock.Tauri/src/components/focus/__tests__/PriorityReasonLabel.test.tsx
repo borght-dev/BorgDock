@@ -11,7 +11,7 @@ describe('PriorityReasonLabel', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  it('renders a single factor label', () => {
+  it('renders the top factor label', () => {
     const factors: PriorityFactor[] = [
       { type: 'readyToMerge', points: 45, label: 'Ready to merge' },
     ];
@@ -19,76 +19,44 @@ describe('PriorityReasonLabel', () => {
     expect(screen.getByText('Ready to merge')).toBeDefined();
   });
 
-  it('renders multiple factors separated by dots', () => {
+  it('only renders the top (first) factor', () => {
     const factors: PriorityFactor[] = [
       { type: 'readyToMerge', points: 45, label: 'Ready to merge' },
       { type: 'myPrRedChecks', points: 20, label: 'Build failing' },
     ];
     render(<PriorityReasonLabel factors={factors} />);
     expect(screen.getByText('Ready to merge')).toBeDefined();
-    expect(screen.getByText('Build failing')).toBeDefined();
-    expect(screen.getByText('\u00b7')).toBeDefined();
+    expect(screen.queryByText('Build failing')).toBeNull();
   });
 
-  it('applies green styling for readyToMerge factor', () => {
+  it('exposes the factor type via data-priority-reason', () => {
     const factors: PriorityFactor[] = [
       { type: 'readyToMerge', points: 45, label: 'Ready to merge' },
     ];
-    render(<PriorityReasonLabel factors={factors} />);
-    const el = screen.getByText('Ready to merge');
-    expect(el.className).toContain('text-[var(--color-status-green)]');
-    expect(el.className).toContain('font-medium');
+    const { container } = render(<PriorityReasonLabel factors={factors} />);
+    const pill = container.querySelector('[data-priority-reason]');
+    expect(pill).not.toBeNull();
+    expect(pill?.getAttribute('data-priority-reason')).toBe('readyToMerge');
+    expect(pill?.textContent).toBe('Ready to merge');
   });
 
-  it('applies red styling for red-check factors', () => {
+  it('reflects whichever type is the top factor', () => {
     const factors: PriorityFactor[] = [
-      { type: 'myPrRedChecks', points: 20, label: 'Build failing' },
+      { type: 'myPrRedChecks', points: 30, label: 'Build failing' },
+      { type: 'readyToMerge', points: 10, label: 'Ready to merge' },
     ];
-    render(<PriorityReasonLabel factors={factors} />);
-    const el = screen.getByText('Build failing');
-    expect(el.className).toContain('text-[var(--color-status-red)]');
+    const { container } = render(<PriorityReasonLabel factors={factors} />);
+    const pill = container.querySelector('[data-priority-reason]');
+    expect(pill?.getAttribute('data-priority-reason')).toBe('myPrRedChecks');
   });
 
-  it('applies red styling for othersRedChecks factor', () => {
+  it('renders the Pill primitive class', () => {
     const factors: PriorityFactor[] = [
-      { type: 'othersRedChecks', points: 15, label: 'Checks failing' },
+      { type: 'readyToMerge', points: 45, label: 'Ready to merge' },
     ];
-    render(<PriorityReasonLabel factors={factors} />);
-    const el = screen.getByText('Checks failing');
-    expect(el.className).toContain('text-[var(--color-status-red)]');
-  });
-
-  it('applies yellow styling for staleness factors', () => {
-    const factors: PriorityFactor[] = [{ type: 'staleness', points: 10, label: 'Getting stale' }];
-    render(<PriorityReasonLabel factors={factors} />);
-    const el = screen.getByText('Getting stale');
-    expect(el.className).toContain('text-[var(--color-status-yellow)]');
-  });
-
-  it('applies yellow styling for reviewStale factor', () => {
-    const factors: PriorityFactor[] = [{ type: 'reviewStale', points: 8, label: 'Review stale' }];
-    render(<PriorityReasonLabel factors={factors} />);
-    const el = screen.getByText('Review stale');
-    expect(el.className).toContain('text-[var(--color-status-yellow)]');
-  });
-
-  it('applies no special styling for generic factor types', () => {
-    const factors: PriorityFactor[] = [{ type: 'someGeneric', points: 5, label: 'Generic factor' }];
-    render(<PriorityReasonLabel factors={factors} />);
-    const el = screen.getByText('Generic factor');
-    expect(el.className).toBe('');
-  });
-
-  it('renders three or more factors with separators between each', () => {
-    const factors: PriorityFactor[] = [
-      { type: 'readyToMerge', points: 45, label: 'Ready' },
-      { type: 'staleness', points: 10, label: 'Stale' },
-      { type: 'myPrRedChecks', points: 20, label: 'Red' },
-    ];
-    render(<PriorityReasonLabel factors={factors} />);
-    expect(screen.getByText('Ready')).toBeDefined();
-    expect(screen.getByText('Stale')).toBeDefined();
-    expect(screen.getByText('Red')).toBeDefined();
-    expect(screen.getAllByText('\u00b7')).toHaveLength(2);
+    const { container } = render(<PriorityReasonLabel factors={factors} />);
+    const pill = container.querySelector('[data-priority-reason]');
+    expect(pill?.classList.contains('bd-pill')).toBe(true);
+    expect(pill?.classList.contains('bd-pill--neutral')).toBe(true);
   });
 });

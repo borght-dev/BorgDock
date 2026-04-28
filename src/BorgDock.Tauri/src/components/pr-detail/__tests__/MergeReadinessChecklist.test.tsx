@@ -220,9 +220,16 @@ describe('MergeReadinessChecklist', () => {
     expect(screen.getByText('0')).toBeTruthy();
   });
 
-  it('renders progress bar segments for each item', () => {
+  it('exposes the score via data-merge-score attribute', () => {
     const { container } = render(<MergeReadinessChecklist pr={makePr()} />);
-    const segments = container.querySelectorAll('.h-full.flex-1.rounded-full');
-    expect(segments.length).toBe(4);
+    const scoreEl = container.querySelector('[data-merge-score]');
+    expect(scoreEl).toBeTruthy();
+    expect(scoreEl?.getAttribute('data-merge-score')).toBe('100');
+  });
+
+  it('renders the readiness bar as a LinearProgress primitive', () => {
+    const { container } = render(<MergeReadinessChecklist pr={makePr()} />);
+    const bar = container.querySelector('.bd-linear');
+    expect(bar).toBeTruthy();
   });
 });

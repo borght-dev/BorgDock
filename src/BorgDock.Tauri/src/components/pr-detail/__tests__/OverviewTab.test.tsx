@@ -123,97 +123,6 @@ describe('OverviewTab', () => {
     });
   });
 
-  it('renders author login', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('developer')).toBeTruthy();
-  });
-
-  it('renders branch names', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('feature-x')).toBeTruthy();
-    expect(screen.getByText('main')).toBeTruthy();
-  });
-
-  it('renders additions and deletions', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('+100')).toBeTruthy();
-    expect(screen.getByText('-50')).toBeTruthy();
-  });
-
-  it('renders changed files count', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('8 files')).toBeTruthy();
-  });
-
-  it('renders singular "file" for 1 changed file', () => {
-    const pr = makePr({
-      pullRequest: { ...makePr().pullRequest, changedFiles: 1 },
-    });
-    render(<OverviewTab pr={pr} />);
-    expect(screen.getByText('1 file')).toBeTruthy();
-  });
-
-  it('renders commit count', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('3 commits')).toBeTruthy();
-  });
-
-  it('renders singular "commit" for 1 commit', () => {
-    const pr = makePr({
-      pullRequest: { ...makePr().pullRequest, commitCount: 1 },
-    });
-    render(<OverviewTab pr={pr} />);
-    expect(screen.getByText('1 commit')).toBeTruthy();
-  });
-
-  it('renders comment count', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('5 comments')).toBeTruthy();
-  });
-
-  it('renders singular "comment" for 1 comment', () => {
-    const pr = makePr({
-      pullRequest: { ...makePr().pullRequest, commentCount: 1 },
-    });
-    render(<OverviewTab pr={pr} />);
-    expect(screen.getByText('1 comment')).toBeTruthy();
-  });
-
-  it('renders "Mergeable" badge when mergeable is true', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('Mergeable')).toBeTruthy();
-  });
-
-  it('renders "Merge Conflicts" badge when mergeable is false', () => {
-    const pr = makePr({
-      pullRequest: { ...makePr().pullRequest, mergeable: false },
-    });
-    render(<OverviewTab pr={pr} />);
-    expect(screen.getByText('Merge Conflicts')).toBeTruthy();
-  });
-
-  it('does not render merge badge when mergeable is undefined', () => {
-    const pr = makePr({
-      pullRequest: { ...makePr().pullRequest, mergeable: undefined },
-    });
-    render(<OverviewTab pr={pr} />);
-    expect(screen.queryByText('Mergeable')).toBeNull();
-    expect(screen.queryByText('Merge Conflicts')).toBeNull();
-  });
-
-  it('renders "Draft" badge when isDraft is true', () => {
-    const pr = makePr({
-      pullRequest: { ...makePr().pullRequest, isDraft: true },
-    });
-    render(<OverviewTab pr={pr} />);
-    expect(screen.getByText('Draft')).toBeTruthy();
-  });
-
-  it('does not render "Draft" badge when isDraft is false', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.queryByText('Draft')).toBeNull();
-  });
-
   it('renders MergeReadinessChecklist', () => {
     render(<OverviewTab pr={makePr()} />);
     expect(screen.getByTestId('merge-readiness')).toBeTruthy();
@@ -256,7 +165,7 @@ describe('OverviewTab', () => {
     expect(screen.getByText('Mark Ready')).toBeTruthy();
   });
 
-  it('renders "Squash & Merge" button when PR is ready', () => {
+  it('renders enabled "Merge" button when PR is ready', () => {
     const pr = makePr({
       overallStatus: 'green',
       pullRequest: {
@@ -267,12 +176,16 @@ describe('OverviewTab', () => {
       },
     });
     render(<OverviewTab pr={pr} />);
-    expect(screen.getByText('Squash & Merge')).toBeTruthy();
+    const btn = screen.getByText('Merge').closest('button');
+    expect(btn).toBeTruthy();
+    expect(btn?.disabled).toBe(false);
   });
 
-  it('does not render "Squash & Merge" when PR is not ready', () => {
+  it('renders disabled "Merge" button when PR is not ready', () => {
     render(<OverviewTab pr={makePr()} />);
-    expect(screen.queryByText('Squash & Merge')).toBeNull();
+    const btn = screen.getByText('Merge').closest('button');
+    expect(btn).toBeTruthy();
+    expect(btn?.disabled).toBe(true);
   });
 
   it('renders "Resolve Conflicts" button when not mergeable', () => {
@@ -353,7 +266,7 @@ describe('OverviewTab', () => {
 
   // ---- Action handlers ----
 
-  it('calls mergePullRequest when "Squash & Merge" is clicked', async () => {
+  it('calls mergePullRequest when "Merge" is clicked', async () => {
     const { mergePullRequest } = await import('@/services/github/mutations');
     const pr = makePr({
       overallStatus: 'green',
@@ -365,7 +278,7 @@ describe('OverviewTab', () => {
       },
     });
     render(<OverviewTab pr={pr} />);
-    fireEvent.click(screen.getByText('Squash & Merge'));
+    fireEvent.click(screen.getByText('Merge'));
     expect(mergePullRequest).toHaveBeenCalled();
   });
 
@@ -479,7 +392,7 @@ describe('OverviewTab', () => {
       },
     });
     render(<OverviewTab pr={pr} />);
-    fireEvent.click(screen.getByText('Squash & Merge'));
+    fireEvent.click(screen.getByText('Merge'));
 
     await vi.waitFor(() => {
       expect(screen.getByText(/PR #42 merged!/)).toBeTruthy();
@@ -525,5 +438,19 @@ describe('OverviewTab', () => {
     const dialog = screen.getByRole('dialog', { name: 'Close pull request?' });
     fireEvent.click(within(dialog).getByText('Cancel'));
     expect(closePullRequest).not.toHaveBeenCalled();
+  });
+
+  // ---- Primitive migration assertions (PR #4 / Task 4) ----
+
+  it('renders action buttons with data-overview-action', () => {
+    const { container } = render(<OverviewTab pr={makePr()} />);
+    expect(container.querySelector('[data-overview-action="browser"]')).toBeTruthy();
+    expect(container.querySelector('[data-overview-action="copy"]')).toBeTruthy();
+    expect(container.querySelector('[data-overview-action="checkout"]')).toBeTruthy();
+  });
+
+  it('renders Merge primary button regardless of readiness', () => {
+    const { container } = render(<OverviewTab pr={makePr()} />);
+    expect(container.querySelector('[data-overview-action="merge"]')).toBeTruthy();
   });
 });
