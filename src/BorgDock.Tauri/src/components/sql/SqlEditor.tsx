@@ -1,6 +1,6 @@
 import { autocompletion, completionKeymap, moveCompletionSelection, type CompletionSource, type Completion } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { MSSQL, SQLDialect, sql } from '@codemirror/lang-sql';
+import { MSSQL, SQLDialect, sql, schemaCompletionSource, keywordCompletionSource } from '@codemirror/lang-sql';
 import { Compartment, EditorState } from '@codemirror/state';
 import {
   EditorView,
@@ -28,26 +28,14 @@ const MSSQL_CI = SQLDialect.define({
 
 function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionSource {
   return (context) => {
-    if (!schema) {
-      // eslint-disable-next-line no-console
-      console.debug('[fromTableSource] no schema');
-      return null;
-    }
+    if (!schema) return null;
 
     const word = context.matchBefore(/[A-Za-z_][\w]*/);
-    if (!word || (word.from === word.to && !context.explicit)) {
-      // eslint-disable-next-line no-console
-      console.debug('[fromTableSource] no word', { word, explicit: context.explicit });
-      return null;
-    }
+    if (!word || (word.from === word.to && !context.explicit)) return null;
 
     // Skip qualified positions like `tbl.col` — let lang-sql's source handle those.
     const charBefore = context.state.sliceDoc(Math.max(0, word.from - 1), word.from);
-    if (charBefore === '.') {
-      // eslint-disable-next-line no-console
-      console.debug('[fromTableSource] qualified position, bailing');
-      return null;
-    }
+    if (charBefore === '.') return null;
 
     const before = context.state.sliceDoc(0, word.from);
     const fromRe = /\b(?:FROM|JOIN)\s+(?:(\w+)\.)?(\w+)/gi;
@@ -56,8 +44,6 @@ function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionS
     while ((m = fromRe.exec(before))) {
       if (m[2]) referenced.push({ schema: m[1] || undefined, name: m[2] });
     }
-    // eslint-disable-next-line no-console
-    console.debug('[fromTableSource] FROM matches', { referenced, beforeTail: before.slice(-100) });
 
     if (referenced.length === 0) return null;
 
@@ -70,11 +56,7 @@ function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionS
             t.schema.toLowerCase() === ref.schema.toLowerCase()
           : t.name.toLowerCase() === ref.name.toLowerCase(),
       );
-      if (!table) {
-        // eslint-disable-next-line no-console
-        console.debug('[fromTableSource] table not in schema', ref);
-        continue;
-      }
+      if (!table) continue;
       for (const col of table.columns) {
         if (seen.has(col.name)) continue;
         seen.add(col.name);
@@ -87,9 +69,6 @@ function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionS
       }
     }
 
-    // eslint-disable-next-line no-console
-    console.debug('[fromTableSource] returning', { columnCount: columns.length, from: word.from });
-
     if (columns.length === 0) return null;
 
     return {
@@ -101,15 +80,20 @@ function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionS
 }
 
 function buildSqlExtension(schema: SqlSchemaPayload | null) {
-  const langSupport = sql({
-    dialect: MSSQL_CI,
-    schema: toCmSchema(schema),
-    upperCaseKeywords: true,
-  });
+  const dialect = MSSQL_CI;
+  const cmSchema = toCmSchema(schema);
   return [
-    langSupport,
-    langSupport.language.data.of({
-      autocomplete: fromTableCompletionSource(schema),
+    sql({
+      dialect,
+      schema: cmSchema,
+      upperCaseKeywords: true,
+    }),
+    autocompletion({
+      override: [
+        fromTableCompletionSource(schema),
+        schemaCompletionSource({ dialect, schema: cmSchema, upperCaseKeywords: true }),
+        keywordCompletionSource(dialect, true),
+      ],
     }),
   ];
 }
@@ -135,7 +119,6 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
         history(),
         drawSelection(),
         highlightActiveLine(),
-        autocompletion(),
         sqlCompartment.of(buildSqlExtension(schema)),
         keymap.of([
           {
