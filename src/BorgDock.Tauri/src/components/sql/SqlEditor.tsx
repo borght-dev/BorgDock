@@ -1,6 +1,6 @@
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, completionKeymap, type CompletionSource, type Completion } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { MSSQL, sql } from '@codemirror/lang-sql';
+import { MSSQL, SQLDialect, sql } from '@codemirror/lang-sql';
 import { Compartment, EditorState } from '@codemirror/state';
 import {
   EditorView,
@@ -21,12 +21,75 @@ interface SqlEditorProps {
   height: number;
 }
 
+const MSSQL_CI = SQLDialect.define({
+  ...MSSQL.spec,
+  caseInsensitiveIdentifiers: true,
+});
+
+function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionSource {
+  return (context) => {
+    if (!schema) return null;
+
+    const word = context.matchBefore(/[A-Za-z_][\w]*/);
+    if (!word || (word.from === word.to && !context.explicit)) return null;
+
+    // Skip qualified positions like `tbl.col` — let lang-sql's source handle those.
+    const charBefore = context.state.sliceDoc(Math.max(0, word.from - 1), word.from);
+    if (charBefore === '.') return null;
+
+    const before = context.state.sliceDoc(0, word.from);
+    const fromRe = /\b(?:FROM|JOIN)\s+(?:(\w+)\.)?(\w+)/gi;
+    const referenced: { schema?: string; name: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = fromRe.exec(before))) {
+      if (m[2]) referenced.push({ schema: m[1] || undefined, name: m[2] });
+    }
+    if (referenced.length === 0) return null;
+
+    const columns: Completion[] = [];
+    const seen = new Set<string>();
+    for (const ref of referenced) {
+      const table = schema.tables.find((t) =>
+        ref.schema
+          ? t.name.toLowerCase() === ref.name.toLowerCase() &&
+            t.schema.toLowerCase() === ref.schema.toLowerCase()
+          : t.name.toLowerCase() === ref.name.toLowerCase(),
+      );
+      if (!table) continue;
+      for (const col of table.columns) {
+        if (seen.has(col.name)) continue;
+        seen.add(col.name);
+        columns.push({
+          label: col.name,
+          type: 'property',
+          detail: col.dataType,
+          boost: 1,
+        });
+      }
+    }
+
+    if (columns.length === 0) return null;
+
+    return {
+      from: word.from,
+      options: columns,
+      validFor: /^\w*$/,
+    };
+  };
+}
+
 function buildSqlExtension(schema: SqlSchemaPayload | null) {
-  return sql({
-    dialect: MSSQL,
+  const langSupport = sql({
+    dialect: MSSQL_CI,
     schema: toCmSchema(schema),
     upperCaseKeywords: true,
   });
+  return [
+    langSupport,
+    langSupport.language.data.of({
+      autocomplete: fromTableCompletionSource(schema),
+    }),
+  ];
 }
 
 export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEditorProps) {
@@ -61,6 +124,7 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
             },
             preventDefault: true,
           },
+          ...completionKeymap,
           ...defaultKeymap,
           ...historyKeymap,
         ]),
