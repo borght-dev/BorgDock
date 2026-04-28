@@ -88,7 +88,13 @@ describe('WhatsNewApp', () => {
 
   it('"Got it" writes lastSeenVersion and closes the window', async () => {
     render(<WhatsNewApp />);
-    await waitFor(() => screen.getByRole('button', { name: /got it/i }));
+    // The Got it button renders unconditionally, but handleGotIt no-ops
+    // until ready=true (set by the async getVersion() import). Wait for the
+    // version-bearing accordion to appear before clicking, otherwise on slow
+    // CI runners the click is a no-op.
+    await waitFor(() => {
+      expect(screen.getByText('1.0.11')).toBeTruthy();
+    });
     fireEvent.click(screen.getByRole('button', { name: /got it/i }));
     await waitFor(() => {
       expect(setLastSeenVersion).toHaveBeenCalledWith('1.0.11');
@@ -98,7 +104,9 @@ describe('WhatsNewApp', () => {
 
   it('"Don\'t auto-open again" writes both flags', async () => {
     render(<WhatsNewApp />);
-    await waitFor(() => screen.getByLabelText(/don't auto-open/i));
+    await waitFor(() => {
+      expect(screen.getByText('1.0.11')).toBeTruthy();
+    });
     fireEvent.click(screen.getByLabelText(/don't auto-open/i));
     await waitFor(() => {
       expect(disableAutoOpen).toHaveBeenCalledWith('1.0.11');
