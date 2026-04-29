@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { PRRow } from '../PRRow';
 import type { FlyoutPr } from '../FlyoutGlance';
+import { PRRow } from '../PRRow';
 
 const sample: FlyoutPr = {
   number: 715,
@@ -44,54 +44,76 @@ describe('PRRow', () => {
     const { container } = render(
       <PRRow pr={{ ...sample, reviewStatus: 'approved' }} onClick={vi.fn()} />,
     );
-    expect(
-      container.querySelector('[data-pill-tone="approved"]'),
-    ).toBeInTheDocument();
+    expect(container.querySelector('[data-pill-tone="approved"]')).toBeInTheDocument();
   });
 
-  it('renders Fix button on hover when failedCount > 0', async () => {
-    const onFix = vi.fn();
-    const failingPr = { ...sample, failedCount: 2, overallStatus: 'red' as const };
-    const { container } = render(
-      <PRRow pr={failingPr} onClick={vi.fn()} onFix={onFix} />,
-    );
-    fireEvent.mouseEnter(container.querySelector('.relative')!);
-    const fixBtn = await screen.findByText(/^Fix$/);
-    fireEvent.click(fixBtn);
-    expect(onFix).toHaveBeenCalledWith(failingPr);
+  it('always renders the smart-primary action button (Variant B)', () => {
+    const { container } = render(<PRRow pr={sample} onClick={vi.fn()} />);
+    // Status is yellow, no failure → "open" is the primary for non-mine PRs.
+    expect(container.querySelector('[data-pr-primary-action]')).toBeInTheDocument();
   });
 
-  it('does not render Fix button when failedCount is 0', () => {
-    const onFix = vi.fn();
+  it('chooses "rerun" as primary when PR is failing', () => {
+    const failingPr: FlyoutPr = {
+      ...sample,
+      failedCount: 2,
+      overallStatus: 'red',
+    };
+    const { container } = render(<PRRow pr={failingPr} onClick={vi.fn()} />);
+    expect(container.querySelector('[data-pr-primary-action="rerun"]')).toBeInTheDocument();
+  });
+
+  it('chooses "merge" as primary when PR is approved & owned', () => {
+    const approvedOwnPr: FlyoutPr = {
+      ...sample,
+      reviewStatus: 'approved',
+      isMine: true,
+    };
+    const { container } = render(<PRRow pr={approvedOwnPr} onClick={vi.fn()} />);
+    expect(container.querySelector('[data-pr-primary-action="merge"]')).toBeInTheDocument();
+  });
+
+  it('chooses "checkout" as primary when PR is mine but not approved', () => {
+    const ownPr: FlyoutPr = { ...sample, isMine: true };
+    const { container } = render(<PRRow pr={ownPr} onClick={vi.fn()} />);
+    expect(container.querySelector('[data-pr-primary-action="checkout"]')).toBeInTheDocument();
+  });
+
+  it('chooses "review" as primary when review is pending', () => {
+    const reviewPr: FlyoutPr = { ...sample, reviewStatus: 'pending' };
+    const { container } = render(<PRRow pr={reviewPr} onClick={vi.fn()} />);
+    expect(container.querySelector('[data-pr-primary-action="review"]')).toBeInTheDocument();
+  });
+
+  it('invokes onAction with the resolved primary id when primary is clicked', () => {
+    const onAction = vi.fn();
+    const failingPr: FlyoutPr = {
+      ...sample,
+      failedCount: 2,
+      overallStatus: 'red',
+    };
     const { container } = render(
-      <PRRow pr={{ ...sample, failedCount: 0 }} onClick={vi.fn()} onFix={onFix} />,
+      <PRRow pr={failingPr} onClick={vi.fn()} onAction={onAction} />,
+    );
+    const primaryBtn = container.querySelector('[data-pr-primary-action="rerun"]')!;
+    fireEvent.click(primaryBtn);
+    expect(onAction).toHaveBeenCalledWith(failingPr, 'rerun');
+  });
+
+  it('reveals secondary checkout/more icons on hover', () => {
+    const onAction = vi.fn();
+    const { container } = render(
+      <PRRow pr={sample} onClick={vi.fn()} onAction={onAction} />,
     );
     fireEvent.mouseEnter(container.querySelector('.relative')!);
+    const checkoutBtn = container.querySelector('[data-flyout-action="checkout"]')!;
+    fireEvent.click(checkoutBtn);
+    expect(onAction).toHaveBeenCalledWith(sample, 'checkout');
+
+    const moreBtn = container.querySelector('[data-flyout-action="more"]')!;
+    fireEvent.click(moreBtn);
+    expect(onAction).toHaveBeenCalledWith(sample, 'more');
+
     expect(screen.queryByText(/^Fix$/)).not.toBeInTheDocument();
-  });
-
-  it('renders Monitor button on hover when status is not green', async () => {
-    const onMonitor = vi.fn();
-    const yellowPr = { ...sample, overallStatus: 'yellow' as const, totalChecks: 5 };
-    const { container } = render(
-      <PRRow pr={yellowPr} onClick={vi.fn()} onMonitor={onMonitor} />,
-    );
-    fireEvent.mouseEnter(container.querySelector('.relative')!);
-    const btn = await screen.findByText(/^Monitor$/);
-    fireEvent.click(btn);
-    expect(onMonitor).toHaveBeenCalledWith(yellowPr);
-  });
-
-  it('does not render Monitor button when status is green', () => {
-    const onMonitor = vi.fn();
-    const { container } = render(
-      <PRRow
-        pr={{ ...sample, overallStatus: 'green', totalChecks: 5 }}
-        onClick={vi.fn()}
-        onMonitor={onMonitor}
-      />,
-    );
-    fireEvent.mouseEnter(container.querySelector('.relative')!);
-    expect(screen.queryByText(/^Monitor$/)).not.toBeInTheDocument();
   });
 });

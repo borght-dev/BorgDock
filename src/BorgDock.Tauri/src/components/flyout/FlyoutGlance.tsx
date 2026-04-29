@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
+import type { PrActionId } from '@/services/pr-action-resolver';
 import type { ToastPayload } from './flyout-mode';
 import { PRRow } from './PRRow';
 
@@ -155,37 +156,23 @@ export function FlyoutGlance({
     [onClose],
   );
 
-  const handleFixPr = useCallback(
-    async (pr: FlyoutPr) => {
+  const handlePrAction = useCallback(
+    async (pr: FlyoutPr, action: PrActionId | 'more') => {
       try {
         const { emitTo } = await import('@tauri-apps/api/event');
-        await emitTo('main', 'flyout-fix-pr', {
+        await emitTo('main', 'flyout-pr-action', {
           repoOwner: pr.repoOwner,
           repoName: pr.repoName,
           number: pr.number,
+          action,
           failedCheckNames: pr.failedCheckNames ?? [],
         });
       } catch {
         // ignore
       }
-      onClose();
-    },
-    [onClose],
-  );
-
-  const handleMonitorPr = useCallback(
-    async (pr: FlyoutPr) => {
-      try {
-        const { emitTo } = await import('@tauri-apps/api/event');
-        await emitTo('main', 'flyout-monitor-pr', {
-          repoOwner: pr.repoOwner,
-          repoName: pr.repoName,
-          number: pr.number,
-        });
-      } catch {
-        // ignore
-      }
-      onClose();
+      // Keep the flyout open for "more" so the user can reach the menu next;
+      // close it for terminal actions (checkout / merge / rerun / review / open).
+      if (action !== 'more') onClose();
     },
     [onClose],
   );
@@ -348,8 +335,7 @@ export function FlyoutGlance({
               pr={pr}
               active={i === activeIndex}
               onClick={handleClickPr}
-              onFix={handleFixPr}
-              onMonitor={handleMonitorPr}
+              onAction={handlePrAction}
               showRepo={showRepoPerRow}
             />
           ))}

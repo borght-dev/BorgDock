@@ -1,5 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { rerunWorkflow } from '@/services/github/checks';
+import { mergePullRequest } from '@/services/github/mutations';
+import { getClient } from '@/services/github/singleton';
+import type { PrActionId } from '@/services/pr-action-resolver';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -252,6 +256,7 @@ export function useBadgeSync() {
   useEffect(() => {
     let unlistenFix: (() => void) | undefined;
     let unlistenMonitor: (() => void) | undefined;
+    let unlistenAction: (() => void) | undefined;
     let cancelled = false;
 
     (async () => {
@@ -298,13 +303,99 @@ export function useBadgeSync() {
           },
         );
 
+        const fnAction = await listen<{
+          repoOwner: string;
+          repoName: string;
+          number: number;
+          action: PrActionId | 'more';
+          failedCheckNames: string[];
+        }>('flyout-pr-action', async (event) => {
+          const { repoOwner, repoName, number, action } = event.payload;
+          const prw = usePrStore
+            .getState()
+            .pullRequests.find(
+              (p) =>
+                p.pullRequest.repoOwner === repoOwner &&
+                p.pullRequest.repoName === repoName &&
+                p.pullRequest.number === number,
+            );
+          if (!prw) return;
+          const pr = prw.pullRequest;
+          switch (action) {
+            case 'rerun': {
+              const failedCheck = prw.checks.find(
+                (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
+              );
+              const client = getClient();
+              if (client && failedCheck) {
+                rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch(
+                  console.error,
+                );
+              }
+              break;
+            }
+            case 'merge': {
+              const client = getClient();
+              if (client) {
+                mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch(
+                  console.error,
+                );
+              }
+              break;
+            }
+            case 'review':
+            case 'open': {
+              try {
+                const { openUrl } = await import('@tauri-apps/plugin-opener');
+                openUrl(pr.htmlUrl).catch(console.error);
+              } catch {
+                // ignore
+              }
+              break;
+            }
+            case 'checkout': {
+              const settings = useSettingsStore.getState().settings;
+              const repoConfig = settings.repos.find(
+                (r) => r.owner === pr.repoOwner && r.name === pr.repoName,
+              );
+              const repoPath = repoConfig?.worktreeBasePath || '';
+              if (repoPath) {
+                try {
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  await invoke('git_fetch', { repoPath, remote: 'origin' });
+                  await invoke('git_checkout', { repoPath, branch: pr.headRef });
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+              break;
+            }
+            case 'more': {
+              // Surface PR detail; user reaches richer actions there.
+              try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                await invoke('open_pr_detail_window', {
+                  owner: pr.repoOwner,
+                  repo: pr.repoName,
+                  number: pr.number,
+                });
+              } catch (err) {
+                console.error(err);
+              }
+              break;
+            }
+          }
+        });
+
         if (cancelled) {
           fnFix();
           fnMonitor();
+          fnAction();
           return;
         }
         unlistenFix = fnFix;
         unlistenMonitor = fnMonitor;
+        unlistenAction = fnAction;
       } catch {
         // ignore
       }
@@ -314,6 +405,7 @@ export function useBadgeSync() {
       cancelled = true;
       unlistenFix?.();
       unlistenMonitor?.();
+      unlistenAction?.();
     };
   }, []);
 }

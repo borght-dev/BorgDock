@@ -1,9 +1,13 @@
 import { memo, useMemo } from 'react';
 import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
-import { Button } from '@/components/shared/primitives';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { computeMergeScore } from '@/services/merge-score';
+import {
+  type PrActionId,
+  primaryFor,
+  shapeFromPrWithChecks,
+} from '@/services/pr-action-resolver';
 import type { PriorityFactor } from '@/services/priority-scoring';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
@@ -11,6 +15,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { ActionButton } from './ActionButton';
+import { HoverActionPillBar } from './HoverActionPillBar';
 import { PRCard, type PRCardData } from './PRCard';
 import { PrContextMenu } from './PrContextMenu';
 import { ExpandedContent } from './PullRequestExpandedContent';
@@ -76,108 +81,22 @@ function mapToPRCardData(
   };
 }
 
-interface HoverActionBarProps {
-  prWithChecks: PullRequestWithChecks;
-  actions: ReturnType<typeof usePrCardActions>;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-}
-
-function HoverActionBar({
-  prWithChecks,
-  actions,
-  isExpanded,
-  onToggleExpand,
-}: HoverActionBarProps) {
-  const { pullRequest: pr, overallStatus, failedCheckNames } = prWithChecks;
-  const isOpen = pr.state === 'open';
-  const canMerge = isOpen && !pr.isDraft && overallStatus === 'green';
-
-  return (
-    <>
-      {overallStatus === 'red' && actions.failedCheck && (
-        <ActionButton
-          label="Re-run"
-          icon={'\u21BB'}
-          onClick={actions.handleRerun}
-          variant="accent"
-        />
-      )}
-      {overallStatus === 'red' && (
-        <ActionButton
-          label="Fix"
-          icon={'\u2726'}
-          onClick={actions.handleFix}
-          variant="purple"
-        />
-      )}
-      <ActionButton
-        label="Monitor"
-        icon={'\u25B6'}
-        onClick={actions.handleMonitor}
-        variant="purple"
-      />
-      {failedCheckNames.length > 0 && (
-        <ActionButton
-          label="Copy"
-          icon={'\uD83D\uDCCB'}
-          onClick={actions.handleCopyErrors}
-          variant="default"
-        />
-      )}
-      <ActionButton
-        label="Open in Browser"
-        onClick={actions.handleOpenInBrowser}
-        variant="default"
-      />
-      <ActionButton label="Copy Branch" onClick={actions.handleCopyBranch} variant="default" />
-      {actions.repoPath && (
-        <ActionButton label="Checkout" onClick={actions.handleCheckout} variant="default" />
-      )}
-      {isOpen && (
-        <ActionButton
-          label={pr.isDraft ? 'Mark Ready' : 'Mark Draft'}
-          onClick={actions.handleToggleDraft}
-          variant="draft"
-        />
-      )}
-      {canMerge && (
-        <ActionButton label="Merge" onClick={actions.handleMerge} variant="success" />
-      )}
-      {isOpen && (
-        <ActionButton
-          label="Bypass Merge"
-          onClick={actions.handleBypassMerge}
-          variant="danger"
-        />
-      )}
-      {isOpen && (
-        <ActionButton label="Close PR" onClick={actions.handleClose} variant="danger" />
-      )}
-      <Button
-        variant="ghost"
-        size="sm"
-        data-expand-toggle=""
-        title={isExpanded ? 'Collapse' : 'Expand'}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleExpand();
-        }}
-      >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        >
-          {isExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
-        </svg>
-      </Button>
-    </>
-  );
+function dispatchPrimaryAction(
+  action: PrActionId,
+  e: React.MouseEvent,
+  actions: ReturnType<typeof usePrCardActions>,
+) {
+  switch (action) {
+    case 'rerun':
+      return actions.handleRerun(e);
+    case 'merge':
+      return actions.handleMerge(e);
+    case 'review':
+    case 'open':
+      return actions.handleOpenInBrowser(e);
+    case 'checkout':
+      return actions.handleCheckout(e);
+  }
 }
 
 export const PullRequestCard = memo(function PullRequestCard({
@@ -207,10 +126,14 @@ export const PullRequestCard = memo(function PullRequestCard({
     [prWithChecks, isMyPr, worktreeMatch?.slotName],
   );
 
+  const reviewing = pr.reviewStatus === 'pending';
+  const primary = primaryFor(shapeFromPrWithChecks(prWithChecks, isMyPr, reviewing));
+  const isOpen = pr.state === 'open';
+
   return (
     <>
       {/* Wrapper preserves the data-pr-card hook used by useKeyboardNav and `group` for hover-only action bar reveal. */}
-      <div data-pr-card="" className="group">
+      <div data-pr-card="" className="group relative">
         {focusMode && priorityFactors && priorityFactors.length > 0 && (
           <div className="mb-1 px-1">
             <PriorityReasonLabel factors={priorityFactors} />
@@ -229,20 +152,54 @@ export const PullRequestCard = memo(function PullRequestCard({
           <div className="mt-2">
             <ActionButton
               label="Resolve Conflicts"
-              icon={'\u2726'}
+              icon={'✦'}
               onClick={actions.handleResolveConflicts}
               variant="accent"
             />
           </div>
         )}
-        <div className="mt-2 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <HoverActionBar
-            prWithChecks={prWithChecks}
-            actions={actions}
-            isExpanded={isExpanded}
-            onToggleExpand={() => togglePrExpanded(pr.number)}
-          />
-        </div>
+        {/* Variant A — compact hover-reveal pill bar anchored bottom-right.
+            Heavy actions (Bypass, Close, Mark Draft, Copy Errors, Fix/Monitor with
+            Claude) live on the right-click context menu via the More button. */}
+        {isOpen && (
+          <div
+            className="absolute right-3 bottom-2.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+            // style: pointer-events toggled inline so the bar can't intercept clicks while invisible
+            style={{ pointerEvents: undefined }}
+          >
+            <HoverActionPillBar
+              primary={primary}
+              onPrimary={(e) => dispatchPrimaryAction(primary, e, actions)}
+              onCheckout={actions.repoPath ? actions.handleCheckout : undefined}
+              onReview={actions.handleOpenInBrowser}
+              onMore={(e) => {
+                actions.setContextMenu({ x: e.clientX, y: e.clientY });
+              }}
+            />
+          </div>
+        )}
+        <button
+          type="button"
+          data-expand-toggle=""
+          aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePrExpanded(pr.number);
+          }}
+          className="absolute right-2 top-2 rounded-md p-1 opacity-0 transition-opacity duration-150 hover:bg-[var(--color-surface-hover)] group-hover:opacity-70"
+        >
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            {isExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
+          </svg>
+        </button>
         {workItemIds.length > 0 && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {workItemIds.map((id) => (

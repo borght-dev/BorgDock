@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Button } from '@/components/shared/primitives';
 import { PRCard, type PRCardData } from '@/components/pr/PRCard';
+import { BranchIcon, MoreHIcon } from '@/components/pr/PrActionIcons';
+import { PrPrimaryActionButton } from '@/components/pr/PrPrimaryActionButton';
+import { IconButton } from '@/components/shared/primitives';
+import { type PrActionId, primaryFor } from '@/services/pr-action-resolver';
 import type { FlyoutPr } from './FlyoutGlance';
 
 interface PRRowProps {
   pr: FlyoutPr;
   active?: boolean;
   onClick: (pr: FlyoutPr) => void;
-  /** Shown on hover when failedCount > 0. */
-  onFix?: (pr: FlyoutPr) => void;
-  /** Shown on hover when overallStatus !== 'green' && totalChecks > 0. */
-  onMonitor?: (pr: FlyoutPr) => void;
+  /** Generic action handler — wired by FlyoutGlance to emitTo events. */
+  onAction?: (pr: FlyoutPr, action: PrActionId | 'more') => void;
   /** Show "owner/repo" in the secondary line. Defaults to true. */
   showRepo?: boolean;
 }
@@ -49,11 +50,24 @@ function mapFlyoutPr(pr: FlyoutPr): PRCardData {
   };
 }
 
-export function PRRow({ pr, active, onClick, onFix, onMonitor, showRepo = true }: PRRowProps) {
+/**
+ * Variant B — smart primary action always visible, secondary icons fade in on hover.
+ * Mirrors design's PRRow in pr-card.jsx (chat lands on B for the flyout).
+ */
+export function PRRow({ pr, active, onClick, onAction, showRepo = true }: PRRowProps) {
   const [hovered, setHovered] = useState(false);
-  const showFix = !!onFix && pr.failedCount > 0;
-  const showMonitor = !!onMonitor && pr.overallStatus !== 'green' && pr.totalChecks > 0;
-  const showActions = hovered && (showFix || showMonitor);
+  const reviewing = pr.reviewStatus === 'pending';
+  const primary = primaryFor({
+    failing: pr.failedCount > 0 || pr.overallStatus === 'red',
+    approved: pr.reviewStatus === 'approved',
+    reviewing,
+    own: pr.isMine,
+  });
+
+  const handleAction = (action: PrActionId | 'more') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAction?.(pr, action);
+  };
 
   return (
     <div
@@ -68,34 +82,57 @@ export function PRRow({ pr, active, onClick, onFix, onMonitor, showRepo = true }
         onClick={() => onClick(pr)}
         showRepo={showRepo}
       />
-      {showActions && (
-        <div className="absolute right-3 top-1/2 flex -translate-y-1/2 gap-1">
-          {showFix && (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onFix!(pr);
-              }}
-            >
-              Fix
-            </Button>
-          )}
-          {showMonitor && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMonitor!(pr);
-              }}
-            >
-              Monitor
-            </Button>
-          )}
-        </div>
-      )}
+      {/* Action cluster: secondary icons fade in on hover, primary always visible.
+          Anchored on top of the trailing review pill area; the pill collapses behind
+          this overlay when hovered. */}
+      <div
+        data-pr-actions=""
+        // biome-ignore lint/a11y/useKeyWithClickEvents: container only stops propagation; inner buttons handle their own activation
+        onClick={(e) => e.stopPropagation()}
+        className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1"
+        // style: pointer-events on inactive secondary span needs precise toggle separately from opacity
+        style={{}}
+      >
+        <span
+          className="flex items-center gap-1 transition-all duration-150"
+          style={{
+            opacity: hovered ? 1 : 0,
+            transform: hovered ? 'translateX(0)' : 'translateX(4px)',
+            pointerEvents: hovered ? 'auto' : 'none',
+          }}
+        >
+          <IconButton
+            icon={<BranchIcon size={12} />}
+            size={22}
+            tooltip="Checkout"
+            aria-label="Checkout"
+            data-flyout-action="checkout"
+            onClick={handleAction('checkout')}
+          />
+          <IconButton
+            icon={<MoreHIcon size={12} />}
+            size={22}
+            tooltip="More actions"
+            aria-label="More actions"
+            data-flyout-action="more"
+            onClick={handleAction('more')}
+          />
+        </span>
+        {/* Hide the review pill on hover so the primary button sits cleanly. */}
+        <span
+          className="transition-opacity duration-150"
+          style={{
+            opacity: hovered ? 0 : 1,
+            // Pill is rendered inside PRCard; we don't need to render it here.
+            // This empty span just reserves rhythm with the design.
+          }}
+        />
+        <PrPrimaryActionButton
+          action={primary}
+          onClick={handleAction(primary)}
+          iconOnly={!hovered && primary !== 'rerun' && primary !== 'merge'}
+        />
+      </div>
     </div>
   );
 }

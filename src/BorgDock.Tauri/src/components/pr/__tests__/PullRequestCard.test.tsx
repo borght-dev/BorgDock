@@ -352,24 +352,15 @@ describe('PullRequestCard', () => {
     });
   });
 
-  describe('action buttons', () => {
-    it('shows "Open in Browser" button', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByText('Open in Browser')).toBeInTheDocument();
+  describe('action buttons (Variant A — compact hover-reveal pill bar)', () => {
+    it('renders the state-aware primary action button on open PRs', () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      // PR is approved but author is not the current user → primary = 'open'
+      expect(container.querySelector('[data-pr-primary-action]')).toBeInTheDocument();
     });
 
-    it('shows "Copy Branch" button', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByText('Copy Branch')).toBeInTheDocument();
-    });
-
-    it('shows "Monitor" button', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByText('Monitor')).toBeInTheDocument();
-    });
-
-    it('shows "Re-run" button when status is red and there is a failed check', () => {
-      render(
+    it('chooses "rerun" as primary when status is red and a failed check exists', () => {
+      const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
             overallStatus: 'red',
@@ -387,57 +378,72 @@ describe('PullRequestCard', () => {
           })}
         />,
       );
-      expect(screen.getByText('Re-run')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-pr-primary-action="rerun"]'),
+      ).toBeInTheDocument();
     });
 
-    it('shows "Fix" button when status is red', () => {
-      render(
+    it('chooses "merge" as primary when PR is approved and owned by current user', () => {
+      const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
-            overallStatus: 'red',
-            failedCheckNames: ['build'],
+            pullRequest: {
+              authorLogin: 'testuser',
+              reviewStatus: 'approved',
+              state: 'open',
+              isDraft: false,
+            } as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
-      expect(screen.getByText('Fix')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-pr-primary-action="merge"]'),
+      ).toBeInTheDocument();
     });
 
-    it('does not show "Re-run" or "Fix" for green status', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.queryByText('Re-run')).not.toBeInTheDocument();
-      expect(screen.queryByText('Fix')).not.toBeInTheDocument();
-    });
-
-    it('shows "Copy" button when there are failed checks', () => {
-      render(<PullRequestCard prWithChecks={makePr({ failedCheckNames: ['build'] })} />);
-      expect(screen.getByText('Copy')).toBeInTheDocument();
-    });
-
-    it('shows "Merge" button when PR can be merged', () => {
-      render(
+    it('chooses "checkout" as primary when PR is owned but not yet approved', () => {
+      const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
-            overallStatus: 'green',
-            pullRequest: { state: 'open', isDraft: false } as PullRequestWithChecks['pullRequest'],
+            pullRequest: {
+              authorLogin: 'testuser',
+              reviewStatus: 'commented',
+            } as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
-      expect(screen.getByText('Merge')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-pr-primary-action="checkout"]'),
+      ).toBeInTheDocument();
     });
 
-    it('does not show "Merge" for draft PRs', () => {
-      render(
+    it('renders Checkout secondary button when primary is not checkout', () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      expect(container.querySelector('[data-pr-action="checkout"]')).toBeInTheDocument();
+    });
+
+    it('renders Review secondary button when primary is not review', () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      expect(container.querySelector('[data-pr-action="review"]')).toBeInTheDocument();
+    });
+
+    it('renders the More icon button on every open PR card', () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      expect(container.querySelector('[data-pr-action="more"]')).toBeInTheDocument();
+    });
+
+    it('does not render the action pill bar on closed PRs', () => {
+      const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
-            overallStatus: 'green',
-            pullRequest: { state: 'open', isDraft: true } as PullRequestWithChecks['pullRequest'],
+            pullRequest: { state: 'closed' } as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
-      expect(screen.queryByText('Merge')).not.toBeInTheDocument();
+      expect(container.querySelector('[data-pr-action-bar]')).not.toBeInTheDocument();
     });
 
-    it('shows "Resolve Conflicts" button when mergeable is false', () => {
+    it('shows "Resolve Conflicts" button (outside pill bar) when mergeable is false', () => {
       render(
         <PullRequestCard
           prWithChecks={makePr({
@@ -447,83 +453,45 @@ describe('PullRequestCard', () => {
       );
       expect(screen.getByText('Resolve Conflicts')).toBeInTheDocument();
     });
-
-    it('shows "Mark Draft" for non-draft open PRs', () => {
-      render(
-        <PullRequestCard
-          prWithChecks={makePr({
-            pullRequest: { state: 'open', isDraft: false } as PullRequestWithChecks['pullRequest'],
-          })}
-        />,
-      );
-      expect(screen.getByText('Mark Draft')).toBeInTheDocument();
-    });
-
-    it('shows "Mark Ready" for draft open PRs', () => {
-      render(
-        <PullRequestCard
-          prWithChecks={makePr({
-            pullRequest: { state: 'open', isDraft: true } as PullRequestWithChecks['pullRequest'],
-          })}
-        />,
-      );
-      expect(screen.getByText('Mark Ready')).toBeInTheDocument();
-    });
-
-    it('shows "Close PR" and "Bypass Merge" for open PRs', () => {
-      render(
-        <PullRequestCard
-          prWithChecks={makePr({
-            pullRequest: { state: 'open' } as PullRequestWithChecks['pullRequest'],
-          })}
-        />,
-      );
-      expect(screen.getByText('Close PR')).toBeInTheDocument();
-      expect(screen.getByText('Bypass Merge')).toBeInTheDocument();
-    });
-
-    it('does not show open-only buttons for closed PRs', () => {
-      render(
-        <PullRequestCard
-          prWithChecks={makePr({
-            pullRequest: { state: 'closed' } as PullRequestWithChecks['pullRequest'],
-          })}
-        />,
-      );
-      expect(screen.queryByText('Close PR')).not.toBeInTheDocument();
-      expect(screen.queryByText('Bypass Merge')).not.toBeInTheDocument();
-      expect(screen.queryByText('Mark Draft')).not.toBeInTheDocument();
-    });
-
-    it('shows "Checkout" button when repo has worktreeBasePath', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      expect(screen.getByText('Checkout')).toBeInTheDocument();
-    });
   });
 
-  describe('button click handlers', () => {
-    it('calls openUrl when "Open in Browser" is clicked', async () => {
+  describe('button click handlers (Variant A pill bar)', () => {
+    it('calls openUrl when primary "open" action is clicked', async () => {
       const { openUrl } = await import('@tauri-apps/plugin-opener');
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      fireEvent.click(screen.getByText('Open in Browser'));
+      // Force primary = 'open' by making PR not failing, not approved+own, not reviewing, not own.
+      const { container } = render(
+        <PullRequestCard
+          prWithChecks={makePr({
+            pullRequest: {
+              authorLogin: 'someone-else',
+              reviewStatus: 'commented',
+            } as PullRequestWithChecks['pullRequest'],
+          })}
+        />,
+      );
+      const primary = container.querySelector('[data-pr-primary-action="open"]');
+      expect(primary).toBeInTheDocument();
+      fireEvent.click(primary!);
       expect(openUrl).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
     });
 
-    it('calls writeText when "Copy Branch" is clicked', async () => {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      fireEvent.click(screen.getByText('Copy Branch'));
-      expect(writeText).toHaveBeenCalledWith('feature/x');
-    });
-
-    it('calls invoke for checkout when "Checkout" is clicked', async () => {
+    it('calls invoke for git_fetch when secondary Checkout is clicked', async () => {
       const { invoke } = await import('@tauri-apps/api/core');
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      fireEvent.click(screen.getByText('Checkout'));
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      const checkoutBtn = container.querySelector('[data-pr-action="checkout"]')!;
+      fireEvent.click(checkoutBtn);
       expect(invoke).toHaveBeenCalledWith('git_fetch', {
         repoPath: '/code/repo',
         remote: 'origin',
       });
+    });
+
+    it('opens the context menu when More is clicked', async () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      const moreBtn = container.querySelector('[data-pr-action="more"]')!;
+      fireEvent.click(moreBtn);
+      // Context menu surfaces "Open in GitHub" — heavy actions live here now.
+      expect(await screen.findByText('Open in GitHub')).toBeInTheDocument();
     });
   });
 
@@ -607,35 +575,43 @@ describe('PullRequestCard', () => {
     });
   });
 
-  describe('confirm dialogs', () => {
-    it('shows close confirm dialog when Close PR is clicked', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      fireEvent.click(screen.getByText('Close PR'));
-      expect(screen.getByText('Close pull request?')).toBeInTheDocument();
+  describe('confirm dialogs (triggered via context menu)', () => {
+    function openMenu(container: HTMLElement) {
+      fireEvent.click(container.querySelector('[data-pr-action="more"]')!);
+    }
+
+    it('shows close confirm dialog when "Close PR" is selected from the context menu', async () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      openMenu(container);
+      fireEvent.click(await screen.findByText('Close PR'));
+      expect(await screen.findByText('Close pull request?')).toBeInTheDocument();
     });
 
-    it('shows bypass merge confirm dialog', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      fireEvent.click(screen.getByText('Bypass Merge'));
-      expect(screen.getByText('Bypass merge?')).toBeInTheDocument();
+    it('shows bypass merge confirm dialog when "Bypass merge (admin)" is selected', async () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      openMenu(container);
+      fireEvent.click(await screen.findByText('Bypass merge (admin)'));
+      expect(await screen.findByText('Bypass merge?')).toBeInTheDocument();
     });
 
-    it('shows toggle draft confirm dialog', () => {
-      render(<PullRequestCard prWithChecks={makePr()} />);
-      fireEvent.click(screen.getByText('Mark Draft'));
-      expect(screen.getByText('Convert to draft?')).toBeInTheDocument();
+    it('shows toggle draft confirm dialog when "Mark as draft" is selected', async () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      openMenu(container);
+      fireEvent.click(await screen.findByText('Mark as draft'));
+      expect(await screen.findByText('Convert to draft?')).toBeInTheDocument();
     });
 
-    it('shows "Mark as ready" confirm dialog for draft PRs', () => {
-      render(
+    it('shows "Mark as ready" confirm dialog for draft PRs', async () => {
+      const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
             pullRequest: { state: 'open', isDraft: true } as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
-      fireEvent.click(screen.getByText('Mark Ready'));
-      expect(screen.getByText('Mark as ready for review?')).toBeInTheDocument();
+      openMenu(container);
+      fireEvent.click(await screen.findByText('Mark as ready'));
+      expect(await screen.findByText('Mark as ready for review?')).toBeInTheDocument();
     });
   });
 
