@@ -115,7 +115,7 @@ pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
 // Flyout window (replaces the old floating badge)
 // ---------------------------------------------------------------------------
 
-const FLYOUT_GLANCE_W: f64 = 412.0;
+const FLYOUT_GLANCE_W: f64 = 460.0;
 const FLYOUT_GLANCE_H: f64 = 512.0;
 
 const CHROME_OFFSET_WIN: i32 = 52;

@@ -97,7 +97,10 @@ describe('PRRow', () => {
     );
     const primaryBtn = container.querySelector('[data-pr-primary-action="rerun"]')!;
     fireEvent.click(primaryBtn);
-    expect(onAction).toHaveBeenCalledWith(failingPr, 'rerun');
+    // The third arg is the React MouseEvent — used by FlyoutGlance to anchor
+    // the context menu when action === 'more'. Tests assert on (pr, action)
+    // and ignore the event payload.
+    expect(onAction).toHaveBeenCalledWith(failingPr, 'rerun', expect.anything());
   });
 
   it('reveals secondary checkout/more icons on hover', () => {
@@ -108,11 +111,11 @@ describe('PRRow', () => {
     fireEvent.mouseEnter(container.querySelector('.relative')!);
     const checkoutBtn = container.querySelector('[data-flyout-action="checkout"]')!;
     fireEvent.click(checkoutBtn);
-    expect(onAction).toHaveBeenCalledWith(sample, 'checkout');
+    expect(onAction).toHaveBeenCalledWith(sample, 'checkout', expect.anything());
 
     const moreBtn = container.querySelector('[data-flyout-action="more"]')!;
     fireEvent.click(moreBtn);
-    expect(onAction).toHaveBeenCalledWith(sample, 'more');
+    expect(onAction).toHaveBeenCalledWith(sample, 'more', expect.anything());
 
     expect(screen.queryByText(/^Fix$/)).not.toBeInTheDocument();
   });

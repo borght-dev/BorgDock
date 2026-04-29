@@ -19,7 +19,9 @@ export function FilterBar() {
   const c = counts();
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto px-2.5 pt-2 pb-1">
+    // Padding/horizontal-scroll only — outer Sidebar.tsx handles the row gap
+    // and vertical padding so FilterBar can sit inline with SearchBar.
+    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
       {filters.map((f) => {
         const isActive = filter === f.key;
         const count = c[f.key];

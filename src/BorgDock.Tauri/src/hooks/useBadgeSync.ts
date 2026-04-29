@@ -62,6 +62,11 @@ function buildFlyoutPayload(
       totalChecks: pr.checks.length,
       commentCount: pr.pullRequest.commentCount,
       isMine: lowerUser ? pr.pullRequest.authorLogin.toLowerCase() === lowerUser : false,
+      // Included so the flyout's context menu can copy locally without
+      // round-tripping the data through an event.
+      htmlUrl: pr.pullRequest.htmlUrl,
+      headRef: pr.pullRequest.headRef,
+      isDraft: pr.pullRequest.isDraft,
     })),
     failingCount,
     pendingCount,
@@ -371,17 +376,10 @@ export function useBadgeSync() {
               break;
             }
             case 'more': {
-              // Surface PR detail; user reaches richer actions there.
-              try {
-                const { invoke } = await import('@tauri-apps/api/core');
-                await invoke('open_pr_detail_window', {
-                  owner: pr.repoOwner,
-                  repo: pr.repoName,
-                  number: pr.number,
-                });
-              } catch (err) {
-                console.error(err);
-              }
+              // 'more' is now handled entirely in the flyout window (via
+              // FlyoutPrContextMenu). If a stale build still emits it, just
+              // drop it on the floor — the previous behaviour of popping the
+              // detail window was confusing and isn't what the user expects.
               break;
             }
           }

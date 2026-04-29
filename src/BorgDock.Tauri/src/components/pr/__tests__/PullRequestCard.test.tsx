@@ -443,15 +443,24 @@ describe('PullRequestCard', () => {
       expect(container.querySelector('[data-pr-action-bar]')).not.toBeInTheDocument();
     });
 
-    it('shows "Resolve Conflicts" button (outside pill bar) when mergeable is false', () => {
-      render(
+    it('shows "Resolve Conflicts" button inside the hover pill bar when mergeable is false', () => {
+      const { container } = render(
         <PullRequestCard
           prWithChecks={makePr({
             pullRequest: { mergeable: false } as PullRequestWithChecks['pullRequest'],
           })}
         />,
       );
-      expect(screen.getByText('Resolve Conflicts')).toBeInTheDocument();
+      const btn = container.querySelector('[data-pr-action="resolve-conflicts"]');
+      expect(btn).toBeInTheDocument();
+      expect(btn?.textContent).toContain('Resolve Conflicts');
+      // It must live inside the hover pill bar (not as a standalone block).
+      expect(btn?.closest('[data-pr-action-bar]')).not.toBeNull();
+    });
+
+    it('does not render "Resolve Conflicts" when the PR is mergeable', () => {
+      const { container } = render(<PullRequestCard prWithChecks={makePr()} />);
+      expect(container.querySelector('[data-pr-action="resolve-conflicts"]')).toBeNull();
     });
   });
 
@@ -616,18 +625,18 @@ describe('PullRequestCard', () => {
   });
 
   describe('resolve conflicts visibility', () => {
-    it('renders Resolve Conflicts button outside the opacity-0 hover overlay', () => {
+    it('renders Resolve Conflicts button inside the hover pill bar', () => {
+      // Resolve Conflicts moved into the hover pill bar, alongside Checkout, as
+      // a purple action. It is now revealed only on hover/focus — same group
+      // as the rest of the pill bar — so the surrounding opacity-0 wrapper is
+      // expected.
       const pr = makePr({
         pullRequest: { mergeable: false } as PullRequestWithChecks['pullRequest'],
       });
-      render(<PullRequestCard prWithChecks={pr} />);
-      const resolveBtn = screen.getByText(/resolve conflicts/i);
-      // Walk up ancestors; none should have the opacity-0 class.
-      let el: HTMLElement | null = resolveBtn.parentElement;
-      while (el) {
-        expect(el.className || '').not.toMatch(/opacity-0/);
-        el = el.parentElement;
-      }
+      const { container } = render(<PullRequestCard prWithChecks={pr} />);
+      const resolveBtn = container.querySelector('[data-pr-action="resolve-conflicts"]');
+      expect(resolveBtn).not.toBeNull();
+      expect(resolveBtn?.closest('[data-pr-action-bar]')).not.toBeNull();
     });
   });
 

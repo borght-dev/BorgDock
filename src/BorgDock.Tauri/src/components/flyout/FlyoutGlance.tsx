@@ -3,6 +3,7 @@ import { Dot, IconButton } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import type { ToastPayload } from './flyout-mode';
+import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
 import { PRRow } from './PRRow';
 
 const log = createLogger('FlyoutGlance');
@@ -38,6 +39,12 @@ export interface FlyoutPr {
   totalChecks: number;
   commentCount: number;
   isMine: boolean;
+  // Optional — populated by the live useBadgeSync payload. Older / synthetic
+  // payloads (test seeds) may omit them so the flyout context menu treats
+  // these as best-effort.
+  htmlUrl?: string;
+  headRef?: string;
+  isDraft?: boolean;
 }
 
 export function FlyoutGlance({
@@ -156,8 +163,22 @@ export function FlyoutGlance({
     [onClose],
   );
 
+  // 'more' opens the local context menu; other actions emit to main (which
+  // executes them against the live pr-store) and close the flyout.
+  const [contextMenu, setContextMenu] = useState<
+    | {
+        pr: FlyoutPr;
+        position: { x: number; y: number };
+      }
+    | null
+  >(null);
+
   const handlePrAction = useCallback(
-    async (pr: FlyoutPr, action: PrActionId | 'more') => {
+    async (pr: FlyoutPr, action: PrActionId | 'more', e: React.MouseEvent) => {
+      if (action === 'more') {
+        setContextMenu({ pr, position: { x: e.clientX, y: e.clientY } });
+        return;
+      }
       try {
         const { emitTo } = await import('@tauri-apps/api/event');
         await emitTo('main', 'flyout-pr-action', {
@@ -170,9 +191,7 @@ export function FlyoutGlance({
       } catch {
         // ignore
       }
-      // Keep the flyout open for "more" so the user can reach the menu next;
-      // close it for terminal actions (checkout / merge / rerun / review / open).
-      if (action !== 'more') onClose();
+      onClose();
     },
     [onClose],
   );
@@ -186,7 +205,10 @@ export function FlyoutGlance({
     >
       <div
         ref={panelRef}
-        className="w-[380px] overflow-hidden rounded-[14px] border"
+        // max-h-full + flex-col so the panel never overflows the window — the
+        // PR list shrinks instead of pushing the header off-screen when the
+        // window's vertical budget is tight.
+        className="flex max-h-full w-[428px] flex-col overflow-hidden rounded-[14px] border"
         // style: animation keyframe + flyout-shadow custom property cannot be expressed as Tailwind utilities
         style={{
           background: 'var(--color-surface)',
@@ -197,7 +219,7 @@ export function FlyoutGlance({
       >
         {/* Header */}
         <div
-          className="border-b px-4 pt-3.5 pb-3"
+          className="shrink-0 border-b px-4 pt-3.5 pb-3"
           // style: gradient background — no Tailwind utility covers multi-stop CSS gradients with tokens
           style={{
             borderColor: 'var(--color-subtle-border)',
@@ -317,7 +339,7 @@ export function FlyoutGlance({
 
         {banner && (
           <div
-            className="px-4 py-2 text-[11px] font-semibold text-white"
+            className="shrink-0 px-4 py-2 text-[11px] font-semibold text-white"
             // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
             style={{ background: bannerColor(banner.severity) }}
             data-testid="flyout-glance-banner"
@@ -327,8 +349,12 @@ export function FlyoutGlance({
         )}
 
         {/* PR list */}
+        {/* flex-1 + min-h-0 lets this region absorb the leftover vertical
+            space inside the panel and scroll internally — replaces the old
+            fixed max-h-[360px], which could push the header off-screen when
+            the window was shorter than header + 360 + footer. */}
         {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
-        <div className="max-h-[360px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+        <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {pullRequests.map((pr, i) => (
             <PRRow
               key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
@@ -350,7 +376,7 @@ export function FlyoutGlance({
 
         {/* Footer */}
         <div
-          className="flex items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
+          className="flex shrink-0 items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
         >
           {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
@@ -368,6 +394,15 @@ export function FlyoutGlance({
           </span>
         </div>
       </div>
+
+      {contextMenu && (
+        <FlyoutPrContextMenu
+          pr={contextMenu.pr}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
+          onCloseFlyout={onClose}
+        />
+      )}
 
       <style>{`
         :root {

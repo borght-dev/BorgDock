@@ -14,7 +14,6 @@ import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
-import { ActionButton } from './ActionButton';
 import { HoverActionPillBar } from './HoverActionPillBar';
 import { PRCard, type PRCardData } from './PRCard';
 import { PrContextMenu } from './PrContextMenu';
@@ -148,19 +147,12 @@ export const PullRequestCard = memo(function PullRequestCard({
           active={isFocused}
           isFocused={isSelected}
         />
-        {pr.mergeable === false && (
-          <div className="mt-2">
-            <ActionButton
-              label="Resolve Conflicts"
-              icon={'✦'}
-              onClick={actions.handleResolveConflicts}
-              variant="accent"
-            />
-          </div>
-        )}
         {/* Variant A — compact hover-reveal pill bar anchored bottom-right.
             Heavy actions (Bypass, Close, Mark Draft, Copy Errors, Fix/Monitor with
-            Claude) live on the right-click context menu via the More button. */}
+            Claude) live on the right-click context menu via the More button.
+            When the PR has merge conflicts, a purple "Resolve Conflicts" button
+            is injected at the start of the bar instead of being rendered as a
+            separate always-visible block below the card. */}
         {isOpen && (
           <div
             className="absolute right-3 bottom-2.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
@@ -172,6 +164,9 @@ export const PullRequestCard = memo(function PullRequestCard({
               onPrimary={(e) => dispatchPrimaryAction(primary, e, actions)}
               onCheckout={actions.repoPath ? actions.handleCheckout : undefined}
               onReview={actions.handleOpenInBrowser}
+              onResolveConflicts={
+                pr.mergeable === false ? actions.handleResolveConflicts : undefined
+              }
               onMore={(e) => {
                 actions.setContextMenu({ x: e.clientX, y: e.clientY });
               }}

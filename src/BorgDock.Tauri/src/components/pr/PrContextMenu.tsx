@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { rerunWorkflow } from '@/services/github/checks';
 import { mergePullRequest } from '@/services/github/mutations';
@@ -49,6 +49,10 @@ function MenuItem({ label, disabled, onClick }: MenuItemProps) {
 
 export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  // Adjusted position after measuring — clamps the menu inside the viewport
+  // and flips it to the left/up of the cursor when there isn't room to the
+  // right/below. Starts at the requested position so the first paint is close.
+  const [resolvedPos, setResolvedPos] = useState(position);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
   const showNotification = useNotificationStore((s) => s.show);
@@ -74,6 +78,22 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  // Clamp the menu inside the viewport. The trigger sits at the right edge of
+  // the card row, so the natural anchor often overflows on the right.
+  useLayoutEffect(() => {
+    const el = menuRef.current;
+    if (!el) return;
+    const margin = 8;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = position.x;
+    let y = position.y;
+    if (x + rect.width + margin > vw) x = Math.max(margin, vw - rect.width - margin);
+    if (y + rect.height + margin > vh) y = Math.max(margin, vh - rect.height - margin);
+    setResolvedPos({ x, y });
+  }, [position.x, position.y]);
 
   const { pullRequest, failedCheckNames, overallStatus } = pr;
   const owner = pullRequest.repoOwner;
@@ -205,8 +225,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       ref={menuRef}
       className="fixed z-50 min-w-[200px] rounded-lg border shadow-lg py-1"
       style={{
-        left: position.x,
-        top: position.y,
+        left: resolvedPos.x,
+        top: resolvedPos.y,
         backgroundColor: 'var(--color-modal-bg)',
         borderColor: 'var(--color-modal-border)',
       }}

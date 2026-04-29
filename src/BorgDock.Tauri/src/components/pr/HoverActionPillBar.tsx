@@ -10,7 +10,9 @@ export interface HoverActionPillBarProps {
   onCheckout?: (e: MouseEvent) => void;
   onReview?: (e: MouseEvent) => void;
   onMore: (e: MouseEvent) => void;
-  /** Optional extra leading slot (e.g. Resolve Conflicts). */
+  /** When set, renders a purple "Resolve Conflicts" button at the start of the bar. */
+  onResolveConflicts?: (e: MouseEvent) => void;
+  /** Optional extra leading slot (e.g. custom override). */
   leading?: ReactNode;
 }
 
@@ -27,6 +29,7 @@ export function HoverActionPillBar({
   onCheckout,
   onReview,
   onMore,
+  onResolveConflicts,
   leading,
 }: HoverActionPillBarProps) {
   return (
@@ -39,6 +42,29 @@ export function HoverActionPillBar({
       className="flex gap-1 rounded-lg border bg-[var(--color-surface)] p-1 px-1.5 border-[var(--color-strong-border)] shadow-[var(--elevation-2)]"
     >
       {leading}
+      {onResolveConflicts && (
+        <Button
+          variant="primary"
+          size="sm"
+          leading={<ResolveConflictsIcon />}
+          title="Resolve Conflicts"
+          data-pr-action="resolve-conflicts"
+          // Inline style — Tailwind v4 doesn't honour the v3 `!`-prefix syntax,
+          // so an override like `!bg-...` is silently ignored. Inline style
+          // wins reliably and gives the design's purple "fix-me" treatment.
+          style={{
+            background: 'var(--color-purple, #6655d4)',
+            borderColor: 'var(--color-purple, #6655d4)',
+            color: '#fff',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onResolveConflicts(e);
+          }}
+        >
+          Resolve Conflicts
+        </Button>
+      )}
       <PrPrimaryActionButton action={primary} onClick={onPrimary} />
       {onCheckout && primary !== 'checkout' && (
         <Button
@@ -82,5 +108,24 @@ export function HoverActionPillBar({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Sparkle/conflict glyph for the Resolve Conflicts button. Matches the original
+ * standalone-button glyph (✦) — small enough to read at sm button size while
+ * still signalling "magic / fix-up flow" rather than a literal merge action.
+ */
+function ResolveConflictsIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M8 1 9.4 6.6 15 8l-5.6 1.4L8 15l-1.4-5.6L1 8l5.6-1.4z" />
+    </svg>
   );
 }

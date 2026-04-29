@@ -10,8 +10,10 @@ interface PRRowProps {
   pr: FlyoutPr;
   active?: boolean;
   onClick: (pr: FlyoutPr) => void;
-  /** Generic action handler — wired by FlyoutGlance to emitTo events. */
-  onAction?: (pr: FlyoutPr, action: PrActionId | 'more') => void;
+  /** Generic action handler — wired by FlyoutGlance to emitTo events.
+   *  The DOM event is forwarded so callers (e.g. 'more') can read click coords
+   *  and anchor a popup menu. */
+  onAction?: (pr: FlyoutPr, action: PrActionId | 'more', e: React.MouseEvent) => void;
   /** Show "owner/repo" in the secondary line. Defaults to true. */
   showRepo?: boolean;
 }
@@ -66,7 +68,7 @@ export function PRRow({ pr, active, onClick, onAction, showRepo = true }: PRRowP
 
   const handleAction = (action: PrActionId | 'more') => (e: React.MouseEvent) => {
     e.stopPropagation();
-    onAction?.(pr, action);
+    onAction?.(pr, action, e);
   };
 
   return (
@@ -82,14 +84,15 @@ export function PRRow({ pr, active, onClick, onAction, showRepo = true }: PRRowP
         onClick={() => onClick(pr)}
         showRepo={showRepo}
       />
-      {/* Action cluster: secondary icons fade in on hover, primary always visible.
-          Anchored on top of the trailing review pill area; the pill collapses behind
-          this overlay when hovered. */}
+      {/* Action cluster — anchored bottom-right of the row.
+          PRCard compact reserves pb-9 of footer space so this band doesn't
+          overlap the title/meta. Secondary icons fade in on hover, primary
+          stays visible. */}
       <div
         data-pr-actions=""
         // biome-ignore lint/a11y/useKeyWithClickEvents: container only stops propagation; inner buttons handle their own activation
         onClick={(e) => e.stopPropagation()}
-        className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1"
+        className="absolute right-3 bottom-1.5 flex items-center gap-1"
         // style: pointer-events on inactive secondary span needs precise toggle separately from opacity
         style={{}}
       >

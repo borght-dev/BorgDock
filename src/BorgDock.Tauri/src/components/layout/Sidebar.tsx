@@ -23,7 +23,7 @@ export function Sidebar({ children }: SidebarProps) {
     <div className="sidebar-shell">
       <Header />
       {activeSection === 'prs' && !selectedPr && (
-        <div className="sidebar-toolbar">
+        <div className="sidebar-toolbar flex items-center gap-2 px-2.5 py-1.5">
           <FilterBar />
           <SearchBar />
         </div>

@@ -1,5 +1,4 @@
-import clsx from 'clsx';
-import type { MouseEvent } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import { Button } from '@/components/shared/primitives';
 import {
   ACTION_LABEL,
@@ -14,6 +13,23 @@ const ACTION_ICON: Record<PrActionId, PrActionIconKind> = {
   review: 'eye',
   checkout: 'branch',
   open: 'external',
+};
+
+// Inline style is used (not Tailwind `!text-white`) because Tailwind v4 does
+// not honour the v3 `!`-prefix important syntax — the override silently
+// dropped through to `bd-btn`'s default secondary text colour, which is why
+// the Re-run pill rendered with dark text on the warning fill.
+const TONE_STYLE: Record<string, CSSProperties | undefined> = {
+  success: {
+    background: 'var(--color-status-green)',
+    borderColor: 'var(--color-status-green)',
+    color: '#fff',
+  },
+  warning: {
+    background: 'var(--color-status-yellow)',
+    borderColor: 'var(--color-status-yellow)',
+    color: '#fff',
+  },
 };
 
 export interface PrPrimaryActionButtonProps {
@@ -41,12 +57,7 @@ export function PrPrimaryActionButton({ action, onClick, iconOnly }: PrPrimaryAc
         e.stopPropagation();
         onClick(e);
       }}
-      className={clsx(
-        tone === 'success' &&
-          '!bg-[var(--color-status-green)] !border-[var(--color-status-green)] !text-white',
-        tone === 'warning' &&
-          '!bg-[var(--color-status-yellow)] !border-[var(--color-status-yellow)] !text-white',
-      )}
+      style={TONE_STYLE[tone]}
     >
       {iconOnly ? null : ACTION_LABEL[action]}
     </Button>

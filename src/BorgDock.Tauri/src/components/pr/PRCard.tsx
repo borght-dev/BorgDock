@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import type { HTMLAttributes, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, HTMLAttributes, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Avatar,
   Card,
@@ -88,6 +89,70 @@ export interface PRCardData {
   commentCount?: number;
   labels?: string[];
   worktreeSlot?: string;
+}
+
+/**
+ * Title row that scrolls horizontally on hover when the text is too long to
+ * fit. No-op when the text fits — the wrapper still clips overflow so the
+ * column stays its expected width. Animation distance and duration are derived
+ * from the measured overflow so the speed feels consistent regardless of how
+ * much extra text there is.
+ */
+function MarqueeTitle({ text, className }: { text: string; className?: string }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+  const [hovered, setHovered] = useState(false);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const inner = innerRef.current;
+    if (!wrap || !inner) return;
+    const measure = () => {
+      const o = inner.scrollWidth - wrap.clientWidth;
+      setOverflow(o > 1 ? o : 0);
+    };
+    measure();
+    // ResizeObserver isn't part of jsdom; skip observation in test envs and
+    // rely on the one-shot measurement above. Production browsers always have
+    // it. Guarding here keeps the component testable without polyfilling.
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [text]);
+
+  const shouldScroll = hovered && overflow > 0;
+  // ~40 px/s — quick enough to feel responsive, slow enough to read.
+  const duration = Math.max(2.5, overflow / 40);
+
+  const innerStyle: CSSProperties = shouldScroll
+    ? {
+        display: 'inline-block',
+        animation: `prcard-marquee ${duration}s ease-in-out infinite alternate`,
+        // CSS var consumed by the keyframe defined in styles/index.css.
+        ['--prcard-marquee-shift' as never]: `-${overflow + 8}px`,
+      }
+    : {
+        display: 'inline-block',
+        transform: 'translateX(0)',
+        transition: 'transform 200ms ease-out',
+      };
+
+  return (
+    <div
+      ref={wrapRef}
+      className={clsx('overflow-hidden whitespace-nowrap', className)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      data-marquee-overflow={overflow > 0 ? 'true' : undefined}
+    >
+      <span ref={innerRef} style={innerStyle}>
+        {text}
+      </span>
+    </div>
+  );
 }
 
 function CommentIcon() {
@@ -193,7 +258,11 @@ export function PRCard({
         {...dataAttrs}
         className={clsx(
           'bd-pr-row',
-          'grid items-center gap-3 px-4 py-3',
+          // pb-9 reserves a 36px footer band on each row so the absolute hover
+          // action cluster (anchored bottom-right by PRRow) can sit cleanly
+          // below the title/meta instead of overlapping them. Slight cost: rows
+          // are ~24px taller at rest.
+          'relative grid items-start gap-3 px-4 pt-3 pb-9',
           'border-b border-[var(--color-subtle-border)] last:border-b-0',
           'cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)]',
           active && 'bg-[var(--color-surface-hover)]',
@@ -207,11 +276,10 @@ export function PRCard({
           size="sm"
         />
         <div className="min-w-0">
-          <div
-            className="truncate text-[12px] font-medium text-[var(--color-text-primary)]"
-          >
-            {pr.title}
-          </div>
+          <MarqueeTitle
+            text={pr.title}
+            className="text-[12px] font-medium text-[var(--color-text-primary)]"
+          />
           <div
             className="mt-1 flex items-center gap-2 text-[10.5px] text-[var(--color-text-tertiary)]"
           >

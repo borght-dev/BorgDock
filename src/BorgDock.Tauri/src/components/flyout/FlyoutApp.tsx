@@ -250,8 +250,11 @@ export function FlyoutApp() {
           const height = toastQueueLen * 160 + 32;
           if (!cancelled) await invoke('resize_flyout', { width, height });
         } else if (mode.kind === 'glance' || mode.kind === 'initializing') {
-          // Match the glance-mode constants from Rust (FLYOUT_GLANCE_W/H).
-          if (!cancelled) await invoke('resize_flyout', { width: 412, height: 512 });
+          // Match the glance-mode constants from Rust (FLYOUT_GLANCE_W/H in
+          // src-tauri/src/platform/window.rs). Keep these in sync — drifting
+          // narrower than the inner panel (currently w-[428px] + 16px
+          // wrapper padding on each side) clips the panel left edge.
+          if (!cancelled) await invoke('resize_flyout', { width: 460, height: 512 });
         }
         // idle: window is hidden, no-op
       } catch {

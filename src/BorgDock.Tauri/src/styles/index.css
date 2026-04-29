@@ -867,6 +867,24 @@
   }
 }
 
+/* PRCard compact title: marquee scroll on hover when text overflows.
+   The shift distance is set per-row via the --prcard-marquee-shift custom
+   property so a single keyframe definition serves every row. */
+@keyframes prcard-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(0);
+  }
+  80% {
+    transform: translateX(var(--prcard-marquee-shift, 0));
+  }
+  100% {
+    transform: translateX(var(--prcard-marquee-shift, 0));
+  }
+}
+
 /* ════════════════════════════════════════════════════════
    Splash Screen Animations
    ════════════════════════════════════════════════════════ */
@@ -2026,6 +2044,17 @@ select.field-input option {
     color: var(--color-text-tertiary);
     border-color: var(--color-subtle-border);
     font-weight: 500;
+  }
+
+  /* Chips are pills used as filter buttons — slightly taller and a hair
+     bigger label than the badge form so they read as interactive controls. */
+  .bd-chip {
+    height: 24px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .bd-chip__count {
+    font-size: 11px !important;
   }
 
   /* ── Dot ─────────────────────────────────────────── */
