@@ -33,13 +33,19 @@ afterEach(() => {
 
 describe('useSqlSchema', () => {
   it('returns cached schema first, then swaps in fresh', async () => {
+    // Manually-resolved fetch promise so the test can observe the cached /
+    // refreshing phase deterministically. A timeout-based delay races with
+    // CI scheduling: if the runner is slow enough that the 50ms timer fires
+    // between waitFor resolving and the next assertion, status has already
+    // advanced to 'fresh' and the cached/refreshing assertion fails.
+    let resolveFetch: (payload: SqlSchemaPayload) => void = () => {};
+    const fetchPromise = new Promise<SqlSchemaPayload>((resolve) => {
+      resolveFetch = resolve;
+    });
+
     mockInvoke.mockImplementation(async (cmd: string) => {
       if (cmd === 'cache_load_sql_schema') return cached;
-      if (cmd === 'fetch_sql_schema') {
-        // Delay to allow cached state to be observed
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        return fresh;
-      }
+      if (cmd === 'fetch_sql_schema') return fetchPromise;
       if (cmd === 'cache_save_sql_schema') return undefined;
       throw new Error(`unexpected ${cmd}`);
     });
@@ -48,6 +54,8 @@ describe('useSqlSchema', () => {
 
     await waitFor(() => expect(result.current.schema).toEqual(cached));
     expect(['cached', 'refreshing']).toContain(result.current.status);
+
+    resolveFetch(fresh);
 
     await waitFor(() => expect(result.current.schema).toEqual(fresh));
     expect(result.current.status).toBe('fresh');
