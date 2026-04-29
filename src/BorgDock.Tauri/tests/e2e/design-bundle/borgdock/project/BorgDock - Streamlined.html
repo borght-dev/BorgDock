@@ -93,6 +93,7 @@
 <script type="text/babel" src="components/icons.jsx"></script>
 <script type="text/babel" src="components/primitives.jsx"></script>
 <script type="text/babel" src="components/data.jsx"></script>
+<script type="text/babel" src="components/pr-actions.jsx"></script>
 <script type="text/babel" src="components/pr-card.jsx"></script>
 <script type="text/babel" src="components/flyout.jsx"></script>
 <script type="text/babel" src="components/main-window.jsx"></script>
@@ -169,6 +170,15 @@
             <LightDarkPair id="work-items" label="Main window · Work Items" width={1020} height={760}>
               <WorkItems />
             </LightDarkPair>
+          </DCSection>
+
+          <DCSection id="actions" title="③ⓑ PR card actions" subtitle="Hover-revealed action buttons exist in the sidebar today but not on the wider main-window cards. Three approaches to reveal Checkout / Review / Merge / Re-run inline.">
+            <DCArtboard id="card-actions" label="Main-window card · 3 variants" width={1440} height={760}>
+              <PRActionsShowcase />
+            </DCArtboard>
+            <DCArtboard id="row-actions" label="Sidebar row · 3 variants" width={1200} height={540}>
+              <PRRowActionsShowcase />
+            </DCArtboard>
           </DCSection>
 
           <DCSection id="detail" title="④ PR detail" subtitle="Shared titlebar, shared tab bar, shared action button vocabulary. Every tab lives in the same shell.">

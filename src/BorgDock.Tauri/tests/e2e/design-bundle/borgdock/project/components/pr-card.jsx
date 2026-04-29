@@ -3,6 +3,8 @@
 const PRCard = ({ pr, density = "normal", expanded = false, onToggle }) => {
   const isCompact = density === "compact";
   const statusTone = pr.status === "failing" ? "red" : pr.status === "running" ? "yellow" : pr.status === "merged" ? "gray" : "green";
+  const [hovered, setHovered] = React.useState(false);
+  const primary = !isCompact && primaryFor ? primaryFor(pr) : null;
 
   return (
     <div className={`bd-card ${pr.own ? "bd-card--own" : ""}`}
@@ -11,8 +13,11 @@ const PRCard = ({ pr, density = "normal", expanded = false, onToggle }) => {
            display: "flex", flexDirection: "column",
            gap: isCompact ? 6 : 10,
            cursor: "pointer",
+           position: "relative",
          }}
-         onClick={onToggle}>
+         onClick={onToggle}
+         onMouseEnter={() => setHovered(true)}
+         onMouseLeave={() => setHovered(false)}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <Avatar initials={pr.initials} tone={pr.avatarTone || (pr.own ? "own" : "them")} size={isCompact ? "md" : "md"} />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: isCompact ? 3 : 5 }}>
@@ -104,16 +109,44 @@ const PRCard = ({ pr, density = "normal", expanded = false, onToggle }) => {
           )}
         </>
       )}
+
+      {/* Variant A · Hover-reveal action bar — main-window only */}
+      {!isCompact && primary && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute", right: 12, bottom: 10,
+            display: "flex", gap: 4,
+            padding: "4px 6px", borderRadius: 8,
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-strong-border)",
+            boxShadow: "var(--elevation-2)",
+            opacity: hovered ? 1 : 0,
+            transform: hovered ? "translateY(0)" : "translateY(6px)",
+            transition: "opacity 140ms ease, transform 140ms ease",
+            pointerEvents: hovered ? "auto" : "none",
+          }}>
+          <ActionBtn id={primary} primary tone={primaryTone(primary)} />
+          <ActionBtn id="checkout" />
+          <ActionBtn id="review" />
+          <button className="bd-icon-btn" title="More"><Icons.MoreH size={12} /></button>
+        </div>
+      )}
     </div>
   );
 };
 
 // Compact row variant for flyout — single line
+// Variant B · Smart primary action visible at rest, secondary icons reveal on hover.
 const PRRow = ({ pr, onClick }) => {
   const statusTone = pr.status === "failing" ? "red" : pr.status === "running" ? "yellow" : "green";
+  const [hovered, setHovered] = React.useState(false);
+  const primary = primaryFor(pr);
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
         gridTemplateColumns: "24px 1fr auto",
@@ -123,9 +156,8 @@ const PRRow = ({ pr, onClick }) => {
         borderBottom: "1px solid var(--color-subtle-border)",
         cursor: "pointer",
         transition: "background 120ms ease",
+        background: hovered ? "var(--color-surface-hover)" : "transparent",
       }}
-      onMouseEnter={(e) => e.currentTarget.style.background = "var(--color-surface-hover)"}
-      onMouseLeave={(e) => e.currentTarget.style.background = ""}
     >
       <Avatar initials={pr.initials} tone={pr.avatarTone || (pr.own ? "own" : "them")} size="sm" />
       <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -146,11 +178,29 @@ const PRRow = ({ pr, onClick }) => {
           </span>
         </div>
       </div>
-      {pr.reviewState && (
-        <Pill tone={pr.reviewState === "approved" ? "success" : pr.reviewState === "changes" ? "error" : "draft"}>
-          {pr.reviewState === "approved" ? "approved" : pr.reviewState === "changes" ? "changes" : "commented"}
-        </Pill>
-      )}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {/* Review pill collapses on hover to make space for actions */}
+        {pr.reviewState && !hovered && (
+          <Pill tone={pr.reviewState === "approved" ? "success" : pr.reviewState === "changes" ? "error" : "draft"}>
+            {pr.reviewState === "approved" ? "approved" : pr.reviewState === "changes" ? "changes" : "commented"}
+          </Pill>
+        )}
+        {/* Secondary icons fade in */}
+        <span style={{
+          display: "flex", gap: 2,
+          opacity: hovered ? 1 : 0,
+          transform: hovered ? "translateX(0)" : "translateX(4px)",
+          transition: "opacity 130ms ease, transform 130ms ease",
+          pointerEvents: hovered ? "auto" : "none",
+        }}>
+          <IconActionBtn id="checkout" />
+          <IconActionBtn id="more" />
+        </span>
+        {/* Primary action — always visible */}
+        <ActionBtn id={primary} primary tone={primaryTone(primary)} compact />
+      </div>
     </div>
   );
 };
