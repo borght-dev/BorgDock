@@ -107,6 +107,10 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
   onChangeRef.current = onChange;
   onRunQueryRef.current = onRunQuery;
 
+  // Mount-only initialiser — value/schema seed the initial editor state;
+  // subsequent changes are handled by the dedicated effects below, not by
+  // recreating the editor.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only initialiser
   useEffect(() => {
     if (!hostRef.current) return;
     const sqlCompartment = new Compartment();
@@ -154,7 +158,6 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
       viewRef.current = null;
       sqlCompartmentRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

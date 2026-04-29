@@ -104,6 +104,9 @@ function MarqueeTitle({ text, className }: { text: string; className?: string })
   const [overflow, setOverflow] = useState(0);
   const [hovered, setHovered] = useState(false);
 
+  // text drives the rendered span content — re-measure when it changes even
+  // though the effect body only reads refs.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional remeasure trigger on text change
   useEffect(() => {
     const wrap = wrapRef.current;
     const inner = innerRef.current;

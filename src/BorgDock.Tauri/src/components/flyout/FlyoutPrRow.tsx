@@ -90,7 +90,6 @@ export function FlyoutPrRow({ pr, active, onClick, onAction, showRepo = true }: 
           stays visible. */}
       <div
         data-pr-actions=""
-        // biome-ignore lint/a11y/useKeyWithClickEvents: container only stops propagation; inner buttons handle their own activation
         onClick={(e) => e.stopPropagation()}
         className="absolute right-3 bottom-1.5 flex items-center gap-1"
         // style: pointer-events on inactive secondary span needs precise toggle separately from opacity

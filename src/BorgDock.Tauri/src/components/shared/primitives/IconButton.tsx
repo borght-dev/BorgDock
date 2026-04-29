@@ -31,7 +31,6 @@ export function IconButton({
 }: IconButtonProps) {
   return (
     <button
-      // biome-ignore lint/a11y/useButtonType: explicit default above
       type={type}
       title={tooltip}
       className={clsx(

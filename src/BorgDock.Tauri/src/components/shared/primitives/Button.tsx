@@ -40,7 +40,6 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      // biome-ignore lint/a11y/useButtonType: explicit default above
       type={type}
       className={clsx(
         'bd-btn',
