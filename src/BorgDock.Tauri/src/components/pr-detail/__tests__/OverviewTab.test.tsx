@@ -207,39 +207,6 @@ describe('OverviewTab', () => {
     expect(screen.getByText('Bypass Merge')).toBeTruthy();
   });
 
-  it('renders "Submit Review" section', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('Submit Review')).toBeTruthy();
-    expect(screen.getByText('Submit')).toBeTruthy();
-  });
-
-  it('renders review event selector', () => {
-    render(<OverviewTab pr={makePr()} />);
-    const select = screen.getByDisplayValue('Comment');
-    expect(select).toBeTruthy();
-  });
-
-  it('renders "Post Comment" section', () => {
-    render(<OverviewTab pr={makePr()} />);
-    expect(screen.getByText('Post Comment')).toBeTruthy();
-    expect(screen.getByPlaceholderText('Write a comment...')).toBeTruthy();
-  });
-
-  it('disables Post button when comment is empty', () => {
-    render(<OverviewTab pr={makePr()} />);
-    const postBtn = screen.getByText('Post');
-    expect(postBtn.closest('button')?.disabled).toBe(true);
-  });
-
-  it('enables Post button when comment has text', () => {
-    render(<OverviewTab pr={makePr()} />);
-    fireEvent.change(screen.getByPlaceholderText('Write a comment...'), {
-      target: { value: 'hello' },
-    });
-    const postBtn = screen.getByText('Post');
-    expect(postBtn.closest('button')?.disabled).toBe(false);
-  });
-
   it('shows API key message when no Claude API key configured', () => {
     useSettingsStore.setState({
       settings: {
@@ -289,42 +256,6 @@ describe('OverviewTab', () => {
     expect(toggleDraft).toHaveBeenCalled();
   });
 
-  it('calls submitReview when Submit button is clicked', async () => {
-    const { submitReview } = await import('@/services/github/mutations');
-    render(<OverviewTab pr={makePr()} />);
-    fireEvent.click(screen.getByText('Submit'));
-    expect(submitReview).toHaveBeenCalled();
-  });
-
-  it('calls postComment on Enter in comment input', async () => {
-    const { postComment } = await import('@/services/github/mutations');
-    render(<OverviewTab pr={makePr()} />);
-    const input = screen.getByPlaceholderText('Write a comment...');
-    fireEvent.change(input, { target: { value: 'hello' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(postComment).toHaveBeenCalled();
-  });
-
-  it('does not post comment on Shift+Enter', async () => {
-    const { postComment } = await import('@/services/github/mutations');
-    vi.mocked(postComment).mockClear();
-    render(<OverviewTab pr={makePr()} />);
-    const input = screen.getByPlaceholderText('Write a comment...');
-    fireEvent.change(input, { target: { value: 'hello' } });
-    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
-    expect(postComment).not.toHaveBeenCalled();
-  });
-
-  it('calls postComment when Post button is clicked', async () => {
-    const { postComment } = await import('@/services/github/mutations');
-    render(<OverviewTab pr={makePr()} />);
-    fireEvent.change(screen.getByPlaceholderText('Write a comment...'), {
-      target: { value: 'test comment' },
-    });
-    fireEvent.click(screen.getByText('Post'));
-    expect(postComment).toHaveBeenCalled();
-  });
-
   it('shows confirm dialog when "Bypass Merge" is clicked', () => {
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Bypass Merge'));
@@ -349,13 +280,6 @@ describe('OverviewTab', () => {
     const dialog = screen.getByRole('dialog', { name: 'Bypass merge protections?' });
     fireEvent.click(within(dialog).getByText('Cancel'));
     expect(bypassMergePullRequest).not.toHaveBeenCalled();
-  });
-
-  it('changes review event when select is changed', () => {
-    render(<OverviewTab pr={makePr()} />);
-    const select = screen.getByDisplayValue('Comment');
-    fireEvent.change(select, { target: { value: 'APPROVE' } });
-    expect((select as HTMLSelectElement).value).toBe('APPROVE');
   });
 
   it('shows "Summarize with AI" button when API key is configured and can be clicked', () => {

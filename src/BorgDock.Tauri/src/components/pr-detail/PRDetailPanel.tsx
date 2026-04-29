@@ -3,7 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import { WindowControls } from '@/components/shared/chrome';
-import { Avatar, IconButton, Pill, Ring, Tabs } from '@/components/shared/primitives';
+import { Avatar, IconButton, Pill, Ring, Tabs, Titlebar } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import { useUiStore } from '@/stores/ui-store';
@@ -32,6 +32,24 @@ const XIcon = () => (
   </svg>
 );
 
+const ExternalIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M9 2h5v5" />
+    <path d="m14 2-7 7" />
+    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
+  </svg>
+);
+
 const PopOutIcon = () => (
   <svg
     width="14"
@@ -48,6 +66,27 @@ const PopOutIcon = () => (
     <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
   </svg>
 );
+
+const BorgDockLogo = () => (
+  <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="pr-detail-tile" x1="0" y1="0" x2="16" y2="16">
+        <stop offset="0%" stopColor="var(--color-logo-gradient-start)" />
+        <stop offset="100%" stopColor="var(--color-logo-gradient-end)" />
+      </linearGradient>
+    </defs>
+    <rect width="16" height="16" rx="4.5" fill="url(#pr-detail-tile)" />
+    <path
+      d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
+  </svg>
+);
+
 
 const BranchIcon = () => (
   <svg
@@ -194,6 +233,15 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
       .catch((err) => log.error('pop-out invoke failed', err, { owner, repo, number }));
   }, [pr, selectPr]);
 
+  const handleOpenInBrowser = useCallback(async () => {
+    try {
+      const { openUrl } = await import('@tauri-apps/plugin-opener');
+      await openUrl(pr.pullRequest.htmlUrl);
+    } catch (err) {
+      log.error('open-in-browser failed', err);
+    }
+  }, [pr.pullRequest.htmlUrl]);
+
   const p = pr.pullRequest;
   const score = computeMergeScore(pr);
   const reviewLabel = reviewStatusLabel(p.reviewStatus);
@@ -211,14 +259,46 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-[var(--color-background)]">
-      {/* Header — doubles as the window drag region when in pop-out mode */}
-      <div
-        className="relative border-b border-[var(--color-separator)] px-6 pt-4 pb-3"
-        {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
-      >
-        {/* Top-right corner: window controls (pop-out mode) or pop-out button (inline) */}
-        <div className="absolute right-3 top-3 flex items-center gap-1">
-          {!popOutWindow && (
+      {/* Pop-out window: unified BorgDock titlebar with logo + controls.
+       *  Inline mode skips this — the sidebar already has its own Header. */}
+      {popOutWindow && (
+        <Titlebar
+          data-tauri-drag-region
+          onDoubleClick={handleToggleMaximize}
+          left={
+            <>
+              <span className="bd-titlebar__logo">
+                <BorgDockLogo />
+              </span>
+              <span className="bd-titlebar__title">BorgDock</span>
+            </>
+          }
+          right={
+            <>
+              <button
+                type="button"
+                className="bd-wc"
+                onClick={handleOpenInBrowser}
+                aria-label="Open in browser"
+                title="Open in browser"
+              >
+                <ExternalIcon />
+              </button>
+              <WindowControls
+                onMinimize={handleMinimize}
+                onMaximize={handleToggleMaximize}
+                onClose={handleClose}
+              />
+            </>
+          }
+        />
+      )}
+
+      {/* Header — PR title + meta on the surface card */}
+      <div className="relative border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] pt-[18px] pb-[14px]">
+        {/* Inline-mode pop-out button — pop-out window mode hides this */}
+        {!popOutWindow && (
+          <div className="absolute right-3 top-3">
             <IconButton
               icon={<PopOutIcon />}
               tooltip="Open in new window"
@@ -227,36 +307,22 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
               onClick={handlePopOut}
               data-pr-detail-panel-popout
             />
-          )}
-          {popOutWindow && (
-            <WindowControls
-              onMinimize={handleMinimize}
-              onMaximize={handleToggleMaximize}
-              onClose={handleClose}
-            />
-          )}
-        </div>
+          </div>
+        )}
 
-        <div
-          className="flex items-start gap-4"
-          {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
-        >
+        <div className="flex items-start gap-3.5">
           {/* Merge readiness gauge */}
           <Ring
             value={score}
-            size={60}
-            stroke={4}
-            className="mt-1 [&_.bd-ring__label]:text-[16px]"
+            size={44}
+            stroke={3}
             data-pr-header-score={score}
           />
 
-          <div
-            className="min-w-0 flex-1"
-            {...(popOutWindow ? { 'data-tauri-drag-region': true } : {})}
-          >
+          <div className="min-w-0 flex-1">
             {/* Status pills row */}
             <div className="flex flex-wrap items-center gap-2 pr-20">
-              <span className="text-xs font-medium text-[var(--color-text-tertiary)]">
+              <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
                 #{p.number}
               </span>
               {p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
@@ -271,40 +337,40 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
             </div>
 
             {/* Title */}
-            <h2 className="mt-2 text-base font-semibold leading-snug text-[var(--color-text-primary)]">
+            <h2 className="mt-1 text-[16px] font-semibold leading-[1.3] tracking-[-0.01em] text-[var(--color-text-primary)]">
               {p.title}
             </h2>
 
             {/* Author + date + branches */}
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--color-text-tertiary)]">
               <Avatar initials={initialsFor(p.authorLogin)} size="sm" />
-              <span>{p.authorLogin}</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">{p.authorLogin}</span>
               <span aria-hidden>·</span>
               <span>{formatDate(p.createdAt)}</span>
               <span aria-hidden>·</span>
-              <span title="Age">{formatAge(p.createdAt)} old</span>
+              <span title="Age" className="text-[var(--color-text-muted)]">{formatAge(p.createdAt)} old</span>
               <span aria-hidden>·</span>
               <span className="inline-flex items-center gap-1">
                 <BranchIcon />
                 <span className="font-mono text-[11px]">{p.headRef}</span>
                 <ArrowRightIcon />
-                <span className="font-mono text-[11px]">{p.baseRef}</span>
+                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">{p.baseRef}</span>
               </span>
             </div>
 
             {/* Stats + close X */}
-            <div className="mt-3 flex items-center gap-3 text-xs text-[var(--color-text-tertiary)]">
+            <div className="mt-2.5 flex items-center gap-2.5 text-[11px] text-[var(--color-text-tertiary)]">
               <span className="font-medium text-[var(--color-status-green)]">+{p.additions}</span>
               <span className="font-medium text-[var(--color-status-red)]">−{p.deletions}</span>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="text-[var(--color-text-faint)]">·</span>
               <span>
                 {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
               </span>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="text-[var(--color-text-faint)]">·</span>
               <span>
                 {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
               </span>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="text-[var(--color-text-faint)]">·</span>
               <span>
                 {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
               </span>
@@ -324,16 +390,17 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <Tabs
-        value={activeTab}
-        onChange={(id) => setActiveTab(id as Tab)}
-        tabs={tabDefs}
-        className="px-6"
-      />
+      {/* Tab bar — sits on the same surface card as the header */}
+      <div className="bg-[var(--color-surface)] border-b border-[var(--color-subtle-border)] px-[22px]">
+        <Tabs
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as Tab)}
+          tabs={tabDefs}
+        />
+      </div>
 
       {/* Tab content — tabs mount lazily on first activation, cached afterwards */}
-      <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto flex flex-col min-h-0 bg-[var(--color-background)]">
         <div className={activeTab === 'Overview' ? '' : 'hidden'}>
           <OverviewTab pr={pr} />
         </div>
