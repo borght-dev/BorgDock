@@ -23,7 +23,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
-import { CheckoutFlow } from './CheckoutFlow';
+import { CheckoutPanel } from './CheckoutPanel';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
@@ -549,7 +549,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Checkout flow */}
       {checkoutOpen && (
-        <CheckoutFlow
+        <CheckoutPanel
           branchName={p.headRef}
           repoBasePath={repoPath}
           worktreeSubfolder={worktreeSubfolder}

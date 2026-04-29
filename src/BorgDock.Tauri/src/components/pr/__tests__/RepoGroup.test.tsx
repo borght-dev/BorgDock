@@ -5,7 +5,7 @@ import { RepoGroup } from '../RepoGroup';
 
 afterEach(cleanup);
 
-// Mock Tauri APIs used transitively by PullRequestCard
+// Mock Tauri APIs used transitively by PrCardContainer
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({ writeText: vi.fn() }));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }));

@@ -30,9 +30,9 @@ import { DEFAULT_TOLERANCE, VISUAL_TOLERANCES } from './visual-tolerances';
  *     the future design implementation to switch views based on the
  *     seeded state. For now the pixel diffs will be large; Task 24
  *     will audit and tighten.
- *   - Secondary window HTML entries (`flyout.html`, `palette.html`,
- *     `pr-detail.html`, `sql.html`, `file-palette.html`,
- *     `file-viewer.html`, `worktree.html`) come from
+ *   - Secondary window HTML entries (`flyout.html`,
+ *     `work-item-palette.html`, `pr-detail.html`, `sql.html`,
+ *     `file-palette.html`, `file-viewer.html`, `worktree.html`) come from
  *     `vite.config.ts:rollupOptions.input`.
  *   - `badges` has NO matching HTML entry (there's no `badge.html` in
  *     the current app). We mount `flyout.html` — the nearest
@@ -76,9 +76,9 @@ const SURFACES: Surface[] = [
   },
   {
     id: 'palette',
-    path: '/palette.html',
+    path: '/work-item-palette.html',
     ready: '[data-tauri-drag-region]',
-    note: 'Command palette window; PaletteApp drag-handle has data-tauri-drag-region so this fails fast if PaletteApp errors during mount.',
+    note: 'Work item palette window (formerly "command palette"); WorkItemPaletteApp drag-handle has data-tauri-drag-region so this fails fast if it errors during mount. Surface id stays "palette" to keep design-baseline lookup aligned with the handoff inventory.',
   },
   {
     id: 'badges',
@@ -114,7 +114,7 @@ const SURFACES: Surface[] = [
     id: 'pr-detail-overview',
     path: '/pr-detail.html',
     ready: '[data-tauri-drag-region]',
-    note: 'PR detail window, Overview tab default; PRDetailApp titlebar has data-tauri-drag-region so this fails fast if PRDetailApp errors during mount.',
+    note: 'PR detail window, Overview tab default; PrDetailApp titlebar has data-tauri-drag-region so this fails fast if PrDetailApp errors during mount.',
   },
   {
     id: 'pr-detail-tabs',

@@ -11,7 +11,6 @@ interface UiState {
   selectedPrNumber: number | null;
   expandedRepoGroups: Set<string>;
   expandedPrNumbers: Set<number>;
-  isCommandPaletteOpen: boolean;
   isDragging: boolean;
   pendingWorkItemId: number | null;
   /** Maps branch name (lowercase) → worktree slot info */
@@ -27,7 +26,6 @@ interface UiState {
   collapseAllRepoGroups: () => void;
   togglePrExpanded: (prNumber: number) => void;
   collapseAllPrs: () => void;
-  setCommandPaletteOpen: (open: boolean) => void;
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
@@ -41,7 +39,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   selectedPrNumber: null,
   expandedRepoGroups: new Set<string>(),
   expandedPrNumbers: new Set<number>(),
-  isCommandPaletteOpen: false,
   isDragging: false,
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
@@ -87,8 +84,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
     }),
 
   collapseAllPrs: () => set({ expandedPrNumbers: new Set() }),
-
-  setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
 
   setDragging: (dragging) => set({ isDragging: dragging }),
 

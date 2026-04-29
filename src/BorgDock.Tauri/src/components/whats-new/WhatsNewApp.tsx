@@ -4,7 +4,7 @@ import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
 import { WindowControls } from '@/components/shared/chrome';
-import { Button, Titlebar } from '@/components/shared/primitives';
+import { Button, TitleBar } from '@/components/shared/primitives';
 import { ReleaseAccordion } from './ReleaseAccordion';
 import { useReleasesToShow } from './useReleasesToShow';
 
@@ -84,14 +84,14 @@ export function WhatsNewApp() {
       data-whats-new-app
       className="h-screen w-full flex flex-col bg-background text-text-primary font-sans"
     >
-      {/* Title bar — mirrors PRDetailPanel's pop-out header so it feels like
+      {/* Title bar — mirrors PrDetailPanel's pop-out header so it feels like
        *  the same app. The X button routes through handleGotIt so closing via
        *  the title bar marks lastSeenVersion the same way the footer "Got it"
        *  button does (can't delegate to WindowTitleBar which owns its close). */}
-      <Titlebar
+      <TitleBar
         data-tauri-drag-region
         left={
-          <span data-tauri-drag-region className="bd-titlebar__title">
+          <span data-tauri-drag-region className="bd-title-bar__title">
             What's new in BorgDock
           </span>
         }

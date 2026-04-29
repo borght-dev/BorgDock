@@ -7,7 +7,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 
-// Mock all tab sub-components to isolate PRDetailPanel logic
+// Mock all tab sub-components to isolate PrDetailPanel logic
 vi.mock('../OverviewTab', () => ({
   OverviewTab: ({ pr }: { pr: PullRequestWithChecks }) => (
     <div data-testid="overview-tab">Overview for #{pr.pullRequest.number}</div>
@@ -30,7 +30,7 @@ vi.mock('../CommentsTab', () => ({
 }));
 
 // Import after mocks
-import { PRDetailPanel } from '../PRDetailPanel';
+import { PrDetailPanel } from '../PrDetailPanel';
 
 function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
   return {
@@ -69,7 +69,7 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
   };
 }
 
-describe('PRDetailPanel', () => {
+describe('PrDetailPanel', () => {
   afterEach(() => {
     cleanup();
   });
@@ -80,17 +80,17 @@ describe('PRDetailPanel', () => {
   });
 
   it('renders the PR title', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     expect(screen.getByText('Add feature X')).toBeTruthy();
   });
 
   it('renders the PR number', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     expect(screen.getByText('#42')).toBeTruthy();
   });
 
   it('renders all tab buttons', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Commits' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Files' })).toBeTruthy();
@@ -100,18 +100,18 @@ describe('PRDetailPanel', () => {
   });
 
   it('shows Overview tab content by default', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     const overviewTab = screen.getByTestId('overview-tab');
     expect(overviewTab.closest('.hidden')).toBeNull();
   });
 
   it('does not mount inactive tabs until first activation', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     expect(screen.queryByTestId('commits-tab')).toBeNull();
   });
 
   it('switches to Commits tab on click', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByRole('tab', { name: 'Commits' }));
     const commitsTab = screen.getByTestId('commits-tab');
     expect(commitsTab.closest('.hidden')).toBeNull();
@@ -120,21 +120,21 @@ describe('PRDetailPanel', () => {
   });
 
   it('switches to Files tab on click', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByRole('tab', { name: 'Files' }));
     const filesTab = screen.getByTestId('files-tab');
     expect(filesTab.closest('.hidden')).toBeNull();
   });
 
   it('switches to Checks tab on click', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByRole('tab', { name: 'Checks' }));
     const checksTab = screen.getByTestId('checks-tab');
     expect(checksTab.closest('.hidden')).toBeNull();
   });
 
   it('switches to Reviews tab on click', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByRole('tab', { name: 'Reviews' }));
     const reviewsTab = screen.getByTestId('reviews-tab');
     expect(reviewsTab.closest('.hidden')).toBeNull();
@@ -143,7 +143,7 @@ describe('PRDetailPanel', () => {
   it('close button calls selectPr(null)', () => {
     const selectPrSpy = vi.fn();
     useUiStore.setState({ selectPr: selectPrSpy });
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByLabelText('Close'));
     expect(selectPrSpy).toHaveBeenCalledWith(null);
   });
@@ -155,7 +155,7 @@ describe('PRDetailPanel', () => {
     const selectPrSpy = vi.fn();
     useUiStore.setState({ selectPr: selectPrSpy });
 
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByLabelText('Pop out'));
 
     expect(mockInvoke).toHaveBeenCalledWith('open_pr_detail_window', {
@@ -174,7 +174,7 @@ describe('PRDetailPanel', () => {
     const selectPrSpy = vi.fn();
     useUiStore.setState({ selectPr: selectPrSpy });
 
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByLabelText('Pop out'));
 
     // Wait for the rejected promise to settle, then assert no navigation happened.
@@ -192,7 +192,7 @@ describe('PRDetailPanel', () => {
   });
 
   it('marks the active tab with aria-selected', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     const overviewTab = screen.getByRole('tab', { name: 'Overview' });
     expect(overviewTab.getAttribute('aria-selected')).toBe('true');
     const commitsTab = screen.getByRole('tab', { name: 'Commits' });
@@ -200,7 +200,7 @@ describe('PRDetailPanel', () => {
   });
 
   it('mounts tabs lazily and keeps them cached after activation', () => {
-    render(<PRDetailPanel pr={makePr()} />);
+    render(<PrDetailPanel pr={makePr()} />);
     expect(screen.getByTestId('overview-tab')).toBeTruthy();
     expect(screen.queryByTestId('commits-tab')).toBeNull();
 

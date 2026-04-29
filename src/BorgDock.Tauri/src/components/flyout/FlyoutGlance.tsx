@@ -4,7 +4,7 @@ import { createLogger } from '@/services/logger';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import type { ToastPayload } from './flyout-mode';
 import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
-import { PRRow } from './PRRow';
+import { FlyoutPrRow } from './FlyoutPrRow';
 
 const log = createLogger('FlyoutGlance');
 
@@ -356,7 +356,7 @@ export function FlyoutGlance({
         {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
         <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {pullRequests.map((pr, i) => (
-            <PRRow
+            <FlyoutPrRow
               key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
               pr={pr}
               active={i === activeIndex}

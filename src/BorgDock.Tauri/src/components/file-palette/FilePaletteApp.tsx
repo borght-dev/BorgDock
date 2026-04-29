@@ -5,15 +5,15 @@ import type { AppSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { joinRootAndRel } from './join-path';
 import { parseQuery, type ParsedQuery } from './parse-query';
-import { buildRootEntries, RootsColumn, type RootEntry } from './RootsColumn';
-import { PreviewPane } from './PreviewPane';
-import { SearchPane } from './SearchPane';
-import { ResultsList, type ResultEntry } from './ResultsList';
+import { buildRootEntries, FilePaletteRootsColumn, type RootEntry } from './FilePaletteRootsColumn';
+import { FilePalettePreviewPane } from './FilePalettePreviewPane';
+import { FilePaletteSearchPane } from './FilePaletteSearchPane';
+import { FilePaletteResultsList, type ResultEntry } from './FilePaletteResultsList';
 import { useBackgroundIndexer } from './use-background-indexer';
 import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
-import { ChangesSection, type ChangedGroup, type VisibleRow } from './ChangesSection';
+import { FilePaletteChangesSection, type ChangedGroup, type VisibleRow } from './FilePaletteChangesSection';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
 
@@ -359,7 +359,7 @@ export function FilePaletteApp() {
         <span className="bd-fp-title">FILES</span>
       </div>
       <div className={`bd-fp-body${rootsCollapsed ? ' bd-fp-body--collapsed' : ''}`}>
-        <RootsColumn
+        <FilePaletteRootsColumn
           roots={roots}
           activePath={activeRoot}
           onSelect={selectRoot}
@@ -373,13 +373,13 @@ export function FilePaletteApp() {
           onRemoveCustomRoot={removeCustomRoot}
         />
         <div className="bd-fp-middle">
-          <SearchPane
+          <FilePaletteSearchPane
             query={query}
             onQueryChange={setQuery}
             parsed={parsed}
             resultCount={results.length}
           />
-          <ChangesSection
+          <FilePaletteChangesSection
             rootPath={activeRoot}
             query={query}
             queryMode={parsed.mode}
@@ -424,7 +424,7 @@ export function FilePaletteApp() {
               </div>
             )
           ) : (
-            <ResultsList
+            <FilePaletteResultsList
               results={results}
               selectedIndex={selectedIndex - changesVisibleRows.length}
               onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
@@ -435,7 +435,7 @@ export function FilePaletteApp() {
             />
           )}
         </div>
-        <PreviewPane
+        <FilePalettePreviewPane
           rootPath={activeRoot}
           relPath={selectedResult?.rel_path ?? null}
           scrollToLine={currentContentHit?.matches[0]?.line ?? selectedResult?.line}

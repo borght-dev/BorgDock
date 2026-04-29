@@ -130,16 +130,12 @@ vi.mock('@/components/focus', () => ({
   QuickReviewOverlay: () => <div data-testid="quick-review" />,
 }));
 
-vi.mock('@/components/pr/PullRequestList', () => ({
-  PullRequestList: () => <div data-testid="pr-list" />,
+vi.mock('@/components/pr/PrList', () => ({
+  PrList: () => <div data-testid="pr-list" />,
 }));
 
 vi.mock('@/components/work-items/WorkItemsSection', () => ({
   WorkItemsSection: () => <div data-testid="workitems-section" />,
-}));
-
-vi.mock('@/components/command-palette/CommandPalette', () => ({
-  CommandPalette: () => <div data-testid="command-palette" />,
 }));
 
 vi.mock('@/components/wizard/SetupWizard', () => ({
@@ -289,7 +285,6 @@ describe('App', () => {
     expect(screen.getByTestId('settings-flyout')).toBeTruthy();
     expect(screen.getByTestId('notification-overlay')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
-    expect(screen.getByTestId('command-palette')).toBeTruthy();
   });
 
   it('renders FocusList when activeSection is focus', () => {
@@ -304,7 +299,7 @@ describe('App', () => {
     expect(screen.getByTestId('focus-list')).toBeTruthy();
   });
 
-  it('renders PullRequestList when activeSection is prs', () => {
+  it('renders PrList when activeSection is prs', () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: fullSettings,

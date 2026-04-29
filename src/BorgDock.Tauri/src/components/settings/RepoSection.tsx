@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { RepoSettings } from '@/types';
 import { Button, Card, IconButton, Input } from '@/components/shared/primitives';
-import { ToggleSwitch } from './_ToggleSwitch';
+import { ToggleSwitch } from './ToggleSwitch';
 
 interface RepoSectionProps {
   repos: RepoSettings[];

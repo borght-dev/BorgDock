@@ -3,7 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import { WindowControls } from '@/components/shared/chrome';
-import { Avatar, IconButton, Pill, Ring, Tabs, Titlebar } from '@/components/shared/primitives';
+import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import { useUiStore } from '@/stores/ui-store';
@@ -15,7 +15,7 @@ import { FilesTab } from './FilesTab';
 import { OverviewTab } from './OverviewTab';
 import { ReviewsTab } from './ReviewsTab';
 
-const log = createLogger('PRDetailPanel');
+const log = createLogger('PrDetailPanel');
 
 const XIcon = () => (
   <svg
@@ -172,7 +172,7 @@ function initialsFor(login: string): string {
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
 type Tab = (typeof tabs)[number];
 
-interface PRDetailPanelProps {
+interface PrDetailPanelProps {
   pr: PullRequestWithChecks;
   /** Pop-out mode: the panel is hosting the entire PR detail window.
    *  Makes the header the window drag region, hides the pop-out button,
@@ -181,7 +181,7 @@ interface PRDetailPanelProps {
   popOutWindow?: boolean;
 }
 
-export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
+export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
   const selectPr = useUiStore((s) => s.selectPr);
   const handleClose = useCallback(() => {
     if (popOutWindow) {
@@ -262,15 +262,17 @@ export function PRDetailPanel({ pr, popOutWindow }: PRDetailPanelProps) {
       {/* Pop-out window: unified BorgDock titlebar with logo + controls.
        *  Inline mode skips this — the sidebar already has its own Header. */}
       {popOutWindow && (
-        <Titlebar
+        <TitleBar
           data-tauri-drag-region
           onDoubleClick={handleToggleMaximize}
           left={
             <>
-              <span className="bd-titlebar__logo">
+              <span className="bd-title-bar__logo">
                 <BorgDockLogo />
               </span>
-              <span className="bd-titlebar__title">BorgDock</span>
+              <span className="bd-title-bar__title">
+                PR #{pr.pullRequest.number} — {pr.pullRequest.repoOwner}/{pr.pullRequest.repoName}
+              </span>
             </>
           }
           right={

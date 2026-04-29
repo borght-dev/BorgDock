@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export interface TitlebarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
+export interface TitleBarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   /** Default middle-slot title text. Ignored when `left` is supplied. */
   title?: ReactNode;
   /** Numeric badge rendered next to the title. Ignored when `left` is supplied. */
@@ -15,10 +15,10 @@ export interface TitlebarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'tit
 }
 
 /**
- * Titlebar — shared chrome bar used by every window (main, flyout, palette, pr-detail, sql).
+ * TitleBar — shared chrome bar used by every window (main, flyout, palette, pr-detail, sql).
  * Slots: `left` (or auto-composed title/count/meta) — spacer — `right`.
  */
-export function Titlebar({
+export function TitleBar({
   title,
   count,
   meta,
@@ -26,17 +26,17 @@ export function Titlebar({
   right,
   className,
   ...rest
-}: TitlebarProps) {
+}: TitleBarProps) {
   return (
-    <div className={clsx('bd-titlebar', className)} {...rest}>
+    <div className={clsx('bd-title-bar', className)} {...rest}>
       {left ?? (
         <>
-          {title !== undefined && <span className="bd-titlebar__title">{title}</span>}
-          {count !== undefined && <span className="bd-titlebar__count">{count}</span>}
-          {meta !== undefined && <span className="bd-titlebar__meta">{meta}</span>}
+          {title !== undefined && <span className="bd-title-bar__title">{title}</span>}
+          {count !== undefined && <span className="bd-title-bar__count">{count}</span>}
+          {meta !== undefined && <span className="bd-title-bar__meta">{meta}</span>}
         </>
       )}
-      <span className="bd-titlebar__spacer" />
+      <span className="bd-title-bar__spacer" />
       {right}
     </div>
   );

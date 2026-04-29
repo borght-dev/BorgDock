@@ -9,8 +9,8 @@ import { FocusList } from '../FocusList';
 import { makePr, resetSeq } from './helpers';
 
 // Mock heavy child components
-vi.mock('@/components/pr/PullRequestCard', () => ({
-  PullRequestCard: ({
+vi.mock('@/components/pr/PrCardContainer', () => ({
+  PrCardContainer: ({
     prWithChecks,
     isFocused,
     focusMode,
@@ -124,7 +124,7 @@ describe('FocusList', () => {
     expect(screen.getByText('Add feature')).toBeDefined();
   });
 
-  it('passes focusMode prop to PullRequestCard', () => {
+  it('passes focusMode prop to PrCardContainer', () => {
     const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr] });
     render(<FocusList />);

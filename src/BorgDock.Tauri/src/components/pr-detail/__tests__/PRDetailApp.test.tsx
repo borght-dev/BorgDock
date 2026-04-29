@@ -22,8 +22,8 @@ vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => mockGetCurrentWindow(),
 }));
 
-vi.mock('../PRDetailPanel', () => ({
-  PRDetailPanel: ({ pr }: { pr: { pullRequest: { title: string; number: number } } }) => (
+vi.mock('../PrDetailPanel', () => ({
+  PrDetailPanel: ({ pr }: { pr: { pullRequest: { title: string; number: number } } }) => (
     <div data-testid="pr-detail-panel">
       Panel: {pr.pullRequest.title} #{pr.pullRequest.number}
     </div>
@@ -66,7 +66,7 @@ vi.mock('@/services/github/pulls', () => ({
   getOpenPRs: vi.fn().mockResolvedValue([]),
 }));
 
-import { PRDetailApp } from '../PRDetailApp';
+import { PrDetailApp } from '../PrDetailApp';
 
 const mockPr = {
   number: 42,
@@ -94,7 +94,7 @@ const mockPr = {
   requestedReviewers: [],
 };
 
-describe('PRDetailApp', () => {
+describe('PrDetailApp', () => {
   afterEach(() => {
     cleanup();
   });
@@ -114,7 +114,7 @@ describe('PRDetailApp', () => {
       value: { ...window.location, search: '' },
     });
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     await waitFor(() => {
       expect(screen.getByText('Missing PR parameters (owner, repo, number)')).toBeTruthy();
     });
@@ -128,7 +128,7 @@ describe('PRDetailApp', () => {
 
     mockInvoke.mockImplementation(() => new Promise(() => {})); // never resolves
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     const spinner = document.querySelector('.animate-spin');
     expect(spinner).toBeTruthy();
   });
@@ -141,7 +141,7 @@ describe('PRDetailApp', () => {
 
     mockInvoke.mockImplementation(() => new Promise(() => {}));
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     expect(screen.getByText('PR #42')).toBeTruthy();
   });
 
@@ -159,13 +159,13 @@ describe('PRDetailApp', () => {
     const { getOpenPRs } = await import('@/services/github/pulls');
     (getOpenPRs as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     await waitFor(() => {
       expect(screen.getByText('PR #99 not found in test/app')).toBeTruthy();
     });
   });
 
-  it('renders PRDetailPanel when PR is loaded', async () => {
+  it('renders PrDetailPanel when PR is loaded', async () => {
     Object.defineProperty(window, 'location', {
       writable: true,
       value: { ...window.location, search: '?owner=owner&repo=repo&number=42' },
@@ -179,7 +179,7 @@ describe('PRDetailApp', () => {
     const { getOpenPRs } = await import('@/services/github/pulls');
     (getOpenPRs as ReturnType<typeof vi.fn>).mockResolvedValue([mockPr]);
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     await waitFor(() => {
       expect(screen.getByTestId('pr-detail-panel')).toBeTruthy();
     });
@@ -192,7 +192,7 @@ describe('PRDetailApp', () => {
       value: { ...window.location, search: '?owner=&repo=&number=' },
     });
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     await waitFor(() => {
       expect(screen.getByText('Pull Request')).toBeTruthy();
     });
@@ -206,7 +206,7 @@ describe('PRDetailApp', () => {
 
     mockInvoke.mockRejectedValue(new Error('Network error'));
 
-    render(<PRDetailApp />);
+    render(<PrDetailApp />);
     await waitFor(() => {
       expect(screen.getByText('Failed to load pull request')).toBeTruthy();
     });
@@ -228,7 +228,7 @@ describe('PRDetailApp', () => {
     });
 
     const consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { unmount } = render(<PRDetailApp />);
+    const { unmount } = render(<PrDetailApp />);
     unmount();
     resolveSettings({ azureDevOps: {}, gitHub: {}, repos: [], ui: {}, claudeApi: {} });
 
@@ -246,7 +246,7 @@ describe('PRDetailApp', () => {
       value: { ...window.location, search: '?owner=test&repo=app&number=42' },
     });
     mockInvoke.mockImplementation(() => new Promise(() => {}));
-    const { container } = render(<PRDetailApp />);
+    const { container } = render(<PrDetailApp />);
     expect(container.querySelector('.bd-icon-btn')).toBeInTheDocument();
     expect(container.querySelector('[data-pr-detail-close]')).toBeInTheDocument();
   });

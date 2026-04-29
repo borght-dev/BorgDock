@@ -110,8 +110,8 @@ interface WindowSpec {
 // that are created dynamically and are more likely to render blank.
 const WINDOWS: WindowSpec[] = [
   {
-    name: 'Command Palette (palette.html)',
-    url: '/palette.html',
+    name: 'Work Item Palette (work-item-palette.html)',
+    url: '/work-item-palette.html',
     contentSelector: 'input',
     expectedText: /search/i,
   },

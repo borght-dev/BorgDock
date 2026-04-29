@@ -14,7 +14,7 @@ import {
 } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
-import { PRDetailPanel } from './PRDetailPanel';
+import { PrDetailPanel } from './PrDetailPanel';
 
 const XIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -27,7 +27,7 @@ const XIcon = () => (
   </svg>
 );
 
-export function PRDetailApp() {
+export function PrDetailApp() {
   const [pr, setPr] = useState<PullRequestWithChecks | null>(null);
   const prRef = useRef<PullRequestWithChecks | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,7 +237,7 @@ export function PRDetailApp() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-background)]">
       <div className="relative flex-1 overflow-y-auto">
-        <PRDetailPanel pr={pr} popOutWindow />
+        <PrDetailPanel pr={pr} popOutWindow />
       </div>
     </div>
   );

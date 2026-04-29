@@ -524,7 +524,7 @@ export function WorktreePaletteApp() {
 
   return (
     <div className="bd-wt-palette" onKeyDown={handleKeyDown}>
-      {/* Titlebar */}
+      {/* TitleBar */}
       <div className="bd-wt-titlebar" data-tauri-drag-region>
         <div className="bd-wt-titlebar-left">
           <div className="bd-wt-logo">

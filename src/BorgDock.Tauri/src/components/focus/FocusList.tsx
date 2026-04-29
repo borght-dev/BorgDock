@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { FeatureBadge, FirstRunOverlay, InlineHint } from '@/components/onboarding';
-import { PullRequestCard } from '@/components/pr/PullRequestCard';
+import { PrCardContainer } from '@/components/pr/PrCardContainer';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -61,7 +61,7 @@ export function FocusList() {
             data-focus-item=""
             className="animate-[fadeSlideIn_0.2s_ease-out]"
           >
-            <PullRequestCard
+            <PrCardContainer
               prWithChecks={pr}
               isFocused={selectedPrNumber === pr.pullRequest.number}
               focusMode

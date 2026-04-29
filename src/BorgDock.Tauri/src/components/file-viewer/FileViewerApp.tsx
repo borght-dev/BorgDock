@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings } from '@/types/settings';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
-import { CodeView } from '../file-palette/CodeView';
+import { FilePaletteCodeView } from '../file-palette/FilePaletteCodeView';
 import { SplitDiffView } from '../pr-detail/diff/SplitDiffView';
 import { UnifiedDiffView } from '../pr-detail/diff/UnifiedDiffView';
 import { FileViewerToolbar } from './FileViewerToolbar';
@@ -200,7 +200,7 @@ function renderBody(args: RenderBodyArgs) {
   if (effectiveMode === 'content') {
     if (contentState.kind === 'loading') return <div className="bd-fv-empty">Loading…</div>;
     if (contentState.kind === 'error') return <div className="bd-fv-empty">{contentState.message}</div>;
-    return <CodeView path={path} content={contentState.content} />;
+    return <FilePaletteCodeView path={path} content={contentState.content} />;
   }
 
   if (diffState.kind === 'loading') return <div className="bd-fv-empty">Loading diff…</div>;

@@ -22,7 +22,7 @@ static FLYOUT_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 /// against in-flight keypresses.
 pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
     // Ctrl+F9 — command palette. Toggles: re-press closes the window so each
-    // open starts with fresh state, matching PaletteApp's Escape-to-close.
+    // open starts with fresh state, matching WorkItemPaletteApp's Escape-to-close.
     let app_palette = app.clone();
     app.global_shortcut()
         .on_shortcut("Ctrl+F9", move |_app, _shortcut, event| {
@@ -31,16 +31,16 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
             }
             let app_cb = app_palette.clone();
             let _ = app_palette.run_on_main_thread(move || {
-                if let Some(win) = app_cb.get_webview_window("palette") {
+                if let Some(win) = app_cb.get_webview_window("work-item-palette") {
                     let _ = win.close();
                     return;
                 }
                 let _ = WebviewWindowBuilder::new(
                     &app_cb,
-                    "palette",
-                    tauri::WebviewUrl::App("palette.html".into()),
+                    "work-item-palette",
+                    tauri::WebviewUrl::App("work-item-palette.html".into()),
                 )
-                .title("BorgDock Command Palette")
+                .title("BorgDock Work Item Palette")
                 .inner_size(480.0, 500.0)
                 .decorations(false)
                 .always_on_top(true)
@@ -57,7 +57,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                 // PostMessage queue and crashed the process.
             });
         })
-        .map_err(|e| format!("Failed to register command palette hotkey: {e}"))?;
+        .map_err(|e| format!("Failed to register work item palette hotkey: {e}"))?;
 
     // Ctrl+F7 — worktree palette.
     let app_worktree = app.clone();
@@ -277,7 +277,7 @@ pub async fn palette_ready(
     let label = window.label().to_string();
     if !matches!(
         label.as_str(),
-        "palette" | "worktree-palette" | "file-palette"
+        "work-item-palette" | "worktree-palette" | "file-palette"
     ) {
         return Err(format!("palette_ready: not a palette window: {label}"));
     }

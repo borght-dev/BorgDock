@@ -1,4 +1,4 @@
-import { PRDetailPanel } from '@/components/pr-detail/PRDetailPanel';
+import { PrDetailPanel } from '@/components/pr-detail/PrDetailPanel';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import { FilterBar } from './FilterBar';
@@ -30,7 +30,7 @@ export function Sidebar({ children }: SidebarProps) {
       )}
       <div className="sidebar-content" data-section={activeSection}>
         {selectedPr ? (
-          <PRDetailPanel key={selectedPr.pullRequest.number} pr={selectedPr} />
+          <PrDetailPanel key={selectedPr.pullRequest.number} pr={selectedPr} />
         ) : (
           children
         )}

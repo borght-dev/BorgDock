@@ -6,7 +6,7 @@ import type {
 } from '@/types';
 import { Chip, Input } from '@/components/shared/primitives';
 import { HotkeyRecorder } from './HotkeyRecorder';
-import { ToggleSwitch } from './_ToggleSwitch';
+import { ToggleSwitch } from './ToggleSwitch';
 
 interface AppearanceSectionProps {
   ui: UiSettings;

@@ -4,7 +4,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
-import { StatusBar } from '@/components/shared/chrome';
+import { WindowStatusBar } from '@/components/shared/chrome';
 import { Button, Card, Kbd } from '@/components/shared/primitives';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
@@ -524,7 +524,7 @@ export function SqlApp() {
       )}
 
       {/* ── Status bar ──────────────────────────────────── */}
-      <StatusBar
+      <WindowStatusBar
         left={
           result && (
             <>

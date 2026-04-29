@@ -6,7 +6,7 @@ import { openWhatsNew } from '@/hooks/useWhatsNew';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUpdateStore } from '@/stores/update-store';
 import type { UpdateSettings } from '@/types';
-import { ToggleSwitch } from './_ToggleSwitch';
+import { ToggleSwitch } from './ToggleSwitch';
 
 interface UpdateSectionProps {
   updates: UpdateSettings;

@@ -867,7 +867,7 @@
   }
 }
 
-/* PRCard compact title: marquee scroll on hover when text overflows.
+/* PrCardView compact title: marquee scroll on hover when text overflows.
    The shift distance is set per-row via the --prcard-marquee-shift custom
    property so a single keyframe definition serves every row. */
 @keyframes prcard-marquee {
@@ -2533,8 +2533,8 @@ select.field-input option {
     flex-shrink: 0;
   }
 
-  /* ── Titlebar ────────────────────────────────────── */
-  .bd-titlebar {
+  /* ── TitleBar ────────────────────────────────────── */
+  .bd-title-bar {
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -2545,21 +2545,21 @@ select.field-input option {
     border-bottom: 1px solid var(--color-subtle-border);
     user-select: none;
   }
-  .bd-titlebar__title {
+  .bd-title-bar__title {
     font-size: var(--text-body);
     font-weight: 600;
     color: var(--color-text-primary);
     letter-spacing: -0.005em;
   }
-  .bd-titlebar__count {
+  .bd-title-bar__count {
     font-size: var(--text-small);
     color: var(--color-text-tertiary);
     font-weight: 500;
   }
-  .bd-titlebar__spacer {
+  .bd-title-bar__spacer {
     flex: 1;
   }
-  .bd-titlebar__meta {
+  .bd-title-bar__meta {
     display: inline-flex;
     align-items: center;
     gap: var(--space-3);

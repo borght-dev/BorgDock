@@ -1,4 +1,4 @@
-import { StatusBar as ChromeStatusBar } from '@/components/shared/chrome';
+import { WindowStatusBar } from '@/components/shared/chrome';
 import { usePrStore } from '@/stores/pr-store';
 
 function formatTimeAgo(date: Date | null): string {
@@ -27,7 +27,7 @@ export function StatusBar() {
   const counts = getCounts();
 
   return (
-    <ChromeStatusBar
+    <WindowStatusBar
       left={
         <>
           <span className="font-medium">{counts.all} PRs</span>

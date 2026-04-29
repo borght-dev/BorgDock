@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNotificationStore } from '@/stores/notification-store';
 import type { InAppNotification, NotificationSettings, NotificationSeverity } from '@/types';
-import { ToggleSwitch } from './_ToggleSwitch';
+import { ToggleSwitch } from './ToggleSwitch';
 
 const TEST_NOTIFICATIONS: { severity: NotificationSeverity; notification: InAppNotification }[] = [
   {

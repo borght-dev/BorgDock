@@ -2,7 +2,7 @@ import type { Window } from '@tauri-apps/api/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useRef } from 'react';
 import { WindowControls } from './chrome/WindowControls';
-import { Titlebar } from './primitives/Titlebar';
+import { TitleBar } from './primitives/TitleBar';
 
 interface WindowTitleBarProps {
   title: string;
@@ -44,10 +44,10 @@ export function WindowTitleBar({ title }: WindowTitleBarProps) {
   }, [win]);
 
   return (
-    <Titlebar
+    <TitleBar
       data-tauri-drag-region
       onDoubleClick={handleMaximize}
-      left={<span className="bd-titlebar__title">{title}</span>}
+      left={<span className="bd-title-bar__title">{title}</span>}
       right={
         <WindowControls
           onMinimize={handleMinimize}

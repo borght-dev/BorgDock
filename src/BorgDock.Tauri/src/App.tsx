@@ -1,10 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CommandPalette } from '@/components/command-palette/CommandPalette';
+import { useEffect, useRef, useState } from 'react';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
-import { PullRequestList } from '@/components/pr/PullRequestList';
+import { PrList } from '@/components/pr/PrList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { SettingsFlyout } from '@/components/settings/SettingsFlyout';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
@@ -180,12 +179,6 @@ export default function App() {
     useOnboardingStore.getState().restoreOnboardingState();
   }, []);
 
-  // Command palette: select a work item → switch to work items section and open detail
-  const handlePaletteSelectWorkItem = useCallback((id: number) => {
-    useUiStore.getState().setActiveSection('workitems');
-    useUiStore.getState().setPendingWorkItemId(id);
-  }, []);
-
   // Register global hotkeys (sidebar toggle + flyout toggle)
   useEffect(() => {
     if (settings.ui.globalHotkey) {
@@ -311,14 +304,13 @@ export default function App() {
         />
         <Sidebar>
           {activeSection === 'focus' && <FocusList />}
-          {activeSection === 'prs' && <PullRequestList />}
+          {activeSection === 'prs' && <PrList />}
           {activeSection === 'workitems' && <WorkItemsSection />}
         </Sidebar>
         <SettingsFlyout />
         <NotificationOverlay />
         <MergeToast />
         <QuickReviewOverlay />
-        <CommandPalette onSelectWorkItem={handlePaletteSelectWorkItem} />
       </>
     );
   }
@@ -327,14 +319,13 @@ export default function App() {
     <>
       <Sidebar>
         {activeSection === 'focus' && <FocusList />}
-        {activeSection === 'prs' && <PullRequestList />}
+        {activeSection === 'prs' && <PrList />}
         {activeSection === 'workitems' && <WorkItemsSection />}
       </Sidebar>
       <SettingsFlyout />
       <NotificationOverlay />
       <MergeToast />
       <QuickReviewOverlay />
-      <CommandPalette onSelectWorkItem={handlePaletteSelectWorkItem} />
     </>
   );
 }
