@@ -8,6 +8,10 @@ import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
 import { getOpenPRs } from '@/services/github/pulls';
 import { initClient } from '@/services/github/singleton';
+import {
+  PR_REFRESHED_EVENT,
+  type PrRefreshedDetail,
+} from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
 import { PRDetailPanel } from './PRDetailPanel';
@@ -154,6 +158,29 @@ export function PRDetailApp() {
     return () => {
       cancelled = true;
     };
+  }, [owner, repo, number]);
+
+  // Pop-out windows hold their own pr state (this window's zustand store is
+  // separate from the sidebar's), so subscribe to the in-window
+  // borgdock-pr-refreshed event that mutation handlers fire after a successful
+  // action. Keeps this view in sync with server-truth without waiting on the
+  // next poll cycle.
+  useEffect(() => {
+    if (!owner || !repo || !number) return;
+    function handleRefreshed(e: Event) {
+      const detail = (e as CustomEvent<PrRefreshedDetail>).detail;
+      if (!detail || detail.owner !== owner || detail.repo !== repo || detail.number !== number) {
+        return;
+      }
+      if (detail.pr) {
+        setPr(detail.pr);
+        getCurrentWindow()
+          .setTitle(`PR #${number} - ${detail.pr.pullRequest.title}`)
+          .catch(console.debug); /* fire-and-forget */
+      }
+    }
+    document.addEventListener(PR_REFRESHED_EVENT, handleRefreshed);
+    return () => document.removeEventListener(PR_REFRESHED_EVENT, handleRefreshed);
   }, [owner, repo, number]);
 
   // Thin header strip for pre-load states — stays draggable so the window

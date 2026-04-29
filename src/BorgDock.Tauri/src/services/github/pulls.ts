@@ -1,5 +1,14 @@
 import { createLogger } from '@/services/logger';
-import type { PullRequest, PullRequestCommit, PullRequestFileChange, ReviewStatus } from '@/types';
+import type {
+  CheckRun,
+  PullRequest,
+  PullRequestCommit,
+  PullRequestFileChange,
+  PullRequestWithChecks,
+  ReviewStatus,
+} from '@/types';
+import { aggregatePrWithChecks } from './aggregate';
+import { getCheckRunsForRef } from './checks';
 import type { GitHubClient } from './client';
 
 const log = createLogger('github:pulls');
@@ -123,6 +132,42 @@ export async function getOpenPRs(
   }
 
   return pullRequests;
+}
+
+/**
+ * Targeted single-PR refetch — fetches detail + reviews + checks for one PR
+ * and returns the same {@link PullRequestWithChecks} shape the polling loop
+ * produces. Used by mutation handlers (merge / bypass / close / toggle draft /
+ * submit review) to reflect server-truth immediately instead of waiting for
+ * the next poll cycle.
+ */
+export async function getPRWithChecks(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<PullRequestWithChecks> {
+  const [detail, reviews] = await Promise.all([
+    client.get<GitHubPullRequestDto>(`repos/${owner}/${repo}/pulls/${number}`),
+    client.get<GitHubReviewDto[]>(`repos/${owner}/${repo}/pulls/${number}/reviews`),
+  ]);
+
+  const pr = mapToPullRequest(detail, owner, repo);
+  pr.mergeable = detail.mergeable ?? mergeableFromState(detail.mergeable_state) ?? undefined;
+  pr.reviewStatus = aggregateReviewStatus(reviews);
+  pr.requestedReviewers = detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
+
+  let checks: CheckRun[] = [];
+  try {
+    checks = await getCheckRunsForRef(client, owner, repo, pr.headRef);
+  } catch (err) {
+    log.warn('check runs fetch failed during single-PR refresh', {
+      error: String(err),
+      number,
+    });
+  }
+
+  return aggregatePrWithChecks(pr, checks);
 }
 
 export async function getClosedPRs(

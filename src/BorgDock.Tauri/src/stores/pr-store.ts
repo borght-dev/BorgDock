@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { getPRWithChecks } from '@/services/github/pulls';
+import { getClient } from '@/services/github/singleton';
+import { createLogger } from '@/services/logger';
 import {
   computePriorityScores,
   type PriorityScore,
@@ -6,6 +9,19 @@ import {
 } from '@/services/priority-scoring';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
 import type { PullRequestWithChecks } from '@/types';
+
+const log = createLogger('pr-store');
+
+/** DOM event broadcast after a single-PR refresh — pop-out windows that hold
+ *  their own PR state subscribe to this to converge on server-truth without
+ *  reading from the (window-local) zustand store. */
+export const PR_REFRESHED_EVENT = 'borgdock-pr-refreshed';
+export interface PrRefreshedDetail {
+  owner: string;
+  repo: string;
+  number: number;
+  pr: PullRequestWithChecks | null; // null = no longer accessible / removed
+}
 
 export type PrFilter =
   | 'all'
@@ -74,6 +90,15 @@ interface PrState extends DerivedCache {
   setUsername: (username: string) => void;
   setPollingState: (isPolling: boolean, lastPollTime?: Date) => void;
   setRateLimit: (rateLimit: RateLimit | null) => void;
+  /** Re-fetch a single PR and merge it into the store. Open PRs replace the
+   *  matching entry in {@link pullRequests}; closed/merged PRs are moved to
+   *  {@link closedPullRequests}. Also broadcasts a `borgdock-pr-refreshed`
+   *  DOM event for any window-local listeners (e.g. pop-out detail panels). */
+  refreshPr: (
+    owner: string,
+    repo: string,
+    number: number,
+  ) => Promise<PullRequestWithChecks | null>;
 }
 
 function matchesSearch(pr: PullRequestWithChecks, query: string): boolean {
@@ -451,4 +476,68 @@ export const usePrStore = create<PrState>()((set, get) => ({
   setPollingState: (isPolling, lastPollTime) =>
     set({ isPolling, ...(lastPollTime ? { lastPollTime } : {}) }),
   setRateLimit: (rateLimit) => set({ rateLimit }),
+  refreshPr: async (owner, repo, number) => {
+    const client = getClient();
+    if (!client) return null;
+
+    let fresh: PullRequestWithChecks;
+    try {
+      fresh = await getPRWithChecks(client, owner, repo, number);
+    } catch (err) {
+      log.warn('refreshPr fetch failed', { error: String(err), owner, repo, number });
+      return null;
+    }
+
+    const matches = (p: PullRequestWithChecks) =>
+      p.pullRequest.repoOwner === owner &&
+      p.pullRequest.repoName === repo &&
+      p.pullRequest.number === number;
+
+    set((state) => {
+      const isOpen = fresh.pullRequest.state === 'open';
+
+      let pullRequests = state.pullRequests;
+      let closedPullRequests = state.closedPullRequests;
+
+      if (isOpen) {
+        const idx = pullRequests.findIndex(matches);
+        if (idx >= 0) {
+          pullRequests = [...pullRequests];
+          pullRequests[idx] = fresh;
+        } else {
+          pullRequests = [...pullRequests, fresh];
+        }
+        if (closedPullRequests.some(matches)) {
+          closedPullRequests = closedPullRequests.filter((p) => !matches(p));
+        }
+      } else {
+        if (pullRequests.some(matches)) {
+          pullRequests = pullRequests.filter((p) => !matches(p));
+        }
+        // Prepend so a freshly-merged PR shows up at the top of the closed view.
+        closedPullRequests = [fresh, ...closedPullRequests.filter((p) => !matches(p))];
+      }
+
+      const newCacheKey = makeCacheKey(pullRequests, state.username, state.reviewRequestTimestamps);
+      return {
+        pullRequests,
+        closedPullRequests,
+        _cacheKey: newCacheKey,
+        _cachedPriorityScores: null,
+        _cachedTeamReviewLoad: null,
+        _cachedCounts: null,
+        _cachedFilteredPrs: null,
+        _cachedGroupedByRepo: null,
+        _cachedNeedsMyReview: null,
+        _cachedFocusPrs: null,
+        _viewCacheKey: '',
+      };
+    });
+
+    if (typeof document !== 'undefined') {
+      const detail: PrRefreshedDetail = { owner, repo, number, pr: fresh };
+      document.dispatchEvent(new CustomEvent<PrRefreshedDetail>(PR_REFRESHED_EVENT, { detail }));
+    }
+    return fresh;
+  },
 }));

@@ -18,6 +18,7 @@ import {
 import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -237,6 +238,16 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     setCheckoutOpen((open) => !open);
   }, []);
 
+  // Merge / bypass / close move the PR off the open list, so we defer the
+  // store refresh briefly to let the celebration card / status message stay
+  // visible before this panel unmounts.
+  const TERMINAL_REFRESH_DELAY_MS = 1500;
+  const scheduleTerminalRefresh = useCallback(() => {
+    setTimeout(() => {
+      void usePrStore.getState().refreshPr(p.repoOwner, p.repoName, p.number);
+    }, TERMINAL_REFRESH_DELAY_MS);
+  }, [p.repoOwner, p.repoName, p.number]);
+
   const handleMerge = useCallback(async () => {
     const client = getClient();
     if (!client) return;
@@ -245,11 +256,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       await mergePullRequest(client, p.repoOwner, p.repoName, p.number, 'squash');
       setActionStatus('');
       setMergeSuccess(true);
+      scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
-  }, [p.repoOwner, p.repoName, p.number]);
+  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
 
   const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
 
@@ -260,11 +272,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       await bypassMergePullRequest(p.repoOwner, p.repoName, p.number);
       setActionStatus('');
       setMergeSuccess(true);
+      scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Bypass merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
-  }, [p.repoOwner, p.repoName, p.number]);
+  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
 
   const handleCloseConfirm = useCallback(() => setConfirmClose(true), []);
 
@@ -276,11 +289,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     try {
       await closePullRequest(client, p.repoOwner, p.repoName, p.number);
       setActionStatus('PR closed');
+      scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Close failed: ${err}`);
     }
     setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number]);
+  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
 
   const handleToggleDraft = useCallback(async () => {
     const client = getClient();
@@ -289,6 +303,8 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     try {
       await toggleDraft(client, p.repoOwner, p.repoName, p.number, !p.isDraft);
       setActionStatus(p.isDraft ? 'Marked ready!' : 'Marked draft!');
+      // Toggle-draft keeps the PR open — refresh immediately so pills update.
+      void usePrStore.getState().refreshPr(p.repoOwner, p.repoName, p.number);
     } catch (err) {
       setActionStatus(`Failed: ${err}`);
     }

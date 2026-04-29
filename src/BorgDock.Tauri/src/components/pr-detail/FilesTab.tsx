@@ -5,6 +5,7 @@ import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
 import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { usePrStore } from '@/stores/pr-store';
 import type {
   DiffFile,
   DiffViewMode,
@@ -79,6 +80,9 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       );
       setReviewStatus('Review submitted!');
       setReviewBody('');
+      // Review keeps the PR open — refresh immediately so the review-status
+      // pill on the header updates without waiting for the next poll.
+      void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
     } catch (err) {
       setReviewStatus(`Review failed: ${err}`);
     }

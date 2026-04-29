@@ -16,6 +16,7 @@ export {
   getOpenPRs,
   getPRCommits,
   getPRFiles,
+  getPRWithChecks,
 } from './pulls';
 export {
   detectSeverity,
