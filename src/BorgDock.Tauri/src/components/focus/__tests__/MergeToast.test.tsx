@@ -5,6 +5,7 @@ import { MergeToast } from '../MergeToast';
 const mockMergePullRequest = vi.fn().mockResolvedValue(undefined);
 const mockGetClient = vi.fn().mockReturnValue({ put: vi.fn() });
 const mockNotificationShow = vi.fn();
+const mockCelebrate = vi.fn();
 
 vi.mock('@/services/github/mutations', () => ({
   mergePullRequest: (...args: unknown[]) => mockMergePullRequest(...args),
@@ -12,6 +13,10 @@ vi.mock('@/services/github/mutations', () => ({
 
 vi.mock('@/services/github/singleton', () => ({
   getClient: () => mockGetClient(),
+}));
+
+vi.mock('@/services/merge-celebration', () => ({
+  celebrateMerge: (...args: unknown[]) => mockCelebrate(...args),
 }));
 
 vi.mock('@/stores/notification-store', () => ({
@@ -42,6 +47,7 @@ describe('MergeToast', () => {
     mockMergePullRequest.mockClear().mockResolvedValue(undefined);
     mockGetClient.mockClear().mockReturnValue({ put: vi.fn() });
     mockNotificationShow.mockClear();
+    mockCelebrate.mockClear();
     delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
   });
 
@@ -133,7 +139,7 @@ describe('MergeToast', () => {
     );
   });
 
-  it('shows success notification after merge', async () => {
+  it('celebrates after successful merge', async () => {
     render(<MergeToast />);
     act(() => {
       requireQueueMerge()('owner', 'repo', 42);
@@ -141,11 +147,16 @@ describe('MergeToast', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000);
     });
-    expect(mockNotificationShow).toHaveBeenCalledWith(
+    expect(mockCelebrate).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'PR #42 merged!',
-        severity: 'success',
+        number: 42,
+        repoOwner: 'owner',
+        repoName: 'repo',
       }),
+    );
+    // The legacy success-severity toast is no longer fired.
+    expect(mockNotificationShow).not.toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success' }),
     );
   });
 

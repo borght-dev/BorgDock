@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pill } from '@/components/shared/primitives';
 import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { celebrateMerge } from '@/services/merge-celebration';
 import { useNotificationStore } from '@/stores/notification-store';
 import { parseError } from '@/utils/parse-error';
 
@@ -26,11 +27,12 @@ export function MergeToast() {
 
     try {
       await mergePullRequest(client, req.owner, req.repo, req.prNumber, 'squash');
-      useNotificationStore.getState().show({
-        title: `PR #${req.prNumber} merged!`,
-        message: `${req.owner}/${req.repo}`,
-        severity: 'success',
-        actions: [],
+      celebrateMerge({
+        number: req.prNumber,
+        title: `PR #${req.prNumber}`,
+        repoOwner: req.owner,
+        repoName: req.repo,
+        htmlUrl: `https://github.com/${req.owner}/${req.repo}/pull/${req.prNumber}`,
       });
     } catch (err) {
       useNotificationStore.getState().show({
