@@ -3,6 +3,8 @@ import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { rerunWorkflow } from '@/services/github/checks';
 import { mergePullRequest } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { celebrateMerge } from '@/services/merge-celebration';
+import { computeMergeScore } from '@/services/merge-score';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -67,6 +69,8 @@ function buildFlyoutPayload(
       htmlUrl: pr.pullRequest.htmlUrl,
       headRef: pr.pullRequest.headRef,
       isDraft: pr.pullRequest.isDraft,
+      mergeScore: computeMergeScore(pr),
+      mergeable: pr.pullRequest.mergeable,
     })),
     failingCount,
     pendingCount,
@@ -342,9 +346,23 @@ export function useBadgeSync() {
             case 'merge': {
               const client = getClient();
               if (client) {
-                mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch(
-                  console.error,
-                );
+                // Mirror usePrCardActions.handleMerge — fire the celebration as
+                // soon as the merge resolves, and call markCelebrated (inside
+                // celebrateMerge) so useExternalMergeCelebration's polling-based
+                // fallback won't double-fire on the next tick. The flyout
+                // closes itself on click; the toast and tada surface in the
+                // main window where NotificationOverlay is mounted.
+                mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number)
+                  .then(() => {
+                    celebrateMerge({
+                      number: pr.number,
+                      title: pr.title,
+                      repoOwner: pr.repoOwner,
+                      repoName: pr.repoName,
+                      htmlUrl: pr.htmlUrl,
+                    });
+                  })
+                  .catch(console.error);
               }
               break;
             }

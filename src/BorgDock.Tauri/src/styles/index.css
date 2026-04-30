@@ -2772,6 +2772,13 @@ body.sql-resizing-v .sql-resize-handle {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
+  /* Tighten the label when the ring is rendered small enough that
+     11px would clip — used for the score badge under the avatar in the
+     flyout (22px ring). */
+  .bd-ring--xs .bd-ring__label {
+    font-size: 8px;
+    letter-spacing: -0.04em;
+  }
 
   /* ── LinearProgress ──────────────────────────────── */
   .bd-linear {

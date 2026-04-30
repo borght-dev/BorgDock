@@ -34,10 +34,19 @@ describe('PrCardView', () => {
     expect(container.textContent).toContain('72');
   });
 
-  it('does not render Ring in compact density even when score is provided', () => {
+  it('renders a small Ring under the avatar in compact density when score is provided', () => {
     const { container } = render(
       <PrCardView pr={basePr} density="compact" score={72} />,
     );
+    const ring = container.querySelector('.bd-ring');
+    expect(ring).toBeInTheDocument();
+    // Compact-mode score uses the --xs modifier so the label fits in a 22px ring.
+    expect(ring).toHaveClass('bd-ring--xs');
+    expect(container.textContent).toContain('72');
+  });
+
+  it('omits the Ring in compact density when score is not provided', () => {
+    const { container } = render(<PrCardView pr={basePr} density="compact" />);
     expect(container.querySelector('.bd-ring')).not.toBeInTheDocument();
   });
 

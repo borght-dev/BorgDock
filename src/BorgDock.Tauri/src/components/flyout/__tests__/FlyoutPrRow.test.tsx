@@ -63,14 +63,45 @@ describe('FlyoutPrRow', () => {
     expect(container.querySelector('[data-pr-primary-action="rerun"]')).toBeInTheDocument();
   });
 
-  it('chooses "merge" as primary when PR is approved & owned', () => {
-    const approvedOwnPr: FlyoutPr = {
+  it('chooses "merge" as primary when PR is fully ready (green + approved + not draft)', () => {
+    const readyPr: FlyoutPr = {
       ...sample,
+      overallStatus: 'green',
       reviewStatus: 'approved',
-      isMine: true,
+      pendingCount: 0,
+      passedCount: 5,
+      isDraft: false,
     };
-    const { container } = render(<FlyoutPrRow pr={approvedOwnPr} onClick={vi.fn()} />);
+    const { container } = render(<FlyoutPrRow pr={readyPr} onClick={vi.fn()} />);
     expect(container.querySelector('[data-pr-primary-action="merge"]')).toBeInTheDocument();
+  });
+
+  it('chooses "merge" as primary even when the PR is not the user\'s own', () => {
+    const readyTheirPr: FlyoutPr = {
+      ...sample,
+      overallStatus: 'green',
+      reviewStatus: 'approved',
+      pendingCount: 0,
+      passedCount: 5,
+      isDraft: false,
+      isMine: false,
+    };
+    const { container } = render(<FlyoutPrRow pr={readyTheirPr} onClick={vi.fn()} />);
+    expect(container.querySelector('[data-pr-primary-action="merge"]')).toBeInTheDocument();
+  });
+
+  it('does not choose "merge" when there are merge conflicts', () => {
+    const conflictedPr: FlyoutPr = {
+      ...sample,
+      overallStatus: 'green',
+      reviewStatus: 'approved',
+      pendingCount: 0,
+      passedCount: 5,
+      isDraft: false,
+      mergeable: false,
+    };
+    const { container } = render(<FlyoutPrRow pr={conflictedPr} onClick={vi.fn()} />);
+    expect(container.querySelector('[data-pr-primary-action="merge"]')).not.toBeInTheDocument();
   });
 
   it('chooses "checkout" as primary when PR is mine but not approved', () => {

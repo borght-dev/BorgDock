@@ -46,6 +46,10 @@ export interface FlyoutPr {
   htmlUrl?: string;
   headRef?: string;
   isDraft?: boolean;
+  /** Merge readiness 0..100. Mirrors computeMergeScore() in the main window. */
+  mergeScore?: number;
+  /** GitHub's `mergeable` field — false means conflicts. */
+  mergeable?: boolean;
 }
 
 export function FlyoutGlance({

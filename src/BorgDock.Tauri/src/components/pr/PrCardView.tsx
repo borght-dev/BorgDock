@@ -181,7 +181,12 @@ export interface PrCardViewProps {
   pr: PrCardData;
   /** Visual density. compact = single-line grid (flyout). normal = column with score Ring. */
   density: PrCardDensity;
-  /** Readiness score 0..100. Only rendered in density="normal". */
+  /**
+   * Readiness score 0..100. In `normal` density renders a 32px Ring on the
+   * trailing column. In `compact` density renders a 22px Ring directly under
+   * the avatar so the flyout shows merge-readiness at a glance without taking
+   * extra horizontal space.
+   */
   score?: number;
   /** Click handler — wires to selectPr / openPrDetail / etc. at call site. */
   onClick?: (e: MouseEvent<HTMLElement>) => void;
@@ -273,11 +278,16 @@ export function PrCardView({
         // style: grid layout requires exact 24px avatar column — no Tailwind grid-cols preset covers this
         style={{ gridTemplateColumns: '24px 1fr auto' }}
       >
-        <Avatar
-          initials={avatarInitials(pr.authorLogin)}
-          tone={pr.isMine ? 'own' : 'them'}
-          size="sm"
-        />
+        <div className="flex flex-col items-center gap-1.5">
+          <Avatar
+            initials={avatarInitials(pr.authorLogin)}
+            tone={pr.isMine ? 'own' : 'them'}
+            size="sm"
+          />
+          {score !== undefined && (
+            <Ring value={score} size={22} stroke={2} label className="bd-ring--xs" />
+          )}
+        </div>
         <div className="min-w-0">
           <MarqueeTitle
             text={pr.title}

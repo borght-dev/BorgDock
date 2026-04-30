@@ -12,6 +12,13 @@ export interface PrActionShape {
   reviewing: boolean;
   /** Current user is the PR author. */
   own: boolean;
+  /**
+   * PR is ready to merge: checks green, approved, no conflicts, not draft —
+   * the same conditions that drive a 100% merge score. Surfaced as the primary
+   * action regardless of authorship: GitHub permits anyone with write access
+   * to merge, so the button shouldn't gate on `own`.
+   */
+  ready: boolean;
 }
 
 /**
@@ -20,7 +27,7 @@ export interface PrActionShape {
  */
 export function primaryFor(shape: PrActionShape): PrActionId {
   if (shape.failing) return 'rerun';
-  if (shape.approved && shape.own) return 'merge';
+  if (shape.ready) return 'merge';
   if (shape.reviewing) return 'review';
   if (shape.own) return 'checkout';
   return 'open';
@@ -46,10 +53,17 @@ export function shapeFromPrWithChecks(
   isMine: boolean,
   reviewing: boolean,
 ): PrActionShape {
+  const approved = prw.pullRequest.reviewStatus === 'approved';
+  const ready =
+    prw.overallStatus === 'green' &&
+    approved &&
+    prw.pullRequest.mergeable !== false &&
+    !prw.pullRequest.isDraft;
   return {
     failing: prw.overallStatus === 'red',
-    approved: prw.pullRequest.reviewStatus === 'approved',
+    approved,
     reviewing,
     own: isMine,
+    ready,
   };
 }

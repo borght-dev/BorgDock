@@ -96,7 +96,7 @@ export function FlyoutPrContextMenu({
   }, [position.x, position.y]);
 
   const hasFailing = pr.failedCount > 0;
-  const isReady = pr.overallStatus === 'green' && pr.isMine && !pr.isDraft;
+  const isReady = pr.overallStatus === 'green' && !pr.isDraft;
 
   const emitMain = async (event: string, payload: Record<string, unknown>) => {
     try {

@@ -59,11 +59,18 @@ function mapFlyoutPr(pr: FlyoutPr): PrCardData {
 export function FlyoutPrRow({ pr, active, onClick, onAction, showRepo = true }: FlyoutPrRowProps) {
   const [hovered, setHovered] = useState(false);
   const reviewing = pr.reviewStatus === 'pending';
+  const approved = pr.reviewStatus === 'approved';
+  const ready =
+    pr.overallStatus === 'green' &&
+    approved &&
+    pr.mergeable !== false &&
+    !pr.isDraft;
   const primary = primaryFor({
     failing: pr.failedCount > 0 || pr.overallStatus === 'red',
-    approved: pr.reviewStatus === 'approved',
+    approved,
     reviewing,
     own: pr.isMine,
+    ready,
   });
 
   const handleAction = (action: PrActionId | 'more') => (e: React.MouseEvent) => {
@@ -80,6 +87,7 @@ export function FlyoutPrRow({ pr, active, onClick, onAction, showRepo = true }: 
       <PrCardView
         pr={mapFlyoutPr(pr)}
         density="compact"
+        score={pr.mergeScore}
         active={active}
         onClick={() => onClick(pr)}
         showRepo={showRepo}
