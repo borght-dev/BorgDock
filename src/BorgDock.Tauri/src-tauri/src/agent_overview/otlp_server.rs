@@ -1,0 +1,123 @@
+use crate::agent_overview::types::RawEvent;
+use serde_json::Value;
+use std::collections::HashMap;
+
+/// Parse an OTLP/HTTP/JSON `ExportLogsServiceRequest` body into a flat list of
+/// `RawEvent`s. Tolerant of missing/extra fields; never panics on malformed
+/// input.
+pub fn parse_export_logs(body: &Value) -> Vec<RawEvent> {
+    let mut out = Vec::new();
+    let resource_logs = body.get("resourceLogs").and_then(Value::as_array);
+    let Some(resource_logs) = resource_logs else { return out };
+
+    for resource_log in resource_logs {
+        let resource_attrs = collect_attrs(resource_log.pointer("/resource/attributes"));
+        let session_id = resource_attrs
+            .get("session.id")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let Some(scope_logs) = resource_log.get("scopeLogs").and_then(Value::as_array) else {
+            continue;
+        };
+        for scope_log in scope_logs {
+            let Some(records) = scope_log.get("logRecords").and_then(Value::as_array) else {
+                continue;
+            };
+            for record in records {
+                let mut attrs = resource_attrs.clone();
+                for (k, v) in collect_attrs(record.get("attributes")) {
+                    attrs.insert(k, v);
+                }
+                let event_name = match attrs.get("event.name").and_then(Value::as_str) {
+                    Some(s) => s.to_string(),
+                    None => continue,
+                };
+                let sid = session_id.clone().unwrap_or_default();
+                if sid.is_empty() {
+                    continue;
+                }
+                out.push(RawEvent { session_id: sid, event_name, attrs });
+            }
+        }
+    }
+    out
+}
+
+/// OTLP/JSON encodes attributes as `[{"key":..., "value":{"stringValue"|"intValue"|...}}, …]`.
+/// Flatten the list to a key→Value map (collapsing the scalar wrapper).
+fn collect_attrs(node: Option<&Value>) -> HashMap<String, Value> {
+    let mut out = HashMap::new();
+    let Some(arr) = node.and_then(Value::as_array) else { return out };
+    for item in arr {
+        let Some(key) = item.get("key").and_then(Value::as_str) else { continue };
+        let val = item.get("value").map(unwrap_otlp_value).unwrap_or(Value::Null);
+        out.insert(key.to_string(), val);
+    }
+    out
+}
+
+fn unwrap_otlp_value(node: &Value) -> Value {
+    if let Some(s) = node.get("stringValue") {
+        return s.clone();
+    }
+    if let Some(b) = node.get("boolValue") {
+        return b.clone();
+    }
+    if let Some(i) = node.get("intValue") {
+        // intValue is a string per the OTLP/JSON encoding; coerce to number.
+        if let Some(s) = i.as_str() {
+            if let Ok(n) = s.parse::<i64>() {
+                return Value::from(n);
+            }
+        }
+        return i.clone();
+    }
+    if let Some(d) = node.get("doubleValue") {
+        return d.clone();
+    }
+    if let Some(a) = node.get("arrayValue") {
+        return a.clone();
+    }
+    Value::Null
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_sample_fixture() {
+        let body: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/otlp/api_request_end_turn.json"
+        )).unwrap();
+        let events = parse_export_logs(&body);
+        assert_eq!(events.len(), 1);
+        let e = &events[0];
+        assert_eq!(e.session_id, "8f7b28b7-cef1-45ac-b469-793b4c0d0fca");
+        assert_eq!(e.event_name, "api_request");
+        assert_eq!(e.attrs.get("model").unwrap(), &Value::String("claude-sonnet-4-6".into()));
+        assert_eq!(e.attrs.get("stop_reason").unwrap(), &Value::String("end_turn".into()));
+        assert_eq!(e.attrs.get("input_tokens").unwrap().as_i64().unwrap(), 1024);
+    }
+
+    #[test]
+    fn missing_session_id_drops_record() {
+        let body = serde_json::json!({
+            "resourceLogs": [{
+                "resource": { "attributes": [] },
+                "scopeLogs": [{ "logRecords": [{
+                    "attributes": [
+                        { "key": "event.name", "value": { "stringValue": "api_request" } }
+                    ]
+                }] }]
+            }]
+        });
+        assert!(parse_export_logs(&body).is_empty());
+    }
+
+    #[test]
+    fn empty_body_returns_empty() {
+        let body: Value = serde_json::from_str("{}").unwrap();
+        assert!(parse_export_logs(&body).is_empty());
+    }
+}

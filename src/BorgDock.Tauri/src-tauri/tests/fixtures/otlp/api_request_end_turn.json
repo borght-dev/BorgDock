@@ -1,0 +1,24 @@
+{
+  "resourceLogs": [{
+    "resource": {
+      "attributes": [
+        {"key": "service.name", "value": {"stringValue": "claude-code"}},
+        {"key": "session.id", "value": {"stringValue": "8f7b28b7-cef1-45ac-b469-793b4c0d0fca"}},
+        {"key": "terminal.type", "value": {"stringValue": "WindowsTerminal"}}
+      ]
+    },
+    "scopeLogs": [{
+      "scope": {"name": "com.anthropic.claude_code"},
+      "logRecords": [{
+        "timeUnixNano": "1714492800000000000",
+        "attributes": [
+          {"key": "event.name", "value": {"stringValue": "api_request"}},
+          {"key": "model", "value": {"stringValue": "claude-sonnet-4-6"}},
+          {"key": "stop_reason", "value": {"stringValue": "end_turn"}},
+          {"key": "input_tokens", "value": {"intValue": "1024"}},
+          {"key": "output_tokens", "value": {"intValue": "256"}}
+        ]
+      }]
+    }]
+  }]
+}

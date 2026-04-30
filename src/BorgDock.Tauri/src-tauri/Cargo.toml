@@ -14,6 +14,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+axum = "0.7"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
@@ -45,6 +46,7 @@ log = "0.4"
 png = "0.17"
 tiberius = { version = "0.12", default-features = false, features = ["tds73", "chrono", "winauth", "rust_decimal"] }
 tokio-util = { version = "0.7", features = ["compat"] }
+tower = "0.5"
 rust_decimal = "1"
 chrono = "0.4"
 base64 = "0.22"
