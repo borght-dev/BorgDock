@@ -109,19 +109,21 @@ pub fn apply_tick(
     let since_event = now.saturating_duration_since(record.last_event_at);
     let since_state = now.saturating_duration_since(record.state_since);
 
+    // At most one transition per tick. If a long pause means multiple
+    // thresholds have all elapsed (rare — happens only when the ticker
+    // was paused or sleeping), we still surface each intermediate state
+    // for at least one tick so the UI / notification tracker can react
+    // to it. With a 1Hz ticker, even a four-state cascade resolves in
+    // ~4 seconds, well below any human-perceivable lag.
     if record.state == SessionState::Finished && since_state > finished_to_awaiting_after {
         transition(record, SessionState::Awaiting, now);
-    }
-
-    if matches!(
+    } else if matches!(
         record.state,
         SessionState::Working | SessionState::Tool | SessionState::Awaiting | SessionState::Finished
     ) && since_event > idle_after
     {
         transition(record, SessionState::Idle, now);
-    }
-
-    if record.state == SessionState::Idle && since_event > ended_after {
+    } else if record.state == SessionState::Idle && since_event > ended_after {
         transition(record, SessionState::Ended, now);
     }
 
@@ -135,12 +137,28 @@ fn transition(record: &mut SessionRecord, next: SessionState, now: Instant) {
     }
 }
 
-fn snapshot(record: &SessionRecord) -> (SessionState, u64, Option<String>, Option<String>) {
+/// Fingerprint of the observable fields. `apply_event` returns `true` when
+/// this changes — that signal drives whether the SessionStore emits a delta
+/// to the React side. `task` belongs here because tool_result events update
+/// the narrative without changing state, and the card text needs to refresh
+/// even on those tick-less updates.
+fn snapshot(
+    record: &SessionRecord,
+) -> (
+    SessionState,
+    u64,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
     (
         record.state,
         record.tokens_used,
         record.last_user_msg.clone(),
         record.last_api_stop_reason.clone(),
+        record.task.clone(),
+        record.model.clone(),
     )
 }
 
@@ -266,5 +284,61 @@ mod tests {
             Duration::from_secs(1800),
             Duration::from_secs(30));
         assert_eq!(r.state, SessionState::Working);
+    }
+
+    #[test]
+    fn tick_does_not_skip_awaiting_when_both_thresholds_have_elapsed() {
+        // Regression: when a session has been Finished for longer than the
+        // idle threshold (e.g., after a paused ticker), the cascade must
+        // surface Awaiting on this tick and Idle on the next, not skip
+        // Awaiting in a single call. Otherwise the user never gets the
+        // "needs you back" notification.
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Finished, now - Duration::from_secs(400));
+        r.last_event_at = now - Duration::from_secs(400);
+        let changed = apply_tick(
+            &mut r, now,
+            Duration::from_secs(300),
+            Duration::from_secs(1800),
+            Duration::from_secs(30),
+        );
+        assert!(changed);
+        assert_eq!(r.state, SessionState::Awaiting);
+
+        // Next tick: now Awaiting + still > idle_after → Idle.
+        let later = now + Duration::from_secs(1);
+        apply_tick(
+            &mut r, later,
+            Duration::from_secs(300),
+            Duration::from_secs(1800),
+            Duration::from_secs(30),
+        );
+        assert_eq!(r.state, SessionState::Idle);
+    }
+
+    #[test]
+    fn task_narrative_change_returns_changed_true() {
+        // Regression: tool_result events update the task narrative without
+        // necessarily changing state. The change-detection snapshot must
+        // include `task`, otherwise the SessionStore won't emit a delta
+        // and the React card text will stale.
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Tool, now);
+        r.last_api_stop_reason = Some("tool_use".into());
+        // Two pending tools so the first tool_result doesn't transition to Working.
+        r.pending_tool_uses.insert("toolu_a".into());
+        r.pending_tool_uses.insert("toolu_b".into());
+        let changed = apply_event(
+            &mut r,
+            &ev("tool_result", &[
+                ("tool_use_id", Value::String("toolu_a".into())),
+                ("tool_name", Value::String("Edit".into())),
+                ("file_path", Value::String("E:\\BorgDock\\src\\foo.ts".into())),
+            ]),
+            now,
+        );
+        assert!(changed, "task narrative changed but apply_event returned false");
+        assert_eq!(r.state, SessionState::Tool);
+        assert_eq!(r.task.as_deref(), Some("Editing foo.ts"));
     }
 }
