@@ -13,6 +13,7 @@ import { useAutoHide } from '@/hooks/useAutoHide';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useBadgeSync } from '@/hooks/useBadgeSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
+import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
@@ -124,6 +125,7 @@ export default function App() {
   // before repos/auth are ready and idles for a full interval (~60s).
   const pollingEnabled = !needsSetup && isInitComplete;
   const { pollNow } = useGitHubPolling(settings, pollingEnabled);
+  useExternalMergeCelebration();
 
   // Listen for manual refresh requests (from Header button and keyboard shortcut)
   useEffect(() => {
