@@ -15,9 +15,9 @@ import {
   mergePullRequest,
   toggleDraft,
 } from '@/services/github/mutations';
-import { celebrateMerge } from '@/services/merge-celebration';
 import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
+import { celebrateMerge } from '@/services/merge-celebration';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -239,8 +239,8 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   }, []);
 
   // Merge / bypass / close move the PR off the open list, so we defer the
-  // store refresh briefly to let the celebration card / status message stay
-  // visible before this panel unmounts.
+  // store refresh briefly to give the celebration toast / status message time
+  // to land before this panel unmounts.
   const TERMINAL_REFRESH_DELAY_MS = 1500;
   const scheduleTerminalRefresh = useCallback(() => {
     setTimeout(() => {
