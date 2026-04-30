@@ -166,6 +166,8 @@ pub struct ChangedFile {
     pub path: String,
     pub status: String,
     pub old_path: Option<String>,
+    pub additions: u32,
+    pub deletions: u32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -176,6 +178,55 @@ pub enum NameStatusMode {
     /// `git diff --name-status -z` — records begin with a single status letter + NUL + path.
     /// Renames/copies produce three records: `"R100"` / `"C90"` then old_path then new_path.
     Diff,
+}
+
+/// Parse `git diff --numstat -z` output into a path → (additions, deletions) map.
+///
+/// Plain rows: "<add>\t<del>\t<path>\0".
+/// Rename rows: "<add>\t<del>\t\0<old_path>\0<new_path>\0" (the path field is empty
+///   immediately after the second tab, then the next two NUL-records carry the
+///   old and new paths).
+/// Binary files: "-\t-\t<path>" — counted as 0/0.
+pub fn parse_numstat(bytes: &[u8]) -> std::collections::HashMap<String, (u32, u32)> {
+    let mut out = std::collections::HashMap::new();
+    let records: Vec<&[u8]> = bytes.split(|b| *b == 0).collect();
+    let mut i = 0;
+    while i < records.len() {
+        let rec = records[i];
+        if rec.is_empty() {
+            i += 1;
+            continue;
+        }
+        // Parse "<add>\t<del>\t<rest>" out of the leading record.
+        let parts: Vec<&[u8]> = rec.splitn(3, |b| *b == b'\t').collect();
+        if parts.len() < 3 {
+            i += 1;
+            continue;
+        }
+        let parse_count = |b: &[u8]| -> u32 {
+            std::str::from_utf8(b).ok()
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(0)
+        };
+        let add = parse_count(parts[0]);
+        let del = parse_count(parts[1]);
+        let trailing = parts[2];
+        if trailing.is_empty() {
+            // Rename: next two records are old, new.
+            let new_path = records.get(i + 2)
+                .map(|b| String::from_utf8_lossy(b).to_string())
+                .unwrap_or_default();
+            if !new_path.is_empty() {
+                out.insert(new_path, (add, del));
+            }
+            i += 3;
+        } else {
+            let path = String::from_utf8_lossy(trailing).to_string();
+            out.insert(path, (add, del));
+            i += 1;
+        }
+    }
+    out
 }
 
 pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile> {
@@ -216,6 +267,8 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
                         path,
                         status: status_char.to_string(),
                         old_path: old,
+                        additions: 0,
+                        deletions: 0,
                     });
                     i += 2;
                 } else {
@@ -223,6 +276,8 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
                         path,
                         status: status_char.to_string(),
                         old_path: None,
+                        additions: 0,
+                        deletions: 0,
                     });
                     i += 1;
                 }
@@ -247,6 +302,8 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
                         path: new_path,
                         status: status_char.to_string(),
                         old_path: old,
+                        additions: 0,
+                        deletions: 0,
                     });
                     i += 3;
                 } else {
@@ -259,6 +316,8 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
                         path,
                         status: status_char.to_string(),
                         old_path: None,
+                        additions: 0,
+                        deletions: 0,
                     });
                     i += 2;
                 }
@@ -524,5 +583,34 @@ mod tests {
     fn parse_handles_empty_input() {
         assert_eq!(parse_name_status(b"", NameStatusMode::Status).len(), 0);
         assert_eq!(parse_name_status(b"", NameStatusMode::Diff).len(), 0);
+    }
+
+    #[test]
+    fn parses_numstat_plain_modification() {
+        let bytes = b"14\t6\tsrc/foo.ts\0";
+        let map = parse_numstat(bytes);
+        let stats = map.get("src/foo.ts").expect("present");
+        assert_eq!(stats.0, 14);
+        assert_eq!(stats.1, 6);
+    }
+
+    #[test]
+    fn parses_numstat_rename_three_records() {
+        // Renames in -z mode: "<add>\t<del>\t\0<old>\0<new>\0"
+        let bytes = b"5\t2\t\0src/old.ts\0src/new.ts\0";
+        let map = parse_numstat(bytes);
+        let stats = map.get("src/new.ts").expect("present");
+        assert_eq!(stats.0, 5);
+        assert_eq!(stats.1, 2);
+    }
+
+    #[test]
+    fn parses_numstat_binary_uses_zero() {
+        // git emits "-\t-\t<path>" for binary files
+        let bytes = b"-\t-\timg.png\0";
+        let map = parse_numstat(bytes);
+        let stats = map.get("img.png").expect("present");
+        assert_eq!(stats.0, 0);
+        assert_eq!(stats.1, 0);
     }
 }
