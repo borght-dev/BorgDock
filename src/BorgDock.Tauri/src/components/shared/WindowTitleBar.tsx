@@ -1,11 +1,15 @@
 import type { Window } from '@tauri-apps/api/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
 import { WindowControls } from './chrome/WindowControls';
+import { BorgDockLogo } from './icons';
 import { TitleBar } from './primitives/Titlebar';
 
 interface WindowTitleBarProps {
   title: string;
+  /** Optional content rendered between the title and the window controls. */
+  meta?: ReactNode;
 }
 
 /** Lazily resolve the Tauri window handle — avoids crashing during render
@@ -22,7 +26,7 @@ function useTauriWindow(): Window | null {
   return ref.current;
 }
 
-export function WindowTitleBar({ title }: WindowTitleBarProps) {
+export function WindowTitleBar({ title, meta }: WindowTitleBarProps) {
   const win = useTauriWindow();
 
   const handleMinimize = useCallback(() => {
@@ -47,7 +51,15 @@ export function WindowTitleBar({ title }: WindowTitleBarProps) {
     <TitleBar
       data-tauri-drag-region
       onDoubleClick={handleMaximize}
-      left={<span className="bd-title-bar__title">{title}</span>}
+      left={
+        <>
+          <span className="bd-title-bar__logo" aria-hidden="true">
+            <BorgDockLogo size={22} />
+          </span>
+          <span className="bd-title-bar__title">{title}</span>
+          {meta}
+        </>
+      }
       right={
         <WindowControls
           onMinimize={handleMinimize}

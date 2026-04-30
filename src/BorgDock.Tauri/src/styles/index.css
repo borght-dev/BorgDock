@@ -1944,6 +1944,19 @@ body.sql-resizing .sql-split__handle {
   color: var(--color-accent-foreground);
 }
 
+/* SQL syntax highlighting — token colors are inlined directly on each
+   span by CodeMirror (sqlHighlightStyle in SqlEditor.tsx) using
+   --color-syntax-* CSS vars. Only bracket matching needs CSS here, since
+   CM uses its own `cm-matchingBracket` / `cm-nonmatchingBracket` classes. */
+.sql-editor-cm .cm-matchingBracket {
+  background: var(--color-accent-subtle);
+  outline: 1px solid var(--color-accent);
+  border-radius: 2px;
+}
+.sql-editor-cm .cm-nonmatchingBracket {
+  color: var(--color-status-red);
+}
+
 /* ── Vertical resize handle (between editor and results) */
 
 .sql-resize-handle {
@@ -2802,6 +2815,14 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-tertiary);
     min-height: 18px;
   }
+  /* On filled accent surfaces (primary buttons), the default kbd colors
+     read as dark grey on the accent fill — force a light, high-contrast
+     treatment so the shortcut hint stays legible. */
+  .bd-btn--primary .bd-kbd {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+  }
 
   /* ── Card ────────────────────────────────────────── */
   .bd-card {
@@ -2914,6 +2935,13 @@ body.sql-resizing-v .sql-resize-handle {
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--color-subtle-border);
     user-select: none;
+  }
+  .bd-title-bar__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 0;
   }
   .bd-title-bar__title {
     font-size: var(--text-body);

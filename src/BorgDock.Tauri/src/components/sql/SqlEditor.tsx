@@ -13,6 +13,7 @@ import {
   schemaCompletionSource,
   sql,
 } from '@codemirror/lang-sql';
+import { bracketMatching, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { Compartment, EditorState } from '@codemirror/state';
 import {
   drawSelection,
@@ -21,6 +22,7 @@ import {
   keymap,
   lineNumbers,
 } from '@codemirror/view';
+import { tags } from '@lezer/highlight';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { SqlSchemaPayload } from '@/types/sql-schema';
 import { toCmSchema } from './to-cm-schema';
@@ -59,6 +61,78 @@ const MSSQL_CI = SQLDialect.define({
   ...MSSQL.spec,
   caseInsensitiveIdentifiers: true,
 });
+
+// Token colors are pulled from `--color-syntax-*` so the highlighter
+// follows light/dark and accent-hue swaps without a JS branch. CodeMirror
+// inlines these as `style="color: var(...)"` on each tagged span; browsers
+// resolve the CSS variable from the cascade at paint time.
+const sqlHighlightStyle = HighlightStyle.define([
+  {
+    tag: [
+      tags.keyword,
+      tags.modifier,
+      tags.operatorKeyword,
+      tags.controlKeyword,
+      tags.moduleKeyword,
+    ],
+    color: 'var(--color-syntax-keyword)',
+    fontWeight: '600',
+  },
+  {
+    tag: [tags.string, tags.special(tags.string)],
+    color: 'var(--color-syntax-string)',
+  },
+  {
+    tag: [tags.number, tags.bool, tags.null],
+    color: 'var(--color-syntax-number)',
+  },
+  {
+    tag: [tags.lineComment, tags.blockComment, tags.docComment, tags.comment],
+    color: 'var(--color-syntax-comment)',
+    fontStyle: 'italic',
+  },
+  {
+    tag: [tags.typeName, tags.className],
+    color: 'var(--color-syntax-type)',
+  },
+  {
+    tag: [tags.function(tags.variableName), tags.function(tags.propertyName)],
+    color: 'var(--color-syntax-function)',
+  },
+  {
+    tag: [tags.variableName],
+    color: 'var(--color-syntax-variable)',
+  },
+  {
+    tag: [tags.propertyName],
+    color: 'var(--color-syntax-property)',
+  },
+  {
+    tag: [tags.operator, tags.compareOperator, tags.logicOperator, tags.arithmeticOperator],
+    color: 'var(--color-syntax-operator)',
+  },
+  {
+    tag: [
+      tags.punctuation,
+      tags.separator,
+      tags.bracket,
+      tags.paren,
+      tags.brace,
+      tags.squareBracket,
+    ],
+    color: 'var(--color-syntax-punctuation)',
+  },
+  {
+    tag: [tags.constant(tags.variableName), tags.standard(tags.variableName)],
+    color: 'var(--color-syntax-constant)',
+    fontWeight: '600',
+  },
+  {
+    tag: [tags.invalid],
+    color: 'var(--color-status-red)',
+    textDecoration: 'underline wavy',
+  },
+]);
 
 // How far back to scan from the cursor when looking for FROM/JOIN clauses.
 // Bounded so very long documents don't make autocomplete O(N) per keystroke.
@@ -184,6 +258,8 @@ export const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function Sq
         history(),
         drawSelection(),
         highlightActiveLine(),
+        bracketMatching(),
+        syntaxHighlighting(sqlHighlightStyle),
         sqlCompartment.of(buildSqlExtension(schema)),
         keymap.of([
           {

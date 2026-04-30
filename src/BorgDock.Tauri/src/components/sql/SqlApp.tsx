@@ -13,6 +13,7 @@ import {
   ChevronDownIcon,
   CopyIcon,
   PlayIcon,
+  PlusIcon,
   SpinnerIcon,
   TerminalIcon,
 } from './icons';
@@ -122,7 +123,6 @@ export function SqlApp() {
     }
   });
   const [query, setQuery] = useState(() => localStorage.getItem(QUERY_KEY) ?? '');
-  const [dirty, setDirty] = useState(false);
 
   const [savingNew, setSavingNew] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
@@ -153,6 +153,15 @@ export function SqlApp() {
     () => snippets.find((s) => s.id === activeSnippetId) ?? null,
     [snippets, activeSnippetId],
   );
+
+  // Derived from the source-of-truth comparison so it can't drift out of
+  // sync with the editor (the previous setDirty + syncing-effect pair
+  // raced against the editor's own onChange callback after a snippet
+  // load, leaving "● modified" stuck on).
+  const dirty = useMemo(() => {
+    if (activeSnippet) return query !== activeSnippet.body;
+    return query.length > 0;
+  }, [activeSnippet, query]);
 
   /* ── Initial settings + window position ───────────────── */
   useEffect(() => {
@@ -371,32 +380,23 @@ export function SqlApp() {
   const loadSnippet = useCallback((s: SqlSnippet) => {
     setActiveSnippetId(s.id);
     setQuery(s.body);
-    setDirty(false);
     setHasRun(false);
     setResult(null);
     setError(null);
   }, []);
 
-  const updateQuery = useCallback(
-    (next: string) => {
-      setQuery(next);
-      if (activeSnippet) {
-        setDirty(next !== activeSnippet.body);
-      } else {
-        setDirty(next.length > 0);
-      }
-    },
-    [activeSnippet],
-  );
+  /** Deselect the active snippet and clear the editor — "start fresh". */
+  const newQuery = useCallback(() => {
+    setActiveSnippetId(null);
+    setQuery('');
+    setHasRun(false);
+    setResult(null);
+    setError(null);
+  }, []);
 
-  // Reflect the saved-body becoming clean again when the user lands back on it.
-  useEffect(() => {
-    if (!activeSnippet) {
-      setDirty(query.length > 0);
-    } else {
-      setDirty(query !== activeSnippet.body);
-    }
-  }, [activeSnippet, query]);
+  const updateQuery = useCallback((next: string) => {
+    setQuery(next);
+  }, []);
 
   const flashSaved = useCallback(() => {
     setSaveFlash(true);
@@ -409,7 +409,6 @@ export function SqlApp() {
       return;
     }
     update(activeSnippet.id, { body: queryRef.current });
-    setDirty(false);
     flashSaved();
   }, [activeSnippet, update, flashSaved]);
 
@@ -421,7 +420,6 @@ export function SqlApp() {
     (name: string) => {
       const created = add({ name, body: queryRef.current });
       setActiveSnippetId(created.id);
-      setDirty(false);
       setSavingNew(false);
       flashSaved();
     },
@@ -434,7 +432,6 @@ export function SqlApp() {
       if (dup) {
         setActiveSnippetId(dup.id);
         setQuery(dup.body);
-        setDirty(false);
       }
     },
     [duplicate],
@@ -445,10 +442,9 @@ export function SqlApp() {
       remove(id);
       if (activeSnippetId === id) {
         setActiveSnippetId(null);
-        setDirty(query.length > 0);
       }
     },
-    [remove, activeSnippetId, query.length],
+    [remove, activeSnippetId],
   );
 
   /* ── Keyboard ─────────────────────────────────────────── */
@@ -607,6 +603,16 @@ export function SqlApp() {
 
         <span className="sql-toolbar__divider" />
 
+        <Button
+          variant="ghost"
+          size="sm"
+          leading={<PlusIcon size={11} />}
+          onClick={newQuery}
+          disabled={!activeSnippet && query.length === 0}
+          title="Start a new untitled query"
+        >
+          New
+        </Button>
         <Button
           variant="ghost"
           size="sm"
