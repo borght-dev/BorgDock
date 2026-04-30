@@ -30,7 +30,7 @@ vi.mock('../CommentsTab', () => ({
 }));
 
 // Import after mocks
-import { PrDetailPanel } from '../PrDetailPanel';
+import { PrDetailPanel } from '../PRDetailPanel';
 
 function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
   return {

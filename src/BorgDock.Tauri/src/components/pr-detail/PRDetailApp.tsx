@@ -14,7 +14,7 @@ import {
 } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
-import { PrDetailPanel } from './PrDetailPanel';
+import { PrDetailPanel } from './PRDetailPanel';
 
 const XIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">

@@ -130,7 +130,7 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
         <div className="text-[10px]">
           {detectedStatus.kind === 'ok' && (
             <div className="flex items-center gap-1">
-              <Dot tone="success" />
+              <Dot tone="green" />
               <Pill tone="success">
                 Using your <code>az login</code> session.
               </Pill>
@@ -138,7 +138,7 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
           )}
           {detectedStatus.kind === 'az_not_installed' && (
             <div className="flex items-center gap-1">
-              <Dot tone="error" />
+              <Dot tone="red" />
               <Pill tone="error">
                 Azure CLI not found on PATH. Install <code>az</code> or switch to Personal Access Token.
               </Pill>
@@ -146,7 +146,7 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
           )}
           {detectedStatus.kind === 'az_not_logged_in' && (
             <div className="flex items-center gap-1">
-              <Dot tone="error" />
+              <Dot tone="red" />
               <Pill tone="error">
                 Not logged in to Azure. Run <code>az login</code> in a terminal, then click Test Connection.
               </Pill>
@@ -154,7 +154,7 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
           )}
           {detectedStatus.kind === 'token_fetch_failed' && (
             <div className="flex items-center gap-1">
-              <Dot tone="error" />
+              <Dot tone="red" />
               <Pill tone="error">
                 Couldn&apos;t fetch Azure token: {detectedStatus.message}
               </Pill>
@@ -207,13 +207,13 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
         </Button>
         {testStatus === 'success' && (
           <div className="flex items-center gap-1">
-            <Dot tone="success" />
+            <Dot tone="green" />
             <Pill tone="success">Connected</Pill>
           </div>
         )}
         {testStatus === 'error' && (
           <div className="flex items-center gap-1">
-            <Dot tone="error" />
+            <Dot tone="red" />
             <Pill tone="error">{testError || 'Failed'}</Pill>
           </div>
         )}

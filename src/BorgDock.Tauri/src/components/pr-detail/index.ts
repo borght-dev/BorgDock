@@ -3,5 +3,5 @@ export { CommentsTab } from './CommentsTab';
 export { CommitsTab } from './CommitsTab';
 export { FilesTab } from './FilesTab';
 export { OverviewTab } from './OverviewTab';
-export { PrDetailPanel } from './PrDetailPanel';
+export { PrDetailPanel } from './PRDetailPanel';
 export { ReviewsTab } from './ReviewsTab';

@@ -22,7 +22,7 @@ vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => mockGetCurrentWindow(),
 }));
 
-vi.mock('../PrDetailPanel', () => ({
+vi.mock('../PRDetailPanel', () => ({
   PrDetailPanel: ({ pr }: { pr: { pullRequest: { title: string; number: number } } }) => (
     <div data-testid="pr-detail-panel">
       Panel: {pr.pullRequest.title} #{pr.pullRequest.number}
@@ -66,7 +66,7 @@ vi.mock('@/services/github/pulls', () => ({
   getOpenPRs: vi.fn().mockResolvedValue([]),
 }));
 
-import { PrDetailApp } from '../PrDetailApp';
+import { PrDetailApp } from '../PRDetailApp';
 
 const mockPr = {
   number: 42,

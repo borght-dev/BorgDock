@@ -37,5 +37,5 @@ export type { RingProps } from './Ring';
 export { Tabs } from './Tabs';
 export type { TabDef, TabsProps } from './Tabs';
 
-export { TitleBar } from './TitleBar';
-export type { TitleBarProps } from './TitleBar';
+export { TitleBar } from './Titlebar';
+export type { TitleBarProps } from './Titlebar';

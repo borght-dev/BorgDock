@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';
-import { PrDetailApp } from './components/pr-detail/PrDetailApp';
+import { PrDetailApp } from './components/pr-detail/PRDetailApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { attachConsoleBridge, createLogger } from './services/logger';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';

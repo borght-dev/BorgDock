@@ -38,7 +38,7 @@ vi.mock('../StatusBar', () => ({
   StatusBar: () => <div data-testid="status-bar">StatusBar</div>,
 }));
 
-vi.mock('@/components/pr-detail/PrDetailPanel', () => ({
+vi.mock('@/components/pr-detail/PRDetailPanel', () => ({
   PrDetailPanel: ({ pr }: { pr: { pullRequest: { number: number } } }) => (
     <div data-testid="pr-detail-panel">Detail for PR #{pr.pullRequest.number}</div>
   ),

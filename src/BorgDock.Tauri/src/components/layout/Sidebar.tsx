@@ -1,4 +1,4 @@
-import { PrDetailPanel } from '@/components/pr-detail/PrDetailPanel';
+import { PrDetailPanel } from '@/components/pr-detail/PRDetailPanel';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import { FilterBar } from './FilterBar';

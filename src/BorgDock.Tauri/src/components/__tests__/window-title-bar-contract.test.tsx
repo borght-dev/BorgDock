@@ -105,7 +105,7 @@ vi.mock('@/components/sql/ResultsTable', () => ({
 }));
 
 // Imports must come after mocks ────────────────────────────────────────────
-import { PrDetailPanel } from '../pr-detail/PrDetailPanel';
+import { PrDetailPanel } from '../pr-detail/PRDetailPanel';
 import { WhatsNewApp } from '../whats-new/WhatsNewApp';
 
 function makePr(): PullRequestWithChecks {

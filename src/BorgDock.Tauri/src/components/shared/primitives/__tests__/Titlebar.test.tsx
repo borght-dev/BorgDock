@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { TitleBar } from '../TitleBar';
+import { TitleBar } from '../Titlebar';
 
 describe('TitleBar', () => {
   it('renders the title inside a bd-title-bar container', () => {

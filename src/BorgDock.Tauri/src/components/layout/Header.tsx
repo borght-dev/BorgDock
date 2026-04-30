@@ -2,6 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback, useEffect } from 'react';
 import { FeatureBadge } from '@/components/onboarding';
+import { RefreshIcon } from '@/components/shared/icons';
 import { Tabs } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
@@ -144,21 +145,7 @@ export function Header() {
           aria-label="Refresh"
           title="Poll now"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M1 4v4h4" />
-            <path d="M15 12V8h-4" />
-            <path d="M2.5 10.5A6 6 0 0 0 14 8" />
-            <path d="M13.5 5.5A6 6 0 0 0 2 8" />
-          </svg>
+          <RefreshIcon />
         </button>
         <button
           onClick={handleMinimize}

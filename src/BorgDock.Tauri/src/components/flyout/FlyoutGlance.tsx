@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { RefreshIcon } from '@/components/shared/icons';
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
 import type { PrActionId } from '@/services/pr-action-resolver';
@@ -136,6 +137,40 @@ export function FlyoutGlance({
     onClose();
   }, [onClose]);
 
+  // Refresh keeps the flyout open — the main window will push an updated
+  // flyout-update event once polling completes, refreshing counts + synced ago.
+  // The button shows a spinning indicator while waiting for that update.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const { emitTo } = await import('@tauri-apps/api/event');
+      await emitTo('main', 'flyout-refresh', {});
+    } catch {
+      // emitTo failed — drop the spinner immediately rather than waiting
+      // for a flyout-update that won't come.
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Clear the spinner when the next poll result lands (lastSyncAgo updates).
+  // The ref skips the initial mount so we don't immediately clear a freshly
+  // set isRefreshing flag on the same render that triggered it.
+  const lastSyncAgoSeen = useRef(data.lastSyncAgo);
+  useEffect(() => {
+    if (lastSyncAgoSeen.current === data.lastSyncAgo) return;
+    lastSyncAgoSeen.current = data.lastSyncAgo;
+    setIsRefreshing(false);
+  }, [data.lastSyncAgo]);
+
+  // Failsafe: if no flyout-update arrives within 5s (polling failed, network
+  // error, etc.), drop the spinner anyway so the button isn't stuck.
+  useEffect(() => {
+    if (!isRefreshing) return;
+    const timer = setTimeout(() => setIsRefreshing(false), 5000);
+    return () => clearTimeout(timer);
+  }, [isRefreshing]);
+
   const handleClickPr = useCallback(
     async (pr: FlyoutPr) => {
       log.info('PR clicked', { owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
@@ -263,6 +298,15 @@ export function FlyoutGlance({
               </div>
             </div>
             <div className="flex gap-1">
+              <IconButton
+                icon={<RefreshIcon spinning={isRefreshing} />}
+                tooltip={isRefreshing ? 'Refreshing…' : 'Poll now'}
+                aria-label="Refresh"
+                aria-busy={isRefreshing}
+                size={26}
+                disabled={isRefreshing}
+                onClick={handleRefresh}
+              />
               <IconButton
                 icon={<PanelRightOpenIcon />}
                 tooltip="Open sidebar"

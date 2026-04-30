@@ -2,7 +2,7 @@ import type { Window } from '@tauri-apps/api/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useRef } from 'react';
 import { WindowControls } from './chrome/WindowControls';
-import { TitleBar } from './primitives/TitleBar';
+import { TitleBar } from './primitives/Titlebar';
 
 interface WindowTitleBarProps {
   title: string;

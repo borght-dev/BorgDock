@@ -134,6 +134,31 @@ export default function App() {
     return () => document.removeEventListener('borgdock-refresh', handleRefresh);
   }, [pollNow]);
 
+  // Listen for refresh requests emitted from the flyout window.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const fn = await listen('flyout-refresh', () => {
+          pollNow();
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [pollNow]);
+
   // Azure DevOps polling
   useAdoPolling(settings);
 
