@@ -10,12 +10,35 @@ import type { HighlightSpan } from '@/types';
 // var(--code-line-height) fallback). scrollToLine relies on this.
 const LINE_HEIGHT_PX = 20;
 
+export interface FindMatch { line: number; col: number; length: number }
+
+export function scanFindMatches(content: string, term: string): FindMatch[] {
+  if (!term) return [];
+  const out: FindMatch[] = [];
+  const lower = term.toLowerCase();
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const hay = lines[i].toLowerCase();
+    let from = 0;
+    while (from < hay.length) {
+      const idx = hay.indexOf(lower, from);
+      if (idx < 0) break;
+      out.push({ line: i + 1, col: idx, length: term.length });
+      from = idx + Math.max(1, term.length);
+    }
+  }
+  return out;
+}
+
 export interface CodeViewProps {
   path: string;
   content: string;
   scrollToLine?: number;
   highlightedLines?: number[];
   onIdentifierJump?: (word: string) => void;
+  findMatches?: FindMatch[];
+  /** Index into `findMatches` indicating the active match (for emphasis). */
+  findCurrent?: number;
 }
 
 export function FilePaletteCodeView({
@@ -24,11 +47,23 @@ export function FilePaletteCodeView({
   scrollToLine,
   highlightedLines,
   onIdentifierJump,
+  findMatches,
+  findCurrent,
 }: CodeViewProps) {
   const lines = useMemo(() => content.split('\n'), [content]);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [spans, setSpans] = useState<Map<number, HighlightSpan[]> | null>(null);
   const hitSet = useMemo(() => new Set(highlightedLines ?? []), [highlightedLines]);
+
+  const findByLine = useMemo(() => {
+    const map = new Map<number, Array<FindMatch & { _idx: number }>>();
+    (findMatches ?? []).forEach((m, _idx) => {
+      const list = map.get(m.line) ?? [];
+      list.push({ ...m, _idx });
+      map.set(m.line, list);
+    });
+    return map;
+  }, [findMatches]);
 
   // Load syntax highlighting asynchronously.
   useEffect(() => {
@@ -97,7 +132,12 @@ export function FilePaletteCodeView({
               </span>
             </span>
             <span className="bd-code-line-text" data-testid="code-line-text">
-              {renderLine(text, spans?.get(i) ?? null)}
+              {renderLine(
+                text,
+                spans?.get(i) ?? null,
+                findByLine.get(lineNo) ?? [],
+                findCurrent ?? -1,
+              )}
             </span>
           </div>
         );
@@ -106,26 +146,76 @@ export function FilePaletteCodeView({
   );
 }
 
-function renderLine(text: string, spans: HighlightSpan[] | null) {
-  if (!spans || spans.length === 0) return text === '' ? ' ' : text;
-  const out: Array<string | React.ReactNode> = [];
-  let cursor = 0;
-  spans.forEach((span, idx) => {
-    if (span.start > cursor) out.push(text.slice(cursor, span.start));
-    out.push(
-      // style: syntax-highlight category-driven CSS variable name — token name varies per span.category
-      <span
-        key={idx}
-        className={`hl-${span.category}`}
-        style={{ color: `var(${getHighlightClass(span.category)})` }}
-      >
-        {text.slice(span.start, span.end)}
-      </span>,
-    );
-    cursor = span.end;
-  });
-  if (cursor < text.length) out.push(text.slice(cursor));
-  return out;
+function renderLine(
+  text: string,
+  spans: HighlightSpan[] | null,
+  matches: Array<FindMatch & { _idx: number }>,
+  current: number,
+): React.ReactNode {
+  // Build a flat list of atoms (text spans with optional syntax styling).
+  // If no syntax spans, the whole line is one atom.
+  type Atom = { start: number; end: number; renderText: (slice: string) => React.ReactNode };
+  const atoms: Atom[] = [];
+  if (!spans || spans.length === 0) {
+    atoms.push({ start: 0, end: text.length, renderText: (s) => s });
+  } else {
+    let cursor = 0;
+    spans.forEach((span, idx) => {
+      if (span.start > cursor) {
+        atoms.push({ start: cursor, end: span.start, renderText: (s) => s });
+      }
+      atoms.push({
+        start: span.start,
+        end: span.end,
+        renderText: (s) => (
+          <span
+            key={`syn-${idx}`}
+            className={`hl-${span.category}`}
+            style={{ color: `var(${getHighlightClass(span.category)})` }}
+          >
+            {s}
+          </span>
+        ),
+      });
+      cursor = span.end;
+    });
+    if (cursor < text.length) atoms.push({ start: cursor, end: text.length, renderText: (s) => s });
+  }
+  const sortedMatches = [...matches].sort((a, b) => a.col - b.col);
+
+  // Walk each atom, splicing in find-match wrappers where matches overlap.
+  const out: React.ReactNode[] = [];
+  let key = 0;
+  for (const atom of atoms) {
+    let pos = atom.start;
+    while (pos < atom.end) {
+      const overlap = sortedMatches.find((m) => m.col + m.length > pos && m.col < atom.end);
+      if (!overlap || overlap.col >= atom.end) {
+        out.push(<span key={key++}>{atom.renderText(text.slice(pos, atom.end))}</span>);
+        pos = atom.end;
+        break;
+      }
+      const matchStart = Math.max(pos, overlap.col);
+      const matchEnd = Math.min(atom.end, overlap.col + overlap.length);
+      if (matchStart > pos) {
+        out.push(<span key={key++}>{atom.renderText(text.slice(pos, matchStart))}</span>);
+      }
+      const isCurrent = overlap._idx === current;
+      out.push(
+        <span
+          key={key++}
+          className={`bd-fp-find-match${isCurrent ? ' bd-fp-find-match--current' : ''}`}
+        >
+          {atom.renderText(text.slice(matchStart, matchEnd))}
+        </span>,
+      );
+      pos = matchEnd;
+      if (overlap.col + overlap.length <= pos) {
+        sortedMatches.splice(sortedMatches.indexOf(overlap), 1);
+      }
+    }
+  }
+  return text === '' ? ' ' : out;
 }
 
 function wordFromSelectionOrCaret(): string | null {
