@@ -81,6 +81,50 @@ fn unwrap_otlp_value(node: &Value) -> Value {
     Value::Null
 }
 
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
+
+#[derive(Clone)]
+pub struct ServerState {
+    pub events_tx: UnboundedSender<RawEvent>,
+}
+
+/// Build the axum router. Exposed for tests.
+pub fn build_router(state: ServerState) -> Router {
+    Router::new()
+        .route("/v1/logs", post(handle_logs))
+        .with_state(Arc::new(state))
+}
+
+async fn handle_logs(
+    State(state): State<Arc<ServerState>>,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let events = parse_export_logs(&body);
+    for e in events {
+        if let Err(err) = state.events_tx.send(e) {
+            log::warn!("agent_overview: events channel closed: {err}");
+        }
+    }
+    (StatusCode::OK, Json(serde_json::json!({ "partialSuccess": {} })))
+}
+
+/// Bind on `127.0.0.1:port`, falling back across the next 10 ports if taken.
+/// Returns the bound port on success.
+pub async fn try_bind(port_start: u16) -> Result<(tokio::net::TcpListener, u16), String> {
+    for p in port_start..port_start + 10 {
+        let addr: SocketAddr = ([127, 0, 0, 1], p).into();
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(l) => return Ok((l, p)),
+            Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => continue,
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    Err(format!("no free port in {}..{}", port_start, port_start + 10))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
