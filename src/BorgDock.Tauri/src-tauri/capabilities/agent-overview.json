@@ -1,0 +1,23 @@
+{
+  "identifier": "agent-overview-capability",
+  "description": "Permissions for the Agent Overview pop-out window",
+  "windows": ["agent-overview"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-position",
+    "core:window:allow-set-focus",
+    "core:window:allow-outer-position",
+    "core:window:allow-scale-factor",
+    "core:window:allow-is-visible",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-write-text",
+    "log:default"
+  ]
+}
