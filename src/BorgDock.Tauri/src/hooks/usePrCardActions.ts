@@ -4,6 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { rerunWorkflow } from '@/services/github/checks';
+import { celebrateMerge } from '@/services/merge-celebration';
 import {
   bypassMergePullRequest,
   closePullRequest,
@@ -149,11 +150,19 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
       e.stopPropagation();
       const client = getClient();
       if (!client) return;
-      mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch((err) =>
-        showError('Merge failed', err),
-      );
+      mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number)
+        .then(() => {
+          celebrateMerge({
+            number: pr.number,
+            title: pr.title,
+            repoOwner: pr.repoOwner,
+            repoName: pr.repoName,
+            htmlUrl: pr.htmlUrl,
+          });
+        })
+        .catch((err) => showError('Merge failed', err));
     },
-    [pr.repoOwner, pr.repoName, pr.number, showError],
+    [pr.repoOwner, pr.repoName, pr.number, pr.title, pr.htmlUrl, showError],
   );
 
   const handleBypassMerge = useCallback((e: React.MouseEvent) => {
@@ -162,11 +171,19 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   }, []);
 
   const executeBypassMerge = useCallback(() => {
-    bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number).catch((err) =>
-      showError('Bypass merge failed', err),
-    );
+    bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number)
+      .then(() => {
+        celebrateMerge({
+          number: pr.number,
+          title: pr.title,
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          htmlUrl: pr.htmlUrl,
+        });
+      })
+      .catch((err) => showError('Bypass merge failed', err));
     setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, showError]);
+  }, [pr.repoOwner, pr.repoName, pr.number, pr.title, pr.htmlUrl, showError]);
 
   const handleClose = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
