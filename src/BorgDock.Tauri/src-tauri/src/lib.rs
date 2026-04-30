@@ -259,6 +259,20 @@ pub fn run() {
                 });
             }
 
+            // Auto-open the Agent Overview window if the user has set the flag.
+            if let Ok(s) = crate::settings::load_settings_internal() {
+                if s.agent_overview.enabled && s.agent_overview.auto_open_on_startup {
+                    let app_handle = app.handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) =
+                            crate::agent_overview::window::open_agent_overview_window(app_handle).await
+                        {
+                            log::error!("auto-open agent overview failed: {e}");
+                        }
+                    });
+                }
+            }
+
             // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
             // once, at setup. These are code-defined and must not be re-
             // bound on every settings change — see register_fixed_hotkeys
