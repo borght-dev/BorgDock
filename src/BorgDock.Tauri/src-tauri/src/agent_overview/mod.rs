@@ -6,6 +6,7 @@ pub mod bootstrap;
 pub mod commands;
 pub mod cwd_resolver;
 pub mod models;
+pub mod notify;
 pub mod otlp_server;
 pub mod settings_merge;
 pub mod state;

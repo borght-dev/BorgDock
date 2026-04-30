@@ -216,6 +216,9 @@ pub fn run() {
                         history_retention: std::time::Duration::from_secs(cfg.history_retention_seconds.into()),
                     };
                     tauri::async_runtime::spawn(async move {
+                        use crate::agent_overview::notify::{NotifyAction, NotifyTracker};
+                        let mut tracker = NotifyTracker::default();
+                        let app_for_notify = app_handle.clone();
                         let projects_root = cwd_resolver::default_projects_root();
                         let mut tick = tokio::time::interval(std::time::Duration::from_secs(1));
                         loop {
@@ -227,6 +230,28 @@ pub fn run() {
                                 }
                                 _ = tick.tick() => {
                                     store_for_loop.run_tick(thresholds, &delta_for_loop, std::time::Instant::now());
+                                    let live = store_for_loop.internal_snapshot();
+                                    let actions = tracker.evaluate(
+                                        &live,
+                                        std::time::Duration::from_secs(cfg.awaiting_notify_after_seconds.into()),
+                                        std::time::Duration::from_secs(cfg.awaiting_notify_escalate_seconds.into()),
+                                        std::time::Instant::now(),
+                                    );
+                                    for action in actions {
+                                        if let NotifyAction::Toast { session_id, repo, worktree, since_ms, escalation } = action {
+                                            use tauri::Emitter;
+                                            let _ = app_for_notify.emit(
+                                                "agent-notify",
+                                                serde_json::json!({
+                                                    "sessionId": session_id,
+                                                    "repo": repo,
+                                                    "worktree": worktree,
+                                                    "sinceMs": since_ms,
+                                                    "escalation": escalation,
+                                                }),
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }

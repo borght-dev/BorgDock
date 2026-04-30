@@ -9,6 +9,7 @@ import {
   rerunChecks,
 } from '@/services/pr-actions';
 import { usePrStore } from '@/stores/pr-store';
+import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -141,24 +142,28 @@ export function useBadgeSync() {
       const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
       const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
 
+      const agentAwaitingCount = agentAwaitingRef.current;
+
       // Cheap hash to skip redundant IPC
-      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${lastPollTime}`;
+      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${lastPollTime}:${agentAwaitingCount}`;
       if (hash === prevHashRef.current) return;
       prevHashRef.current = hash;
 
       try {
         const { invoke } = await import('@tauri-apps/api/core');
+        const totalCount = count + agentAwaitingCount;
 
         // Update tray icon badge
         await invoke('update_tray_icon', {
-          count: Math.min(count, 255),
-          worstState,
+          count: Math.min(totalCount, 255),
+          worstState: agentAwaitingCount > 0 ? 'pending' : worstState,
         });
 
         // Update tray tooltip
         const parts: string[] = [`BorgDock — ${count} open PRs`];
         if (failingCount > 0) parts.push(`${failingCount} failing`);
         if (pendingCount > 0) parts.push(`${pendingCount} pending`);
+        if (agentAwaitingCount > 0) parts.push(`${agentAwaitingCount} Claude sessions waiting`);
         await invoke('update_tray_tooltip', { tooltip: parts.join(' · ') });
       } catch {
         // ignore — commands may not exist on older builds
@@ -250,6 +255,88 @@ export function useBadgeSync() {
         unlisten = fn;
       } catch {
         // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Track awaiting Claude sessions for tray badge merge.
+  const agentAwaitingRef = useRef(0);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const { invoke } = await import('@tauri-apps/api/core');
+        try {
+          const initial = await invoke<Array<{ state: string }>>('list_agent_sessions');
+          agentAwaitingRef.current = initial.filter((s) => s.state === 'awaiting').length;
+        } catch {
+          // ignore — command not registered yet on older builds
+        }
+        const fn = await listen<{ kind: string; session?: { state: string }; sessionId?: string }>(
+          'agent-sessions-changed',
+          () => {
+            // refetch the full list to recompute count; cheap because list is bounded
+            invoke<Array<{ state: string }>>('list_agent_sessions')
+              .then((all) => {
+                agentAwaitingRef.current = all.filter((s) => s.state === 'awaiting').length;
+              })
+              .catch(() => undefined);
+          },
+        );
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Agent overview — toast notifications when a Claude session has been
+  // waiting on the user for too long.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const fn = await listen<{
+          sessionId: string;
+          repo: string;
+          worktree: string;
+          sinceMs: number;
+          escalation: boolean;
+        }>('agent-notify', (event) => {
+          const { repo, worktree, sinceMs, escalation } = event.payload;
+          const since = Math.max(1, Math.round(sinceMs / 1000));
+          const title = escalation ? 'Claude still waiting' : 'Claude needs your input';
+          const message = `${repo}/${worktree} has been waiting ${since}s for your response.`;
+          useNotificationStore.getState().show({
+            title,
+            message,
+            severity: escalation ? 'warning' : 'info',
+            actions: [],
+          });
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch (e) {
+        console.error('agent-notify listener failed', e);
       }
     })();
     return () => {

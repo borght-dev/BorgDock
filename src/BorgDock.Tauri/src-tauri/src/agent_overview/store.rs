@@ -46,6 +46,16 @@ impl SessionStore {
             .unwrap_or_default()
     }
 
+    /// Snapshot for in-process consumers (notify tracker, etc.) — returns the
+    /// raw cloned records with their `Instant` fields intact. Never serialize
+    /// the result; use `snapshot()` for that.
+    pub fn internal_snapshot(&self) -> Vec<SessionRecord> {
+        self.inner
+            .read()
+            .map(|m| m.values().cloned().collect())
+            .unwrap_or_default()
+    }
+
     pub fn ingest_event(
         &self,
         event: RawEvent,
