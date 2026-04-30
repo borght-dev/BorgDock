@@ -26,6 +26,7 @@ const ENTRY_POINTS = [
   { key: 'whats-new', html: 'whats-new.html', script: '/src/whats-new-main.tsx' },
   { key: 'filepalette', html: 'file-palette.html', script: '/src/file-palette-main.tsx' },
   { key: 'fileviewer', html: 'file-viewer.html', script: '/src/file-viewer-main.tsx' },
+  { key: 'agent-overview', html: 'agent-overview.html', script: '/src/main-agent-overview.tsx' },
 ];
 
 // Rust-side window URLs → expected HTML file (must be a valid entry point)
