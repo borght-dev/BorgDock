@@ -30,9 +30,12 @@ export interface FilePaletteFilePaletteChangesSectionProps {
   onOpen: (file: ChangedFileEntry, group: ChangedGroup) => void;
   /** Called when the user hovers a row; payload is the global nav index. */
   onHover: (globalIndex: number) => void;
-  localCollapsed: boolean;
-  vsBaseCollapsed: boolean;
-  onToggleCollapse: (group: ChangedGroup) => void;
+  /** When true the entire section body is hidden. */
+  collapsed: boolean;
+  /** Controls which sub-group(s) are shown: head=local only, base=vsBase only, both=all. */
+  mode: 'head' | 'base' | 'both';
+  onToggleCollapse: () => void;
+  onChangeMode: (mode: 'head' | 'base' | 'both') => void;
   /** Parent bumps this to force a refetch (focus change, manual refresh, root switch). */
   refreshTick: number;
   /** Called after each successful fetch so the parent knows how many flat-nav rows this
@@ -78,13 +81,18 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
     baseIndex,
     onOpen,
     onHover,
-    localCollapsed,
-    vsBaseCollapsed,
+    collapsed,
+    mode,
     onToggleCollapse,
+    onChangeMode: _onChangeMode,
     refreshTick,
     onVisibleRowsChange,
     rowRef,
   } = props;
+
+  // Derive per-group collapsed state from the section-level collapsed flag and mode.
+  const localCollapsed = collapsed || mode === 'base';
+  const vsBaseCollapsed = collapsed || mode === 'head';
 
   const [data, setData] = useState<ChangedFilesOutput | null>(null);
   const [loading, setLoading] = useState(false);
@@ -207,7 +215,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
       <button
         type="button"
         className="bd-fp-changes-subheader"
-        onClick={() => onToggleCollapse('local')}
+        onClick={onToggleCollapse}
       >
         <span>{localCollapsed ? '▸' : '▾'} Local ({filteredLocal.length})</span>
       </button>
@@ -216,7 +224,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
       <button
         type="button"
         className="bd-fp-changes-subheader"
-        onClick={() => onToggleCollapse('vsBase')}
+        onClick={onToggleCollapse}
         title={`vs ${data.baseRef || 'base'}`}
       >
         <span>

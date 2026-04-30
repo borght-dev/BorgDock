@@ -19,9 +19,10 @@ const BASE_PROPS = {
   baseIndex: 0,
   onOpen: vi.fn(),
   onHover: vi.fn(),
-  localCollapsed: false,
-  vsBaseCollapsed: false,
+  collapsed: false,
+  mode: 'both' as const,
   onToggleCollapse: vi.fn(),
+  onChangeMode: vi.fn(),
   refreshTick: 0,
 };
 

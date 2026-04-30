@@ -13,7 +13,7 @@ import { useBackgroundIndexer } from './use-background-indexer';
 import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
-import { FilePaletteChangesSection, type ChangedGroup, type VisibleRow } from './FilePaletteChangesSection';
+import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
 
@@ -27,10 +27,10 @@ export function FilePaletteApp() {
   const [favoritePaths, setFavoritePaths] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [rootsCollapsed, setRootsCollapsed] = useState(false);
-  const [changesCollapsed, setChangesCollapsed] = useState<{ local: boolean; vsBase: boolean }>({
-    local: false,
-    vsBase: false,
-  });
+  const [changesCollapsed, setChangesCollapsed] = useState<boolean>(false);
+  const [changesMode, setChangesMode] = useState<'head' | 'base' | 'both'>('both');
+  // scope value wired to JSX in Task 9; setter is used by settings load
+  const [, setScope] = useState<'all' | 'changes' | 'filename' | 'content' | 'symbol'>('all');
   const [changesVisibleRows, setChangesVisibleRows] = useState<VisibleRow[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
@@ -61,9 +61,9 @@ export function FilePaletteApp() {
         setActiveRoot(s.ui?.filePaletteActiveRootPath ?? null);
         setFavoritesOnly(s.ui?.filePaletteFavoritesOnly ?? false);
         setRootsCollapsed(s.ui?.filePaletteRootsCollapsed ?? false);
-        setChangesCollapsed(
-          s.ui?.filePaletteChangesCollapsed ?? { local: false, vsBase: false },
-        );
+        setChangesCollapsed(s.ui?.filePaletteChangesCollapsed ?? false);
+        setChangesMode(s.ui?.filePaletteChangesMode ?? 'both');
+        setScope(s.ui?.filePaletteScope ?? 'all');
         const favs = new Set<string>();
         for (const r of s.repos) for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
         setFavoritePaths(favs);
@@ -173,24 +173,19 @@ export function FilePaletteApp() {
     } catch { /* ignore */ }
   }, [rootsCollapsed]);
 
-  const toggleChangesCollapse = useCallback(
-    async (group: ChangedGroup) => {
-      setChangesCollapsed((prev) => {
-        const next = { ...prev, [group]: !prev[group] };
-        void invoke<AppSettings>('load_settings')
-          .then((s) =>
-            invoke('save_settings', {
-              settings: { ...s, ui: { ...s.ui, filePaletteChangesCollapsed: next } },
-            }),
-          )
-          .catch(() => {
-            /* ignore persistence failure */
-          });
-        return next;
-      });
-    },
-    [],
-  );
+  const toggleChangesCollapse = useCallback(async () => {
+    setChangesCollapsed((prev) => {
+      const next = !prev;
+      void invoke<AppSettings>('load_settings')
+        .then((s) =>
+          invoke('save_settings', {
+            settings: { ...s, ui: { ...s.ui, filePaletteChangesCollapsed: next } },
+          }),
+        )
+        .catch(() => { /* ignore */ });
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -394,9 +389,10 @@ export function FilePaletteApp() {
               }).catch((e) => console.error('open_file_viewer_window failed', e));
             }}
             onHover={setSelectedIndex}
-            localCollapsed={changesCollapsed.local}
-            vsBaseCollapsed={changesCollapsed.vsBase}
+            collapsed={changesCollapsed}
+            mode={changesMode}
             onToggleCollapse={toggleChangesCollapse}
+            onChangeMode={setChangesMode}
             refreshTick={refreshTick}
             onVisibleRowsChange={setChangesVisibleRows}
             rowRef={(el, i) => { rowRefs.current.set(i, el); }}
