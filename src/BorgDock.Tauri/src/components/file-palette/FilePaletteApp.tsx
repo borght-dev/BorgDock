@@ -187,6 +187,17 @@ export function FilePaletteApp() {
     });
   }, []);
 
+  const changeMode = useCallback((mode: 'head' | 'base' | 'both') => {
+    setChangesMode(mode);
+    void invoke<AppSettings>('load_settings')
+      .then((s) =>
+        invoke('save_settings', {
+          settings: { ...s, ui: { ...s.ui, filePaletteChangesMode: mode } },
+        }),
+      )
+      .catch(() => { /* ignore */ });
+  }, []);
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     (async () => {
@@ -392,7 +403,7 @@ export function FilePaletteApp() {
             collapsed={changesCollapsed}
             mode={changesMode}
             onToggleCollapse={toggleChangesCollapse}
-            onChangeMode={setChangesMode}
+            onChangeMode={changeMode}
             refreshTick={refreshTick}
             onVisibleRowsChange={setChangesVisibleRows}
             rowRef={(el, i) => { rowRefs.current.set(i, el); }}
