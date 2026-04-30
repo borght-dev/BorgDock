@@ -53,6 +53,11 @@ vi.mock('@/components/onboarding', () => ({
   InlineHint: () => null,
 }));
 
+const mockCelebrate = vi.fn();
+vi.mock('@/services/merge-celebration', () => ({
+  celebrateMerge: (...args: unknown[]) => mockCelebrate(...args),
+}));
+
 vi.mock('../MergeReadinessChecklist', () => ({
   MergeReadinessChecklist: () => <div data-testid="merge-readiness">Merge Readiness</div>,
 }));
@@ -115,6 +120,7 @@ describe('OverviewTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCelebrate.mockClear();
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
@@ -302,7 +308,7 @@ describe('OverviewTab', () => {
     expect(screen.getByText('Checkout')).toBeTruthy();
   });
 
-  it('renders merge celebration after successful merge', async () => {
+  it('calls celebrateMerge after successful merge', async () => {
     const { mergePullRequest } = await import('@/services/github/mutations');
     vi.mocked(mergePullRequest).mockResolvedValue(undefined);
 
@@ -319,8 +325,32 @@ describe('OverviewTab', () => {
     fireEvent.click(screen.getByText('Merge'));
 
     await vi.waitFor(() => {
-      expect(screen.getByText(/PR #42 merged!/)).toBeTruthy();
+      expect(mockCelebrate).toHaveBeenCalledWith(
+        expect.objectContaining({ number: 42, repoOwner: 'owner', repoName: 'repo' }),
+      );
     });
+  });
+
+  it('does not render the inline MergeCelebration card', async () => {
+    const { mergePullRequest } = await import('@/services/github/mutations');
+    vi.mocked(mergePullRequest).mockResolvedValue(undefined);
+
+    const pr = makePr({
+      overallStatus: 'green',
+      pullRequest: {
+        ...makePr().pullRequest,
+        isDraft: false,
+        mergeable: true,
+        reviewStatus: 'approved',
+      },
+    });
+    const { container } = render(<OverviewTab pr={pr} />);
+    fireEvent.click(screen.getByText('Merge'));
+
+    await vi.waitFor(() => {
+      expect(mockCelebrate).toHaveBeenCalled();
+    });
+    expect(container.querySelector('[data-merge-celebration]')).toBeNull();
   });
 
   // ---- Close PR ----

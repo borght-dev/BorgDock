@@ -15,6 +15,7 @@ import {
   mergePullRequest,
   toggleDraft,
 } from '@/services/github/mutations';
+import { celebrateMerge } from '@/services/merge-celebration';
 import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
@@ -177,7 +178,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   const p = pr.pullRequest;
   const [actionStatus, setActionStatus] = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [mergeSuccess, setMergeSuccess] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmBypass, setConfirmBypass] = useState(false);
   const { resolveConflicts } = useClaudeActions();
@@ -255,13 +255,19 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     try {
       await mergePullRequest(client, p.repoOwner, p.repoName, p.number, 'squash');
       setActionStatus('');
-      setMergeSuccess(true);
+      celebrateMerge({
+        number: p.number,
+        title: p.title,
+        repoOwner: p.repoOwner,
+        repoName: p.repoName,
+        htmlUrl: p.htmlUrl,
+      });
       scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
-  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
+  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, scheduleTerminalRefresh]);
 
   const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
 
@@ -271,13 +277,19 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     try {
       await bypassMergePullRequest(p.repoOwner, p.repoName, p.number);
       setActionStatus('');
-      setMergeSuccess(true);
+      celebrateMerge({
+        number: p.number,
+        title: p.title,
+        repoOwner: p.repoOwner,
+        repoName: p.repoName,
+        htmlUrl: p.htmlUrl,
+      });
       scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Bypass merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
-  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
+  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, scheduleTerminalRefresh]);
 
   const handleCloseConfirm = useCallback(() => setConfirmClose(true), []);
 
@@ -538,7 +550,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       )}
 
       {/* Action status */}
-      {actionStatus && !mergeSuccess && (
+      {actionStatus && (
         <Card padding="sm" className="flex items-center gap-2">
           {actionStatus.includes('...') && (
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -559,9 +571,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           onDismiss={() => setCheckoutOpen(false)}
         />
       )}
-
-      {/* Merge celebration */}
-      {mergeSuccess && <MergeCelebration prNumber={p.number} title={p.title} />}
 
       {/* Close PR confirm dialog */}
       <ConfirmDialog
@@ -595,38 +604,5 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       )}
 
     </div>
-  );
-}
-
-function MergeCelebration({ prNumber, title }: { prNumber: number; title: string }) {
-  return (
-    <Card
-      padding="lg"
-      className="text-center my-3 animate-[fadeSlideIn_0.3s_ease-out]"
-      data-merge-celebration
-    >
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="mx-auto mb-2">
-        <circle
-          cx="20"
-          cy="20"
-          r="19"
-          stroke="var(--color-status-green)"
-          strokeWidth="2"
-          fill="var(--color-action-success-bg)"
-        />
-        <path
-          d="M12 20.5l5.5 5.5L28 15"
-          stroke="var(--color-status-green)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="animate-[merge-draw-check_0.4s_ease-out_forwards] [stroke-dasharray:30] [stroke-dashoffset:30]"
-        />
-      </svg>
-      <div className="text-sm font-semibold text-[var(--color-text-primary)]">
-        PR #{prNumber} merged!
-      </div>
-      <div className="text-xs text-[var(--color-text-secondary)]">{title}</div>
-    </Card>
   );
 }
