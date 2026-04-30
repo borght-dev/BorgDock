@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 
 interface ResultsTableProps {
   columns: string[];
@@ -8,7 +8,7 @@ interface ResultsTableProps {
   onSelectionChange: (selected: Set<number>) => void;
 }
 
-export function ResultsTable({
+function ResultsTableImpl({
   columns,
   rows,
   selectedRows,
@@ -82,3 +82,5 @@ export function ResultsTable({
     </table>
   );
 }
+
+export const ResultsTable = memo(ResultsTableImpl);

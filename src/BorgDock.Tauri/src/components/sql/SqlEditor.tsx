@@ -26,9 +26,30 @@ const MSSQL_CI = SQLDialect.define({
   caseInsensitiveIdentifiers: true,
 });
 
-function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionSource {
+// How far back to scan from the cursor when looking for FROM/JOIN clauses.
+// Bounded so very long documents don't make autocomplete O(N) per keystroke.
+const FROM_SCAN_WINDOW = 4096;
+
+type SchemaTable = SqlSchemaPayload['tables'][number];
+interface TableLookup {
+  byName: Map<string, SchemaTable>;
+  byQualifiedName: Map<string, SchemaTable>;
+}
+
+function buildTableLookup(schema: SqlSchemaPayload | null): TableLookup | null {
+  if (!schema || schema.tables.length === 0) return null;
+  const byName = new Map<string, SchemaTable>();
+  const byQualifiedName = new Map<string, SchemaTable>();
+  for (const t of schema.tables) {
+    byName.set(t.name.toLowerCase(), t);
+    byQualifiedName.set(`${t.schema.toLowerCase()}.${t.name.toLowerCase()}`, t);
+  }
+  return { byName, byQualifiedName };
+}
+
+function fromTableCompletionSource(lookup: TableLookup | null): CompletionSource {
   return (context) => {
-    if (!schema) return null;
+    if (!lookup) return null;
 
     const word = context.matchBefore(/[A-Za-z_][\w]*/);
     if (!word || (word.from === word.to && !context.explicit)) return null;
@@ -37,25 +58,24 @@ function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionS
     const charBefore = context.state.sliceDoc(Math.max(0, word.from - 1), word.from);
     if (charBefore === '.') return null;
 
-    const before = context.state.sliceDoc(0, word.from);
+    // Only scan a bounded window before the cursor, then trim to the current statement
+    // (last `;` in the window). Avoids stringifying the entire document on every keystroke.
+    const sliceStart = Math.max(0, word.from - FROM_SCAN_WINDOW);
+    const windowText = context.state.sliceDoc(sliceStart, word.from);
+    const lastSemi = windowText.lastIndexOf(';');
+    const before = lastSemi >= 0 ? windowText.slice(lastSemi + 1) : windowText;
+
     const fromRe = /\b(?:FROM|JOIN)\s+(?:(\w+)\.)?(\w+)/gi;
-    const referenced: { schema?: string; name: string }[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = fromRe.exec(before))) {
-      if (m[2]) referenced.push({ schema: m[1] || undefined, name: m[2] });
-    }
-
-    if (referenced.length === 0) return null;
-
     const columns: Completion[] = [];
     const seen = new Set<string>();
-    for (const ref of referenced) {
-      const table = schema.tables.find((t) =>
-        ref.schema
-          ? t.name.toLowerCase() === ref.name.toLowerCase() &&
-            t.schema.toLowerCase() === ref.schema.toLowerCase()
-          : t.name.toLowerCase() === ref.name.toLowerCase(),
-      );
+    let m: RegExpExecArray | null;
+    while ((m = fromRe.exec(before))) {
+      const refName = m[2];
+      if (!refName) continue;
+      const refSchema = m[1];
+      const table = refSchema
+        ? lookup.byQualifiedName.get(`${refSchema.toLowerCase()}.${refName.toLowerCase()}`)
+        : lookup.byName.get(refName.toLowerCase());
       if (!table) continue;
       for (const col of table.columns) {
         if (seen.has(col.name)) continue;
@@ -82,6 +102,7 @@ function fromTableCompletionSource(schema: SqlSchemaPayload | null): CompletionS
 function buildSqlExtension(schema: SqlSchemaPayload | null) {
   const dialect = MSSQL_CI;
   const cmSchema = toCmSchema(schema);
+  const lookup = buildTableLookup(schema);
   return [
     sql({
       dialect,
@@ -90,7 +111,7 @@ function buildSqlExtension(schema: SqlSchemaPayload | null) {
     }),
     autocompletion({
       override: [
-        fromTableCompletionSource(schema),
+        fromTableCompletionSource(lookup),
         schemaCompletionSource({ dialect, schema: cmSchema, upperCaseKeywords: true }),
         keywordCompletionSource(dialect, true),
       ],
@@ -104,6 +125,9 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
   const sqlCompartmentRef = useRef<Compartment | null>(null);
   const onChangeRef = useRef(onChange);
   const onRunQueryRef = useRef(onRunQuery);
+  // Tracks the latest doc text the editor has emitted (or accepted from a `value` prop sync).
+  // Lets the value-sync effect compare against this in O(1) instead of stringifying the whole doc.
+  const lastValueRef = useRef(value);
   onChangeRef.current = onChange;
   onRunQueryRef.current = onRunQuery;
 
@@ -140,7 +164,11 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
           ...historyKeymap,
         ]),
         EditorView.updateListener.of((u) => {
-          if (u.docChanged) onChangeRef.current(u.state.doc.toString());
+          if (u.docChanged) {
+            const next = u.state.doc.toString();
+            lastValueRef.current = next;
+            onChangeRef.current(next);
+          }
         }),
         EditorView.theme({
           '&': { height: '100%', fontSize: '13px' },
@@ -172,7 +200,8 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    if (view.state.doc.toString() === value) return;
+    if (lastValueRef.current === value) return;
+    lastValueRef.current = value;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: value },
     });

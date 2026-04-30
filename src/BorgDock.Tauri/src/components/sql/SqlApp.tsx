@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { Button, Card, Kbd } from '@/components/shared/primitives';
@@ -27,6 +27,8 @@ interface QueryResult {
 
 const POSITION_KEY = 'borgdock-sql-position';
 const QUERY_KEY = 'borgdock-sql-last-query';
+const QUERY_PERSIST_DEBOUNCE_MS = 300;
+const EMPTY_SELECTION: Set<number> = new Set();
 
 function loadSavedPosition(): { x: number; y: number } | null {
   try {
@@ -205,10 +207,40 @@ export function SqlApp() {
     return () => unlisten?.();
   }, []);
 
-  // Persist query text
+  // Persist query text — debounced so fast typing doesn't hit localStorage every keystroke.
+  // Pending writes are flushed on unmount, tab hide, and page unload so a quick close still saves.
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushQueryToStorage = useCallback(() => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    const current = queryRef.current;
+    if ((localStorage.getItem(QUERY_KEY) ?? '') !== current) {
+      localStorage.setItem(QUERY_KEY, current);
+    }
+  }, []);
+
   useEffect(() => {
-    localStorage.setItem(QUERY_KEY, query);
-  }, [query]);
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(flushQueryToStorage, QUERY_PERSIST_DEBOUNCE_MS);
+  }, [query, flushQueryToStorage]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushQueryToStorage();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('beforeunload', flushQueryToStorage);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('beforeunload', flushQueryToStorage);
+      flushQueryToStorage();
+    };
+  }, [flushQueryToStorage]);
 
   // Escape to close
   useEffect(() => {
@@ -285,6 +317,17 @@ export function SqlApp() {
     setCopyFlash(msg);
     setTimeout(() => setCopyFlash(null), 1500);
   }, []);
+
+  const selectionHandlers = useMemo<Array<(sel: Set<number>) => void>>(() => {
+    if (!result) return [];
+    return result.resultSets.map((_, idx) => (sel: Set<number>) => {
+      setSelectedRowsMap((prev) => {
+        const next = new Map(prev);
+        next.set(idx, sel);
+        return next;
+      });
+    });
+  }, [result]);
 
   const getResultSetParts = useCallback(() => {
     if (!result) return [];
@@ -489,14 +532,8 @@ export function SqlApp() {
                 <ResultsTable
                   columns={rs.columns}
                   rows={rs.rows}
-                  selectedRows={selectedRowsMap.get(idx) ?? new Set()}
-                  onSelectionChange={(sel) =>
-                    setSelectedRowsMap((prev) => {
-                      const next = new Map(prev);
-                      next.set(idx, sel);
-                      return next;
-                    })
-                  }
+                  selectedRows={selectedRowsMap.get(idx) ?? EMPTY_SELECTION}
+                  onSelectionChange={selectionHandlers[idx]!}
                 />
               </div>
             ))}

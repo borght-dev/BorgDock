@@ -336,7 +336,7 @@ describe('SqlApp', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('persists query to localStorage', async () => {
+  it('persists query to localStorage (debounced)', async () => {
     await act(async () => {
       render(<SqlApp />);
     });
@@ -344,6 +344,11 @@ describe('SqlApp', () => {
     const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
     await act(async () => {
       fireEvent.change(textarea, { target: { value: 'SELECT * FROM users' } });
+    });
+
+    // Write is debounced; advance past the debounce window to flush.
+    await act(async () => {
+      vi.advanceTimersByTime(500);
     });
 
     expect(localStorage.getItem('borgdock-sql-last-query')).toBe('SELECT * FROM users');
