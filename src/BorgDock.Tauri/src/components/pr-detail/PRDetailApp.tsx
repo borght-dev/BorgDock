@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
 import { IconButton } from '@/components/shared/primitives';
 import { loadCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
@@ -219,6 +220,7 @@ export function PrDetailApp() {
             {error}
           </p>
         </div>
+        <NotificationOverlay />
       </div>
     );
   }
@@ -230,6 +232,7 @@ export function PrDetailApp() {
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
         </div>
+        <NotificationOverlay />
       </div>
     );
   }
@@ -239,6 +242,7 @@ export function PrDetailApp() {
       <div className="relative flex-1 overflow-y-auto">
         <PrDetailPanel pr={pr} popOutWindow />
       </div>
+      <NotificationOverlay />
     </div>
   );
 }

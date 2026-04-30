@@ -4,6 +4,7 @@
   "windows": ["pr-detail-*"],
   "permissions": [
     "core:default",
+    "core:event:default",
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
