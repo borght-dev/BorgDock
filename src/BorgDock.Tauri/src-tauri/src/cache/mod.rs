@@ -57,6 +57,16 @@ pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
             database_name   TEXT NOT NULL,
             json_data       TEXT NOT NULL,
             cached_at       TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS sql_snippets (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            body        TEXT NOT NULL,
+            starred     INTEGER NOT NULL DEFAULT 0,
+            last_run    TEXT NOT NULL DEFAULT '',
+            created_at  INTEGER NOT NULL,
+            updated_at  INTEGER NOT NULL
         );",
     )
     .map_err(|e| format!("Failed to create cache tables: {e}"))?;

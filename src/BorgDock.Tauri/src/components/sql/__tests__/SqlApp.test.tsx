@@ -1,31 +1,53 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqlApp } from '../SqlApp';
 
-vi.mock('../SqlEditor', () => ({
-  SqlEditor: ({
-    value,
-    onChange,
-    onRunQuery,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    onRunQuery: () => void;
-  }) => (
-    <textarea
-      data-testid="sql-editor-stub"
-      placeholder="SELECT * FROM ..."
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          onRunQuery();
-        }
-      }}
-    />
-  ),
-}));
+vi.mock('../SqlEditor', () => {
+  // Mock that mirrors the real SqlEditor's run-text contract:
+  // returns the textarea selection if non-empty, else the full value.
+  const SqlEditor = forwardRef<
+    { getRunText: () => string | null },
+    {
+      value: string;
+      onChange: (v: string) => void;
+      onRunQuery: (text: string) => void;
+    }
+  >(function SqlEditor({ value, onChange, onRunQuery }, ref) {
+    const taRef = useRef<HTMLTextAreaElement>(null);
+    const computeRunText = () => {
+      const ta = taRef.current;
+      if (!ta) return value;
+      const { selectionStart, selectionEnd } = ta;
+      if (
+        typeof selectionStart === 'number' &&
+        typeof selectionEnd === 'number' &&
+        selectionStart !== selectionEnd
+      ) {
+        return ta.value.slice(selectionStart, selectionEnd);
+      }
+      return ta.value;
+    };
+    // biome-ignore lint/correctness/useExhaustiveDependencies: computeRunText reads taRef.current; the handle should never change identity.
+    useImperativeHandle(ref, () => ({ getRunText: computeRunText }), []);
+    return (
+      <textarea
+        ref={taRef}
+        data-testid="sql-editor-stub"
+        placeholder="SELECT * FROM ..."
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            onRunQuery(computeRunText());
+          }
+        }}
+      />
+    );
+  });
+  return { SqlEditor };
+});
 
 const mockClose = vi.fn(() => Promise.resolve());
 const mockOnMoved = vi.fn(() => Promise.resolve(() => {}));
@@ -254,6 +276,102 @@ describe('SqlApp', () => {
     });
   });
 
+  it('runs only the highlighted selection when one exists (Ctrl+Enter)', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    const fullDoc = 'SELECT 1;\nSELECT 2;\nSELECT 3;';
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: fullDoc } });
+    });
+
+    // Highlight just the second statement.
+    const start = fullDoc.indexOf('SELECT 2;');
+    const end = start + 'SELECT 2;'.length;
+    textarea.focus();
+    textarea.setSelectionRange(start, end);
+
+    await act(async () => {
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+    });
+
+    expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      connectionName: 'DevDB',
+      query: 'SELECT 2;',
+    });
+  });
+
+  it('runs only the highlighted selection when Run button is clicked', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    const fullDoc = 'SELECT a;\nSELECT b;';
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: fullDoc } });
+    });
+
+    const start = fullDoc.indexOf('SELECT b;');
+    const end = start + 'SELECT b;'.length;
+    textarea.focus();
+    textarea.setSelectionRange(start, end);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      connectionName: 'DevDB',
+      query: 'SELECT b;',
+    });
+  });
+
+  it('runs the full document when no selection exists', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const textarea = screen.getByPlaceholderText('SELECT * FROM ...') as HTMLTextAreaElement;
+    const fullDoc = 'SELECT 1;\nSELECT 2;';
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: fullDoc } });
+    });
+
+    // Caret only — no selection.
+    textarea.focus();
+    textarea.setSelectionRange(0, 0);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Run'));
+    });
+
+    expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      connectionName: 'DevDB',
+      query: fullDoc,
+    });
+  });
+
   it('displays error when query fails', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
@@ -336,6 +454,28 @@ describe('SqlApp', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
+  it('does not close window when Escape was preventDefaulted (autocomplete dismiss)', async () => {
+    await act(async () => {
+      render(<SqlApp />);
+    });
+
+    // Simulate an inner consumer (CodeMirror autocomplete dismiss) handling
+    // Escape first by calling preventDefault. The capture-phase listener runs
+    // before SqlApp's bubble-phase document listener.
+    const interceptor = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') e.preventDefault();
+    };
+    document.addEventListener('keydown', interceptor, true);
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+
+    document.removeEventListener('keydown', interceptor, true);
+
+    expect(mockClose).not.toHaveBeenCalled();
+  });
+
   it('persists query to localStorage (debounced)', async () => {
     await act(async () => {
       render(<SqlApp />);
@@ -393,9 +533,9 @@ describe('SqlApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    // Status bar should show row count and execution time
-    expect(screen.getByText(/2 rows/)).toBeTruthy();
-    expect(screen.getByText('42ms')).toBeTruthy();
+    // Result-set pill shows row count; status bar shows execution time + cols.
+    expect(screen.getAllByText(/2 rows/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/42 ms/).length).toBeGreaterThan(0);
   });
 
   it('shows copy buttons after query results', async () => {
@@ -612,12 +752,12 @@ describe('SqlApp', () => {
 
     const handle = document.querySelector('.sql-resize-handle')!;
     fireEvent.mouseDown(handle);
-    // body cursor should be set
-    expect(document.body.style.cursor).toBe('row-resize');
+    // body class signals an active row-resize drag
+    expect(document.body.classList.contains('sql-resizing-v')).toBe(true);
 
     // Simulate mouseup to clean up
     fireEvent.mouseUp(document);
-    expect(document.body.style.cursor).toBe('');
+    expect(document.body.classList.contains('sql-resizing-v')).toBe(false);
   });
 
   it('exposes [data-sql-editor] and [data-sql-connection-select] hooks', async () => {

@@ -7,6 +7,7 @@ use tokio_util::compat::TokioAsyncWriteCompatExt;
 use crate::settings;
 
 pub mod schema;
+pub mod snippets;
 
 /// Load a SQL connection password from the OS keychain.
 /// The frontend stores them under `borgdock:sql:<connection_name>`; the

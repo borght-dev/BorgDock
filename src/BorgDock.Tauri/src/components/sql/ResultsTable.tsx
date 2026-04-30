@@ -8,12 +8,7 @@ interface ResultsTableProps {
   onSelectionChange: (selected: Set<number>) => void;
 }
 
-function ResultsTableImpl({
-  columns,
-  rows,
-  selectedRows,
-  onSelectionChange,
-}: ResultsTableProps) {
+function ResultsTableImpl({ columns, rows, selectedRows, onSelectionChange }: ResultsTableProps) {
   const [lastClickedRow, setLastClickedRow] = useState<number | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -49,10 +44,12 @@ function ResultsTableImpl({
   if (columns.length === 0) return null;
 
   return (
-    <table ref={tableRef} data-sql-results-table className="sql-results-table">
+    <table ref={tableRef} data-sql-results-table className="sql-results-table bd-mono">
       <thead>
         <tr>
-          <th className="sql-row-num-header">#</th>
+          <th className="sql-row-num-header" aria-label="Row number">
+            #
+          </th>
           {columns.map((col, i) => (
             <th key={i} className="sql-col-header">
               <span className="sql-col-name">{col}</span>

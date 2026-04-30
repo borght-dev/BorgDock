@@ -1,24 +1,58 @@
-import { autocompletion, completionKeymap, moveCompletionSelection, type CompletionSource, type Completion } from '@codemirror/autocomplete';
+import {
+  autocompletion,
+  type Completion,
+  type CompletionSource,
+  completionKeymap,
+  moveCompletionSelection,
+} from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { MSSQL, SQLDialect, sql, schemaCompletionSource, keywordCompletionSource } from '@codemirror/lang-sql';
+import {
+  keywordCompletionSource,
+  MSSQL,
+  SQLDialect,
+  schemaCompletionSource,
+  sql,
+} from '@codemirror/lang-sql';
 import { Compartment, EditorState } from '@codemirror/state';
 import {
-  EditorView,
   drawSelection,
+  EditorView,
   highlightActiveLine,
   keymap,
   lineNumbers,
 } from '@codemirror/view';
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { SqlSchemaPayload } from '@/types/sql-schema';
 import { toCmSchema } from './to-cm-schema';
+
+export interface SqlEditorHandle {
+  /**
+   * Returns the text the user wants to run: the current non-empty selection
+   * if there is one, otherwise the whole document. Returns `null` if the
+   * editor isn't mounted yet.
+   */
+  getRunText: () => string | null;
+}
 
 interface SqlEditorProps {
   value: string;
   onChange: (next: string) => void;
-  onRunQuery: () => void;
+  /**
+   * Called when the editor wants to execute a query. The argument is the
+   * text the user is targeting — the current selection if any, else the
+   * whole document. Callers should prefer this over reading `value` so
+   * "run selection" works.
+   */
+  onRunQuery: (textToRun: string) => void;
   schema: SqlSchemaPayload | null;
   height: number;
+}
+
+function readRunText(view: EditorView | null): string | null {
+  if (!view) return null;
+  const sel = view.state.selection.main;
+  if (sel.from !== sel.to) return view.state.sliceDoc(sel.from, sel.to);
+  return view.state.doc.toString();
 }
 
 const MSSQL_CI = SQLDialect.define({
@@ -119,7 +153,10 @@ function buildSqlExtension(schema: SqlSchemaPayload | null) {
   ];
 }
 
-export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEditorProps) {
+export const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
+  { value, onChange, onRunQuery, schema, height },
+  ref,
+) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sqlCompartmentRef = useRef<Compartment | null>(null);
@@ -151,8 +188,9 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
         keymap.of([
           {
             key: 'Mod-Enter',
-            run: () => {
-              onRunQueryRef.current();
+            run: (view) => {
+              const text = readRunText(view);
+              if (text != null) onRunQueryRef.current(text);
               return true;
             },
             preventDefault: true,
@@ -207,11 +245,13 @@ export function SqlEditor({ value, onChange, onRunQuery, schema, height }: SqlEd
     });
   }, [value]);
 
-  return (
-    <div
-      ref={hostRef}
-      className="sql-editor-cm"
-      style={{ height }}
-    />
+  useImperativeHandle(
+    ref,
+    () => ({
+      getRunText: () => readRunText(viewRef.current),
+    }),
+    [],
   );
-}
+
+  return <div ref={hostRef} className="sql-editor-cm" style={{ height }} />;
+});

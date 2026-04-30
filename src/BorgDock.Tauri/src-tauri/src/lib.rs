@@ -236,6 +236,9 @@ pub fn run() {
             sql::execute_sql_query,
             sql::test_sql_connection,
             sql::fetch_sql_schema,
+            sql::snippets::sql_snippets_list,
+            sql::snippets::sql_snippets_save,
+            sql::snippets::sql_snippets_delete,
             // Keychain
             keychain::get_credential,
             keychain::set_credential,
