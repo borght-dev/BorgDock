@@ -3289,14 +3289,81 @@ body.sql-resizing-v .sql-resize-handle {
   }
   .bd-fp-changes-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 8px 10px 4px 10px;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    opacity: 0.65;
+    gap: 6px;
+    padding: 9px 12px 8px;
   }
+  .bd-fp-changes-caret {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: 10px;
+    padding: 2px;
+    font-family: inherit;
+  }
+  .bd-fp-changes-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+  }
+  .bd-fp-changes-count, .bd-fp-changes-stats {
+    font-size: 10px;
+  }
+  .bd-fp-changes-stats {
+    display: inline-flex;
+    gap: 3px;
+    font-family: var(--font-code);
+    font-weight: 600;
+  }
+  .bd-fp-changes-spacer { flex: 1; }
+  .bd-fp-changes-modes {
+    display: flex;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+  .bd-fp-changes-mode {
+    padding: 0 8px;
+    height: 20px;
+    font-size: 10px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .bd-fp-changes-mode--on {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  .bd-fp-changes-group-label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 14px 4px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .bd-fp-changes-group-sub {
+    font-family: var(--font-code);
+    font-weight: 400;
+    color: var(--color-text-faint);
+    margin-left: auto;
+  }
+  .bd-fp-changes-row__add, .bd-fp-changes-row__del {
+    font-size: 9.5px;
+    flex-shrink: 0;
+  }
+  /* legacy rule kept as orphan — no longer rendered */
   .bd-fp-changes-subheader {
     display: block;
     width: 100%;
