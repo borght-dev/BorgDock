@@ -134,6 +134,8 @@ pub fn run() {
             conn: std::sync::Arc::new(std::sync::Mutex::new(None)),
             in_flight: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
         })
+        .manage(crate::agent_overview::store::SessionStore::default())
+        .manage(crate::agent_overview::cwd_resolver::CwdCache::default())
         .setup(|app| {
             platform::tray::setup_tray(app)?;
             platform::tray::start_initializing_animation(app.handle().clone());
@@ -144,6 +146,93 @@ pub fn run() {
 
             let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();
             file_palette::cache::init(&file_cache_state);
+
+            // Agent Overview — start OTLP receiver + bootstrap if user has
+            // opted in (Settings.agent_overview.enabled). Otherwise it stays
+            // dormant until the user enables it via the Settings UI.
+            {
+                let store = app.state::<crate::agent_overview::store::SessionStore>().inner().clone();
+                let cwd_cache = app.state::<crate::agent_overview::cwd_resolver::CwdCache>().inner().clone();
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use crate::agent_overview::{bootstrap, cwd_resolver, otlp_server, store as st};
+                    use tauri::Emitter;
+                    use tokio::sync::mpsc::unbounded_channel;
+
+                    let settings = crate::settings::load_settings_internal().ok();
+                    let cfg = settings.as_ref().map(|s| s.agent_overview.clone()).unwrap_or_default();
+                    if !cfg.enabled {
+                        log::info!("agent_overview: disabled, skipping startup");
+                        return;
+                    }
+
+                    // Bootstrap from filesystem
+                    let (delta_tx, mut delta_rx) = unbounded_channel();
+                    if let Some(root) = cwd_resolver::default_projects_root() {
+                        let n = bootstrap::bootstrap_known_sessions(
+                            &root, &store, &delta_tx,
+                            std::time::Duration::from_secs(cfg.history_retention_seconds.into()),
+                        );
+                        log::info!("agent_overview: bootstrapped {n} sessions");
+                    }
+
+                    // Forward deltas to the frontend
+                    let app_for_emit = app_handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        while let Some(delta) = delta_rx.recv().await {
+                            let _ = app_for_emit.emit_to(
+                                "agent-overview",
+                                "agent-sessions-changed",
+                                &delta,
+                            );
+                        }
+                    });
+
+                    // OTLP receiver
+                    let (events_tx, mut events_rx) = unbounded_channel();
+                    let (listener, port) = match otlp_server::try_bind(4318).await {
+                        Ok(v) => v,
+                        Err(e) => {
+                            log::error!("agent_overview: failed to bind OTLP port: {e}");
+                            return;
+                        }
+                    };
+                    log::info!("agent_overview: OTLP listening on 127.0.0.1:{port}");
+                    let router = otlp_server::build_router(otlp_server::ServerState { events_tx });
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = axum::serve(listener, router).await {
+                            log::error!("agent_overview: server exited: {e}");
+                        }
+                    });
+
+                    // Event consumer + 1Hz ticker
+                    let store_for_loop = store.clone();
+                    let cwd_for_loop = cwd_cache.clone();
+                    let delta_for_loop = delta_tx.clone();
+                    let thresholds = st::StoreThresholds {
+                        idle_after: std::time::Duration::from_secs(cfg.idle_threshold_seconds.into()),
+                        ended_after: std::time::Duration::from_secs(cfg.ended_threshold_seconds.into()),
+                        finished_to_awaiting_after: std::time::Duration::from_secs(30),
+                        history_retention: std::time::Duration::from_secs(cfg.history_retention_seconds.into()),
+                    };
+                    tauri::async_runtime::spawn(async move {
+                        let projects_root = cwd_resolver::default_projects_root();
+                        let mut tick = tokio::time::interval(std::time::Duration::from_secs(1));
+                        loop {
+                            tokio::select! {
+                                Some(evt) = events_rx.recv() => {
+                                    let cwd_info = projects_root.as_ref()
+                                        .and_then(|r| cwd_resolver::resolve_cwd(&evt.session_id, &cwd_for_loop, r));
+                                    store_for_loop.ingest_event(evt, cwd_info, &delta_for_loop, std::time::Instant::now());
+                                }
+                                _ = tick.tick() => {
+                                    store_for_loop.run_tick(thresholds, &delta_for_loop, std::time::Instant::now());
+                                }
+                            }
+                        }
+                    });
+                });
+            }
 
             // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
             // once, at setup. These are code-defined and must not be re-
@@ -256,6 +345,11 @@ pub fn run() {
             file_palette::files::list_root_files,
             file_palette::content_search::search_content,
             file_palette::windows::open_file_viewer_window,
+            // Agent Overview
+            agent_overview::commands::list_agent_sessions,
+            agent_overview::commands::set_agent_overview_enabled,
+            agent_overview::commands::disable_agent_overview_telemetry,
+            agent_overview::window::open_agent_overview_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
