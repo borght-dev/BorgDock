@@ -32,8 +32,7 @@ export function FilePaletteApp() {
   const [rootsCollapsed, setRootsCollapsed] = useState(false);
   const [changesCollapsed, setChangesCollapsed] = useState<boolean>(false);
   const [changesMode, setChangesMode] = useState<'head' | 'base' | 'both'>('both');
-  // scope value wired to JSX in Task 9; setter is used by settings load
-  const [, setScope] = useState<'all' | 'changes' | 'filename' | 'content' | 'symbol'>('all');
+  const [scope, setScope] = useState<'all' | 'changes' | 'filename' | 'content' | 'symbol'>('all');
   const [changesVisibleRows, setChangesVisibleRows] = useState<VisibleRow[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
@@ -385,6 +384,16 @@ export function FilePaletteApp() {
             onQueryChange={setQuery}
             parsed={parsed}
             resultCount={results.length}
+            scope={scope}
+            onScopeChange={(s) => {
+              setScope(s);
+              void invoke<AppSettings>('load_settings').then((settings) =>
+                invoke('save_settings', {
+                  settings: { ...settings, ui: { ...settings.ui, filePaletteScope: s } },
+                }),
+              ).catch(() => { /* ignore */ });
+            }}
+            changesCount={changesVisibleRows.length}
           />
           <FilePaletteChangesSection
             rootPath={activeRoot}

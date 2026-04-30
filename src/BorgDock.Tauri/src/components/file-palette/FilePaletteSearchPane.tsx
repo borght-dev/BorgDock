@@ -1,16 +1,25 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef } from 'react';
+import { Kbd } from '@/components/shared/primitives';
 import type { ParsedQuery } from './parse-query';
 import { parseQuery } from './parse-query';
+
+export type Scope = 'all' | 'changes' | 'filename' | 'content' | 'symbol';
 
 interface Props {
   query: string;
   onQueryChange: (value: string) => void;
   parsed: ParsedQuery;
   resultCount: number;
+  scope: Scope;
+  onScopeChange: (scope: Scope) => void;
+  changesCount: number;
 }
 
-export function FilePaletteSearchPane({ query, onQueryChange, parsed, resultCount }: Props) {
+export function FilePaletteSearchPane({
+  query, onQueryChange, parsed: _parsed, resultCount,
+  scope, onScopeChange, changesCount,
+}: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -20,32 +29,78 @@ export function FilePaletteSearchPane({ query, onQueryChange, parsed, resultCoun
     return () => window.clearTimeout(id);
   }, []);
 
-  const modeLabel =
-    parsed.mode === 'filename' ? 'file' : parsed.mode === 'content' ? 'content' : 'symbol';
+  // Chip click rewrites the query so the prefix matches the new scope.
+  const setScope = (next: Scope) => {
+    const stripped = stripPrefix(query);
+    if (next === 'content') onQueryChange(`>${stripped}`);
+    else if (next === 'symbol') onQueryChange(`@${stripped}`);
+    else onQueryChange(stripped);
+    onScopeChange(next);
+  };
 
   return (
     <div className="bd-fp-search-pane">
-      <div className="bd-fp-search-input-wrap relative">
+      <div className="bd-fp-search-input-wrap">
         <input
           ref={inputRef}
-          className="bd-input bd-fp-search-input w-full rounded-lg border px-3 py-2 outline-none bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)] text-[13px] pr-[70px]"
-          placeholder="Search files..."
+          className="bd-fp-search-input"
+          placeholder="Search files…   >text  @symbol"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           aria-label="File palette search"
         />
-        <span className="bd-fp-search-mode absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)]" title={`Mode: ${modeLabel}`}>
-          {modeLabel}
+        <span className="bd-fp-search-kbds">
+          <Kbd>↑↓</Kbd>
+          <Kbd>↵</Kbd>
         </span>
       </div>
-      <div className="bd-fp-search-hint mt-1.5 text-[10px] text-[var(--color-text-muted)] opacity-60">
-        Filename · prefix &gt; for content · @ for symbol
-      </div>
-      <div className="bd-fp-search-count mt-1 text-[10px] opacity-50">
-        {resultCount} result{resultCount === 1 ? '' : 's'}
+      <div className="bd-fp-scope-chips" role="tablist">
+        <ScopeChip v="all" label="All" active={scope} onClick={setScope} />
+        <ScopeChip v="changes" label="Changes" active={scope} onClick={setScope}
+          count={changesCount} tone="warn" />
+        <ScopeChip v="filename" label="Filename" active={scope} onClick={setScope} />
+        <ScopeChip v="content" label="Content" active={scope} onClick={setScope} hint=">" />
+        <ScopeChip v="symbol" label="Symbol" active={scope} onClick={setScope} hint="@" />
+        <span className="bd-fp-scope-spacer" />
+        <span className="bd-fp-scope-count bd-mono">{resultCount} result{resultCount === 1 ? '' : 's'}</span>
       </div>
     </div>
   );
+}
+
+interface ScopeChipProps {
+  v: Scope;
+  label: string;
+  active: Scope;
+  onClick: (s: Scope) => void;
+  count?: number;
+  tone?: 'warn';
+  hint?: string;
+}
+
+function ScopeChip({ v, label, active, onClick, count, tone, hint }: ScopeChipProps) {
+  const isOn = active === v;
+  return (
+    <button
+      type="button"
+      aria-selected={isOn}
+      className={`bd-fp-scope-chip${isOn ? ' bd-fp-scope-chip--on' : ''}`}
+      onClick={() => onClick(v)}
+    >
+      {hint && <span className="bd-mono bd-fp-scope-chip__hint">{hint}</span>}
+      {label}
+      {count != null && count > 0 && (
+        <span className={`bd-fp-scope-chip__count${tone === 'warn' ? ' bd-fp-scope-chip__count--warn' : ''}`}>
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function stripPrefix(q: string): string {
+  if (q.startsWith('>') || q.startsWith('@')) return q.slice(1);
+  return q;
 }
 
 export { parseQuery };
