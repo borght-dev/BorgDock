@@ -1,4 +1,3 @@
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback, useEffect } from 'react';
 import { FeatureBadge } from '@/components/onboarding';
@@ -7,15 +6,6 @@ import { Tabs } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
-
-function handleHeaderDragStart(e: React.MouseEvent) {
-  if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
-  e.preventDefault();
-  const setDragging = useUiStore.getState().setDragging;
-  setDragging(true);
-  const win = getCurrentWindow();
-  win.startDragging().finally(() => setDragging(false));
-}
 
 function dispatchRefresh() {
   document.dispatchEvent(new CustomEvent('borgdock-refresh'));
@@ -80,7 +70,7 @@ export function Header() {
   }, []);
 
   return (
-    <header onMouseDown={handleHeaderDragStart} className="sidebar-header">
+    <header className="sidebar-header">
       {/* Left: Logo + open count */}
       <div className="sidebar-header-left">
         {/* App icon — purple gradient tile with white pulse line */}

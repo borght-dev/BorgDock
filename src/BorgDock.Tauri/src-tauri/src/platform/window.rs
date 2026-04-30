@@ -554,6 +554,15 @@ fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
 }
 
 fn apply_sidebar_position(win: &WebviewWindow, edge: &str, width: u32) -> Result<(), String> {
+    // The math below treats `physical_width` as both the inner and outer
+    // width. That requires the main window in tauri.conf.json to be
+    // `decorations: false`, `resizable: false`, AND `shadow: false`. With
+    // shadow on, tao's set_inner_size takes an "undecorated_with_shadows"
+    // path (tao .../windows/window.rs `undecorated_with_shadows`) that
+    // expands the outer rect by `window_rect - client_rect` to preserve the
+    // requested inner size. That makes outer != inner, and a docked sidebar
+    // ends up a handful of pixels off the screen edge.
+    //
     // Always dock to the primary monitor so the sidebar lands on the user's
     // main display regardless of where Tauri/WebView2 happened to spawn the
     // window initially. We fall back to current_monitor only if the platform

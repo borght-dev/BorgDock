@@ -4,17 +4,6 @@ import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import { makePr } from '@/test-utils/make-pr';
 
-const mockStartDragging = vi.fn(() => Promise.resolve());
-vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: vi.fn(() => ({
-    minimize: vi.fn(),
-    maximize: vi.fn(),
-    close: vi.fn(),
-    toggleMaximize: vi.fn(),
-    startDragging: mockStartDragging,
-  })),
-}));
-
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(() => Promise.resolve()),
 }));
@@ -158,17 +147,4 @@ describe('Header', () => {
     expect(focusTab?.textContent).toBe('Focus');
   });
 
-  it('handles drag start on header mousedown', () => {
-    render(<Header />);
-    const header = document.querySelector('.sidebar-header') as HTMLElement;
-    fireEvent.mouseDown(header, { button: 0 });
-    expect(mockStartDragging).toHaveBeenCalled();
-  });
-
-  it('does not start drag on right-click', () => {
-    render(<Header />);
-    const header = document.querySelector('.sidebar-header') as HTMLElement;
-    fireEvent.mouseDown(header, { button: 2 });
-    expect(mockStartDragging).not.toHaveBeenCalled();
-  });
 });

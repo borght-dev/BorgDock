@@ -18,8 +18,9 @@
         "height": 900,
         "decorations": false,
         "alwaysOnTop": true,
-        "resizable": true,
+        "resizable": false,
         "transparent": true,
+        "shadow": false,
         "skipTaskbar": true,
         "visible": false,
         "url": "index.html"
