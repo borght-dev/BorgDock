@@ -18,6 +18,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItemBuilder::with_id("show", "Show sidebar").build(app)?;
     let settings = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
     let whats_new = MenuItemBuilder::with_id("whats_new", "What's new…").build(app)?;
+    let agent_overview = MenuItemBuilder::with_id("open_agent_overview", "Agent Overview").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
@@ -26,6 +27,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .item(&show)
         .item(&settings)
         .item(&whats_new)
+        .item(&agent_overview)
         .item(&separator)
         .item(&quit)
         .build()?;
@@ -74,6 +76,14 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                             log::error!("tray whats_new open failed: {e}");
                         }
                     });
+                });
+            }
+            "open_agent_overview" => {
+                let app_handle = app.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = crate::agent_overview::window::open_agent_overview_window(app_handle).await {
+                        log::error!("open_agent_overview_window failed: {e}");
+                    }
                 });
             }
             "quit" => {
