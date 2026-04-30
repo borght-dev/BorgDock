@@ -5,7 +5,9 @@ import type { SearchMode } from './parse-query';
 export interface ChangedFileEntry {
   path: string;
   status: string;
-  oldPath: string | null;
+  oldPath?: string;
+  additions: number;
+  deletions: number;
 }
 
 interface ChangedFilesOutput {
