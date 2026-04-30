@@ -9,3 +9,4 @@ pub mod settings_merge;
 pub mod state;
 pub mod store;
 pub mod types;
+pub mod window;
