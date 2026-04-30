@@ -29,10 +29,12 @@ impl Default for StoreThresholds {
 }
 
 /// Shared session store. Reads from many threads (commands, bootstrap, notify);
-/// writes only from the event-loop task.
+/// writes only from the event-loop task. The lock is `pub(crate)` so the
+/// notify tracker and other crate-local consumers can read it directly, but
+/// not so external callers can bypass the store API.
 #[derive(Clone, Default)]
 pub struct SessionStore {
-    pub inner: Arc<RwLock<HashMap<String, SessionRecord>>>,
+    pub(crate) inner: Arc<RwLock<HashMap<String, SessionRecord>>>,
 }
 
 impl SessionStore {
@@ -56,20 +58,38 @@ impl SessionStore {
             Err(p) => p.into_inner(),
         };
         let session_id = event.session_id.clone();
+        // Compute the per-(repo, worktree) index BEFORE we mutably borrow the
+        // map — otherwise the borrow checker complains. The count includes
+        // both Ended history entries and live sessions; that's fine because
+        // labels remain unique for the lifetime of the store regardless.
+        let info = cwd.clone().unwrap_or_else(|| CwdInfo {
+            cwd: PathBuf::from("<unknown>"),
+            repo: "unknown".into(),
+            worktree: "?".into(),
+            branch: "?".into(),
+        });
+        let needs_init = !map.contains_key(&session_id);
+        let label_index = if needs_init {
+            map.values()
+                .filter(|r| r.repo == info.repo && r.worktree == info.worktree)
+                .count() as u32
+                + 1
+        } else {
+            0
+        };
         let entry = map.entry(session_id.clone()).or_insert_with(|| {
-            let info = cwd.clone().unwrap_or_else(|| CwdInfo {
-                cwd: PathBuf::from("<unknown>"),
-                repo: "unknown".into(),
-                worktree: "?".into(),
-                branch: "?".into(),
-            });
             SessionRecord {
                 session_id: session_id.clone(),
-                cwd: info.cwd,
+                cwd: info.cwd.clone(),
                 repo: info.repo.clone(),
                 worktree: info.worktree.clone(),
-                branch: info.branch,
-                label: format!("{} · {} #{}", short_repo(&info.repo), info.worktree, 1),
+                branch: info.branch.clone(),
+                label: format!(
+                    "{} · {} #{}",
+                    short_repo(&info.repo),
+                    info.worktree,
+                    label_index,
+                ),
                 state: SessionState::Working,
                 state_since: now,
                 last_event_at: now,
@@ -256,7 +276,7 @@ mod tests {
         };
         rec.session_id = "sid".into();
         store.upsert_bootstrap(rec, &tx);
-        let _ = rx.try_recv(); // drain the bootstrap upsert
+        let _ = rx.try_recv();
 
         store.run_tick(StoreThresholds::default(), &tx, now);
         let delta = rx.try_recv().unwrap();
@@ -265,6 +285,42 @@ mod tests {
             _ => panic!("expected remove"),
         }
         assert!(store.inner.read().unwrap().is_empty());
+    }
+
+    #[test]
+    fn ingest_assigns_unique_label_indices_per_repo_worktree() {
+        // Regression: the original implementation hard-coded `#1`, so two
+        // sessions in the same repo+worktree got the same label and the UI
+        // could not distinguish them.
+        let store = SessionStore::default();
+        let (tx, mut rx) = unbounded_channel();
+        let cwd = CwdInfo {
+            cwd: PathBuf::from("/x"),
+            repo: "BorgDock".into(),
+            worktree: "master".into(),
+            branch: "master".into(),
+        };
+
+        store.ingest_event(
+            ev("sid-a", "user_prompt", &[("prompt", Value::String("first".into()))]),
+            Some(cwd.clone()),
+            &tx,
+            Instant::now(),
+        );
+        store.ingest_event(
+            ev("sid-b", "user_prompt", &[("prompt", Value::String("second".into()))]),
+            Some(cwd),
+            &tx,
+            Instant::now(),
+        );
+
+        let mut labels = Vec::new();
+        while let Ok(SessionDelta::Upsert { session }) = rx.try_recv() {
+            labels.push(session.label);
+        }
+        // Two sessions in the same repo+worktree should get distinct labels.
+        assert!(labels.contains(&"BD · master #1".to_string()), "labels = {:?}", labels);
+        assert!(labels.contains(&"BD · master #2".to_string()), "labels = {:?}", labels);
     }
 
     #[test]
