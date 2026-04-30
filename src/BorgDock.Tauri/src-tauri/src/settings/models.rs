@@ -20,6 +20,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub updates: UpdateSettings,
     #[serde(default)]
+    pub agent_overview: AgentOverviewSettings,
+    #[serde(default)]
     pub azure_dev_ops: AzureDevOpsSettings,
     #[serde(default)]
     pub sql: SqlSettings,
@@ -418,5 +420,91 @@ impl Default for SqlServerConnection {
             password: None,
             trust_server_certificate: true,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOverviewSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub auto_open_on_startup: bool,
+    #[serde(default)]
+    pub window_state: Option<WindowGeometry>,
+    #[serde(default)]
+    pub repo_short_names: std::collections::HashMap<String, String>,
+    #[serde(default = "default_notify_after")]
+    pub awaiting_notify_after_seconds: u32,
+    #[serde(default = "default_notify_escalate")]
+    pub awaiting_notify_escalate_seconds: u32,
+    #[serde(default = "default_idle_threshold")]
+    pub idle_threshold_seconds: u32,
+    #[serde(default = "default_ended_threshold")]
+    pub ended_threshold_seconds: u32,
+    #[serde(default = "default_history_retention")]
+    pub history_retention_seconds: u32,
+    #[serde(default = "default_export_interval")]
+    pub otel_export_interval_ms: u32,
+}
+
+fn default_notify_after() -> u32 { 30 }
+fn default_notify_escalate() -> u32 { 120 }
+fn default_idle_threshold() -> u32 { 300 }
+fn default_ended_threshold() -> u32 { 1800 }
+fn default_history_retention() -> u32 { 14_400 }
+fn default_export_interval() -> u32 { 2000 }
+
+impl Default for AgentOverviewSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            auto_open_on_startup: false,
+            window_state: None,
+            repo_short_names: std::collections::HashMap::new(),
+            awaiting_notify_after_seconds: default_notify_after(),
+            awaiting_notify_escalate_seconds: default_notify_escalate(),
+            idle_threshold_seconds: default_idle_threshold(),
+            ended_threshold_seconds: default_ended_threshold(),
+            history_retention_seconds: default_history_retention(),
+            otel_export_interval_ms: default_export_interval(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowGeometry {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[cfg(test)]
+mod agent_overview_settings_tests {
+    use super::*;
+
+    #[test]
+    fn defaults_serialize_to_camel_case() {
+        let s: AgentOverviewSettings = Default::default();
+        let json = serde_json::to_value(&s).unwrap();
+        assert_eq!(json["enabled"], false);
+        assert_eq!(json["autoOpenOnStartup"], false);
+        assert_eq!(json["awaitingNotifyAfterSeconds"], 30);
+        assert_eq!(json["historyRetentionSeconds"], 14400);
+    }
+
+    #[test]
+    fn round_trips_with_overrides() {
+        let json = serde_json::json!({
+            "enabled": true,
+            "awaitingNotifyAfterSeconds": 45,
+            "repoShortNames": { "FSP-Horizon": "FH" }
+        });
+        let s: AgentOverviewSettings = serde_json::from_value(json).unwrap();
+        assert!(s.enabled);
+        assert_eq!(s.awaiting_notify_after_seconds, 45);
+        assert_eq!(s.repo_short_names.get("FSP-Horizon").unwrap(), "FH");
     }
 }
