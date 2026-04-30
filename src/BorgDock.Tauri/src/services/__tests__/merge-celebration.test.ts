@@ -47,6 +47,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const samplePr = {
@@ -91,6 +92,15 @@ describe('celebrateMerge', () => {
 
   it('swallows audio errors so a sound failure does not block the toast', async () => {
     mockPlay.mockRejectedValueOnce(new Error('autoplay blocked'));
+    const { celebrateMerge } = await import('../merge-celebration');
+    expect(() => celebrateMerge(samplePr)).not.toThrow();
+    expect(mockShow).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows Audio constructor errors so a throwing constructor does not block the toast', async () => {
+    vi.stubGlobal('Audio', function ThrowingAudio(): never {
+      throw new Error('no audio context');
+    });
     const { celebrateMerge } = await import('../merge-celebration');
     expect(() => celebrateMerge(samplePr)).not.toThrow();
     expect(mockShow).toHaveBeenCalledTimes(1);
