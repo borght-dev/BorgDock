@@ -37,6 +37,9 @@ promo-video/
 
 ## Claude Code worktrees (temporary agent workspaces)
 .claude/worktrees/
+## Claude Code per-user runtime state
+**/.claude/settings.local.json
+**/.claude/scheduled_tasks.lock
 
 ## Transient dev artifacts
 src/BorgDock.Tauri/tsc.log
