@@ -76,7 +76,7 @@ pub async fn open_file_viewer_window(
                 tauri::WebviewUrl::App(url.into()),
             )
             .title("BorgDock File Viewer")
-            .inner_size(1400.0, 860.0)
+            .inner_size(1280.0, 760.0)
             .decorations(false)
             .always_on_top(false)
             .resizable(true)
