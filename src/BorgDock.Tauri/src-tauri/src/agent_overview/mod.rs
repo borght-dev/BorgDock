@@ -5,6 +5,7 @@
 pub mod bootstrap;
 pub mod cwd_resolver;
 pub mod otlp_server;
+pub mod settings_merge;
 pub mod state;
 pub mod store;
 pub mod types;
