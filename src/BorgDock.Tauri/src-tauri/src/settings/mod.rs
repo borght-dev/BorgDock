@@ -204,15 +204,15 @@ fn load_from_backup(main_path: &PathBuf) -> Result<AppSettings, String> {
     Ok(defaults)
 }
 
-#[tauri::command]
-pub fn save_settings(settings: AppSettings) -> Result<(), String> {
+/// Save settings to disk without the `#[tauri::command]` wrapper — callable
+/// from other Rust modules (e.g. window close handlers).
+pub fn save_settings_internal(settings: &AppSettings) -> Result<(), String> {
     let dir = settings_dir();
     fs::create_dir_all(&dir).map_err(|e| format!("Failed to create settings dir: {e}"))?;
 
-    // Write backup first, then main
-    atomic_write(&backup_path(), &settings)?;
+    atomic_write(&backup_path(), settings)?;
     let path = settings_path();
-    atomic_write(&path, &settings)?;
+    atomic_write(&path, settings)?;
 
     #[cfg(unix)]
     {
@@ -221,4 +221,9 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn save_settings(settings: AppSettings) -> Result<(), String> {
+    save_settings_internal(&settings)
 }

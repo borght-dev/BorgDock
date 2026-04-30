@@ -45,6 +45,28 @@ pub async fn open_agent_overview_window(app: tauri::AppHandle) -> Result<(), Str
             }
 
             let win = builder.build().map_err(|e| e.to_string())?;
+
+            // Persist window geometry on close so the next launch restores it.
+            let win_for_close = win.clone();
+            win.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    let pos = win_for_close.outer_position().ok();
+                    let size = win_for_close.outer_size().ok();
+                    if let (Some(p), Some(s)) = (pos, size) {
+                        let geom = crate::settings::models::WindowGeometry {
+                            x: p.x,
+                            y: p.y,
+                            width: s.width,
+                            height: s.height,
+                        };
+                        if let Ok(mut settings) = crate::settings::load_settings_internal() {
+                            settings.agent_overview.window_state = Some(geom);
+                            let _ = crate::settings::save_settings_internal(&settings);
+                        }
+                    }
+                }
+            });
+
             // Snap to stored geometry as a second pass; some Tauri versions
             // ignore inner_size on first build under HiDPI.
             if let Some(g) = win_state {
