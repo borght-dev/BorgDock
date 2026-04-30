@@ -133,6 +133,7 @@ export function useBadgeSync() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: syncFlyout is a stable closure over store getters; username and hotkey are intentional hash inputs included in the effect body indirectly via the hash string, not consumed as direct deps.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -175,13 +176,11 @@ export function useBadgeSync() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    // syncFlyout is a stable closure over store getters — including it in
-    // deps would cause a fresh debounce per render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pullRequests, username, theme, hotkey, lastPollTime]);
 
   // Respond to flyout-request-data: re-send the current payload through the
   // same syncFlyout helper so the cache and the broadcast stay in sync.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot mount effect; syncFlyout is a stable closure and the listener should register only once.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -204,7 +203,6 @@ export function useBadgeSync() {
       cancelled = true;
       unlisten?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Listen for expand-sidebar events (from flyout or other windows)

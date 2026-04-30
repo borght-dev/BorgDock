@@ -221,6 +221,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     [],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prRef is constructed inline per render; its individual fields are listed instead to avoid a new object reference on every render triggering unnecessary re-memoization.
   const handleMerge = useCallback(async () => {
     setActionStatus('Merging...');
     const ok = await mergePr(prRef, {
@@ -232,6 +233,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
   const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prRef is constructed inline per render; its individual fields are listed instead to avoid a new object reference on every render triggering unnecessary re-memoization.
   const handleBypassExecute = useCallback(async () => {
     setConfirmBypass(false);
     setActionStatus('Merging...');

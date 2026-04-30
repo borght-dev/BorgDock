@@ -50,6 +50,7 @@ export function DiffPreview({ path, relPath, initialBaseline, onPopOut }: Props)
   }, []);
 
   // Reset baseline when the selection changes (parent passes new initialBaseline + path).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: path is intentionally included so a same-file revisit with a new baseline still resets; it's not used inside the effect body but acts as a reset trigger.
   useEffect(() => {
     setBaseline(initialBaseline);
   }, [path, initialBaseline]);
