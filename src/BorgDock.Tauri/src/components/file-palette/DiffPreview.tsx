@@ -55,6 +55,17 @@ export function DiffPreview({ path, relPath, initialBaseline, onPopOut }: Props)
   }, [path, initialBaseline]);
 
   useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        setViewPersist(view === 'unified' ? 'split' : 'unified');
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [view, setViewPersist]);
+
+  useEffect(() => {
     setDiff(null);
     setError(null);
     invoke<DiffOutput>('git_file_diff', { path, baseline })

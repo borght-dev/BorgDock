@@ -372,6 +372,12 @@ export function FilePaletteApp() {
 
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        const firstRoot = document.querySelector<HTMLButtonElement>('.bd-fp-root-row');
+        firstRoot?.focus();
+        return;
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         if (query) setQuery('');
@@ -403,6 +409,11 @@ export function FilePaletteApp() {
   useEffect(() => {
     rowRefs.current.get(selectedIndex)?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
+
+  const activeRootCount = activeRoot ? changeCounts.get(activeRoot) ?? null : null;
+  const activeRootLabel =
+    roots.find((r) => r.path === activeRoot)?.label ?? '—';
+  const indexedCount = fileIndex.entries.length;
 
   return (
     <div data-window="palette" className="bd-fp-root" onKeyDown={handleKey} tabIndex={-1}>
@@ -508,10 +519,29 @@ export function FilePaletteApp() {
         />
       </div>
       <WindowStatusBar
-        left={<span className="bd-mono">Files palette</span>}
+        left={
+          <span className="bd-mono bd-fp-status">
+            {activeRootLabel} · {indexedCount.toLocaleString()} indexed
+            {activeRootCount && (
+              <>
+                {' · '}
+                <span style={{ color: 'var(--color-status-yellow)' }}>
+                  {activeRootCount.count} changed vs HEAD
+                </span>
+                {(activeRootCount.addTotal > 0 || activeRootCount.delTotal > 0) && (
+                  <>
+                    {' · '}
+                    <span style={{ color: 'var(--color-status-green)' }}>+{activeRootCount.addTotal}</span>{' '}
+                    <span style={{ color: 'var(--color-status-red)' }}>−{activeRootCount.delTotal}</span>
+                  </>
+                )}
+              </>
+            )}
+          </span>
+        }
         right={
           <span className="bd-mono">
-            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Esc</Kbd> close
+            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Ctrl+/</Kbd> diff view · <Kbd>Esc</Kbd>
           </span>
         }
       />
