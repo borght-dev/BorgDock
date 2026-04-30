@@ -1,0 +1,182 @@
+.bd-dot--violet { background: var(--color-accent); }
+
+/* Pulse halo for awaiting state */
+@keyframes bd-pulse-halo {
+  0%   { box-shadow: 0 0 0 0 rgba(176, 125, 9, 0.45); }
+  70%  { box-shadow: 0 0 0 8px rgba(176, 125, 9, 0.0); }
+  100% { box-shadow: 0 0 0 0 rgba(176, 125, 9, 0.0); }
+}
+.bd-pulse-halo { animation: bd-pulse-halo 2s ease-out infinite; border-radius: 50%; }
+
+/* Working dot — soft pulse */
+@keyframes bd-pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+.bd-pulse-soft { animation: bd-pulse-soft 1.6s ease-in-out infinite; }
+
+/* Marching ants for tool-running */
+@keyframes bd-ants {
+  to { background-position: 12px 0; }
+}
+.bd-ants {
+  background-image: linear-gradient(90deg,
+    var(--color-accent) 50%, transparent 50%);
+  background-size: 12px 2px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+  animation: bd-ants 0.8s linear infinite;
+  height: 2px;
+}
+
+/* Agent card */
+.ag-card {
+  position: relative;
+  background: var(--color-card-background);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  overflow: hidden;
+}
+.ag-card:hover { border-color: var(--color-strong-border); }
+
+/* Awaiting state — yellow border + soft tinted bg */
+.ag-card--awaiting {
+  border-color: var(--color-warning-badge-border);
+  background: linear-gradient(to bottom, rgba(176, 125, 9, 0.04), var(--color-card-background) 60%);
+  box-shadow: 0 0 0 1px var(--color-warning-badge-border), 0 4px 16px rgba(176, 125, 9, 0.08);
+}
+.ag-card--awaiting::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--color-status-yellow);
+}
+
+.ag-card--finished {
+  border-color: var(--color-success-badge-border);
+}
+.ag-card--finished::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--color-status-green);
+}
+
+.ag-card--working::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--color-accent);
+  opacity: 0.7;
+}
+
+.ag-card--idle { opacity: 0.7; }
+.ag-card--idle:hover { opacity: 1; }
+
+/* Pane label */
+.ag-pane {
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* Awaiting rail at top of dashboard */
+.ag-alert-rail {
+  background: linear-gradient(to right, rgba(176, 125, 9, 0.08), rgba(176, 125, 9, 0.02));
+  border: 1px solid var(--color-warning-badge-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+}
+
+/* Sidebar item */
+.ag-side-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  transition: background 120ms ease;
+}
+.ag-side-row:hover { background: var(--color-surface-hover); }
+.ag-side-row--active { background: var(--color-accent-subtle); color: var(--color-accent); font-weight: 600; }
+
+/* Big breathing yellow ring used for primary alert states */
+.ag-alert-ring {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--color-status-yellow);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.ag-alert-ring::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--color-status-yellow);
+  opacity: 0.4;
+  animation: bd-breathe 2s ease-in-out infinite;
+}
+
+/* Compact wall tile */
+.ag-tile {
+  position: relative;
+  border: 1px solid var(--color-card-border);
+  border-radius: 6px;
+  background: var(--color-card-background);
+  padding: 8px 10px;
+  overflow: hidden;
+  min-height: 64px;
+}
+.ag-tile--awaiting {
+  border-color: var(--color-warning-badge-border);
+  background: rgba(176, 125, 9, 0.05);
+}
+.ag-tile--awaiting::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--color-status-yellow);
+  pointer-events: none;
+}
+
+/* Section label inside dashboard */
+.ag-grouphead {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ag-grouphead .line {
+  flex: 1; height: 1px; background: var(--color-subtle-border);
+}
+
+/* Titlebar alert badge */
+.ag-tb-alert {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 20px; padding: 0 8px;
+  background: var(--color-warning-badge-bg);
+  border: 1px solid var(--color-warning-badge-border);
+  color: var(--color-warning-badge-fg);
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px;
+  position: relative;
+}
+.ag-tb-alert .pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--color-status-yellow);
+  box-shadow: 0 0 0 0 rgba(176, 125, 9, 0.5);
+  animation: bd-pulse-halo 1.8s ease-out infinite;
+}
