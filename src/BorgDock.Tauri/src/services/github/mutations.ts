@@ -1,16 +1,37 @@
 import type { GitHubClient } from './client';
+import { getRepoMergeConfig, type MergeMethod, pickMergeMethod } from './repo';
 
 // --- Merge a pull request ---
 
+/**
+ * Merge a PR via REST. When `method` is omitted, the repo's allowed merge
+ * methods are fetched (and cached) so we never POST `merge_method: 'merge'`
+ * to a repo that has merge commits disabled — that returns 405 from GitHub.
+ * Pass `method` explicitly only when the caller has its own opinion (e.g.
+ * MergeToast / OverviewTab both pin 'squash').
+ */
 export async function mergePullRequest(
   client: GitHubClient,
   owner: string,
   repo: string,
   prNumber: number,
-  method: 'merge' | 'squash' | 'rebase' = 'merge',
+  method?: MergeMethod,
 ): Promise<void> {
+  let chosen = method;
+  if (!chosen) {
+    let config = null;
+    try {
+      config = await getRepoMergeConfig(client, owner, repo);
+    } catch {
+      // Repo lookup failed (network / auth scope). Fall through to the
+      // pickMergeMethod default ('squash') so the merge still has a fighting
+      // chance — repos without squash but with merge commits enabled are rare
+      // in the codebase's target population.
+    }
+    chosen = pickMergeMethod(config);
+  }
   await client.put(`repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
-    merge_method: method,
+    merge_method: chosen,
   });
 }
 

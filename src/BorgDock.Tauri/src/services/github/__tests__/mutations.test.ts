@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitHubClient } from '../client';
 import {
   bypassMergePullRequest,
@@ -8,6 +8,7 @@ import {
   submitReview,
   toggleDraft,
 } from '../mutations';
+import { __resetRepoMergeConfigCacheForTests } from '../repo';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -27,8 +28,34 @@ function createMockClient() {
 }
 
 describe('mergePullRequest', () => {
-  it('merges a PR with default merge method', async () => {
+  beforeEach(() => {
+    __resetRepoMergeConfigCacheForTests();
+  });
+
+  it('auto-detects squash when the repo only allows squash merges', async () => {
     const client = createMockClient();
+    vi.mocked(client.get).mockResolvedValueOnce({
+      allow_merge_commit: false,
+      allow_squash_merge: true,
+      allow_rebase_merge: false,
+    });
+    vi.mocked(client.put).mockResolvedValueOnce(undefined);
+
+    await mergePullRequest(client, 'owner', 'repo', 42);
+
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo');
+    expect(client.put).toHaveBeenCalledWith('repos/owner/repo/pulls/42/merge', {
+      merge_method: 'squash',
+    });
+  });
+
+  it('auto-detects merge when the repo only allows merge commits', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockResolvedValueOnce({
+      allow_merge_commit: true,
+      allow_squash_merge: false,
+      allow_rebase_merge: false,
+    });
     vi.mocked(client.put).mockResolvedValueOnce(undefined);
 
     await mergePullRequest(client, 'owner', 'repo', 42);
@@ -38,23 +65,37 @@ describe('mergePullRequest', () => {
     });
   });
 
-  it('merges a PR with squash method', async () => {
+  it('falls back to squash if the repo lookup fails', async () => {
     const client = createMockClient();
+    vi.mocked(client.get).mockRejectedValueOnce(new Error('forbidden'));
     vi.mocked(client.put).mockResolvedValueOnce(undefined);
 
-    await mergePullRequest(client, 'owner', 'repo', 42, 'squash');
+    await mergePullRequest(client, 'owner', 'repo', 42);
 
     expect(client.put).toHaveBeenCalledWith('repos/owner/repo/pulls/42/merge', {
       merge_method: 'squash',
     });
   });
 
-  it('merges a PR with rebase method', async () => {
+  it('respects an explicit squash method without fetching repo config', async () => {
+    const client = createMockClient();
+    vi.mocked(client.put).mockResolvedValueOnce(undefined);
+
+    await mergePullRequest(client, 'owner', 'repo', 42, 'squash');
+
+    expect(client.get).not.toHaveBeenCalled();
+    expect(client.put).toHaveBeenCalledWith('repos/owner/repo/pulls/42/merge', {
+      merge_method: 'squash',
+    });
+  });
+
+  it('respects an explicit rebase method without fetching repo config', async () => {
     const client = createMockClient();
     vi.mocked(client.put).mockResolvedValueOnce(undefined);
 
     await mergePullRequest(client, 'owner', 'repo', 42, 'rebase');
 
+    expect(client.get).not.toHaveBeenCalled();
     expect(client.put).toHaveBeenCalledWith('repos/owner/repo/pulls/42/merge', {
       merge_method: 'rebase',
     });
@@ -64,7 +105,9 @@ describe('mergePullRequest', () => {
     const client = createMockClient();
     vi.mocked(client.put).mockRejectedValueOnce(new Error('Merge conflict'));
 
-    await expect(mergePullRequest(client, 'owner', 'repo', 42)).rejects.toThrow('Merge conflict');
+    await expect(mergePullRequest(client, 'owner', 'repo', 42, 'squash')).rejects.toThrow(
+      'Merge conflict',
+    );
   });
 });
 
