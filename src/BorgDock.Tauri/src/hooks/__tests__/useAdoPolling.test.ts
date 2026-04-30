@@ -50,6 +50,7 @@ function makeSettings(overrides: Partial<AppSettings['azureDevOps']> = {}): AppS
       toastOnReviewUpdate: true,
       toastOnMergeable: true,
       onlyMyPRs: false,
+      playMergeSound: true,
       reviewNudgeEnabled: false,
       reviewNudgeIntervalMinutes: 30,
       reviewNudgeEscalation: false,

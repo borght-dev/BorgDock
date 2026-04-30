@@ -104,6 +104,12 @@ export function NotificationSection({ notifications, onChange }: NotificationSec
         checked={notifications.toastOnMergeable}
         onChange={(v) => update({ toastOnMergeable: v })}
       />
+      <ToggleRow
+        label="Play sound on merge"
+        notificationType="playMergeSound"
+        checked={notifications.playMergeSound}
+        onChange={(v) => update({ playMergeSound: v })}
+      />
 
       <div className="my-2 h-px bg-[var(--color-separator)]" />
 

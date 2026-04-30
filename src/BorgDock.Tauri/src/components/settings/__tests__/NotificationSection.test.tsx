@@ -17,6 +17,7 @@ function makeNotifications(overrides?: Partial<NotificationSettings>): Notificat
     toastOnReviewUpdate: true,
     toastOnMergeable: true,
     onlyMyPRs: false,
+    playMergeSound: true,
     reviewNudgeEnabled: true,
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
@@ -40,6 +41,7 @@ describe('NotificationSection', () => {
     expect(screen.getByText('New pull requests')).toBeDefined();
     expect(screen.getByText('Review updates')).toBeDefined();
     expect(screen.getByText('PR becomes mergeable')).toBeDefined();
+    expect(screen.getByText('Play sound on merge')).toBeDefined();
     expect(screen.getByText('Only notify for my PRs')).toBeDefined();
   });
 
@@ -76,6 +78,13 @@ describe('NotificationSection', () => {
     const row = screen.getByText('PR becomes mergeable').closest('div')!;
     fireEvent.click(row.querySelector('button')!);
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ toastOnMergeable: false }));
+  });
+
+  it('toggles play sound on merge off', () => {
+    render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
+    const row = screen.getByText('Play sound on merge').closest('div')!;
+    fireEvent.click(row.querySelector('button')!);
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ playMergeSound: false }));
   });
 
   it('toggles only my PRs on', () => {

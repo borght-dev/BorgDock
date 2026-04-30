@@ -108,6 +108,7 @@ function makeSettings(
       toastOnReviewUpdate: true,
       toastOnMergeable: true,
       onlyMyPRs: false,
+      playMergeSound: true,
       reviewNudgeEnabled: overrides.reviewNudgeEnabled ?? true,
       reviewNudgeIntervalMinutes: overrides.reviewNudgeIntervalMinutes ?? 30,
       reviewNudgeEscalation: overrides.reviewNudgeEscalation ?? false,

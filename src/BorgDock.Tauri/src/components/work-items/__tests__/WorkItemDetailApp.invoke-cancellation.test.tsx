@@ -100,6 +100,7 @@ describe('WorkItemDetailApp invoke() cancellation', () => {
         toastOnReviewUpdate: true,
         toastOnMergeable: true,
         onlyMyPRs: false,
+        playMergeSound: true,
         reviewNudgeEnabled: true,
         reviewNudgeIntervalMinutes: 60,
         reviewNudgeEscalation: true,

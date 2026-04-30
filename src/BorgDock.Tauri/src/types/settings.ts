@@ -55,6 +55,7 @@ export interface NotificationSettings {
   toastOnReviewUpdate: boolean;
   toastOnMergeable: boolean;
   onlyMyPRs: boolean;
+  playMergeSound: boolean;
   reviewNudgeEnabled: boolean;
   reviewNudgeIntervalMinutes: number;
   reviewNudgeEscalation: boolean;

@@ -39,6 +39,7 @@ function makeSettings(repos: AppSettings['repos'] = []): AppSettings {
       toastOnReviewUpdate: true,
       toastOnMergeable: true,
       onlyMyPRs: false,
+      playMergeSound: true,
       reviewNudgeEnabled: false,
       reviewNudgeIntervalMinutes: 30,
       reviewNudgeEscalation: false,
