@@ -1,5 +1,62 @@
 # Changelog
 
+## 1.2.0 — 2026-04-30
+
+### New Features
+
+- Inline diff in the file palette — Selecting a changed file now renders the diff right inside the palette window. Toggle vs HEAD / vs main, switch between Unified and Split views (Ctrl+/), step through hunks with Prev / Next, copy the patch, or pop the diff out into a real file viewer window if you want to keep reading while you keep navigating.
+- Find in file — Press Ctrl+F inside the palette's preview pane to open a find strip. The match counter shows your position, Enter / Shift+Enter step through matches, Esc closes the strip without closing the palette. Matches highlight inline alongside syntax colors.
+- Scope chips in palette search — A chip strip above the search input lets you flip between All / Changes / Filename / Content / Symbol. The chip is the source of truth for what you see — clicking Changes hides results, clicking Filename / Content / Symbol hides the Changes section. Typing `>` or `@` still works as a keyboard shortcut to flip the chip.
+- Worktree change-count badges — Each worktree row in the Roots column shows how many uncommitted files it has so you can spot which trees have work in progress at a glance. Counts refresh on window focus and when you switch active root.
+- Status bar at the bottom of the palette — Shows the active root, indexed file count, current change count, and total +/- across visible groups. Keyboard hints (↑↓, Enter, Tab, Ctrl+/, Esc) live on the right so the shortcuts are always one glance away.
+- SQL editor with schema autocomplete — The query editor is now CodeMirror-based with proper syntax highlighting, schema-aware autocomplete (table names, column names, even joining tables in your FROM clause), and Tab / Shift-Tab navigation through the completion popup. Schema is cached locally so suggestions appear instantly the next time you open the window.
+- SQL snippets rail — Save the active query as a named snippet, load it back, star favorites, rename, duplicate, and delete. The rail is collapsible and resizable; snippets persist across sessions.
+- Merge celebrations — When a PR you're tracking lands — whether you merged it from BorgDock, your teammate merged it on GitHub, or it merged through the flyout — you get a celebration animation with a satisfying tada sound. Toggle the sound under Settings → Notifications.
+- Worktree-aware diff overlay — The worktree palette now has a Worktrees / Changes tab strip; the Changes tab opens an inline diff overlay against HEAD or the merge base, so you can review what's about to ship without leaving the palette.
+- Streamlined PR cards — PR cards now hover-reveal their action bar instead of cluttering the row with always-visible buttons. The flyout uses a "smart primary" action that adapts to context: Merge when the PR is ready, Review when you're being asked, etc.
+- PR detail redesign — The PR detail window adopted the streamlined design: header now hoists author, branch, dates, and review score into a single panel; the review composer moved to the Files tab next to the diff so you can comment as you read.
+- Refresh button in the flyout — Manual refresh with a spinning icon while the fetch is in flight.
+- Add and remove custom palette roots without leaving the window — `+` button in the toolbar opens the directory picker, dashed "Add directory…" button at the end of the Custom dirs section, `×` on a row removes that root.
+- Cross-window notification toasts — Pop-out windows now surface their toasts in the main sidebar instead of swallowing them, so notifications you trigger from a detail or work-item window still show up where you're watching.
+
+### Improvements
+
+- File palette window default size is now 1280×760 and user-resizable.
+- Per-file +N / −N stats in the Changes section, with totals in the section header.
+- vs HEAD / vs main / Both tri-toggle in the Changes section replaces the older paired collapse buttons.
+- Sidebar docks flush to the screen edge — The window shadow that used to leave a one-pixel gap is gone; the dock edge is the screen edge.
+- Sidebar opens on your primary monitor — Used to attach to whichever monitor was last active; now it goes where you expect.
+- Auto-detect merge method on GitHub — If your repo only allows squash, BorgDock no longer fails with a 405; it picks the available method instead.
+- SQL window has a brand icon, syntax highlighting in the editor, a "New query" affordance, and shows the Ctrl+F10 keyboard shortcut in the title bar.
+- Run-selection works correctly in the SQL editor — Select a portion of your query and Ctrl+Enter executes just that part. (Polished and now robust.)
+- Worktree palette polish — Folder and editor actions actually work; visuals match the streamlined design.
+- Per-PR refresh after action — Merging, closing, marking draft, or submitting a review now refreshes that one PR immediately instead of waiting for the next polling cycle.
+- Faster cold-cache palette feel — File-index cache landing is groundwork for further polish (a persistent SQLite cache for the file index is designed and ready to ship).
+- Settings: new "Play merge celebration sound" toggle under Notifications.
+
+### Bug Fixes
+
+- SQL autocomplete now actually fires column suggestions from the table named in your FROM clause — the source was wired up but the override registration was incorrect, so completions always fell back to keyword-only.
+- SQL identifier quoting respects MSSQL bracket form (`[name]`) instead of using ANSI double-quotes that SQL Server rejects.
+- SQL editor typing lag eliminated — The schema autocomplete source was triggering a cascade of expensive recomputations on every keystroke.
+- Schema cache write failures no longer poison the fetch path — A failed `cache_save_sql_schema` used to bubble up and abort the whole schema refresh.
+- File palette Add Directory dialog now opens — The palette window's capability file was missing a grant for the dialog plugin, so the "Add" button silently did nothing.
+- File palette: cancellation closure threaded through search instead of the prior global flag, eliminating a race when switching roots mid-search.
+- File palette: drive-letter paths normalize case-insensitively on Windows so two roots that differ only by `C:` vs `c:` aren't double-listed.
+- Theme accessibility — `--color-text-muted` darkened to pass WCAG 2.1 AA contrast.
+- Polling resilience — GitHub polling now waits for app init to complete before firing its first request, avoiding a noisy "not ready" error in logs on slow startups.
+- Wizard: Access Token method-picker subtitle disambiguated so the choice is clear during onboarding.
+- Onboarding store guards against missing Tauri runtime so the persisted-state hook doesn't throw in dev / test contexts.
+- File viewer: classes renamed from `fv-*` to `bd-fv-*` to match the rest of the codebase's namespace.
+- File viewer's split layout remembers your choice across sessions and opens at a balanced 50/50 split.
+- Flyout cancellation guard on init — A blur during palette-open used to cause a stale-state warning; the cancelled-flag pattern now matches the rest of the windows.
+- Work-item detail invoke effect cancellation guard — Same fix applied to the work-item detail window.
+- ClaudeReview count badge styled as a Pill instead of a non-existent Chip.
+- PR action bar restored — The "Resolve Conflicts" button is always visible when relevant; comment counts render correctly; layout no longer collapses on narrow widths.
+- Flyout's hover-revealed Fix / Monitor row actions restored after a regression in the streamlined redesign.
+- PRCard keyboard activation works on the review-pill, closed, and worktree branches; tests now cover those.
+- FeatureBadge dismissal works again, and the focus-count badge has tests covering the dismiss flow.
+
 ## 1.1.0 — 2026-04-23
 
 ### New Features
