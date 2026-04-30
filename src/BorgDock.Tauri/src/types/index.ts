@@ -35,6 +35,7 @@ export type {
 } from './pull-request';
 export type {
   AdoAuthMethod,
+  AgentOverviewSettings,
   AppSettings,
   AuthMethod,
   AzureDevOpsSettings,

@@ -115,6 +115,19 @@ export interface SqlSettings {
   lastUsedConnection?: string;
 }
 
+export interface AgentOverviewSettings {
+  enabled?: boolean;
+  autoOpenOnStartup?: boolean;
+  awaitingNotifyAfterSeconds?: number;
+  awaitingNotifyEscalateSeconds?: number;
+  idleThresholdSeconds?: number;
+  endedThresholdSeconds?: number;
+  historyRetentionSeconds?: number;
+  otelExportIntervalMs?: number;
+  repoShortNames?: Record<string, string>;
+  windowState?: { x: number; y: number; width: number; height: number };
+}
+
 export interface AppSettings {
   setupComplete: boolean;
   gitHub: GitHubSettings;
@@ -125,6 +138,7 @@ export interface AppSettings {
   claudeApi: ClaudeApiSettings;
   claudeReview: ClaudeReviewSettings;
   updates: UpdateSettings;
+  agentOverview?: AgentOverviewSettings;
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
   repoPriority: Record<string, RepoPriority>;

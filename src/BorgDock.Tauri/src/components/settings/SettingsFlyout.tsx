@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { AppSettings } from '@/types';
 import { AdoSection } from './AdoSection';
+import { AgentOverviewSection } from './AgentOverviewSection';
 import { AppearanceSection } from './AppearanceSection';
 import { ClaudeApiSection } from './ClaudeApiSection';
 import { ClaudeSection } from './ClaudeSection';
@@ -136,6 +137,10 @@ export function SettingsFlyout() {
                 claudeCode={settings.claudeCode}
                 onChange={(claudeCode) => update({ claudeCode })}
               />
+            </SectionCard>
+
+            <SectionCard title="Agent Overview">
+              <AgentOverviewSection />
             </SectionCard>
 
             <SectionCard title="Claude API (PR Summary)">
