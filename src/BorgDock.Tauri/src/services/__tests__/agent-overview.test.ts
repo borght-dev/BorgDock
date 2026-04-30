@@ -78,7 +78,7 @@ describe('groupByRepo / groupByRepoWorktree', () => {
     const r = groupByRepo(recs);
     expect(r).toHaveLength(2);
     const rw = groupByRepoWorktree(recs);
-    expect(rw[0].worktrees).toHaveLength(2);
+    expect(rw[0]!.worktrees).toHaveLength(2);
   });
 });
 
