@@ -3128,6 +3128,27 @@ body.sql-resizing-v .sql-resize-handle {
     max-height: calc(100% - 40px);
     padding: 4px 0;
   }
+  .bd-fp-roots-add-custom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 12px 4px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px dashed var(--color-strong-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    width: calc(100% - 24px);
+    text-align: left;
+  }
+  .bd-fp-roots-add-custom:hover {
+    color: var(--color-text-secondary);
+    border-color: var(--color-accent);
+  }
   .bd-fp-middle {
     display: flex;
     flex-direction: column;

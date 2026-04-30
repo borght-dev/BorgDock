@@ -174,7 +174,7 @@ export function FilePaletteRootsColumn({
       {worktrees.length > 0 && visibleWorktrees.length === 0 && (
         <div className="bd-fp-roots-empty">No favorite worktrees. Click a star to pin one.</div>
       )}
-      {custom.length > 0 && (
+      {(custom.length > 0 || roots.length > 0) && (
         <div className="bd-fp-roots-section">
           <div className="bd-fp-roots-heading">CUSTOM</div>
           {custom.map((root) => (
@@ -189,6 +189,13 @@ export function FilePaletteRootsColumn({
               onRemove={() => onRemoveCustomRoot(root)}
             />
           ))}
+          <button
+            type="button"
+            className="bd-fp-roots-add-custom"
+            onClick={onAddCustomRoot}
+          >
+            + Add directory…
+          </button>
         </div>
       )}
       {roots.length === 0 && (
