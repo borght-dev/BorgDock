@@ -18,7 +18,7 @@ export function scanFindMatches(content: string, term: string): FindMatch[] {
   const lower = term.toLowerCase();
   const lines = content.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    const hay = lines[i].toLowerCase();
+    const hay = lines[i]!.toLowerCase();
     let from = 0;
     while (from < hay.length) {
       const idx = hay.indexOf(lower, from);

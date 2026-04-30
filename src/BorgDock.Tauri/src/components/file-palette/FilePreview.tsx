@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Button } from '@/components/shared/primitives';
-import { FilePaletteCodeView } from './FilePaletteCodeView';
+import { Button, Kbd } from '@/components/shared/primitives';
+import { FilePaletteCodeView, scanFindMatches, type FindMatch } from './FilePaletteCodeView';
 
 interface ContentHit {
   matches: { line: number }[];
@@ -37,6 +37,40 @@ function normalizeError(err: unknown): LoadState {
 
 export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentifierJump, onPopOut }: Props) {
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
+
+  const [findOpen, setFindOpen] = useState(false);
+  const [findTerm, setFindTerm] = useState('');
+  const [findIdx, setFindIdx] = useState(0);
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+
+  const matches: FindMatch[] = useMemo(
+    () => (state.kind === 'ok' ? scanFindMatches(state.content, findTerm) : []),
+    [state, findTerm],
+  );
+
+  useEffect(() => {
+    if (matches.length === 0) setFindIdx(0);
+    else if (findIdx >= matches.length) setFindIdx(0);
+  }, [matches, findIdx]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setFindOpen(true);
+        setTimeout(() => findInputRef.current?.focus(), 0);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const stepFind = (delta: 1 | -1) => {
+    if (matches.length === 0) return;
+    setFindIdx((i) => (i + delta + matches.length) % matches.length);
+  };
+
+  const currentMatchLine = matches[findIdx]?.line;
 
   useEffect(() => {
     if (!path) {
@@ -75,6 +109,39 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
         >📋</button>
         <button type="button" aria-label="Open in window" onClick={onPopOut}>↗</button>
       </div>
+      {findOpen && (
+        <div className="bd-fp-find-strip">
+          <input
+            ref={findInputRef}
+            value={findTerm}
+            onChange={(e) => setFindTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                stepFind(e.shiftKey ? -1 : 1);
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setFindOpen(false);
+                setFindTerm('');
+              }
+            }}
+            placeholder="Find in file…"
+            className="bd-fp-find-input"
+            aria-label="Find in file"
+          />
+          <span className="bd-mono">
+            {matches.length === 0 ? '0' : `${findIdx + 1} of ${matches.length}`}
+          </span>
+          <button type="button" aria-label="Previous match" onClick={() => stepFind(-1)}>↑</button>
+          <button type="button" aria-label="Next match" onClick={() => stepFind(1)}>↓</button>
+          <button type="button" aria-label="Close find"
+            onClick={() => { setFindOpen(false); setFindTerm(''); }}>✕</button>
+          <span className="bd-fp-preview-spacer" />
+          <Kbd>Esc</Kbd>
+        </div>
+      )}
       <div className="bd-fp-preview-body">
         {state.kind === 'loading' && <div className="bd-fp-preview-empty">Loading…</div>}
         {state.kind === 'binary' && (
@@ -100,9 +167,11 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
           <FilePaletteCodeView
             path={relPath}
             content={state.content}
-            scrollToLine={scrollToLine}
+            scrollToLine={currentMatchLine ?? scrollToLine}
             highlightedLines={contentHit?.matches.map((m) => m.line)}
             onIdentifierJump={onIdentifierJump}
+            findMatches={matches}
+            findCurrent={findIdx}
           />
         )}
       </div>
