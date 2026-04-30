@@ -20,16 +20,24 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 }));
 
 vi.mock('@/services/github/mutations', () => ({
-  mergePullRequest: vi.fn().mockResolvedValue(undefined),
-  bypassMergePullRequest: vi.fn().mockResolvedValue(undefined),
-  closePullRequest: vi.fn().mockResolvedValue(undefined),
   postComment: vi.fn().mockResolvedValue(undefined),
   submitReview: vi.fn().mockResolvedValue(undefined),
-  toggleDraft: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/services/github/singleton', () => ({
   getClient: vi.fn(() => ({})),
+}));
+
+const mockMergePr = vi.fn().mockResolvedValue(true);
+const mockBypassMergePr = vi.fn().mockResolvedValue(true);
+const mockClosePr = vi.fn().mockResolvedValue(true);
+const mockToggleDraftPr = vi.fn().mockResolvedValue(true);
+
+vi.mock('@/services/pr-actions', () => ({
+  mergePr: (...args: unknown[]) => mockMergePr(...args),
+  bypassMergePr: (...args: unknown[]) => mockBypassMergePr(...args),
+  closePr: (...args: unknown[]) => mockClosePr(...args),
+  toggleDraftPr: (...args: unknown[]) => mockToggleDraftPr(...args),
 }));
 
 vi.mock('@/hooks/useClaudeActions', () => ({
@@ -239,8 +247,8 @@ describe('OverviewTab', () => {
 
   // ---- Action handlers ----
 
-  it('calls mergePullRequest when "Merge" is clicked', async () => {
-    const { mergePullRequest } = await import('@/services/github/mutations');
+  it('calls mergePr when "Merge" is clicked', async () => {
+    mockMergePr.mockClear();
     const pr = makePr({
       overallStatus: 'green',
       pullRequest: {
@@ -252,14 +260,17 @@ describe('OverviewTab', () => {
     });
     render(<OverviewTab pr={pr} />);
     fireEvent.click(screen.getByText('Merge'));
-    expect(mergePullRequest).toHaveBeenCalled();
+    expect(mockMergePr).toHaveBeenCalledWith(
+      expect.objectContaining({ number: 42, repoOwner: 'owner', repoName: 'repo' }),
+      expect.objectContaining({ method: 'squash' }),
+    );
   });
 
-  it('calls toggleDraft when "Mark Draft" is clicked', async () => {
-    const { toggleDraft } = await import('@/services/github/mutations');
+  it('calls toggleDraftPr when "Mark Draft" is clicked', async () => {
+    mockToggleDraftPr.mockClear();
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Mark Draft'));
-    expect(toggleDraft).toHaveBeenCalled();
+    expect(mockToggleDraftPr).toHaveBeenCalled();
   });
 
   it('shows confirm dialog when "Bypass Merge" is clicked', () => {
@@ -268,24 +279,22 @@ describe('OverviewTab', () => {
     expect(screen.getByRole('dialog', { name: 'Bypass merge protections?' })).toBeTruthy();
   });
 
-  it('calls bypassMergePullRequest when dialog confirm is clicked', async () => {
-    const { bypassMergePullRequest } = await import('@/services/github/mutations');
-    vi.mocked(bypassMergePullRequest).mockClear();
+  it('calls bypassMergePr when dialog confirm is clicked', async () => {
+    mockBypassMergePr.mockClear();
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Bypass Merge'));
     const dialog = screen.getByRole('dialog', { name: 'Bypass merge protections?' });
     fireEvent.click(within(dialog).getByText('Bypass Merge'));
-    expect(bypassMergePullRequest).toHaveBeenCalled();
+    expect(mockBypassMergePr).toHaveBeenCalled();
   });
 
-  it('does not call bypassMergePullRequest when dialog cancel is clicked', async () => {
-    const { bypassMergePullRequest } = await import('@/services/github/mutations');
-    vi.mocked(bypassMergePullRequest).mockClear();
+  it('does not call bypassMergePr when dialog cancel is clicked', async () => {
+    mockBypassMergePr.mockClear();
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Bypass Merge'));
     const dialog = screen.getByRole('dialog', { name: 'Bypass merge protections?' });
     fireEvent.click(within(dialog).getByText('Cancel'));
-    expect(bypassMergePullRequest).not.toHaveBeenCalled();
+    expect(mockBypassMergePr).not.toHaveBeenCalled();
   });
 
   it('shows "Summarize with AI" button when API key is configured and can be clicked', () => {
@@ -308,9 +317,8 @@ describe('OverviewTab', () => {
     expect(screen.getByText('Checkout')).toBeTruthy();
   });
 
-  it('calls celebrateMerge after successful merge', async () => {
-    const { mergePullRequest } = await import('@/services/github/mutations');
-    vi.mocked(mergePullRequest).mockResolvedValue(undefined);
+  it('forwards the PR ref to mergePr (which celebrates internally)', async () => {
+    mockMergePr.mockClear().mockResolvedValue(true);
 
     const pr = makePr({
       overallStatus: 'green',
@@ -325,15 +333,15 @@ describe('OverviewTab', () => {
     fireEvent.click(screen.getByText('Merge'));
 
     await vi.waitFor(() => {
-      expect(mockCelebrate).toHaveBeenCalledWith(
+      expect(mockMergePr).toHaveBeenCalledWith(
         expect.objectContaining({ number: 42, repoOwner: 'owner', repoName: 'repo' }),
+        expect.any(Object),
       );
     });
   });
 
   it('does not render the inline MergeCelebration card', async () => {
-    const { mergePullRequest } = await import('@/services/github/mutations');
-    vi.mocked(mergePullRequest).mockResolvedValue(undefined);
+    mockMergePr.mockClear().mockResolvedValue(true);
 
     const pr = makePr({
       overallStatus: 'green',
@@ -348,7 +356,7 @@ describe('OverviewTab', () => {
     fireEvent.click(screen.getByText('Merge'));
 
     await vi.waitFor(() => {
-      expect(mockCelebrate).toHaveBeenCalled();
+      expect(mockMergePr).toHaveBeenCalled();
     });
     expect(container.querySelector('[data-merge-celebration]')).toBeNull();
   });
@@ -374,24 +382,25 @@ describe('OverviewTab', () => {
     expect(screen.getByRole('dialog', { name: 'Close pull request?' })).toBeTruthy();
   });
 
-  it('calls closePullRequest when dialog confirm is clicked', async () => {
-    const { closePullRequest } = await import('@/services/github/mutations');
-    vi.mocked(closePullRequest).mockClear();
+  it('calls closePr when dialog confirm is clicked', async () => {
+    mockClosePr.mockClear();
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Close PR'));
     const dialog = screen.getByRole('dialog', { name: 'Close pull request?' });
     fireEvent.click(within(dialog).getByText('Close PR'));
-    expect(closePullRequest).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', 42);
+    expect(mockClosePr).toHaveBeenCalledWith(
+      { repoOwner: 'owner', repoName: 'repo', number: 42 },
+      expect.any(Object),
+    );
   });
 
-  it('does not call closePullRequest when dialog cancel is clicked', async () => {
-    const { closePullRequest } = await import('@/services/github/mutations');
-    vi.mocked(closePullRequest).mockClear();
+  it('does not call closePr when dialog cancel is clicked', async () => {
+    mockClosePr.mockClear();
     render(<OverviewTab pr={makePr()} />);
     fireEvent.click(screen.getByText('Close PR'));
     const dialog = screen.getByRole('dialog', { name: 'Close pull request?' });
     fireEvent.click(within(dialog).getByText('Cancel'));
-    expect(closePullRequest).not.toHaveBeenCalled();
+    expect(mockClosePr).not.toHaveBeenCalled();
   });
 
   // ---- Primitive migration assertions (PR #4 / Task 4) ----

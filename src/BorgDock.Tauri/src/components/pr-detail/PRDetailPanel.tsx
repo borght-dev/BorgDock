@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
@@ -6,6 +5,7 @@ import { WindowControls } from '@/components/shared/chrome';
 import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
+import { openPrDetail } from '@/services/windows';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ChecksTab } from './ChecksTab';
@@ -224,13 +224,11 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
     const owner = pr.pullRequest.repoOwner;
     const repo = pr.pullRequest.repoName;
     const number = pr.pullRequest.number;
-    log.info('pop-out clicked', { owner, repo, number });
-    invoke('open_pr_detail_window', { owner, repo, number })
-      .then(() => {
-        log.info('pop-out invoke succeeded', { owner, repo, number });
-        selectPr(null);
-      })
-      .catch((err) => log.error('pop-out invoke failed', err, { owner, repo, number }));
+    openPrDetail({ owner, repo, number })
+      .then(() => selectPr(null))
+      .catch(() => {
+        // openPrDetail logs the failure; nothing else to do here.
+      });
   }, [pr, selectPr]);
 
   const handleOpenInBrowser = useCallback(async () => {

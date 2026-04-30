@@ -9,20 +9,14 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button, Card } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
-import {
-  bypassMergePullRequest,
-  closePullRequest,
-  mergePullRequest,
-  toggleDraft,
-} from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
-import { celebrateMerge } from '@/services/merge-celebration';
+import { bypassMergePr, closePr, mergePr, toggleDraftPr } from '@/services/pr-actions';
+import { findRepoConfig } from '@/services/repo-lookup';
 import { useOnboardingStore } from '@/stores/onboarding-store';
-import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
+import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
 import { CheckoutPanel } from './CheckoutPanel';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
@@ -139,39 +133,7 @@ async function handleOpenInBrowser(url: string) {
 
 async function handleCopyBranch(branch: string) {
   log.info('copy-branch clicked', { branch });
-  try {
-    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-    await writeText(branch);
-    log.info('clipboard writeText succeeded', { branch });
-    return;
-  } catch (err) {
-    log.warn('tauri clipboard plugin failed, trying navigator.clipboard', {
-      error: String(err),
-    });
-  }
-  try {
-    await navigator.clipboard?.writeText(branch);
-    log.info('navigator.clipboard succeeded', { branch });
-    return;
-  } catch (err) {
-    log.warn('navigator.clipboard failed, trying execCommand fallback', {
-      error: String(err),
-    });
-  }
-  try {
-    const ta = document.createElement('textarea');
-    ta.value = branch;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    if (!ok) throw new Error('execCommand returned false');
-    log.info('execCommand copy succeeded', { branch });
-  } catch (err) {
-    log.error('all clipboard strategies failed', err, { branch });
-  }
+  await copyToClipboard(branch);
 }
 
 export function OverviewTab({ pr }: OverviewTabProps) {
@@ -184,7 +146,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
   const repoConfig = useSettingsStore((s) =>
-    s.settings.repos.find((r) => r.owner === p.repoOwner && r.name === p.repoName),
+    findRepoConfig(s.settings.repos, p.repoOwner, p.repoName),
   );
   const repoPath = repoConfig?.worktreeBasePath ?? '';
   const worktreeSubfolder = repoConfig?.worktreeSubfolder ?? '.worktrees';
@@ -238,90 +200,69 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     setCheckoutOpen((open) => !open);
   }, []);
 
-  // Merge / bypass / close move the PR off the open list, so we defer the
-  // store refresh briefly to give the celebration toast / status message time
-  // to land before this panel unmounts.
-  const TERMINAL_REFRESH_DELAY_MS = 1500;
-  const scheduleTerminalRefresh = useCallback(() => {
-    setTimeout(() => {
-      void usePrStore.getState().refreshPr(p.repoOwner, p.repoName, p.number);
-    }, TERMINAL_REFRESH_DELAY_MS);
-  }, [p.repoOwner, p.repoName, p.number]);
+  const prRef = {
+    repoOwner: p.repoOwner,
+    repoName: p.repoName,
+    number: p.number,
+    title: p.title,
+    htmlUrl: p.htmlUrl,
+  };
+
+  /**
+   * Capture errors from a pr-actions call into the local "actionStatus" pill
+   * so the failure is visible inline in the OverviewTab, instead of (or in
+   * addition to) the global notification toast.
+   */
+  const captureErrorAsStatus = useCallback(
+    (label: string) => (_title: string, err: unknown) => {
+      setActionStatus(`${label}: ${parseError(err).message}`);
+      setTimeout(() => setActionStatus(''), 5000);
+    },
+    [],
+  );
 
   const handleMerge = useCallback(async () => {
-    const client = getClient();
-    if (!client) return;
     setActionStatus('Merging...');
-    try {
-      await mergePullRequest(client, p.repoOwner, p.repoName, p.number, 'squash');
-      setActionStatus('');
-      celebrateMerge({
-        number: p.number,
-        title: p.title,
-        repoOwner: p.repoOwner,
-        repoName: p.repoName,
-        htmlUrl: p.htmlUrl,
-      });
-      scheduleTerminalRefresh();
-    } catch (err) {
-      setActionStatus(`Merge failed: ${err}`);
-      setTimeout(() => setActionStatus(''), 5000);
-    }
-  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, scheduleTerminalRefresh]);
+    const ok = await mergePr(prRef, {
+      method: 'squash',
+      onError: captureErrorAsStatus('Merge failed'),
+    });
+    if (ok) setActionStatus('');
+  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, captureErrorAsStatus]);
 
   const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
 
   const handleBypassExecute = useCallback(async () => {
     setConfirmBypass(false);
     setActionStatus('Merging...');
-    try {
-      await bypassMergePullRequest(p.repoOwner, p.repoName, p.number);
-      setActionStatus('');
-      celebrateMerge({
-        number: p.number,
-        title: p.title,
-        repoOwner: p.repoOwner,
-        repoName: p.repoName,
-        htmlUrl: p.htmlUrl,
-      });
-      scheduleTerminalRefresh();
-    } catch (err) {
-      setActionStatus(`Bypass merge failed: ${err}`);
-      setTimeout(() => setActionStatus(''), 5000);
-    }
-  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, scheduleTerminalRefresh]);
+    const ok = await bypassMergePr(prRef, {
+      onError: captureErrorAsStatus('Bypass merge failed'),
+    });
+    if (ok) setActionStatus('');
+  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, captureErrorAsStatus]);
 
   const handleCloseConfirm = useCallback(() => setConfirmClose(true), []);
 
   const handleCloseExecute = useCallback(async () => {
     setConfirmClose(false);
-    const client = getClient();
-    if (!client) return;
     setActionStatus('Closing...');
-    try {
-      await closePullRequest(client, p.repoOwner, p.repoName, p.number);
-      setActionStatus('PR closed');
-      scheduleTerminalRefresh();
-    } catch (err) {
-      setActionStatus(`Close failed: ${err}`);
-    }
+    const ok = await closePr(
+      { repoOwner: p.repoOwner, repoName: p.repoName, number: p.number },
+      { onError: captureErrorAsStatus('Close failed') },
+    );
+    if (ok) setActionStatus('PR closed');
     setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
+  }, [p.repoOwner, p.repoName, p.number, captureErrorAsStatus]);
 
   const handleToggleDraft = useCallback(async () => {
-    const client = getClient();
-    if (!client) return;
     setActionStatus(p.isDraft ? 'Marking ready...' : 'Marking draft...');
-    try {
-      await toggleDraft(client, p.repoOwner, p.repoName, p.number, !p.isDraft);
-      setActionStatus(p.isDraft ? 'Marked ready!' : 'Marked draft!');
-      // Toggle-draft keeps the PR open — refresh immediately so pills update.
-      void usePrStore.getState().refreshPr(p.repoOwner, p.repoName, p.number);
-    } catch (err) {
-      setActionStatus(`Failed: ${err}`);
-    }
+    const ok = await toggleDraftPr(
+      { repoOwner: p.repoOwner, repoName: p.repoName, number: p.number, isDraft: p.isDraft },
+      { onError: captureErrorAsStatus(p.isDraft ? 'Mark ready failed' : 'Mark draft failed') },
+    );
+    if (ok) setActionStatus(p.isDraft ? 'Marked ready!' : 'Marked draft!');
     setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number, p.isDraft]);
+  }, [p.repoOwner, p.repoName, p.number, p.isDraft, captureErrorAsStatus]);
 
   const isReady =
     pr.overallStatus === 'green' &&

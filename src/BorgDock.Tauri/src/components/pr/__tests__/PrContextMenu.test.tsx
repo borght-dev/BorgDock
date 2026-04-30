@@ -11,6 +11,27 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 }));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
 
+const mockCopyToClipboard = vi.fn().mockResolvedValue(true);
+vi.mock('@/utils/clipboard', () => ({
+  copyToClipboard: (...args: unknown[]) => mockCopyToClipboard(...args),
+}));
+
+const mockMergePr = vi.fn().mockResolvedValue(true);
+const mockCheckoutPrBranch = vi.fn().mockResolvedValue(true);
+const mockRerunChecks = vi.fn().mockResolvedValue(true);
+const mockOpenPrInBrowser = vi.fn().mockResolvedValue(true);
+vi.mock('@/services/pr-actions', () => ({
+  mergePr: (...args: unknown[]) => mockMergePr(...args),
+  checkoutPrBranch: (...args: unknown[]) => mockCheckoutPrBranch(...args),
+  rerunChecks: (...args: unknown[]) => mockRerunChecks(...args),
+  openPrInBrowser: (...args: unknown[]) => mockOpenPrInBrowser(...args),
+}));
+
+const mockOpenPrDetail = vi.fn().mockResolvedValue(undefined);
+vi.mock('@/services/windows', () => ({
+  openPrDetail: (...args: unknown[]) => mockOpenPrDetail(...args),
+}));
+
 vi.mock('@/stores/settings-store', () => {
   const fn = vi.fn();
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
@@ -94,6 +115,12 @@ describe('PrContextMenu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCopyToClipboard.mockClear().mockResolvedValue(true);
+    mockMergePr.mockClear().mockResolvedValue(true);
+    mockCheckoutPrBranch.mockClear().mockResolvedValue(true);
+    mockRerunChecks.mockClear().mockResolvedValue(true);
+    mockOpenPrInBrowser.mockClear().mockResolvedValue(true);
+    mockOpenPrDetail.mockClear().mockResolvedValue(undefined);
     onClose = vi.fn();
     onConfirmAction = vi.fn();
   });
@@ -289,8 +316,7 @@ describe('PrContextMenu', () => {
     expect(menu.style.top).toBe('300px');
   });
 
-  it('calls openUrl on "Open in GitHub" click', async () => {
-    const { openUrl } = await import('@tauri-apps/plugin-opener');
+  it('dispatches openPrInBrowser on "Open in GitHub" click', async () => {
     render(
       <PrContextMenu
         pr={makePr()}
@@ -300,12 +326,11 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Open in GitHub'));
-    expect(openUrl).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
+    expect(mockOpenPrInBrowser).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('calls writeText on "Copy branch name" click', async () => {
-    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+  it('copies the branch name via the clipboard helper on "Copy branch name" click', async () => {
     render(
       <PrContextMenu
         pr={makePr()}
@@ -315,11 +340,10 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Copy branch name'));
-    expect(writeText).toHaveBeenCalledWith('feature/test');
+    expect(mockCopyToClipboard).toHaveBeenCalledWith('feature/test');
   });
 
-  it('calls writeText on "Copy PR URL" click', async () => {
-    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+  it('copies the PR URL via the clipboard helper on "Copy PR URL" click', async () => {
     render(
       <PrContextMenu
         pr={makePr()}
@@ -329,11 +353,10 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Copy PR URL'));
-    expect(writeText).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
+    expect(mockCopyToClipboard).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
   });
 
   it('copies errors for Claude when there are failing checks', async () => {
-    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
     render(
       <PrContextMenu
         pr={makePr({ failedCheckNames: ['build', 'lint'] })}
@@ -343,12 +366,11 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Copy errors for Claude'));
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('- build'));
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('- lint'));
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(expect.stringContaining('- build'));
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(expect.stringContaining('- lint'));
   });
 
-  it('calls checkout with correct params', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
+  it('dispatches checkoutPrBranch with the PR ref on "Checkout branch" click', async () => {
     render(
       <PrContextMenu
         pr={makePr()}
@@ -358,7 +380,11 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Checkout branch'));
-    expect(invoke).toHaveBeenCalledWith('git_fetch', { repoPath: '/code/repo', remote: 'origin' });
+    expect(mockCheckoutPrBranch).toHaveBeenCalledWith({
+      repoOwner: 'test',
+      repoName: 'repo',
+      headRef: 'feature/test',
+    });
   });
 
   it('calls fixWithClaude when "Fix with Claude" is clicked', () => {
@@ -387,7 +413,7 @@ describe('PrContextMenu', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('calls open_pr_detail_window when "Open in detail window" is clicked', async () => {
+  it('dispatches openPrDetail when "Open in detail window" is clicked', async () => {
     render(
       <PrContextMenu
         pr={makePr()}
@@ -397,7 +423,7 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Open in detail window'));
-    // invoke is called async, so just check onClose was called
+    expect(mockOpenPrDetail).toHaveBeenCalledWith({ owner: 'test', repo: 'repo', number: 42 });
     expect(onClose).toHaveBeenCalled();
   });
 

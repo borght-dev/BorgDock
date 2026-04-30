@@ -1,18 +1,22 @@
 import { getVersion } from '@tauri-apps/api/app';
-import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef } from 'react';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
+import { openWhatsNew as openWhatsNewWindow } from '@/services/windows';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
 import { semverGt, semverLte } from '@/utils/semver';
 
 const log = createLogger('useWhatsNew');
 
+/**
+ * Re-exported for backwards compatibility — the canonical implementation
+ * is in `services/windows.ts`. New code should import from there.
+ */
 export async function openWhatsNew(version: string | null = null): Promise<void> {
   try {
-    await invoke('open_whats_new_window', { version });
-  } catch (err) {
-    log.error('open_whats_new_window failed', err);
+    await openWhatsNewWindow(version);
+  } catch {
+    // openWhatsNewWindow logs the failure already.
   }
 }
 

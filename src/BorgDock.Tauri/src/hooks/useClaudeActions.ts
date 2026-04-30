@@ -7,6 +7,7 @@ import {
   launchClaude,
   writePromptFile,
 } from '@/services/claude-launcher';
+import { findRepoConfig } from '@/services/repo-lookup';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { ParsedError, PullRequestWithChecks } from '@/types';
@@ -19,9 +20,7 @@ export function useClaudeActions() {
   const showNotification = useNotificationStore((s) => s.show);
 
   const findRepoSettings = useCallback(
-    (owner: string, name: string) => {
-      return settings.repos.find((r) => r.owner === owner && r.name === name);
-    },
+    (owner: string, name: string) => findRepoConfig(settings.repos, owner, name),
     [settings.repos],
   );
 

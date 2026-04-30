@@ -123,15 +123,11 @@ export function FlyoutPrContextMenu({
 
   const handleOpenDetail = () => {
     void (async () => {
+      const { openPrDetail } = await import('@/services/windows');
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('open_pr_detail_window', {
-          owner: pr.repoOwner,
-          repo: pr.repoName,
-          number: pr.number,
-        });
+        await openPrDetail({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
       } catch {
-        // ignore
+        // ignore — openPrDetail already logs.
       }
     })();
     onClose();

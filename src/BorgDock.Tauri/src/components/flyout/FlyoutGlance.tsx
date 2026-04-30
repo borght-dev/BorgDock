@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshIcon } from '@/components/shared/icons';
 import { Dot, IconButton } from '@/components/shared/primitives';
-import { createLogger } from '@/services/logger';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import type { ToastPayload } from './flyout-mode';
 import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
 import { FlyoutPrRow } from './FlyoutPrRow';
-
-const log = createLogger('FlyoutGlance');
 
 /** Payload sent from the main window via the 'flyout-update' event. */
 export interface FlyoutData {
@@ -177,25 +174,11 @@ export function FlyoutGlance({
 
   const handleClickPr = useCallback(
     async (pr: FlyoutPr) => {
-      log.info('PR clicked', { owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
+      const { openPrDetail } = await import('@/services/windows');
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('open_pr_detail_window', {
-          owner: pr.repoOwner,
-          repo: pr.repoName,
-          number: pr.number,
-        });
-        log.info('open_pr_detail_window succeeded', {
-          owner: pr.repoOwner,
-          repo: pr.repoName,
-          number: pr.number,
-        });
-      } catch (err) {
-        log.error('handleClickPr failed', err, {
-          owner: pr.repoOwner,
-          repo: pr.repoName,
-          number: pr.number,
-        });
+        await openPrDetail({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
+      } catch {
+        // openPrDetail logs the failure already; swallow so the flyout still closes.
       }
       onClose();
     },

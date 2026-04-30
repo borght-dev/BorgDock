@@ -1,22 +1,27 @@
-import { invoke } from '@tauri-apps/api/core';
-import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { rerunWorkflow } from '@/services/github/checks';
-import { celebrateMerge } from '@/services/merge-celebration';
 import {
-  bypassMergePullRequest,
-  closePullRequest,
-  mergePullRequest,
-  toggleDraft,
-} from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
+  bypassMergePr,
+  checkoutPrBranch,
+  closePr,
+  mergePr,
+  openPrInBrowser,
+  rerunChecks,
+  toggleDraftPr,
+} from '@/services/pr-actions';
+import { findRepoConfig } from '@/services/repo-lookup';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
+import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
 
+/**
+ * Hook bundling the action handlers used by the sidebar PR card +
+ * `PrContextMenu`. Each handler delegates to the canonical implementation
+ * in `services/pr-actions.ts`; this file owns only the dialog-state plumbing
+ * (confirmAction, contextMenu) and the React event glue.
+ */
 export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const { pullRequest: pr, checks, failedCheckNames } = prWithChecks;
   const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
@@ -26,7 +31,7 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [confirmAction, setConfirmAction] = useState<'close' | 'bypass' | 'draft' | null>(null);
 
-  const repoConfig = settings.repos.find((r) => r.owner === pr.repoOwner && r.name === pr.repoName);
+  const repoConfig = findRepoConfig(settings.repos, pr.repoOwner, pr.repoName);
   const repoPath = repoConfig?.worktreeBasePath || '';
 
   const failedCheck = checks.find(
@@ -48,13 +53,14 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleRerun = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const client = getClient();
-      if (!client || !failedCheck) return;
-      rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch((err) =>
-        showError('Failed to re-run checks', err),
-      );
+      if (!failedCheck) return;
+      void rerunChecks({
+        repoOwner: pr.repoOwner,
+        repoName: pr.repoName,
+        checkSuiteId: failedCheck.checkSuiteId,
+      });
     },
-    [failedCheck, pr.repoOwner, pr.repoName, showError],
+    [failedCheck, pr.repoOwner, pr.repoName],
   );
 
   const handleFix = useCallback(
@@ -90,24 +96,26 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleOpenInBrowser = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      openUrl(pr.htmlUrl).catch((err) => showError('Failed to open URL', err));
+      void openPrInBrowser(pr.htmlUrl);
     },
-    [pr.htmlUrl, showError],
+    [pr.htmlUrl],
   );
 
   const handleCopyBranch = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      writeText(pr.headRef)
-        .then(() =>
+      void copyToClipboard(pr.headRef).then((ok) => {
+        if (ok) {
           showNotification({
             title: 'Copied',
             message: pr.headRef,
             severity: 'success',
             actions: [],
-          }),
-        )
-        .catch((err) => showError('Failed to copy branch', err));
+          });
+        } else {
+          showError('Failed to copy branch', new Error('Clipboard unavailable'));
+        }
+      });
     },
     [pr.headRef, showNotification, showError],
   );
@@ -115,20 +123,12 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleCheckout = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!repoPath) return;
-      invoke('git_fetch', { repoPath, remote: 'origin' })
-        .then(() => invoke('git_checkout', { repoPath, branch: pr.headRef }))
-        .then(() =>
-          showNotification({
-            title: 'Checked out',
-            message: pr.headRef,
-            severity: 'success',
-            actions: [],
-          }),
-        )
-        .catch((err) => showError('Checkout failed', err));
+      void checkoutPrBranch(
+        { repoOwner: pr.repoOwner, repoName: pr.repoName, headRef: pr.headRef },
+        { notifyOnSuccess: true },
+      );
     },
-    [repoPath, pr.headRef, showNotification, showError],
+    [pr.repoOwner, pr.repoName, pr.headRef],
   );
 
   const handleToggleDraft = useCallback((e: React.MouseEvent) => {
@@ -137,32 +137,27 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   }, []);
 
   const executeToggleDraft = useCallback(() => {
-    const client = getClient();
-    if (!client) return;
-    toggleDraft(client, pr.repoOwner, pr.repoName, pr.number, !pr.isDraft).catch((err) =>
-      showError('Failed to toggle draft', err),
-    );
+    void toggleDraftPr({
+      repoOwner: pr.repoOwner,
+      repoName: pr.repoName,
+      number: pr.number,
+      isDraft: pr.isDraft,
+    });
     setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, pr.isDraft, showError]);
+  }, [pr.repoOwner, pr.repoName, pr.number, pr.isDraft]);
 
   const handleMerge = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const client = getClient();
-      if (!client) return;
-      mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number)
-        .then(() => {
-          celebrateMerge({
-            number: pr.number,
-            title: pr.title,
-            repoOwner: pr.repoOwner,
-            repoName: pr.repoName,
-            htmlUrl: pr.htmlUrl,
-          });
-        })
-        .catch((err) => showError('Merge failed', err));
+      void mergePr({
+        repoOwner: pr.repoOwner,
+        repoName: pr.repoName,
+        number: pr.number,
+        title: pr.title,
+        htmlUrl: pr.htmlUrl,
+      });
     },
-    [pr.repoOwner, pr.repoName, pr.number, pr.title, pr.htmlUrl, showError],
+    [pr.repoOwner, pr.repoName, pr.number, pr.title, pr.htmlUrl],
   );
 
   const handleBypassMerge = useCallback((e: React.MouseEvent) => {
@@ -171,19 +166,15 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   }, []);
 
   const executeBypassMerge = useCallback(() => {
-    bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number)
-      .then(() => {
-        celebrateMerge({
-          number: pr.number,
-          title: pr.title,
-          repoOwner: pr.repoOwner,
-          repoName: pr.repoName,
-          htmlUrl: pr.htmlUrl,
-        });
-      })
-      .catch((err) => showError('Bypass merge failed', err));
+    void bypassMergePr({
+      repoOwner: pr.repoOwner,
+      repoName: pr.repoName,
+      number: pr.number,
+      title: pr.title,
+      htmlUrl: pr.htmlUrl,
+    });
     setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, pr.title, pr.htmlUrl, showError]);
+  }, [pr.repoOwner, pr.repoName, pr.number, pr.title, pr.htmlUrl]);
 
   const handleClose = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -191,13 +182,9 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   }, []);
 
   const executeClose = useCallback(() => {
-    const client = getClient();
-    if (!client) return;
-    closePullRequest(client, pr.repoOwner, pr.repoName, pr.number).catch((err) =>
-      showError('Close PR failed', err),
-    );
+    void closePr({ repoOwner: pr.repoOwner, repoName: pr.repoName, number: pr.number });
     setConfirmAction(null);
-  }, [pr.repoOwner, pr.repoName, pr.number, showError]);
+  }, [pr.repoOwner, pr.repoName, pr.number]);
 
   const handleCopyErrors = useCallback(
     (e: React.MouseEvent) => {
@@ -208,16 +195,18 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
         '',
         ...failedCheckNames.map((name: string) => `- ${name}`),
       ].join('\n');
-      writeText(markdown)
-        .then(() =>
+      void copyToClipboard(markdown).then((ok) => {
+        if (ok) {
           showNotification({
             title: 'Copied to clipboard',
             message: `${failedCheckNames.length} failed check(s) copied`,
             severity: 'success',
             actions: [],
-          }),
-        )
-        .catch((err) => showError('Failed to copy errors', err));
+          });
+        } else {
+          showError('Failed to copy errors', new Error('Clipboard unavailable'));
+        }
+      });
     },
     [failedCheckNames, pr.number, showNotification, showError],
   );

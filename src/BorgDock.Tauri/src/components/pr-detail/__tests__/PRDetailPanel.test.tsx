@@ -7,6 +7,11 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 
+const mockOpenPrDetail = vi.fn();
+vi.mock('@/services/windows', () => ({
+  openPrDetail: (...args: unknown[]) => mockOpenPrDetail(...args),
+}));
+
 // Mock all tab sub-components to isolate PrDetailPanel logic
 vi.mock('../OverviewTab', () => ({
   OverviewTab: ({ pr }: { pr: PullRequestWithChecks }) => (
@@ -148,17 +153,15 @@ describe('PrDetailPanel', () => {
     expect(selectPrSpy).toHaveBeenCalledWith(null);
   });
 
-  it('pop-out button invokes open_pr_detail_window and deselects PR', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    const mockInvoke = invoke as ReturnType<typeof vi.fn>;
-    mockInvoke.mockResolvedValue(undefined);
+  it('pop-out button dispatches openPrDetail and deselects PR', async () => {
+    mockOpenPrDetail.mockResolvedValue(undefined);
     const selectPrSpy = vi.fn();
     useUiStore.setState({ selectPr: selectPrSpy });
 
     render(<PrDetailPanel pr={makePr()} />);
     fireEvent.click(screen.getByLabelText('Pop out'));
 
-    expect(mockInvoke).toHaveBeenCalledWith('open_pr_detail_window', {
+    expect(mockOpenPrDetail).toHaveBeenCalledWith({
       owner: 'owner',
       repo: 'repo',
       number: 42,
@@ -168,9 +171,7 @@ describe('PrDetailPanel', () => {
   });
 
   it('keeps the inline panel open when pop-out fails', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    const mockInvoke = invoke as ReturnType<typeof vi.fn>;
-    mockInvoke.mockRejectedValue(new Error('window open failed'));
+    mockOpenPrDetail.mockRejectedValue(new Error('window open failed'));
     const selectPrSpy = vi.fn();
     useUiStore.setState({ selectPr: selectPrSpy });
 
@@ -179,7 +180,7 @@ describe('PrDetailPanel', () => {
 
     // Wait for the rejected promise to settle, then assert no navigation happened.
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('open_pr_detail_window', {
+      expect(mockOpenPrDetail).toHaveBeenCalledWith({
         owner: 'owner',
         repo: 'repo',
         number: 42,

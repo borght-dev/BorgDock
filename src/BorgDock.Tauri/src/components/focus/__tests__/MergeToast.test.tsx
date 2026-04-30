@@ -2,21 +2,11 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MergeToast } from '../MergeToast';
 
-const mockMergePullRequest = vi.fn().mockResolvedValue(undefined);
-const mockGetClient = vi.fn().mockReturnValue({ put: vi.fn() });
+const mockMergePr = vi.fn().mockResolvedValue(true);
 const mockNotificationShow = vi.fn();
-const mockCelebrate = vi.fn();
 
-vi.mock('@/services/github/mutations', () => ({
-  mergePullRequest: (...args: unknown[]) => mockMergePullRequest(...args),
-}));
-
-vi.mock('@/services/github/singleton', () => ({
-  getClient: () => mockGetClient(),
-}));
-
-vi.mock('@/services/merge-celebration', () => ({
-  celebrateMerge: (...args: unknown[]) => mockCelebrate(...args),
+vi.mock('@/services/pr-actions', () => ({
+  mergePr: (...args: unknown[]) => mockMergePr(...args),
 }));
 
 vi.mock('@/stores/notification-store', () => ({
@@ -44,10 +34,8 @@ function requireQueueMerge(): (owner: string, repo: string, prNumber: number) =>
 describe('MergeToast', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    mockMergePullRequest.mockClear().mockResolvedValue(undefined);
-    mockGetClient.mockClear().mockReturnValue({ put: vi.fn() });
+    mockMergePr.mockClear().mockResolvedValue(true);
     mockNotificationShow.mockClear();
-    mockCelebrate.mockClear();
     delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
   });
 
@@ -119,10 +107,10 @@ describe('MergeToast', () => {
     await act(async () => {
       vi.advanceTimersByTime(4000);
     });
-    expect(mockMergePullRequest).not.toHaveBeenCalled();
+    expect(mockMergePr).not.toHaveBeenCalled();
   });
 
-  it('executes merge after 3-second timeout', async () => {
+  it('executes merge after 3-second timeout, pinned to squash method', async () => {
     render(<MergeToast />);
     act(() => {
       requireQueueMerge()('owner', 'repo', 42);
@@ -130,38 +118,20 @@ describe('MergeToast', () => {
     await act(async () => {
       vi.advanceTimersByTime(3000);
     });
-    expect(mockMergePullRequest).toHaveBeenCalledWith(
-      expect.anything(),
-      'owner',
-      'repo',
-      42,
-      'squash',
+    expect(mockMergePr).toHaveBeenCalledWith(
+      expect.objectContaining({ number: 42, repoOwner: 'owner', repoName: 'repo' }),
+      expect.objectContaining({ method: 'squash' }),
     );
   });
 
-  it('celebrates after successful merge', async () => {
-    render(<MergeToast />);
-    act(() => {
-      requireQueueMerge()('owner', 'repo', 42);
+  it('uses a PR-specific error title via the onError override', async () => {
+    // Drive the onError path by capturing the opts and invoking it ourselves —
+    // pr-actions itself is mocked so it never fails on its own.
+    let capturedOpts: { onError?: (title: string, err: unknown) => void } | undefined;
+    mockMergePr.mockImplementationOnce((_pr: unknown, opts: typeof capturedOpts) => {
+      capturedOpts = opts;
+      return Promise.resolve(true);
     });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    expect(mockCelebrate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        number: 42,
-        repoOwner: 'owner',
-        repoName: 'repo',
-      }),
-    );
-    // The legacy success-severity toast is no longer fired.
-    expect(mockNotificationShow).not.toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success' }),
-    );
-  });
-
-  it('shows error notification when merge fails', async () => {
-    mockMergePullRequest.mockRejectedValueOnce(new Error('Merge conflict'));
     render(<MergeToast />);
     act(() => {
       requireQueueMerge()('owner', 'repo', 99);
@@ -169,24 +139,14 @@ describe('MergeToast', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000);
     });
+    expect(capturedOpts?.onError).toBeDefined();
+    capturedOpts?.onError?.('ignored', new Error('Merge conflict'));
     expect(mockNotificationShow).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Failed to merge PR #99',
         severity: 'error',
       }),
     );
-  });
-
-  it('does not merge when no client is available', async () => {
-    mockGetClient.mockReturnValue(null);
-    render(<MergeToast />);
-    act(() => {
-      requireQueueMerge()('owner', 'repo', 42);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(mockMergePullRequest).not.toHaveBeenCalled();
   });
 
   it('supports multiple concurrent toasts', () => {

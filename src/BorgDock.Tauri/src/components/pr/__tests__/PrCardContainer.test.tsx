@@ -32,6 +32,16 @@ vi.mock('@/services/work-item-linker', () => ({
   detectWorkItemIds: vi.fn(() => []),
 }));
 
+vi.mock('@/services/pr-actions', () => ({
+  mergePr: vi.fn().mockResolvedValue(true),
+  bypassMergePr: vi.fn().mockResolvedValue(true),
+  closePr: vi.fn().mockResolvedValue(true),
+  toggleDraftPr: vi.fn().mockResolvedValue(true),
+  rerunChecks: vi.fn().mockResolvedValue(true),
+  checkoutPrBranch: vi.fn().mockResolvedValue(true),
+  openPrInBrowser: vi.fn().mockResolvedValue(true),
+}));
+
 // Mock hooks
 vi.mock('@/hooks/useClaudeActions', () => ({
   useClaudeActions: () => ({
@@ -465,9 +475,9 @@ describe('PrCardContainer', () => {
   });
 
   describe('button click handlers (Variant A pill bar)', () => {
-    it('calls openUrl when primary "open" action is clicked', async () => {
-      const { openUrl } = await import('@tauri-apps/plugin-opener');
-      // Force primary = 'open' by making PR not failing, not approved+own, not reviewing, not own.
+    it('dispatches openPrInBrowser when primary "open" action is clicked', async () => {
+      const { openPrInBrowser } = await import('@/services/pr-actions');
+      // Force primary = 'open' by making PR not failing, not ready, not reviewing, not own.
       const { container } = render(
         <PrCardContainer
           prWithChecks={makePr({
@@ -481,18 +491,18 @@ describe('PrCardContainer', () => {
       const primary = container.querySelector('[data-pr-primary-action="open"]');
       expect(primary).toBeInTheDocument();
       fireEvent.click(primary!);
-      expect(openUrl).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
+      expect(openPrInBrowser).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
     });
 
-    it('calls invoke for git_fetch when secondary Checkout is clicked', async () => {
-      const { invoke } = await import('@tauri-apps/api/core');
+    it('dispatches checkoutPrBranch when secondary Checkout is clicked', async () => {
+      const { checkoutPrBranch } = await import('@/services/pr-actions');
       const { container } = render(<PrCardContainer prWithChecks={makePr()} />);
       const checkoutBtn = container.querySelector('[data-pr-action="checkout"]')!;
       fireEvent.click(checkoutBtn);
-      expect(invoke).toHaveBeenCalledWith('git_fetch', {
-        repoPath: '/code/repo',
-        remote: 'origin',
-      });
+      expect(checkoutPrBranch).toHaveBeenCalledWith(
+        { repoOwner: 'test', repoName: 'repo', headRef: 'feature/x' },
+        { notifyOnSuccess: true },
+      );
     });
 
     it('opens the context menu when More is clicked', async () => {

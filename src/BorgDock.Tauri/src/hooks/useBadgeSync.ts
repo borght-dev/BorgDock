@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { rerunWorkflow } from '@/services/github/checks';
-import { mergePullRequest } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
-import { celebrateMerge } from '@/services/merge-celebration';
 import { computeMergeScore } from '@/services/merge-score';
 import type { PrActionId } from '@/services/pr-action-resolver';
+import {
+  checkoutPrBranch,
+  mergePr,
+  openPrInBrowser,
+  rerunChecks,
+} from '@/services/pr-actions';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -96,6 +98,40 @@ export function useBadgeSync() {
   const prevHashRef = useRef('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Build the live flyout payload from the current store snapshot, push it
+   * into the Rust-side cache (`cache_flyout_data`), and broadcast it to any
+   * open flyout window (`flyout-update`). Both sides do the same work, so
+   * the request-listener path also caches — previously it skipped the cache
+   * and the next cold-open of the flyout read stale data.
+   */
+  const syncFlyout = async (): Promise<void> => {
+    const prs = usePrStore.getState().pullRequests;
+    const user = usePrStore.getState().username;
+    const pollRaw = usePrStore.getState().lastPollTime;
+    const st = useSettingsStore.getState().settings;
+    const payload = buildFlyoutPayload(
+      prs,
+      user,
+      st.ui.theme,
+      st.ui.globalHotkey || 'Ctrl+Win+Shift+G',
+      pollRaw ? pollRaw.getTime() : null,
+      usePrStore.getState().focusCount(),
+    );
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('cache_flyout_data', { payload: JSON.stringify(payload) });
+    } catch {
+      // ignore — Rust cache may not exist on older builds
+    }
+    try {
+      const { emitTo } = await import('@tauri-apps/api/event');
+      await emitTo('flyout', 'flyout-update', payload);
+    } catch {
+      // ignore — flyout window may not exist yet
+    }
+  };
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -128,61 +164,27 @@ export function useBadgeSync() {
         // ignore — commands may not exist on older builds
       }
 
-      // Build the flyout payload and cache it in Rust state so the flyout
-      // can fetch it directly via IPC (hidden WebView2 windows on Windows
-      // have suspended JS and can't relay events).
-      const payload = buildFlyoutPayload(
-        pullRequests,
-        username,
-        theme,
-        hotkey || 'Ctrl+Win+Shift+G',
-        lastPollTime,
-        usePrStore.getState().focusCount(),
-      );
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('cache_flyout_data', { payload: JSON.stringify(payload) });
-      } catch {
-        // ignore
-      }
-
-      // Also emit to the flyout directly if it's open
-      try {
-        const { emitTo } = await import('@tauri-apps/api/event');
-        await emitTo('flyout', 'flyout-update', payload);
-      } catch {
-        // ignore — flyout window may not exist yet
-      }
+      await syncFlyout();
     }, 200);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
+    // syncFlyout is a stable closure over store getters — including it in
+    // deps would cause a fresh debounce per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pullRequests, username, theme, hotkey, lastPollTime]);
 
-  // Respond to flyout-request-data: re-send current payload
+  // Respond to flyout-request-data: re-send the current payload through the
+  // same syncFlyout helper so the cache and the broadcast stay in sync.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        const fn = await listen('flyout-request-data', async () => {
-          const prs = usePrStore.getState().pullRequests;
-          const user = usePrStore.getState().username;
-          const pollRaw = usePrStore.getState().lastPollTime;
-          const st = useSettingsStore.getState().settings;
-          const payload = buildFlyoutPayload(
-            prs,
-            user,
-            st.ui.theme,
-            st.ui.globalHotkey || 'Ctrl+Win+Shift+G',
-            pollRaw ? pollRaw.getTime() : null,
-            usePrStore.getState().focusCount(),
-          );
-          console.log('[BadgeSync] Responding to flyout-request-data, PRs:', prs.length);
-          const { emitTo } = await import('@tauri-apps/api/event');
-          await emitTo('flyout', 'flyout-update', payload);
+        const fn = await listen('flyout-request-data', () => {
+          void syncFlyout();
         });
         if (cancelled) {
           fn();
@@ -197,6 +199,7 @@ export function useBadgeSync() {
       cancelled = true;
       unlisten?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Listen for expand-sidebar events (from flyout or other windows)
@@ -330,74 +333,50 @@ export function useBadgeSync() {
             );
           if (!prw) return;
           const pr = prw.pullRequest;
+          const prRef = {
+            repoOwner: pr.repoOwner,
+            repoName: pr.repoName,
+            number: pr.number,
+            title: pr.title,
+            htmlUrl: pr.htmlUrl,
+          };
+          // The switch dispatches to the same pr-actions module the sidebar
+          // uses, so celebration / refresh / error reporting behave
+          // identically regardless of which surface fired the event.
           switch (action) {
             case 'rerun': {
               const failedCheck = prw.checks.find(
                 (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
               );
-              const client = getClient();
-              if (client && failedCheck) {
-                rerunWorkflow(client, pr.repoOwner, pr.repoName, failedCheck.checkSuiteId).catch(
-                  console.error,
-                );
+              if (failedCheck) {
+                void rerunChecks({
+                  repoOwner: pr.repoOwner,
+                  repoName: pr.repoName,
+                  checkSuiteId: failedCheck.checkSuiteId,
+                });
               }
               break;
             }
             case 'merge': {
-              const client = getClient();
-              if (client) {
-                // Mirror usePrCardActions.handleMerge — fire the celebration as
-                // soon as the merge resolves, and call markCelebrated (inside
-                // celebrateMerge) so useExternalMergeCelebration's polling-based
-                // fallback won't double-fire on the next tick. The flyout
-                // closes itself on click; the toast and tada surface in the
-                // main window where NotificationOverlay is mounted.
-                mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number)
-                  .then(() => {
-                    celebrateMerge({
-                      number: pr.number,
-                      title: pr.title,
-                      repoOwner: pr.repoOwner,
-                      repoName: pr.repoName,
-                      htmlUrl: pr.htmlUrl,
-                    });
-                  })
-                  .catch(console.error);
-              }
+              void mergePr(prRef);
               break;
             }
             case 'review':
             case 'open': {
-              try {
-                const { openUrl } = await import('@tauri-apps/plugin-opener');
-                openUrl(pr.htmlUrl).catch(console.error);
-              } catch {
-                // ignore
-              }
+              void openPrInBrowser(pr.htmlUrl);
               break;
             }
             case 'checkout': {
-              const settings = useSettingsStore.getState().settings;
-              const repoConfig = settings.repos.find(
-                (r) => r.owner === pr.repoOwner && r.name === pr.repoName,
-              );
-              const repoPath = repoConfig?.worktreeBasePath || '';
-              if (repoPath) {
-                try {
-                  const { invoke } = await import('@tauri-apps/api/core');
-                  await invoke('git_fetch', { repoPath, remote: 'origin' });
-                  await invoke('git_checkout', { repoPath, branch: pr.headRef });
-                } catch (err) {
-                  console.error(err);
-                }
-              }
+              void checkoutPrBranch({
+                repoOwner: pr.repoOwner,
+                repoName: pr.repoName,
+                headRef: pr.headRef,
+              });
               break;
             }
             case 'more': {
-              // 'more' is now handled entirely in the flyout window (via
-              // FlyoutPrContextMenu). If a stale build still emits it, just
-              // drop it on the floor — the previous behaviour of popping the
-              // detail window was confusing and isn't what the user expects.
+              // 'more' is handled entirely in the flyout window (via
+              // FlyoutPrContextMenu). Drop stale events on the floor.
               break;
             }
           }

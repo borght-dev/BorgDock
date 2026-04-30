@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pill } from '@/components/shared/primitives';
-import { mergePullRequest } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
-import { celebrateMerge } from '@/services/merge-celebration';
+import { mergePr } from '@/services/pr-actions';
 import { useNotificationStore } from '@/stores/notification-store';
 import { parseError } from '@/utils/parse-error';
 
@@ -22,27 +20,29 @@ export function MergeToast() {
 
   const executeMerge = useCallback(async (req: MergeRequest) => {
     if (req.undone) return;
-    const client = getClient();
-    if (!client) return;
-
-    try {
-      await mergePullRequest(client, req.owner, req.repo, req.prNumber, 'squash');
-      celebrateMerge({
+    // Focus-mode pins squash because the keyboard shortcut bypasses the
+    // sidebar's per-repo configuration UI; preserving the historical choice.
+    await mergePr(
+      {
         number: req.prNumber,
         title: `PR #${req.prNumber}`,
         repoOwner: req.owner,
         repoName: req.repo,
         htmlUrl: `https://github.com/${req.owner}/${req.repo}/pull/${req.prNumber}`,
-      });
-    } catch (err) {
-      useNotificationStore.getState().show({
-        title: `Failed to merge PR #${req.prNumber}`,
-        message: parseError(err).message,
-        severity: 'error',
-        actions: [],
-      });
-    }
-
+      },
+      {
+        method: 'squash',
+        // Custom error title — focus mode dispatches without a card visible,
+        // so the toast needs to identify which PR failed.
+        onError: (_title, err) =>
+          useNotificationStore.getState().show({
+            title: `Failed to merge PR #${req.prNumber}`,
+            message: parseError(err).message,
+            severity: 'error',
+            actions: [],
+          }),
+      },
+    );
     setToasts((prev) => prev.filter((t) => t.id !== req.id));
   }, []);
 

@@ -1,14 +1,17 @@
-import { invoke } from '@tauri-apps/api/core';
-import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { rerunWorkflow } from '@/services/github/checks';
-import { mergePullRequest } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
+import {
+  checkoutPrBranch,
+  mergePr,
+  openPrInBrowser,
+  rerunChecks,
+} from '@/services/pr-actions';
+import { findRepoConfig } from '@/services/repo-lookup';
+import { openPrDetail } from '@/services/windows';
 import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
+import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
 
 interface PrContextMenuProps {
@@ -100,7 +103,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const repo = pullRequest.repoName;
 
   // Find the repo config for worktree/checkout path
-  const repoConfig = settings.repos.find((r) => r.owner === owner && r.name === repo);
+  const repoConfig = findRepoConfig(settings.repos, owner, repo);
   const repoPath = repoConfig?.worktreeBasePath || '';
 
   const hasFailingChecks = failedCheckNames.length > 0;
@@ -130,15 +133,15 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   );
 
   const handleOpenInGitHub = handleAction(async () => {
-    await openUrl(pullRequest.htmlUrl);
+    await openPrInBrowser(pullRequest.htmlUrl);
   });
 
   const handleCopyBranch = handleAction(async () => {
-    await writeText(pullRequest.headRef);
+    await copyToClipboard(pullRequest.headRef);
   });
 
   const handleCopyUrl = handleAction(async () => {
-    await writeText(pullRequest.htmlUrl);
+    await copyToClipboard(pullRequest.htmlUrl);
   });
 
   const handleCopyErrors = handleAction(async () => {
@@ -148,13 +151,15 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       '',
       ...failedCheckNames.map((name) => `- ${name}`),
     ].join('\n');
-    await writeText(markdown);
+    await copyToClipboard(markdown);
   });
 
   const handleCheckout = handleAction(async () => {
-    if (!repoPath) return;
-    await invoke('git_fetch', { repoPath, remote: 'origin' });
-    await invoke('git_checkout', { repoPath, branch: pullRequest.headRef });
+    await checkoutPrBranch({
+      repoOwner: owner,
+      repoName: repo,
+      headRef: pullRequest.headRef,
+    });
   });
 
   const handleToggleDraft = useCallback(() => {
@@ -163,9 +168,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, [onClose, onConfirmAction]);
 
   const handleRerunFailed = handleAction(async () => {
-    const client = getClient();
-    if (!client || !failedCheck) return;
-    await rerunWorkflow(client, owner, repo, failedCheck.checkSuiteId);
+    if (!failedCheck) return;
+    await rerunChecks({ repoOwner: owner, repoName: repo, checkSuiteId: failedCheck.checkSuiteId });
   }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
@@ -185,19 +189,23 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const handleCopyMonitorPrompt = handleAction(async () => {
     const prompt = getMonitorPrompt(pr);
     if (!prompt) throw new Error('Repo not configured in settings');
-    await writeText(prompt);
+    await copyToClipboard(prompt);
   }, 'Failed to copy monitor prompt');
 
   const handleCopyFixPrompt = handleAction(async () => {
     const prompt = getFixPrompt(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown']);
     if (!prompt) throw new Error('Repo not configured in settings');
-    await writeText(prompt);
+    await copyToClipboard(prompt);
   }, 'Failed to copy fix prompt');
 
   const handleMerge = handleAction(async () => {
-    const client = getClient();
-    if (!client) return;
-    await mergePullRequest(client, owner, repo, pullRequest.number);
+    await mergePr({
+      repoOwner: owner,
+      repoName: repo,
+      number: pullRequest.number,
+      title: pullRequest.title,
+      htmlUrl: pullRequest.htmlUrl,
+    });
   }, 'Merge failed');
 
   const handleBypassMerge = useCallback(() => {
@@ -211,12 +219,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, [onClose, onConfirmAction]);
 
   const handleOpenInDetailWindow = handleAction(async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('open_pr_detail_window', {
-      owner,
-      repo,
-      number: pullRequest.number,
-    });
+    await openPrDetail({ owner, repo, number: pullRequest.number });
   });
 
   // style: context menu anchor coords from right-click event position — dynamic pixel values

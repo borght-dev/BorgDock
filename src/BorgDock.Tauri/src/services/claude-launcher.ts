@@ -1,3 +1,4 @@
+import { findRepoConfig } from '@/services/repo-lookup';
 import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
 
 // Build a fix prompt for Claude Code when checks are failing
@@ -204,7 +205,7 @@ export async function performFixWithClaude(
   settings: { repos: RepoSettings[] },
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
-  const repoConfig = settings.repos.find((r) => r.owner === owner && r.name === repo);
+  const repoConfig = findRepoConfig(settings.repos, owner, repo);
   if (!repoConfig?.worktreeBasePath) {
     throw new Error(`No worktree path configured for ${owner}/${repo}`);
   }

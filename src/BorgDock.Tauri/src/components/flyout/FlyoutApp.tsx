@@ -185,12 +185,12 @@ export function FlyoutApp() {
     async (toast: ToastPayload, action: string, url?: string) => {
       log.info('toast action', { id: toast.id, action });
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
         const { emitTo } = await import('@tauri-apps/api/event');
         switch (action) {
           case 'open-pr':
             if (toast.prOwner && toast.prRepo && toast.prNumber) {
-              await invoke('open_pr_detail_window', {
+              const { openPrDetail } = await import('@/services/windows');
+              await openPrDetail({
                 owner: toast.prOwner,
                 repo: toast.prRepo,
                 number: toast.prNumber,
