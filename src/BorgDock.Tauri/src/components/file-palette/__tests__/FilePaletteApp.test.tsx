@@ -38,6 +38,9 @@ describe('FilePaletteApp', () => {
         });
       }
       if (cmd === 'save_settings') return Promise.resolve(null);
+      if (cmd === 'read_text_file') return Promise.resolve('// preview stub');
+      if (cmd === 'git_changed_files') return Promise.resolve({ local: [], vsBase: [], baseRef: '', inRepo: false });
+      if (cmd === 'palette_ready') return Promise.resolve(null);
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
     const { open } = await import('@tauri-apps/plugin-dialog');
@@ -47,30 +50,32 @@ describe('FilePaletteApp', () => {
   it('renders roots and the file index after settings load', async () => {
     render(<FilePaletteApp />);
     await waitFor(() => expect(screen.getByText('wt1')).toBeTruthy());
-    await waitFor(() => expect(screen.getByText('src/app.ts')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('src/app.ts').length).toBeGreaterThan(0));
   });
 
   it('arrow-down moves selection', async () => {
     render(<FilePaletteApp />);
-    await waitFor(() => expect(screen.getByText('src/auth/login.tsx')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('src/auth/login.tsx').length).toBeGreaterThan(0));
     const root = document.querySelector('.bd-fp-root')!;
     await act(async () => {
       fireEvent.keyDown(root, { key: 'ArrowDown' });
     });
-    const second = screen.getByText('src/auth/login.tsx').closest('[data-file-result]');
-    expect(second?.getAttribute('data-selected')).toBe('true');
+    const second = screen.getAllByText('src/auth/login.tsx').find(
+      (el) => el.closest('[data-file-result]') !== null,
+    );
+    expect(second?.closest('[data-file-result]')?.getAttribute('data-selected')).toBe('true');
   });
 
   it('typing filters the file list', async () => {
     render(<FilePaletteApp />);
-    await waitFor(() => expect(screen.getByText('src/app.ts')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('src/app.ts').length).toBeGreaterThan(0));
     const input = screen.getByLabelText('File palette search') as HTMLInputElement;
     await act(async () => {
       fireEvent.change(input, { target: { value: 'login' } });
     });
     await waitFor(() => {
       expect(screen.queryByText('src/app.ts')).toBeNull();
-      expect(screen.getByText('src/auth/login.tsx')).toBeTruthy();
+      expect(screen.getAllByText('src/auth/login.tsx').length).toBeGreaterThan(0);
     });
   });
 

@@ -1,111 +1,52 @@
-import { invoke } from '@tauri-apps/api/core';
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/shared/primitives';
-import { FilePaletteCodeView } from './FilePaletteCodeView';
+import { useMemo } from 'react';
+import type { Selection } from './FilePaletteApp';
+import { DiffPreview } from './DiffPreview';
+import { FilePreview } from './FilePreview';
 import { joinRootAndRel } from './join-path';
+
+interface ContentHit {
+  matches: { line: number }[];
+}
 
 interface Props {
   rootPath: string | null;
-  relPath: string | null;
-  scrollToLine?: number;
-  highlightedLines?: number[];
-  onIdentifierJump?: (word: string) => void;
+  selection: Selection | null;
+  contentHit: ContentHit | null;
+  onIdentifierJump: (word: string) => void;
+  onPopOut: (path: string, baseline?: 'HEAD' | 'mergeBaseDefault') => void;
 }
-
-type LoadState =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'ok'; content: string }
-  | { kind: 'binary' }
-  | { kind: 'too_large'; size: number; limit: number }
-  | { kind: 'error'; message: string };
 
 export function FilePalettePreviewPane({
-  rootPath,
-  relPath,
-  scrollToLine,
-  highlightedLines,
-  onIdentifierJump,
+  rootPath, selection, contentHit, onIdentifierJump, onPopOut,
 }: Props) {
-  const [state, setState] = useState<LoadState>({ kind: 'idle' });
-  const absPath = rootPath && relPath ? joinRootAndRel(rootPath, relPath) : null;
+  const absPath = useMemo(() => {
+    if (!rootPath || !selection) return null;
+    return joinRootAndRel(rootPath, selection.path);
+  }, [rootPath, selection]);
 
-  useEffect(() => {
-    if (!absPath) {
-      setState({ kind: 'idle' });
-      return;
-    }
-    let cancelled = false;
-    setState({ kind: 'loading' });
-    invoke<string>('read_text_file', { path: absPath, maxBytes: null })
-      .then((content) => {
-        if (!cancelled) setState({ kind: 'ok', content });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        const e = normalizeError(err);
-        setState(e);
-      });
-    return () => { cancelled = true; };
-  }, [absPath]);
+  if (!selection || !absPath) {
+    return <div className="bd-fp-preview bd-fp-preview--empty">Select a file to preview</div>;
+  }
 
-  if (state.kind === 'idle') {
-    return <div className="bd-fp-preview-empty">Select a file to preview</div>;
-  }
-  if (state.kind === 'loading') {
-    return <div className="bd-fp-preview-empty">Loading…</div>;
-  }
-  if (state.kind === 'binary') {
+  if (selection.kind === 'diff') {
     return (
-      <div className="bd-fp-preview-empty">
-        Binary file — preview disabled.
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => absPath && invoke('open_in_editor', { path: absPath })}
-        >
-          Open in editor
-        </Button>
-      </div>
-    );
-  }
-  if (state.kind === 'too_large') {
-    return (
-      <div className="bd-fp-preview-empty">
-        File too large ({(state.size / 1024).toFixed(0)} KB &gt; {(state.limit / 1024).toFixed(0)} KB).
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => absPath && invoke('open_in_editor', { path: absPath })}
-        >
-          Open in editor
-        </Button>
-      </div>
-    );
-  }
-  if (state.kind === 'error') {
-    return <div className="bd-fp-preview-empty">Could not read file: {state.message}</div>;
-  }
-  return (
-    <div data-file-preview className="h-full">
-      <FilePaletteCodeView
-        path={relPath ?? ''}
-        content={state.content}
-        scrollToLine={scrollToLine}
-        highlightedLines={highlightedLines}
-        onIdentifierJump={onIdentifierJump}
+      <DiffPreview
+        path={absPath}
+        relPath={selection.path}
+        initialBaseline={selection.baseline}
+        onPopOut={(baseline) => onPopOut(absPath, baseline)}
       />
-    </div>
-  );
-}
-
-function normalizeError(err: unknown): LoadState {
-  if (err && typeof err === 'object' && 'kind' in (err as Record<string, unknown>)) {
-    const e = err as { kind: string; size?: number; limit?: number; message?: string };
-    if (e.kind === 'notFound') return { kind: 'error', message: 'File not found' };
-    if (e.kind === 'tooLarge') return { kind: 'too_large', size: e.size ?? 0, limit: e.limit ?? 0 };
-    if (e.kind === 'binary') return { kind: 'binary' };
-    return { kind: 'error', message: e.message ?? 'unknown error' };
+    );
   }
-  return { kind: 'error', message: String(err) };
+
+  return (
+    <FilePreview
+      path={absPath}
+      relPath={selection.path}
+      contentHit={contentHit}
+      scrollToLine={selection.line}
+      onIdentifierJump={onIdentifierJump}
+      onPopOut={() => onPopOut(absPath, undefined)}
+    />
+  );
 }

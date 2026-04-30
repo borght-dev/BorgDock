@@ -21,6 +21,10 @@ import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChanges
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
 
+export type Selection =
+  | { kind: 'diff'; source: 'changes'; path: string; baseline: 'HEAD' | 'mergeBaseDefault'; group: 'local' | 'vsBase' }
+  | { kind: 'file'; source: 'results'; path: string; line?: number; symbol?: string };
+
 export function FilePaletteApp() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [worktreePathsByRepo, setWorktreePathsByRepo] = useState<Record<string, string[]>>({});
@@ -317,6 +321,29 @@ export function FilePaletteApp() {
     return match ?? null;
   }, [parsed.mode, selectedResult, contentSearch.results]);
 
+  const selection: Selection | null = useMemo(() => {
+    if (selectedIndex < changesVisibleRows.length) {
+      const row = changesVisibleRows[selectedIndex];
+      if (!row) return null;
+      return {
+        kind: 'diff',
+        source: 'changes',
+        path: row.file.path,
+        baseline: row.group === 'vsBase' ? 'mergeBaseDefault' : 'HEAD',
+        group: row.group,
+      };
+    }
+    const result = results[selectedIndex - changesVisibleRows.length];
+    if (!result) return null;
+    return {
+      kind: 'file',
+      source: 'results',
+      path: result.rel_path,
+      line: result.line,
+      symbol: result.symbol,
+    };
+  }, [selectedIndex, changesVisibleRows, results]);
+
   const totalFlatLength = changesVisibleRows.length + results.length;
 
   const openResult = useCallback(
@@ -471,10 +498,13 @@ export function FilePaletteApp() {
         </div>
         <FilePalettePreviewPane
           rootPath={activeRoot}
-          relPath={selectedResult?.rel_path ?? null}
-          scrollToLine={currentContentHit?.matches[0]?.line ?? selectedResult?.line}
-          highlightedLines={currentContentHit?.matches.map((m) => m.line)}
+          selection={selection}
+          contentHit={currentContentHit}
           onIdentifierJump={jumpToSymbol}
+          onPopOut={(path, baseline) => {
+            invoke('open_file_viewer_window', { path, baseline })
+              .catch((e) => console.error('open_file_viewer_window failed', e));
+          }}
         />
       </div>
       <WindowStatusBar
