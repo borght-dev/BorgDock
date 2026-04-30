@@ -47,19 +47,33 @@ pub fn bootstrap_known_sessions(
     for path in glob::glob(&pattern).ok().into_iter().flatten().flatten() {
         let content = match std::fs::read_to_string(&path) {
             Ok(s) => s,
-            Err(_) => continue,
+            Err(e) => {
+                log::warn!("agent_overview: cannot read {}: {e}", path.display());
+                continue;
+            }
         };
         let idx: IndexFile = match serde_json::from_str(&content) {
             Ok(v) => v,
-            Err(_) => continue,
+            Err(e) => {
+                log::warn!(
+                    "agent_overview: malformed sessions-index.json at {}: {e}",
+                    path.display(),
+                );
+                continue;
+            }
         };
 
         for entry in idx.entries {
-            let modified_inst = entry
-                .modified
-                .as_deref()
-                .and_then(parse_iso_to_instant)
-                .unwrap_or(now_inst);
+            // No `modified` field → treat as fresh (we don't know how old it
+            // is, so default to including it). Parse failure or pre-boot
+            // timestamp → `None`, which we treat as ancient and skip.
+            let modified_inst = match entry.modified.as_deref() {
+                None => now_inst,
+                Some(s) => match parse_iso_to_instant(s) {
+                    Some(t) => t,
+                    None => continue,
+                },
+            };
             let age = now_inst.saturating_duration_since(modified_inst);
             if age > retention {
                 continue;
@@ -98,10 +112,13 @@ pub fn bootstrap_known_sessions(
     count
 }
 
-/// Map an ISO-8601 timestamp to an Instant by computing how far in the past it
-/// is from "now" (SystemTime) and subtracting from `Instant::now()`. Returns
-/// `Instant::now()` if parsing or arithmetic fails — the resulting record is
-/// then trivially "fresh," which is harmless because Live OTel events override.
+/// Map an ISO-8601 timestamp to an Instant by computing how far in the past
+/// it is from `Utc::now()` and subtracting from `Instant::now()`.
+///
+/// Returns `Some(Instant::now())` for future timestamps (treated as fresh).
+/// Returns `None` when the timestamp predates the process's monotonic epoch
+/// (older than system boot) — the caller treats `None` as "ancient" and
+/// skips the entry, which is the correct filter direction.
 fn parse_iso_to_instant(s: &str) -> Option<Instant> {
     let parsed = DateTime::parse_from_rfc3339(s).ok()?;
     let then = parsed.with_timezone(&chrono::Utc);
