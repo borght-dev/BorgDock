@@ -63,6 +63,10 @@ export function useExternalMergeCelebration(): void {
 
     return () => {
       unsubscribe();
+      // prevOpenIdsRef is intentionally NOT cleared. In React Strict Mode the
+      // effect re-runs after cleanup; the ref persists across that double-invoke
+      // so the second run reuses the seed. On a real unmount the component
+      // instance is destroyed and the ref is naturally re-created as null.
     };
   }, []);
 }

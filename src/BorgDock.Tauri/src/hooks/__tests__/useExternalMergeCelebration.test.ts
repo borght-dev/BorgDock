@@ -86,11 +86,29 @@ afterEach(() => {
 
 describe('useExternalMergeCelebration', () => {
   it('does not celebrate on cold start even if closed list contains merged PRs', () => {
+    // PR is already merged at app start — present in closed list, NOT in open list.
+    const alreadyMerged = makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' });
     usePrStore.setState({
       pullRequests: [],
-      closedPullRequests: [makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' })],
+      closedPullRequests: [alreadyMerged],
     });
     renderHook(() => useExternalMergeCelebration());
+    // Hook seeds prevOpenIds from pullRequests (empty). The merged PR is in the
+    // closed list but was never seen as open this session.
+
+    // A subsequent poll arrives — same closed list, with a NEW object reference so
+    // the reference-equality short-circuit doesn't hide the loop's behavior.
+    act(() => {
+      usePrStore.setState({
+        pullRequests: [],
+        closedPullRequests: [
+          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
+        ],
+      });
+    });
+
+    // The PR was never in prevOpenIds, so the cold-start guard correctly suppresses
+    // celebration even after a tick.
     expect(mockCelebrate).not.toHaveBeenCalled();
   });
 
@@ -190,13 +208,30 @@ describe('useExternalMergeCelebration', () => {
     usePrStore.setState({ pullRequests: [open], closedPullRequests: [] });
     renderHook(() => useExternalMergeCelebration());
 
-    const merged = makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' });
+    // First poll cycle: PR appears in closed list with mergedAt — celebration fires.
     act(() => {
-      usePrStore.setState({ pullRequests: [], closedPullRequests: [merged] });
+      usePrStore.setState({
+        pullRequests: [],
+        closedPullRequests: [
+          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
+        ],
+      });
     });
-    // Simulate next poll — same closed list, same content.
+    expect(mockCelebrate).toHaveBeenCalledTimes(1);
+
+    // Second poll cycle: same PR still in closed list, BUT a NEW object reference
+    // (so the hook's reference-equality short-circuit lets the loop run).
+    // celebrateMerge() in the real flow would have called markCelebrated, so simulate
+    // that by flipping the wasRecentlyCelebrated mock to true. The hook should then
+    // skip the duplicate.
+    mockWasRecent.mockReturnValue(true);
     act(() => {
-      usePrStore.setState({ pullRequests: [], closedPullRequests: [merged] });
+      usePrStore.setState({
+        pullRequests: [],
+        closedPullRequests: [
+          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
+        ],
+      });
     });
 
     expect(mockCelebrate).toHaveBeenCalledTimes(1);
