@@ -3,4 +3,5 @@
 //! `docs/superpowers/specs/2026-04-30-agent-overview-design.md`.
 
 pub mod state;
+pub mod store;
 pub mod types;
