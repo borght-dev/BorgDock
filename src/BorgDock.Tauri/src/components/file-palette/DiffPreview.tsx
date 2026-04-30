@@ -56,10 +56,12 @@ export function DiffPreview({ path, relPath, initialBaseline, onPopOut }: Props)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.ctrlKey && e.key === '/') {
-        e.preventDefault();
-        setViewPersist(view === 'unified' ? 'split' : 'unified');
-      }
+      if (!e.ctrlKey || e.key !== '/') return;
+      // Skip if the user is typing in an input or textarea (find strip, search box, etc.)
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      e.preventDefault();
+      setViewPersist(view === 'unified' ? 'split' : 'unified');
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

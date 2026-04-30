@@ -114,8 +114,16 @@ export function FilePaletteApp() {
     }
   }, [roots, activeRoot, favoritesOnly, favoritePaths]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are reset triggers — selection should clear when query, root, or visible-rows count changes
-  useEffect(() => setSelectedIndex(0), [query, activeRoot, changesVisibleRows.length]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are reset triggers — selection should clear when query, root, visible-rows count, or scope changes
+  useEffect(() => setSelectedIndex(0), [query, activeRoot, changesVisibleRows.length, scope]);
+
+  // When scope hides the Changes section it unmounts and stops calling onVisibleRowsChange,
+  // so we force-clear the rows so flat-nav arithmetic stays correct.
+  useEffect(() => {
+    if (scope !== 'all' && scope !== 'changes') {
+      setChangesVisibleRows([]);
+    }
+  }, [scope]);
 
   const selectRoot = useCallback(async (path: string) => {
     refreshOneCount(path);
@@ -450,61 +458,65 @@ export function FilePaletteApp() {
             }}
             changesCount={changesVisibleRows.length}
           />
-          <FilePaletteChangesSection
-            rootPath={activeRoot}
-            query={query}
-            queryMode={parsed.mode}
-            selectedGlobalIndex={selectedIndex}
-            baseIndex={0}
-            onOpen={(file, group) => {
-              if (!activeRoot) return;
-              const absPath = joinRootAndRel(activeRoot, file.path);
-              invoke('open_file_viewer_window', {
-                path: absPath,
-                baseline: group === 'vsBase' ? 'mergeBaseDefault' : 'HEAD',
-              }).catch((e) => console.error('open_file_viewer_window failed', e));
-            }}
-            onHover={setSelectedIndex}
-            collapsed={changesCollapsed}
-            mode={changesMode}
-            onToggleCollapse={toggleChangesCollapse}
-            onChangeMode={changeMode}
-            refreshTick={refreshTick}
-            onVisibleRowsChange={setChangesVisibleRows}
-            rowRef={(el, i) => { rowRefs.current.set(i, el); }}
-          />
-          {loadError ? (
-            <div className="bd-fp-empty">Load error: {loadError}</div>
-          ) : roots.length === 0 ? (
-            <div className="bd-fp-empty">No roots configured. Add worktrees or paths under Settings.</div>
-          ) : fileIndex.loading && parsed.mode === 'filename' ? (
-            <div className="bd-fp-empty">Loading file index…</div>
-          ) : parsed.mode === 'symbol' && indexer.indexing && results.length === 0 ? (
-            <div className="bd-fp-empty">
-              Indexing symbols… {indexer.processed} / {indexer.total}
-            </div>
-          ) : parsed.mode === 'content' && contentSearch.loading && results.length === 0 ? (
-            <div className="bd-fp-empty">Searching…</div>
-          ) : results.length === 0 && parsed.query ? (
-            parsed.mode === 'filename' ? (
-              <div className="bd-fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
-            ) : parsed.mode === 'content' ? (
-              <div className="bd-fp-empty">No content matches for &lsquo;{parsed.query}&rsquo;.</div>
-            ) : (
-              <div className="bd-fp-empty">
-                No implementations found for &lsquo;{parsed.query}&rsquo; in this root. v1 supports TS, JS, C#, Rust.
-              </div>
-            )
-          ) : (
-            <FilePaletteResultsList
-              results={results}
-              selectedIndex={selectedIndex - changesVisibleRows.length}
-              onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
-              onOpen={(i) => openResult(i + changesVisibleRows.length)}
-              rowRef={(el, i) => {
-                rowRefs.current.set(i + changesVisibleRows.length, el);
+          {(scope === 'all' || scope === 'changes') && (
+            <FilePaletteChangesSection
+              rootPath={activeRoot}
+              query={query}
+              queryMode={parsed.mode}
+              selectedGlobalIndex={selectedIndex}
+              baseIndex={0}
+              onOpen={(file, group) => {
+                if (!activeRoot) return;
+                const absPath = joinRootAndRel(activeRoot, file.path);
+                invoke('open_file_viewer_window', {
+                  path: absPath,
+                  baseline: group === 'vsBase' ? 'mergeBaseDefault' : 'HEAD',
+                }).catch((e) => console.error('open_file_viewer_window failed', e));
               }}
+              onHover={setSelectedIndex}
+              collapsed={changesCollapsed}
+              mode={changesMode}
+              onToggleCollapse={toggleChangesCollapse}
+              onChangeMode={changeMode}
+              refreshTick={refreshTick}
+              onVisibleRowsChange={setChangesVisibleRows}
+              rowRef={(el, i) => { rowRefs.current.set(i, el); }}
             />
+          )}
+          {(scope === 'all' || scope === 'filename' || scope === 'content' || scope === 'symbol') && (
+            loadError ? (
+              <div className="bd-fp-empty">Load error: {loadError}</div>
+            ) : roots.length === 0 ? (
+              <div className="bd-fp-empty">No roots configured. Add worktrees or paths under Settings.</div>
+            ) : fileIndex.loading && parsed.mode === 'filename' ? (
+              <div className="bd-fp-empty">Loading file index…</div>
+            ) : parsed.mode === 'symbol' && indexer.indexing && results.length === 0 ? (
+              <div className="bd-fp-empty">
+                Indexing symbols… {indexer.processed} / {indexer.total}
+              </div>
+            ) : parsed.mode === 'content' && contentSearch.loading && results.length === 0 ? (
+              <div className="bd-fp-empty">Searching…</div>
+            ) : results.length === 0 && parsed.query ? (
+              parsed.mode === 'filename' ? (
+                <div className="bd-fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
+              ) : parsed.mode === 'content' ? (
+                <div className="bd-fp-empty">No content matches for &lsquo;{parsed.query}&rsquo;.</div>
+              ) : (
+                <div className="bd-fp-empty">
+                  No implementations found for &lsquo;{parsed.query}&rsquo; in this root. v1 supports TS, JS, C#, Rust.
+                </div>
+              )
+            ) : (
+              <FilePaletteResultsList
+                results={results}
+                selectedIndex={selectedIndex - changesVisibleRows.length}
+                onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
+                onOpen={(i) => openResult(i + changesVisibleRows.length)}
+                rowRef={(el, i) => {
+                  rowRefs.current.set(i + changesVisibleRows.length, el);
+                }}
+              />
+            )
           )}
         </div>
         <FilePalettePreviewPane
