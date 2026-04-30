@@ -118,67 +118,82 @@ function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
   ];
 }
 
+// Icon-only glyphs used inside the round status badge below
+const CheckGlyph = () => (
+  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M4 8.5l2.5 2.5L12 5"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const XGlyph = () => (
+  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M5 5l6 6M11 5l-6 6"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+const ClockGlyph = () => (
+  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M8 5.5V8l1.6 1"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const DashGlyph = () => (
+  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M5 8h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
 function StatusIcon({ status }: { status: CheckStatus }) {
-  switch (status) {
-    case 'pass':
-      return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-          <circle cx="8" cy="8" r="7" fill="var(--color-status-green)" opacity="0.12" />
-          <path
-            d="M5 8.5l2 2 4-4"
-            stroke="var(--color-status-green)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-    case 'fail':
-      return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-          <circle cx="8" cy="8" r="7" fill="var(--color-status-red)" opacity="0.12" />
-          <path
-            d="M5.5 5.5l5 5M10.5 5.5l-5 5"
-            stroke="var(--color-status-red)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-    case 'pending':
-      return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-          <circle cx="8" cy="8" r="7" fill="var(--color-status-yellow)" opacity="0.12" />
-          <circle
-            cx="8"
-            cy="8"
-            r="3"
-            stroke="var(--color-status-yellow)"
-            strokeWidth="1.5"
-            fill="none"
-          />
-          <path
-            d="M8 6v2.5l1.5 1"
-            stroke="var(--color-status-yellow)"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-    case 'none':
-      return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-          <circle cx="8" cy="8" r="7" fill="var(--color-status-gray)" opacity="0.12" />
-          <path
-            d="M5.5 8h5"
-            stroke="var(--color-status-gray)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-  }
+  // Token triple per status — keeps the badge in sync with pills/chips elsewhere.
+  const tokens = {
+    pass: {
+      bg: 'var(--color-success-badge-bg)',
+      fg: 'var(--color-success-badge-fg)',
+      bd: 'var(--color-success-badge-border)',
+    },
+    fail: {
+      bg: 'var(--color-error-badge-bg)',
+      fg: 'var(--color-error-badge-fg)',
+      bd: 'var(--color-error-badge-border)',
+    },
+    pending: {
+      bg: 'var(--color-warning-badge-bg)',
+      fg: 'var(--color-warning-badge-fg)',
+      bd: 'var(--color-warning-badge-border)',
+    },
+    none: {
+      bg: 'var(--color-draft-badge-bg)',
+      fg: 'var(--color-draft-badge-fg)',
+      bd: 'var(--color-draft-badge-border)',
+    },
+  }[status];
+
+  return (
+    <span
+      className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border"
+      style={{ background: tokens.bg, color: tokens.fg, borderColor: tokens.bd }}
+    >
+      {status === 'pass' && <CheckGlyph />}
+      {status === 'fail' && <XGlyph />}
+      {status === 'pending' && <ClockGlyph />}
+      {status === 'none' && <DashGlyph />}
+    </span>
+  );
 }
 
 export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
@@ -192,54 +207,44 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
       className="rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface)] overflow-hidden"
       data-merge-score={clampedScore}
     >
-      {/* Header: bolt + label on the left, score on the right */}
-      <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-2">
-        <div className="flex items-center gap-2">
-          <BoltIcon />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-ghost)]">
-            Merge Readiness
-          </span>
+      {/* Header row: bolt + label on the left, inline progress bar + score on the right */}
+      <div className="flex items-center gap-3 border-b border-[var(--color-subtle-border)] px-3.5 py-3">
+        <BoltIcon />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+          Merge Readiness
+        </span>
+        <span className="flex-1" />
+        <div className="w-[160px]">
+          <LinearProgress value={clampedScore} tone={scoreTone(clampedScore)} />
         </div>
-        <span
-          className="text-base font-semibold tabular-nums"
-          style={{ color }}
-        >
+        <span className="text-[13px] font-semibold tabular-nums" style={{ color }}>
           {clampedScore}
         </span>
       </div>
 
-      {/* Linear readiness bar */}
-      <div className="mx-4 mb-3">
-        <LinearProgress value={clampedScore} tone={scoreTone(clampedScore)} />
-      </div>
-
-      {/* Checklist items */}
-      <div className="flex flex-col px-4 pb-3">
-        {items.map((item) => (
+      {/* Checklist items — each row separated by a subtle divider; last row has none */}
+      <div className="flex flex-col">
+        {items.map((item, idx) => (
           <div
             key={item.label}
-            className="flex items-center gap-2.5 py-1.5"
+            className={
+              'flex items-center gap-2.5 px-3.5 py-2' +
+              (idx < items.length - 1
+                ? ' border-b border-[var(--color-subtle-border)]'
+                : '')
+            }
             data-merge-check={item.label}
           >
             <StatusIcon status={item.status} />
-            <span className="flex-1 text-[13px] font-medium text-[var(--color-text-primary)]">
+            <span className="flex-1 text-[12px] font-medium text-[var(--color-text-primary)]">
               {item.label}
             </span>
-            <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
+            <span className="shrink-0 text-[11px] text-[var(--color-text-tertiary)]">
               {item.description}
             </span>
           </div>
         ))}
       </div>
-
-      {/* Bottom accent line showing score */}
-      {/* style: score-driven gradient stop position — computed per render, no Tailwind utility */}
-      <div
-        className="h-[2px]"
-        style={{
-          background: `linear-gradient(90deg, ${color} ${score}%, var(--color-subtle-border) ${score}%)`,
-        }}
-      />
     </div>
   );
 }

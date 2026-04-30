@@ -25,6 +25,11 @@ vi.mock('@/services/github', () => ({
   getCommitFiles: vi.fn(),
 }));
 
+const mockSubmitReview = vi.fn();
+vi.mock('@/services/github/mutations', () => ({
+  submitReview: (...args: unknown[]) => mockSubmitReview(...args),
+}));
+
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
   writeText: vi.fn().mockResolvedValue(undefined),
 }));
@@ -341,6 +346,57 @@ describe('FilesTab', () => {
     });
     // Default view mode should be saved
     expect(localStorage.getItem('borgdock:diff-view-mode')).toBe('unified');
+  });
+
+  // ---- Submit Review composer ----
+
+  it('renders Submit Review composer at the bottom of the diff scroll', async () => {
+    mockGetPRFiles.mockResolvedValue([makeFile()]);
+    render(
+      <FilesTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Submit Review')).toBeTruthy();
+      expect(screen.getByDisplayValue('Comment')).toBeTruthy();
+      expect(screen.getByText('Submit')).toBeTruthy();
+    });
+  });
+
+  it('submits review with selected event and body', async () => {
+    mockGetPRFiles.mockResolvedValue([makeFile()]);
+    mockSubmitReview.mockResolvedValue(undefined);
+    const { fireEvent } = await import('@testing-library/react');
+    render(
+      <FilesTab
+        prNumber={42}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+    await waitFor(() => screen.getByText('Submit Review'));
+
+    fireEvent.change(screen.getByPlaceholderText('Review comment (optional for APPROVE)'), {
+      target: { value: 'looks good' },
+    });
+    fireEvent.change(screen.getByDisplayValue('Comment'), { target: { value: 'APPROVE' } });
+    fireEvent.click(screen.getByText('Submit'));
+
+    await waitFor(() => {
+      expect(mockSubmitReview).toHaveBeenCalledWith(
+        expect.anything(),
+        'owner',
+        'repo',
+        42,
+        'APPROVE',
+        'looks good',
+      );
+    });
   });
 });
 

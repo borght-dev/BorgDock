@@ -433,3 +433,213 @@ _[tool: present_fs_item_for_download]_
 
 Ready to download above.
 
+## User
+
+In the sidebar when you hover over the PR card we show the buttons so that a user can immediately take action when needed (for example, checkout a PR, merge it etc) right now that isn't included in the main/focus window desings. What would be a good way of showing these buttons?
+
+## Assistant
+
+_[tool: snip]_
+
+_[tool: read_file]_
+
+Good question. Let me think through this design problem before coding.
+
+**The constraint:** in the sidebar, hover-revealed action buttons work because the row is short and full-width — there's room. In the main/focus window, cards are richer (branch, diff, progress, worktree pill, labels) and live in a wider grid. A naive "hover overlay" would either obscure metadata or feel inconsistent across surfaces.
+
+**Three approaches, each with trade-offs:**
+
+1. **Persistent compact action rail on every card** — always-visible icon buttons in the top-right. Pro: discoverable, no mode change. Con: visual noise on 20+ cards.
+2. **Hover-reveal action bar (footer)** — slide up from the bottom of the card on hover. Pro: matches sidebar behaviour, keeps card calm at rest. Con: layout shift unless the bar is absolute.
+3. **Smart split: primary action always visible, secondary actions on hover** — one contextual primary button (the most likely next step given PR state — Review / Checkout / Merge) shown at rest, full action bar on hover. Pro: zero-click action available, matches user intent. Con: needs state-driven button logic.
+
+I'll build all three as variants in a new "PR card actions" section so you can compare them directly. Let me explore the existing main window first to see the card context.
+
+_[tool: read_file]_
+
+_[tool: read_file]_
+
+Let me also peek at the existing flyout to see how its hover-actions look today, so the new variants stay consistent.
+
+_[tool: read_file]_
+
+Now I have full context. The current sidebar `PRRow` doesn't actually render hover actions yet (it just changes background color), and neither does the main-window `PRCard` or the focus row. So this is a real gap — let me solve it once across all three surfaces, with clearly differentiated variants.
+
+I'll create a new section showing **3 distinct approaches** in both the sidebar row and the main-window card, plus update the focus row, so you can pick the pattern.
+
+_[tool: write_file]_
+
+_[tool: snip]_
+
+_[tool: read_file]_
+
+I'll wire the new actions showcase into the canvas as a new section right after Main window.
+
+_[tool: str_replace_edit]_
+
+_[tool: str_replace_edit]_
+
+_[tool: snip]_
+
+_[tool: done]_
+
+Added a new section **③ⓑ PR card actions** with three approaches side-by-side, in both card and sidebar-row form.
+
+**The three patterns:**
+
+- **A · Hover-reveal action bar** — card stays calm, full action stack slides up bottom-right on hover. Same gesture as today's sidebar; matches expectations.
+- **B · Smart primary + hover secondary** — one context-aware action is *always* visible (Re-run when failing, Merge when approved & yours, Review when assigned, Checkout otherwise). Secondary icons fade in on hover. Zero-click for the obvious next step.
+- **C · Persistent icon rail** — three icon buttons always visible. Most discoverable, but adds visual weight to every row.
+
+**My recommendation: B.** Action overflow on hover is fine for a *list* of similar items (sidebar today), but main-window cards are bigger commitments — users have already filtered down to what they care about. Showing the most-likely action persistently reduces a hover-then-click to a single click, and the action label changes by state so it always reads as the *right* next step. Hover still reveals the full set for power users.
+
+One caveat to consider: if you go with B, the primary action button shifts width as PR state changes ("Re-run" vs "Checkout" vs "Merge"). If that bothers you, we can fix the button to a uniform width or use icon-only at rest with a tooltip — let me know.
+
+_[tool: fork_verifier_agent]_
+
+Added the section — pick A, B, or C and I'll roll it through the live cards.
+
+## User
+
+Verifier agent check completed
+
+## Assistant
+
+Adding a `MoreH` icon to the set.
+
+_[tool: grep]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: snip]_
+
+_[tool: str_replace_edit]_
+
+_[tool: done]_
+
+_[tool: fork_verifier_agent]_
+
+_[tool: snip]_
+
+Fixed — added a `MoreH` (three-dot) icon to the icon set. The new "③ⓑ PR card actions" section now renders all three variants in both card and sidebar form.
+
+## User
+
+I only see A fully, B and C gets cut off in the main-window card version. Right now, the flyout already shows fix/monitor on hovering a failing PR, but it doesn't show anything on the passing ones. I like B for the flyout. Can you fix the main-window so I can see all three variations?
+
+## Assistant
+
+Two things to fix: (1) widen the showcase or shrink columns so all three card variants fit, and (2) note that B is the chosen sidebar pattern. Let me check the actual width consumption.
+
+The showcase is 1200px wide ÷ 3 columns = 400px each. The card variants need ~380–400px for the action stack to not clip. The smart-primary variant (B) puts a Ring + secondary icons + primary button all on the right, which probably overflows; same with C's avatar + ring + 3 icons.
+
+Best fix: widen the showcase to ~1440 and tighten internal padding. Let me also restructure B to stack Ring above the action row (vertical) so the row has room.
+
+_[tool: str_replace_edit]_
+
+_[tool: snip]_
+
+_[tool: str_replace_edit]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: done]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: snip]_
+
+Fixed the layout — both card variants now stack the action row beneath the headline so all three columns fit inside a wider 1440-wide showcase. B and C should now show their actions in full.
+
+Also noted your call: **B is the pick for the flyout.** When you're ready, I can wire it into the actual `PRRow` and add the smart-primary action to passing PRs in the sidebar (currently only failing PRs get hover actions).
+
+## User
+
+Go for A for the PR card actions and for B on the flyout.
+
+## Assistant
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: snip]_
+
+_[tool: read_file]_
+
+Now I'll wire A into the main-window `PRCard` and B into the flyout `PRRow`. The action helpers already live in `pr-actions.jsx` (`primaryFor`, `primaryTone`, `ActionBtn`, `IconActionBtn`, `ACTIONS`) — I just need to make sure they load before `pr-card.jsx`.
+
+Let me check load order:
+
+_[tool: grep]_
+
+`pr-actions.jsx` loads after `pr-card.jsx`, so I need to either move it earlier or duplicate the helpers. Cleaner to move it before `pr-card.jsx`.
+
+_[tool: str_replace_edit]_
+
+Now the helpers in `pr-actions.jsx` need to be exported on `window` so the other Babel scripts can see them. Let me check:
+
+_[tool: grep]_
+
+I need to export the helpers too so `pr-card.jsx` can use them.
+
+_[tool: str_replace_edit]_
+
+Now wire A (hover-reveal bar) into `PRCard` and B (smart primary + hover) into `PRRow`.
+
+_[tool: str_replace_edit]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: snip]_
+
+_[tool: done]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+Wired in:
+- **Main window cards** → Variant A: hover-reveal action bar (Open/Checkout/Review/More + a state-aware primary) anchored bottom-right.
+- **Flyout rows** → Variant B: smart primary button always visible (Re-run / Merge / Review / Open by state), secondary icons (Checkout, More) fade in on hover. The review pill collapses while hovered to make space.
+
+_[tool: fork_verifier_agent]_
+
+Done — A on cards, B on the flyout. Hover any PR card or sidebar row to see them in action.
+
+## User
+
+Save as standalone HTML: BorgDock - Streamlined.html
+
+## Assistant
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: snip]_
+
+_[tool: grep]_
+
+_[tool: grep]_
+
+No code-referenced resources, no API calls. Thumbnail already present. Just need to bundle.
+
+_[tool: super_inline_html]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: snip]_
+
+_[tool: show_html]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: show_html]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+_[tool: get_webview_logs]_
+
+<warning>I will not acknowledge the system reminder.</warning>
+
+Clean. Delivering the file.
+
+_[tool: present_fs_item_for_download]_
+
+Standalone bundle ready above — 1.3MB, fully offline.
+

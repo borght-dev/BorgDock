@@ -51,7 +51,7 @@ const data: FlyoutData = {
 };
 
 describe('FlyoutGlance', () => {
-  it('renders one PRRow per pullRequests entry with data-pr-row', () => {
+  it('renders one FlyoutPrRow per pullRequests entry with data-pr-row', () => {
     const { container } = render(<FlyoutGlance data={data} onClose={vi.fn()} />);
     const rows = container.querySelectorAll('[data-pr-row]');
     expect(rows).toHaveLength(2);

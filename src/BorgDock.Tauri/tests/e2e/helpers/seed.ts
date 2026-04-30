@@ -10,7 +10,7 @@ import {
  * installed by `src/test-support/test-seed.ts` (wired from `App.tsx`).
  *
  * IMPORTANT: the hook is only installed by the MAIN window entry
- * (App.tsx). Secondary windows (`flyout-main.tsx`, `palette-main.tsx`,
+ * (App.tsx). Secondary windows (`flyout-main.tsx`, `work-item-palette-main.tsx`,
  * `pr-detail-main.tsx`, `sql-main.tsx`, etc.) do NOT install the seed
  * hook today, so calling `seedDesignFixtures` on those pages throws.
  * Use `seedDesignFixturesIfAvailable` on multi-window specs that can't

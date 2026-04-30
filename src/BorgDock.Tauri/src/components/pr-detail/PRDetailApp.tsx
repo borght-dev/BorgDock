@@ -8,9 +8,13 @@ import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
 import { getOpenPRs } from '@/services/github/pulls';
 import { initClient } from '@/services/github/singleton';
+import {
+  PR_REFRESHED_EVENT,
+  type PrRefreshedDetail,
+} from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
-import { PRDetailPanel } from './PRDetailPanel';
+import { PrDetailPanel } from './PrDetailPanel';
 
 const XIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -23,7 +27,7 @@ const XIcon = () => (
   </svg>
 );
 
-export function PRDetailApp() {
+export function PrDetailApp() {
   const [pr, setPr] = useState<PullRequestWithChecks | null>(null);
   const prRef = useRef<PullRequestWithChecks | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +160,29 @@ export function PRDetailApp() {
     };
   }, [owner, repo, number]);
 
+  // Pop-out windows hold their own pr state (this window's zustand store is
+  // separate from the sidebar's), so subscribe to the in-window
+  // borgdock-pr-refreshed event that mutation handlers fire after a successful
+  // action. Keeps this view in sync with server-truth without waiting on the
+  // next poll cycle.
+  useEffect(() => {
+    if (!owner || !repo || !number) return;
+    function handleRefreshed(e: Event) {
+      const detail = (e as CustomEvent<PrRefreshedDetail>).detail;
+      if (!detail || detail.owner !== owner || detail.repo !== repo || detail.number !== number) {
+        return;
+      }
+      if (detail.pr) {
+        setPr(detail.pr);
+        getCurrentWindow()
+          .setTitle(`PR #${number} - ${detail.pr.pullRequest.title}`)
+          .catch(console.debug); /* fire-and-forget */
+      }
+    }
+    document.addEventListener(PR_REFRESHED_EVENT, handleRefreshed);
+    return () => document.removeEventListener(PR_REFRESHED_EVENT, handleRefreshed);
+  }, [owner, repo, number]);
+
   // Thin header strip for pre-load states — stays draggable so the window
   // can be moved even before the PR data has finished loading, and keeps a
   // close button reachable in case the load hangs.
@@ -210,7 +237,7 @@ export function PRDetailApp() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-background)]">
       <div className="relative flex-1 overflow-y-auto">
-        <PRDetailPanel pr={pr} popOutWindow />
+        <PrDetailPanel pr={pr} popOutWindow />
       </div>
     </div>
   );

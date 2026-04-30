@@ -51,6 +51,7 @@ const Icons = {
   Enter: (p) => <Ic {...p} d="M9 10 4 15l5 5M20 4v7a4 4 0 0 1-4 4H4" />,
   Esc: (p) => <Ic {...p}><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 10v4M16 10v4M12 10v4"/></Ic>,
   Copy: (p) => <Ic {...p}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></Ic>,
+  MoreH: (p) => <Ic {...p}><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></Ic>,
   Spinner: ({ size = 14 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "bd-spin 900ms linear infinite" }}>
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" strokeOpacity="0.15" />

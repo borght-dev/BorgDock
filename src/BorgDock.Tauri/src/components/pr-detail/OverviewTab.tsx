@@ -6,25 +6,24 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Button, Card, Input } from '@/components/shared/primitives';
+import { Button, Card } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import {
   bypassMergePullRequest,
   closePullRequest,
   mergePullRequest,
-  postComment,
-  submitReview,
   toggleDraft,
 } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
-import { CheckoutFlow } from './CheckoutFlow';
+import { CheckoutPanel } from './CheckoutPanel';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
@@ -179,11 +178,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   const [actionStatus, setActionStatus] = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [mergeSuccess, setMergeSuccess] = useState(false);
-  const [reviewBody, setReviewBody] = useState('');
-  const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>(
-    'COMMENT',
-  );
-  const [commentBody, setCommentBody] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmBypass, setConfirmBypass] = useState(false);
   const { resolveConflicts } = useClaudeActions();
@@ -244,6 +238,16 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     setCheckoutOpen((open) => !open);
   }, []);
 
+  // Merge / bypass / close move the PR off the open list, so we defer the
+  // store refresh briefly to let the celebration card / status message stay
+  // visible before this panel unmounts.
+  const TERMINAL_REFRESH_DELAY_MS = 1500;
+  const scheduleTerminalRefresh = useCallback(() => {
+    setTimeout(() => {
+      void usePrStore.getState().refreshPr(p.repoOwner, p.repoName, p.number);
+    }, TERMINAL_REFRESH_DELAY_MS);
+  }, [p.repoOwner, p.repoName, p.number]);
+
   const handleMerge = useCallback(async () => {
     const client = getClient();
     if (!client) return;
@@ -252,11 +256,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       await mergePullRequest(client, p.repoOwner, p.repoName, p.number, 'squash');
       setActionStatus('');
       setMergeSuccess(true);
+      scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
-  }, [p.repoOwner, p.repoName, p.number]);
+  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
 
   const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
 
@@ -267,11 +272,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       await bypassMergePullRequest(p.repoOwner, p.repoName, p.number);
       setActionStatus('');
       setMergeSuccess(true);
+      scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Bypass merge failed: ${err}`);
       setTimeout(() => setActionStatus(''), 5000);
     }
-  }, [p.repoOwner, p.repoName, p.number]);
+  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
 
   const handleCloseConfirm = useCallback(() => setConfirmClose(true), []);
 
@@ -283,11 +289,12 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     try {
       await closePullRequest(client, p.repoOwner, p.repoName, p.number);
       setActionStatus('PR closed');
+      scheduleTerminalRefresh();
     } catch (err) {
       setActionStatus(`Close failed: ${err}`);
     }
     setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number]);
+  }, [p.repoOwner, p.repoName, p.number, scheduleTerminalRefresh]);
 
   const handleToggleDraft = useCallback(async () => {
     const client = getClient();
@@ -296,46 +303,13 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     try {
       await toggleDraft(client, p.repoOwner, p.repoName, p.number, !p.isDraft);
       setActionStatus(p.isDraft ? 'Marked ready!' : 'Marked draft!');
+      // Toggle-draft keeps the PR open — refresh immediately so pills update.
+      void usePrStore.getState().refreshPr(p.repoOwner, p.repoName, p.number);
     } catch (err) {
       setActionStatus(`Failed: ${err}`);
     }
     setTimeout(() => setActionStatus(''), 3000);
   }, [p.repoOwner, p.repoName, p.number, p.isDraft]);
-
-  const handleSubmitReview = useCallback(async () => {
-    const client = getClient();
-    if (!client) return;
-    setActionStatus('Submitting review...');
-    try {
-      await submitReview(
-        client,
-        p.repoOwner,
-        p.repoName,
-        p.number,
-        reviewEvent,
-        reviewBody || undefined,
-      );
-      setActionStatus('Review submitted!');
-      setReviewBody('');
-    } catch (err) {
-      setActionStatus(`Review failed: ${err}`);
-    }
-    setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number, reviewEvent, reviewBody]);
-
-  const handlePostComment = useCallback(async () => {
-    const client = getClient();
-    if (!client || !commentBody.trim()) return;
-    setActionStatus('Posting comment...');
-    try {
-      await postComment(client, p.repoOwner, p.repoName, p.number, commentBody);
-      setActionStatus('Comment posted!');
-      setCommentBody('');
-    } catch (err) {
-      setActionStatus(`Comment failed: ${err}`);
-    }
-    setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number, commentBody]);
 
   const isReady =
     pr.overallStatus === 'green' &&
@@ -497,7 +471,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
               <button
                 type="button"
                 onClick={() => setSummaryExpanded(!summaryExpanded)}
-                className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]"
+                className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]"
               >
                 AI Summary
                 <svg
@@ -547,7 +521,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       {/* Linked Work Items */}
       {workItemIds.length > 0 && (
         <div className="space-y-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
             Linked Work Items
           </div>
           {workItemIds.map((id) => (
@@ -575,7 +549,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Checkout flow */}
       {checkoutOpen && (
-        <CheckoutFlow
+        <CheckoutPanel
           branchName={p.headRef}
           repoBasePath={repoPath}
           worktreeSubfolder={worktreeSubfolder}
@@ -620,70 +594,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         </div>
       )}
 
-      {/* Review submission */}
-      <div className="space-y-2 border-t border-[var(--color-separator)] pt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
-          Submit Review
-        </div>
-        {/* Native <textarea>: Input primitive is single-line only */}
-        <textarea
-          value={reviewBody}
-          onChange={(e) => setReviewBody(e.target.value)}
-          placeholder="Review comment (optional for APPROVE)"
-          rows={2}
-          className="w-full resize-none rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-        />
-        <div className="flex items-center gap-2">
-          {/* Native <select> stays — consistent with DiffToolbar pattern */}
-          <select
-            value={reviewEvent}
-            onChange={(e) => setReviewEvent(e.target.value as typeof reviewEvent)}
-            className="rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-          >
-            <option value="COMMENT">Comment</option>
-            <option value="APPROVE">Approve</option>
-            <option value="REQUEST_CHANGES">Request Changes</option>
-          </select>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSubmitReview}
-            data-overview-action="submit-review"
-          >
-            Submit
-          </Button>
-        </div>
-      </div>
-
-      {/* Quick comment */}
-      <div className="space-y-2 border-t border-[var(--color-separator)] pt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
-          Post Comment
-        </div>
-        <div className="flex gap-2">
-          <Input
-            value={commentBody}
-            onChange={(e) => setCommentBody(e.target.value)}
-            placeholder="Write a comment..."
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handlePostComment();
-              }
-            }}
-            className="flex-1"
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handlePostComment}
-            disabled={!commentBody.trim()}
-            data-overview-action="post-comment"
-          >
-            Post
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

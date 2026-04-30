@@ -3,7 +3,9 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
+import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { usePrStore } from '@/stores/pr-store';
 import type {
   DiffFile,
   DiffViewMode,
@@ -55,6 +57,37 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   const [error, setError] = useState<string | null>(null);
   const [commits, setCommits] = useState<PullRequestCommit[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
+
+  // Review composer — anchored at the bottom of the diff scroll, mirroring
+  // GitHub's "Files changed → Review changes" workflow.
+  const [reviewBody, setReviewBody] = useState('');
+  const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>(
+    'COMMENT',
+  );
+  const [reviewStatus, setReviewStatus] = useState('');
+  const handleSubmitReview = useCallback(async () => {
+    const client = getClient();
+    if (!client) return;
+    setReviewStatus('Submitting review...');
+    try {
+      await submitReview(
+        client,
+        repoOwner,
+        repoName,
+        prNumber,
+        reviewEvent,
+        reviewBody || undefined,
+      );
+      setReviewStatus('Review submitted!');
+      setReviewBody('');
+      // Review keeps the PR open — refresh immediately so the review-status
+      // pill on the header updates without waiting for the next poll.
+      void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
+    } catch (err) {
+      setReviewStatus(`Review failed: ${err}`);
+    }
+    setTimeout(() => setReviewStatus(''), 3000);
+  }, [repoOwner, repoName, prNumber, reviewEvent, reviewBody]);
 
   // Persisted preferences
   const [viewMode, setViewMode] = useState<DiffViewMode>(() => {
@@ -397,6 +430,44 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
               onOpenInGitHub={htmlUrl ? handleOpenInGitHub : undefined}
             />
           ))}
+
+          {/* Submit Review — bottom anchor of the diff scroll, GitHub-style */}
+          <div className="border-t border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-4 space-y-2">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+              Submit Review
+            </div>
+            <textarea
+              value={reviewBody}
+              onChange={(e) => setReviewBody(e.target.value)}
+              placeholder="Review comment (optional for APPROVE)"
+              rows={3}
+              className="w-full resize-y rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+            />
+            <div className="flex items-center gap-2">
+              <select
+                value={reviewEvent}
+                onChange={(e) => setReviewEvent(e.target.value as typeof reviewEvent)}
+                className="rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+              >
+                <option value="COMMENT">Comment</option>
+                <option value="APPROVE">Approve</option>
+                <option value="REQUEST_CHANGES">Request Changes</option>
+              </select>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSubmitReview}
+                data-files-action="submit-review"
+              >
+                Submit
+              </Button>
+              {reviewStatus && (
+                <span className="text-[11px] text-[var(--color-text-secondary)]">
+                  {reviewStatus}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -23,11 +23,15 @@ pub(crate) fn sidebar_visible() -> bool {
 pub(crate) fn park_main_offscreen(app: &tauri::AppHandle) -> Result<(), String> {
     let win = get_main_window(app)?;
     let scale = win.scale_factor().unwrap_or(1.0);
+    // Prefer the primary monitor so the parked window's "home" stays anchored
+    // there — otherwise the next show_main_window picks whichever monitor the
+    // OS originally spawned the window on, which on Windows is often the
+    // secondary display.
     let mon_x = win
-        .current_monitor()
+        .primary_monitor()
         .ok()
         .flatten()
-        .or_else(|| win.primary_monitor().ok().flatten())
+        .or_else(|| win.current_monitor().ok().flatten())
         .map(|m| m.position().x)
         .unwrap_or(0);
     let off_x = mon_x - (32000.0 * scale) as i32;
@@ -111,7 +115,7 @@ pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
 // Flyout window (replaces the old floating badge)
 // ---------------------------------------------------------------------------
 
-const FLYOUT_GLANCE_W: f64 = 412.0;
+const FLYOUT_GLANCE_W: f64 = 460.0;
 const FLYOUT_GLANCE_H: f64 = 512.0;
 
 const CHROME_OFFSET_WIN: i32 = 52;
@@ -550,9 +554,14 @@ fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
 }
 
 fn apply_sidebar_position(win: &WebviewWindow, edge: &str, width: u32) -> Result<(), String> {
+    // Always dock to the primary monitor so the sidebar lands on the user's
+    // main display regardless of where Tauri/WebView2 happened to spawn the
+    // window initially. We fall back to current_monitor only if the platform
+    // can't report a primary (rare — typically headless test environments).
     let monitor = win
-        .current_monitor()
+        .primary_monitor()
         .map_err(|e| e.to_string())?
+        .or_else(|| win.current_monitor().ok().flatten())
         .ok_or("No monitor found")?;
 
     let screen_size = monitor.size();

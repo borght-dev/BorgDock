@@ -20,20 +20,6 @@ test.describe('performance', () => {
     expect(elapsed).toBeLessThan(budget.initialPaintMs);
   });
 
-  test('ControlOrMeta+K opens command palette under budget', async ({ page }, testInfo) => {
-    const budget = budgetForProject(testInfo.project.name);
-    await injectCompletedSetup(page);
-    await page.goto('/');
-    await waitForAppReady(page);
-    await seedDesignFixturesIfAvailable(page);
-
-    const start = await page.evaluate(() => performance.now());
-    await page.keyboard.press('ControlOrMeta+K');
-    await page.locator('[data-command-palette]').waitFor({ state: 'visible' });
-    const end = await page.evaluate(() => performance.now());
-    expect(end - start).toBeLessThan(budget.commandPaletteOpenMs);
-  });
-
   test('PR card click to detail render under budget', async ({ page, context }, testInfo) => {
     const budget = budgetForProject(testInfo.project.name);
     await injectCompletedSetup(page);

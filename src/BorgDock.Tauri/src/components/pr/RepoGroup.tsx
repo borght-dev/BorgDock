@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pill } from '@/components/shared/primitives';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
-import { PullRequestCard } from './PullRequestCard';
+import { PrCardContainer } from './PrCardContainer';
 
 interface RepoGroupProps {
   repoKey: string;
@@ -109,7 +109,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
       >
         <div className="flex flex-col gap-1 pt-0.5 pb-0.5">
           {prs.map((pr) => (
-            <PullRequestCard key={pr.pullRequest.number} prWithChecks={pr} />
+            <PrCardContainer key={pr.pullRequest.number} prWithChecks={pr} />
           ))}
         </div>
       </div>

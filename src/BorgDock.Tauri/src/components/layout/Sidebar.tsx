@@ -1,4 +1,4 @@
-import { PRDetailPanel } from '@/components/pr-detail/PRDetailPanel';
+import { PrDetailPanel } from '@/components/pr-detail/PrDetailPanel';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import { FilterBar } from './FilterBar';
@@ -23,14 +23,14 @@ export function Sidebar({ children }: SidebarProps) {
     <div className="sidebar-shell">
       <Header />
       {activeSection === 'prs' && !selectedPr && (
-        <div className="sidebar-toolbar">
+        <div className="sidebar-toolbar flex items-center gap-2 px-2.5 py-1.5">
           <FilterBar />
           <SearchBar />
         </div>
       )}
       <div className="sidebar-content" data-section={activeSection}>
         {selectedPr ? (
-          <PRDetailPanel key={selectedPr.pullRequest.number} pr={selectedPr} />
+          <PrDetailPanel key={selectedPr.pullRequest.number} pr={selectedPr} />
         ) : (
           children
         )}

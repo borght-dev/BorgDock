@@ -38,8 +38,8 @@ vi.mock('../StatusBar', () => ({
   StatusBar: () => <div data-testid="status-bar">StatusBar</div>,
 }));
 
-vi.mock('@/components/pr-detail/PRDetailPanel', () => ({
-  PRDetailPanel: ({ pr }: { pr: { pullRequest: { number: number } } }) => (
+vi.mock('@/components/pr-detail/PrDetailPanel', () => ({
+  PrDetailPanel: ({ pr }: { pr: { pullRequest: { number: number } } }) => (
     <div data-testid="pr-detail-panel">Detail for PR #{pr.pullRequest.number}</div>
   ),
 }));
@@ -106,7 +106,7 @@ describe('Sidebar', () => {
     expect(screen.queryByTestId('search-bar')).toBeNull();
   });
 
-  it('shows PRDetailPanel when a PR is selected', () => {
+  it('shows PrDetailPanel when a PR is selected', () => {
     useUiStore.setState({ selectedPrNumber: 1 });
     render(
       <Sidebar>

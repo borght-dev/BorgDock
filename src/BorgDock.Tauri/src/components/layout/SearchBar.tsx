@@ -33,7 +33,10 @@ export function SearchBar() {
   }, []);
 
   return (
-    <div className="px-2.5 pb-2 pt-1">
+    // Outer Sidebar.tsx supplies the row's horizontal/vertical padding now.
+    // SearchBar pins itself to the right of the toolbar at a fixed width so
+    // the chip rail keeps its full width and overflow-scrolls cleanly.
+    <div className="w-[170px] flex-shrink-0">
       {/* style: focus-state-driven borderColor + color-mix boxShadow — both vary on isFocused boolean */}
       <div
         className="relative flex items-center rounded-lg border transition-all duration-200"

@@ -13,7 +13,6 @@ const mockSubmitReview = vi.fn();
 const mockGetClient = vi.fn();
 
 let mockState = 'idle';
-let mockIsCommandPaletteOpen = false;
 
 vi.mock('@/stores/quick-review-store', () => ({
   useQuickReviewStore: Object.assign(
@@ -29,14 +28,6 @@ vi.mock('@/stores/quick-review-store', () => ({
       }),
     },
   ),
-}));
-
-vi.mock('@/stores/ui-store', () => ({
-  useUiStore: {
-    getState: () => ({
-      isCommandPaletteOpen: mockIsCommandPaletteOpen,
-    }),
-  },
 }));
 
 vi.mock('@/services/github/mutations', () => ({
@@ -91,7 +82,6 @@ describe('useQuickReviewKeyboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState = 'idle';
-    mockIsCommandPaletteOpen = false;
   });
 
   it('does nothing when state is idle', () => {
@@ -100,16 +90,6 @@ describe('useQuickReviewKeyboard', () => {
     fireKey('a');
     expect(mockSetSubmitting).not.toHaveBeenCalled();
     expect(mockAdvance).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when command palette is open', () => {
-    mockState = 'reviewing';
-    mockIsCommandPaletteOpen = true;
-    mockCurrentPr.mockReturnValue(makePr());
-
-    renderHook(() => useQuickReviewKeyboard());
-    fireKey('a');
-    expect(mockSetSubmitting).not.toHaveBeenCalled();
   });
 
   it('does not intercept when typing in input', () => {

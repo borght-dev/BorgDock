@@ -82,7 +82,7 @@ export const TAURI_MOCK_SCRIPT = `
         case 'plugin:event|listen':
         case 'plugin:event|unlisten':
           // onMoved() / listen() callers guard the returned unlisten fn with
-          // unlisten?.() so returning null is safe (see PaletteApp.tsx:97).
+          // unlisten?.() so returning null is safe (see WorkItemPaletteApp.tsx).
           return null;
 
         case 'plugin:window|inner_size':

@@ -2,7 +2,6 @@ import { useCallback, useEffect } from 'react';
 import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useUiStore } from '@/stores/ui-store';
 
 export function useQuickReviewKeyboard() {
   const state = useQuickReviewStore((s) => s.state);
@@ -11,9 +10,6 @@ export function useQuickReviewKeyboard() {
     async (e: KeyboardEvent) => {
       // Only active during review session
       if (state !== 'reviewing') return;
-
-      // Don't intercept when command palette is open
-      if (useUiStore.getState().isCommandPaletteOpen) return;
 
       // Don't intercept when typing
       const target = e.target as HTMLElement;

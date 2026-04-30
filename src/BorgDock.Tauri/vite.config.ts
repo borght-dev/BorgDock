@@ -55,7 +55,7 @@ export default defineConfig({
         "src/vite-env.d.ts",
         "src/**/*.d.ts",
         "src/main.tsx",
-        "src/palette-main.tsx",
+        "src/work-item-palette-main.tsx",
         "src/pr-detail-main.tsx",
         "src/sql-main.tsx",
         "src/workitem-detail-main.tsx",
@@ -85,7 +85,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         flyout: path.resolve(__dirname, "flyout.html"),
-        palette: path.resolve(__dirname, "palette.html"),
+        'work-item-palette': path.resolve(__dirname, "work-item-palette.html"),
         'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),
         'pr-detail': path.resolve(__dirname, "pr-detail.html"),
         sql: path.resolve(__dirname, "sql.html"),

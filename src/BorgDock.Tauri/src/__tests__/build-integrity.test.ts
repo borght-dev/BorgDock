@@ -18,7 +18,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const ENTRY_POINTS = [
   { key: 'main', html: 'index.html', script: '/src/main.tsx' },
   { key: 'flyout', html: 'flyout.html', script: '/src/flyout-main.tsx' },
-  { key: 'palette', html: 'palette.html', script: '/src/palette-main.tsx' },
+  { key: 'work-item-palette', html: 'work-item-palette.html', script: '/src/work-item-palette-main.tsx' },
   { key: 'pr-detail', html: 'pr-detail.html', script: '/src/pr-detail-main.tsx' },
   { key: 'sql', html: 'sql.html', script: '/src/sql-main.tsx' },
   { key: 'worktree', html: 'worktree.html', script: '/src/worktree-main.tsx' },
@@ -33,7 +33,7 @@ const RUST_WINDOW_URLS: Record<string, string> = {
   // tauri.conf.json
   main: 'index.html',
   // hotkey.rs
-  palette: 'palette.html',
+  'work-item-palette': 'work-item-palette.html',
   'worktree-palette': 'worktree.html',
   'file-palette': 'file-palette.html',
   sql: 'sql.html',

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
+import type { PrActionId } from '@/services/pr-action-resolver';
 import type { ToastPayload } from './flyout-mode';
-import { PRRow } from './PRRow';
+import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
+import { FlyoutPrRow } from './FlyoutPrRow';
 
 const log = createLogger('FlyoutGlance');
 
@@ -37,6 +39,12 @@ export interface FlyoutPr {
   totalChecks: number;
   commentCount: number;
   isMine: boolean;
+  // Optional — populated by the live useBadgeSync payload. Older / synthetic
+  // payloads (test seeds) may omit them so the flyout context menu treats
+  // these as best-effort.
+  htmlUrl?: string;
+  headRef?: string;
+  isDraft?: boolean;
 }
 
 export function FlyoutGlance({
@@ -155,32 +163,30 @@ export function FlyoutGlance({
     [onClose],
   );
 
-  const handleFixPr = useCallback(
-    async (pr: FlyoutPr) => {
-      try {
-        const { emitTo } = await import('@tauri-apps/api/event');
-        await emitTo('main', 'flyout-fix-pr', {
-          repoOwner: pr.repoOwner,
-          repoName: pr.repoName,
-          number: pr.number,
-          failedCheckNames: pr.failedCheckNames ?? [],
-        });
-      } catch {
-        // ignore
+  // 'more' opens the local context menu; other actions emit to main (which
+  // executes them against the live pr-store) and close the flyout.
+  const [contextMenu, setContextMenu] = useState<
+    | {
+        pr: FlyoutPr;
+        position: { x: number; y: number };
       }
-      onClose();
-    },
-    [onClose],
-  );
+    | null
+  >(null);
 
-  const handleMonitorPr = useCallback(
-    async (pr: FlyoutPr) => {
+  const handlePrAction = useCallback(
+    async (pr: FlyoutPr, action: PrActionId | 'more', e: React.MouseEvent) => {
+      if (action === 'more') {
+        setContextMenu({ pr, position: { x: e.clientX, y: e.clientY } });
+        return;
+      }
       try {
         const { emitTo } = await import('@tauri-apps/api/event');
-        await emitTo('main', 'flyout-monitor-pr', {
+        await emitTo('main', 'flyout-pr-action', {
           repoOwner: pr.repoOwner,
           repoName: pr.repoName,
           number: pr.number,
+          action,
+          failedCheckNames: pr.failedCheckNames ?? [],
         });
       } catch {
         // ignore
@@ -199,7 +205,10 @@ export function FlyoutGlance({
     >
       <div
         ref={panelRef}
-        className="w-[380px] overflow-hidden rounded-[14px] border"
+        // max-h-full + flex-col so the panel never overflows the window — the
+        // PR list shrinks instead of pushing the header off-screen when the
+        // window's vertical budget is tight.
+        className="flex max-h-full w-[428px] flex-col overflow-hidden rounded-[14px] border"
         // style: animation keyframe + flyout-shadow custom property cannot be expressed as Tailwind utilities
         style={{
           background: 'var(--color-surface)',
@@ -210,7 +219,7 @@ export function FlyoutGlance({
       >
         {/* Header */}
         <div
-          className="border-b px-4 pt-3.5 pb-3"
+          className="shrink-0 border-b px-4 pt-3.5 pb-3"
           // style: gradient background — no Tailwind utility covers multi-stop CSS gradients with tokens
           style={{
             borderColor: 'var(--color-subtle-border)',
@@ -330,7 +339,7 @@ export function FlyoutGlance({
 
         {banner && (
           <div
-            className="px-4 py-2 text-[11px] font-semibold text-white"
+            className="shrink-0 px-4 py-2 text-[11px] font-semibold text-white"
             // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
             style={{ background: bannerColor(banner.severity) }}
             data-testid="flyout-glance-banner"
@@ -340,16 +349,19 @@ export function FlyoutGlance({
         )}
 
         {/* PR list */}
+        {/* flex-1 + min-h-0 lets this region absorb the leftover vertical
+            space inside the panel and scroll internally — replaces the old
+            fixed max-h-[360px], which could push the header off-screen when
+            the window was shorter than header + 360 + footer. */}
         {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
-        <div className="max-h-[360px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+        <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {pullRequests.map((pr, i) => (
-            <PRRow
+            <FlyoutPrRow
               key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
               pr={pr}
               active={i === activeIndex}
               onClick={handleClickPr}
-              onFix={handleFixPr}
-              onMonitor={handleMonitorPr}
+              onAction={handlePrAction}
               showRepo={showRepoPerRow}
             />
           ))}
@@ -364,7 +376,7 @@ export function FlyoutGlance({
 
         {/* Footer */}
         <div
-          className="flex items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
+          className="flex shrink-0 items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
         >
           {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
           <span
@@ -382,6 +394,15 @@ export function FlyoutGlance({
           </span>
         </div>
       </div>
+
+      {contextMenu && (
+        <FlyoutPrContextMenu
+          pr={contextMenu.pr}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
+          onCloseFlyout={onClose}
+        />
+      )}
 
       <style>{`
         :root {

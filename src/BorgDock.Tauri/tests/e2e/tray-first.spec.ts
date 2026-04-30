@@ -23,7 +23,7 @@
  * Playwright. The same pre-existing issue affects the `pr-list` and
  * `settings` specs — navigating to the main window while the Tauri WebView2
  * process holds it open causes Playwright's Chromium instance to hang on
- * "load". Secondary windows (palette.html, sql.html, etc.) are unaffected
+ * "load". Secondary windows (work-item-palette.html, sql.html, etc.) are unaffected
  * because no live Tauri window holds them open.
  *
  * To run these tests manually:
