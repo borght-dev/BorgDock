@@ -343,6 +343,16 @@ pub async fn git_changed_files(root: String) -> Result<ChangedFilesOutput, Strin
         .map_err(|e| format!("task join error: {e}"))?
 }
 
+fn apply_numstat(files: Vec<ChangedFile>, stats: &HashMap<String, (u32, u32)>) -> Vec<ChangedFile> {
+    files.into_iter().map(|mut f| {
+        if let Some(&(a, d)) = stats.get(&f.path) {
+            f.additions = a;
+            f.deletions = d;
+        }
+        f
+    }).collect()
+}
+
 fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
     let root_path = PathBuf::from(root);
     let dir = working_dir_for(&root_path);
@@ -373,7 +383,9 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
     }
     let local = parse_name_status(&status_out.stdout, NameStatusMode::Status);
 
-    // Numstat for local: working tree vs HEAD covers staged + unstaged.
+    // Numstat for local: working tree vs HEAD covers staged + unstaged
+    // tracked changes. Untracked files (status "?") have no HEAD baseline
+    // so they appear with additions=0, deletions=0 — that's intentional.
     let local_numstat_out = run_git_raw(
         &toplevel,
         &["diff", "--numstat", "-z", "HEAD", "--"],
@@ -383,13 +395,7 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
     } else {
         HashMap::new()
     };
-    let local: Vec<ChangedFile> = local.into_iter().map(|mut f| {
-        if let Some(&(a, d)) = local_numstat.get(&f.path) {
-            f.additions = a;
-            f.deletions = d;
-        }
-        f
-    }).collect();
+    let local = apply_numstat(local, &local_numstat);
 
     // 2. vs base: merge-base against origin/<default>, then `git diff --name-status -z`.
     //    If default branch cannot be resolved (detached, no origin/HEAD, etc.),
@@ -428,13 +434,7 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
                         } else {
                             HashMap::new()
                         };
-                        let filtered: Vec<ChangedFile> = filtered.into_iter().map(|mut f| {
-                            if let Some(&(a, d)) = numstat.get(&f.path) {
-                                f.additions = a;
-                                f.deletions = d;
-                            }
-                            f
-                        }).collect();
+                        let filtered = apply_numstat(filtered, &numstat);
                         (filtered, branch)
                     }
                 }
@@ -624,7 +624,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         init_test_repo(tmp.path());
 
-        // Local modification: add 3 lines, remove 1.
+        // Unstaged modification: append 1 line so numstat (working tree vs HEAD)
+        // reports additions=1, deletions=0.
         fs::write(tmp.path().join("seed.txt"), "line1\nline2\nline3\nline4\n").unwrap();
         git_in(tmp.path(), &["add", "seed.txt"]);
         git_in(tmp.path(), &["commit", "-qm", "expand seed"]);
