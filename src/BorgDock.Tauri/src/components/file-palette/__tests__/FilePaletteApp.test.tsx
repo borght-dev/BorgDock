@@ -53,7 +53,7 @@ describe('FilePaletteApp', () => {
   it('arrow-down moves selection', async () => {
     render(<FilePaletteApp />);
     await waitFor(() => expect(screen.getByText('src/auth/login.tsx')).toBeTruthy());
-    const root = screen.getAllByText('FILES')[0]!.closest('.bd-fp-root')!;
+    const root = document.querySelector('.bd-fp-root')!;
     await act(async () => {
       fireEvent.keyDown(root, { key: 'ArrowDown' });
     });

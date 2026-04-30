@@ -3,6 +3,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
+import { Kbd } from '@/components/shared/primitives';
+import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { joinRootAndRel } from './join-path';
 import { parseQuery, type ParsedQuery } from './parse-query';
 import { buildRootEntries, FilePaletteRootsColumn, type RootEntry } from './FilePaletteRootsColumn';
@@ -361,9 +364,7 @@ export function FilePaletteApp() {
 
   return (
     <div data-window="palette" className="bd-fp-root" onKeyDown={handleKey} tabIndex={-1}>
-      <div className="bd-fp-titlebar" data-tauri-drag-region>
-        <span className="bd-fp-title">FILES</span>
-      </div>
+      <WindowTitleBar title="Files" meta={<Kbd>Ctrl+F8</Kbd>} />
       <div className={`bd-fp-body${rootsCollapsed ? ' bd-fp-body--collapsed' : ''}`}>
         <FilePaletteRootsColumn
           roots={roots}
@@ -450,6 +451,14 @@ export function FilePaletteApp() {
           onIdentifierJump={jumpToSymbol}
         />
       </div>
+      <WindowStatusBar
+        left={<span className="bd-mono">Files palette</span>}
+        right={
+          <span className="bd-mono">
+            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Esc</Kbd> close
+          </span>
+        }
+      />
     </div>
   );
 }
