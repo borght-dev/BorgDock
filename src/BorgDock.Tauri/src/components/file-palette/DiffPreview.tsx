@@ -27,6 +27,16 @@ export function DiffPreview({ path, relPath, initialBaseline, onPopOut }: Props)
   const [error, setError] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
+  // Hydrate persisted view mode (shared with FileViewer window).
+  useEffect(() => {
+    invoke<AppSettings>('load_settings')
+      .then((s) => {
+        const v = s.ui?.fileViewerDefaultViewMode;
+        if (v === 'split' || v === 'unified') setView(v);
+      })
+      .catch(() => {});
+  }, []);
+
   // Persist view mode on change and sync to other windows via settings.
   const setViewPersist = useCallback((v: 'unified' | 'split') => {
     setView(v);
