@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -15,8 +15,9 @@ pub struct SessionRecord {
     pub label: String,
 
     pub state: SessionState,
-    /// Wall clock when state was entered (monotonic Instant for safety;
-    /// serialized as elapsed millis from `now` at emit time).
+    // `Instant` has no `Default`, and serde's `skip_deserializing` requires one.
+    // Do NOT add `Deserialize` to `SessionRecord` — convert these to `state_since_ms` /
+    // `last_event_ms` before any persistence layer touches the record.
     #[serde(skip)]
     pub state_since: Instant,
     #[serde(skip)]
@@ -33,10 +34,9 @@ pub struct SessionRecord {
     pub pending_tool_uses: HashSet<String>,
 
     /// Set internally before serialization to expose `state_since` / `last_event_at`
-    /// as wall-clock millis-ago values for the React side.
-    #[serde(rename = "stateSinceMs")]
+    /// as wall-clock millis-ago values for the React side. `rename_all = "camelCase"`
+    /// already produces `stateSinceMs` / `lastEventMs` — no per-field rename needed.
     pub state_since_ms: u128,
-    #[serde(rename = "lastEventMs")]
     pub last_event_ms: u128,
 }
 
@@ -66,7 +66,7 @@ pub struct CwdInfo {
 pub struct RawEvent {
     pub session_id: String,
     pub event_name: String,
-    pub attrs: std::collections::HashMap<String, serde_json::Value>,
+    pub attrs: HashMap<String, serde_json::Value>,
 }
 
 /// Delta emitted to the frontend whenever the SessionStore changes.
