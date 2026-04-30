@@ -42,7 +42,12 @@ pub fn resolve_cwd(session_id: &str, cache: &CwdCache, projects_root: &Path) -> 
     if let Some(hit) = cache.get(session_id) {
         return Some(hit);
     }
-    let pattern = format!("{}/*/sessions-index.json", projects_root.display());
+    // Normalize backslashes in case `projects_root` is a Windows path —
+    // the `glob` crate's pattern syntax treats `\` as an escape character.
+    let pattern = format!(
+        "{}/*/sessions-index.json",
+        projects_root.display().to_string().replace('\\', "/"),
+    );
     for path in glob::glob(&pattern).ok()?.flatten() {
         if let Ok(content) = std::fs::read_to_string(&path) {
             if let Ok(idx) = serde_json::from_str::<SessionsIndex>(&content) {
