@@ -551,7 +551,7 @@ export function SqlApp() {
 
   return (
     <div className="sql-app">
-      <WindowTitleBar title="BorgDock SQL" />
+      <WindowTitleBar title="BorgDock SQL" meta={<Kbd>Ctrl+F10</Kbd>} />
 
       {/* ── Toolbar ─────────────────────────────────────── */}
       <div className="sql-toolbar">
