@@ -3041,11 +3041,26 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-muted);
   }
   .bd-fp-root-row-wrap {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 2px;
     padding: 0 4px;
     border-radius: 4px;
+  }
+  .bd-fp-root-badge {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--color-warning-badge-bg);
+    color: var(--color-status-yellow);
+    border: 1px solid var(--color-warning-badge-border);
+    flex-shrink: 0;
   }
   .bd-fp-root-row-wrap:hover { background: var(--color-surface-hover); }
   .bd-fp-root-row-wrap--active,

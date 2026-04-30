@@ -22,6 +22,7 @@ interface FilePaletteFilePaletteRootsColumnProps {
   onToggleCollapsed: () => void;
   onAddCustomRoot: () => void;
   onRemoveCustomRoot: (root: RootEntry) => void;
+  changeCounts: ReadonlyMap<string, { count: number; addTotal: number; delTotal: number }>;
 }
 
 export function FilePaletteRootsColumn({
@@ -36,6 +37,7 @@ export function FilePaletteRootsColumn({
   onToggleCollapsed,
   onAddCustomRoot,
   onRemoveCustomRoot,
+  changeCounts,
 }: FilePaletteFilePaletteRootsColumnProps) {
   const isFav = (r: RootEntry) => r.source === 'worktree' && favoritePaths.has(r.path);
 
@@ -164,6 +166,7 @@ export function FilePaletteRootsColumn({
               onSelect={onSelect}
               onToggleFavorite={onToggleFavorite}
               showStar
+              count={changeCounts.get(root.path)?.count}
             />
           ))}
         </div>
@@ -203,6 +206,7 @@ interface RootRowProps {
   onToggleFavorite: (root: RootEntry) => void;
   showStar: boolean;
   onRemove?: () => void;
+  count?: number;
 }
 
 function RootRow({
@@ -213,6 +217,7 @@ function RootRow({
   onToggleFavorite,
   showStar,
   onRemove,
+  count,
 }: RootRowProps) {
   return (
     <div className={`bd-fp-root-row-wrap${active ? ' bd-fp-root-row-wrap--active' : ''}`}>
@@ -280,6 +285,11 @@ function RootRow({
       >
         <span className="bd-fp-root-label">{root.label}</span>
       </button>
+      {count != null && count > 0 && (
+        <span className="bd-fp-root-badge bd-mono" title={`${count} changed`}>
+          {count}
+        </span>
+      )}
     </div>
   );
 }

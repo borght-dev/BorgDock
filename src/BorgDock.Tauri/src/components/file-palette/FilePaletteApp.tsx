@@ -16,6 +16,7 @@ import { useBackgroundIndexer } from './use-background-indexer';
 import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
+import { useWorktreeChangeCounts } from './use-worktree-change-counts';
 import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
 
 interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
@@ -80,6 +81,20 @@ export function FilePaletteApp() {
     return buildRootEntries(settings.repos, settings.filePaletteRoots, worktreePathsByRepo);
   }, [settings, worktreePathsByRepo]);
 
+  const visibleRootPaths = useMemo(
+    () =>
+      roots
+        .filter((r) =>
+          r.source === 'custom' || (favoritesOnly ? favoritePaths.has(r.path) : true),
+        )
+        .map((r) => r.path),
+    [roots, favoritesOnly, favoritePaths],
+  );
+  const { counts: changeCounts, refreshOne: refreshOneCount } = useWorktreeChangeCounts(
+    visibleRootPaths,
+    refreshTick,
+  );
+
   useEffect(() => {
     if (roots.length === 0) return;
     // When the user has "favorites only" on, the default root must come from the
@@ -99,6 +114,7 @@ export function FilePaletteApp() {
   useEffect(() => setSelectedIndex(0), [query, activeRoot, changesVisibleRows.length]);
 
   const selectRoot = useCallback(async (path: string) => {
+    refreshOneCount(path);
     setActiveRoot(path);
     setRootsCollapsed(true);
     try {
@@ -114,7 +130,7 @@ export function FilePaletteApp() {
         },
       });
     } catch { /* ignore */ }
-  }, []);
+  }, [refreshOneCount]);
 
   const addCustomRoot = useCallback(async () => {
     let chosen: string | null;
@@ -377,6 +393,7 @@ export function FilePaletteApp() {
           onToggleCollapsed={toggleRootsCollapsed}
           onAddCustomRoot={addCustomRoot}
           onRemoveCustomRoot={removeCustomRoot}
+          changeCounts={changeCounts}
         />
         <div className="bd-fp-middle">
           <FilePaletteSearchPane
