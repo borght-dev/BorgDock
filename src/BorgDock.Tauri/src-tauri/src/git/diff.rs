@@ -373,6 +373,24 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
     }
     let local = parse_name_status(&status_out.stdout, NameStatusMode::Status);
 
+    // Numstat for local: working tree vs HEAD covers staged + unstaged.
+    let local_numstat_out = run_git_raw(
+        &toplevel,
+        &["diff", "--numstat", "-z", "HEAD", "--"],
+    )?;
+    let local_numstat = if local_numstat_out.status.success() {
+        parse_numstat(&local_numstat_out.stdout)
+    } else {
+        HashMap::new()
+    };
+    let local: Vec<ChangedFile> = local.into_iter().map(|mut f| {
+        if let Some(&(a, d)) = local_numstat.get(&f.path) {
+            f.additions = a;
+            f.deletions = d;
+        }
+        f
+    }).collect();
+
     // 2. vs base: merge-base against origin/<default>, then `git diff --name-status -z`.
     //    If default branch cannot be resolved (detached, no origin/HEAD, etc.),
     //    skip vs_base gracefully.
@@ -401,6 +419,22 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
                             .into_iter()
                             .filter(|f| !local_paths.contains(f.path.as_str()))
                             .collect();
+                        let numstat_out = run_git_raw(
+                            &toplevel,
+                            &["diff", "--numstat", "-z", &format!("{merge_base}..HEAD")],
+                        )?;
+                        let numstat = if numstat_out.status.success() {
+                            parse_numstat(&numstat_out.stdout)
+                        } else {
+                            HashMap::new()
+                        };
+                        let filtered: Vec<ChangedFile> = filtered.into_iter().map(|mut f| {
+                            if let Some(&(a, d)) = numstat.get(&f.path) {
+                                f.additions = a;
+                                f.deletions = d;
+                            }
+                            f
+                        }).collect();
                         (filtered, branch)
                     }
                 }
@@ -583,6 +617,23 @@ mod tests {
     fn parse_handles_empty_input() {
         assert_eq!(parse_name_status(b"", NameStatusMode::Status).len(), 0);
         assert_eq!(parse_name_status(b"", NameStatusMode::Diff).len(), 0);
+    }
+
+    #[test]
+    fn changed_files_populates_additions_and_deletions() {
+        let tmp = tempfile::tempdir().unwrap();
+        init_test_repo(tmp.path());
+
+        // Local modification: add 3 lines, remove 1.
+        fs::write(tmp.path().join("seed.txt"), "line1\nline2\nline3\nline4\n").unwrap();
+        git_in(tmp.path(), &["add", "seed.txt"]);
+        git_in(tmp.path(), &["commit", "-qm", "expand seed"]);
+        fs::write(tmp.path().join("seed.txt"), "line1\nline2\nline3\nline4\nline5\n").unwrap();
+
+        let result = compute_changed_files(tmp.path().to_string_lossy().as_ref()).unwrap();
+        let seed = result.local.iter().find(|f| f.path == "seed.txt").expect("seed.txt in local");
+        assert_eq!(seed.additions, 1);
+        assert_eq!(seed.deletions, 0);
     }
 
     #[test]
