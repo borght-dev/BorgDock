@@ -10,6 +10,7 @@ import {
   longTitlePrs,
   makeFlyoutData,
   makeFlyoutPr,
+  makeToast,
   manyPrs,
   mergeConflictPrs,
   mergeReadyPrs,
@@ -239,4 +240,56 @@ export const GlanceSparseFields = story({
       totalCount: sparsePrs.length,
     }),
   },
+});
+
+// ---------------------------------------------------------------------------
+// Glance — banner overlay
+// ---------------------------------------------------------------------------
+
+const glanceWithPassing = (overrides = {}) =>
+  makeFlyoutData({
+    pullRequests: passingPrs,
+    passingCount: passingPrs.length,
+    totalCount: passingPrs.length,
+    ...overrides,
+  });
+
+export const GlanceBannerInfo = story({
+  seed: { mode: 'glance', data: glanceWithPassing() },
+  bannerOnGlance: makeToast({
+    id: 'banner-info',
+    severity: 'info',
+    title: 'Heads up',
+    body: 'A new release of BorgDock is available.',
+  }),
+});
+
+export const GlanceBannerSuccess = story({
+  seed: { mode: 'glance', data: glanceWithPassing() },
+  bannerOnGlance: makeToast({
+    id: 'banner-success',
+    severity: 'success',
+    title: 'PR merged',
+    body: 'borght-dev/BorgDock#42 was merged successfully.',
+  }),
+});
+
+export const GlanceBannerWarning = story({
+  seed: { mode: 'glance', data: glanceWithPassing() },
+  bannerOnGlance: makeToast({
+    id: 'banner-warn',
+    severity: 'warning',
+    title: 'Approaching API rate limit',
+    body: 'GitHub API requests will be throttled in ~3 minutes.',
+  }),
+});
+
+export const GlanceBannerError = story({
+  seed: { mode: 'glance', data: glanceWithPassing() },
+  bannerOnGlance: makeToast({
+    id: 'banner-err',
+    severity: 'error',
+    title: 'Token expired',
+    body: 'Re-authenticate in Settings to resume polling.',
+  }),
 });
