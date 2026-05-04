@@ -15,26 +15,26 @@
 ### Task 0: Create worktree for implementation
 
 **Files:**
-- Worktree path: `E:\BorgDock-worktrees\settings-screen-redesign` (or sibling of repo)
+- Worktree path: `E:\BorgDock\.worktrees\settings-screen-redesign` (in-repo, gitignored)
 
 - [ ] **Step 1: Verify clean status on master and create worktree**
 
 ```bash
 cd /e/BorgDock
 git status -s | grep -v "^??\|^ M src-tauri/icons\|^ M src-tauri/capabilities/pr-detail.json"  # confirm no other changes
-git worktree add -b settings-screen-redesign ../BorgDock-worktrees/settings-screen-redesign master
-cd ../BorgDock-worktrees/settings-screen-redesign/src/BorgDock.Tauri
+git worktree add -b settings-screen-redesign .worktrees/settings-screen-redesign master
+cd .worktrees/settings-screen-redesign/src/BorgDock.Tauri
 npm install
 ```
 
-Expected: worktree created, npm install completes.
+Expected: worktree created, npm install completes. `.worktrees/` is already in `.gitignore`, so the inner checkout doesn't show up as nested-untracked content in the parent.
 
 - [ ] **Step 2: Set memory marker so future sessions know which worktree this lives in**
 
 No commit. Just record the path in your scratch notes:
 ```
-WORKTREE = E:\BorgDock-worktrees\settings-screen-redesign
-NPM_CWD  = $WORKTREE/src/BorgDock.Tauri
+WORKTREE  = E:\BorgDock\.worktrees\settings-screen-redesign
+NPM_CWD   = $WORKTREE/src/BorgDock.Tauri
 CARGO_CWD = $WORKTREE/src/BorgDock.Tauri/src-tauri
 ```
 
