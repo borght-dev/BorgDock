@@ -7,6 +7,7 @@ pub mod file_palette;
 pub mod flyout;
 pub mod git;
 pub mod keychain;
+pub mod maintenance;
 pub mod platform;
 pub mod settings;
 pub mod sql;
@@ -445,6 +446,11 @@ pub fn run() {
             cache::cache_load_etags,
             cache::cache_load_sql_schema,
             cache::cache_save_sql_schema,
+            // Maintenance
+            maintenance::clear_cache,
+            maintenance::get_cache_size,
+            maintenance::reset_all_settings,
+            maintenance::estimate_worktree_prune_size,
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,
