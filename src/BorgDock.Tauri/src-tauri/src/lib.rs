@@ -136,6 +136,7 @@ pub fn run() {
         })
         .manage(crate::agent_overview::store::SessionStore::default())
         .manage(crate::agent_overview::cwd_resolver::CwdCache::default())
+        .manage(crate::agent_overview::AgentDeltaSender::default())
         .setup(|app| {
             platform::tray::setup_tray(app)?;
             platform::tray::start_initializing_animation(app.handle().clone());
@@ -153,6 +154,7 @@ pub fn run() {
             {
                 let store = app.state::<crate::agent_overview::store::SessionStore>().inner().clone();
                 let cwd_cache = app.state::<crate::agent_overview::cwd_resolver::CwdCache>().inner().clone();
+                let delta_sender_state = app.state::<crate::agent_overview::AgentDeltaSender>().inner().clone();
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     use crate::agent_overview::{bootstrap, cwd_resolver, otlp_server, store as st};
@@ -168,12 +170,29 @@ pub fn run() {
 
                     // Bootstrap from filesystem
                     let (delta_tx, mut delta_rx) = unbounded_channel();
-                    if let Some(root) = cwd_resolver::default_projects_root() {
-                        let n = bootstrap::bootstrap_known_sessions(
-                            &root, &store, &delta_tx,
-                            std::time::Duration::from_secs(cfg.history_retention_seconds.into()),
+                    // Publish the sender so the dismiss_agent_session command
+                    // (and any other Tauri command) can push deltas through
+                    // the same pipeline as the OTel ingest path.
+                    delta_sender_state.install(delta_tx.clone());
+                    let projects_root = cwd_resolver::default_projects_root();
+                    if let Some(root) = projects_root.as_ref() {
+                        let retention = std::time::Duration::from_secs(
+                            cfg.history_retention_seconds.into(),
                         );
-                        log::info!("agent_overview: bootstrapped {n} sessions");
+                        let n_idx = bootstrap::bootstrap_known_sessions(
+                            root, &store, &delta_tx, retention,
+                        );
+                        // Fallback: scan jsonl files directly so sessions
+                        // appear even when the user hasn't enabled OTel.
+                        // has_session() guards against re-registering anything
+                        // already known from the index pass above.
+                        let n_jsonl = bootstrap::bootstrap_from_jsonl(
+                            root, &store, &delta_tx, retention,
+                        );
+                        log::info!(
+                            "agent_overview: bootstrapped {n_idx} sessions from index, \
+                             {n_jsonl} additional from jsonl",
+                        );
                     }
 
                     // Forward deltas to the frontend
@@ -198,6 +217,25 @@ pub fn run() {
                         }
                     };
                     log::info!("agent_overview: OTLP listening on 127.0.0.1:{port}");
+
+                    // Now that we know the actual bound port, overlay OTel
+                    // env onto every active project's `.claude/settings.json`
+                    // (where one already exists). Sessions launched in those
+                    // directories will then export to the right port even if
+                    // Claude's settings merge happens to ignore the user-level
+                    // env block when a project-local file is present.
+                    if let Some(root) = projects_root.as_ref() {
+                        let modified = crate::agent_overview::settings_merge::sync_active_project_settings(
+                            root,
+                            port,
+                            cfg.otel_export_interval_ms,
+                            std::time::Duration::from_secs(cfg.history_retention_seconds.into()),
+                        );
+                        for path in modified {
+                            log::info!("agent_overview: synced OTel env into {}", path.display());
+                        }
+                    }
+
                     let router = otlp_server::build_router(otlp_server::ServerState { events_tx });
                     tauri::async_runtime::spawn(async move {
                         if let Err(e) = axum::serve(listener, router).await {
@@ -225,12 +263,55 @@ pub fn run() {
                         loop {
                             tokio::select! {
                                 Some(evt) = events_rx.recv() => {
+                                    let session_id = evt.session_id.clone();
+                                    let event_name = evt.event_name.clone();
                                     let cwd_info = projects_root.as_ref()
-                                        .and_then(|r| cwd_resolver::resolve_cwd(&evt.session_id, &cwd_for_loop, r));
+                                        .and_then(|r| cwd_resolver::resolve_cwd(&session_id, &cwd_for_loop, r));
                                     store_for_loop.ingest_event(evt, cwd_info, &delta_for_loop, std::time::Instant::now());
+
+                                    // Refresh the cached assistant message whenever the model
+                                    // has just emitted a complete API round-trip (`api_request`
+                                    // = end of one assistant emission, may include text +
+                                    // tool_use blocks) — that's exactly when new text is in
+                                    // the .jsonl and the user wants to see it. Also refresh
+                                    // whenever we land in Awaiting/Finished so transitions
+                                    // driven by silence detection still pull the latest text.
+                                    let state_now = store_for_loop.state_of(&session_id);
+                                    let is_active = matches!(
+                                        state_now,
+                                        Some(crate::agent_overview::types::SessionState::Working)
+                                            | Some(crate::agent_overview::types::SessionState::Tool)
+                                            | Some(crate::agent_overview::types::SessionState::Awaiting)
+                                            | Some(crate::agent_overview::types::SessionState::Finished),
+                                    );
+                                    if is_active && (event_name == "api_request" || matches!(
+                                        state_now,
+                                        Some(crate::agent_overview::types::SessionState::Awaiting)
+                                            | Some(crate::agent_overview::types::SessionState::Finished),
+                                    )) {
+                                        if let Some(root) = projects_root.as_ref() {
+                                            let msg = cwd_resolver::read_last_assistant_message(root, &session_id);
+                                            store_for_loop.update_last_assistant_msg(
+                                                &session_id, msg, &delta_for_loop, std::time::Instant::now(),
+                                            );
+                                        }
+                                    }
                                 }
                                 _ = tick.tick() => {
                                     store_for_loop.run_tick(thresholds, &delta_for_loop, std::time::Instant::now());
+                                    // Same refresh after tick-driven Awaiting transitions.
+                                    if let Some(root) = projects_root.as_ref() {
+                                        for rec in store_for_loop.internal_snapshot() {
+                                            if matches!(rec.state, crate::agent_overview::types::SessionState::Awaiting | crate::agent_overview::types::SessionState::Finished)
+                                                && rec.last_assistant_msg.is_none()
+                                            {
+                                                let msg = cwd_resolver::read_last_assistant_message(root, &rec.session_id);
+                                                store_for_loop.update_last_assistant_msg(
+                                                    &rec.session_id, msg, &delta_for_loop, std::time::Instant::now(),
+                                                );
+                                            }
+                                        }
+                                    }
                                     let live = store_for_loop.internal_snapshot();
                                     let actions = tracker.evaluate(
                                         &live,
@@ -389,6 +470,7 @@ pub fn run() {
             agent_overview::commands::list_agent_sessions,
             agent_overview::commands::set_agent_overview_enabled,
             agent_overview::commands::disable_agent_overview_telemetry,
+            agent_overview::commands::dismiss_agent_session,
             agent_overview::window::open_agent_overview_window,
         ])
         .run(tauri::generate_context!())
