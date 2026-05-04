@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { InAppNotification } from '@/types';
-import { useNotificationStore } from '../notification-store';
+import { MAX_VISIBLE, useNotificationStore } from '../notification-store';
 
 function makeNotification(overrides: Partial<InAppNotification> = {}): InAppNotification {
   return {
@@ -60,15 +60,16 @@ describe('notification-store', () => {
     });
 
     it('overflows to queue when max active reached', () => {
-      useNotificationStore.getState().show(makeNotification({ title: '1' }));
-      useNotificationStore.getState().show(makeNotification({ title: '2' }));
-      useNotificationStore.getState().show(makeNotification({ title: '3' }));
-      useNotificationStore.getState().show(makeNotification({ title: '4' }));
+      // Fill all active slots, then push one extra → overflow into queue.
+      for (let i = 1; i <= MAX_VISIBLE; i++) {
+        useNotificationStore.getState().show(makeNotification({ title: `${i}` }));
+      }
+      useNotificationStore.getState().show(makeNotification({ title: 'overflow' }));
 
       const s = useNotificationStore.getState();
-      expect(s.active).toHaveLength(3);
+      expect(s.active).toHaveLength(MAX_VISIBLE);
       expect(s.queue).toHaveLength(1);
-      expect(s.queue[0]!.title).toBe('4');
+      expect(s.queue[0]!.title).toBe('overflow');
     });
 
     it('sets activeNotification to first active notification', () => {
@@ -81,9 +82,9 @@ describe('notification-store', () => {
     });
 
     it('sets notifications (legacy) to queue contents', () => {
-      useNotificationStore.getState().show(makeNotification());
-      useNotificationStore.getState().show(makeNotification());
-      useNotificationStore.getState().show(makeNotification());
+      for (let i = 0; i < MAX_VISIBLE; i++) {
+        useNotificationStore.getState().show(makeNotification());
+      }
       useNotificationStore.getState().show(makeNotification({ title: 'Queued' }));
 
       expect(useNotificationStore.getState().notifications).toHaveLength(1);
@@ -105,9 +106,9 @@ describe('notification-store', () => {
     });
 
     it('promotes from queue when active slot opens', () => {
-      useNotificationStore.getState().show(makeNotification({ title: '1' }));
-      useNotificationStore.getState().show(makeNotification({ title: '2' }));
-      useNotificationStore.getState().show(makeNotification({ title: '3' }));
+      for (let i = 1; i <= MAX_VISIBLE; i++) {
+        useNotificationStore.getState().show(makeNotification({ title: `${i}` }));
+      }
       useNotificationStore.getState().show(makeNotification({ title: 'Queued' }));
 
       expect(useNotificationStore.getState().queue).toHaveLength(1);
@@ -116,10 +117,10 @@ describe('notification-store', () => {
       useNotificationStore.getState().dismiss(idToRemove);
 
       const s = useNotificationStore.getState();
-      expect(s.active).toHaveLength(3);
+      expect(s.active).toHaveLength(MAX_VISIBLE);
       expect(s.queue).toHaveLength(0);
       // Last active should be the promoted one
-      expect(s.active[2]!.notification.title).toBe('Queued');
+      expect(s.active[MAX_VISIBLE - 1]!.notification.title).toBe('Queued');
     });
 
     it('updates activeNotification after dismiss', () => {

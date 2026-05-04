@@ -12,7 +12,7 @@ export interface ActiveNotification {
 // real visual fit-trimming via ResizeObserver — this just bounds how
 // many bubbles ever live in the DOM/store at once so we don't grow
 // unbounded if a flood arrives faster than auto-dismiss drains them.
-const MAX_VISIBLE = 10;
+export const MAX_VISIBLE = 10;
 
 /** Tauri event used by the cross-window notification bus. */
 export const NOTIFICATION_BUS_EVENT = 'borgdock-notification-bus';
