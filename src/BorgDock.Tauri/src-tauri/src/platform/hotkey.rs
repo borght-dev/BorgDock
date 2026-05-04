@@ -123,6 +123,27 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
         })
         .map_err(|e| format!("Failed to register file palette hotkey: {e}"))?;
 
+    // Ctrl+Win+Shift+A — Agent Overview window. Acts as a "summon" hotkey:
+    // if the window is open it gets focus; if it was closed (or failed to
+    // launch on startup), it gets created. Without this, a user whose
+    // Agent Overview window crashed has no other way to bring it back
+    // short of restarting BorgDock — the tray menu opens it, but the
+    // tray itself can be flaky when the auto-launch path has gone wrong.
+    let app_overview = app.clone();
+    app.global_shortcut()
+        .on_shortcut("Ctrl+Super+Shift+A", move |_app, _shortcut, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let app_cb = app_overview.clone();
+            let _ = app_overview.run_on_main_thread(move || {
+                if let Err(e) = crate::agent_overview::window::show_or_create_agent_overview(&app_cb) {
+                    log::error!("agent overview hotkey: failed to show window: {e}");
+                }
+            });
+        })
+        .map_err(|e| format!("Failed to register agent overview hotkey: {e}"))?;
+
     // Ctrl+F10 — SQL workbench. Unlike the palettes, the SQL window is a
     // persistent workbench: it shows in the taskbar / Alt+Tab and stays open
     // until the user closes it. A re-press brings the existing window to
