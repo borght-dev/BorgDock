@@ -416,6 +416,7 @@ pub fn run() {
             git::commands::git_checkout,
             git::commands::git_current_branch,
             git::commands::discover_repos,
+            git::commands::scan_repos_under,
             git::commands::resolve_repo_path,
             git::commands::run_gh_command,
             git::diff::git_file_diff,
