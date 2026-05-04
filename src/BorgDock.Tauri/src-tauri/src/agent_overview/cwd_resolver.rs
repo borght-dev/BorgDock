@@ -74,7 +74,7 @@ fn lookup_in_index(session_id: &str, projects_root: &Path) -> Option<CwdInfo> {
                 if let Some(entry) = idx.entries.into_iter().find(|e| e.session_id == session_id) {
                     return Some(CwdInfo {
                         repo: derive_repo_name(&entry.project_path),
-                        worktree: derive_worktree_name(&entry.project_path),
+                        worktree: worktree_name_for(&entry.project_path, &entry.git_branch),
                         branch: entry.git_branch,
                         cwd: entry.project_path,
                     });
@@ -115,10 +115,11 @@ fn read_first_cwd_line(path: &Path) -> Option<CwdInfo> {
         let Ok(probe) = serde_json::from_str::<LineProbe>(&line) else { continue };
         let Some(cwd) = probe.cwd.filter(|s| !s.is_empty()) else { continue };
         let cwd_path = PathBuf::from(&cwd);
+        let branch = probe.git_branch.unwrap_or_default();
         return Some(CwdInfo {
             repo: derive_repo_name(&cwd_path),
-            worktree: derive_worktree_name(&cwd_path),
-            branch: probe.git_branch.unwrap_or_default(),
+            worktree: worktree_name_for(&cwd_path, &branch),
+            branch,
             cwd: cwd_path,
         });
     }
@@ -235,6 +236,27 @@ pub fn derive_worktree_name(path: &Path) -> String {
     "master".into()
 }
 
+/// Worktree resolution that incorporates the resolved git branch:
+///   1. If the cwd is inside `<repo>/.worktrees/<name>`, use `<name>`.
+///   2. Else, if a non-empty branch was resolved (from sessions-index.json
+///      or the .jsonl), use the branch name as the worktree label. This
+///      is what splits "BorgDock@master" from "BorgDock@feat/x" in the
+///      dashboard, even when both checkouts live at non-`.worktrees`
+///      paths (e.g. side-by-side directories).
+///   3. Else fall back to `"master"`.
+pub fn worktree_name_for(path: &Path, branch: &str) -> String {
+    let parts: Vec<&std::ffi::OsStr> = path.iter().collect();
+    for (i, p) in parts.iter().enumerate() {
+        if p.eq_ignore_ascii_case(".worktrees") && i + 1 < parts.len() {
+            return parts[i + 1].to_string_lossy().into_owned();
+        }
+    }
+    if !branch.is_empty() {
+        return branch.to_string();
+    }
+    "master".into()
+}
+
 /// Default location of `~/.claude/projects` for the current OS user.
 pub fn default_projects_root() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".claude").join("projects"))
@@ -300,6 +322,31 @@ mod tests {
         fs::create_dir_all(repo_root.join(".git")).unwrap();
         assert_eq!(derive_repo_name(&wt), "BorgDock");
         assert_eq!(derive_worktree_name(&wt), "feature");
+    }
+
+    /// Sessions in the same repo on different branches must NOT collapse into
+    /// a single "master" worktree section. Use the resolved gitBranch as the
+    /// worktree label whenever the cwd doesn't carry a `.worktrees/<name>`
+    /// segment.
+    #[test]
+    fn worktree_name_for_uses_branch_when_no_dot_worktrees_segment() {
+        let p = PathBuf::from("E:\\BorgDock");
+        assert_eq!(worktree_name_for(&p, "master"), "master");
+        assert_eq!(worktree_name_for(&p, "feat/ortec"), "feat/ortec");
+    }
+
+    #[test]
+    fn worktree_name_for_dot_worktrees_path_takes_precedence_over_branch() {
+        let p = PathBuf::from("E:\\BorgDock\\.worktrees\\wt2");
+        // Branch on disk might say something else, but the named worktree
+        // directory is the user's chosen label — keep it.
+        assert_eq!(worktree_name_for(&p, "feat/x"), "wt2");
+    }
+
+    #[test]
+    fn worktree_name_for_falls_back_to_master_when_branch_empty() {
+        let p = PathBuf::from("E:\\some-folder");
+        assert_eq!(worktree_name_for(&p, ""), "master");
     }
 
     /// When no `.git` exists in any ancestor (e.g. a session opened in /tmp),
@@ -417,7 +464,10 @@ mod tests {
         assert_eq!(info.cwd, PathBuf::from("D:\\FSP-Horizon"));
         assert_eq!(info.branch, "feat/ortec");
         assert_eq!(info.repo, "FSP-Horizon");
-        assert_eq!(info.worktree, "master");
+        // Worktree label uses the resolved branch when there's no
+        // `.worktrees/<name>` segment in the cwd, so two FSP-Horizon
+        // checkouts on different branches don't collapse together.
+        assert_eq!(info.worktree, "feat/ortec");
         assert!(cache.get("uuid-live").is_some(), "result should be cached");
     }
 

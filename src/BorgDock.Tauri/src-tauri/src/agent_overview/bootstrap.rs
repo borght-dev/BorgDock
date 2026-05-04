@@ -1,4 +1,4 @@
-use crate::agent_overview::cwd_resolver::{derive_repo_name, derive_worktree_name};
+use crate::agent_overview::cwd_resolver::{derive_repo_name, worktree_name_for};
 use crate::agent_overview::store::{short_repo, SessionStore};
 use crate::agent_overview::types::{SessionDelta, SessionRecord, SessionState};
 use chrono::DateTime;
@@ -79,7 +79,7 @@ pub fn bootstrap_known_sessions(
                 continue;
             }
             let repo = derive_repo_name(&entry.project_path);
-            let worktree = derive_worktree_name(&entry.project_path);
+            let worktree = worktree_name_for(&entry.project_path, &entry.git_branch);
             let key = (repo.clone(), worktree.clone());
             let n = counter_per_repo_wt.entry(key.clone()).or_insert(0);
             *n += 1;
@@ -195,7 +195,7 @@ pub fn bootstrap_from_jsonl(
             }
         }
         let repo = derive_repo_name(&cwd_path);
-        let worktree = derive_worktree_name(&cwd_path);
+        let worktree = worktree_name_for(&cwd_path, &branch);
         let n = counter_per_repo_wt
             .entry((repo.clone(), worktree.clone()))
             .or_insert(0);
