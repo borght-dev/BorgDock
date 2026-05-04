@@ -13,6 +13,9 @@ function makeUi(overrides?: Partial<UiSettings>): UiSettings {
     flyoutHotkey: 'Ctrl+Win+Shift+F',
     editorCommand: 'code',
     runAtStartup: false,
+    quickReviewHotkey: '',
+    startMinimizedToTray: false,
+    restoreLastSelection: true,
     ...overrides,
   };
 }

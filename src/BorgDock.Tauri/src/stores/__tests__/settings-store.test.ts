@@ -24,6 +24,9 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       flyoutHotkey: 'Ctrl+Win+Shift+F',
       editorCommand: 'code',
       runAtStartup: false,
+      quickReviewHotkey: '',
+      startMinimizedToTray: false,
+      restoreLastSelection: true,
     },
     notifications: {
       toastOnCheckStatusChange: true,
@@ -36,6 +39,7 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       reviewNudgeIntervalMinutes: 60,
       reviewNudgeEscalation: true,
       deduplicationWindowSeconds: 60,
+      channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
     claudeCode: {
       defaultPostFixAction: 'commitAndNotify',
@@ -62,9 +66,14 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       workingOnWorkItemIds: [],
       workItemWorktreePaths: {},
       recentWorkItemIds: [],
+      linkMatchBy: 'branch',
+      showWorkItemStateOnPrCard: true,
+      updatePrStatusWhenWiDone: false,
     },
     sql: {
       connections: [],
+      readOnlyByDefault: true,
+      confirmDestructiveWithoutWhere: true,
     },
     repoPriority: {},
     ...overrides,

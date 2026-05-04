@@ -22,6 +22,9 @@ function makeAdo(overrides?: Partial<AzureDevOpsSettings>): AzureDevOpsSettings 
     workingOnWorkItemIds: [],
     workItemWorktreePaths: {},
     recentWorkItemIds: [],
+    linkMatchBy: 'branch',
+    showWorkItemStateOnPrCard: true,
+    updatePrStatusWhenWiDone: false,
     ...overrides,
   };
 }

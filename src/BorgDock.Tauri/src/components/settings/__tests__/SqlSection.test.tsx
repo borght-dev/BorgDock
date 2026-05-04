@@ -10,6 +10,8 @@ vi.mock('@tauri-apps/api/core', () => ({
 function makeSql(overrides?: Partial<SqlSettings>): SqlSettings {
   return {
     connections: [],
+    readOnlyByDefault: true,
+    confirmDestructiveWithoutWhere: true,
     ...overrides,
   };
 }

@@ -55,6 +55,9 @@ function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSetti
       flyoutHotkey: '',
       editorCommand: 'code',
       runAtStartup: false,
+      quickReviewHotkey: '',
+      startMinimizedToTray: false,
+      restoreLastSelection: true,
     },
     notifications: {
       toastOnCheckStatusChange: true,
@@ -67,6 +70,7 @@ function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSetti
       reviewNudgeIntervalMinutes: 30,
       reviewNudgeEscalation: false,
       deduplicationWindowSeconds: 60,
+      channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
     claudeCode: { defaultPostFixAction: 'none' },
     claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096 },
@@ -83,8 +87,11 @@ function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSetti
       workingOnWorkItemIds: [],
       workItemWorktreePaths: {},
       recentWorkItemIds: [],
+      linkMatchBy: 'branch',
+      showWorkItemStateOnPrCard: true,
+      updatePrStatusWhenWiDone: false,
     },
-    sql: { connections: [] },
+    sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
     repoPriority: {},
   };
 }

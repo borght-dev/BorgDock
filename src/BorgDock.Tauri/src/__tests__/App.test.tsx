@@ -168,6 +168,9 @@ const fullSettings = {
     flyoutHotkey: '',
     editorCommand: 'code',
     runAtStartup: false,
+    quickReviewHotkey: '',
+    startMinimizedToTray: false,
+    restoreLastSelection: true,
   },
   notifications: {
     toastOnCheckStatusChange: true,
@@ -180,6 +183,7 @@ const fullSettings = {
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
     deduplicationWindowSeconds: 60,
+    channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
   claudeCode: { defaultPostFixAction: 'commitAndNotify' as const },
   claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024 },
@@ -196,8 +200,11 @@ const fullSettings = {
     workingOnWorkItemIds: [],
     workItemWorktreePaths: {},
     recentWorkItemIds: [],
+    linkMatchBy: 'branch' as const,
+    showWorkItemStateOnPrCard: true,
+    updatePrStatusWhenWiDone: false,
   },
-  sql: { connections: [] },
+  sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
   repoPriority: {},
 };
 

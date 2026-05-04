@@ -22,6 +22,7 @@ function makeNotifications(overrides?: Partial<NotificationSettings>): Notificat
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
     deduplicationWindowSeconds: 60,
+    channels: { tray: true, system: true, sound: true, emailDigest: false },
     ...overrides,
   };
 }

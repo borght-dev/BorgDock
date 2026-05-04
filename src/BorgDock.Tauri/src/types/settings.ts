@@ -49,6 +49,9 @@ export interface UiSettings {
   fileViewerDefaultViewMode?: 'unified' | 'split';
   /** Override for the Windows Terminal profile used when launching "Claude". Empty = auto-detect. */
   windowsTerminalProfile?: string;
+  quickReviewHotkey: string;
+  startMinimizedToTray: boolean;
+  restoreLastSelection: boolean;
 }
 
 export interface NotificationSettings {
@@ -62,6 +65,8 @@ export interface NotificationSettings {
   reviewNudgeIntervalMinutes: number;
   reviewNudgeEscalation: boolean;
   deduplicationWindowSeconds: number;
+  channels: { tray: boolean; system: boolean; sound: boolean; emailDigest: boolean };
+  lastTestFiredAt?: number;
 }
 
 export interface ClaudeCodeSettings {
@@ -97,6 +102,9 @@ export interface AzureDevOpsSettings {
   workingOnWorkItemIds: number[];
   workItemWorktreePaths: Record<number, string>;
   recentWorkItemIds: number[];
+  linkMatchBy: 'branch' | 'title' | 'both';
+  showWorkItemStateOnPrCard: boolean;
+  updatePrStatusWhenWiDone: boolean;
 }
 
 export interface SqlServerConnection {
@@ -113,6 +121,9 @@ export interface SqlServerConnection {
 export interface SqlSettings {
   connections: SqlServerConnection[];
   lastUsedConnection?: string;
+  defaultConnectionName?: string;
+  readOnlyByDefault: boolean;
+  confirmDestructiveWithoutWhere: boolean;
 }
 
 export interface AgentOverviewSettings {
@@ -126,6 +137,7 @@ export interface AgentOverviewSettings {
   otelExportIntervalMs?: number;
   repoShortNames?: Record<string, string>;
   windowState?: { x: number; y: number; width: number; height: number };
+  autoArchiveAfterHours?: number;
 }
 
 export interface AppSettings {
@@ -143,4 +155,5 @@ export interface AppSettings {
   sql: SqlSettings;
   repoPriority: Record<string, RepoPriority>;
   filePaletteRoots?: FilePaletteRoot[];
+  settingsWindow?: { x: number; y: number; width: number; height: number };
 }
