@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAgentSessions } from '@/hooks/useAgentSessions';
 import { useInspectorState } from '@/hooks/useInspectorState';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { isArchived, isSnoozed, pickDensity } from '@/services/agent-overview';
 import { ActivityGrouped } from './ActivityGrouped';
 import { AwaitingRail } from './AwaitingRail';
@@ -43,6 +44,7 @@ export function AgentOverviewApp() {
 
   const awaitingSessionIds = useMemo(() => awaiting.map((a) => a.sessionId), [awaiting]);
   const inspector = useInspectorState(awaitingSessionIds);
+  useKeyboardShortcuts(inspector);
 
   return (
     <InspectorContext.Provider value={inspector}>
