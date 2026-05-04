@@ -22,6 +22,7 @@ const baseRecord = (overrides: Partial<SessionRecord> = {}): SessionRecord => ({
   stateSinceMs: 0,
   lastEventMs: 0,
   lastUserMsg: null,
+  lastAssistantMsg: null,
   task: null,
   model: null,
   tokensUsed: 0,
