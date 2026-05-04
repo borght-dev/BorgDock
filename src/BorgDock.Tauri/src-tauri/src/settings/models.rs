@@ -22,6 +22,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub agent_overview: AgentOverviewSettings,
     #[serde(default)]
+    pub pr_detail: PrDetailSettings,
+    #[serde(default)]
     pub azure_dev_ops: AzureDevOpsSettings,
     #[serde(default)]
     pub sql: SqlSettings,
@@ -458,8 +460,11 @@ fn default_export_interval() -> u32 { 2000 }
 impl Default for AgentOverviewSettings {
     fn default() -> Self {
         Self {
-            enabled: false,
-            auto_open_on_startup: false,
+            // Default ON for fresh installs. Existing settings.json files
+            // that explicitly set these to false will keep their saved
+            // values — flip them via Settings → Agent Overview.
+            enabled: true,
+            auto_open_on_startup: true,
             window_state: None,
             repo_short_names: std::collections::HashMap::new(),
             awaiting_notify_after_seconds: default_notify_after(),
@@ -481,6 +486,15 @@ pub struct WindowGeometry {
     pub height: u32,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrDetailSettings {
+    /// Persisted from the most recently closed PR detail window. New PR
+    /// windows restore to this geometry instead of always centering.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window_state: Option<WindowGeometry>,
+}
+
 #[cfg(test)]
 mod agent_overview_settings_tests {
     use super::*;
@@ -489,8 +503,8 @@ mod agent_overview_settings_tests {
     fn defaults_serialize_to_camel_case() {
         let s: AgentOverviewSettings = Default::default();
         let json = serde_json::to_value(&s).unwrap();
-        assert_eq!(json["enabled"], false);
-        assert_eq!(json["autoOpenOnStartup"], false);
+        assert_eq!(json["enabled"], true);
+        assert_eq!(json["autoOpenOnStartup"], true);
         assert_eq!(json["awaitingNotifyAfterSeconds"], 30);
         assert_eq!(json["historyRetentionSeconds"], 14400);
     }

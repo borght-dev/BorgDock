@@ -163,16 +163,15 @@ pub fn run() {
 
                     let settings = crate::settings::load_settings_internal().ok();
                     let cfg = settings.as_ref().map(|s| s.agent_overview.clone()).unwrap_or_default();
-                    if !cfg.enabled {
-                        log::info!("agent_overview: disabled, skipping startup");
-                        return;
-                    }
 
-                    // Bootstrap from filesystem
+                    // Bootstrap + delta forwarding always run, regardless of
+                    // the OTel-listener toggle. This way the dashboard shows
+                    // historical Claude Code sessions (read from .jsonl files
+                    // on disk) on every launch, and the dismiss command keeps
+                    // working even when the user has the OTel listener off.
+                    // Only the live event server + tick loop below are gated
+                    // by `cfg.enabled`.
                     let (delta_tx, mut delta_rx) = unbounded_channel();
-                    // Publish the sender so the dismiss_agent_session command
-                    // (and any other Tauri command) can push deltas through
-                    // the same pipeline as the OTel ingest path.
                     delta_sender_state.install(delta_tx.clone());
                     let projects_root = cwd_resolver::default_projects_root();
                     if let Some(root) = projects_root.as_ref() {
@@ -182,10 +181,6 @@ pub fn run() {
                         let n_idx = bootstrap::bootstrap_known_sessions(
                             root, &store, &delta_tx, retention,
                         );
-                        // Fallback: scan jsonl files directly so sessions
-                        // appear even when the user hasn't enabled OTel.
-                        // has_session() guards against re-registering anything
-                        // already known from the index pass above.
                         let n_jsonl = bootstrap::bootstrap_from_jsonl(
                             root, &store, &delta_tx, retention,
                         );
@@ -206,6 +201,15 @@ pub fn run() {
                             );
                         }
                     });
+
+                    if !cfg.enabled {
+                        log::info!(
+                            "agent_overview: OTel listener disabled (cfg.enabled = false). \
+                             Dashboard will show historical sessions only — toggle Settings → \
+                             Agent Overview → Enabled to start tracking live events."
+                        );
+                        return;
+                    }
 
                     // OTLP receiver
                     let (events_tx, mut events_rx) = unbounded_channel();
