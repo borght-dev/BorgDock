@@ -43,5 +43,8 @@ export type { TabDef, TabsProps } from './Tabs';
 export { Toggle } from './Toggle';
 export type { ToggleProps } from './Toggle';
 
+export { ToggleRow } from './ToggleRow';
+export type { ToggleRowProps } from './ToggleRow';
+
 export { TitleBar } from './Titlebar';
 export type { TitleBarProps } from './Titlebar';
