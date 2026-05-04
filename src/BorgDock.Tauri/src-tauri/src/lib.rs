@@ -451,6 +451,7 @@ pub fn run() {
             maintenance::get_cache_size,
             maintenance::reset_all_settings,
             maintenance::estimate_worktree_prune_size,
+            maintenance::run_self_test,
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,

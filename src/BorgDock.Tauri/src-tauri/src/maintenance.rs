@@ -160,6 +160,70 @@ pub async fn estimate_worktree_prune_size(paths: Vec<String>) -> Result<PruneEst
     Ok(result)
 }
 
+// ─── run_self_test ───────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelfTestResult {
+    pub service: String,
+    pub ok: bool,
+    pub message: String,
+}
+
+#[tauri::command]
+pub async fn run_self_test() -> Result<Vec<SelfTestResult>, String> {
+    let mut out = Vec::new();
+
+    // GitHub: try gh CLI token, then validate it.
+    let gh_result = (|| async {
+        let token = crate::auth::gh_cli_token()
+            .map_err(|e| format!("gh CLI not available: {e}"))?;
+        crate::auth::validate_pat(token).await?;
+        Ok::<_, String>(())
+    })()
+    .await;
+    out.push(match gh_result {
+        Ok(()) => SelfTestResult {
+            service: "GitHub".into(),
+            ok: true,
+            message: "Authenticated via gh CLI".into(),
+        },
+        Err(e) => SelfTestResult {
+            service: "GitHub".into(),
+            ok: false,
+            message: e,
+        },
+    });
+
+    // Azure DevOps: check whether az CLI is available (sync fn).
+    let ado_available = crate::auth::ado::az_cli_available();
+    out.push(SelfTestResult {
+        service: "Azure DevOps".into(),
+        ok: ado_available,
+        message: if ado_available {
+            "az CLI on PATH".into()
+        } else {
+            "az CLI not found — install Azure CLI or use a PAT".into()
+        },
+    });
+
+    // Cache: check whether the SQLite db exists.
+    let cache_ok = dirs::config_dir()
+        .map(|d| d.join("BorgDock").join("prcache.db").exists())
+        .unwrap_or(false);
+    out.push(SelfTestResult {
+        service: "Cache".into(),
+        ok: cache_ok,
+        message: if cache_ok {
+            "Cache database present".into()
+        } else {
+            "Cache will be initialized on next launch".into()
+        },
+    });
+
+    Ok(out)
+}
+
 // ─── tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
