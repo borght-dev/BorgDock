@@ -14,6 +14,7 @@ const base: SessionRecord = {
   stateSinceMs: 9_000,
   lastEventMs: 1_000,
   lastUserMsg: 'Refactor the foo bar baz',
+  lastAssistantMsg: null,
   task: 'Reading foo.ts',
   model: 'claude-sonnet-4-6',
   tokensUsed: 64_000,

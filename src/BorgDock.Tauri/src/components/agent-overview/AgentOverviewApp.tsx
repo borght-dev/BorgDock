@@ -17,13 +17,23 @@ export function AgentOverviewApp() {
   const idle = sessions.filter((s) => s.state === 'idle' || s.state === 'ended');
   const awaiting = sessions.filter((s) => s.state === 'awaiting');
 
+  // When the dashboard would otherwise be empty (no live sessions), promote
+  // the idle sessions into the main grouped view so the user still sees
+  // real cards and the grouping/density toggles affect what's rendered.
+  // The compact IdleRail strip only makes sense as a footer to an active
+  // dashboard.
+  const promoteIdle = live.length === 0 && idle.length > 0;
+  const groupedAgents = promoteIdle
+    ? idle
+    : live.filter((s) => s.state !== 'awaiting');
+  const showIdleRail = !promoteIdle && idle.length > 0;
+
   const effectiveDensity = useMemo<'roomy' | 'standard' | 'wall'>(
-    () => (density === 'auto' ? pickDensity(live.length) : density),
-    [density, live.length],
+    () => (density === 'auto' ? pickDensity(groupedAgents.length) : density),
+    [density, groupedAgents.length],
   );
 
   const totalRepos = useMemo(() => new Set(sessions.map((s) => s.repo)).size, [sessions]);
-  const nonAwaiting = live.filter((s) => s.state !== 'awaiting');
 
   return (
     <div
@@ -56,11 +66,11 @@ export function AgentOverviewApp() {
       >
         <AwaitingRail agents={awaiting} density={effectiveDensity} />
         {grouping === 'repo' ? (
-          <RepoGrouped agents={nonAwaiting} density={effectiveDensity} />
+          <RepoGrouped agents={groupedAgents} density={effectiveDensity} />
         ) : (
-          <StatusGrouped agents={nonAwaiting} density={effectiveDensity} />
+          <StatusGrouped agents={groupedAgents} density={effectiveDensity} />
         )}
-        {idle.length > 0 && <IdleRail agents={idle} />}
+        {showIdleRail && <IdleRail agents={idle} />}
       </div>
       <Statusbar
         records={sessions}

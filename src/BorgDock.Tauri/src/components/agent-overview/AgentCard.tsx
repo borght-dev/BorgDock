@@ -1,5 +1,8 @@
 import type { SessionRecord } from '@/services/agent-overview-types';
 import { STATE_DEFS, fmtSince, tokenPct } from '@/services/agent-overview';
+import { HoverPopover } from '@/components/shared/primitives';
+import { AssistantMarkdown } from './AssistantMarkdown';
+import { DismissButton } from './DismissButton';
 import { RepoMark } from './RepoMark';
 import { StatePill } from './StatePill';
 import { TokenBar } from './TokenBar';
@@ -26,26 +29,51 @@ export function AgentCard({ agent, density = 'comfortable', showRepo = false }: 
         </span>
         <span style={{ flex: 1 }} />
         <StatePill state={agent.state} />
+        <DismissButton sessionId={agent.sessionId} />
       </div>
 
       {agent.lastUserMsg && (
         <div
           style={{
-            fontSize: 12,
-            color: 'var(--color-text-secondary)',
-            lineHeight: 1.45,
-            marginBottom: 6,
+            fontSize: 11,
+            color: 'var(--color-text-tertiary)',
+            lineHeight: 1.4,
+            marginBottom: 4,
             display: '-webkit-box',
-            WebkitLineClamp: compact ? 1 : 2,
+            WebkitLineClamp: 1,
             WebkitBoxOrient: 'vertical' as const,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
         >
-          <span style={{ color: 'var(--color-text-faint)' }}>{'" '}</span>
+          <span style={{ color: 'var(--color-text-faint)' }}>you: </span>
           {agent.lastUserMsg}
-          <span style={{ color: 'var(--color-text-faint)' }}>{' "'}</span>
         </div>
+      )}
+
+      {agent.lastAssistantMsg && (
+        <HoverPopover
+          content={<AssistantMarkdown text={agent.lastAssistantMsg} />}
+          triggerStyle={{ display: 'block', marginBottom: 6 }}
+        >
+          <div
+            data-testid="agent-card-assistant-preview"
+            style={{
+              fontSize: 12,
+              color: 'var(--color-text-primary)',
+              lineHeight: 1.45,
+              display: '-webkit-box',
+              WebkitLineClamp: compact ? 2 : 3,
+              WebkitBoxOrient: 'vertical' as const,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'pre-wrap',
+              cursor: 'help',
+            }}
+          >
+            {agent.lastAssistantMsg}
+          </div>
+        </HoverPopover>
       )}
 
       {agent.task && (
@@ -59,6 +87,7 @@ export function AgentCard({ agent, density = 'comfortable', showRepo = false }: 
             gap: 6,
           }}
         >
+          <span style={{ flexShrink: 0, color: 'var(--color-text-faint)' }}>→</span>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.task}</span>
         </div>
       )}

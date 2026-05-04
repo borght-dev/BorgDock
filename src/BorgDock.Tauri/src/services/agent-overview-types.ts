@@ -11,6 +11,11 @@ export interface SessionRecord {
   stateSinceMs: number;
   lastEventMs: number;
   lastUserMsg: string | null;
+  /** Most recent assistant text from this session's .jsonl. Surfaced on
+   *  Awaiting/Finished cards so the user can see the question they need to
+   *  answer (the user's last reply is often a single letter and useless
+   *  without context). */
+  lastAssistantMsg: string | null;
   task: string | null;
   model: string | null;
   tokensUsed: number;

@@ -1,5 +1,8 @@
 import type { SessionRecord } from '@/services/agent-overview-types';
 import { fmtSinceShort } from '@/services/agent-overview';
+import { HoverPopover } from '@/components/shared/primitives';
+import { AssistantMarkdown } from './AssistantMarkdown';
+import { DismissButton } from './DismissButton';
 import { RepoMark } from './RepoMark';
 
 interface AwaitingRailItemProps {
@@ -9,6 +12,7 @@ interface AwaitingRailItemProps {
 export function AwaitingRailItem({ agent }: AwaitingRailItemProps) {
   return (
     <div
+      className="ag-rail-item"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -44,19 +48,61 @@ export function AwaitingRailItem({ agent }: AwaitingRailItemProps) {
           <span className="bd-mono" style={{ fontSize: 10, color: 'var(--color-warning-badge-fg)', fontWeight: 600 }}>
             waiting {fmtSinceShort(agent.stateSinceMs)}
           </span>
+          <DismissButton sessionId={agent.sessionId} />
         </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: 'var(--color-text-primary)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            fontWeight: 500,
-          }}
-        >
-          {agent.task ?? agent.lastUserMsg ?? ''}
-        </div>
+        {agent.lastAssistantMsg && agent.lastUserMsg && (
+          <div
+            data-testid="awaiting-item-user-reply"
+            style={{
+              fontSize: 10,
+              color: 'var(--color-text-tertiary)',
+              marginBottom: 2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            <span style={{ color: 'var(--color-text-faint)' }}>you: </span>
+            {agent.lastUserMsg}
+          </div>
+        )}
+        {agent.lastAssistantMsg ? (
+          <HoverPopover
+            content={<AssistantMarkdown text={agent.lastAssistantMsg} />}
+            triggerStyle={{ display: 'block' }}
+          >
+            <div
+              data-testid="awaiting-item-assistant-preview"
+              style={{
+                fontSize: 12,
+                color: 'var(--color-text-primary)',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical' as const,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.4,
+                cursor: 'help',
+              }}
+            >
+              {agent.lastAssistantMsg}
+            </div>
+          </HoverPopover>
+        ) : (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--color-text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              fontWeight: 500,
+            }}
+          >
+            {agent.task ?? agent.lastUserMsg ?? ''}
+          </div>
+        )}
       </div>
     </div>
   );

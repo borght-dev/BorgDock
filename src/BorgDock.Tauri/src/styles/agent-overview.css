@@ -163,6 +163,89 @@
   flex: 1; height: 1px; background: var(--color-subtle-border);
 }
 
+/* Dismiss button — small ✕ in the top-right corner of awaiting cards */
+.ag-dismiss-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+  opacity: 1;
+}
+.ag-dismiss-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+.ag-dismiss-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.ag-dismiss-btn--hover {
+  opacity: 0;
+  pointer-events: none;
+}
+.ag-card:hover .ag-dismiss-btn--hover,
+.ag-tile:hover .ag-dismiss-btn--hover,
+.ag-rail-item:hover .ag-dismiss-btn--hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Always visible on keyboard focus, even without parent hover. */
+.ag-dismiss-btn--hover:focus-visible,
+.ag-dismiss-btn--hover:focus {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Markdown rendering inside the assistant-message hover popover */
+.ag-assistant-md p { margin: 0 0 0.65em 0; }
+.ag-assistant-md p:last-child { margin-bottom: 0; }
+.ag-assistant-md h1,
+.ag-assistant-md h2,
+.ag-assistant-md h3,
+.ag-assistant-md h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0.6em 0 0.4em 0;
+  color: var(--color-text-primary);
+}
+.ag-assistant-md ul,
+.ag-assistant-md ol { margin: 0 0 0.65em 1.2em; padding: 0; }
+.ag-assistant-md li { margin-bottom: 0.2em; }
+.ag-assistant-md code {
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  background: var(--color-surface-hover);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.ag-assistant-md pre {
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-subtle-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  margin: 0 0 0.65em 0;
+}
+.ag-assistant-md pre code { background: transparent; padding: 0; }
+.ag-assistant-md strong { font-weight: 600; }
+.ag-assistant-md a { color: var(--color-accent); text-decoration: underline; }
+.ag-assistant-md blockquote {
+  border-left: 2px solid var(--color-subtle-border);
+  margin: 0 0 0.65em 0;
+  padding-left: 10px;
+  color: var(--color-text-secondary);
+}
+
 /* Titlebar alert badge */
 .ag-tb-alert {
   display: inline-flex; align-items: center; gap: 6px;

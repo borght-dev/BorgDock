@@ -9,7 +9,7 @@ interface StatusGroupedProps {
   density: 'roomy' | 'standard' | 'wall';
 }
 
-const ORDER: SessionState[] = ['finished', 'working', 'tool'];
+const ORDER: SessionState[] = ['finished', 'working', 'tool', 'idle', 'ended'];
 
 export function StatusGrouped({ agents, density }: StatusGroupedProps) {
   if (agents.length === 0) return null;
