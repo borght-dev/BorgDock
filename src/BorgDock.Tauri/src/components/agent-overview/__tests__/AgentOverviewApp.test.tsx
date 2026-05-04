@@ -127,3 +127,26 @@ describe('AgentOverviewApp auto-archive', () => {
     expect(screen.getByTestId('statusbar-archived-toggle')).toHaveTextContent('hide 1 archived');
   });
 });
+
+describe('AgentOverviewApp snooze + mark-seen', () => {
+  it('snoozed awaiting sessions vanish from rail and titlebar count', () => {
+    mockSessions = [
+      rec('a', 'BorgDock', 'awaiting', { stateSinceMs: 60_000, snoozedUntilMs: Date.now() + 60_000 }),
+      rec('b', 'BorgDock', 'awaiting', { stateSinceMs: 120_000 }),
+    ];
+    render(<AgentOverviewApp />);
+    const pill = screen.queryByTestId('titlebar-oldest-age');
+    expect(pill?.textContent).toMatch(/1 awaiting/);
+  });
+
+  it('mark-seen sessions stay visible but get the seen class', () => {
+    mockSessions = [
+      rec('a', 'BorgDock', 'working', {
+        stateSinceMs: 60_000,
+        seenAtMs: Date.now(),
+      }),
+    ];
+    const { container } = render(<AgentOverviewApp />);
+    expect(container.querySelector('.ag-card--seen')).not.toBeNull();
+  });
+});
