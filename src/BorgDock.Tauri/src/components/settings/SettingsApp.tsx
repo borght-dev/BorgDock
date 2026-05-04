@@ -7,6 +7,7 @@ import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
 import { RailSearchInput } from './RailSearchInput';
 import { RailSectionList } from './RailSectionList';
 import { RailSearchResults } from './RailSearchResults';
+import { PulseProvider } from './useFieldPulse';
 // Existing section components — bodies are rewritten in later tasks.
 import { GitHubSection }        from './GitHubSection';
 import { RepoSection }          from './RepoSection';
@@ -43,6 +44,7 @@ export function SettingsApp() {
   const saveSettings = useSettingsStore((s) => s.saveSettings);
   const [active, setActive] = useState<SettingsSectionId>(readInitialSection);
   const [search, setSearch] = useState('');
+  const [pulseAnchor, setPulseAnchor] = useState<string | null>(null);
 
   // Ref-mirror of settings so the debounced save can read latest without
   // re-creating the `update` callback on every keystroke.
@@ -107,6 +109,7 @@ export function SettingsApp() {
   const breadcrumb = SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? '';
 
   return (
+    <PulseProvider value={{ pulseAnchor, setPulseAnchor }}>
     <div className="flex h-screen flex-col bg-[var(--color-background)] text-[var(--color-text-primary)]">
       <WindowTitleBar
         title="BorgDock"
@@ -129,7 +132,15 @@ export function SettingsApp() {
           </div>
           <div className="flex-1 overflow-auto px-2 pb-3.5 pt-1">
             {search.trim()
-              ? <RailSearchResults query={search} onSelect={(id) => { setActive(id); setSearch(''); }} />
+              ? <RailSearchResults
+                  query={search}
+                  onSelect={({ sectionId, anchorId }) => {
+                    setActive(sectionId);
+                    setSearch('');
+                    // Wait one paint so the new section mounts before we try to scroll.
+                    requestAnimationFrame(() => setPulseAnchor(anchorId));
+                  }}
+                />
               : <RailSectionList active={active} onSelect={setActive} />}
           </div>
           <div className="flex items-center gap-2 border-t border-[var(--color-subtle-border)] px-3.5 py-2.5 text-[10.5px] text-[var(--color-text-muted)]">
@@ -143,5 +154,6 @@ export function SettingsApp() {
         </main>
       </div>
     </div>
+    </PulseProvider>
   );
 }

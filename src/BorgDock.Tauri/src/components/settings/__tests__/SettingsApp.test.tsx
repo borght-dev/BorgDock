@@ -79,4 +79,23 @@ describe('SettingsApp', () => {
     // Default active is github — breadcrumb and rail button both show "GitHub"
     expect(screen.getAllByText('GitHub').length).toBeGreaterThan(0);
   });
+
+  it('clicking a search result switches section', async () => {
+    render(<SettingsApp />);
+    const search = screen.getByPlaceholderText('Search settings…');
+    fireEvent.change(search, { target: { value: 'poll' } });
+    const results = screen.getAllByText('Poll interval');
+    expect(results.length).toBeGreaterThan(0);
+    fireEvent.click(results[0]!.closest('button')!);
+    expect(localStorage.getItem('settings.lastSection')).toBe('github');
+  });
+
+  it('search result for ADO field switches to ADO section', () => {
+    render(<SettingsApp />);
+    const search = screen.getByPlaceholderText('Search settings…');
+    fireEvent.change(search, { target: { value: 'match by' } });
+    const matchByBtn = screen.getByText('Match by').closest('button')!;
+    fireEvent.click(matchByBtn);
+    expect(localStorage.getItem('settings.lastSection')).toBe('ado');
+  });
 });
