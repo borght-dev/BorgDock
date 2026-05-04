@@ -26,7 +26,16 @@ export function AgentOverviewApp() {
   const nonAwaiting = live.filter((s) => s.state !== 'awaiting');
 
   return (
-    <div className="bd-window" style={{ width: '100vw', height: '100vh' }}>
+    <div
+      style={{
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--color-background)',
+        color: 'var(--color-text-primary)',
+      }}
+    >
       <Titlebar
         totalAwaiting={awaiting.length}
         totalSessions={sessions.length}
@@ -37,8 +46,13 @@ export function AgentOverviewApp() {
         onDensityChange={setDensity}
       />
       <div
-        className="bd-scroll"
-        style={{ flex: 1, overflow: 'auto', padding: '14px 18px 16px', background: 'var(--color-background)' }}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '14px 18px 16px',
+          background: 'var(--color-background)',
+          minHeight: 0,
+        }}
       >
         <AwaitingRail agents={awaiting} density={effectiveDensity} />
         {grouping === 'repo' ? (

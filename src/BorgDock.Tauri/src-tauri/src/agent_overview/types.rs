@@ -33,6 +33,14 @@ pub struct SessionRecord {
     #[serde(skip)]
     pub pending_tool_uses: HashSet<String>,
 
+    /// Wall-clock instant of the most recent api_request event for this
+    /// session, or None if no api_request has fired since the last
+    /// tool_decision / user_prompt. Drives the post-api_request debounce
+    /// that decides Working → Finished. Skipped from serialization for the
+    /// same reason as the other Instant fields.
+    #[serde(skip)]
+    pub last_api_request_at: Option<Instant>,
+
     /// Set internally before serialization to expose `state_since` / `last_event_at`
     /// as wall-clock millis-ago values for the React side. `rename_all = "camelCase"`
     /// already produces `stateSinceMs` / `lastEventMs` — no per-field rename needed.
@@ -110,6 +118,7 @@ mod tests {
             tokens_max: 200_000,
             last_api_stop_reason: None,
             pending_tool_uses: HashSet::new(),
+            last_api_request_at: None,
             state_since_ms: 0,
             last_event_ms: 0,
         };

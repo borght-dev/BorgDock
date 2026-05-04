@@ -214,6 +214,7 @@ pub fn run() {
                         ended_after: std::time::Duration::from_secs(cfg.ended_threshold_seconds.into()),
                         finished_to_awaiting_after: std::time::Duration::from_secs(30),
                         history_retention: std::time::Duration::from_secs(cfg.history_retention_seconds.into()),
+                        working_to_finished_after: std::time::Duration::from_secs(3),
                     };
                     tauri::async_runtime::spawn(async move {
                         use crate::agent_overview::notify::{NotifyAction, NotifyTracker};

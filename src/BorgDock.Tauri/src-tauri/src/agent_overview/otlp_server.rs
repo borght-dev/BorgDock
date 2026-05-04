@@ -12,10 +12,6 @@ pub fn parse_export_logs(body: &Value) -> Vec<RawEvent> {
 
     for resource_log in resource_logs {
         let resource_attrs = collect_attrs(resource_log.pointer("/resource/attributes"));
-        let session_id = resource_attrs
-            .get("session.id")
-            .and_then(Value::as_str)
-            .map(str::to_string);
         let Some(scope_logs) = resource_log.get("scopeLogs").and_then(Value::as_array) else {
             continue;
         };
@@ -28,14 +24,21 @@ pub fn parse_export_logs(body: &Value) -> Vec<RawEvent> {
                 for (k, v) in collect_attrs(record.get("attributes")) {
                     attrs.insert(k, v);
                 }
+                // Claude Code ≥ 2.1 emits `session.id` on the log record's
+                // attributes, not on the resource. Look it up after merging so
+                // both placements work.
+                let sid = attrs
+                    .get("session.id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                if sid.is_empty() {
+                    continue;
+                }
                 let event_name = match attrs.get("event.name").and_then(Value::as_str) {
                     Some(s) => s.to_string(),
                     None => continue,
                 };
-                let sid = session_id.clone().unwrap_or_default();
-                if sid.is_empty() {
-                    continue;
-                }
                 out.push(RawEvent { session_id: sid, event_name, attrs });
             }
         }
@@ -163,5 +166,34 @@ mod tests {
     fn empty_body_returns_empty() {
         let body: Value = serde_json::from_str("{}").unwrap();
         assert!(parse_export_logs(&body).is_empty());
+    }
+
+    /// Claude Code ≥ 2.1 emits `session.id` on the log-record's attributes
+    /// rather than the resource's. Make sure we still pick it up.
+    #[test]
+    fn record_level_session_id_is_picked_up() {
+        let body = serde_json::json!({
+            "resourceLogs": [{
+                "resource": { "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "claude-code"}}
+                ]},
+                "scopeLogs": [{
+                    "scope": {"name": "com.anthropic.claude_code.events"},
+                    "logRecords": [{
+                        "attributes": [
+                            {"key": "session.id", "value": {"stringValue": "real-sid-123"}},
+                            {"key": "event.name", "value": {"stringValue": "tool_decision"}},
+                            {"key": "tool_name", "value": {"stringValue": "Bash"}}
+                        ],
+                        "body": {"stringValue": "claude_code.tool_decision"}
+                    }]
+                }]
+            }]
+        });
+        let events = parse_export_logs(&body);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].session_id, "real-sid-123");
+        assert_eq!(events[0].event_name, "tool_decision");
+        assert_eq!(events[0].attrs.get("tool_name").unwrap(), &Value::String("Bash".into()));
     }
 }

@@ -85,6 +85,7 @@ mod tests {
             tokens_max: 200_000,
             last_api_stop_reason: None,
             pending_tool_uses: HashSet::new(),
+            last_api_request_at: None,
             state_since_ms: 0,
             last_event_ms: 0,
         }

@@ -15,6 +15,9 @@ pub struct StoreThresholds {
     pub ended_after: Duration,
     pub finished_to_awaiting_after: Duration,
     pub history_retention: Duration,
+    /// Silence-based Working→Finished threshold. Replaces the (no-longer
+    /// emitted) `stop_reason: end_turn` signal.
+    pub working_to_finished_after: Duration,
 }
 
 impl Default for StoreThresholds {
@@ -24,6 +27,7 @@ impl Default for StoreThresholds {
             ended_after: Duration::from_secs(1800),
             finished_to_awaiting_after: Duration::from_secs(30),
             history_retention: Duration::from_secs(14_400),
+            working_to_finished_after: Duration::from_secs(3),
         }
     }
 }
@@ -110,6 +114,7 @@ impl SessionStore {
                 tokens_max: 200_000,
                 last_api_stop_reason: None,
                 pending_tool_uses: HashSet::new(),
+                last_api_request_at: None,
                 state_since_ms: 0,
                 last_event_ms: 0,
             }
@@ -141,6 +146,7 @@ impl SessionStore {
                     thresholds.idle_after,
                     thresholds.ended_after,
                     thresholds.finished_to_awaiting_after,
+                    thresholds.working_to_finished_after,
                 );
                 if rec.state == SessionState::Ended
                     && now.saturating_duration_since(rec.last_event_at) > thresholds.history_retention
@@ -261,9 +267,15 @@ mod tests {
 
     #[test]
     fn run_tick_drops_ended_sessions_past_retention() {
+        // On Windows, `Instant::now() - Duration::from_secs(20_000)` panics
+        // when the monotonic clock has less than 20k seconds of headroom
+        // (fresh boot, fresh process). Compare timestamps via a synthetic
+        // `now` that lives 20k seconds ahead of the record timestamps
+        // instead of subtracting from a real instant.
         let store = SessionStore::default();
         let (tx, mut rx) = unbounded_channel();
-        let now = Instant::now();
+        let base = Instant::now();
+        let now = base + Duration::from_secs(20_000);
         let mut rec = SessionRecord {
             session_id: "sid".into(),
             cwd: PathBuf::from("/x"),
@@ -272,8 +284,8 @@ mod tests {
             branch: "master".into(),
             label: "BD · master #1".into(),
             state: SessionState::Ended,
-            state_since: now - Duration::from_secs(20_000),
-            last_event_at: now - Duration::from_secs(20_000),
+            state_since: base,
+            last_event_at: base,
             last_user_msg: None,
             task: None,
             model: None,
@@ -281,6 +293,7 @@ mod tests {
             tokens_max: 200_000,
             last_api_stop_reason: None,
             pending_tool_uses: HashSet::new(),
+            last_api_request_at: None,
             state_since_ms: 0,
             last_event_ms: 0,
         };
