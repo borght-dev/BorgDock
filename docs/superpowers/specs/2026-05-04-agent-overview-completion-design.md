@@ -92,10 +92,16 @@ export interface SessionRecord {
 
 The state machine already consumes OTel events. Add per-session tracking:
 
-- **On `tool_decision` event** with `tool_name` ∈ {`Edit`, `Write`, `Read`}
-  and a `file_path` attribute: append `TurnFile { path, tool, timestamp_ms }`
-  to `current_turn_files`. De-dup by path keeping the latest entry (so a
-  Read-then-Edit on the same file shows as Edit).
+- **On `tool_result` event** with `tool_name` ∈ {`Edit`, `Write`, `Read`}
+  and a `file_path` attribute (parsed from the existing `tool_input` JSON):
+  append `TurnFile { path, tool, timestamp_ms }` to `current_turn_files`.
+  De-dup by path keeping the latest entry (so a Read-then-Edit on the same
+  file shows as Edit). We hook `tool_result` rather than `tool_decision`
+  because (a) `tool_decision` in this codebase only carries `tool_use_id`
+  and the narrative-extraction infrastructure already lives on
+  `tool_result`, and (b) tracking on completion (rather than invocation)
+  gives us the more useful set: files Claude actually read or wrote, not
+  files it attempted before erroring.
 - **On `user_prompt` event**: clear `current_turn_files`. This is the
   "since your last message" boundary.
 - The list lives only in memory. On app restart it's empty for all sessions
