@@ -38,6 +38,20 @@ pub struct SessionRecord {
     #[serde(skip)]
     pub pending_tool_uses: HashSet<String>,
 
+    /// Files Claude has touched since the last `user_prompt`. De-duped by
+    /// path (later tool wins), capped at 50 entries to keep memory bounded.
+    /// Cleared whenever a `user_prompt` event arrives.
+    pub current_turn_files: Vec<TurnFile>,
+
+    /// Wall-clock epoch ms after which this session reappears in the
+    /// awaiting rail. None when not snoozed. Hydrated from sqlite.
+    pub snoozed_until_ms: Option<u128>,
+
+    /// Wall-clock epoch ms when the user marked this session seen. None
+    /// when never marked. Hydrated from sqlite. The store auto-clears it
+    /// when `last_event_at` advances past `seen_at_ms`.
+    pub seen_at_ms: Option<u128>,
+
     /// Wall-clock instant of the most recent api_request event for this
     /// session, or None if no api_request has fired since the last
     /// tool_decision / user_prompt. Drives the post-api_request debounce
@@ -93,6 +107,18 @@ pub enum SessionDelta {
     },
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TurnFileTool { Edit, Write, Read }
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnFile {
+    pub path: String,
+    pub tool: TurnFileTool,
+    pub timestamp_ms: u128,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,6 +150,9 @@ mod tests {
             tokens_max: 200_000,
             last_api_stop_reason: None,
             pending_tool_uses: HashSet::new(),
+            current_turn_files: Vec::new(),
+            snoozed_until_ms: None,
+            seen_at_ms: None,
             last_api_request_at: None,
             state_since_ms: 0,
             last_event_ms: 0,
