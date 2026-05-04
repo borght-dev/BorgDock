@@ -193,22 +193,55 @@ pub fn read_last_assistant_message(projects_root: &Path, session_id: &str) -> Op
 
 fn read_last_assistant_text_from_file(path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(path).ok()?;
-    // Walk lines from the end so we find the LAST assistant message.
-    for line in content.lines().rev() {
-        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else { continue };
-        if value.get("type").and_then(|v| v.as_str()) != Some("assistant") {
+    let parsed: Vec<serde_json::Value> = content
+        .lines()
+        .filter_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())
+        .collect();
+
+    // Walk from the end to find the most recent USER-AUTHORED prompt. A
+    // `type:"user"` line that carries `tool_result` blocks (Claude writes
+    // tool results back as user-role messages) is part of the same turn —
+    // skip those so the boundary lands on a real user prompt. A real user
+    // prompt has either a plain-string `content`, or an array whose blocks
+    // are all `type:"text"`.
+    let user_boundary = parsed
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, v)| {
+            if v.get("type").and_then(|t| t.as_str()) != Some("user") {
+                return false;
+            }
+            let content = match v.get("message").and_then(|m| m.get("content")) {
+                Some(c) => c,
+                None => return v.get("content").is_some(),
+            };
+            match content {
+                serde_json::Value::String(_) => true,
+                serde_json::Value::Array(blocks) => blocks.iter().all(|b| {
+                    b.get("type").and_then(|t| t.as_str()) != Some("tool_result")
+                }),
+                _ => false,
+            }
+        })
+        .map(|(i, _)| i);
+
+    let start = user_boundary.map(|i| i + 1).unwrap_or(0);
+    let mut combined = String::new();
+    for v in &parsed[start..] {
+        if v.get("type").and_then(|t| t.as_str()) != Some("assistant") {
             continue;
         }
-        let content = value.get("message").and_then(|m| m.get("content"));
-        let text = match content {
+        let content = v.get("message").and_then(|m| m.get("content"));
+        let chunk = match content {
             Some(serde_json::Value::String(s)) => s.clone(),
             Some(serde_json::Value::Array(blocks)) => {
                 let mut out = String::new();
                 for b in blocks {
-                    if b.get("type").and_then(|v| v.as_str()) == Some("text") {
-                        if let Some(t) = b.get("text").and_then(|v| v.as_str()) {
+                    if b.get("type").and_then(|t| t.as_str()) == Some("text") {
+                        if let Some(t) = b.get("text").and_then(|t| t.as_str()) {
                             if !out.is_empty() {
-                                out.push_str("\n");
+                                out.push('\n');
                             }
                             out.push_str(t);
                         }
@@ -218,12 +251,19 @@ fn read_last_assistant_text_from_file(path: &Path) -> Option<String> {
             }
             _ => continue,
         };
-        if text.trim().is_empty() {
+        if chunk.trim().is_empty() {
             continue;
         }
-        return Some(text);
+        if !combined.is_empty() {
+            combined.push_str("\n\n");
+        }
+        combined.push_str(&chunk);
     }
-    None
+    if combined.trim().is_empty() {
+        None
+    } else {
+        Some(combined)
+    }
 }
 
 pub fn derive_worktree_name(path: &Path) -> String {
@@ -398,6 +438,41 @@ mod tests {
         fs::write(proj.join("sid.jsonl"), lines.join("\n")).unwrap();
         let msg = read_last_assistant_message(tmp.path(), "sid").unwrap();
         assert_eq!(msg, "keep me");
+    }
+
+    /// A single user turn often produces multiple `type:"assistant"` jsonl
+    /// lines (text → tool_use → tool_result loop → final text), and the
+    /// user wants to see the full response, not just the last paragraph.
+    /// Concatenate every assistant text block produced since the most
+    /// recent `type:"user"` line.
+    #[test]
+    fn read_last_assistant_message_concatenates_all_text_since_last_user() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("E--proj");
+        fs::create_dir_all(&proj).unwrap();
+        let lines = [
+            r#"{"type":"user","message":{"role":"user","content":"earlier"}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"old reply"}]}}"#,
+            r#"{"type":"user","message":{"role":"user","content":"new prompt"}}"#,
+            // Multi-step turn: text → tool_use → tool_result → more text.
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"First, I'll look around."}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","id":"a"}]}}"#,
+            r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"a"}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Done. Two options:"}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"A. fast\nB. correct"}]}}"#,
+        ];
+        fs::write(proj.join("sid.jsonl"), lines.join("\n")).unwrap();
+
+        let msg = read_last_assistant_message(tmp.path(), "sid").unwrap();
+        // tool_result lines are also `type:"user"` (Claude writes them as
+        // user-role responses), but they carry no string user content. The
+        // boundary should be the most recent USER-AUTHORED prompt — i.e.
+        // the line whose `content` is a plain string. Everything after that
+        // assistant-side gets concatenated, in order.
+        assert!(msg.contains("First, I'll look around."), "missing first paragraph: {msg:?}");
+        assert!(msg.contains("Done. Two options:"), "missing post-tool paragraph: {msg:?}");
+        assert!(msg.contains("A. fast"), "missing final paragraph: {msg:?}");
+        assert!(!msg.contains("old reply"), "must not include text from prior turn: {msg:?}");
     }
 
     #[test]
