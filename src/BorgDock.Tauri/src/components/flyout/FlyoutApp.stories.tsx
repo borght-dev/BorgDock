@@ -293,3 +293,53 @@ export const GlanceBannerError = story({
     body: 'Re-authenticate in Settings to resume polling.',
   }),
 });
+
+// ---------------------------------------------------------------------------
+// Toast — queue size
+// ---------------------------------------------------------------------------
+
+const toastFromIdle = (toasts: ToastPayload[]): FlyoutStoryParams => ({
+  seed: { mode: 'idle' },
+  toasts,
+});
+
+export const Toast1Card = story(
+  toastFromIdle([
+    makeToast({ id: 't1', title: 'Build failed', severity: 'error', body: 'ci/test failed on main.' }),
+  ]),
+);
+
+export const Toast2Cards = story(
+  toastFromIdle([
+    makeToast({ id: 't2a', title: 'Build queued', severity: 'info', body: 'Waiting for runner.' }),
+    makeToast({ id: 't2b', title: 'Build started', severity: 'info', body: 'ci/build is running.' }),
+  ]),
+);
+
+export const Toast3Cards = story(
+  toastFromIdle([
+    makeToast({ id: 't3a', title: 'PR opened', severity: 'info' }),
+    makeToast({ id: 't3b', title: 'Checks running', severity: 'info' }),
+    makeToast({ id: 't3c', title: 'Checks passed', severity: 'success' }),
+  ]),
+);
+
+// ---------------------------------------------------------------------------
+// Toast — per-severity (single card)
+// ---------------------------------------------------------------------------
+
+export const ToastSeverityInfo = story(
+  toastFromIdle([makeToast({ id: 'sev-info', severity: 'info', title: 'FYI' })]),
+);
+
+export const ToastSeveritySuccess = story(
+  toastFromIdle([makeToast({ id: 'sev-ok', severity: 'success', title: 'Merged' })]),
+);
+
+export const ToastSeverityWarning = story(
+  toastFromIdle([makeToast({ id: 'sev-warn', severity: 'warning', title: 'Heads up' })]),
+);
+
+export const ToastSeverityError = story(
+  toastFromIdle([makeToast({ id: 'sev-err', severity: 'error', title: 'Build failed' })]),
+);
