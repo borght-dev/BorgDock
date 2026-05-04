@@ -125,8 +125,14 @@ fn read_first_cwd_line(path: &Path) -> Option<CwdInfo> {
     None
 }
 
-/// Repo name = last segment of the path that looks like a repo root.
-/// We treat the leaf if no `.worktrees` parent, else the grandparent.
+/// Repo name resolution, in priority order:
+///   1. If the path is inside `<repo>/.worktrees/<name>`, return `<repo>` (the
+///      segment before `.worktrees`). This must come first because worktree
+///      checkouts have their own `.git` file inside, which would otherwise
+///      cause the next rule to return the worktree directory instead.
+///   2. Walk ancestors looking for a `.git` entry (directory or file). The
+///      directory containing it is the repo root; return its leaf name.
+///   3. Fall back to the path's leaf segment when no git root is reachable.
 pub fn derive_repo_name(path: &Path) -> String {
     let parts: Vec<&std::ffi::OsStr> = path.iter().collect();
     for (i, p) in parts.iter().enumerate().rev() {
@@ -134,9 +140,89 @@ pub fn derive_repo_name(path: &Path) -> String {
             return parts[i - 1].to_string_lossy().into_owned();
         }
     }
+    if let Some(root) = find_git_root(path) {
+        if let Some(name) = root.file_name() {
+            return name.to_string_lossy().into_owned();
+        }
+    }
     path.file_name()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "unknown".into())
+}
+
+/// Walk the path's ancestors looking for a directory or file named `.git`.
+/// Returns the directory containing it (the repo root) or None.
+fn find_git_root(path: &Path) -> Option<PathBuf> {
+    for ancestor in path.ancestors() {
+        if ancestor.join(".git").exists() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
+}
+
+/// Public re-export — settings_merge needs git roots to overlay
+/// `.claude/settings.json` on each project that has one.
+pub fn find_git_root_for(path: &Path) -> Option<PathBuf> {
+    find_git_root(path)
+}
+
+/// Read the first JSONL line of a Claude session log that has a `cwd` field.
+/// Returns the absolute cwd path or None on parse/read failure.
+pub fn read_cwd_from_jsonl(path: &Path) -> Option<PathBuf> {
+    read_first_cwd_line(path).map(|info| info.cwd)
+}
+
+/// Glob `<projects_root>/*/<session_id>.jsonl`, find the most recent
+/// assistant message in the file, and return its concatenated text blocks.
+/// Returns None if no assistant message exists yet or all blocks are
+/// non-text (thinking / tool_use only).
+pub fn read_last_assistant_message(projects_root: &Path, session_id: &str) -> Option<String> {
+    let pattern = format!(
+        "{}/*/{session_id}.jsonl",
+        projects_root.display().to_string().replace('\\', "/"),
+    );
+    for path in glob::glob(&pattern).ok()?.flatten() {
+        if let Some(msg) = read_last_assistant_text_from_file(&path) {
+            return Some(msg);
+        }
+    }
+    None
+}
+
+fn read_last_assistant_text_from_file(path: &Path) -> Option<String> {
+    let content = std::fs::read_to_string(path).ok()?;
+    // Walk lines from the end so we find the LAST assistant message.
+    for line in content.lines().rev() {
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else { continue };
+        if value.get("type").and_then(|v| v.as_str()) != Some("assistant") {
+            continue;
+        }
+        let content = value.get("message").and_then(|m| m.get("content"));
+        let text = match content {
+            Some(serde_json::Value::String(s)) => s.clone(),
+            Some(serde_json::Value::Array(blocks)) => {
+                let mut out = String::new();
+                for b in blocks {
+                    if b.get("type").and_then(|v| v.as_str()) == Some("text") {
+                        if let Some(t) = b.get("text").and_then(|v| v.as_str()) {
+                            if !out.is_empty() {
+                                out.push_str("\n");
+                            }
+                            out.push_str(t);
+                        }
+                    }
+                }
+                out
+            }
+            _ => continue,
+        };
+        if text.trim().is_empty() {
+            continue;
+        }
+        return Some(text);
+    }
+    None
 }
 
 pub fn derive_worktree_name(path: &Path) -> String {
@@ -171,6 +257,113 @@ mod tests {
         let p = PathBuf::from("/c/src/borgdock/.worktrees/wt2");
         assert_eq!(derive_repo_name(&p), "borgdock");
         assert_eq!(derive_worktree_name(&p), "wt2");
+    }
+
+    /// A session's cwd is often a sub-directory of the repo (e.g. `BorgDock/design`,
+    /// `BorgDock/src/BorgDock.Tauri`). Without git-root awareness, both would be
+    /// listed under separate "design" / "BorgDock.Tauri" pseudo-repos in the
+    /// dashboard. Walking ancestors for a `.git` entry resolves them all to the
+    /// real repo name.
+    #[test]
+    fn derive_repo_name_uses_git_root_for_subdirectory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo_root = tmp.path().join("BorgDock");
+        let nested = repo_root.join("src").join("BorgDock.Tauri");
+        fs::create_dir_all(&nested).unwrap();
+        fs::create_dir_all(repo_root.join(".git")).unwrap();
+
+        assert_eq!(derive_repo_name(&nested), "BorgDock");
+        assert_eq!(derive_repo_name(&repo_root.join("design")), "BorgDock");
+        assert_eq!(derive_repo_name(&repo_root), "BorgDock");
+    }
+
+    /// Some repos use `.git` as a *file* (e.g. submodules, worktrees registered
+    /// the modern way) — not a directory. The walker must accept either.
+    #[test]
+    fn derive_repo_name_accepts_dotgit_as_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo_root = tmp.path().join("alpha");
+        let nested = repo_root.join("nested");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(repo_root.join(".git"), "gitdir: ../bare/.git").unwrap();
+        assert_eq!(derive_repo_name(&nested), "alpha");
+    }
+
+    /// Worktree paths still resolve via the `.worktrees/<name>` rule even
+    /// when a git root might exist higher up.
+    #[test]
+    fn derive_repo_name_worktree_rule_takes_precedence() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo_root = tmp.path().join("BorgDock");
+        let wt = repo_root.join(".worktrees").join("feature");
+        fs::create_dir_all(&wt).unwrap();
+        fs::create_dir_all(repo_root.join(".git")).unwrap();
+        assert_eq!(derive_repo_name(&wt), "BorgDock");
+        assert_eq!(derive_worktree_name(&wt), "feature");
+    }
+
+    /// When no `.git` exists in any ancestor (e.g. a session opened in /tmp),
+    /// fall back to the leaf segment so the dashboard still has *something*.
+    #[test]
+    fn derive_repo_name_falls_back_to_leaf_when_no_git_ancestor() {
+        let tmp = tempfile::tempdir().unwrap();
+        let leaf = tmp.path().join("loose-folder").join("inside");
+        fs::create_dir_all(&leaf).unwrap();
+        assert_eq!(derive_repo_name(&leaf), "inside");
+    }
+
+    /// Real Claude jsonls store assistant messages as `{type:"assistant",
+    /// message:{content:[{type:"text",text:"..."}, {type:"thinking",...}]}}`.
+    /// We must extract only the user-visible text blocks, never thinking,
+    /// and return the LATEST assistant message (so a card showing "Awaiting
+    /// input" can display the question Claude is waiting for an answer to).
+    #[test]
+    fn read_last_assistant_message_extracts_text_blocks_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("E--proj");
+        fs::create_dir_all(&proj).unwrap();
+        let lines = [
+            r#"{"type":"meta","sessionId":"sid"}"#,
+            r#"{"type":"user","message":{"role":"user","content":"hi"}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"first reply"}]}}"#,
+            r#"{"type":"user","message":{"role":"user","content":"more"}}"#,
+            // Newer assistant message has thinking AND text — only text should be returned.
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"hidden CoT"},{"type":"text","text":"Question: pick A, B, or C?"}]}}"#,
+            r#"{"type":"file-history-snapshot"}"#,
+        ];
+        fs::write(proj.join("sid.jsonl"), lines.join("\n")).unwrap();
+
+        let msg = read_last_assistant_message(tmp.path(), "sid").unwrap();
+        assert_eq!(msg, "Question: pick A, B, or C?");
+    }
+
+    /// When the latest "assistant" entry only has tool_use / thinking blocks
+    /// (no user-visible text), fall back to the prior text reply.
+    #[test]
+    fn read_last_assistant_message_falls_back_when_latest_has_no_text() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("E--proj");
+        fs::create_dir_all(&proj).unwrap();
+        let lines = [
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"keep me"}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","id":"a"}]}}"#,
+        ];
+        fs::write(proj.join("sid.jsonl"), lines.join("\n")).unwrap();
+        let msg = read_last_assistant_message(tmp.path(), "sid").unwrap();
+        assert_eq!(msg, "keep me");
+    }
+
+    #[test]
+    fn read_last_assistant_message_returns_none_when_no_assistant_messages() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("E--proj");
+        fs::create_dir_all(&proj).unwrap();
+        fs::write(
+            proj.join("sid.jsonl"),
+            r#"{"type":"user","message":{"role":"user","content":"hi"}}"#,
+        )
+        .unwrap();
+        assert!(read_last_assistant_message(tmp.path(), "sid").is_none());
     }
 
     #[test]

@@ -14,10 +14,13 @@ pub fn apply_event(record: &mut SessionRecord, event: &RawEvent, now: Instant) -
             if let Some(prompt) = event.attrs.get("prompt").and_then(Value::as_str) {
                 record.last_user_msg = Some(sanitize_user_prompt(prompt));
             }
-            // A new prompt starts a new turn: clear any stale pending tools
-            // and the post-api_request finish-debounce signal.
+            // A new prompt starts a new turn: clear any stale pending tools,
+            // the post-api_request finish-debounce signal, AND the cached
+            // assistant message from the previous turn (the lib.rs refresh
+            // path keys off `is_none()` to decide whether to re-read).
             record.pending_tool_uses.clear();
             record.last_api_request_at = None;
+            record.last_assistant_msg = None;
             transition(record, SessionState::Working, now);
         }
         "api_request" => {
@@ -38,13 +41,15 @@ pub fn apply_event(record: &mut SessionRecord, event: &RawEvent, now: Instant) -
             // follows within working_to_finished_after, the tick won't fire
             // Finished. If nothing follows, the tick declares Finished after
             // the threshold elapses.
+            //
+            // We deliberately do NOT transition Finished/Awaiting → Working
+            // on api_request: Claude fires non-user-driven api_requests for
+            // `away_summary`, `generate_session_title`, sub-agent calls, etc.
+            // The only events that legitimately take a session out of
+            // Finished/Awaiting are `user_prompt` (user typed) and
+            // `tool_decision` (model called a tool — implies a continuing
+            // turn). Each is handled in its own arm below.
             record.last_api_request_at = Some(now);
-            // If silence detection wrongly flipped this session to
-            // Finished/Awaiting while the model was still thinking, a fresh
-            // api_request rescues it back to Working.
-            if matches!(record.state, SessionState::Finished | SessionState::Awaiting) {
-                transition(record, SessionState::Working, now);
-            }
         }
         "tool_decision" => {
             if let Some(id) = event.attrs.get("tool_use_id").and_then(Value::as_str) {
@@ -222,9 +227,14 @@ pub fn apply_tick(
     // ~4 seconds, well below any human-perceivable lag.
     if record.state == SessionState::Finished && since_state > finished_to_awaiting_after {
         transition(record, SessionState::Awaiting, now);
+    } else if record.state == SessionState::Awaiting && since_event > ended_after {
+        // Awaiting → Ended is the ONLY auto-transition out of Awaiting. The
+        // user wants to keep "needs your input" sessions visible until they
+        // actually respond, so we never demote Awaiting → Idle on time alone.
+        transition(record, SessionState::Ended, now);
     } else if matches!(
         record.state,
-        SessionState::Working | SessionState::Tool | SessionState::Awaiting | SessionState::Finished
+        SessionState::Working | SessionState::Tool | SessionState::Finished
     ) && since_event > idle_after
     {
         transition(record, SessionState::Idle, now);
@@ -295,6 +305,7 @@ mod tests {
             state_since: now,
             last_event_at: now,
             last_user_msg: None,
+            last_assistant_msg: None,
             task: None,
             model: None,
             tokens_used: 0,
@@ -470,6 +481,22 @@ mod tests {
         assert!(r.pending_tool_uses.is_empty(), "stale tool uses should be cleared on new prompt");
     }
 
+    /// CRITICAL: a new user_prompt starts a new turn, so the cached
+    /// `last_assistant_msg` from the previous turn is stale and MUST be
+    /// invalidated. Otherwise the dashboard keeps showing the old
+    /// question on the new Awaiting card, even after the model replies.
+    #[test]
+    fn user_prompt_invalidates_cached_assistant_message() {
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Awaiting, now);
+        r.last_assistant_msg = Some("Q4 — rail search…".into());
+        apply_event(&mut r, &ev("user_prompt", &[("prompt", Value::String("more".into()))]), now);
+        assert_eq!(
+            r.last_assistant_msg, None,
+            "cached assistant message must be cleared when a new turn begins",
+        );
+    }
+
     #[test]
     fn finished_flips_to_awaiting_after_30s() {
         let now = Instant::now();
@@ -610,16 +637,44 @@ mod tests {
         assert_eq!(r.state, SessionState::Tool);
     }
 
-    /// If we wrongly marked a session Finished while the model was actually
-    /// still thinking, the next api_request must rescue it back to Working.
+    /// CRITICAL: Awaiting must NOT be demoted by a background api_request.
+    /// Claude fires `away_summary`, `generate_session_title`, and other
+    /// non-user-driven api_requests automatically — without this guard, the
+    /// rail loses sessions that genuinely need the user's input the moment
+    /// the user opens the dashboard window.
     #[test]
-    fn api_request_after_finished_returns_to_working() {
+    fn awaiting_is_not_disturbed_by_background_api_request() {
         let now = Instant::now();
-        let mut r = make_record(SessionState::Finished, now);
+        let mut r = make_record(SessionState::Awaiting, now);
         apply_event(&mut r, &ev("api_request", &[
+            ("query_source", Value::String("away_summary".into())),
             ("model", Value::String("claude-opus-4-7".into())),
             ("input_tokens", Value::from(10u64)),
         ]), now);
+        assert_eq!(r.state, SessionState::Awaiting);
+    }
+
+    /// Same for Finished — once the model is done with a turn, a stray
+    /// api_request (e.g. session-title generation) shouldn't visually
+    /// resurrect it as Working only to flip back to Finished 3s later.
+    #[test]
+    fn finished_is_not_disturbed_by_background_api_request() {
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Finished, now);
+        apply_event(&mut r, &ev("api_request", &[
+            ("query_source", Value::String("generate_session_title".into())),
+            ("input_tokens", Value::from(10u64)),
+        ]), now);
+        assert_eq!(r.state, SessionState::Finished);
+    }
+
+    /// The only legitimate way out of Awaiting is the user typing — that
+    /// fires `user_prompt`, which always transitions to Working.
+    #[test]
+    fn user_prompt_does_take_awaiting_back_to_working() {
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Awaiting, now);
+        apply_event(&mut r, &ev("user_prompt", &[("prompt", Value::String("ok".into()))]), now);
         assert_eq!(r.state, SessionState::Working);
     }
 
@@ -627,9 +682,8 @@ mod tests {
     fn tick_does_not_skip_awaiting_when_both_thresholds_have_elapsed() {
         // Regression: when a session has been Finished for longer than the
         // idle threshold (e.g., after a paused ticker), the cascade must
-        // surface Awaiting on this tick and Idle on the next, not skip
-        // Awaiting in a single call. Otherwise the user never gets the
-        // "needs you back" notification.
+        // surface Awaiting on this tick rather than skipping straight past
+        // it. Otherwise the user never gets the "needs you back" signal.
         let now = Instant::now();
         let mut r = make_record(SessionState::Finished, now - Duration::from_secs(400));
         r.last_event_at = now - Duration::from_secs(400);
@@ -642,17 +696,44 @@ mod tests {
         );
         assert!(changed);
         assert_eq!(r.state, SessionState::Awaiting);
+    }
 
-        // Next tick: now Awaiting + still > idle_after → Idle.
-        let later = now + Duration::from_secs(1);
-        apply_tick(
-            &mut r, later,
+    /// CRITICAL UX requirement: Awaiting MUST persist past the idle threshold.
+    /// The whole point of the dashboard is to keep "needs your input" sessions
+    /// visible until the user actually responds. Going to Idle hides them.
+    #[test]
+    fn awaiting_persists_past_idle_threshold() {
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Awaiting, now - Duration::from_secs(900));
+        r.last_event_at = now - Duration::from_secs(900); // 15 min — way past idle_after
+        let changed = apply_tick(
+            &mut r, now,
             Duration::from_secs(300),
             Duration::from_secs(1800),
             Duration::from_secs(30),
             Duration::from_secs(5),
         );
-        assert_eq!(r.state, SessionState::Idle);
+        assert!(!changed, "Awaiting should NOT change to Idle just because time passed");
+        assert_eq!(r.state, SessionState::Awaiting);
+    }
+
+    /// But Awaiting shouldn't accumulate forever either — after the
+    /// `ended_after` threshold, treat it as abandoned and move to Ended so
+    /// the dashboard can archive it.
+    #[test]
+    fn awaiting_eventually_transitions_to_ended_after_long_silence() {
+        let now = Instant::now();
+        let mut r = make_record(SessionState::Awaiting, now - Duration::from_secs(2_000));
+        r.last_event_at = now - Duration::from_secs(2_000); // > ended_after (1800)
+        let changed = apply_tick(
+            &mut r, now,
+            Duration::from_secs(300),
+            Duration::from_secs(1800),
+            Duration::from_secs(30),
+            Duration::from_secs(5),
+        );
+        assert!(changed);
+        assert_eq!(r.state, SessionState::Ended);
     }
 
     /// Real Claude OTel uses `tool_input` (a JSON-encoded string) as the

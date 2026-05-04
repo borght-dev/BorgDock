@@ -79,6 +79,7 @@ mod tests {
             state_since: now - state_since_ago,
             last_event_at: now,
             last_user_msg: None,
+            last_assistant_msg: None,
             task: None,
             model: None,
             tokens_used: 0,

@@ -24,6 +24,11 @@ pub struct SessionRecord {
     pub last_event_at: Instant,
 
     pub last_user_msg: Option<String>,
+    /// The most recent assistant text from the session's `.jsonl`. Surfaced
+    /// on Awaiting / Finished cards so the user can see the *question* they
+    /// need to answer (the user's last reply is often a single letter and
+    /// useless without context).
+    pub last_assistant_msg: Option<String>,
     pub task: Option<String>,
     pub model: Option<String>,
     pub tokens_used: u64,
@@ -112,6 +117,7 @@ mod tests {
             state_since: now,
             last_event_at: now,
             last_user_msg: None,
+            last_assistant_msg: None,
             task: None,
             model: None,
             tokens_used: 0,

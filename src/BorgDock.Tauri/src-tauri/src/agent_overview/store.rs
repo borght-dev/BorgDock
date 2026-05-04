@@ -50,6 +50,73 @@ impl SessionStore {
             .unwrap_or_default()
     }
 
+    /// Force a session into a specific state (e.g. user clicks "Dismiss" on
+    /// an Awaiting card that didn't actually need their input). Emits an
+    /// upsert delta so the UI re-renders. Silent no-op for unknown ids.
+    /// The session can still re-activate via subsequent OTel events
+    /// (`tool_decision` → Tool, `user_prompt` → Working) — dismissal isn't
+    /// a tombstone, just a manual transition.
+    pub fn set_state(
+        &self,
+        session_id: &str,
+        state: SessionState,
+        deltas: &UnboundedSender<SessionDelta>,
+        now: Instant,
+    ) {
+        let mut map = match self.inner.write() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        let Some(rec) = map.get_mut(session_id) else { return };
+        if rec.state == state {
+            return;
+        }
+        rec.state = state;
+        rec.state_since = now;
+        let snap = seal_for_emit(rec.clone(), now);
+        let _ = deltas.send(SessionDelta::Upsert { session: snap });
+    }
+
+    /// Returns the current state of `session_id`, or None if unknown.
+    pub fn state_of(&self, session_id: &str) -> Option<SessionState> {
+        self.inner
+            .read()
+            .ok()
+            .and_then(|m| m.get(session_id).map(|r| r.state))
+    }
+
+    /// Replace the cached `last_assistant_msg` for a session and emit a
+    /// delta so the UI re-renders. No-op if the session is unknown or the
+    /// message is unchanged.
+    pub fn update_last_assistant_msg(
+        &self,
+        session_id: &str,
+        msg: Option<String>,
+        deltas: &UnboundedSender<SessionDelta>,
+        now: Instant,
+    ) {
+        let mut map = match self.inner.write() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        let Some(rec) = map.get_mut(session_id) else { return };
+        if rec.last_assistant_msg == msg {
+            return;
+        }
+        rec.last_assistant_msg = msg;
+        let snap = seal_for_emit(rec.clone(), now);
+        let _ = deltas.send(SessionDelta::Upsert { session: snap });
+    }
+
+    /// Cheap presence check by session id — used by jsonl bootstrap to avoid
+    /// regressing live OTel-tracked records to a stub.
+    pub fn has_session(&self, session_id: &str) -> bool {
+        self.inner
+            .read()
+            .map(|m| m.contains_key(session_id))
+            .unwrap_or(false)
+    }
+
     /// Snapshot for in-process consumers (notify tracker, etc.) — returns the
     /// raw cloned records with their `Instant` fields intact. Never serialize
     /// the result; use `snapshot()` for that.
@@ -91,6 +158,35 @@ impl SessionStore {
         } else {
             0
         };
+
+        // Pre-compute the upgrade plan: if a session is already stored as
+        // `unknown / ?` (because resolve_cwd returned None on a prior event)
+        // and we now have a real cwd, promote the record. Compute the new
+        // label index here, BEFORE we mutably borrow `map` via Entry, since
+        // we need to count peers in the post-upgrade repo+worktree.
+        let upgrade: Option<(CwdInfo, u32)> = if cwd.is_some() && info.repo != "unknown" {
+            let existing_is_stub = map
+                .get(&session_id)
+                .map(|r| r.repo == "unknown")
+                .unwrap_or(false);
+            if existing_is_stub {
+                let new_idx = map
+                    .values()
+                    .filter(|r| {
+                        r.session_id != session_id
+                            && r.repo == info.repo
+                            && r.worktree == info.worktree
+                    })
+                    .count() as u32
+                    + 1;
+                Some((info.clone(), new_idx))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         let entry = map.entry(session_id.clone()).or_insert_with(|| {
             SessionRecord {
                 session_id: session_id.clone(),
@@ -108,6 +204,7 @@ impl SessionStore {
                 state_since: now,
                 last_event_at: now,
                 last_user_msg: None,
+                last_assistant_msg: None,
                 task: None,
                 model: None,
                 tokens_used: 0,
@@ -119,6 +216,21 @@ impl SessionStore {
                 last_event_ms: 0,
             }
         });
+
+        // Apply the upgrade if planned. `cwd` (Option) being Some implies the
+        // resolver succeeded — a None resolution never overwrites a real cwd.
+        if let Some((new_info, new_idx)) = upgrade {
+            entry.cwd = new_info.cwd;
+            entry.repo = new_info.repo.clone();
+            entry.worktree = new_info.worktree.clone();
+            entry.branch = new_info.branch;
+            entry.label = format!(
+                "{} · {} #{}",
+                short_repo(&new_info.repo),
+                new_info.worktree,
+                new_idx,
+            );
+        }
 
         let changed = apply_event(entry, &event, now);
         if changed {
@@ -237,6 +349,96 @@ mod tests {
         }
     }
 
+    /// Real OTel events often arrive before Claude has flushed the line in
+    /// the .jsonl that contains `cwd` (lines 1-2 are session metadata; line 3+
+    /// is the first event with cwd). When that happens, `resolve_cwd` returns
+    /// None on the first ingest call and we stub the record as `unknown / ?`.
+    /// Subsequent events MUST upgrade the existing record once cwd resolves —
+    /// otherwise the session is stuck as "UN · ?  #N" forever, even though
+    /// the .jsonl now reveals it lives in e.g. `E:\BorgDock`.
+    #[test]
+    fn ingest_upgrades_unknown_record_when_cwd_arrives_late() {
+        let store = SessionStore::default();
+        let (tx, mut rx) = unbounded_channel();
+
+        // First event: no cwd info available yet — record is stubbed.
+        store.ingest_event(
+            ev("sid", "user_prompt", &[("prompt", Value::String("hi".into()))]),
+            None,
+            &tx,
+            Instant::now(),
+        );
+        let _ = rx.try_recv(); // drain the initial upsert
+
+        // Verify the stub.
+        {
+            let map = store.inner.read().unwrap();
+            let rec = map.get("sid").expect("record exists");
+            assert_eq!(rec.repo, "unknown");
+            assert_eq!(rec.worktree, "?");
+        }
+
+        // Second event arrives with the now-resolvable cwd.
+        let resolved = CwdInfo {
+            cwd: PathBuf::from("E:\\BorgDock"),
+            repo: "BorgDock".into(),
+            worktree: "master".into(),
+            branch: "master".into(),
+        };
+        store.ingest_event(
+            ev("sid", "api_request", &[("model", Value::String("opus".into()))]),
+            Some(resolved),
+            &tx,
+            Instant::now(),
+        );
+
+        let map = store.inner.read().unwrap();
+        let rec = map.get("sid").expect("record still exists");
+        assert_eq!(rec.repo, "BorgDock", "repo must be upgraded from the stub");
+        assert_eq!(rec.worktree, "master");
+        assert_eq!(rec.branch, "master");
+        assert_eq!(rec.cwd, PathBuf::from("E:\\BorgDock"));
+        assert!(
+            rec.label.starts_with("BD · master"),
+            "label must be regenerated with the real repo, got {:?}",
+            rec.label
+        );
+    }
+
+    /// Once a record has a real (non-stub) cwd, subsequent events MUST NOT
+    /// downgrade it back to `unknown` if a later resolve_cwd happens to fail.
+    #[test]
+    fn ingest_does_not_overwrite_real_cwd_with_a_later_none() {
+        let store = SessionStore::default();
+        let (tx, mut rx) = unbounded_channel();
+        let real = CwdInfo {
+            cwd: PathBuf::from("E:\\BorgDock"),
+            repo: "BorgDock".into(),
+            worktree: "master".into(),
+            branch: "master".into(),
+        };
+        store.ingest_event(
+            ev("sid", "user_prompt", &[("prompt", Value::String("hi".into()))]),
+            Some(real),
+            &tx,
+            Instant::now(),
+        );
+        let _ = rx.try_recv();
+
+        // A subsequent event with no cwd available must not regress the record.
+        store.ingest_event(
+            ev("sid", "api_request", &[]),
+            None,
+            &tx,
+            Instant::now(),
+        );
+
+        let map = store.inner.read().unwrap();
+        let rec = map.get("sid").unwrap();
+        assert_eq!(rec.repo, "BorgDock");
+        assert_eq!(rec.worktree, "master");
+    }
+
     #[test]
     fn ingest_creates_record_and_emits_upsert() {
         let store = SessionStore::default();
@@ -265,6 +467,53 @@ mod tests {
         }
     }
 
+    /// User explicitly dismisses an Awaiting session that turned out not to
+    /// require their input. set_state moves the record into the requested
+    /// state and emits a delta so the UI removes the urgency immediately.
+    #[test]
+    fn set_state_updates_record_and_emits_delta() {
+        let store = SessionStore::default();
+        let (tx, mut rx) = unbounded_channel();
+        store.ingest_event(
+            RawEvent {
+                session_id: "sid".into(),
+                event_name: "user_prompt".into(),
+                attrs: [("prompt".to_string(), Value::String("hi".into()))].into_iter().collect(),
+            },
+            Some(CwdInfo {
+                cwd: PathBuf::from("/x"),
+                repo: "BorgDock".into(),
+                worktree: "master".into(),
+                branch: "master".into(),
+            }),
+            &tx,
+            Instant::now(),
+        );
+        let _ = rx.try_recv(); // drain the initial Working upsert
+
+        let now = Instant::now();
+        store.set_state("sid", SessionState::Ended, &tx, now);
+
+        assert_eq!(store.state_of("sid"), Some(SessionState::Ended));
+        let delta = rx.try_recv().expect("expected upsert delta after dismissal");
+        match delta {
+            SessionDelta::Upsert { session } => {
+                assert_eq!(session.session_id, "sid");
+                assert_eq!(session.state, SessionState::Ended);
+            }
+            _ => panic!("expected upsert"),
+        }
+    }
+
+    /// No-op when the session is unknown — no panic, no delta.
+    #[test]
+    fn set_state_for_unknown_session_is_a_silent_noop() {
+        let store = SessionStore::default();
+        let (tx, mut rx) = unbounded_channel();
+        store.set_state("nonexistent", SessionState::Ended, &tx, Instant::now());
+        assert!(rx.try_recv().is_err());
+    }
+
     #[test]
     fn run_tick_drops_ended_sessions_past_retention() {
         // On Windows, `Instant::now() - Duration::from_secs(20_000)` panics
@@ -287,6 +536,7 @@ mod tests {
             state_since: base,
             last_event_at: base,
             last_user_msg: None,
+            last_assistant_msg: None,
             task: None,
             model: None,
             tokens_used: 0,
