@@ -29,6 +29,8 @@ pub struct AppSettings {
     pub claude_api: ClaudeApiSettings,
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub settings_window: Option<WindowGeometry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

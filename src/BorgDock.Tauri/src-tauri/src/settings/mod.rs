@@ -1,4 +1,5 @@
 pub mod models;
+pub mod window;
 
 use models::AppSettings;
 use serde_json::Value;

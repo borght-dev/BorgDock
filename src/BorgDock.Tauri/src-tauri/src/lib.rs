@@ -378,6 +378,7 @@ pub fn run() {
             // Settings
             settings::load_settings,
             settings::save_settings,
+            settings::window::open_settings_window,
             // Auth
             auth::gh_cli_token,
             auth::validate_pat,
