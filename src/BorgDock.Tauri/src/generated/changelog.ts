@@ -4,6 +4,35 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "1.2.0",
+    "date": "2026-04-30",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "SQL autocomplete now actually fires column suggestions from the table named in your FROM clause — the source was wired up but the override registration was incorrect, so completions always fell back to keyword-only.",
+      "SQL identifier quoting respects MSSQL bracket form (`[name]`) instead of using ANSI double-quotes that SQL Server rejects.",
+      "SQL editor typing lag eliminated — The schema autocomplete source was triggering a cascade of expensive recomputations on every keystroke.",
+      "Schema cache write failures no longer poison the fetch path — A failed `cache_save_sql_schema` used to bubble up and abort the whole schema refresh.",
+      "File palette Add Directory dialog now opens — The palette window's capability file was missing a grant for the dialog plugin, so the \"Add\" button silently did nothing.",
+      "File palette: cancellation closure threaded through search instead of the prior global flag, eliminating a race when switching roots mid-search.",
+      "File palette: drive-letter paths normalize case-insensitively on Windows so two roots that differ only by `C:` vs `c:` aren't double-listed.",
+      "Theme accessibility — `--color-text-muted` darkened to pass WCAG 2.1 AA contrast.",
+      "Polling resilience — GitHub polling now waits for app init to complete before firing its first request, avoiding a noisy \"not ready\" error in logs on slow startups.",
+      "Wizard: Access Token method-picker subtitle disambiguated so the choice is clear during onboarding.",
+      "Onboarding store guards against missing Tauri runtime so the persisted-state hook doesn't throw in dev / test contexts.",
+      "File viewer: classes renamed from `fv-*` to `bd-fv-*` to match the rest of the codebase's namespace.",
+      "File viewer's split layout remembers your choice across sessions and opens at a balanced 50/50 split.",
+      "Flyout cancellation guard on init — A blur during palette-open used to cause a stale-state warning; the cancelled-flag pattern now matches the rest of the windows.",
+      "Work-item detail invoke effect cancellation guard — Same fix applied to the work-item detail window.",
+      "ClaudeReview count badge styled as a Pill instead of a non-existent Chip.",
+      "PR action bar restored — The \"Resolve Conflicts\" button is always visible when relevant; comment counts render correctly; layout no longer collapses on narrow widths.",
+      "Flyout's hover-revealed Fix / Monitor row actions restored after a regression in the streamlined redesign.",
+      "PRCard keyboard activation works on the review-pill, closed, and worktree branches; tests now cover those.",
+      "FeatureBadge dismissal works again, and the focus-count badge has tests covering the dismiss flow."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "1.1.0",
     "date": "2026-04-23",
     "summary": "",

@@ -4,7 +4,7 @@ function relLum(hex: string): number {
   const n = hex.replace('#', '');
   const channels = [n.slice(0, 2), n.slice(2, 4), n.slice(4, 6)].map((h) => {
     const c = parseInt(h, 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
   const [r = 0, g = 0, b = 0] = channels;
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
