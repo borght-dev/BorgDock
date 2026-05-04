@@ -17,7 +17,7 @@ export async function listen<T>(
     set = new Set();
     ctrl.channels.set(channel, set);
   }
-  const wrapped = cb as ChannelListener;
+  const wrapped: ChannelListener = (event) => cb(event as { payload: T });
   set.add(wrapped);
   return () => {
     set?.delete(wrapped);
