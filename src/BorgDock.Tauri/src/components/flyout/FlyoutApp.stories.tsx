@@ -343,3 +343,88 @@ export const ToastSeverityWarning = story(
 export const ToastSeverityError = story(
   toastFromIdle([makeToast({ id: 'sev-err', severity: 'error', title: 'Build failed' })]),
 );
+
+// ---------------------------------------------------------------------------
+// Toast — per-action variant
+// ---------------------------------------------------------------------------
+
+export const ToastActionOpenPr = story(
+  toastFromIdle([
+    makeToast({
+      id: 'act-open',
+      title: 'PR ready for review',
+      severity: 'info',
+      prOwner: 'borght-dev',
+      prRepo: 'BorgDock',
+      prNumber: 42,
+      actions: [{ label: 'Open PR', action: 'open-pr' }],
+    }),
+  ]),
+);
+
+export const ToastActionFixPr = story(
+  toastFromIdle([
+    makeToast({
+      id: 'act-fix',
+      title: 'CI failing',
+      severity: 'error',
+      prOwner: 'borght-dev',
+      prRepo: 'BorgDock',
+      prNumber: 43,
+      actions: [{ label: 'Fix with Claude', action: 'fix-pr' }],
+    }),
+  ]),
+);
+
+export const ToastActionMonitorPr = story(
+  toastFromIdle([
+    makeToast({
+      id: 'act-mon',
+      title: 'Long-running build',
+      severity: 'warning',
+      prOwner: 'borght-dev',
+      prRepo: 'BorgDock',
+      prNumber: 44,
+      actions: [{ label: 'Monitor', action: 'monitor-pr' }],
+    }),
+  ]),
+);
+
+export const ToastActionOpenUrl = story(
+  toastFromIdle([
+    makeToast({
+      id: 'act-url',
+      title: 'Release notes',
+      severity: 'info',
+      actions: [{ label: 'Read', action: 'open-url', url: 'https://github.com/borght-dev/BorgDock/releases' }],
+    }),
+  ]),
+);
+
+export const ToastActionMergePr = story(
+  toastFromIdle([
+    makeToast({
+      id: 'act-merge',
+      title: 'Mergeable',
+      severity: 'success',
+      prOwner: 'borght-dev',
+      prRepo: 'BorgDock',
+      prNumber: 45,
+      actions: [{ label: 'Merge', action: 'merge-pr', url: 'https://github.com/borght-dev/BorgDock/pull/45' }],
+    }),
+  ]),
+);
+
+export const ToastActionStartReview = story(
+  toastFromIdle([
+    makeToast({
+      id: 'act-rev',
+      title: 'Awaiting your review',
+      severity: 'info',
+      prOwner: 'borght-dev',
+      prRepo: 'BorgDock',
+      prNumber: 46,
+      actions: [{ label: 'Start review', action: 'start-review', url: 'https://github.com/borght-dev/BorgDock/pull/46' }],
+    }),
+  ]),
+);
