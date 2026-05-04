@@ -1,95 +1,110 @@
-import { useState } from 'react';
-import type { GitHubSettings } from '@/types';
-import { Button, Chip, Input } from '@/components/shared/primitives';
+import { invoke } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { Card, Button, LinearProgress } from '@/components/shared/primitives';
+import { Field, SectionHeader, Seg2, Slider, TextInput } from '@/components/shared/primitives';
+import { useGitHubRateLimit } from '@/services/github/rate-limit';
+import type { GitHubSettings } from '@/types/settings';
 
-interface GitHubSectionProps {
-  github: GitHubSettings;
-  onChange: (github: GitHubSettings) => void;
-}
+interface Props { github: GitHubSettings; onChange: (g: GitHubSettings) => void }
 
-export function GitHubSection({ github, onChange }: GitHubSectionProps) {
-  const [showToken, setShowToken] = useState(false);
-
-  const update = (partial: Partial<GitHubSettings>) => onChange({ ...github, ...partial });
+export function GitHubSection({ github, onChange }: Props) {
+  const rl = useGitHubRateLimit();
+  const pct = rl ? (rl.used / rl.limit) * 100 : 0;
+  const tone: 'success' | 'warning' | 'error' =
+    pct >= 95 ? 'error' : pct >= 80 ? 'warning' : 'success';
 
   return (
-    <div className="space-y-2.5" data-settings-section="github" data-auth-method={github.authMethod}>
-      {/* Auth method */}
-      <FieldLabel label="Auth Method">
-        <div className="flex gap-1">
-          {(['ghCli', 'pat'] as const).map((method) => (
-            <Chip
-              key={method}
-              active={github.authMethod === method}
-              onClick={() => update({ authMethod: method })}
-              data-segmented-option
-              data-active={github.authMethod === method}
-              className="flex-1 justify-center"
-            >
-              {method === 'ghCli' ? 'GitHub CLI' : 'Personal Access Token'}
-            </Chip>
-          ))}
-        </div>
-      </FieldLabel>
+    <>
+      <SectionHeader
+        title="GitHub"
+        subtitle="How BorgDock authenticates with github.com and how often it polls for new pull requests."
+      />
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Authentication</h3>
 
-      {/* PAT input */}
-      {github.authMethod === 'pat' && (
-        <FieldLabel label="Personal Access Token">
-          <Input
-            type={showToken ? 'text' : 'password'}
-            value={github.personalAccessToken ?? ''}
-            onChange={(e) => update({ personalAccessToken: e.target.value })}
-            placeholder="ghp_..."
-            className="w-full"
-            trailing={
-              <button
-                className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                onClick={() => setShowToken((prev) => !prev)}
-                type="button"
-              >
-                {showToken ? 'Hide' : 'Show'}
-              </button>
-            }
+        <Field label="Auth method" anchorId="auth-method">
+          <Seg2
+            value={github.authMethod === 'pat' ? 'pat' : 'cli'}
+            options={[
+              { value: 'cli', label: 'GitHub CLI' },
+              { value: 'pat', label: 'Personal Access Token' },
+            ]}
+            onChange={(v) => onChange({ ...github, authMethod: v === 'pat' ? 'pat' : 'ghCli' })}
           />
-        </FieldLabel>
-      )}
+        </Field>
 
-      {/* Username */}
-      <FieldLabel label="Username">
-        <Input
-          value={github.username}
-          onChange={(e) => update({ username: e.target.value })}
-          placeholder="GitHub username"
-          className="w-full"
-        />
-      </FieldLabel>
+        {github.authMethod !== 'pat' ? (
+          <div
+            data-gh-auth="cli-banner"
+            className="mb-[18px] flex items-center gap-2.5 rounded-md border border-[var(--color-success-badge-border)] bg-[var(--color-success-badge-bg)] px-3 py-2.5 text-[var(--color-success-badge-fg)]"
+          >
+            <span className="text-xs font-medium">
+              Authenticated via <code className="font-mono">gh</code> as
+            </span>
+            <span className="text-xs font-semibold">{github.username || '—'}</span>
+            <span className="flex-1" />
+            <Button variant="secondary" size="sm" onClick={() => invoke('check_github_auth', { method: 'ghCli' }).catch(console.error)}>
+              Re-authenticate
+            </Button>
+          </div>
+        ) : (
+          <Field label="Token" hint="Needs repo, read:org and workflow scopes." anchorId="pat">
+            <TextInput
+              ariaLabel="GitHub personal access token"
+              value={github.personalAccessToken ?? ''}
+              onChange={(personalAccessToken) => onChange({ ...github, personalAccessToken })}
+              type="password"
+              mono
+              placeholder="ghp_…"
+            />
+          </Field>
+        )}
 
-      {/* Poll interval */}
-      <FieldLabel label={`Poll Interval: ${github.pollIntervalSeconds}s`}>
-        <input
-          type="range"
-          className="w-full accent-[var(--color-accent)]"
-          min={15}
-          max={300}
-          step={5}
-          value={github.pollIntervalSeconds}
-          onChange={(e) => update({ pollIntervalSeconds: Number(e.target.value) })}
-        />
-      </FieldLabel>
+        <Field label="Username" anchorId="username">
+          <TextInput
+            ariaLabel="GitHub username"
+            value={github.username}
+            onChange={(username) => onChange({ ...github, username })}
+            placeholder="GitHub username"
+          />
+        </Field>
 
-      {/* Test connection */}
-      <Button variant="secondary" size="sm">
-        Test Connection
-      </Button>
-    </div>
-  );
-}
+        <Field
+          label="Poll interval"
+          hint="How often BorgDock checks GitHub for PR changes. Adaptive polling doubles the interval near the rate-limit ceiling."
+          anchorId="poll-interval"
+        >
+          <Slider
+            ariaLabel="GitHub poll interval"
+            value={github.pollIntervalSeconds}
+            min={15}
+            max={600}
+            step={5}
+            suffix="s"
+            onChange={(pollIntervalSeconds) => onChange({ ...github, pollIntervalSeconds })}
+          />
+        </Field>
 
-function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">{label}</label>
-      {children}
-    </div>
+        <Field label="Rate limit" hint="REST API quota for the authenticated token." anchorId="rate-limit">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <LinearProgress value={pct} tone={tone} />
+            </div>
+            <span className="font-mono text-[11px] text-[var(--color-text-tertiary)] min-w-[110px] text-right">
+              {rl ? `${rl.used.toLocaleString()} / ${rl.limit.toLocaleString()}` : '—'}
+            </span>
+          </div>
+        </Field>
+
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" size="sm" onClick={() => invoke('check_github_auth', { method: github.authMethod, pat: github.personalAccessToken }).catch(console.error)}>
+            Test connection
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => openUrl('https://github.com').catch(console.error)}>
+            Open on github.com
+          </Button>
+        </div>
+      </Card>
+    </>
   );
 }
