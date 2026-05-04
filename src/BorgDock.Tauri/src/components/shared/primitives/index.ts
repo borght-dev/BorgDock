@@ -16,6 +16,9 @@ export type { ChipProps, ChipTone } from './Chip';
 export { Dot } from './Dot';
 export type { DotProps, DotTone } from './Dot';
 
+export { HoverPopover } from './HoverPopover';
+export type { HoverPopoverProps } from './HoverPopover';
+
 export { IconButton } from './IconButton';
 export type { IconButtonProps, IconButtonSize } from './IconButton';
 
