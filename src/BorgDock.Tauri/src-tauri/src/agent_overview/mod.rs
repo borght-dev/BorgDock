@@ -15,6 +15,7 @@ pub mod types;
 pub mod window;
 
 pub use commands::{
-    disable_agent_overview_telemetry, list_agent_sessions, set_agent_overview_enabled,
+    dismiss_agent_session, disable_agent_overview_telemetry, list_agent_sessions,
+    set_agent_overview_enabled, AgentDeltaSender,
 };
 pub use window::open_agent_overview_window;
