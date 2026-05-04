@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="BorgDock logo">
+  <defs>
+    <radialGradient id="bg" cx="0.32" cy="0.18" r="1.05">
+      <stop offset="0%"  stop-color="#2a1d4a"/>
+      <stop offset="55%" stop-color="#170e2a"/>
+      <stop offset="100%" stop-color="#0b0616"/>
+    </radialGradient>
+
+    <linearGradient id="bGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#dccfff"/>
+      <stop offset="55%"  stop-color="#a08ff0"/>
+      <stop offset="100%" stop-color="#6a58c4"/>
+    </linearGradient>
+
+    <linearGradient id="card1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#b4a3f4"/>
+      <stop offset="100%" stop-color="#5e4eb0"/>
+    </linearGradient>
+
+    <linearGradient id="card2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#8c7adc"/>
+      <stop offset="100%" stop-color="#4a3a92"/>
+    </linearGradient>
+
+    <linearGradient id="card3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#6a5cb6"/>
+      <stop offset="100%" stop-color="#34276a"/>
+    </linearGradient>
+
+    <linearGradient id="dockGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#594a90"/>
+      <stop offset="55%"  stop-color="#352868"/>
+      <stop offset="100%" stop-color="#1a113c"/>
+    </linearGradient>
+
+    <linearGradient id="dockTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#7763b4"/>
+      <stop offset="100%" stop-color="#3d2f74"/>
+    </linearGradient>
+
+    <filter id="castShadow" x="-25%" y="-15%" width="150%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14"/>
+      <feOffset dx="0" dy="20"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="ledGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="10"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <clipPath id="squircle">
+      <rect width="1024" height="1024" rx="232" ry="232"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" rx="232" ry="232" fill="url(#bg)"/>
+
+  <g clip-path="url(#squircle)">
+    <!-- Stack of cards behind the B (narrow visible slivers, staggered tops) -->
+    <g filter="url(#castShadow)">
+      <!-- Back card -->
+      <path d="M 232 254
+               Q 232 212 274 212
+               L 360 212
+               Q 402 212 402 254
+               L 402 760
+               L 232 760 Z"
+            fill="url(#card3)"/>
+
+      <!-- Middle card -->
+      <path d="M 286 212
+               Q 286 166 332 166
+               L 432 166
+               Q 478 166 478 212
+               L 478 760
+               L 286 760 Z"
+            fill="url(#card2)"/>
+
+      <!-- Front card -->
+      <path d="M 340 172
+               Q 340 124 388 124
+               L 506 124
+               Q 554 124 554 172
+               L 554 760
+               L 340 760 Z"
+            fill="url(#card1)"/>
+    </g>
+
+    <!-- =========================================================
+         The "B"
+         Local origin (370, 168). Spine 130 wide, height 552.
+         Bowls bulge generously to the right; bottom bowl wider.
+         ========================================================= -->
+    <g transform="translate(370 168)" filter="url(#castShadow)">
+      <!-- Spine -->
+      <path d="M 22 0
+               H 130
+               V 552
+               H 22
+               A 22 22 0 0 1 0 530
+               V 22
+               A 22 22 0 0 1 22 0 Z"
+            fill="url(#bGrad)"/>
+
+      <!-- Top bowl -->
+      <path d="M 130 0
+               A 188 144 0 0 1 130 288
+               L 130 228
+               A 88 84 0 0 0 130 60
+               Z"
+            fill="url(#bGrad)"/>
+
+      <!-- Bottom bowl: noticeably larger -->
+      <path d="M 130 264
+               A 210 144 0 0 1 130 552
+               L 130 492
+               A 104 84 0 0 0 130 324
+               Z"
+            fill="url(#bGrad)"/>
+
+      <!-- Top-left rim highlight -->
+      <path d="M 22 4
+               H 130
+               A 188 144 0 0 1 312 130"
+            fill="none" stroke="#efe7ff" stroke-opacity="0.42" stroke-width="3"
+            stroke-linecap="round"/>
+    </g>
+
+    <!-- Dock -->
+    <g>
+      <ellipse cx="512" cy="918" rx="380" ry="20" fill="#000" opacity="0.4"/>
+
+      <!-- Top slab of the dock -->
+      <path d="M 168 706
+               Q 156 706 150 716
+               L 130 758
+               L 894 758
+               L 874 716
+               Q 868 706 856 706 Z"
+            fill="url(#dockTop)"/>
+
+      <!-- Front face -->
+      <path d="M 130 758
+               L 894 758
+               Q 920 758 924 782
+               L 940 882
+               Q 944 906 920 906
+               L 104 906
+               Q 80 906 84 882
+               L 100 782
+               Q 104 758 130 758 Z"
+            fill="url(#dockGrad)"/>
+
+      <!-- Center notch -->
+      <path d="M 396 798
+               Q 388 798 388 808
+               L 388 838
+               Q 388 850 400 850
+               L 624 850
+               Q 636 850 636 838
+               L 636 808
+               Q 636 798 628 798 Z"
+            fill="#120a26" opacity="0.78"/>
+      <path d="M 392 850 L 632 850"
+            stroke="#9784d2" stroke-opacity="0.22" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- LEDs -->
+      <g filter="url(#ledGlow)">
+        <circle cx="760" cy="826" r="14" fill="#4fd6c2"/>
+        <circle cx="816" cy="826" r="14" fill="#ff6f80"/>
+      </g>
+      <circle cx="755" cy="822" r="4" fill="#e8fffb" opacity="0.85"/>
+      <circle cx="811" cy="822" r="4" fill="#ffe5e8" opacity="0.85"/>
+
+      <!-- Top-edge highlight -->
+      <path d="M 168 706 L 856 706"
+            stroke="#a18be0" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Outer rim sheen -->
+    <rect x="3" y="3" width="1018" height="1018" rx="229" ry="229"
+          fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="2"/>
+  </g>
+</svg>
