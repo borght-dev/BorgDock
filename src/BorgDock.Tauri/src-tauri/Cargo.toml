@@ -57,6 +57,7 @@ grep-matcher = "0.1"
 blake3 = "1"
 git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
 glob = "0.3"
+sysinfo = "0.30"
 
 [dev-dependencies]
 tempfile = "3"
@@ -68,6 +69,7 @@ tauri = { version = "2", features = ["macos-private-api"] }
 windows = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Threading",
 ] }
 
 [profile.release]

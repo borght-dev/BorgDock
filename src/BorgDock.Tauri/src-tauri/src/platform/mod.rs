@@ -1,6 +1,7 @@
 #[cfg(target_os = "windows")]
 pub mod click_outside;
 pub mod flyout_cache;
+pub mod focus_pane;
 pub mod hotkey;
 pub mod logs;
 pub mod theme;

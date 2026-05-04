@@ -130,3 +130,23 @@ pub fn mark_agent_session_seen(
     store.set_meta(&session_id, prev_snooze, Some(seen), &tx, std::time::Instant::now());
     Ok(())
 }
+
+/// Best-effort: raise the terminal window running the given session.
+/// Returns `Ok(false)` if no matching terminal/host process can be found
+/// (the user closed it, the session lives in WSL, etc.). Hard platform
+/// errors (extremely rare) come back as `Err`.
+#[tauri::command]
+pub fn focus_session_pane(
+    session_id: String,
+    store: tauri::State<'_, SessionStore>,
+) -> Result<bool, String> {
+    let cwd_opt: Option<std::path::PathBuf> = store
+        .internal_snapshot()
+        .into_iter()
+        .find(|r| r.session_id == session_id)
+        .map(|r| r.cwd);
+    let Some(cwd) = cwd_opt else {
+        return Ok(false);
+    };
+    crate::platform::focus_pane::focus(&cwd)
+}
