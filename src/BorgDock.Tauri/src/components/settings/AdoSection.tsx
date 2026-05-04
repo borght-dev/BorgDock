@@ -1,30 +1,33 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { Card, Button } from '@/components/shared/primitives';
+import { Field, SectionHeader, Seg2, Slider, TextInput, ToggleRow } from '@/components/shared/primitives';
 import { AdoClient } from '@/services/ado/client';
-import type { AzureDevOpsSettings, AdoAuthMethod } from '@/types';
-import { Button, Chip, Dot, Input, Pill } from '@/components/shared/primitives';
+import type { AzureDevOpsSettings } from '@/types/settings';
 
-interface AdoSectionProps {
+interface Props {
   azureDevOps: AzureDevOpsSettings;
-  onChange: (azureDevOps: AzureDevOpsSettings) => void;
+  onChange: (a: AzureDevOpsSettings) => void;
 }
 
-export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
-  const [showToken, setShowToken] = useState(false);
+type DetectedStatus =
+  | { kind: 'ok' }
+  | { kind: 'az_not_installed' }
+  | { kind: 'az_not_logged_in' }
+  | { kind: 'token_fetch_failed'; message: string }
+  | null;
+
+export function AdoSection({ azureDevOps, onChange }: Props) {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testError, setTestError] = useState('');
-  const [detectedStatus, setDetectedStatus] = useState<
-    | { kind: 'ok' }
-    | { kind: 'az_not_installed' }
-    | { kind: 'az_not_logged_in' }
-    | { kind: 'token_fetch_failed'; message: string }
-    | null
-  >(null);
+  const [detectedStatus, setDetectedStatus] = useState<DetectedStatus>(null);
 
   const update = (partial: Partial<AzureDevOpsSettings>) =>
     onChange({ ...azureDevOps, ...partial });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run-once-on-mount detection; capturing azureDevOps/update would re-fire on every settings change
+  // Auto-detect az CLI on first mount only
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run-once-on-mount detection
   useEffect(() => {
     if (azureDevOps.authAutoDetected) return;
     let cancelled = false;
@@ -32,18 +35,14 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
       try {
         const available = await invoke<boolean>('az_cli_available');
         if (cancelled) return;
-        update({
-          authMethod: available ? 'azCli' : 'pat',
-          authAutoDetected: true,
-        });
+        update({ authMethod: available ? 'azCli' : 'pat', authAutoDetected: true });
       } catch {
         if (cancelled) return;
         update({ authMethod: 'pat', authAutoDetected: true });
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTestConnection = async () => {
@@ -69,8 +68,6 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
       }
     } catch (e) {
       setTestStatus('error');
-      // ado_resolve_auth_header rejection arrives here as a structured
-      // error object — { kind, message } — when Rust returns AdoAuthError.
       const errObj = e as { kind?: string; message?: string };
       if (errObj?.kind === 'az_not_installed') {
         setDetectedStatus({ kind: 'az_not_installed' });
@@ -88,145 +85,138 @@ export function AdoSection({ azureDevOps, onChange }: AdoSectionProps) {
   };
 
   return (
-    <div className="space-y-2.5" data-settings-section="azure-devops">
-      <FieldLabel label="Organization">
-        <Input
-          value={azureDevOps.organization}
-          onChange={(e) => update({ organization: e.target.value })}
-          placeholder="my-org"
-          className="w-full"
-        />
-      </FieldLabel>
+    <>
+      <SectionHeader
+        title="Azure DevOps"
+        subtitle="BorgDock pulls work-items, build status and policy info from Azure DevOps to enrich PR cards."
+      />
 
-      <FieldLabel label="Project">
-        <Input
-          value={azureDevOps.project}
-          onChange={(e) => update({ project: e.target.value })}
-          placeholder="my-project"
-          className="w-full"
-        />
-      </FieldLabel>
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Connection</h3>
 
-      <FieldLabel label="Auth Method">
-        <div className="flex gap-1">
-          {(['azCli', 'pat'] as const).map((method) => (
-            <Chip
-              key={method}
-              active={azureDevOps.authMethod === method}
-              onClick={() =>
-                update({ authMethod: method as AdoAuthMethod, authAutoDetected: true })
-              }
-              data-segmented-option
-              data-active={azureDevOps.authMethod === method}
-              className="flex-1 justify-center"
-            >
-              {method === 'azCli' ? 'Azure CLI' : 'Personal Access Token'}
-            </Chip>
-          ))}
+        <div className="grid grid-cols-2 gap-3.5">
+          <Field label="Organization" dense anchorId="organization">
+            <TextInput
+              ariaLabel="ADO organization"
+              value={azureDevOps.organization}
+              onChange={(organization) => update({ organization })}
+              placeholder="my-org"
+            />
+          </Field>
+          <Field label="Project" dense anchorId="project">
+            <TextInput
+              ariaLabel="ADO project"
+              value={azureDevOps.project}
+              onChange={(project) => update({ project })}
+              placeholder="my-project"
+            />
+          </Field>
         </div>
-      </FieldLabel>
 
-      {azureDevOps.authMethod === 'azCli' && detectedStatus && (
-        <div className="text-[10px]">
-          {detectedStatus.kind === 'ok' && (
-            <div className="flex items-center gap-1">
-              <Dot tone="green" />
-              <Pill tone="success">
-                Using your <code>az login</code> session.
-              </Pill>
-            </div>
-          )}
-          {detectedStatus.kind === 'az_not_installed' && (
-            <div className="flex items-center gap-1">
-              <Dot tone="red" />
-              <Pill tone="error">
-                Azure CLI not found on PATH. Install <code>az</code> or switch to Personal Access Token.
-              </Pill>
-            </div>
-          )}
-          {detectedStatus.kind === 'az_not_logged_in' && (
-            <div className="flex items-center gap-1">
-              <Dot tone="red" />
-              <Pill tone="error">
-                Not logged in to Azure. Run <code>az login</code> in a terminal, then click Test Connection.
-              </Pill>
-            </div>
-          )}
-          {detectedStatus.kind === 'token_fetch_failed' && (
-            <div className="flex items-center gap-1">
-              <Dot tone="red" />
-              <Pill tone="error">
-                Couldn&apos;t fetch Azure token: {detectedStatus.message}
-              </Pill>
-            </div>
-          )}
-        </div>
-      )}
-
-      {azureDevOps.authMethod === 'pat' && (
-        <FieldLabel label="Personal Access Token">
-          <Input
-            type={showToken ? 'text' : 'password'}
-            value={azureDevOps.personalAccessToken ?? ''}
-            onChange={(e) => update({ personalAccessToken: e.target.value })}
-            placeholder="ADO PAT"
-            className="w-full"
-            trailing={
-              <button
-                className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                onClick={() => setShowToken((prev) => !prev)}
-                type="button"
-              >
-                {showToken ? 'Hide' : 'Show'}
-              </button>
-            }
+        <Field label="Auth method" anchorId="auth-method">
+          <Seg2
+            value={azureDevOps.authMethod === 'pat' ? 'pat' : 'cli'}
+            options={[
+              { value: 'cli', label: 'Azure CLI' },
+              { value: 'pat', label: 'Personal Access Token' },
+            ]}
+            onChange={(v) => update({ authMethod: v === 'pat' ? 'pat' : 'azCli' })}
           />
-        </FieldLabel>
-      )}
+        </Field>
 
-      <FieldLabel label={`Poll Interval: ${azureDevOps.pollIntervalSeconds}s`}>
-        <input
-          type="range"
-          className="w-full accent-[var(--color-accent)]"
-          min={30}
-          max={600}
-          step={10}
-          value={azureDevOps.pollIntervalSeconds}
-          onChange={(e) => update({ pollIntervalSeconds: Number(e.target.value) })}
-        />
-      </FieldLabel>
+        {azureDevOps.authMethod === 'pat' && (
+          <Field label="Personal Access Token" hint="Needs work-item read scope.">
+            <TextInput
+              ariaLabel="ADO personal access token"
+              value={azureDevOps.personalAccessToken ?? ''}
+              onChange={(personalAccessToken) => update({ personalAccessToken })}
+              type="password"
+              mono
+              placeholder="…"
+            />
+          </Field>
+        )}
 
-      <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleTestConnection}
-          disabled={testStatus === 'testing'}
-        >
-          {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
-        </Button>
+        <Field label="Poll interval" anchorId="poll-interval">
+          <Slider
+            ariaLabel="ADO poll interval"
+            value={azureDevOps.pollIntervalSeconds}
+            min={30}
+            max={900}
+            step={10}
+            suffix="s"
+            onChange={(pollIntervalSeconds) => update({ pollIntervalSeconds })}
+          />
+        </Field>
+
         {testStatus === 'success' && (
-          <div className="flex items-center gap-1">
-            <Dot tone="green" />
-            <Pill tone="success">Connected</Pill>
+          <div className="mb-[18px] flex items-center gap-2 rounded-md border border-[var(--color-success-badge-border)] bg-[var(--color-success-badge-bg)] px-3 py-2 text-xs text-[var(--color-success-badge-fg)]">
+            ✓ Connection successful
           </div>
         )}
         {testStatus === 'error' && (
-          <div className="flex items-center gap-1">
-            <Dot tone="red" />
-            <Pill tone="error">{testError || 'Failed'}</Pill>
+          <div className="mb-[18px] rounded-md border border-[var(--color-error-badge-border)] bg-[var(--color-error-badge-bg)] px-3 py-2 text-xs text-[var(--color-error-badge-fg)]">
+            <div className="font-medium">{testError || 'Connection failed.'}</div>
+            {detectedStatus?.kind === 'az_not_installed' && (
+              <div className="mt-1 text-[11px] opacity-80">
+                Install the Azure CLI from <code className="font-mono">https://aka.ms/installazurecliwindows</code>, or switch to Personal Access Token above.
+              </div>
+            )}
+            {detectedStatus?.kind === 'az_not_logged_in' && (
+              <div className="mt-1 text-[11px] opacity-80">
+                Run <code className="font-mono">az login</code> in a terminal, then test again.
+              </div>
+            )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
 
-function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">{label}</label>
-      {children}
-    </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={handleTestConnection} disabled={testStatus === 'testing'}>
+            {testStatus === 'testing' ? 'Testing…' : 'Test connection'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!azureDevOps.organization}
+            onClick={() => openUrl(`https://dev.azure.com/${azureDevOps.organization}`).catch(console.error)}
+          >
+            Open ADO
+          </Button>
+        </div>
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-1.5 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Work-item linking
+        </h3>
+        <p className="mb-3.5 text-[11.5px] leading-relaxed text-[var(--color-text-tertiary)]">
+          How BorgDock matches a PR to its ADO work-item.
+        </p>
+
+        <Field label="Match by" anchorId="match-by">
+          <Seg2
+            value={azureDevOps.linkMatchBy}
+            options={[
+              { value: 'branch', label: 'Branch name' },
+              { value: 'title',  label: 'PR title (AB#)' },
+              { value: 'both',   label: 'Both' },
+            ]}
+            onChange={(v) => update({ linkMatchBy: v as 'branch' | 'title' | 'both' })}
+          />
+        </Field>
+
+        <ToggleRow
+          label="Show work-item state on PR card"
+          on={azureDevOps.showWorkItemStateOnPrCard}
+          onChange={(showWorkItemStateOnPrCard) => update({ showWorkItemStateOnPrCard })}
+        />
+        <ToggleRow
+          label="Update PR status when WI moves to Done"
+          on={azureDevOps.updatePrStatusWhenWiDone}
+          onChange={(updatePrStatusWhenWiDone) => update({ updatePrStatusWhenWiDone })}
+          last
+        />
+      </Card>
+    </>
   );
 }
