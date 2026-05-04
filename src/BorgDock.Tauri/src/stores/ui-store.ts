@@ -6,7 +6,6 @@ export type ActiveSection = 'prs' | 'focus' | 'workitems';
 
 interface UiState {
   isSidebarVisible: boolean;
-  isSettingsOpen: boolean;
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
   expandedRepoGroups: Set<string>;
@@ -19,7 +18,6 @@ interface UiState {
 
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
-  setSettingsOpen: (open: boolean) => void;
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
@@ -34,7 +32,6 @@ interface UiState {
 
 export const useUiStore = create<UiState>()((set, get) => ({
   isSidebarVisible: true,
-  isSettingsOpen: false,
   activeSection: 'focus',
   selectedPrNumber: null,
   expandedRepoGroups: new Set<string>(),
@@ -47,8 +44,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   toggleSidebar: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
 
   setSidebarVisible: (visible) => set({ isSidebarVisible: visible }),
-
-  setSettingsOpen: (open) => set({ isSettingsOpen: open }),
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });

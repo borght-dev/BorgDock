@@ -116,10 +116,6 @@ vi.mock('@/components/layout/Sidebar', () => ({
   ),
 }));
 
-vi.mock('@/components/settings/SettingsFlyout', () => ({
-  SettingsFlyout: () => <div data-testid="settings-flyout" />,
-}));
-
 vi.mock('@/components/notifications/NotificationOverlay', () => ({
   NotificationOverlay: () => <div data-testid="notification-overlay" />,
 }));
@@ -168,6 +164,9 @@ const fullSettings = {
     flyoutHotkey: '',
     editorCommand: 'code',
     runAtStartup: false,
+    quickReviewHotkey: '',
+    startMinimizedToTray: false,
+    restoreLastSelection: true,
   },
   notifications: {
     toastOnCheckStatusChange: true,
@@ -180,9 +179,10 @@ const fullSettings = {
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
     deduplicationWindowSeconds: 60,
+    channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
   claudeCode: { defaultPostFixAction: 'commitAndNotify' as const },
-  claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024 },
+  claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
   claudeReview: { botUsername: 'claude[bot]' },
   updates: { autoCheckEnabled: true, autoDownload: true },
   azureDevOps: {
@@ -196,8 +196,11 @@ const fullSettings = {
     workingOnWorkItemIds: [],
     workItemWorktreePaths: {},
     recentWorkItemIds: [],
+    linkMatchBy: 'branch' as const,
+    showWorkItemStateOnPrCard: true,
+    updatePrStatusWhenWiDone: false,
   },
-  sql: { connections: [] },
+  sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
   repoPriority: {},
 };
 
@@ -283,7 +286,6 @@ describe('App', () => {
 
     render(<App />);
     expect(screen.getByTestId('sidebar')).toBeTruthy();
-    expect(screen.getByTestId('settings-flyout')).toBeTruthy();
     expect(screen.getByTestId('notification-overlay')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
   });

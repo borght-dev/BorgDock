@@ -11,6 +11,7 @@ pub mod notify;
 pub mod otlp_server;
 pub mod settings_merge;
 pub mod state;
+pub mod status;
 pub mod store;
 pub mod types;
 pub mod window;

@@ -1,171 +1,147 @@
-import type {
-  SidebarEdge,
-  SidebarMode,
-  ThemeMode,
-  UiSettings,
-} from '@/types';
-import { Chip, Input } from '@/components/shared/primitives';
+import { Card } from '@/components/shared/primitives';
+import { Field, SectionHeader, Seg2, Slider, TextInput, ToggleRow } from '@/components/shared/primitives';
+import type { UiSettings, ThemeMode, SidebarEdge, SidebarMode } from '@/types/settings';
 import { HotkeyRecorder } from './HotkeyRecorder';
-import { ToggleSwitch } from './ToggleSwitch';
+import { enable as enableAutostart, disable as disableAutostart } from '@tauri-apps/plugin-autostart';
 
-interface AppearanceSectionProps {
-  ui: UiSettings;
-  onChange: (ui: UiSettings) => void;
-}
+interface Props { ui: UiSettings; onChange: (u: UiSettings) => void }
 
-const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
-
-const EDGE_OPTIONS: { value: SidebarEdge; label: string }[] = [
-  { value: 'left', label: 'Left' },
-  { value: 'right', label: 'Right' },
-];
-
-const MODE_OPTIONS: { value: SidebarMode; label: string }[] = [
-  { value: 'pinned', label: 'Pinned' },
-  { value: 'floating', label: 'Floating' },
-];
-
-
-export function AppearanceSection({ ui, onChange }: AppearanceSectionProps) {
+export function AppearanceSection({ ui, onChange }: Props) {
   const update = (partial: Partial<UiSettings>) => onChange({ ...ui, ...partial });
 
   return (
-    <div className="space-y-2.5" data-settings-section="appearance">
-      {/* Theme */}
-      <FieldLabel label="Theme">
-        <div className="flex gap-1">
-          {THEME_OPTIONS.map(({ value, label }) => (
-            <Chip
-              key={value}
-              active={ui.theme === value}
-              onClick={() => update({ theme: value })}
-              data-segmented-option
-              data-active={ui.theme === value}
-              className="flex-1 justify-center"
-            >
-              {label}
-            </Chip>
-          ))}
+    <>
+      <SectionHeader
+        title="Appearance"
+        subtitle="Theme, sidebar layout, hotkeys and the always-on-top tray flyout."
+      />
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Theme</h3>
+        <Field label="Theme" anchorId="theme">
+          <Seg2
+            value={ui.theme}
+            options={[
+              { value: 'system', label: 'System' },
+              { value: 'light',  label: 'Light' },
+              { value: 'dark',   label: 'Dark' },
+            ]}
+            onChange={(v) => update({ theme: v as ThemeMode })}
+          />
+        </Field>
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Sidebar</h3>
+        <Field label="Sidebar edge" hint="Which screen edge the sidebar docks to." anchorId="sidebar-edge">
+          <Seg2
+            value={ui.sidebarEdge}
+            options={[
+              { value: 'left',  label: 'Left' },
+              { value: 'right', label: 'Right' },
+            ]}
+            onChange={(v) => update({ sidebarEdge: v as SidebarEdge })}
+          />
+        </Field>
+        <Field
+          label="Sidebar mode"
+          hint="Pinned reserves desktop work area. Floating auto-hides and reveals on hover."
+          anchorId="sidebar-mode"
+        >
+          <Seg2
+            value={ui.sidebarMode}
+            options={[
+              { value: 'pinned',   label: 'Pinned' },
+              { value: 'floating', label: 'Floating' },
+            ]}
+            onChange={(v) => update({ sidebarMode: v as SidebarMode })}
+          />
+        </Field>
+        <Field label="Sidebar width" anchorId="sidebar-width">
+          <Slider
+            ariaLabel="Sidebar width"
+            value={ui.sidebarWidthPx}
+            min={200}
+            max={1200}
+            step={10}
+            suffix=" px"
+            onChange={(sidebarWidthPx) => update({ sidebarWidthPx })}
+          />
+        </Field>
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Hotkeys</h3>
+        <Field
+          label="Global hotkey"
+          hint="Toggle the BorgDock window from anywhere on the desktop."
+          anchorId="global-hotkey"
+        >
+          <HotkeyRecorder value={ui.globalHotkey} onChange={(globalHotkey) => update({ globalHotkey })} />
+        </Field>
+        <Field
+          label="Flyout hotkey"
+          hint="Toggles the tray flyout from anywhere. Default Ctrl+Win+Shift+F."
+          anchorId="flyout-hotkey"
+        >
+          <HotkeyRecorder value={ui.flyoutHotkey} onChange={(flyoutHotkey) => update({ flyoutHotkey })} />
+        </Field>
+        <Field label="Quick review" hint="Open the focused PR in review mode." anchorId="quick-review-hotkey">
+          <HotkeyRecorder
+            value={ui.quickReviewHotkey}
+            onChange={(quickReviewHotkey) => update({ quickReviewHotkey })}
+          />
+        </Field>
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Terminal & startup</h3>
+        <Field
+          label="Windows Terminal profile"
+          hint='Used by the "Claude" button in the checkout flow. Leave empty to auto-detect the default profile.'
+          anchorId="wt-profile"
+        >
+          <TextInput
+            ariaLabel="Windows Terminal profile"
+            value={ui.windowsTerminalProfile ?? ''}
+            onChange={(v) => update({ windowsTerminalProfile: v.trim() || undefined })}
+            placeholder="Auto-detect"
+          />
+        </Field>
+        <div id="field-run-at-startup">
+          <ToggleRow
+            label="Run at startup"
+            hint="Launch BorgDock when you log in."
+            on={ui.runAtStartup}
+            onChange={async (runAtStartup) => {
+              try {
+                if (runAtStartup) await enableAutostart();
+                else await disableAutostart();
+              } catch (e) {
+                console.error('autostart toggle failed', e);
+              }
+              update({ runAtStartup });
+            }}
+          />
         </div>
-      </FieldLabel>
-
-      {/* Sidebar Edge */}
-      <FieldLabel label="Sidebar Edge">
-        <div className="flex gap-1">
-          {EDGE_OPTIONS.map(({ value, label }) => (
-            <Chip
-              key={value}
-              active={ui.sidebarEdge === value}
-              onClick={() => update({ sidebarEdge: value })}
-              data-segmented-option
-              data-active={ui.sidebarEdge === value}
-              className="flex-1 justify-center"
-            >
-              {label}
-            </Chip>
-          ))}
+        <div id="field-start-minimized">
+          <ToggleRow
+            label="Start minimized to tray"
+            hint="Skip the main window on launch."
+            on={ui.startMinimizedToTray}
+            onChange={(startMinimizedToTray) => update({ startMinimizedToTray })}
+          />
         </div>
-      </FieldLabel>
-
-      {/* Sidebar Mode */}
-      <FieldLabel label="Sidebar Mode">
-        <div className="flex gap-1">
-          {MODE_OPTIONS.map(({ value, label }) => (
-            <Chip
-              key={value}
-              active={ui.sidebarMode === value}
-              onClick={() => update({ sidebarMode: value })}
-              data-segmented-option
-              data-active={ui.sidebarMode === value}
-              className="flex-1 justify-center"
-            >
-              {label}
-            </Chip>
-          ))}
+        <div id="field-restore-last-selection">
+          <ToggleRow
+            label="Restore last selection"
+            hint="Re-open the PR you were viewing when BorgDock last closed."
+            on={ui.restoreLastSelection}
+            onChange={(restoreLastSelection) => update({ restoreLastSelection })}
+            last
+          />
         </div>
-      </FieldLabel>
-
-      {/* Sidebar Width */}
-      <FieldLabel label={`Sidebar Width: ${ui.sidebarWidthPx}px`}>
-        <input
-          type="range"
-          className="w-full accent-[var(--color-accent)]"
-          data-settings-control="sidebar-width"
-          min={200}
-          max={1200}
-          step={10}
-          value={ui.sidebarWidthPx}
-          onChange={(e) => update({ sidebarWidthPx: Number(e.target.value) })}
-        />
-        <div className="flex justify-between text-[9px] text-[var(--color-text-ghost)]">
-          <span>200</span>
-          <span>1200</span>
-        </div>
-      </FieldLabel>
-
-      {/* Global Hotkey */}
-      <FieldLabel label="Global Hotkey">
-        <HotkeyRecorder
-          value={ui.globalHotkey}
-          onChange={(shortcut) => update({ globalHotkey: shortcut })}
-        />
-      </FieldLabel>
-
-      {/* Flyout Hotkey */}
-      <FieldLabel label="Flyout hotkey">
-        <HotkeyRecorder
-          value={ui.flyoutHotkey}
-          onChange={(shortcut) => update({ flyoutHotkey: shortcut })}
-        />
-        <div className="mt-1 text-[10px] text-[var(--color-text-ghost)]">
-          Toggles the tray flyout from anywhere. Default: Ctrl+Win+Shift+F.
-        </div>
-      </FieldLabel>
-
-      {/* Windows Terminal profile override (only meaningful on Windows, but the
-          field is harmless on other platforms and will simply be ignored). */}
-      <FieldLabel label="Windows Terminal profile">
-        <Input
-          type="text"
-          value={ui.windowsTerminalProfile ?? ''}
-          onChange={(e) =>
-            update({
-              windowsTerminalProfile: e.target.value.trim() || undefined,
-            })
-          }
-          placeholder="Auto-detect"
-          spellCheck={false}
-          className="w-full"
-        />
-        <div className="mt-1 text-[10px] text-[var(--color-text-ghost)]">
-          Used by the "Claude" button in the checkout flow. Leave empty to auto-detect your default profile.
-        </div>
-      </FieldLabel>
-
-      {/* Run at Startup */}
-      <div className="flex items-center justify-between">
-        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
-          Run at startup
-        </label>
-        <ToggleSwitch
-          checked={ui.runAtStartup}
-          onChange={(next) => update({ runAtStartup: next })}
-          aria-label="Run at startup"
-        />
-      </div>
-    </div>
-  );
-}
-
-function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">{label}</label>
-      {children}
-    </div>
+      </Card>
+    </>
   );
 }

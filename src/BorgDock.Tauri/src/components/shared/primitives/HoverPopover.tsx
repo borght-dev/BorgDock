@@ -89,6 +89,10 @@ export function HoverPopover({
     };
   }, [open, computePosition]);
 
+  // Run cancelHide once on unmount; cancelHide is stable for the life of the
+  // component (defined via useRef + closure), so adding it to deps is harmless
+  // but biome insists.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: unmount-only cleanup
   useEffect(() => () => cancelHide(), []);
 
   return (

@@ -272,3 +272,118 @@ pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
     .await
     .map_err(|e| format!("Task join error: {e}"))?
 }
+
+// ─── scan_repos_under (settings → Add a repository) ─────────────────────────
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RepoCandidate {
+    pub path: String,
+    pub owner: Option<String>,
+    pub name: String,
+    pub already_tracked: bool,
+}
+
+/// Walk `parent` looking for git repos up to 4 levels deep. Returns one entry
+/// per `.git`-containing directory, attempting to parse `owner/name` from the
+/// origin remote and flagging whether the repo is already in `settings.repos`.
+#[tauri::command]
+pub async fn scan_repos_under(path: String) -> Result<Vec<RepoCandidate>, String> {
+    tokio::task::spawn_blocking(move || {
+        let parent = std::path::PathBuf::from(&path);
+        if !parent.is_dir() {
+            return Err(format!("Not a directory: {path}"));
+        }
+        let mut found = Vec::new();
+        walk_for_repos(&parent, 0, &mut found);
+
+        let tracked: std::collections::HashSet<String> = match crate::settings::load_settings_internal() {
+            Ok(s) => s.repos.iter().map(|r| format!("{}/{}", r.owner, r.name)).collect(),
+            Err(_) => std::collections::HashSet::new(),
+        };
+        for c in &mut found {
+            let key = format!("{}/{}", c.owner.clone().unwrap_or_default(), c.name);
+            c.already_tracked = !c.owner.as_deref().unwrap_or("").is_empty() && tracked.contains(&key);
+        }
+        Ok(found)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn walk_for_repos(dir: &std::path::Path, depth: u32, out: &mut Vec<RepoCandidate>) {
+    if depth > 4 {
+        return;
+    }
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        if path.join(".git").exists() {
+            let name = path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            // Reuse parse_github_remote for owner extraction
+            let owner = run_git(&path.to_string_lossy(), &["remote", "get-url", "origin"])
+                .ok()
+                .and_then(|url| parse_github_remote(&url))
+                .map(|(owner, _)| owner);
+            out.push(RepoCandidate {
+                path: path.to_string_lossy().to_string(),
+                owner,
+                name,
+                already_tracked: false,
+            });
+        } else {
+            walk_for_repos(&path, depth + 1, out);
+        }
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn finds_git_dirs_under_parent_at_multiple_depths() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir_all(dir.path().join("repo-a/.git")).unwrap();
+        std::fs::create_dir_all(dir.path().join("nested/repo-b/.git")).unwrap();
+        std::fs::create_dir_all(dir.path().join("not-a-repo/src")).unwrap();
+        let mut found = Vec::new();
+        walk_for_repos(dir.path(), 0, &mut found);
+        let names: Vec<String> = found.iter().map(|c| c.name.clone()).collect();
+        assert!(names.contains(&"repo-a".to_string()));
+        assert!(names.contains(&"repo-b".to_string()));
+        assert!(!names.contains(&"not-a-repo".to_string()));
+    }
+
+    #[test]
+    fn does_not_recurse_into_git_dirs() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir_all(dir.path().join("outer/.git/inner/.git")).unwrap();
+        let mut found = Vec::new();
+        walk_for_repos(dir.path(), 0, &mut found);
+        // outer is found; the bogus nested one inside .git is not
+        let names: Vec<String> = found.iter().map(|c| c.name.clone()).collect();
+        assert_eq!(names, vec!["outer".to_string()]);
+    }
+
+    #[test]
+    fn respects_depth_limit() {
+        let dir = TempDir::new().unwrap();
+        // 6 levels deep — beyond the depth=4 cutoff
+        std::fs::create_dir_all(dir.path().join("a/b/c/d/e/f/.git")).unwrap();
+        let mut found = Vec::new();
+        walk_for_repos(dir.path(), 0, &mut found);
+        assert!(found.is_empty(), "should not find repos beyond depth 4");
+    }
+}

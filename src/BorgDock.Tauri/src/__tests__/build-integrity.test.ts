@@ -27,6 +27,7 @@ const ENTRY_POINTS = [
   { key: 'filepalette', html: 'file-palette.html', script: '/src/file-palette-main.tsx' },
   { key: 'fileviewer', html: 'file-viewer.html', script: '/src/file-viewer-main.tsx' },
   { key: 'agent-overview', html: 'agent-overview.html', script: '/src/main-agent-overview.tsx' },
+  { key: 'settings', html: 'settings.html', script: '/src/settings-main.tsx' },
 ];
 
 // Rust-side window URLs → expected HTML file (must be a valid entry point)
@@ -43,6 +44,8 @@ const RUST_WINDOW_URLS: Record<string, string> = {
   flyout: 'flyout.html',
   'workitem-detail': 'workitem-detail.html',
   'whats-new': 'whats-new.html',
+  // settings/window.rs
+  settings: 'settings.html',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────

@@ -31,6 +31,8 @@ pub struct AppSettings {
     pub claude_api: ClaudeApiSettings,
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub settings_window: Option<WindowGeometry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -131,6 +133,12 @@ pub struct UiSettings {
     /// or similar wt-based shells. Empty/None = auto-detect from wt settings.json.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub windows_terminal_profile: Option<String>,
+    #[serde(default)]
+    pub quick_review_hotkey: String,
+    #[serde(default)]
+    pub start_minimized_to_tray: bool,
+    #[serde(default = "default_true")]
+    pub restore_last_selection: bool,
 }
 
 fn default_sidebar_edge() -> String {
@@ -181,6 +189,9 @@ impl Default for UiSettings {
             file_palette_scope: None,
             file_viewer_default_view_mode: None,
             windows_terminal_profile: None,
+            quick_review_hotkey: String::new(),
+            start_minimized_to_tray: false,
+            restore_last_selection: true,
         }
     }
 }
@@ -206,6 +217,10 @@ pub struct NotificationSettings {
     pub review_nudge_escalation: bool,
     #[serde(default = "default_dedup_window")]
     pub deduplication_window_seconds: u32,
+    #[serde(default)]
+    pub channels: NotificationChannels,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_test_fired_at: Option<i64>,
 }
 
 fn default_nudge_interval() -> u32 {
@@ -228,7 +243,24 @@ impl Default for NotificationSettings {
             review_nudge_interval_minutes: 60,
             review_nudge_escalation: true,
             deduplication_window_seconds: 60,
+            channels: NotificationChannels::default(),
+            last_test_fired_at: None,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationChannels {
+    #[serde(default = "default_true")] pub tray: bool,
+    #[serde(default = "default_true")] pub system: bool,
+    #[serde(default = "default_true")] pub sound: bool,
+    #[serde(default)] pub email_digest: bool,
+}
+
+impl Default for NotificationChannels {
+    fn default() -> Self {
+        Self { tray: true, system: true, sound: true, email_digest: false }
     }
 }
 
@@ -262,6 +294,14 @@ pub struct ClaudeApiSettings {
     pub model: String,
     #[serde(default = "default_claude_max_tokens")]
     pub max_tokens: u32,
+    #[serde(default = "default_true")]
+    pub pr_summary_enabled: bool,
+    #[serde(default = "default_true")]
+    pub diff_explanations_enabled: bool,
+    #[serde(default)]
+    pub review_nudge_phrasing_enabled: bool,
+    #[serde(default)]
+    pub commit_message_suggestions_enabled: bool,
 }
 
 fn default_claude_model() -> String {
@@ -278,6 +318,10 @@ impl Default for ClaudeApiSettings {
             api_key: None,
             model: "claude-sonnet-4-6".to_string(),
             max_tokens: 1024,
+            pr_summary_enabled: true,
+            diff_explanations_enabled: true,
+            review_nudge_phrasing_enabled: false,
+            commit_message_suggestions_enabled: false,
         }
     }
 }
@@ -345,7 +389,15 @@ pub struct AzureDevOpsSettings {
     pub work_item_worktree_paths: std::collections::HashMap<i32, String>,
     #[serde(default)]
     pub recent_work_item_ids: Vec<i32>,
+    #[serde(default = "default_link_match_by")]
+    pub link_match_by: String,
+    #[serde(default = "default_true")]
+    pub show_work_item_state_on_pr_card: bool,
+    #[serde(default)]
+    pub update_pr_status_when_wi_done: bool,
 }
+
+fn default_link_match_by() -> String { "branch".to_string() }
 
 fn default_ado_auth_method() -> String {
     "azCli".to_string()
@@ -370,16 +422,37 @@ impl Default for AzureDevOpsSettings {
             working_on_work_item_ids: Vec::new(),
             work_item_worktree_paths: std::collections::HashMap::new(),
             recent_work_item_ids: Vec::new(),
+            link_match_by: "branch".to_string(),
+            show_work_item_state_on_pr_card: true,
+            update_pr_status_when_wi_done: false,
         }
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SqlSettings {
     #[serde(default)]
     pub connections: Vec<SqlServerConnection>,
     pub last_used_connection: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_connection_name: Option<String>,
+    #[serde(default = "default_true")]
+    pub read_only_by_default: bool,
+    #[serde(default = "default_true")]
+    pub confirm_destructive_without_where: bool,
+}
+
+impl Default for SqlSettings {
+    fn default() -> Self {
+        Self {
+            connections: Vec::new(),
+            last_used_connection: None,
+            default_connection_name: None,
+            read_only_by_default: true,
+            confirm_destructive_without_where: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -448,6 +521,8 @@ pub struct AgentOverviewSettings {
     pub history_retention_seconds: u32,
     #[serde(default = "default_export_interval")]
     pub otel_export_interval_ms: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_archive_after_hours: Option<u32>,
 }
 
 fn default_notify_after() -> u32 { 30 }
@@ -473,6 +548,7 @@ impl Default for AgentOverviewSettings {
             ended_threshold_seconds: default_ended_threshold(),
             history_retention_seconds: default_history_retention(),
             otel_export_interval_ms: default_export_interval(),
+            auto_archive_after_hours: None,
         }
     }
 }
@@ -520,5 +596,67 @@ mod agent_overview_settings_tests {
         assert!(s.enabled);
         assert_eq!(s.awaiting_notify_after_seconds, 45);
         assert_eq!(s.repo_short_names.get("FSP-Horizon").unwrap(), "FH");
+    }
+}
+
+#[cfg(test)]
+mod redesign_field_tests {
+    use super::*;
+
+    #[test]
+    fn missing_fields_get_defaults() {
+        let s: AppSettings = serde_json::from_str("{}").expect("empty object should parse");
+        assert_eq!(s.azure_dev_ops.link_match_by, "branch");
+        assert!(s.azure_dev_ops.show_work_item_state_on_pr_card);
+        assert!(!s.azure_dev_ops.update_pr_status_when_wi_done);
+        assert_eq!(s.ui.quick_review_hotkey, "");
+        assert!(!s.ui.start_minimized_to_tray);
+        assert!(s.ui.restore_last_selection);
+        assert!(s.sql.default_connection_name.is_none());
+        assert!(s.sql.read_only_by_default);
+        assert!(s.sql.confirm_destructive_without_where);
+        assert!(s.notifications.channels.tray);
+        assert!(s.notifications.channels.system);
+        assert!(s.notifications.channels.sound);
+        assert!(!s.notifications.channels.email_digest);
+        assert!(s.notifications.last_test_fired_at.is_none());
+        assert!(s.agent_overview.auto_archive_after_hours.is_none());
+    }
+
+    #[test]
+    fn round_trip_preserves_new_fields() {
+        let mut s = AppSettings::default();
+        s.azure_dev_ops.link_match_by = "both".to_string();
+        s.ui.quick_review_hotkey = "Ctrl+Alt+R".to_string();
+        s.ui.start_minimized_to_tray = true;
+        s.notifications.channels.email_digest = true;
+        s.agent_overview.auto_archive_after_hours = Some(24);
+        let json = serde_json::to_string(&s).unwrap();
+        let back: AppSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.azure_dev_ops.link_match_by, "both");
+        assert_eq!(back.ui.quick_review_hotkey, "Ctrl+Alt+R");
+        assert!(back.ui.start_minimized_to_tray);
+        assert!(back.notifications.channels.email_digest);
+        assert_eq!(back.agent_overview.auto_archive_after_hours, Some(24));
+    }
+
+    #[test]
+    fn camel_case_serialization() {
+        let s = AppSettings::default();
+        let json = serde_json::to_value(&s).unwrap();
+        assert_eq!(json["azureDevOps"]["linkMatchBy"], "branch");
+        assert!(json["azureDevOps"]["showWorkItemStateOnPrCard"].as_bool().unwrap());
+        assert_eq!(json["ui"]["quickReviewHotkey"], "");
+        assert!(json["sql"]["readOnlyByDefault"].as_bool().unwrap());
+        assert!(json["notifications"]["channels"]["tray"].as_bool().unwrap());
+    }
+
+    #[test]
+    fn claude_api_feature_toggles_default_correctly() {
+        let s: AppSettings = serde_json::from_str("{}").unwrap();
+        assert!(s.claude_api.pr_summary_enabled);
+        assert!(s.claude_api.diff_explanations_enabled);
+        assert!(!s.claude_api.review_nudge_phrasing_enabled);
+        assert!(!s.claude_api.commit_message_suggestions_enabled);
     }
 }

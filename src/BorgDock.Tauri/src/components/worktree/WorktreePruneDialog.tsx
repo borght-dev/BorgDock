@@ -65,7 +65,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   // fresh `Set`s at the top of the component, those fed `classifyWorktree`'s
   // deps, which fed `loadWorktrees`' deps, which fed the effect's deps, and
   // the effect called setState → re-render → new Sets → infinite loop.
-  // (The dialog is rendered unconditionally inside SettingsFlyout, so this
+  // (The dialog is rendered unconditionally inside the Settings window, so this
   // loop fired for every settings keystroke, preventing password persistence
   // by continuously resetting the store's debounce timer.)
   const prsRef = useRef(pullRequests);

@@ -35,6 +35,7 @@ export function NotificationOverlay() {
   // way to avoid clipping when bubble heights vary (action buttons,
   // long messages, the taller "merged" variant) — a fixed per-bubble
   // estimate inevitably gets it wrong at the edges.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run when toast count changes
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -93,7 +94,7 @@ export function NotificationOverlay() {
       ro.disconnect();
       window.removeEventListener('resize', recompute);
     };
-  }, [active]);
+  }, [active.length]);
 
   if (active.length === 0) return null;
 

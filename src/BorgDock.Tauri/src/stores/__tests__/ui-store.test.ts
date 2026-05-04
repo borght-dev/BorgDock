@@ -5,7 +5,6 @@ describe('ui-store', () => {
   beforeEach(() => {
     useUiStore.setState({
       isSidebarVisible: true,
-      isSettingsOpen: false,
       activeSection: 'prs',
       selectedPrNumber: null,
       expandedRepoGroups: new Set<string>(),
@@ -25,15 +24,6 @@ describe('ui-store', () => {
     it('sets sidebar visibility directly', () => {
       useUiStore.getState().setSidebarVisible(false);
       expect(useUiStore.getState().isSidebarVisible).toBe(false);
-    });
-  });
-
-  describe('settings', () => {
-    it('opens and closes settings', () => {
-      useUiStore.getState().setSettingsOpen(true);
-      expect(useUiStore.getState().isSettingsOpen).toBe(true);
-      useUiStore.getState().setSettingsOpen(false);
-      expect(useUiStore.getState().isSettingsOpen).toBe(false);
     });
   });
 

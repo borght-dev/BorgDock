@@ -4,10 +4,14 @@ import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "path";
 import { changelogPlugin } from "./scripts/changelog/vite-plugin";
+import pkg from "./package.json";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
+  define: {
+    __BORGDOCK_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -64,6 +68,7 @@ export default defineConfig({
         "src/file-palette-main.tsx",
         "src/file-viewer-main.tsx",
         "src/main-agent-overview.tsx",
+        "src/settings-main.tsx",
         "src/test-setup.ts",
         "src/test-utils/**",
         "src/**/index.ts",
@@ -95,6 +100,7 @@ export default defineConfig({
         filepalette: path.resolve(__dirname, "file-palette.html"),
         fileviewer: path.resolve(__dirname, "file-viewer.html"),
         'agent-overview': path.resolve(__dirname, "agent-overview.html"),
+        settings: path.resolve(__dirname, "settings.html"),
       },
     },
   },

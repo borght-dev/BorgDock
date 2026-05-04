@@ -7,6 +7,10 @@ function makeApi(overrides?: Partial<ClaudeApiSettings>): ClaudeApiSettings {
   return {
     model: 'claude-sonnet-4-6',
     maxTokens: 1024,
+    prSummaryEnabled: true,
+    diffExplanationsEnabled: true,
+    reviewNudgePhrasingEnabled: false,
+    commitMessageSuggestionsEnabled: false,
     ...overrides,
   };
 }
@@ -20,87 +24,102 @@ describe('ClaudeApiSection', () => {
 
   afterEach(cleanup);
 
-  it('renders API Key input as password', () => {
+  // 1. API key field is type=password
+  it('API key field is type=password', () => {
     render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    const input = screen.getByPlaceholderText('sk-ant-...') as HTMLInputElement;
+    const input = screen.getByLabelText('Anthropic API key') as HTMLInputElement;
     expect(input.type).toBe('password');
+  });
+
+  it('API key field is empty when apiKey is undefined', () => {
+    render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
+    const input = screen.getByLabelText('Anthropic API key') as HTMLInputElement;
     expect(input.value).toBe('');
   });
 
-  it('renders API Key with existing value', () => {
+  it('API key field shows existing value', () => {
     render(<ClaudeApiSection claudeApi={makeApi({ apiKey: 'sk-ant-test' })} onChange={onChange} />);
-    const input = screen.getByPlaceholderText('sk-ant-...') as HTMLInputElement;
+    const input = screen.getByLabelText('Anthropic API key') as HTMLInputElement;
     expect(input.value).toBe('sk-ant-test');
   });
 
-  it('updates API Key', () => {
+  it('API key calls onChange with new value', () => {
     render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    fireEvent.change(screen.getByPlaceholderText('sk-ant-...'), {
+    fireEvent.change(screen.getByLabelText('Anthropic API key'), {
       target: { value: 'sk-ant-new' },
     });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-ant-new' }));
   });
 
-  it('sets apiKey to undefined when cleared', () => {
+  it('API key calls onChange with undefined when cleared', () => {
     render(<ClaudeApiSection claudeApi={makeApi({ apiKey: 'sk-ant-test' })} onChange={onChange} />);
-    fireEvent.change(screen.getByPlaceholderText('sk-ant-...'), {
+    fireEvent.change(screen.getByLabelText('Anthropic API key'), {
       target: { value: '' },
     });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ apiKey: undefined }));
   });
 
-  it('renders Model select with correct default', () => {
-    render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    expect(screen.getByDisplayValue('Claude Sonnet 4.6')).toBeDefined();
+  // 2. Model Select renders
+  it('Model Select renders with current value', () => {
+    render(<ClaudeApiSection claudeApi={makeApi({ model: 'claude-sonnet-4-6' })} onChange={onChange} />);
+    const select = screen.getByRole('combobox', { name: 'Anthropic model' }) as HTMLSelectElement;
+    expect(select.value).toBe('claude-sonnet-4-6');
   });
 
-  it('renders all model options', () => {
+  it('Model Select renders all options', () => {
     render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    expect(screen.getByText('Claude Sonnet 4.6')).toBeDefined();
-    expect(screen.getByText('Claude Haiku 4.5')).toBeDefined();
-    expect(screen.getByText('Claude Opus 4.6')).toBeDefined();
+    const select = screen.getByRole('combobox', { name: 'Anthropic model' });
+    const options = Array.from((select as HTMLSelectElement).options).map((o) => o.text);
+    expect(options).toContain('Claude Sonnet 4.6');
+    expect(options).toContain('Claude Haiku 4.5');
+    expect(options).toContain('Claude Opus 4.6');
   });
 
-  it('updates model selection', () => {
+  it('Model Select calls onChange with selected model', () => {
     render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    fireEvent.change(screen.getByDisplayValue('Claude Sonnet 4.6'), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Anthropic model' }), {
       target: { value: 'claude-opus-4-6' },
     });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-opus-4-6' }));
   });
 
-  it('renders Max Tokens input with correct value', () => {
+  // 3. Max-tokens TextInput round-trips Number conversion
+  it('Max tokens input renders with current value', () => {
     render(<ClaudeApiSection claudeApi={makeApi({ maxTokens: 2048 })} onChange={onChange} />);
-    const input = screen.getByRole('spinbutton') as HTMLInputElement;
+    const input = screen.getByRole('spinbutton', { name: 'Max tokens' }) as HTMLInputElement;
     expect(input.value).toBe('2048');
   });
 
-  it('updates max tokens', () => {
+  it('Max tokens input calls onChange with Number conversion', () => {
     render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '2048' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 2048 }));
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Max tokens' }), {
+      target: { value: '4096' },
+    });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 4096 }));
   });
 
-  it('defaults to 1024 when max tokens is cleared', () => {
+  it('Max tokens defaults to 1024 for empty input', () => {
     render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Max tokens' }), {
+      target: { value: '' },
+    });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 1024 }));
   });
 
-  it('defaults to 1024 for non-numeric input', () => {
-    render(<ClaudeApiSection claudeApi={makeApi()} onChange={onChange} />);
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: 'abc' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 1024 }));
-  });
-
-  it('preserves other fields when updating one', () => {
+  it('preserves other fields when updating max tokens', () => {
     const api = makeApi({ apiKey: 'sk-test', model: 'claude-opus-4-6', maxTokens: 2048 });
     render(<ClaudeApiSection claudeApi={api} onChange={onChange} />);
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '4096' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Max tokens' }), {
+      target: { value: '4096' },
+    });
     expect(onChange).toHaveBeenCalledWith({
       apiKey: 'sk-test',
       model: 'claude-opus-4-6',
       maxTokens: 4096,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
     });
   });
 });

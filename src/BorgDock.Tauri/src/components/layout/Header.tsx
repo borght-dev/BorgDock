@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { invoke } from '@tauri-apps/api/core';
 import { useCallback, useEffect } from 'react';
 import { FeatureBadge } from '@/components/onboarding';
 import { RefreshIcon } from '@/components/shared/icons';
@@ -43,7 +44,6 @@ export function Header() {
     // Run once on mount; subsequent in-app navigation is user-driven.
   }, [setActiveSection]);
 
-  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const isPolling = usePrStore((s) => s.isPolling);
   const getCounts = usePrStore((s) => s.counts);
   const pullRequests = usePrStore((s) => s.pullRequests);
@@ -156,7 +156,7 @@ export function Header() {
           </svg>
         </button>
         <button
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => void invoke('open_settings_window', {}).catch((err) => console.error('open_settings_window failed', err))}
           className="sidebar-icon-btn"
           aria-label="Settings"
         >

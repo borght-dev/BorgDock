@@ -7,6 +7,7 @@ pub mod file_palette;
 pub mod flyout;
 pub mod git;
 pub mod keychain;
+pub mod maintenance;
 pub mod platform;
 pub mod settings;
 pub mod sql;
@@ -382,6 +383,7 @@ pub fn run() {
             // Settings
             settings::load_settings,
             settings::save_settings,
+            settings::window::open_settings_window,
             // Auth
             auth::gh_cli_token,
             auth::validate_pat,
@@ -419,6 +421,7 @@ pub fn run() {
             git::commands::git_checkout,
             git::commands::git_current_branch,
             git::commands::discover_repos,
+            git::commands::scan_repos_under,
             git::commands::resolve_repo_path,
             git::commands::run_gh_command,
             git::diff::git_file_diff,
@@ -447,6 +450,12 @@ pub fn run() {
             cache::cache_load_etags,
             cache::cache_load_sql_schema,
             cache::cache_save_sql_schema,
+            // Maintenance
+            maintenance::clear_cache,
+            maintenance::get_cache_size,
+            maintenance::reset_all_settings,
+            maintenance::estimate_worktree_prune_size,
+            maintenance::run_self_test,
             // SQL
             sql::execute_sql_query,
             sql::test_sql_connection,
@@ -479,6 +488,7 @@ pub fn run() {
             agent_overview::commands::mark_agent_session_seen,
             agent_overview::commands::focus_session_pane,
             agent_overview::window::open_agent_overview_window,
+            agent_overview::status::agent_overview_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

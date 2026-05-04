@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { Button, Card } from '@/components/shared/primitives';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
@@ -8,7 +9,6 @@ import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
 import { WorkItemList } from '@/components/work-items/WorkItemList';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
 import { useSettingsStore } from '@/stores/settings-store';
-import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { classifyFields, extractAttachments } from '@/utils/work-item-fields';
 import {
@@ -22,7 +22,6 @@ import {
 export function WorkItemsSection() {
   const settings = useSettingsStore((s) => s.settings);
   const adoSettings = settings.azureDevOps;
-  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
   // Work items store
   const queryTree = useWorkItemsStore((s) => s.queryTree);
@@ -171,7 +170,7 @@ export function WorkItemsSection() {
           <p className="mb-3 text-[13px] text-[var(--color-text-muted)]">
             Configure Azure DevOps in Settings to see work items
           </p>
-          <Button variant="primary" size="sm" onClick={() => setSettingsOpen(true)}>
+          <Button variant="primary" size="sm" onClick={() => void invoke('open_settings_window', { section: 'ado' }).catch(console.error)}>
             Open Settings
           </Button>
         </Card>
