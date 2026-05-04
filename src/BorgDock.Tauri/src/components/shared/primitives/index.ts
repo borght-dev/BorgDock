@@ -40,5 +40,8 @@ export type { RingProps } from './Ring';
 export { Tabs } from './Tabs';
 export type { TabDef, TabsProps } from './Tabs';
 
+export { Toggle } from './Toggle';
+export type { ToggleProps } from './Toggle';
+
 export { TitleBar } from './Titlebar';
 export type { TitleBarProps } from './Titlebar';
