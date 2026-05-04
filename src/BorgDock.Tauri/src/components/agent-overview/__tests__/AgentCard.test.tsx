@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { SessionRecord } from '@/services/agent-overview-types';
+import type { InspectorState } from '@/hooks/useInspectorState';
 import { AgentCard } from '../AgentCard';
+import { InspectorContext } from '../InspectorContext';
 
 vi.mock('react-markdown', () => ({
   default: ({ children }: { children: string }) => <div data-testid="markdown">{children}</div>,
@@ -35,55 +37,71 @@ const base: SessionRecord = {
   seenAtMs: null,
 };
 
+function fakeInspector(): InspectorState {
+  return {
+    hoveredSessionId: null, pinnedSessionId: null, focusedSessionId: null, openSessionId: null,
+    onCardEnter: () => {}, onCardLeave: () => {}, onPopoverEnter: () => {}, onPopoverLeave: () => {},
+    onCardClick: () => {}, togglePin: () => {}, unpin: () => {}, cycleFocus: () => {}, closeAll: () => {},
+  };
+}
+
+function renderCard(agent: SessionRecord) {
+  return render(
+    <InspectorContext.Provider value={fakeInspector()}>
+      <AgentCard agent={agent} />
+    </InspectorContext.Provider>,
+  );
+}
+
 describe('AgentCard', () => {
   it.each([['awaiting'], ['working'], ['tool'], ['finished'], ['idle']] as const)(
     'renders %s without throwing',
     (state) => {
-      const { container } = render(<AgentCard agent={{ ...base, state }} />);
+      const { container } = renderCard({ ...base, state });
       expect(container.firstChild).toBeTruthy();
     },
   );
 
   it('uses task as the hero line', () => {
-    render(<AgentCard agent={base} />);
+    renderCard(base);
     expect(screen.getByTestId('agent-card-hero')).toHaveTextContent('Reading foo.ts');
   });
 
   it('falls back to lastAssistantMsg as the hero when task is missing', () => {
-    render(
-      <AgentCard
-        agent={{ ...base, task: null, lastAssistantMsg: 'Question: which approach?' }}
-      />,
-    );
+    renderCard({ ...base, task: null, lastAssistantMsg: 'Question: which approach?' });
     expect(screen.getByTestId('agent-card-hero')).toHaveTextContent('Question: which approach?');
   });
 
   it('renders the user message as a faint italic "re:" breadcrumb', () => {
-    render(<AgentCard agent={base} />);
+    renderCard(base);
     const crumb = screen.getByTestId('agent-card-breadcrumb');
     expect(crumb).toHaveTextContent('re: Refactor the foo bar baz');
   });
 
   it('marching ants only for tool state', () => {
-    const { container, rerender } = render(<AgentCard agent={{ ...base, state: 'tool' }} />);
+    const { container, rerender } = renderCard({ ...base, state: 'tool' });
     expect(container.querySelector('.bd-ants--left')).toBeTruthy();
-    rerender(<AgentCard agent={{ ...base, state: 'working' }} />);
+    rerender(
+      <InspectorContext.Provider value={fakeInspector()}>
+        <AgentCard agent={{ ...base, state: 'working' }} />
+      </InspectorContext.Provider>,
+    );
     expect(container.querySelector('.bd-ants--left')).toBeFalsy();
   });
 
   it('hides the time-since label for sessions younger than 5s', () => {
-    const { rerender, container } = render(
-      <AgentCard agent={{ ...base, stateSinceMs: 1_000 }} />,
-    );
+    const { rerender, container } = renderCard({ ...base, stateSinceMs: 1_000 });
     expect(container.querySelector('[data-testid="agent-card-time"]')).toBeNull();
-    rerender(<AgentCard agent={{ ...base, stateSinceMs: 30_000 }} />);
+    rerender(
+      <InspectorContext.Provider value={fakeInspector()}>
+        <AgentCard agent={{ ...base, stateSinceMs: 30_000 }} />
+      </InspectorContext.Provider>,
+    );
     expect(container.querySelector('[data-testid="agent-card-time"]')).not.toBeNull();
   });
 
   it('applies the warn tier color when stateSinceMs >= 3m', () => {
-    const { container } = render(
-      <AgentCard agent={{ ...base, stateSinceMs: 3 * 60_000 + 1_000 }} />,
-    );
+    const { container } = renderCard({ ...base, stateSinceMs: 3 * 60_000 + 1_000 });
     const time = container.querySelector('[data-testid="agent-card-time"]');
     expect(time?.className).toContain('ag-time--warn');
   });

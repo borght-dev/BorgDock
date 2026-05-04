@@ -1,9 +1,9 @@
 import type { SessionRecord } from '@/services/agent-overview-types';
-import { STATE_DEFS, fmtSince, tokenPct } from '@/services/agent-overview';
-import { HoverPopover } from '@/components/shared/primitives';
-import { AssistantMarkdown } from './AssistantMarkdown';
+import { fmtSinceShort, timeSinceTier, tokenPct } from '@/services/agent-overview';
+import { useInspector } from './InspectorContext';
 import { DismissButton } from './DismissButton';
 import { RepoMark } from './RepoMark';
+import { StateDot } from './StateDot';
 import { StatePill } from './StatePill';
 import { TokenBar } from './TokenBar';
 
@@ -13,108 +13,88 @@ interface AgentCardProps {
   showRepo?: boolean;
 }
 
+const TIME_HIDE_THRESHOLD_MS = 5_000;
+
 export function AgentCard({ agent, density = 'comfortable', showRepo = false }: AgentCardProps) {
-  const def = STATE_DEFS[agent.state];
+  const inspector = useInspector();
   const compact = density === 'compact';
   const pct = tokenPct(agent);
+  const showTime = agent.stateSinceMs >= TIME_HIDE_THRESHOLD_MS;
+  const tier = timeSinceTier(agent.stateSinceMs);
+  const hero = agent.task ?? agent.lastAssistantMsg;
+  const focused = inspector.focusedSessionId === agent.sessionId;
+  const seen = agent.seenAtMs !== null;
 
   return (
-    <div className={`ag-card ag-card--${agent.state}`} style={{ padding: compact ? '10px 12px' : '12px 14px' }}>
+    <div
+      data-session-id={agent.sessionId}
+      className={[
+        'ag-card',
+        `ag-card--${agent.state}`,
+        focused && 'ag-card--focus-ring',
+        seen && 'ag-card--seen',
+      ].filter(Boolean).join(' ')}
+      style={{ padding: compact ? '10px 12px' : '12px 14px' }}
+      onMouseEnter={() => inspector.onCardEnter(agent.sessionId)}
+      onMouseLeave={() => inspector.onCardLeave(agent.sessionId)}
+      onClick={() => inspector.onCardClick(agent.sessionId)}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 6 : 8 }}>
-        {showRepo && <RepoMark repo={agent.repo} size={18} />}
+        <StateDot state={agent.state} size={8} />
+        {showRepo && <RepoMark repo={agent.repo} size={16} />}
         <span className="ag-pane">{agent.label}</span>
         <span style={{ color: 'var(--color-text-faint)', fontSize: 10 }}>·</span>
         <span className="bd-mono" style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
           {agent.worktree === 'master' ? agent.branch : `${agent.worktree} · ${truncate(agent.branch, 28)}`}
         </span>
         <span style={{ flex: 1 }} />
-        <StatePill state={agent.state} />
+        {showTime && (
+          <span
+            className={`ag-time--${tier} bd-mono`}
+            style={{ fontSize: 10 }}
+            data-testid="agent-card-time"
+          >
+            {fmtSinceShort(agent.stateSinceMs)}
+          </span>
+        )}
         <DismissButton sessionId={agent.sessionId} />
       </div>
 
-      {agent.lastUserMsg && (
+      {hero && (
         <div
-          style={{
-            fontSize: 11,
-            color: 'var(--color-text-tertiary)',
-            lineHeight: 1.4,
-            marginBottom: 4,
-            display: '-webkit-box',
-            WebkitLineClamp: 1,
-            WebkitBoxOrient: 'vertical' as const,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
+          data-testid="agent-card-hero"
+          className={`ag-hero${compact ? ' ag-hero--compact' : ''}${agent.state === 'awaiting' ? ' ag-hero--awaiting' : ''}`}
         >
-          <span style={{ color: 'var(--color-text-faint)' }}>you: </span>
-          {agent.lastUserMsg}
+          {hero}
         </div>
       )}
 
-      {agent.lastAssistantMsg && (
-        <HoverPopover
-          content={<AssistantMarkdown text={agent.lastAssistantMsg} />}
-          triggerStyle={{ display: 'block', marginBottom: 6 }}
-        >
-          <div
-            data-testid="agent-card-assistant-preview"
-            style={{
-              fontSize: 12,
-              color: 'var(--color-text-primary)',
-              lineHeight: 1.45,
-              display: '-webkit-box',
-              WebkitLineClamp: compact ? 2 : 3,
-              WebkitBoxOrient: 'vertical' as const,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'pre-wrap',
-              cursor: 'help',
-            }}
-          >
-            {agent.lastAssistantMsg}
-          </div>
-        </HoverPopover>
-      )}
-
-      {agent.task && (
-        <div
-          style={{
-            fontSize: 11,
-            color: agent.state === 'awaiting' ? 'var(--color-warning-badge-fg)' : 'var(--color-text-tertiary)',
-            marginBottom: compact ? 8 : 10,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <span style={{ flexShrink: 0, color: 'var(--color-text-faint)' }}>→</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.task}</span>
+      {agent.lastUserMsg && (
+        <div data-testid="agent-card-breadcrumb" className="ag-breadcrumb" style={{ marginBottom: compact ? 6 : 8 }}>
+          re: {agent.lastUserMsg}
         </div>
       )}
 
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
+          display: 'flex', alignItems: 'center', gap: 10,
           paddingTop: compact ? 6 : 8,
           borderTop: '1px solid var(--color-subtle-border)',
-          fontSize: 10,
-          color: 'var(--color-text-muted)',
-          fontFamily: 'var(--font-code)',
-          letterSpacing: '0.02em',
+          fontSize: 10, color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-code)', letterSpacing: '0.02em',
         }}
       >
-        <span>
-          {def.short.toLowerCase()} · {fmtSince(agent.stateSinceMs)}
-        </span>
+        <StatePill state={agent.state} />
         <span style={{ flex: 1 }} />
         <TokenBar pct={pct} width={48} />
+        {showTime && (
+          <span className={`ag-time--${tier}`} style={{ fontSize: 10 }}>
+            {fmtSinceShort(agent.stateSinceMs)}
+          </span>
+        )}
       </div>
 
-      {agent.state === 'tool' && (
-        <div className="bd-ants" style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }} />
-      )}
+      {agent.state === 'tool' && <div className="bd-ants--left" />}
     </div>
   );
 }
