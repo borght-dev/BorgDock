@@ -80,6 +80,18 @@ pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
     )
     .map_err(|e| format!("Failed to create cache tables: {e}"))?;
 
+    // GC agent_session_meta rows older than 30 days. Prevents the table
+    // from growing unbounded as session ids change.
+    let cutoff_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
+        .saturating_sub(30 * 24 * 60 * 60 * 1000);
+    let _ = conn.execute(
+        "DELETE FROM agent_session_meta WHERE updated_at_ms < ?1",
+        rusqlite::params![cutoff_ms as i64],
+    );
+
     let mut lock = state
         .conn
         .lock()
