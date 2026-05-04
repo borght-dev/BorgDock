@@ -4,10 +4,17 @@ interface TokenBarProps {
 }
 
 export function TokenBar({ pct, width = 60 }: TokenBarProps) {
-  const fill =
-    pct > 85 ? 'var(--color-status-red)' : pct > 65 ? 'var(--color-status-yellow)' : 'var(--color-accent)';
+  const dim = pct < 60;
+  const fill = pct > 85
+    ? 'var(--color-status-red)'
+    : pct > 65
+      ? 'var(--color-status-yellow)'
+      : 'var(--color-accent)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div
+      className={dim ? 'ag-token-bar ag-token-bar--dim' : 'ag-token-bar'}
+      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+    >
       <div
         style={{
           width,

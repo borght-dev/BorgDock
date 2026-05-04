@@ -1,19 +1,34 @@
+import type { CSSProperties } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { WindowControls } from '@/components/shared/chrome';
 import { TitleBar } from '@/components/shared/primitives';
-import { SegmentedToggle } from './SegmentedToggle';
+import { fmtSinceShort, timeSinceTier } from '@/services/agent-overview';
+
+export type Grouping = 'repo' | 'status' | 'worktree' | 'context' | 'activity';
+
+const GROUPING_OPTIONS: Array<{ id: Grouping; label: string }> = [
+  { id: 'repo', label: 'By repo' },
+  { id: 'status', label: 'By status' },
+  { id: 'worktree', label: 'By worktree' },
+  { id: 'context', label: 'By context use' },
+  { id: 'activity', label: 'By activity' },
+];
 
 interface TitlebarProps {
+  oldestAwaitingMs: number | null;
   totalAwaiting: number;
-  totalSessions: number;
-  totalRepos: number;
-  grouping: 'repo' | 'status';
-  onGroupingChange: (g: 'repo' | 'status') => void;
-  density: 'auto' | 'roomy' | 'standard' | 'wall';
-  onDensityChange: (d: 'auto' | 'roomy' | 'standard' | 'wall') => void;
+  liveSessions: number;
+  grouping: Grouping;
+  onGroupingChange: (g: Grouping) => void;
 }
 
-export function Titlebar(props: TitlebarProps) {
+export function Titlebar({
+  oldestAwaitingMs,
+  totalAwaiting,
+  liveSessions,
+  grouping,
+  onGroupingChange,
+}: TitlebarProps) {
   const w = getCurrentWebviewWindow();
   return (
     <TitleBar
@@ -32,37 +47,17 @@ export function Titlebar(props: TitlebarProps) {
           >
             Agent overview
           </span>
-          {props.totalAwaiting > 0 && (
-            <span className="ag-tb-alert">
-              <span className="pulse" />
-              {props.totalAwaiting} awaiting input
-            </span>
+          {totalAwaiting > 0 && oldestAwaitingMs !== null && (
+            <OldestAgePill totalAwaiting={totalAwaiting} oldestMs={oldestAwaitingMs} />
           )}
           <span data-tauri-drag-region className="bd-title-bar__count">
-            {props.totalSessions} sessions · {props.totalRepos} repos
+            {liveSessions} live
           </span>
         </>
       }
       right={
         <>
-          <SegmentedToggle
-            value={props.grouping}
-            onChange={props.onGroupingChange}
-            options={[
-              { id: 'repo', label: 'Repo' },
-              { id: 'status', label: 'Status' },
-            ]}
-          />
-          <SegmentedToggle
-            value={props.density}
-            onChange={props.onDensityChange}
-            options={[
-              { id: 'auto', label: 'Auto' },
-              { id: 'roomy', label: 'Roomy' },
-              { id: 'standard', label: 'Std' },
-              { id: 'wall', label: 'Wall' },
-            ]}
-          />
+          <GroupingDropdown value={grouping} onChange={onGroupingChange} />
           <WindowControls
             onMinimize={() => void w.minimize()}
             onMaximize={() => void w.toggleMaximize()}
@@ -71,5 +66,73 @@ export function Titlebar(props: TitlebarProps) {
         </>
       }
     />
+  );
+}
+
+function OldestAgePill({ totalAwaiting, oldestMs }: { totalAwaiting: number; oldestMs: number }) {
+  const tier = timeSinceTier(oldestMs);
+  return (
+    <span
+      data-testid="titlebar-oldest-age"
+      className={`ag-tb-alert ag-tb-alert--${tier}`}
+      title={`${totalAwaiting} session${totalAwaiting === 1 ? '' : 's'} awaiting input`}
+    >
+      <span className="pulse" />
+      {totalAwaiting} awaiting · oldest {fmtSinceShort(oldestMs)}
+    </span>
+  );
+}
+
+function GroupingDropdown({
+  value,
+  onChange,
+}: {
+  value: Grouping;
+  onChange: (g: Grouping) => void;
+}) {
+  return (
+    <label
+      className="ag-grouping-select"
+      style={
+        {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 10,
+          color: 'var(--color-text-muted)',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          // Selects sit inside the draggable titlebar — opt out so clicks land.
+          WebkitAppRegion: 'no-drag',
+        } as CSSProperties
+      }
+    >
+      Group
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as Grouping)}
+        aria-label="Grouping"
+        style={{
+          height: 22,
+          padding: '0 22px 0 9px',
+          border: '1px solid var(--color-subtle-border)',
+          borderRadius: 999,
+          background: 'var(--color-surface)',
+          color: 'var(--color-accent)',
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: 'normal',
+          textTransform: 'none',
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+        }}
+      >
+        {GROUPING_OPTIONS.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
