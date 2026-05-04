@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createLogger } from '@/services/logger';
-import { Button, Card, Chip, IconButton, Input, Pill } from '@/components/shared/primitives';
+import { Button, Card, IconButton, Input, Pill } from '@/components/shared/primitives';
 
 const log = createLogger('CheckoutPanel');
 
@@ -307,38 +307,46 @@ export function CheckoutPanel({
           )}
         </div>
         <div className="grid grid-cols-4 gap-1.5 px-3 pb-2 pt-1">
-          <Chip
+          <Button
+            variant="primary"
+            size="sm"
+            leading={iconFolder}
             onClick={() => runAction('reveal_in_file_manager', mode.worktreePath)}
             data-checkout-launch="explorer"
-            className="!flex-col !gap-1 !py-2.5"
+            className="!w-full"
           >
-            <span className="w-4 h-4">{iconFolder}</span>
             Explorer
-          </Chip>
-          <Chip
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leading={iconTerminal}
             onClick={() => runAction('open_in_terminal', mode.worktreePath)}
             data-checkout-launch="terminal"
-            className="!flex-col !gap-1 !py-2.5"
+            className="!w-full"
           >
-            <span className="w-4 h-4">{iconTerminal}</span>
             Terminal
-          </Chip>
-          <Chip
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leading={iconSparkle}
             onClick={() => runAction('launch_claude_in_terminal', mode.worktreePath)}
             data-checkout-launch="claude"
-            className="!flex-col !gap-1 !py-2.5"
+            className="!w-full"
           >
-            <span className="w-4 h-4">{iconSparkle}</span>
             Claude
-          </Chip>
-          <Chip
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leading={iconCode}
             onClick={() => runAction('open_in_editor', mode.worktreePath)}
             data-checkout-launch="vscode"
-            className="!flex-col !gap-1 !py-2.5"
+            className="!w-full"
           >
-            <span className="w-4 h-4">{iconCode}</span>
             VSCode
-          </Chip>
+          </Button>
         </div>
         <div className="flex justify-end px-3 pb-2.5">
           <Button
@@ -384,38 +392,46 @@ export function CheckoutPanel({
         )}
         {mode.kind === 'success' && (
           <div className="grid grid-cols-4 gap-1.5 px-3 pb-3 pt-2">
-            <Chip
+            <Button
+              variant="primary"
+              size="sm"
+              leading={iconFolder}
               onClick={() => runAction('reveal_in_file_manager', mode.worktreePath)}
               data-checkout-launch="explorer"
-              className="!flex-col !gap-1 !py-2.5"
+              className="!w-full"
             >
-              <span className="w-4 h-4">{iconFolder}</span>
               Explorer
-            </Chip>
-            <Chip
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leading={iconTerminal}
               onClick={() => runAction('open_in_terminal', mode.worktreePath)}
               data-checkout-launch="terminal"
-              className="!flex-col !gap-1 !py-2.5"
+              className="!w-full"
             >
-              <span className="w-4 h-4">{iconTerminal}</span>
               Terminal
-            </Chip>
-            <Chip
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leading={iconSparkle}
               onClick={() => runAction('launch_claude_in_terminal', mode.worktreePath)}
               data-checkout-launch="claude"
-              className="!flex-col !gap-1 !py-2.5"
+              className="!w-full"
             >
-              <span className="w-4 h-4">{iconSparkle}</span>
               Claude
-            </Chip>
-            <Chip
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leading={iconCode}
               onClick={() => runAction('open_in_editor', mode.worktreePath)}
               data-checkout-launch="vscode"
-              className="!flex-col !gap-1 !py-2.5"
+              className="!w-full"
             >
-              <span className="w-4 h-4">{iconCode}</span>
               VSCode
-            </Chip>
+            </Button>
           </div>
         )}
         {mode.kind === 'error' && (
@@ -960,23 +976,23 @@ function StarIcon({ filled }: { filled: boolean }) {
 }
 
 const iconFolder = (
-  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
     <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z" />
   </svg>
 );
 const iconTerminal = (
-  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="3" width="12" height="10" rx="1.5" />
     <path d="M5 7l2 2-2 2M9 11h3" />
   </svg>
 );
 const iconSparkle = (
-  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
     <path d="M8 2l1.6 3.8L13.5 7l-3.9 1.2L8 12l-1.6-3.8L2.5 7l3.9-1.2z" />
   </svg>
 );
 const iconCode = (
-  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 4l-3 4 3 4M11 4l3 4-3 4M9.5 3 6.5 13" />
   </svg>
 );
