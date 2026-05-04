@@ -1,6 +1,6 @@
-use crate::agent_overview::types::{RawEvent, SessionRecord, SessionState};
+use crate::agent_overview::types::{RawEvent, SessionRecord, SessionState, TurnFile, TurnFileTool};
 use serde_json::Value;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Mutate `record` in response to an OTel event. Pure except for the
 /// `Instant::now()` reference passed in via `now`. Returns true if any
@@ -21,6 +21,7 @@ pub fn apply_event(record: &mut SessionRecord, event: &RawEvent, now: Instant) -
             record.pending_tool_uses.clear();
             record.last_api_request_at = None;
             record.last_assistant_msg = None;
+            record.current_turn_files.clear();
             transition(record, SessionState::Working, now);
         }
         "api_request" => {
@@ -64,6 +65,7 @@ pub fn apply_event(record: &mut SessionRecord, event: &RawEvent, now: Instant) -
             if let Some(id) = event.attrs.get("tool_use_id").and_then(Value::as_str) {
                 record.pending_tool_uses.remove(id);
             }
+            track_turn_file(record, event);
             update_task_narrative(record, event);
             if record.pending_tool_uses.is_empty() {
                 transition(record, SessionState::Working, now);
@@ -148,6 +150,42 @@ fn update_task_narrative(record: &mut SessionRecord, event: &RawEvent) {
         Some(t) => format!("{verb} {t}"),
         None => format!("{verb} {tool}"),
     });
+}
+
+const TURN_FILES_CAP: usize = 50;
+
+/// Track a file touched by Edit/Write/Read tools into the session's
+/// `current_turn_files` list. Dedups by path (later tool wins) and caps
+/// the list at `TURN_FILES_CAP` entries (oldest dropped on overflow).
+fn track_turn_file(record: &mut SessionRecord, event: &RawEvent) {
+    let Some(tool_name) = event.attrs.get("tool_name").and_then(Value::as_str) else { return };
+    let tool = match tool_name {
+        "Edit"  => TurnFileTool::Edit,
+        "Write" => TurnFileTool::Write,
+        "Read"  => TurnFileTool::Read,
+        _ => return,
+    };
+    let input = parsed_tool_input(event);
+    let path = input
+        .as_ref()
+        .and_then(|p| p.get("file_path"))
+        .or_else(|| event.attrs.get("file_path"))
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let Some(path) = path else { return };
+
+    let timestamp_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+
+    record.current_turn_files.retain(|f| f.path != path);
+    record.current_turn_files.push(TurnFile { path, tool, timestamp_ms });
+
+    if record.current_turn_files.len() > TURN_FILES_CAP {
+        let drop_count = record.current_turn_files.len() - TURN_FILES_CAP;
+        record.current_turn_files.drain(0..drop_count);
+    }
 }
 
 /// Maximum chars of user prompt to surface on a card. The OTel `prompt`
@@ -290,6 +328,7 @@ fn snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_overview::types::{TurnFile, TurnFileTool};
     use std::collections::{HashMap, HashSet};
     use std::path::PathBuf;
 
@@ -816,6 +855,64 @@ mod tests {
             ("tool_parameters", Value::String(r#"{"full_command":"git status"}"#.into())),
         ]), now);
         assert_eq!(r.task.as_deref(), Some("Running git status"));
+    }
+
+    #[test]
+    fn user_prompt_clears_current_turn_files() {
+        let mut r = make_record(SessionState::Working, Instant::now());
+        r.current_turn_files.push(TurnFile {
+            path: "src/foo.ts".into(),
+            tool: TurnFileTool::Edit,
+            timestamp_ms: 0,
+        });
+        apply_event(&mut r, &ev("user_prompt", &[
+            ("prompt", Value::String("hi".into())),
+        ]), Instant::now());
+        assert!(r.current_turn_files.is_empty());
+    }
+
+    #[test]
+    fn tool_result_appends_edit_to_current_turn_files() {
+        let mut r = make_record(SessionState::Tool, Instant::now());
+        apply_event(&mut r, &ev("tool_result", &[
+            ("tool_name", Value::String("Edit".into())),
+            ("tool_input", Value::String(r#"{"file_path":"D:/x/foo.ts"}"#.into())),
+        ]), Instant::now());
+        assert_eq!(r.current_turn_files.len(), 1);
+        let f = &r.current_turn_files[0];
+        assert_eq!(f.path, "D:/x/foo.ts");
+        assert!(matches!(f.tool, TurnFileTool::Edit));
+    }
+
+    #[test]
+    fn tool_result_dedups_paths_keeping_latest_tool() {
+        let mut r = make_record(SessionState::Tool, Instant::now());
+        let read_evt = ev("tool_result", &[
+            ("tool_name", Value::String("Read".into())),
+            ("tool_input", Value::String(r#"{"file_path":"x.ts"}"#.into())),
+        ]);
+        let edit_evt = ev("tool_result", &[
+            ("tool_name", Value::String("Edit".into())),
+            ("tool_input", Value::String(r#"{"file_path":"x.ts"}"#.into())),
+        ]);
+        apply_event(&mut r, &read_evt, Instant::now());
+        apply_event(&mut r, &edit_evt, Instant::now());
+        assert_eq!(r.current_turn_files.len(), 1);
+        assert!(matches!(r.current_turn_files[0].tool, TurnFileTool::Edit));
+    }
+
+    #[test]
+    fn tool_result_caps_current_turn_files_at_50() {
+        let mut r = make_record(SessionState::Tool, Instant::now());
+        for i in 0..60 {
+            let path = format!("\"file{i}.ts\"");
+            apply_event(&mut r, &ev("tool_result", &[
+                ("tool_name", Value::String("Edit".into())),
+                ("tool_input", Value::String(format!(r#"{{"file_path":{path}}}"#))),
+            ]), Instant::now());
+        }
+        assert_eq!(r.current_turn_files.len(), 50);
+        assert_eq!(r.current_turn_files[0].path, "file10.ts"); // oldest dropped
     }
 
     #[test]
