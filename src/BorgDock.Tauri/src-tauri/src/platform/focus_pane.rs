@@ -55,15 +55,21 @@ fn focus_windows(session_cwd: &Path) -> Result<bool, String> {
         if let Some(cwd) = proc_.cwd() {
             let cwd_canon = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
             if cwd_canon == target_cwd {
-                // Walk up to the topmost ancestor that's a known host.
+                // Walk the full ancestor chain. Push EVERY known-host
+                // ancestor into candidate_pids — Windows Terminal hosts
+                // pwsh.exe, and only the terminal owns the top-level HWND
+                // EnumWindows can find. Picking only the innermost host
+                // (pwsh) makes the lookup silently fail. We naturally
+                // skip non-host intermediates and any host that has no
+                // visible window (it just contributes nothing).
                 let mut current = pid.as_u32();
-                loop {
+                let mut seen_pids = std::collections::HashSet::new();
+                while seen_pids.insert(current) {
                     let proc_at_current = sys.process(sysinfo::Pid::from_u32(current));
                     let Some(p) = proc_at_current else { break };
                     let exe_name = p.name();
                     if KNOWN_HOSTS.iter().any(|h| h.eq_ignore_ascii_case(exe_name)) {
                         candidate_pids.push(current);
-                        break;
                     }
                     let Some(parent) = p.parent() else { break };
                     current = parent.as_u32();

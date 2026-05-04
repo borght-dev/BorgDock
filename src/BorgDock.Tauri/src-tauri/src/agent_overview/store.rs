@@ -417,6 +417,84 @@ mod tests {
         }
     }
 
+    /// Minimal SessionRecord builder for store-level unit tests. Defaults all
+    /// Phase 1 fields (`current_turn_files`, `snoozed_until_ms`, `seen_at_ms`)
+    /// to empty/None so each test only has to set what it cares about.
+    fn make_record(state: SessionState, now: Instant) -> SessionRecord {
+        SessionRecord {
+            session_id: "sid".into(),
+            cwd: PathBuf::from("/x"),
+            repo: "BorgDock".into(),
+            worktree: "master".into(),
+            branch: "master".into(),
+            label: "BD · master #1".into(),
+            state,
+            state_since: now,
+            last_event_at: now,
+            last_user_msg: None,
+            last_assistant_msg: None,
+            task: None,
+            model: None,
+            tokens_used: 0,
+            tokens_max: 200_000,
+            last_api_stop_reason: None,
+            pending_tool_uses: HashSet::new(),
+            current_turn_files: Vec::new(),
+            snoozed_until_ms: None,
+            seen_at_ms: None,
+            last_api_request_at: None,
+            state_since_ms: 0,
+            last_event_ms: 0,
+        }
+    }
+
+    /// `seal_for_emit` clears `seen_at_ms` when wall-clock time of the
+    /// most recent event is more recent than the moment the user marked
+    /// the session seen. The two timestamps live in different clocks
+    /// (`last_event_ms` is a monotonic delta; `seen_at_ms` is wall-clock
+    /// epoch ms), so this conversion is the bug-prone part.
+    #[test]
+    fn seal_for_emit_clears_seen_at_ms_when_event_is_more_recent() {
+        let now = std::time::Instant::now();
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        // seen_at = a long time ago (5 minutes back in epoch ms).
+        // last_event_at = `now` (so last_event_ms delta is ~0 → wall-clock
+        // event time ≈ now_ms, which is > seen_at_ms).
+        let mut rec = make_record(SessionState::Working, now);
+        rec.seen_at_ms = Some(now_ms.saturating_sub(5 * 60 * 1000));
+        rec.last_event_at = now;
+
+        let sealed = super::seal_for_emit(rec, now);
+        assert_eq!(sealed.seen_at_ms, None,
+            "auto-clear: an event happened after the seen-at moment, so the seen flag must clear");
+    }
+
+    /// Inverse: when seen_at_ms is more recent than the most recent
+    /// event, the flag must persist.
+    #[test]
+    fn seal_for_emit_keeps_seen_at_ms_when_seen_is_more_recent() {
+        // Force a record whose last event was 10 minutes ago, but
+        // seen_at_ms was set just now → seen is more recent → keep it.
+        let now = std::time::Instant::now();
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        let mut rec = make_record(SessionState::Working, now);
+        // Backdate last_event_at by 10 minutes.
+        rec.last_event_at = now - std::time::Duration::from_secs(10 * 60);
+        rec.seen_at_ms = Some(now_ms);
+
+        let sealed = super::seal_for_emit(rec, now);
+        assert!(sealed.seen_at_ms.is_some(),
+            "seen_at_ms set just now must survive: no event has happened since");
+    }
+
     /// Real OTel events often arrive before Claude has flushed the line in
     /// the .jsonl that contains `cwd` (lines 1-2 are session metadata; line 3+
     /// is the first event with cwd). When that happens, `resolve_cwd` returns
