@@ -8,7 +8,43 @@ export interface ActiveNotification {
   notification: InAppNotification;
 }
 
-const MAX_VISIBLE = 3;
+// Approximate vertical footprint of one bubble (card + gap) at default zoom.
+// Used to cap visible count to whatever fits in the current viewport.
+const BUBBLE_FOOTPRINT_PX = 110;
+const MIN_VISIBLE = 2;
+const MAX_VISIBLE_HARD_CAP = 8;
+
+function computeMaxVisible(): number {
+  if (typeof window === 'undefined') return 3;
+  const usable = window.innerHeight - 24; // top-3 + bottom-3 margin
+  const fits = Math.floor(usable / BUBBLE_FOOTPRINT_PX);
+  return Math.min(MAX_VISIBLE_HARD_CAP, Math.max(MIN_VISIBLE, fits));
+}
+
+let MAX_VISIBLE = computeMaxVisible();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    MAX_VISIBLE = computeMaxVisible();
+    // Promote queued items into freshly-opened slots after a viewport grow.
+    const state = useNotificationStore.getState();
+    if (state.queue.length > 0 && state.active.length < MAX_VISIBLE) {
+      const slots = MAX_VISIBLE - state.active.length;
+      const promoted = state.queue.slice(0, slots);
+      const restQueue = state.queue.slice(slots);
+      const newActive = [
+        ...state.active,
+        ...promoted.map((notification) => ({ id: _nextId++, notification })),
+      ];
+      useNotificationStore.setState({
+        active: newActive,
+        queue: restQueue,
+        activeNotification: newActive[0]?.notification ?? null,
+        notifications: restQueue,
+      });
+    }
+  });
+}
 
 /** Tauri event used by the cross-window notification bus. */
 export const NOTIFICATION_BUS_EVENT = 'borgdock-notification-bus';
