@@ -10,6 +10,8 @@ import {
   groupByRepoWorktree,
   groupByWorktreeFlat,
   isArchived,
+  isSeen,
+  isSnoozed,
   pickDensity,
   sortByActivity,
   synthLabel,
@@ -162,5 +164,26 @@ describe('STATE_DEFS', () => {
     for (const s of ['working', 'tool', 'awaiting', 'finished', 'idle', 'ended'] as const) {
       expect(STATE_DEFS[s]).toBeDefined();
     }
+  });
+});
+
+describe('isSnoozed', () => {
+  it('false when snoozedUntilMs is null', () => {
+    expect(isSnoozed(baseRecord({ snoozedUntilMs: null }), 1_000)).toBe(false);
+  });
+  it('true when snoozedUntilMs > now', () => {
+    expect(isSnoozed(baseRecord({ snoozedUntilMs: 2_000 }), 1_000)).toBe(true);
+  });
+  it('false when expired', () => {
+    expect(isSnoozed(baseRecord({ snoozedUntilMs: 500 }), 1_000)).toBe(false);
+  });
+});
+
+describe('isSeen', () => {
+  it('false when seenAtMs is null', () => {
+    expect(isSeen(baseRecord({ seenAtMs: null }))).toBe(false);
+  });
+  it('true when seenAtMs is set', () => {
+    expect(isSeen(baseRecord({ seenAtMs: 1_000 }))).toBe(true);
   });
 });
