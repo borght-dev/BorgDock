@@ -5,7 +5,7 @@ use chrono::DateTime;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, Deserialize)]
@@ -96,6 +96,7 @@ pub fn bootstrap_known_sessions(
                 state_since: modified_inst,
                 last_event_at: modified_inst,
                 last_user_msg: None,
+                last_assistant_msg: None,
                 task: None,
                 model: None,
                 tokens_used: 0,
@@ -109,6 +110,129 @@ pub fn bootstrap_known_sessions(
             store.upsert_bootstrap(rec, deltas);
             count += 1;
         }
+    }
+    count
+}
+
+/// Walk `<projects_root>/*/<sid>.jsonl` and register every session whose
+/// jsonl was modified within `retention` as `Idle`. Skips sessions already
+/// in the store (avoids regressing live OTel-tracked records to a stub).
+///
+/// This is the "telemetry-off" fallback: it gives users a populated
+/// dashboard even when no OTel events are flowing, by reading the file
+/// Claude itself maintains for every session.
+pub fn bootstrap_from_jsonl(
+    projects_root: &Path,
+    store: &SessionStore,
+    deltas: &UnboundedSender<SessionDelta>,
+    retention: Duration,
+) -> usize {
+    use crate::agent_overview::cwd_resolver::read_cwd_from_jsonl;
+    use serde::Deserialize as _;
+
+    #[derive(Deserialize)]
+    struct LineProbe {
+        #[serde(default)]
+        cwd: Option<String>,
+        #[serde(rename = "gitBranch", default)]
+        git_branch: Option<String>,
+    }
+
+    let pattern = format!(
+        "{}/*/*.jsonl",
+        projects_root.display().to_string().replace('\\', "/"),
+    );
+    let cutoff = SystemTime::now()
+        .checked_sub(retention)
+        .unwrap_or(SystemTime::UNIX_EPOCH);
+    let now_inst = Instant::now();
+    let mut counter_per_repo_wt: HashMap<(String, String), u32> = HashMap::new();
+
+    // Seed the per-repo index counter with already-stored records so labels
+    // stay unique across the index-bootstrap and jsonl-bootstrap passes.
+    for rec in store.internal_snapshot() {
+        *counter_per_repo_wt
+            .entry((rec.repo.clone(), rec.worktree.clone()))
+            .or_insert(0) += 1;
+    }
+
+    let mut count = 0;
+    for jsonl_path in glob::glob(&pattern).ok().into_iter().flatten().flatten() {
+        let Some(file_stem) = jsonl_path.file_stem() else { continue };
+        let session_id = file_stem.to_string_lossy().to_string();
+
+        // Skip if the session is already known (live OTel or prior bootstrap).
+        if store.has_session(&session_id) {
+            continue;
+        }
+
+        let metadata = match std::fs::metadata(&jsonl_path) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        let mtime = match metadata.modified() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        if mtime < cutoff {
+            continue;
+        }
+
+        // Parse the first cwd-bearing line for repo + branch.
+        let cwd_path = match read_cwd_from_jsonl(&jsonl_path) {
+            Some(p) => p,
+            None => continue,
+        };
+        let mut branch = String::new();
+        if let Ok(content) = std::fs::read_to_string(&jsonl_path) {
+            for line in content.lines().take(30) {
+                if let Ok(probe) = serde_json::from_str::<LineProbe>(line) {
+                    if let Some(b) = probe.git_branch.filter(|s| !s.is_empty()) {
+                        branch = b;
+                        break;
+                    }
+                }
+            }
+        }
+        let repo = derive_repo_name(&cwd_path);
+        let worktree = derive_worktree_name(&cwd_path);
+        let n = counter_per_repo_wt
+            .entry((repo.clone(), worktree.clone()))
+            .or_insert(0);
+        *n += 1;
+        let label = format!("{} · {} #{}", short_repo(&repo), worktree, *n);
+
+        // Translate the file's mtime into our process-local Instant. Use
+        // saturating arithmetic so a clock jump can't overflow.
+        let age = SystemTime::now()
+            .duration_since(mtime)
+            .unwrap_or(Duration::ZERO);
+        let last_event_at = now_inst.checked_sub(age).unwrap_or(now_inst);
+
+        let rec = SessionRecord {
+            session_id: session_id.clone(),
+            cwd: cwd_path,
+            repo,
+            worktree,
+            branch,
+            label,
+            state: SessionState::Idle,
+            state_since: last_event_at,
+            last_event_at,
+            last_user_msg: None,
+            last_assistant_msg: None,
+            task: None,
+            model: None,
+            tokens_used: 0,
+            tokens_max: 200_000,
+            last_api_stop_reason: None,
+            pending_tool_uses: HashSet::new(),
+            last_api_request_at: None,
+            state_since_ms: 0,
+            last_event_ms: 0,
+        };
+        store.upsert_bootstrap(rec, deltas);
+        count += 1;
     }
     count
 }
@@ -138,6 +262,120 @@ mod tests {
     use super::*;
     use std::fs;
     use tokio::sync::mpsc::unbounded_channel;
+
+    /// Discover sessions from <projects_root>/*/<sid>.jsonl directly, even
+    /// when sessions-index.json is stale or missing — this is what makes the
+    /// dashboard usable for users who haven't enabled OTel yet.
+    #[test]
+    fn bootstrap_from_jsonl_registers_sessions_with_cwd() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("D--FSP-Horizon");
+        fs::create_dir_all(&proj).unwrap();
+        let lines = [
+            r#"{"type":"meta","sessionId":"sid-a"}"#,
+            r#"{"type":"x","cwd":"D:\\FSP-Horizon","sessionId":"sid-a","gitBranch":"main"}"#,
+        ];
+        fs::write(proj.join("sid-a.jsonl"), lines.join("\n")).unwrap();
+
+        let store = SessionStore::default();
+        let (tx, _rx) = unbounded_channel();
+        let count = bootstrap_from_jsonl(
+            tmp.path(), &store, &tx,
+            Duration::from_secs(3_600),
+        );
+        assert_eq!(count, 1);
+
+        let snap = store.internal_snapshot();
+        assert_eq!(snap.len(), 1);
+        let rec = &snap[0];
+        assert_eq!(rec.session_id, "sid-a");
+        assert_eq!(rec.repo, "FSP-Horizon");
+        assert_eq!(rec.branch, "main");
+        // Without OTel signal, we can't claim it's actively running — Idle is
+        // the right default. Live OTel events will promote it to Working/etc.
+        assert_eq!(rec.state, SessionState::Idle);
+    }
+
+    /// Files older than retention should not be registered.
+    #[test]
+    fn bootstrap_from_jsonl_skips_stale_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("E--Old");
+        fs::create_dir_all(&proj).unwrap();
+        let path = proj.join("sid-old.jsonl");
+        let lines = [
+            r#"{"type":"x","cwd":"E:\\Old","sessionId":"sid-old","gitBranch":"main"}"#,
+        ];
+        fs::write(&path, lines.join("\n")).unwrap();
+        // Stamp the file as 5 hours old (well outside the 1h retention).
+        let stale = SystemTime::now() - Duration::from_secs(5 * 3_600);
+        let ft = std::fs::FileTimes::new()
+            .set_accessed(stale)
+            .set_modified(stale);
+        let f = fs::OpenOptions::new().write(true).open(&path).unwrap();
+        f.set_times(ft).unwrap();
+
+        let store = SessionStore::default();
+        let (tx, _rx) = unbounded_channel();
+        let count = bootstrap_from_jsonl(
+            tmp.path(), &store, &tx,
+            Duration::from_secs(3_600),
+        );
+        assert_eq!(count, 0);
+        assert!(store.internal_snapshot().is_empty());
+    }
+
+    /// If a session is already in the store (e.g. from sessions-index.json
+    /// or a recent OTel event), the jsonl pass must NOT regress it to a stub.
+    #[test]
+    fn bootstrap_from_jsonl_does_not_overwrite_existing_record() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("E--BorgDock");
+        fs::create_dir_all(&proj).unwrap();
+        fs::write(
+            proj.join("sid-x.jsonl"),
+            r#"{"type":"x","cwd":"E:\\BorgDock","sessionId":"sid-x","gitBranch":"master"}"#,
+        )
+        .unwrap();
+
+        let store = SessionStore::default();
+        let (tx, _rx) = unbounded_channel();
+
+        // Pre-register the session as if from a live OTel event.
+        store.upsert_bootstrap(
+            SessionRecord {
+                session_id: "sid-x".into(),
+                cwd: PathBuf::from("E:\\BorgDock"),
+                repo: "BorgDock".into(),
+                worktree: "master".into(),
+                branch: "master".into(),
+                label: "BD · master #1".into(),
+                state: SessionState::Working,
+                state_since: Instant::now(),
+                last_event_at: Instant::now(),
+                last_user_msg: Some("hi".into()),
+                last_assistant_msg: None,
+                task: None,
+                model: Some("claude-opus-4-7".into()),
+                tokens_used: 500,
+                tokens_max: 200_000,
+                last_api_stop_reason: None,
+                pending_tool_uses: HashSet::new(),
+                last_api_request_at: None,
+                state_since_ms: 0,
+                last_event_ms: 0,
+            },
+            &tx,
+        );
+
+        bootstrap_from_jsonl(tmp.path(), &store, &tx, Duration::from_secs(3_600));
+
+        let snap = store.internal_snapshot();
+        assert_eq!(snap.len(), 1);
+        // Pre-existing live record must be untouched.
+        assert_eq!(snap[0].state, SessionState::Working);
+        assert_eq!(snap[0].tokens_used, 500);
+    }
 
     #[test]
     fn bootstrap_registers_recent_sessions_only() {
