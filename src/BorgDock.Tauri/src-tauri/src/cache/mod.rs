@@ -15,7 +15,10 @@ fn db_path() -> std::path::PathBuf {
 }
 
 #[tauri::command]
-pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
+pub fn cache_init(
+    state: State<'_, PrCache>,
+    session_store: State<'_, crate::agent_overview::store::SessionStore>,
+) -> Result<(), String> {
     let path = db_path();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create cache dir: {e}"))?;
@@ -91,6 +94,13 @@ pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
         "DELETE FROM agent_session_meta WHERE updated_at_ms < ?1",
         rusqlite::params![cutoff_ms as i64],
     );
+
+    // Hydrate the agent overview SessionStore meta map from sqlite. This is
+    // best-effort: if the load fails (e.g. corrupt db), the dashboard just
+    // starts with empty meta — user actions will repopulate it.
+    if let Ok(all) = crate::agent_overview::meta_store::load_all(&conn) {
+        session_store.hydrate_meta(all);
+    }
 
     let mut lock = state
         .conn

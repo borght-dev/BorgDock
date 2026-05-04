@@ -64,3 +64,69 @@ pub fn dismiss_agent_session(
     store.set_state(&session_id, SessionState::Ended, &tx, std::time::Instant::now());
     Ok(())
 }
+
+use crate::agent_overview::meta_store;
+use crate::cache::PrCache;
+
+fn now_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
+}
+
+/// Snooze the awaiting card for `duration_ms`. Persists to sqlite so the
+/// snooze survives a restart; preserves the existing `seen_at_ms` value.
+#[tauri::command]
+pub fn snooze_agent_session(
+    session_id: String,
+    duration_ms: u64,
+    store: tauri::State<'_, SessionStore>,
+    deltas: tauri::State<'_, AgentDeltaSender>,
+    cache: tauri::State<'_, PrCache>,
+) -> Result<(), String> {
+    let Some(tx) = deltas.clone_sender() else {
+        return Err("agent_overview event loop is not running".into());
+    };
+    let until = now_ms() + duration_ms as u128;
+
+    // Read current seen_at to preserve it.
+    let lock = cache.conn.lock().map_err(|e| e.to_string())?;
+    let conn = lock.as_ref().ok_or("Cache not initialized")?;
+    let prev_seen = meta_store::get(conn, &session_id)
+        .map_err(|e| e.to_string())?
+        .and_then(|m| m.seen_at_ms);
+    meta_store::put(conn, &session_id, Some(until), prev_seen, now_ms())
+        .map_err(|e| e.to_string())?;
+    drop(lock);
+
+    store.set_meta(&session_id, Some(until), prev_seen, &tx, std::time::Instant::now());
+    Ok(())
+}
+
+/// Mark the session seen *now*. Persists to sqlite; preserves any active
+/// snooze. The store auto-clears `seen_at_ms` when fresh activity arrives.
+#[tauri::command]
+pub fn mark_agent_session_seen(
+    session_id: String,
+    store: tauri::State<'_, SessionStore>,
+    deltas: tauri::State<'_, AgentDeltaSender>,
+    cache: tauri::State<'_, PrCache>,
+) -> Result<(), String> {
+    let Some(tx) = deltas.clone_sender() else {
+        return Err("agent_overview event loop is not running".into());
+    };
+    let seen = now_ms();
+
+    let lock = cache.conn.lock().map_err(|e| e.to_string())?;
+    let conn = lock.as_ref().ok_or("Cache not initialized")?;
+    let prev_snooze = meta_store::get(conn, &session_id)
+        .map_err(|e| e.to_string())?
+        .and_then(|m| m.snoozed_until_ms);
+    meta_store::put(conn, &session_id, prev_snooze, Some(seen), now_ms())
+        .map_err(|e| e.to_string())?;
+    drop(lock);
+
+    store.set_meta(&session_id, prev_snooze, Some(seen), &tx, std::time::Instant::now());
+    Ok(())
+}

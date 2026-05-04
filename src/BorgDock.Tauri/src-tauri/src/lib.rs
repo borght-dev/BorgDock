@@ -471,6 +471,8 @@ pub fn run() {
             agent_overview::commands::set_agent_overview_enabled,
             agent_overview::commands::disable_agent_overview_telemetry,
             agent_overview::commands::dismiss_agent_session,
+            agent_overview::commands::snooze_agent_session,
+            agent_overview::commands::mark_agent_session_seen,
             agent_overview::window::open_agent_overview_window,
         ])
         .run(tauri::generate_context!())
