@@ -1,7 +1,25 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { SessionRecord } from '@/services/agent-overview-types';
+import type { InspectorState } from '@/hooks/useInspectorState';
 import { AwaitingRail } from '../AwaitingRail';
+import { InspectorContext } from '../InspectorContext';
+
+function fakeInspector(): InspectorState {
+  return {
+    hoveredSessionId: null, pinnedSessionId: null, focusedSessionId: null, openSessionId: null,
+    onCardEnter: () => {}, onCardLeave: () => {}, onPopoverEnter: () => {}, onPopoverLeave: () => {},
+    onCardClick: () => {}, togglePin: () => {}, unpin: () => {}, cycleFocus: () => {}, closeAll: () => {},
+  };
+}
+
+function renderRail(agents: SessionRecord[]) {
+  return render(
+    <InspectorContext.Provider value={fakeInspector()}>
+      <AwaitingRail agents={agents} density="standard" />
+    </InspectorContext.Provider>,
+  );
+}
 
 function rec(id: string, msAgo: number, repo = 'BorgDock'): SessionRecord {
   return {
@@ -30,13 +48,13 @@ function rec(id: string, msAgo: number, repo = 'BorgDock'): SessionRecord {
 describe('AwaitingRail', () => {
   it('renders the count and oldest-since', () => {
     const agents = [rec('1', 60_000), rec('2', 240_000)];
-    render(<AwaitingRail agents={agents} density="standard" />);
+    renderRail(agents);
     expect(screen.getByText(/2 sessions waiting on you/)).toBeInTheDocument();
     expect(screen.getByText(/oldest 4m ago/)).toBeInTheDocument();
   });
 
   it('renders nothing when there are no agents', () => {
-    const { container } = render(<AwaitingRail agents={[]} density="standard" />);
+    const { container } = renderRail([]);
     expect(container.firstChild).toBeNull();
   });
 
@@ -46,7 +64,7 @@ describe('AwaitingRail', () => {
       rec('b', 90_000, 'FSP-Horizon'),
       rec('c', 120_000, 'FSP-3'),
     ];
-    const { container } = render(<AwaitingRail agents={agents} density="standard" />);
+    const { container } = renderRail(agents);
     const text = container.textContent ?? '';
     // Both repo names appear as section headers under the rail's "needs you" banner.
     expect(text).toContain('FSP-Horizon');
@@ -60,7 +78,7 @@ describe('AwaitingRail', () => {
       rec('a', 60_000, 'BorgDock'),
       rec('b', 90_000, 'BorgDock'),
     ];
-    const { container } = render(<AwaitingRail agents={agents} density="standard" />);
+    const { container } = renderRail(agents);
     // One repo header (we look for the visible name once).
     const occurrences = (container.textContent ?? '').match(/BorgDock/g)?.length ?? 0;
     // Banner doesn't say BorgDock, only the repo header should — exactly 1 match.
