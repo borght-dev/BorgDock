@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ARCHIVE_CUTOFF_MS,
   STATE_DEFS,
+  contextBucket,
   fmtSince,
   fmtSinceShort,
+  groupByContext,
   groupByRepo,
   groupByRepoWorktree,
+  groupByWorktreeFlat,
+  isArchived,
   pickDensity,
+  sortByActivity,
   synthLabel,
+  timeSinceTier,
   tokenPct,
 } from '../agent-overview';
 import type { SessionRecord } from '../agent-overview-types';
@@ -22,11 +29,15 @@ const baseRecord = (overrides: Partial<SessionRecord> = {}): SessionRecord => ({
   stateSinceMs: 0,
   lastEventMs: 0,
   lastUserMsg: null,
+  lastAssistantMsg: null,
   task: null,
   model: null,
   tokensUsed: 0,
   tokensMax: 200_000,
   lastApiStopReason: null,
+  currentTurnFiles: [],
+  snoozedUntilMs: null,
+  seenAtMs: null,
   ...overrides,
 });
 
@@ -45,6 +56,29 @@ describe('pickDensity', () => {
     expect(pickDensity(3)).toBe('roomy');
     expect(pickDensity(8)).toBe('standard');
     expect(pickDensity(20)).toBe('wall');
+  });
+  it('collapses one tier on narrow viewports', () => {
+    expect(pickDensity(3, 800)).toBe('standard');
+    expect(pickDensity(8, 800)).toBe('wall');
+    expect(pickDensity(3, 1600)).toBe('roomy');
+  });
+});
+
+describe('timeSinceTier', () => {
+  it('returns normal/warn/alert by age', () => {
+    expect(timeSinceTier(30_000)).toBe('normal');
+    expect(timeSinceTier(3 * 60_000)).toBe('warn');
+    expect(timeSinceTier(11 * 60_000)).toBe('alert');
+  });
+});
+
+describe('isArchived', () => {
+  const stub = (over: Partial<SessionRecord>) => baseRecord(over);
+  it('archives idle/ended sessions older than 24h', () => {
+    expect(isArchived(stub({ state: 'idle', lastEventMs: ARCHIVE_CUTOFF_MS + 1 }))).toBe(true);
+    expect(isArchived(stub({ state: 'ended', lastEventMs: ARCHIVE_CUTOFF_MS + 1 }))).toBe(true);
+    expect(isArchived(stub({ state: 'idle', lastEventMs: 60_000 }))).toBe(false);
+    expect(isArchived(stub({ state: 'working', lastEventMs: ARCHIVE_CUTOFF_MS + 1 }))).toBe(false);
   });
 });
 
@@ -79,6 +113,47 @@ describe('groupByRepo / groupByRepoWorktree', () => {
     expect(r).toHaveLength(2);
     const rw = groupByRepoWorktree(recs);
     expect(rw[0]!.worktrees).toHaveLength(2);
+  });
+});
+
+describe('groupByWorktreeFlat', () => {
+  it('produces one entry per (repo, worktree)', () => {
+    const recs = [
+      baseRecord({ sessionId: 'a', repo: 'X', worktree: 'master' }),
+      baseRecord({ sessionId: 'b', repo: 'X', worktree: 'master' }),
+      baseRecord({ sessionId: 'c', repo: 'X', worktree: 'wt2' }),
+      baseRecord({ sessionId: 'd', repo: 'Y', worktree: 'master' }),
+    ];
+    const out = groupByWorktreeFlat(recs);
+    expect(out).toHaveLength(3);
+    expect(out[0]!.agents).toHaveLength(2);
+  });
+});
+
+describe('contextBucket / groupByContext', () => {
+  it('buckets by token usage', () => {
+    expect(contextBucket(baseRecord({ tokensUsed: 180_000, tokensMax: 200_000 }))).toBe('high');
+    expect(contextBucket(baseRecord({ tokensUsed: 140_000, tokensMax: 200_000 }))).toBe('mid');
+    expect(contextBucket(baseRecord({ tokensUsed: 50_000, tokensMax: 200_000 }))).toBe('low');
+  });
+  it('returns buckets ordered high→mid→low and skips empty buckets', () => {
+    const recs = [
+      baseRecord({ sessionId: 'a', tokensUsed: 180_000 }),
+      baseRecord({ sessionId: 'b', tokensUsed: 50_000 }),
+    ];
+    const out = groupByContext(recs);
+    expect(out.map((g) => g.bucket)).toEqual(['high', 'low']);
+  });
+});
+
+describe('sortByActivity', () => {
+  it('sorts smaller lastEventMs (more recent) first', () => {
+    const recs = [
+      baseRecord({ sessionId: 'a', lastEventMs: 30_000 }),
+      baseRecord({ sessionId: 'b', lastEventMs: 1_000 }),
+      baseRecord({ sessionId: 'c', lastEventMs: 10_000 }),
+    ];
+    expect(sortByActivity(recs).map((r) => r.sessionId)).toEqual(['b', 'c', 'a']);
   });
 });
 

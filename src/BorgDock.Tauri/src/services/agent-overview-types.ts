@@ -1,5 +1,13 @@
 export type SessionState = 'working' | 'tool' | 'awaiting' | 'finished' | 'idle' | 'ended';
 
+export type TurnFileTool = 'edit' | 'write' | 'read';
+
+export interface TurnFile {
+  path: string;
+  tool: TurnFileTool;
+  timestampMs: number;
+}
+
 export interface SessionRecord {
   sessionId: string;
   cwd: string;
@@ -21,6 +29,9 @@ export interface SessionRecord {
   tokensUsed: number;
   tokensMax: number;
   lastApiStopReason: string | null;
+  currentTurnFiles: TurnFile[];
+  snoozedUntilMs: number | null;
+  seenAtMs: number | null;
 }
 
 export type SessionDelta =

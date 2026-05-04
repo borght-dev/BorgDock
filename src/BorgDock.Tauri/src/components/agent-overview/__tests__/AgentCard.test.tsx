@@ -1,7 +1,17 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SessionRecord } from '@/services/agent-overview-types';
 import { AgentCard } from '../AgentCard';
+
+vi.mock('react-markdown', () => ({
+  default: ({ children }: { children: string }) => <div data-testid="markdown">{children}</div>,
+}));
+vi.mock('rehype-sanitize', () => ({ default: () => null }));
+vi.mock('remark-gfm', () => ({ default: () => null }));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
 
 const base: SessionRecord = {
   sessionId: 'sid',
@@ -20,6 +30,9 @@ const base: SessionRecord = {
   tokensUsed: 64_000,
   tokensMax: 200_000,
   lastApiStopReason: null,
+  currentTurnFiles: [],
+  snoozedUntilMs: null,
+  seenAtMs: null,
 };
 
 describe('AgentCard', () => {
@@ -31,15 +44,47 @@ describe('AgentCard', () => {
     },
   );
 
-  it('shows quoted last user msg', () => {
+  it('uses task as the hero line', () => {
     render(<AgentCard agent={base} />);
-    expect(screen.getByText(/Refactor the foo bar baz/)).toBeInTheDocument();
+    expect(screen.getByTestId('agent-card-hero')).toHaveTextContent('Reading foo.ts');
+  });
+
+  it('falls back to lastAssistantMsg as the hero when task is missing', () => {
+    render(
+      <AgentCard
+        agent={{ ...base, task: null, lastAssistantMsg: 'Question: which approach?' }}
+      />,
+    );
+    expect(screen.getByTestId('agent-card-hero')).toHaveTextContent('Question: which approach?');
+  });
+
+  it('renders the user message as a faint italic "re:" breadcrumb', () => {
+    render(<AgentCard agent={base} />);
+    const crumb = screen.getByTestId('agent-card-breadcrumb');
+    expect(crumb).toHaveTextContent('re: Refactor the foo bar baz');
   });
 
   it('marching ants only for tool state', () => {
     const { container, rerender } = render(<AgentCard agent={{ ...base, state: 'tool' }} />);
-    expect(container.querySelector('.bd-ants')).toBeTruthy();
+    expect(container.querySelector('.bd-ants--left')).toBeTruthy();
     rerender(<AgentCard agent={{ ...base, state: 'working' }} />);
-    expect(container.querySelector('.bd-ants')).toBeFalsy();
+    expect(container.querySelector('.bd-ants--left')).toBeFalsy();
+  });
+
+  it('hides the time-since label for sessions younger than 5s', () => {
+    const { rerender, container } = render(
+      <AgentCard agent={{ ...base, stateSinceMs: 1_000 }} />,
+    );
+    expect(container.querySelector('[data-testid="agent-card-time"]')).toBeNull();
+    rerender(<AgentCard agent={{ ...base, stateSinceMs: 30_000 }} />);
+    expect(container.querySelector('[data-testid="agent-card-time"]')).not.toBeNull();
+  });
+
+  it('applies the warn tier color when stateSinceMs >= 3m', () => {
+    const { container } = render(
+      <AgentCard agent={{ ...base, stateSinceMs: 3 * 60_000 + 1_000 }} />,
+    );
+    const time = container.querySelector('[data-testid="agent-card-time"]');
+    expect(time?.className).toContain('ag-time--warn');
   });
 });

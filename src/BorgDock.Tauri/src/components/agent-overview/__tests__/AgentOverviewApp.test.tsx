@@ -1,18 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionRecord, SessionState } from '@/services/agent-overview-types';
+import { ARCHIVE_CUTOFF_MS } from '@/services/agent-overview';
 
-// Mutable so each test can install its own session list before render.
 let mockSessions: SessionRecord[] = [];
 
-// Stub the Tauri-coupled hook so the component renders deterministic data
-// in jsdom. The hook normally subscribes to Tauri events / invokes commands;
-// neither exists in tests.
 vi.mock('@/hooks/useAgentSessions', () => ({
   useAgentSessions: () => mockSessions,
 }));
 
-// Stub Tauri webviewWindow used by Titlebar's window controls.
 vi.mock('@tauri-apps/api/webviewWindow', () => ({
   getCurrentWebviewWindow: () => ({
     minimize: vi.fn(),
@@ -20,6 +16,16 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
     close: vi.fn(),
   }),
 }));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('react-markdown', () => ({
+  default: ({ children }: { children: string }) => <div>{children}</div>,
+}));
+vi.mock('rehype-sanitize', () => ({ default: () => null }));
+vi.mock('remark-gfm', () => ({ default: () => null }));
 
 function rec(
   sessionId: string,
@@ -35,8 +41,8 @@ function rec(
     branch: 'master',
     label: `${repo[0]}${repo[1] ?? ''} · master #1`,
     state,
-    stateSinceMs: 1_000,
-    lastEventMs: 1_000,
+    stateSinceMs: 30_000,
+    lastEventMs: 30_000,
     lastUserMsg: 'do something',
     lastAssistantMsg: null,
     task: 'Reading Foo.cs',
@@ -44,88 +50,80 @@ function rec(
     tokensUsed: 1_000,
     tokensMax: 200_000,
     lastApiStopReason: null,
+    currentTurnFiles: [],
+    snoozedUntilMs: null,
+    seenAtMs: null,
     ...overrides,
   };
 }
 
-const LIVE_SESSIONS: SessionRecord[] = [
-  rec('s1', 'FSP-Horizon', 'working'),
-  rec('s2', 'BorgDock', 'finished'),
-];
-
 beforeEach(() => {
-  mockSessions = LIVE_SESSIONS;
+  mockSessions = [
+    rec('s1', 'FSP-Horizon', 'working'),
+    rec('s2', 'BorgDock', 'finished'),
+  ];
 });
 
-// Import AFTER the mocks are registered.
 const { AgentOverviewApp } = await import('../AgentOverviewApp');
 
-describe('AgentOverviewApp grouping toggle', () => {
-  it('renders RepoGrouped sections by default and swaps to StatusGrouped when toggled', () => {
+describe('AgentOverviewApp grouping dropdown', () => {
+  it('renders RepoGrouped by default and switches when grouping changes', () => {
     const { container } = render(<AgentOverviewApp />);
-    // RepoGrouped renders a per-worktree subheader containing ⎇; StatusGrouped does not.
-    const initial = container.textContent ?? '';
-    expect(initial).toContain('FSP-Horizon');
-    expect(initial).toContain('⎇');
+    // RepoGrouped renders worktree subheaders ("⎇"); StatusGrouped does not.
+    expect(container.textContent ?? '').toContain('⎇');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Status' }));
+    const select = screen.getByLabelText('Grouping') as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'status' } });
+    expect(container.textContent ?? '').not.toContain('⎇');
+    // StatusGrouped uses STATE_DEFS labels.
+    expect(container.textContent ?? '').toContain('Working');
+  });
 
-    const after = container.textContent ?? '';
-    // StatusGrouped sections are present (state labels), worktree subheaders are gone.
-    expect(after).not.toContain('⎇');
-    expect(after).toContain('Working');
-    expect(after).toContain('Just finished');
+  it('exposes all five grouping modes', () => {
+    render(<AgentOverviewApp />);
+    const select = screen.getByLabelText('Grouping') as HTMLSelectElement;
+    const options = Array.from(select.options).map((o) => o.value);
+    expect(options).toEqual(['repo', 'status', 'worktree', 'context', 'activity']);
   });
 });
 
-describe('AgentOverviewApp density toggle', () => {
-  it('switches from auto-roomy AgentCard to AgentTile when Wall is clicked', () => {
-    const { container } = render(<AgentOverviewApp />);
-    // In Roomy/Auto mode the cards use the .ag-card class.
-    expect(container.querySelectorAll('.ag-card').length).toBeGreaterThan(0);
-    expect(container.querySelectorAll('.ag-tile').length).toBe(0);
+describe('AgentOverviewApp titlebar oldest-age pill', () => {
+  it('shows the pill only when at least one session is awaiting', () => {
+    mockSessions = [rec('s1', 'BorgDock', 'working', { stateSinceMs: 60_000 })];
+    const { rerender } = render(<AgentOverviewApp />);
+    expect(screen.queryByTestId('titlebar-oldest-age')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Wall' }));
-    // Wall mode should render AgentTile (.ag-tile) instead.
-    expect(container.querySelectorAll('.ag-tile').length).toBeGreaterThan(0);
-    expect(container.querySelectorAll('.ag-card').length).toBe(0);
+    mockSessions = [rec('s1', 'BorgDock', 'awaiting', { stateSinceMs: 60_000 })];
+    rerender(<AgentOverviewApp />);
+    expect(screen.getByTestId('titlebar-oldest-age')).toBeInTheDocument();
+  });
+
+  it('uses the alert tier (red+bold) when oldest awaiting is >= 10m', () => {
+    mockSessions = [rec('s1', 'BorgDock', 'awaiting', { stateSinceMs: 11 * 60_000 })];
+    render(<AgentOverviewApp />);
+    const pill = screen.getByTestId('titlebar-oldest-age');
+    expect(pill.className).toContain('ag-tb-alert--alert');
   });
 });
 
-/// When every session is idle/ended the user still wants real cards (not just
-/// the thin idle-rail strip), and the grouping/density toggles must affect
-/// what's on screen. Without this, switching toggles becomes a no-op and the
-/// dashboard looks broken.
-describe('AgentOverviewApp all-idle state', () => {
+describe('AgentOverviewApp auto-archive', () => {
   beforeEach(() => {
     mockSessions = [
-      rec('s1', 'FSP-Horizon', 'idle'),
-      rec('s2', 'BorgDock', 'ended'),
+      rec('live', 'BorgDock', 'working'),
+      // Past the 24h cutoff — archived by default.
+      rec('old', 'FSP-Horizon', 'idle', { lastEventMs: ARCHIVE_CUTOFF_MS + 60_000 }),
     ];
   });
 
-  it('renders idle sessions as full cards when no live sessions exist', () => {
+  it('hides archived sessions by default and exposes a toggle in the statusbar', () => {
     const { container } = render(<AgentOverviewApp />);
-    // RepoGrouped should show real AgentCards for the idle sessions, not just
-    // the compact .ag-side-row IdleRail strip.
-    expect(container.querySelectorAll('.ag-card').length).toBeGreaterThan(0);
-    // Repo headers from RepoGrouped are present.
-    expect(container.textContent ?? '').toContain('FSP-Horizon');
-  });
+    // The archived idle session has lastEventMs > 24h, so its row in the
+    // IdleRail prints "24h ago" — present iff the row is rendered.
+    expect(container.textContent ?? '').not.toContain('24h ago');
+    expect(screen.getByTestId('statusbar-archived-toggle')).toHaveTextContent('1 archived');
 
-  it('responds to grouping toggle when all sessions are idle', () => {
-    const { container } = render(<AgentOverviewApp />);
-    expect(container.textContent ?? '').toContain('⎇'); // RepoGrouped subheader
-
-    fireEvent.click(screen.getByRole('button', { name: 'Status' }));
-    expect(container.textContent ?? '').not.toContain('⎇');
-  });
-
-  it('responds to density toggle when all sessions are idle', () => {
-    const { container } = render(<AgentOverviewApp />);
-    expect(container.querySelectorAll('.ag-tile').length).toBe(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Wall' }));
-    expect(container.querySelectorAll('.ag-tile').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('statusbar-archived-toggle'));
+    expect(container.textContent ?? '').toContain('24h ago');
+    expect(screen.getByTestId('statusbar-archived-toggle')).toHaveTextContent('hide 1 archived');
   });
 });

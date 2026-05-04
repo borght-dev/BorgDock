@@ -21,6 +21,9 @@ function rec(id: string, msAgo: number, repo = 'BorgDock'): SessionRecord {
     tokensUsed: 0,
     tokensMax: 200_000,
     lastApiStopReason: 'end_turn',
+    currentTurnFiles: [],
+    snoozedUntilMs: null,
+    seenAtMs: null,
   };
 }
 
