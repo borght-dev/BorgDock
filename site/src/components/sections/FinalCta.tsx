@@ -33,8 +33,8 @@ export function FinalCta() {
                 lineHeight: 1.55,
               }}
             >
-              Free for individuals. macOS · Windows · Linux. No cloud account, no
-              tracking — reads your Git provider directly.
+              macOS · Windows · Linux. No cloud account, no tracking — reads your
+              Git provider directly.
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 200 }}>
