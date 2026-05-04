@@ -116,10 +116,6 @@ vi.mock('@/components/layout/Sidebar', () => ({
   ),
 }));
 
-vi.mock('@/components/settings/SettingsFlyout', () => ({
-  SettingsFlyout: () => <div data-testid="settings-flyout" />,
-}));
-
 vi.mock('@/components/notifications/NotificationOverlay', () => ({
   NotificationOverlay: () => <div data-testid="notification-overlay" />,
 }));
@@ -290,7 +286,6 @@ describe('App', () => {
 
     render(<App />);
     expect(screen.getByTestId('sidebar')).toBeTruthy();
-    expect(screen.getByTestId('settings-flyout')).toBeTruthy();
     expect(screen.getByTestId('notification-overlay')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
   });

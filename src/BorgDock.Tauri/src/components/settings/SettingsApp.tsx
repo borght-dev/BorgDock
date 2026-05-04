@@ -78,7 +78,7 @@ export function SettingsApp() {
     return () => { unlistenP.then((un) => un()); };
   }, []);
 
-  // Debounced save + flush on window close (replaces SettingsFlyout's flush-on-close)
+  // Debounced save + flush on window close
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     function flush() {

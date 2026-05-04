@@ -27,7 +27,6 @@ describe('Header', () => {
     vi.clearAllMocks();
     useUiStore.setState({
       activeSection: 'prs',
-      isSettingsOpen: false,
       isDragging: false,
     });
     usePrStore.setState({
@@ -77,10 +76,11 @@ describe('Header', () => {
     expect(screen.getByLabelText('Settings')).toBeTruthy();
   });
 
-  it('opens settings when Settings button is clicked', () => {
+  it('opens settings when Settings button is clicked', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
     render(<Header />);
     fireEvent.click(screen.getByLabelText('Settings'));
-    expect(useUiStore.getState().isSettingsOpen).toBe(true);
+    expect(invoke).toHaveBeenCalledWith('open_settings_window', {});
   });
 
   it('dispatches borgdock-refresh event on Refresh click', () => {

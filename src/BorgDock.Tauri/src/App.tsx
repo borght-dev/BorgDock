@@ -5,7 +5,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
 import { PrList } from '@/components/pr/PrList';
 import { SplashScreen } from '@/components/SplashScreen';
-import { SettingsFlyout } from '@/components/settings/SettingsFlyout';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
@@ -258,7 +257,7 @@ export default function App() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         const fn = await listen('open-settings', () => {
-          useUiStore.getState().setSettingsOpen(true);
+          void invoke('open_settings_window', {}).catch((err) => console.error('open_settings_window failed', err));
         });
         if (cancelled) {
           fn();
@@ -308,7 +307,7 @@ export default function App() {
       (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
     if (!isTest) return;
     if (new URLSearchParams(window.location.search).get('settings') === 'open') {
-      useUiStore.getState().setSettingsOpen(true);
+      void invoke('open_settings_window', {}).catch((err) => console.error('open_settings_window failed', err));
     }
   }, []);
 
@@ -339,7 +338,6 @@ export default function App() {
           {activeSection === 'prs' && <PrList />}
           {activeSection === 'workitems' && <WorkItemsSection />}
         </Sidebar>
-        <SettingsFlyout />
         <NotificationOverlay />
         <MergeToast />
         <QuickReviewOverlay />
@@ -354,7 +352,6 @@ export default function App() {
         {activeSection === 'prs' && <PrList />}
         {activeSection === 'workitems' && <WorkItemsSection />}
       </Sidebar>
-      <SettingsFlyout />
       <NotificationOverlay />
       <MergeToast />
       <QuickReviewOverlay />
