@@ -17,8 +17,8 @@ export function Select({ value, options, onChange, placeholder, ariaLabel }: Sel
         onChange={(e) => onChange(e.target.value)}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
       >
-        {placeholder && <option value="" disabled aria-label={placeholder}>{placeholder}</option>}
-        {options.map((o) => <option key={o.value} value={o.value} aria-label={o.label} />)}
+        {placeholder && <option value="" disabled>{placeholder}</option>}
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <span className="text-xs text-[var(--color-text-primary)] pointer-events-none">
         {options.find((o) => o.value === value)?.label ?? placeholder ?? ''}

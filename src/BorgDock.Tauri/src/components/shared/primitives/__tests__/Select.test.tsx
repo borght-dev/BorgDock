@@ -12,6 +12,9 @@ describe('Select', () => {
 
   it('shows label of current value', () => {
     render(<Select value="b" options={[{ value: 'a', label: 'Alpha' }, { value: 'b', label: 'Beta' }]} onChange={() => {}} ariaLabel="X" />);
-    expect(screen.getByText('Beta')).toBeInTheDocument();
+    // The visible display span (not the hidden <option>)
+    const matches = screen.getAllByText('Beta');
+    // One in the <option>, one in the display span — at least one must be a span
+    expect(matches.some((el) => el.tagName === 'SPAN')).toBe(true);
   });
 });
