@@ -3,6 +3,20 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
+import {
+  draftPrs,
+  failingPrs,
+  longAuthorPrs,
+  longTitlePrs,
+  makeFlyoutData,
+  makeFlyoutPr,
+  manyPrs,
+  mergeConflictPrs,
+  mergeReadyPrs,
+  mixedPrs,
+  passingPrs,
+  sparsePrs,
+} from './__fixtures__/flyout-data';
 import { FlyoutApp } from './FlyoutApp';
 import type { FlyoutData } from './FlyoutGlance';
 import type { ToastPayload } from './flyout-mode';
@@ -92,3 +106,137 @@ function story(params: FlyoutStoryParams): Story {
 // No seed — FlyoutApp's reducer starts in 'initializing' and stays there
 // until __borgdock_test_flyout_seed sends 'init-complete'.
 export const Initializing: Story = story({});
+
+// ---------------------------------------------------------------------------
+// Glance — base data variants
+// ---------------------------------------------------------------------------
+
+export const GlanceEmpty = story({
+  seed: { mode: 'glance', data: makeFlyoutData() },
+});
+
+export const GlanceAllPassing = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: passingPrs,
+      passingCount: passingPrs.length,
+      totalCount: passingPrs.length,
+    }),
+  },
+});
+
+export const GlanceAllFailing = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: failingPrs,
+      failingCount: failingPrs.length,
+      totalCount: failingPrs.length,
+    }),
+  },
+});
+
+export const GlanceMixed = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: mixedPrs,
+      failingCount: 1,
+      pendingCount: 1,
+      passingCount: 1,
+      totalCount: mixedPrs.length,
+    }),
+  },
+});
+
+export const GlanceFocusOnly = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: [
+        makeFlyoutPr({ number: 1100, title: 'Focus PR — needs your attention' }),
+        makeFlyoutPr({ number: 1101, title: 'Another focus PR' }),
+      ],
+      focusCount: 2,
+      totalCount: 2,
+    }),
+  },
+});
+
+export const GlanceMany = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: manyPrs,
+      totalCount: manyPrs.length,
+      passingCount: manyPrs.filter((p) => p.overallStatus === 'green').length,
+      failingCount: manyPrs.filter((p) => p.overallStatus === 'red').length,
+      pendingCount: manyPrs.filter((p) => p.overallStatus === 'yellow').length,
+    }),
+  },
+});
+
+export const GlanceDraftsOnly = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: draftPrs,
+      totalCount: draftPrs.length,
+    }),
+  },
+});
+
+export const GlanceMergeReady = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: mergeReadyPrs,
+      passingCount: mergeReadyPrs.length,
+      totalCount: mergeReadyPrs.length,
+    }),
+  },
+});
+
+export const GlanceMergeConflict = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: mergeConflictPrs,
+      pendingCount: mergeConflictPrs.length,
+      totalCount: mergeConflictPrs.length,
+    }),
+  },
+});
+
+export const GlanceLongTitles = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: longTitlePrs,
+      passingCount: longTitlePrs.length,
+      totalCount: longTitlePrs.length,
+    }),
+  },
+});
+
+export const GlanceLongAuthors = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: longAuthorPrs,
+      passingCount: longAuthorPrs.length,
+      totalCount: longAuthorPrs.length,
+    }),
+  },
+});
+
+export const GlanceSparseFields = story({
+  seed: {
+    mode: 'glance',
+    data: makeFlyoutData({
+      pullRequests: sparsePrs,
+      totalCount: sparsePrs.length,
+    }),
+  },
+});
