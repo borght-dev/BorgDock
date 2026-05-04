@@ -39,6 +39,7 @@ impl Default for StoreThresholds {
 #[derive(Clone, Default)]
 pub struct SessionStore {
     pub(crate) inner: Arc<RwLock<HashMap<String, SessionRecord>>>,
+    pub(crate) meta: Arc<RwLock<HashMap<String, crate::agent_overview::meta_store::SessionMeta>>>,
 }
 
 impl SessionStore {
@@ -106,6 +107,46 @@ impl SessionStore {
         rec.last_assistant_msg = msg;
         let snap = seal_for_emit(rec.clone(), now);
         let _ = deltas.send(SessionDelta::Upsert { session: snap });
+    }
+
+    /// Persist snooze + seen meta in-memory and emit a delta so the UI
+    /// re-renders. The sqlite write-through happens at the command layer
+    /// (see `commands::snooze_agent_session` / `mark_agent_session_seen`)
+    /// so this method is reusable from contexts without a cache handle.
+    pub fn set_meta(
+        &self,
+        session_id: &str,
+        snoozed_until_ms: Option<u128>,
+        seen_at_ms: Option<u128>,
+        deltas: &UnboundedSender<SessionDelta>,
+        now: Instant,
+    ) {
+        let new_meta = crate::agent_overview::meta_store::SessionMeta {
+            snoozed_until_ms,
+            seen_at_ms,
+        };
+        if let Ok(mut m) = self.meta.write() {
+            m.insert(session_id.to_string(), new_meta.clone());
+        }
+        if let Ok(mut map) = self.inner.write() {
+            if let Some(rec) = map.get_mut(session_id) {
+                rec.snoozed_until_ms = new_meta.snoozed_until_ms;
+                rec.seen_at_ms = new_meta.seen_at_ms;
+                let snap = seal_for_emit(rec.clone(), now);
+                let _ = deltas.send(SessionDelta::Upsert { session: snap });
+            }
+        }
+    }
+
+    /// Replace the cached meta map wholesale. Used at startup to hydrate
+    /// from sqlite before the OTel ingest path starts.
+    pub fn hydrate_meta(
+        &self,
+        all: HashMap<String, crate::agent_overview::meta_store::SessionMeta>,
+    ) {
+        if let Ok(mut m) = self.meta.write() {
+            *m = all;
+        }
     }
 
     /// Cheap presence check by session id — used by jsonl bootstrap to avoid
@@ -235,6 +276,17 @@ impl SessionStore {
             );
         }
 
+        // Hydrate snooze/seen onto the live record from the cached meta
+        // map. This runs every event so user actions taken via the Tauri
+        // commands (which write to the meta map directly) don't get lost
+        // when subsequent OTel events arrive.
+        if let Ok(meta_map) = self.meta.read() {
+            if let Some(m) = meta_map.get(&session_id) {
+                entry.snoozed_until_ms = m.snoozed_until_ms;
+                entry.seen_at_ms = m.seen_at_ms;
+            }
+        }
+
         let changed = apply_event(entry, &event, now);
         if changed {
             let snap = seal_for_emit(entry.clone(), now);
@@ -300,9 +352,22 @@ impl SessionStore {
 }
 
 /// Convert monotonic Instants into millis-ago for the wire format.
+/// Also auto-clears `seen_at_ms` if activity has happened since the user
+/// marked the session seen — otherwise the "seen" badge would persist
+/// across a fresh assistant message.
 fn seal_for_emit(mut rec: SessionRecord, now: Instant) -> SessionRecord {
     rec.state_since_ms = now.saturating_duration_since(rec.state_since).as_millis();
     rec.last_event_ms = now.saturating_duration_since(rec.last_event_at).as_millis();
+    if let Some(seen) = rec.seen_at_ms {
+        let event_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+            .saturating_sub(rec.last_event_ms);
+        if event_ms > seen {
+            rec.seen_at_ms = None;
+        }
+    }
     rec
 }
 
