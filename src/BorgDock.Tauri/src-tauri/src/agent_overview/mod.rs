@@ -5,6 +5,7 @@
 pub mod bootstrap;
 pub mod commands;
 pub mod cwd_resolver;
+pub mod meta_store;
 pub mod models;
 pub mod notify;
 pub mod otlp_server;
