@@ -392,6 +392,12 @@ pub async fn open_pr_detail_window(
     );
     log::info!("open_pr_detail_window: init_script built, dispatching to main thread");
 
+    // Restore last-used geometry (saved when the previous PR window closed).
+    // Falls back to centered + default size if nothing is stored yet.
+    let saved_geometry = crate::settings::load_settings_internal()
+        .ok()
+        .and_then(|s| s.pr_detail.window_state.clone());
+
     // Window creation must happen on the main (GUI) thread. When this command
     // runs on a worker thread (which async tauri commands do), calling
     // WebviewWindowBuilder::build() directly can hang because it dispatches to
@@ -404,33 +410,68 @@ pub async fn open_pr_detail_window(
 
     app.run_on_main_thread(move || {
         log::info!("open_pr_detail_window: on main thread, calling WebviewWindowBuilder::build for {label_for_build}");
-        let result = WebviewWindowBuilder::new(
+        let mut builder = WebviewWindowBuilder::new(
             &app_for_build,
             &label_for_build,
             WebviewUrl::App("pr-detail.html".into()),
         )
         .title(title)
         .inner_size(800.0, 900.0)
+        .min_inner_size(480.0, 480.0)
         .decorations(false)
         .resizable(true)
-        .skip_taskbar(true)
-        .center()
+        // First-class viewer window: appears in Windows Alt+Tab and taskbar.
+        // Pop-out PR detail is content the user reads, copies from, and tabs
+        // back to — see feedback memory "Viewer/detail windows behave like
+        // first-class windows".
+        .skip_taskbar(false)
         .focused(true)
-        .initialization_script(&init_script)
-        .build();
+        .initialization_script(&init_script);
+
+        if let Some(g) = &saved_geometry {
+            builder = builder
+                .inner_size(g.width as f64, g.height as f64)
+                .position(g.x as f64, g.y as f64);
+        } else {
+            builder = builder.center();
+        }
+
+        let result = builder.build();
 
         let send_result = match result {
             Ok(win) => {
                 log::info!("open_pr_detail_window: build succeeded for {label_for_build}");
                 let _ = win.show();
                 let _ = win.set_focus();
-                // Re-apply skip_taskbar — on Windows the builder flag is
-                // sometimes ignored once the window is actually shown, and the
-                // entry shows up in the OS taskbar. Re-applying here forces
-                // the ITaskbarList2 removal to happen after the HWND is real.
-                if let Err(e) = win.set_skip_taskbar(true) {
-                    log::warn!("open_pr_detail_window: set_skip_taskbar failed for {label_for_build}: {e}");
+
+                // Second-pass geometry apply — some Tauri versions ignore the
+                // builder's inner_size on first build under HiDPI.
+                if let Some(g) = &saved_geometry {
+                    let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
+                    let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
                 }
+
+                // Persist outer geometry on close so the next PR window opens
+                // where the user left this one.
+                let win_for_close = win.clone();
+                win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        let pos = win_for_close.outer_position().ok();
+                        let size = win_for_close.outer_size().ok();
+                        if let (Some(p), Some(s)) = (pos, size) {
+                            let geom = crate::settings::models::WindowGeometry {
+                                x: p.x,
+                                y: p.y,
+                                width: s.width,
+                                height: s.height,
+                            };
+                            if let Ok(mut settings) = crate::settings::load_settings_internal() {
+                                settings.pr_detail.window_state = Some(geom);
+                                let _ = crate::settings::save_settings_internal(&settings);
+                            }
+                        }
+                    }
+                });
 
                 // Schedule a delayed repaint so the window doesn't render blank
                 // on Windows if another window held focus at creation time.
@@ -439,7 +480,6 @@ pub async fn open_pr_detail_window(
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_millis(250));
                     let _ = win_repaint.set_focus();
-                    let _ = win_repaint.set_skip_taskbar(true);
                     force_repaint(&win_repaint);
                     log::debug!("open_pr_detail_window: post-show repaint done for {label_repaint}");
                 });

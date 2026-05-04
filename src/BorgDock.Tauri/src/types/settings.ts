@@ -128,6 +128,10 @@ export interface AgentOverviewSettings {
   windowState?: { x: number; y: number; width: number; height: number };
 }
 
+export interface PrDetailSettings {
+  windowState?: { x: number; y: number; width: number; height: number };
+}
+
 export interface AppSettings {
   setupComplete: boolean;
   gitHub: GitHubSettings;
@@ -139,6 +143,7 @@ export interface AppSettings {
   claudeReview: ClaudeReviewSettings;
   updates: UpdateSettings;
   agentOverview?: AgentOverviewSettings;
+  prDetail?: PrDetailSettings;
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
   repoPriority: Record<string, RepoPriority>;
