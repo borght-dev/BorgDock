@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 interface ToggleOption<T extends string> {
   id: T;
   label: string;
@@ -22,7 +24,10 @@ export function SegmentedToggle<T extends string>({
         borderRadius: 999,
         padding: 2,
         border: '1px solid var(--color-subtle-border)',
-      }}
+        // Opt out of the parent titlebar's data-tauri-drag-region so the
+        // buttons inside actually receive click events on Windows.
+        WebkitAppRegion: 'no-drag',
+      } as CSSProperties}
     >
       {options.map((o) => {
         const active = o.id === value;
