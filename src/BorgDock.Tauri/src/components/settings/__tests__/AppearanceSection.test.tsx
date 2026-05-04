@@ -3,6 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UiSettings } from '@/types';
 import { AppearanceSection } from '../AppearanceSection';
 
+vi.mock('@tauri-apps/plugin-autostart', () => ({
+  enable: vi.fn().mockResolvedValue(undefined),
+  disable: vi.fn().mockResolvedValue(undefined),
+  isEnabled: vi.fn().mockResolvedValue(false),
+}));
+
 function makeUi(overrides?: Partial<UiSettings>): UiSettings {
   return {
     sidebarEdge: 'right',
@@ -29,12 +35,13 @@ describe('AppearanceSection', () => {
 
   afterEach(cleanup);
 
-  // Theme
-  it('renders theme buttons', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    expect(screen.getByText('System')).toBeDefined();
-    expect(screen.getByText('Light')).toBeDefined();
-    expect(screen.getByText('Dark')).toBeDefined();
+  // 1. Theme Seg2 renders with current value highlighted
+  it('renders theme Seg2 with System highlighted', () => {
+    render(<AppearanceSection ui={makeUi({ theme: 'system' })} onChange={onChange} />);
+    const systemBtn = screen.getByText('System').closest('button')!;
+    expect(systemBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Light').closest('button')!.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByText('Dark').closest('button')!.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('switches theme to dark', () => {
@@ -55,11 +62,11 @@ describe('AppearanceSection', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ theme: 'system' }));
   });
 
-  // Sidebar Edge
-  it('renders sidebar edge buttons', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    expect(screen.getByText('Left')).toBeDefined();
-    expect(screen.getByText('Right')).toBeDefined();
+  // 2. Sidebar edge Seg2 renders both options
+  it('renders sidebar edge Seg2 with both options', () => {
+    render(<AppearanceSection ui={makeUi({ sidebarEdge: 'right' })} onChange={onChange} />);
+    expect(screen.getByText('Left').closest('button')!.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByText('Right').closest('button')!.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('switches sidebar edge to left', () => {
@@ -69,10 +76,10 @@ describe('AppearanceSection', () => {
   });
 
   // Sidebar Mode
-  it('renders sidebar mode buttons', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    expect(screen.getByText('Pinned')).toBeDefined();
-    expect(screen.getByText('Floating')).toBeDefined();
+  it('renders sidebar mode Seg2 with both options', () => {
+    render(<AppearanceSection ui={makeUi({ sidebarMode: 'pinned' })} onChange={onChange} />);
+    expect(screen.getByText('Pinned').closest('button')!.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Floating').closest('button')!.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('switches sidebar mode to floating', () => {
@@ -81,48 +88,78 @@ describe('AppearanceSection', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarMode: 'floating' }));
   });
 
-  // Sidebar Width
-  it('renders sidebar width slider', () => {
+  // 3. Sidebar width slider has aria-valuenow matching sidebarWidthPx
+  it('renders sidebar width slider with correct aria-valuenow', () => {
     render(<AppearanceSection ui={makeUi({ sidebarWidthPx: 800 })} onChange={onChange} />);
-    expect(screen.getByText('Sidebar Width: 800px')).toBeDefined();
+    const slider = screen.getByRole('slider');
+    expect(slider.getAttribute('aria-valuenow')).toBe('800');
   });
 
-  it('updates sidebar width', () => {
+  it('updates sidebar width via keyboard', () => {
+    render(<AppearanceSection ui={makeUi({ sidebarWidthPx: 800 })} onChange={onChange} />);
+    const slider = screen.getByRole('slider');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidthPx: 810 }));
+  });
+
+  // 4. HotkeyRecorder renders — at least one is in the DOM
+  it('renders at least one HotkeyRecorder for globalHotkey', () => {
     render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    const slider = screen.getByRole('slider') as HTMLInputElement;
-    fireEvent.change(slider, { target: { value: '600' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidthPx: 600 }));
+    // HotkeyRecorder renders the hotkey value as button text
+    expect(screen.getByText('Ctrl+Win+Shift+G')).toBeDefined();
   });
 
-  // Run at Startup toggle
-  it('renders run at startup toggle (off)', () => {
-    render(<AppearanceSection ui={makeUi({ runAtStartup: false })} onChange={onChange} />);
-    expect(screen.getByText('Run at startup')).toBeDefined();
+  it('renders flyout hotkey recorder', () => {
+    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
+    expect(screen.getByText('Ctrl+Win+Shift+F')).toBeDefined();
   });
 
-  it('toggles run at startup on', () => {
+  // 5. Run-at-startup toggle clicking enable when off → calls onChange + autostart.enable
+  it('toggles run at startup on and calls autostart.enable', async () => {
+    const { enable } = await import('@tauri-apps/plugin-autostart');
     render(<AppearanceSection ui={makeUi({ runAtStartup: false })} onChange={onChange} />);
-    // The toggle button is right after the label
-    const label = screen.getByText('Run at startup');
-    const toggle = label.closest('div')!.querySelector('button')!;
+    const toggle = screen.getByRole('switch', { name: 'Run at startup' });
     fireEvent.click(toggle);
+    // autostart.enable is called async; wait a tick
+    await vi.waitFor(() => expect(enable).toHaveBeenCalled());
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ runAtStartup: true }));
   });
 
-  it('toggles run at startup off', () => {
+  it('toggles run at startup off and calls autostart.disable', async () => {
+    const { disable } = await import('@tauri-apps/plugin-autostart');
     render(<AppearanceSection ui={makeUi({ runAtStartup: true })} onChange={onChange} />);
-    const label = screen.getByText('Run at startup');
-    const toggle = label.closest('div')!.querySelector('button')!;
+    const toggle = screen.getByRole('switch', { name: 'Run at startup' });
     fireEvent.click(toggle);
+    await vi.waitFor(() => expect(disable).toHaveBeenCalled());
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ runAtStartup: false }));
   });
 
-  // Global Hotkey
-  it('renders global hotkey section', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    expect(screen.getByText('Global Hotkey')).toBeDefined();
-    // The HotkeyRecorder shows the current value
-    expect(screen.getByText('Ctrl+Win+Shift+G')).toBeDefined();
+  // 6. WT profile TextInput round-trips through onChange
+  it('updates Windows Terminal profile via TextInput', () => {
+    render(<AppearanceSection ui={makeUi({ windowsTerminalProfile: 'PowerShell 7' })} onChange={onChange} />);
+    const input = screen.getByRole('textbox', { name: 'Windows Terminal profile' });
+    fireEvent.change(input, { target: { value: 'Ubuntu' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ windowsTerminalProfile: 'Ubuntu' }));
+  });
+
+  it('clears Windows Terminal profile to undefined when empty', () => {
+    render(<AppearanceSection ui={makeUi({ windowsTerminalProfile: 'PowerShell 7' })} onChange={onChange} />);
+    const input = screen.getByRole('textbox', { name: 'Windows Terminal profile' });
+    fireEvent.change(input, { target: { value: '   ' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ windowsTerminalProfile: undefined }));
+  });
+
+  // New toggles
+  it('renders start minimized toggle', () => {
+    render(<AppearanceSection ui={makeUi({ startMinimizedToTray: false })} onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: 'Start minimized to tray' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('renders restore last selection toggle (on)', () => {
+    render(<AppearanceSection ui={makeUi({ restoreLastSelection: true })} onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: 'Restore last selection' });
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
   });
 
   it('preserves other fields when updating one', () => {
