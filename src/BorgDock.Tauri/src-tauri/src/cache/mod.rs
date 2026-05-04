@@ -67,7 +67,16 @@ pub fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
             last_run    TEXT NOT NULL DEFAULT '',
             created_at  INTEGER NOT NULL,
             updated_at  INTEGER NOT NULL
-        );",
+        );
+
+        CREATE TABLE IF NOT EXISTS agent_session_meta (
+            session_id        TEXT PRIMARY KEY,
+            snoozed_until_ms  INTEGER,
+            seen_at_ms        INTEGER,
+            updated_at_ms     INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_meta_updated
+            ON agent_session_meta(updated_at_ms);",
     )
     .map_err(|e| format!("Failed to create cache tables: {e}"))?;
 
