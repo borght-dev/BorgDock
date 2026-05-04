@@ -36,6 +36,8 @@ interface FlyoutStoryParams {
   bannerOnGlance?: ToastPayload;
   /** Push a 4th toast to validate FIFO trim at TOAST_MAX. */
   overflowToast?: ToastPayload;
+  /** Simulate a hover on the toast queue so the auto-hide timer pauses. */
+  hovered?: boolean;
 }
 
 declare global {
@@ -49,8 +51,6 @@ function FlyoutHarness({ params }: { params: FlyoutStoryParams }) {
     const ctrl = getControl();
     let cancelled = false;
 
-    // Two ticks: let FlyoutApp's effects subscribe to the mock channels first,
-    // then push state. requestAnimationFrame double-rAF is sufficient.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return;
@@ -62,6 +62,19 @@ function FlyoutHarness({ params }: { params: FlyoutStoryParams }) {
         }
         if (params.toasts) {
           for (const t of params.toasts) ctrl.emit('flyout-toast', t);
+        }
+        if (params.hovered) {
+          // Allow toast container to mount, then dispatch mouseenter on it.
+          // Selector: FlyoutToast.tsx tags each card with data-testid="flyout-toast-card-${id}";
+          // there is no top-level "flyout-toast-container" element, and we cannot add one
+          // (production code stays byte-identical). Targeting the first card is sufficient
+          // because its onMouseEnter handler flips hoveredRef and clears the auto-hide timer.
+          requestAnimationFrame(() => {
+            const el = document.querySelector('[data-testid^="flyout-toast-card-"]');
+            if (el) {
+              el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            }
+          });
         }
         if (params.overflowToast) {
           ctrl.emit('flyout-toast', params.overflowToast);
@@ -305,14 +318,24 @@ const toastFromIdle = (toasts: ToastPayload[]): FlyoutStoryParams => ({
 
 export const Toast1Card = story(
   toastFromIdle([
-    makeToast({ id: 't1', title: 'Build failed', severity: 'error', body: 'ci/test failed on main.' }),
+    makeToast({
+      id: 't1',
+      title: 'Build failed',
+      severity: 'error',
+      body: 'ci/test failed on main.',
+    }),
   ]),
 );
 
 export const Toast2Cards = story(
   toastFromIdle([
     makeToast({ id: 't2a', title: 'Build queued', severity: 'info', body: 'Waiting for runner.' }),
-    makeToast({ id: 't2b', title: 'Build started', severity: 'info', body: 'ci/build is running.' }),
+    makeToast({
+      id: 't2b',
+      title: 'Build started',
+      severity: 'info',
+      body: 'ci/build is running.',
+    }),
   ]),
 );
 
@@ -396,7 +419,13 @@ export const ToastActionOpenUrl = story(
       id: 'act-url',
       title: 'Release notes',
       severity: 'info',
-      actions: [{ label: 'Read', action: 'open-url', url: 'https://github.com/borght-dev/BorgDock/releases' }],
+      actions: [
+        {
+          label: 'Read',
+          action: 'open-url',
+          url: 'https://github.com/borght-dev/BorgDock/releases',
+        },
+      ],
     }),
   ]),
 );
@@ -410,7 +439,13 @@ export const ToastActionMergePr = story(
       prOwner: 'borght-dev',
       prRepo: 'BorgDock',
       prNumber: 45,
-      actions: [{ label: 'Merge', action: 'merge-pr', url: 'https://github.com/borght-dev/BorgDock/pull/45' }],
+      actions: [
+        {
+          label: 'Merge',
+          action: 'merge-pr',
+          url: 'https://github.com/borght-dev/BorgDock/pull/45',
+        },
+      ],
     }),
   ]),
 );
@@ -424,7 +459,64 @@ export const ToastActionStartReview = story(
       prOwner: 'borght-dev',
       prRepo: 'BorgDock',
       prNumber: 46,
-      actions: [{ label: 'Start review', action: 'start-review', url: 'https://github.com/borght-dev/BorgDock/pull/46' }],
+      actions: [
+        {
+          label: 'Start review',
+          action: 'start-review',
+          url: 'https://github.com/borght-dev/BorgDock/pull/46',
+        },
+      ],
     }),
   ]),
 );
+
+// ---------------------------------------------------------------------------
+// Toast — interaction states + overflow
+// ---------------------------------------------------------------------------
+
+export const ToastHovered = story({
+  ...toastFromIdle([
+    makeToast({ id: 'hov-1', title: 'Build started', severity: 'info' }),
+    makeToast({ id: 'hov-2', title: 'Tests running', severity: 'info' }),
+    makeToast({ id: 'hov-3', title: 'Lint failed', severity: 'error' }),
+  ]),
+  hovered: true,
+});
+
+export const ToastNoActions = story(
+  toastFromIdle([
+    makeToast({
+      id: 'noact',
+      title: 'Background sync complete',
+      severity: 'success',
+      actions: [],
+    }),
+  ]),
+);
+
+export const ToastLongBody = story(
+  toastFromIdle([
+    makeToast({
+      id: 'long',
+      title: 'A title that is itself fairly long but reasonable',
+      severity: 'warning',
+      body:
+        'This body is intentionally written to exceed the comfortable single-card height so we ' +
+        'can verify wrap, truncate, and clip behavior at the 340x~160px card budget defined in ' +
+        'FlyoutApp.tsx around line 250. It should never overflow the window edge.',
+    }),
+  ]),
+);
+
+export const ToastOverflow = story({
+  ...toastFromIdle([
+    makeToast({ id: 'ovf-1', title: 'Toast 1', severity: 'info' }),
+    makeToast({ id: 'ovf-2', title: 'Toast 2', severity: 'info' }),
+    makeToast({ id: 'ovf-3', title: 'Toast 3', severity: 'info' }),
+  ]),
+  overflowToast: makeToast({
+    id: 'ovf-4',
+    title: 'Toast 4 (oldest is dropped)',
+    severity: 'success',
+  }),
+});
