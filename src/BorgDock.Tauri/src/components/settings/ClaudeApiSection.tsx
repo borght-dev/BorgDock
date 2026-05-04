@@ -1,61 +1,55 @@
-import { Input } from '@/components/shared/primitives';
-import type { ClaudeApiSettings } from '@/types';
+import { Card } from '@/components/shared/primitives';
+import { Field, SectionHeader, Select, TextInput } from '@/components/shared/primitives';
+import type { ClaudeApiSettings } from '@/types/settings';
+
+interface Props { claudeApi: ClaudeApiSettings; onChange: (c: ClaudeApiSettings) => void }
 
 const MODEL_OPTIONS = [
-  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-  { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+  { value: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6' },
+  { value: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5' },
+  { value: 'claude-opus-4-6',            label: 'Claude Opus 4.6' },
 ];
 
-interface ClaudeApiSectionProps {
-  claudeApi: ClaudeApiSettings;
-  onChange: (claudeApi: ClaudeApiSettings) => void;
-}
-
-export function ClaudeApiSection({ claudeApi, onChange }: ClaudeApiSectionProps) {
+export function ClaudeApiSection({ claudeApi, onChange }: Props) {
   const update = (partial: Partial<ClaudeApiSettings>) => onChange({ ...claudeApi, ...partial });
-
   return (
-    <div className="space-y-2.5" data-settings-section="claude-api">
-      <div className="flex flex-col gap-1">
-        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">API Key</label>
-        <Input
-          type="password"
-          className="w-full"
-          value={claudeApi.apiKey ?? ''}
-          onChange={(e) => update({ apiKey: e.target.value || undefined })}
-          placeholder="sk-ant-..."
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">Model</label>
-        <select
-          className="field-input w-full"
-          value={claudeApi.model}
-          onChange={(e) => update({ model: e.target.value })}
-        >
-          {MODEL_OPTIONS.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
-          Max Tokens
-        </label>
-        <Input
-          type="number"
-          className="w-full"
-          value={claudeApi.maxTokens}
-          onChange={(e) => update({ maxTokens: Number(e.target.value) || 1024 })}
-          min={256}
-          max={4096}
-        />
-      </div>
-    </div>
+    <>
+      <SectionHeader
+        title="Claude API"
+        subtitle='Used for AI-generated PR summaries and the "Explain this diff" command. Separate from Claude Code.'
+      />
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Anthropic API
+        </h3>
+        <Field label="API key" anchorId="api-key">
+          <TextInput
+            ariaLabel="Anthropic API key"
+            value={claudeApi.apiKey ?? ''}
+            onChange={(v) => update({ apiKey: v || undefined })}
+            type="password"
+            mono
+            placeholder="sk-ant-…"
+          />
+        </Field>
+        <Field label="Model" anchorId="model">
+          <Select
+            ariaLabel="Anthropic model"
+            value={claudeApi.model}
+            options={MODEL_OPTIONS}
+            onChange={(model) => update({ model })}
+          />
+        </Field>
+        <Field label="Max tokens" anchorId="max-tokens">
+          <TextInput
+            ariaLabel="Max tokens"
+            value={String(claudeApi.maxTokens)}
+            onChange={(v) => update({ maxTokens: Number(v) || 1024 })}
+            type="number"
+            mono
+          />
+        </Field>
+      </Card>
+    </>
   );
 }
