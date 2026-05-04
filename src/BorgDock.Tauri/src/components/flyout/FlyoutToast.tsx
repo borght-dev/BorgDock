@@ -100,7 +100,6 @@ function severityTone(severity: ToastPayload['severity']): PillTone {
       return 'warning';
     case 'success':
       return 'success';
-    case 'info':
     default:
       return 'neutral';
   }

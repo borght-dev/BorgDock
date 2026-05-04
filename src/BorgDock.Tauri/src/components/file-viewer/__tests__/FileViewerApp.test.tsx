@@ -25,7 +25,7 @@ describe('FileViewerApp', () => {
     window.history.replaceState(
       null,
       '',
-      '/file-viewer.html?path=' + encodeURIComponent('E:/a.ts'),
+      `/file-viewer.html?path=${encodeURIComponent('E:/a.ts')}`,
     );
   });
 

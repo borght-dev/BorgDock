@@ -96,6 +96,11 @@ export function SettingsApp() {
     timerRef.current = setTimeout(() => saveSettings(next), 300);
   };
 
+  // `update` is intentionally excluded from deps below — it's recreated
+  // every render but reads from `settingsRef.current`, so depending on it
+  // would re-fire the memo on every keystroke. Memo only needs to refresh
+  // when the active section or its slice of `settings` changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   const sectionContent = useMemo(() => {
     switch (active) {
       case 'github':         return <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />;
@@ -110,7 +115,6 @@ export function SettingsApp() {
       case 'updates':        return <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />;
       case 'maintenance':    return <MaintenanceSection />;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, settings]);
 
   const breadcrumb = SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? '';
