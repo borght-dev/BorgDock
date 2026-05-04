@@ -42,9 +42,19 @@ function readInitialSection(): SettingsSectionId {
 export function SettingsApp() {
   const settings = useSettingsStore((s) => s.settings);
   const saveSettings = useSettingsStore((s) => s.saveSettings);
+  const hasLoaded = useSettingsStore((s) => s.hasLoaded);
   const [active, setActive] = useState<SettingsSectionId>(readInitialSection);
   const [search, setSearch] = useState('');
   const [pulseAnchor, setPulseAnchor] = useState<string | null>(null);
+
+  // Each Tauri window has its own JS context + Zustand store. Hydrate from
+  // disk on first mount so we don't render defaults over the user's actual
+  // configuration. Idempotent — bails if already loaded.
+  useEffect(() => {
+    if (!hasLoaded) {
+      void useSettingsStore.getState().loadSettings();
+    }
+  }, [hasLoaded]);
 
   // Ref-mirror of settings so the debounced save can read latest without
   // re-creating the `update` callback on every keystroke.

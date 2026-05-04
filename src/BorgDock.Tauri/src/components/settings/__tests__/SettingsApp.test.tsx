@@ -14,11 +14,20 @@ vi.mock('@tauri-apps/api/window', () => ({
 
 const saveSettings = vi.fn().mockResolvedValue(undefined);
 const updateSettings = vi.fn();
+const loadSettings = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: Object.assign(
-    (sel: any) => sel({ settings: defaultMockSettings(), saveSettings }),
-    { getState: () => ({ updateSettings, settings: defaultMockSettings(), saveSettings }) },
+    (sel: any) => sel({ settings: defaultMockSettings(), saveSettings, hasLoaded: true }),
+    {
+      getState: () => ({
+        updateSettings,
+        loadSettings,
+        settings: defaultMockSettings(),
+        saveSettings,
+        hasLoaded: true,
+      }),
+    },
   ),
 }));
 
