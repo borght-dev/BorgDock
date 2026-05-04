@@ -46,6 +46,7 @@ src/BorgDock.Tauri/tsc.log
 src/BorgDock.Tauri/tsc-output.txt
 src/BorgDock.Tauri/test-window.html
 .codex/
+biome-output.txt
 
 ## Superpowers brainstorm mockups
 .superpowers/
