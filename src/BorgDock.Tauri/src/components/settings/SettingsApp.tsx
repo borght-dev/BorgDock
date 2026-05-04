@@ -1,12 +1,147 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { AppSettings } from '@/types/settings';
+import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
+import { RailSearchInput } from './RailSearchInput';
+import { RailSectionList } from './RailSectionList';
+import { RailSearchResults } from './RailSearchResults';
+// Existing section components — bodies are rewritten in later tasks.
+import { GitHubSection }        from './GitHubSection';
+import { RepoSection }          from './RepoSection';
+import { AdoSection }           from './AdoSection';
+import { SqlSection }           from './SqlSection';
+import { AppearanceSection }    from './AppearanceSection';
+import { NotificationSection }  from './NotificationSection';
+import { ClaudeSection }        from './ClaudeSection';
+import { ClaudeApiSection }     from './ClaudeApiSection';
+import { AgentOverviewSection } from './AgentOverviewSection';
+import { UpdateSection }        from './UpdateSection';
+import { MaintenanceSection }   from './MaintenanceSection';
+
+// TODO: expose __BORGDOCK_VERSION__ via Vite define in vite.config.ts
+//       (e.g. define: { __BORGDOCK_VERSION__: JSON.stringify(pkg.version) })
+const APP_VERSION = '';
+
+const STORAGE_KEY = 'settings.lastSection';
+
+function readInitialSection(): SettingsSectionId {
+  const fromHash = location.hash.match(/section=([\w-]+)/)?.[1];
+  if (fromHash && SETTINGS_SECTIONS.some((s) => s.id === fromHash)) {
+    return fromHash as SettingsSectionId;
+  }
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved && SETTINGS_SECTIONS.some((s) => s.id === saved)) {
+    return saved as SettingsSectionId;
+  }
+  return 'github';
+}
 
 export function SettingsApp() {
+  const settings = useSettingsStore((s) => s.settings);
+  const saveSettings = useSettingsStore((s) => s.saveSettings);
+  const [active, setActive] = useState<SettingsSectionId>(readInitialSection);
+  const [search, setSearch] = useState('');
+
+  // Ref-mirror of settings so the debounced save can read latest without
+  // re-creating the `update` callback on every keystroke.
+  const settingsRef = useRef<AppSettings>(settings);
+  settingsRef.current = settings;
+
+  // Persist active section + update hash
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, active);
+    history.replaceState(null, '', `#section=${active}`);
+  }, [active]);
+
+  // Deep-link from Rust (open_settings_window emits this when a window
+  // already exists and a `section` argument was passed)
+  useEffect(() => {
+    const unlistenP = listen<string>('settings:deep-link', (e) => {
+      if (SETTINGS_SECTIONS.some((s) => s.id === e.payload)) {
+        setActive(e.payload as SettingsSectionId);
+      }
+    });
+    return () => { unlistenP.then((un) => un()); };
+  }, []);
+
+  // Debounced save + flush on window close (replaces SettingsFlyout's flush-on-close)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    function flush() {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        saveSettings(settingsRef.current);
+        timerRef.current = undefined;
+      }
+    }
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, [saveSettings]);
+
+  const update = (partial: Partial<AppSettings>) => {
+    const next = { ...settingsRef.current, ...partial };
+    useSettingsStore.getState().updateSettings(partial);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => saveSettings(next), 300);
+  };
+
+  const sectionContent = useMemo(() => {
+    switch (active) {
+      case 'github':         return <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />;
+      case 'repos':          return <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />;
+      case 'ado':            return <AdoSection azureDevOps={settings.azureDevOps} onChange={(azureDevOps) => update({ azureDevOps })} />;
+      case 'sql':            return <SqlSection sql={settings.sql} onChange={(sql) => update({ sql })} />;
+      case 'appearance':     return <AppearanceSection ui={settings.ui} onChange={(ui) => update({ ui })} />;
+      case 'notif':          return <NotificationSection notifications={settings.notifications} onChange={(notifications) => update({ notifications })} />;
+      case 'claude':         return <ClaudeSection claudeCode={settings.claudeCode} onChange={(claudeCode) => update({ claudeCode })} />;
+      case 'claude-api':     return <ClaudeApiSection claudeApi={settings.claudeApi} onChange={(claudeApi) => update({ claudeApi })} />;
+      case 'agent-overview': return <AgentOverviewSection />;
+      case 'updates':        return <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />;
+      case 'maintenance':    return <MaintenanceSection />;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, settings]);
+
+  const breadcrumb = SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? '';
+
   return (
     <div className="flex h-screen flex-col bg-[var(--color-background)] text-[var(--color-text-primary)]">
-      <WindowTitleBar title="BorgDock — Settings" />
-      <main className="flex-1 grid place-items-center text-sm text-[var(--color-text-tertiary)]">
-        Settings (placeholder)
-      </main>
+      <WindowTitleBar
+        title="BorgDock"
+        meta={
+          <span className="ml-2 flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
+            <span className="text-[var(--color-text-faint)]">›</span>
+            <span className="font-medium text-[var(--color-text-secondary)]">Settings</span>
+            <span className="text-[var(--color-text-faint)]">›</span>
+            <span>{breadcrumb}</span>
+          </span>
+        }
+      />
+      <div className="grid flex-1 min-h-0" style={{ gridTemplateColumns: '232px 1fr' }}>
+        <aside
+          className="flex flex-col border-r border-[var(--color-subtle-border)]"
+          style={{ background: 'linear-gradient(180deg, var(--color-sidebar-gradient-top), var(--color-sidebar-gradient-bottom))' }}
+        >
+          <div className="px-3.5 pb-2.5 pt-3.5">
+            <RailSearchInput value={search} onChange={setSearch} />
+          </div>
+          <div className="flex-1 overflow-auto px-2 pb-3.5 pt-1">
+            {search.trim()
+              ? <RailSearchResults query={search} onSelect={(id) => { setActive(id); setSearch(''); }} />
+              : <RailSectionList active={active} onSelect={setActive} />}
+          </div>
+          <div className="flex items-center gap-2 border-t border-[var(--color-subtle-border)] px-3.5 py-2.5 text-[10.5px] text-[var(--color-text-muted)]">
+            <span className="ml-auto font-mono">{APP_VERSION}</span>
+          </div>
+        </aside>
+        <main className="overflow-auto bg-[var(--color-background)]">
+          <div className="mx-auto max-w-[720px] px-9 pb-16 pt-7">
+            {sectionContent}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
