@@ -41,7 +41,7 @@ function defaultMockSettings(): any {
     ui: { sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 800, theme: 'system', globalHotkey: '', flyoutHotkey: '', editorCommand: 'code', runAtStartup: false, quickReviewHotkey: '', startMinimizedToTray: false, restoreLastSelection: true },
     notifications: { toastOnCheckStatusChange: true, toastOnNewPR: false, toastOnReviewUpdate: true, toastOnMergeable: true, onlyMyPRs: false, playMergeSound: false, reviewNudgeEnabled: true, reviewNudgeIntervalMinutes: 60, reviewNudgeEscalation: false, deduplicationWindowSeconds: 60, channels: { tray: true, system: true, sound: true, emailDigest: false } },
     claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-    claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024 },
+    claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: { organization: '', project: '', authMethod: 'azCli', authAutoDetected: false, pollIntervalSeconds: 120, favoriteQueryIds: [], trackedWorkItemIds: [], workingOnWorkItemIds: [], workItemWorktreePaths: {}, recentWorkItemIds: [], linkMatchBy: 'branch', showWorkItemStateOnPrCard: true, updatePrStatusWhenWiDone: false },

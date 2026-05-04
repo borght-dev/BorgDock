@@ -4,10 +4,14 @@ import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "path";
 import { changelogPlugin } from "./scripts/changelog/vite-plugin";
+import pkg from "./package.json";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
+  define: {
+    __BORGDOCK_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     tailwindcss(),

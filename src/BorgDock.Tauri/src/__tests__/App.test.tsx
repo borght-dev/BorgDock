@@ -182,7 +182,7 @@ const fullSettings = {
     channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
   claudeCode: { defaultPostFixAction: 'commitAndNotify' as const },
-  claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024 },
+  claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
   claudeReview: { botUsername: 'claude[bot]' },
   updates: { autoCheckEnabled: true, autoDownload: true },
   azureDevOps: {

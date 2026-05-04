@@ -1,8 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Pill } from '@/components/shared/primitives';
 import { Checkbox, SectionHeader } from '@/components/shared/primitives';
 import { useSettingsStore } from '@/stores/settings-store';
+
+interface OtelStatus {
+  healthy: boolean;
+  endpoint: string;
+  lastWriteAgoSeconds: number | null;
+}
 
 export function AgentOverviewSection() {
   const settings = useSettingsStore((s) => s.settings.agentOverview);
@@ -13,6 +19,20 @@ export function AgentOverviewSection() {
   const autoOpen = settings?.autoOpenOnStartup ?? false;
   const autoArchive = (settings?.autoArchiveAfterHours ?? null) === 24;
   const interval = settings?.otelExportIntervalMs ?? 2000;
+
+  const [otel, setOtel] = useState<OtelStatus | null>(null);
+  useEffect(() => {
+    if (!enabled) { setOtel(null); return; }
+    let cancelled = false;
+    const fetchStatus = () => {
+      invoke<OtelStatus>('agent_overview_status').then((r) => {
+        if (!cancelled) setOtel(r);
+      }).catch(() => {});
+    };
+    fetchStatus();
+    const t = setInterval(fetchStatus, 5000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [enabled]);
 
   const onToggleEnable = async (next: boolean) => {
     setBusy(true);
@@ -81,14 +101,16 @@ export function AgentOverviewSection() {
           <span
             className={[
               'grid h-[22px] w-[22px] place-items-center rounded-md',
-              enabled
+              (otel?.healthy ?? false)
                 ? 'bg-[var(--color-success-badge-bg)] text-[var(--color-success-badge-fg)]'
-                : 'bg-[var(--color-neutral-badge-bg)] text-[var(--color-neutral-badge-fg)]',
+                : enabled
+                  ? 'bg-[var(--color-neutral-badge-bg)] text-[var(--color-neutral-badge-fg)]'
+                  : 'bg-[var(--color-neutral-badge-bg)] text-[var(--color-neutral-badge-fg)]',
             ].join(' ')}
             aria-hidden
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              {enabled ? (
+              {(otel?.healthy ?? false) ? (
                 <>
                   <circle cx="12" cy="12" r="9" />
                   <path d="m8 12 3 3 5-6" />
@@ -106,7 +128,9 @@ export function AgentOverviewSection() {
               {enabled ? 'OTel endpoint configured' : 'OTel endpoint disabled'}
             </div>
             <div className="mt-0.5 font-mono text-[10.5px] text-[var(--color-text-muted)]">
-              127.0.0.1:4318 · export every {interval}ms
+              {otel
+                ? `${otel.endpoint} · last write ${otel.lastWriteAgoSeconds ?? '—'}s ago`
+                : `127.0.0.1:4318 · export every ${interval}ms`}
             </div>
           </div>
         </div>

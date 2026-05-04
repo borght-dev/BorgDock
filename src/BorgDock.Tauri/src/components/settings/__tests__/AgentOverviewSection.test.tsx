@@ -2,7 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn().mockResolvedValue(undefined),
+  invoke: vi.fn((cmd: string) => {
+    if (cmd === 'agent_overview_status') {
+      return Promise.resolve({ healthy: false, endpoint: '127.0.0.1:4318', lastWriteAgoSeconds: null });
+    }
+    return Promise.resolve(undefined);
+  }),
 }));
 
 const mockUpdateSettings = vi.fn();

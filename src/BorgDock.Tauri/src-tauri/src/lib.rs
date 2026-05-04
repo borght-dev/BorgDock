@@ -481,6 +481,7 @@ pub fn run() {
             agent_overview::commands::disable_agent_overview_telemetry,
             agent_overview::commands::dismiss_agent_session,
             agent_overview::window::open_agent_overview_window,
+            agent_overview::status::agent_overview_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

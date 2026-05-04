@@ -7,6 +7,10 @@ function makeApi(overrides?: Partial<ClaudeApiSettings>): ClaudeApiSettings {
   return {
     model: 'claude-sonnet-4-6',
     maxTokens: 1024,
+    prSummaryEnabled: true,
+    diffExplanationsEnabled: true,
+    reviewNudgePhrasingEnabled: false,
+    commitMessageSuggestionsEnabled: false,
     ...overrides,
   };
 }
@@ -112,6 +116,10 @@ describe('ClaudeApiSection', () => {
       apiKey: 'sk-test',
       model: 'claude-opus-4-6',
       maxTokens: 4096,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
     });
   });
 });

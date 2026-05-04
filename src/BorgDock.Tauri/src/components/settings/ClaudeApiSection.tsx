@@ -1,5 +1,4 @@
-import { Card } from '@/components/shared/primitives';
-import { Field, SectionHeader, Select, TextInput } from '@/components/shared/primitives';
+import { Card, Field, SectionHeader, Select, TextInput, ToggleRow } from '@/components/shared/primitives';
 import type { ClaudeApiSettings } from '@/types/settings';
 
 interface Props { claudeApi: ClaudeApiSettings; onChange: (c: ClaudeApiSettings) => void }
@@ -49,6 +48,46 @@ export function ClaudeApiSection({ claudeApi, onChange }: Props) {
             mono
           />
         </Field>
+      </Card>
+      <Card variant="default" padding="md">
+        <h3 className="mb-1.5 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Where AI is used
+        </h3>
+        <p className="mb-3.5 text-[11.5px] leading-relaxed text-[var(--color-text-tertiary)]">
+          Toggle individual features. Disabled features hide their UI affordances entirely.
+        </p>
+        <div id="field-pr-summary">
+          <ToggleRow
+            label="PR summary card"
+            hint="One-paragraph synopsis on PR detail."
+            on={claudeApi.prSummaryEnabled}
+            onChange={(prSummaryEnabled) => update({ prSummaryEnabled })}
+          />
+        </div>
+        <div id="field-diff-explain">
+          <ToggleRow
+            label="Diff explanations"
+            hint="Right-click → Explain this diff."
+            on={claudeApi.diffExplanationsEnabled}
+            onChange={(diffExplanationsEnabled) => update({ diffExplanationsEnabled })}
+          />
+        </div>
+        <div id="field-review-nudge-phrasing">
+          <ToggleRow
+            label="Review nudge phrasing"
+            hint="AI rewrites stale-review reminders."
+            on={claudeApi.reviewNudgePhrasingEnabled}
+            onChange={(reviewNudgePhrasingEnabled) => update({ reviewNudgePhrasingEnabled })}
+          />
+        </div>
+        <div id="field-commit-msg">
+          <ToggleRow
+            label="Commit message suggestions"
+            on={claudeApi.commitMessageSuggestionsEnabled}
+            onChange={(commitMessageSuggestionsEnabled) => update({ commitMessageSuggestionsEnabled })}
+            last
+          />
+        </div>
       </Card>
     </>
   );

@@ -292,6 +292,14 @@ pub struct ClaudeApiSettings {
     pub model: String,
     #[serde(default = "default_claude_max_tokens")]
     pub max_tokens: u32,
+    #[serde(default = "default_true")]
+    pub pr_summary_enabled: bool,
+    #[serde(default = "default_true")]
+    pub diff_explanations_enabled: bool,
+    #[serde(default)]
+    pub review_nudge_phrasing_enabled: bool,
+    #[serde(default)]
+    pub commit_message_suggestions_enabled: bool,
 }
 
 fn default_claude_model() -> String {
@@ -308,6 +316,10 @@ impl Default for ClaudeApiSettings {
             api_key: None,
             model: "claude-sonnet-4-6".to_string(),
             max_tokens: 1024,
+            pr_summary_enabled: true,
+            diff_explanations_enabled: true,
+            review_nudge_phrasing_enabled: false,
+            commit_message_suggestions_enabled: false,
         }
     }
 }
@@ -623,5 +635,14 @@ mod redesign_field_tests {
         assert_eq!(json["ui"]["quickReviewHotkey"], "");
         assert!(json["sql"]["readOnlyByDefault"].as_bool().unwrap());
         assert!(json["notifications"]["channels"]["tray"].as_bool().unwrap());
+    }
+
+    #[test]
+    fn claude_api_feature_toggles_default_correctly() {
+        let s: AppSettings = serde_json::from_str("{}").unwrap();
+        assert!(s.claude_api.pr_summary_enabled);
+        assert!(s.claude_api.diff_explanations_enabled);
+        assert!(!s.claude_api.review_nudge_phrasing_enabled);
+        assert!(!s.claude_api.commit_message_suggestions_enabled);
     }
 }

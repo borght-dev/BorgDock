@@ -47,6 +47,10 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     claudeApi: {
       model: 'claude-sonnet-4-6',
       maxTokens: 1024,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
     },
     claudeReview: {
       botUsername: 'claude[bot]',
@@ -242,7 +246,7 @@ describe('settings-store ADO auth migration', () => {
           ui: {},
           notifications: {},
           claudeCode: {},
-          claudeApi: { model: '', maxTokens: 4096 },
+          claudeApi: { model: '', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
           claudeReview: { botUsername: '' },
           updates: { autoCheckEnabled: true, autoDownload: true },
           azureDevOps: {
@@ -288,7 +292,7 @@ describe('settings-store ADO auth migration', () => {
           ui: {},
           notifications: {},
           claudeCode: {},
-          claudeApi: { model: '', maxTokens: 4096 },
+          claudeApi: { model: '', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
           claudeReview: { botUsername: '' },
           updates: { autoCheckEnabled: true, autoDownload: true },
           azureDevOps: {

@@ -97,7 +97,7 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
     claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096 },
+    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {

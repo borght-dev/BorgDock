@@ -78,6 +78,10 @@ export interface ClaudeApiSettings {
   apiKey?: string;
   model: string;
   maxTokens: number;
+  prSummaryEnabled: boolean;
+  diffExplanationsEnabled: boolean;
+  reviewNudgePhrasingEnabled: boolean;
+  commitMessageSuggestionsEnabled: boolean;
 }
 
 export interface ClaudeReviewSettings {

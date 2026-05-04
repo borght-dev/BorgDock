@@ -53,6 +53,10 @@ const defaultSettings: AppSettings = {
   claudeApi: {
     model: 'claude-sonnet-4-6',
     maxTokens: 1024,
+    prSummaryEnabled: true,
+    diffExplanationsEnabled: true,
+    reviewNudgePhrasingEnabled: false,
+    commitMessageSuggestionsEnabled: false,
   },
   claudeReview: {
     botUsername: 'claude[bot]',

@@ -21,9 +21,6 @@ import { AgentOverviewSection } from './AgentOverviewSection';
 import { UpdateSection }        from './UpdateSection';
 import { MaintenanceSection }   from './MaintenanceSection';
 
-// TODO: expose __BORGDOCK_VERSION__ via Vite define in vite.config.ts
-//       (e.g. define: { __BORGDOCK_VERSION__: JSON.stringify(pkg.version) })
-const APP_VERSION = '';
 
 const STORAGE_KEY = 'settings.lastSection';
 
@@ -154,7 +151,7 @@ export function SettingsApp() {
               : <RailSectionList active={active} onSelect={setActive} />}
           </div>
           <div className="flex items-center gap-2 border-t border-[var(--color-subtle-border)] px-3.5 py-2.5 text-[10.5px] text-[var(--color-text-muted)]">
-            <span className="ml-auto font-mono">{APP_VERSION}</span>
+            <span className="ml-auto font-mono">v{__BORGDOCK_VERSION__}</span>
           </div>
         </aside>
         <main className="overflow-auto bg-[var(--color-background)]">
