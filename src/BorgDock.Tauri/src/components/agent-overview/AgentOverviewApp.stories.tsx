@@ -274,3 +274,90 @@ export const SessionEnds = story({
   deltas: [{ kind: 'remove', sessionId: sessionWorking.sessionId }],
   deltaIntervalMs: 1000,
 });
+
+// ---------------------------------------------------------------------------
+// Inspector axis
+// ---------------------------------------------------------------------------
+
+export const InspectorHovered: Story = {
+  args: { params: { sessions: [sessionAwaiting] } },
+  play: async ({ canvasElement }) => {
+    const { within } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const card = await canvas.findByText(sessionAwaiting.label);
+    const cardEl = card.closest('[data-session-id]');
+    if (!cardEl) return;
+    cardEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+  },
+};
+
+export const InspectorPinned: Story = {
+  args: {
+    params: {
+      sessions: [sessionWithFiles],
+      fileChanges: {
+        files: [
+          {
+            path: 'src/components/agent-overview/AgentCard.tsx',
+            status: 'modified',
+            additions: 12,
+            deletions: 4,
+          },
+          {
+            path: 'src/components/agent-overview/Titlebar.tsx',
+            status: 'modified',
+            additions: 8,
+            deletions: 2,
+          },
+        ],
+      },
+      diffSnippet: {
+        hunks: [
+          {
+            header: '@@ -10,3 +10,4 @@',
+            lines: [
+              { kind: 'context', content: 'export function AgentCard() {' },
+              { kind: 'add', content: '  const inspector = useInspector();' },
+              { kind: 'context', content: '  return ( ... );' },
+            ],
+          },
+        ],
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const card = await canvas.findByText(sessionWithFiles.label);
+    const cardEl = card.closest('[data-session-id]') as HTMLElement | null;
+    if (!cardEl) return;
+    // Pin via click.
+    await userEvent.click(cardEl);
+  },
+};
+
+export const InspectorWithFiles: Story = {
+  args: {
+    params: {
+      sessions: [sessionWithFiles],
+      fileChanges: {
+        files: [
+          {
+            path: 'src/components/agent-overview/AgentCard.tsx',
+            status: 'modified',
+            additions: 12,
+            deletions: 4,
+          },
+        ],
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const card = await canvas.findByText(sessionWithFiles.label);
+    const cardEl = card.closest('[data-session-id]');
+    if (!cardEl) return;
+    cardEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+  },
+};
