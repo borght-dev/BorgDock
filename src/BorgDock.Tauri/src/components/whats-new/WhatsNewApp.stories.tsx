@@ -2,9 +2,8 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
-import { getControl } from '../../../.storybook/mocks/control';
 import type { Release } from '@/types/whats-new';
-import { WhatsNewApp } from './WhatsNewApp';
+import { getControl } from '../../../.storybook/mocks/control';
 import {
   dateSpreadHistory,
   deepHistory,
@@ -24,6 +23,7 @@ import {
   releaseSingleHighlight,
   shapeStoryHistory,
 } from './__fixtures__/whats-new-data';
+import { WhatsNewApp } from './WhatsNewApp';
 
 interface PluginStoreSeed {
   [path: string]: Record<string, unknown>;
