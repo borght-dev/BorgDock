@@ -12,6 +12,9 @@ import {
   connHorizonProd,
   connLongName,
   makeSettings,
+  resultMultiSet,
+  resultSmallSelect,
+  resultUpdate,
   sampleSelectQuery,
   schemaSmall,
   snippetActiveQuery,
@@ -243,3 +246,80 @@ export const WithActiveSnippetDirty = story({
   activeSnippetId: snippetActiveQuery.id,
   initialQuery: `${snippetActiveQuery.body}\n-- modified locally\n`,
 });
+
+// ---------------------------------------------------------------------------
+// 4. Run / result axis
+// ---------------------------------------------------------------------------
+
+export const ResultIdle = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: schemaSmall,
+});
+
+export const ResultRunning: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: sampleSelectQuery,
+      executeResponse: () => new Promise<QueryResult>(() => {}),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultSuccessSelect: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: sampleSelectQuery,
+      executeResponse: resultSmallSelect,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultSuccessUpdate: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: "UPDATE dbo.Customer SET IsActive = 1 WHERE Region = 'EU';",
+      executeResponse: resultUpdate,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultMultiSet: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
+      executeResponse: resultMultiSet,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
