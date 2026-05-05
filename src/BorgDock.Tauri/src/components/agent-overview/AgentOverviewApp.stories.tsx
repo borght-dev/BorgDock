@@ -182,3 +182,19 @@ export const AllStatesByActivity: Story = {
     await userEvent.selectOptions(select, 'activity');
   },
 };
+
+// ---------------------------------------------------------------------------
+// Awaiting / urgency axis
+// ---------------------------------------------------------------------------
+
+export const MultipleAwaitingSameRepo = story({
+  sessions: multipleAwaiting,
+});
+
+export const MultipleAwaitingMixedAge = story({
+  sessions: multipleAwaitingMixedAge,
+});
+
+export const AwaitingAcrossRepos = story({
+  sessions: awaitingAcrossRepos,
+});
