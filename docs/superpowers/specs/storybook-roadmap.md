@@ -1,0 +1,122 @@
+# Storybook Rollout Roadmap
+
+**Status:** living document. Updated as each screen lands.
+**Owner:** see `~/.claude/CLAUDE.md` for who's driving the work.
+
+## Why this exists
+
+Storybook is being rolled out across BorgDock one window at a time, not as a single
+big-bang spec. This document is the *index* — it tracks every window, what's
+been done, what's planned, and the cross-cutting decisions that should stay
+consistent across phases. Each screen still gets its own focused spec under
+`docs/superpowers/specs/YYYY-MM-DD-storybook-phaseN-<screen>-design.md`.
+
+## Goals (recap)
+
+1. **Faster isolated dev** — work on a screen without `tauri dev` / Rust rebuilds / live data.
+2. **Visual catalog / design docs** — browsable showcase of every window state.
+3. **Visual regression** — eventually supplement the per-OS Playwright screenshots.
+4. **Hero shots / marketing** — replace ad-hoc state-posing in `screenshot-heroes.mjs`.
+
+All four are in scope long-term. Each phase is judged against (1) and (2) only;
+(3) and (4) are sequenced as their own phases once the catalog is broad enough.
+
+## Locked decisions (cross-cutting — don't redebate per screen)
+
+- **Storybook 9 + `@storybook/react-vite` + `@storybook/addon-themes`.** No webpack, no MDX-only docs, no separate CSS pipeline.
+- **Tailwind v4 via `@tailwindcss/vite`** in `.storybook/main.ts viteFinal`. CSS entry is `src/styles/index.css` (loaded once in `preview.ts`).
+- **Tauri mock layer is decorator-only.** Production code stays byte-identical. Vite alias rewrites at `.storybook/main.ts` swap `@tauri-apps/api/core`, `@tauri-apps/api/event`, `@tauri-apps/plugin-opener`, `@/services/windows` to mocks under `.storybook/mocks/`. Add new aliases here as new windows pull in new Tauri plugins.
+- **Control surface lives on `window.__borgdock_storybook_tauri`** (`getControl()` from `.storybook/mocks/control.ts`). Stories drive state via:
+  1. Existing dev-only `window.__borgdock_test_*_seed` hooks where they exist (FlyoutApp pattern).
+  2. Mock event channels (`getControl().emit(channel, payload)`) for events the production code listens to via `@tauri-apps/api/event`.
+  3. Canned `invoke` responses (`getControl().invokeResponses['<command>'] = …`) for windows that fetch initial data via `invoke`.
+- **Theme is a global Storybook toolbar**, not duplicated per story. Toolbar handler mirrors each window's `applyTheme()`.
+- **Per-screen spec format:** intro / why / non-goals / constraints / architecture / story catalog / tooling / risks / acceptance / what comes next. Same shape every time.
+- **Per-screen plan format:** task-by-task, full code blocks, literal commit messages. Each task ≤ ~5 minutes for an implementer.
+- **Branch + PR per screen.** Branch name `storybook-phase<N>-<screen>`. PR title `storybook phase <N>: <screen> catalog`. Personal-account `gh` switch protocol per `~/.claude/CLAUDE.md`.
+
+## Workflow per phase
+
+1. Brainstorm (`superpowers:brainstorming`) the screen — what stories matter, which states are exhaustive, what new mock surfaces are needed.
+2. Spec (`docs/superpowers/specs/YYYY-MM-DD-storybook-phaseN-<screen>-design.md`).
+3. Plan (`docs/superpowers/plans/YYYY-MM-DD-storybook-phaseN-<screen>.md`).
+4. Implement on a feature branch via `superpowers:subagent-driven-development`.
+5. Open PR; wait for vitest CI green.
+6. Merge; update this roadmap (move the row from "Pending" to "Done", note the spec/plan paths and PR number).
+
+## Window inventory
+
+Twelve top-level windows live in `src/BorgDock.Tauri/src/`. One done, eleven to
+go. Order below is arbitrary — pick whichever next phase makes sense at the
+time.
+
+### Done
+
+| # | Window | Entry | Spec | Plan | PR |
+|---|---|---|---|---|---|
+| 1 | Flyout (sidebar overlay) | `flyout-main.tsx` → `components/flyout/FlyoutApp.tsx` | `2026-05-05-storybook-phase1-flyoutapp-design.md` | `2026-05-05-storybook-phase1-flyoutapp.md` | [#13](https://github.com/borght-dev/BorgDock/pull/13) |
+
+### Pending
+
+Each row notes: rough size estimate (S/M/L), the dominant Tauri surfaces it
+exercises, and any obvious shared-component coverage that comes "for free"
+when the screen is storied. Estimates are rough; the brainstorm for each phase
+will refine them.
+
+| Window | Entry | Size | Tauri surfaces | Notable |
+|---|---|---|---|---|
+| What's New | `whats-new-main.tsx` | **S** | `invoke('get_whats_new_payload')`, `plugin-opener.openUrl` | Mostly content rendering; good warmup phase to validate the mock layer beyond the flyout. Sources changelog content. |
+| Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | **L** | many (`invoke` heavy: settings load/save, repo scan, ado/github auth, self-test, maintenance ops); `plugin-dialog.open/save`; `emit` for cross-window settings updates | Recently redesigned with rail + sections. Implicitly stories the new `shared/primitives/*` (Toggle, Slider, Select, Field, Seg2, etc.) plus `RepoScanDialog`, `ConnectionEditorDialog`, `SelfTestResultsDialog`. |
+| Pr Detail | `pr-detail-main.tsx` | **L** | `invoke` (PR fetch, checks, comments, review submission); `plugin-clipboard-manager`; window persistence | Large screen with multiple tabs (overview / files / checks / comments). Best storied per-tab to keep stories focused. |
+| File Viewer | `file-viewer-main.tsx` | **M** | `invoke` (file content, syntax info), `plugin-fs`, `plugin-clipboard-manager` | Tree-sitter highlighting must work in Storybook — `public/grammars/` is served by Vite at `/grammars/...` so this should "just work," but verify in the brainstorm. |
+| File Palette | `file-palette-main.tsx` | **M** | `invoke` (file index, recent files, scan progress), `plugin-fs` | Palette UX: stories should cover empty / loading / scan-in-progress / changed-files section / per-root filtering. |
+| Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
+| Work Item Detail | `workitem-detail-main.tsx` | **M** | `invoke` (load/update WIT), `plugin-dialog` (attachments) | Stories per-state (loading / loaded / dirty / saving / saved / error / cancellation). |
+| Worktree | `worktree-main.tsx` | **M** | `invoke` (worktree list, prune, changes), `plugin-shell` | Includes the prune dialog and the changes panel. |
+| Agent Overview | `main-agent-overview.tsx` | **M** | `invoke` (agent status, claude api, sessions); `plugin-shell`; `emit/listen` for live status events | Several live-update flows — the mock event channel will get exercised hard. |
+| SQL | `sql-main.tsx` | **M** | `invoke` (sql exec, schema fetch, ADO connection); custom panic-handling path | Code editor (CodeMirror) + result grid. Stories should cover empty / running / result / error / panic-recovered. |
+| Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
+
+## Cross-cutting workstreams (post-catalog)
+
+Sequenced after enough screens are storied to be worthwhile:
+
+- **Component-level stories.** Once a screen has its window-level stories, its
+  child components are candidates for their own stories. The `shared/primitives/`
+  family (Toggle, Slider, Select, Field, …) deserves stories whether or not
+  Settings is done — they're the smallest unit and pay back fastest in design
+  reviews. Treat as its own phase once Settings has shaken them out in real use.
+- **Visual regression.** Pick between Storybook's test-runner, Chromatic, or
+  Playwright-driven snapshots of Storybook URLs. Decision deferred until ≥3
+  screens are done so we have enough breadth to evaluate tooling.
+- **Hero-shot pipeline.** Rewire `scripts/screenshot-heroes.mjs` to drive
+  Storybook URLs (or Storybook test-runner snapshots) instead of a live `tauri
+  dev` window. Removes the ad-hoc state-seeding currently in that script.
+- **Static Storybook hosting.** Once the catalog is broad enough to be useful
+  to non-developers (designers, contributors, reviewers), publish
+  `storybook build` output somewhere durable.
+
+## Mock layer extensions (track here as they're added)
+
+Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*.ts`:
+
+- `@tauri-apps/api/core` → `mocks/tauri-core.ts`
+- `@tauri-apps/api/event` → `mocks/tauri-event.ts`
+- `@tauri-apps/plugin-opener` → `mocks/tauri-plugin-opener.ts`
+- `@/services/windows` → `mocks/services-windows.ts`
+
+When a new window's spec needs a plugin not in this list, the spec must:
+1. Add the alias in that window's plan (Storybook config edit).
+2. Add a corresponding mock under `.storybook/mocks/`.
+3. Update this section of the roadmap in the same PR.
+
+Plugins likely to surface in upcoming phases: `plugin-fs`, `plugin-dialog`,
+`plugin-clipboard-manager`, `plugin-shell`, `plugin-store`, `plugin-notification`,
+`plugin-updater`, `plugin-os`, `plugin-autostart`, `plugin-global-shortcut`,
+`plugin-log`.
+
+## When to revisit this roadmap
+
+- Whenever a screen ships (move row, link spec/plan/PR).
+- Whenever a locked decision changes (note the change with a date).
+- Whenever the cross-cutting list grows (new mock, new global decorator).
