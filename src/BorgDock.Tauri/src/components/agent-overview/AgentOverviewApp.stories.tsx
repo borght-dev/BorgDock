@@ -214,3 +214,25 @@ export const DensityStandard = story({
 export const DensityWall = story({
   sessions: heavyLoad,
 });
+
+// ---------------------------------------------------------------------------
+// Idle / archived axis
+// ---------------------------------------------------------------------------
+
+export const IdleRailVisible = story({
+  sessions: allIdle,
+});
+
+export const IdleRailWithArchived = story({
+  sessions: idleWithArchived,
+});
+
+export const IdleRailArchivedExpanded: Story = {
+  args: { params: { sessions: idleWithArchived } },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const toggle = await canvas.findByTestId('statusbar-archived-toggle');
+    await userEvent.click(toggle);
+  },
+};
