@@ -5,6 +5,19 @@ import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import type { Release } from '@/types/whats-new';
 import { WhatsNewApp } from './WhatsNewApp';
+import {
+  releaseEmptySummary,
+  releaseFewFixes,
+  releaseLongFixList,
+  releaseLongHighlight,
+  releaseLongMixed,
+  releaseManyHighlights,
+  releaseNoFixes,
+  releaseNoHighlights,
+  releaseRichSummary,
+  releaseSingleHighlight,
+  shapeStoryHistory,
+} from './__fixtures__/whats-new-data';
 
 interface PluginStoreSeed {
   [path: string]: Record<string, unknown>;
@@ -145,4 +158,75 @@ export const TargetedAtMissingVersion = story({
   },
   appVersion: '1.2.0',
   targetVersion: '99.99.99',
+});
+
+// ---------------------------------------------------------------------------
+// Release-shape axis
+// ---------------------------------------------------------------------------
+
+const shapeStoryDefaults = {
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.0.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.3.0',
+};
+
+export const ReleaseEmptySummary = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseEmptySummary.version,
+  releasesOverride: shapeStoryHistory(releaseEmptySummary),
+});
+
+export const ReleaseRichSummary = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseRichSummary.version,
+  releasesOverride: shapeStoryHistory(releaseRichSummary),
+});
+
+export const ReleaseNoHighlights = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseNoHighlights.version,
+  releasesOverride: shapeStoryHistory(releaseNoHighlights),
+});
+
+export const ReleaseSingleHighlight = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseSingleHighlight.version,
+  releasesOverride: shapeStoryHistory(releaseSingleHighlight),
+});
+
+export const ReleaseManyHighlights = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseManyHighlights.version,
+  releasesOverride: shapeStoryHistory(releaseManyHighlights),
+});
+
+export const ReleaseLongHighlightCard = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseLongHighlight.version,
+  releasesOverride: shapeStoryHistory(releaseLongHighlight),
+});
+
+export const ReleaseNoFixes = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseNoFixes.version,
+  releasesOverride: shapeStoryHistory(releaseNoFixes),
+});
+
+export const ReleaseFewFixes = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseFewFixes.version,
+  releasesOverride: shapeStoryHistory(releaseFewFixes),
+});
+
+export const ReleaseLongFixList = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseLongFixList.version,
+  releasesOverride: shapeStoryHistory(releaseLongFixList),
+});
+
+export const ReleaseLongMixed = story({
+  ...shapeStoryDefaults,
+  appVersion: releaseLongMixed.version,
+  releasesOverride: shapeStoryHistory(releaseLongMixed),
 });
