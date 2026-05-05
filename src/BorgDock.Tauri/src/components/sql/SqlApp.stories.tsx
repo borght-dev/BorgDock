@@ -9,6 +9,8 @@ import type { SqlSnippet } from './snippet-types';
 import { SqlApp } from './SqlApp';
 import {
   connBorgDockDev,
+  connHorizonProd,
+  connLongName,
   makeSettings,
   schemaSmall,
   type QueryResult,
@@ -173,4 +175,38 @@ export const Loading = story({ loadSettingsPending: true });
 
 export const NoConnections = story({
   settings: makeSettings([]),
+});
+
+export const OneConnection = story({
+  settings: makeSettings([connBorgDockDev]),
+});
+
+export const MultipleConnections = story({
+  settings: (() => {
+    const s = makeSettings([connHorizonProd, connBorgDockDev, connLongName]);
+    s.sql.lastUsedConnection = connBorgDockDev.name;
+    return s;
+  })(),
+});
+
+// ---------------------------------------------------------------------------
+// 2. Schema axis
+// ---------------------------------------------------------------------------
+
+export const SchemaPending = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: null,
+  schemaResponse: () => new Promise<SqlSchemaPayload>(() => {}),
+});
+
+export const SchemaCached = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: schemaSmall,
+  schemaResponse: schemaSmall,
+});
+
+export const SchemaError = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: null,
+  schemaResponse: () => Promise.reject(new Error('TLS handshake failed')),
 });
