@@ -85,26 +85,39 @@ export function FlyoutApp() {
     };
   }, []);
 
-  // Listen for new reducer-driving events from Rust.
+  // Listen for new reducer-driving events from Rust. The `cancelled` flag
+  // is required: under React.StrictMode the effect mounts → unmounts → mounts
+  // again before the async listen() calls resolve. Without the guard we end
+  // up with two listeners attached and every event dispatches twice (visible
+  // as duplicate toasts).
   useEffect(() => {
+    let cancelled = false;
     let unlistenInit: (() => void) | undefined;
     let unlistenToast: (() => void) | undefined;
     let unlistenRequest: (() => void) | undefined;
     (async () => {
       const { listen } = await import('@tauri-apps/api/event');
-      unlistenInit = await listen('init-complete', () => {
+      const init = await listen('init-complete', () => {
         dispatch({ type: 'init-complete' });
       });
-      unlistenToast = await listen<ToastPayload>('flyout-toast', (event) => {
+      const toast = await listen<ToastPayload>('flyout-toast', (event) => {
         dispatch({ type: 'toast', payload: event.payload });
       });
-      // Existing event: fires when the tray click / hotkey shows the flyout.
-      // Treat it as a "user-open" signal for the reducer.
-      unlistenRequest = await listen('flyout-request-data', () => {
+      const req = await listen('flyout-request-data', () => {
         dispatch({ type: 'user-open' });
       });
+      if (cancelled) {
+        init();
+        toast();
+        req();
+        return;
+      }
+      unlistenInit = init;
+      unlistenToast = toast;
+      unlistenRequest = req;
     })();
     return () => {
+      cancelled = true;
       unlistenInit?.();
       unlistenToast?.();
       unlistenRequest?.();
@@ -245,9 +258,15 @@ export function FlyoutApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         if (mode.kind === 'toast') {
-          // Per-card budget + outer padding. Generous to fit title + body + optional action row.
-          const width = 340;
-          const height = toastQueueLen * 160 + 32;
+          // Per-card budget covers: severity stripe (3-4px) + icon disc (36-44px)
+          // + title (line-clamp-2) + body (line-clamp-2) + optional action pill row
+          // + progress bar + 24px vertical padding. The merged variant is taller,
+          // so 170 is the conservative per-card budget. Outer padding 48 covers
+          // container px-4/py-4 (32px) plus the glow halo (-inset-1/-inset-2).
+          // Width covers the merged card (400px) + glow (~8px) + padding (32px).
+          const width = 440;
+          const gap = 10; // matches gap-2.5 between cards
+          const height = toastQueueLen * 170 + Math.max(0, toastQueueLen - 1) * gap + 48;
           if (!cancelled) await invoke('resize_flyout', { width, height });
         } else if (mode.kind === 'glance' || mode.kind === 'initializing') {
           // Match the glance-mode constants from Rust (FLYOUT_GLANCE_W/H in
@@ -279,7 +298,7 @@ export function FlyoutApp() {
           queue={mode.queue}
           onHoverEnter={() => dispatch({ type: 'hover-enter' })}
           onHoverLeave={() => dispatch({ type: 'hover-leave' })}
-          onExpire={() => dispatch({ type: 'timer-expired' })}
+          onDismiss={(id) => dispatch({ type: 'dismiss-toast', id })}
           onActionClick={handleToastAction}
         />
       );

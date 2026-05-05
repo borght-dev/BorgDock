@@ -104,6 +104,30 @@ describe('reduceFlyoutMode', () => {
     expect(next.kind).toBe('idle');
   });
 
+  it('dismiss-toast removes only the matching card', () => {
+    const a = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
+    const ab = reduceFlyoutMode(a, { type: 'toast', payload: makeToast('b') }, 1100);
+    const next = reduceFlyoutMode(ab, { type: 'dismiss-toast', id: 'a' }, 1200);
+    if (next.kind !== 'toast') throw new Error('expected toast');
+    expect(next.queue.map((t) => t.id)).toEqual(['b']);
+  });
+
+  it('dismiss-toast on the last card transitions to idle', () => {
+    const only = reduceFlyoutMode(
+      { kind: 'idle' },
+      { type: 'toast', payload: makeToast('a') },
+      1000,
+    );
+    const next = reduceFlyoutMode(only, { type: 'dismiss-toast', id: 'a' }, 1100);
+    expect(next.kind).toBe('idle');
+  });
+
+  it('dismiss-toast with unknown id is a no-op', () => {
+    const a = reduceFlyoutMode({ kind: 'idle' }, { type: 'toast', payload: makeToast('a') }, 1000);
+    const next = reduceFlyoutMode(a, { type: 'dismiss-toast', id: 'zzz' }, 1100);
+    expect(next).toEqual(a);
+  });
+
   it('hover-enter clears deadline; hover-leave resets it', () => {
     const toastState = reduceFlyoutMode(
       { kind: 'idle' },

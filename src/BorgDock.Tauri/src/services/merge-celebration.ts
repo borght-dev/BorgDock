@@ -59,6 +59,15 @@ function playTada(): void {
   }
 }
 
+/** Plays the tada sound iff the user's `playMergeSound` setting is on.
+ *  Safe to call from any merge-related code path; the gating lives here so
+ *  there's exactly one place that owns the audio + setting check. */
+export function playMergeSoundIfEnabled(): void {
+  if (useSettingsStore.getState().settings.notifications.playMergeSound) {
+    playTada();
+  }
+}
+
 export function celebrateMerge(pr: CelebratablePr): void {
   markCelebrated(pr);
 
@@ -72,7 +81,5 @@ export function celebrateMerge(pr: CelebratablePr): void {
     actions: [{ label: 'View on GitHub', url: pr.htmlUrl }],
   });
 
-  if (useSettingsStore.getState().settings.notifications.playMergeSound) {
-    playTada();
-  }
+  playMergeSoundIfEnabled();
 }

@@ -48,7 +48,11 @@ pub async fn show_flyout_toast(
                 .get_webview_window("flyout")
                 .ok_or_else(|| "flyout window not built".to_string())?;
             if !win.is_visible().unwrap_or(false) {
-                crate::platform::window::position_flyout_near_tray(&win, 340.0, 200.0)?;
+                // Initial size for one card. The frontend re-invokes resize_flyout
+                // as soon as React mounts and reads the queue length; this just
+                // avoids a clipped first paint. Keep in sync with the per-card
+                // budget in FlyoutApp.tsx (170 per card + 48 outer chrome).
+                crate::platform::window::position_flyout_near_tray(&win, 440.0, 218.0)?;
                 win.show().map_err(|e| e.to_string())?;
                 let _ = win.set_always_on_top(true);
             }

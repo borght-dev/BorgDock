@@ -1,5 +1,6 @@
 import { Card, Button } from '@/components/shared/primitives';
 import { Field, SectionHeader, Select, ToggleRow } from '@/components/shared/primitives';
+import { sendOsNotification } from '@/services/notification';
 import type { NotificationSettings } from '@/types/settings';
 
 interface Props { notifications: NotificationSettings; onChange: (n: NotificationSettings) => void }
@@ -132,7 +133,11 @@ export function NotificationSection({ notifications, onChange }: Props) {
         </Field>
         <div className="flex items-center gap-2.5">
           <Button variant="secondary" size="sm" onClick={() => {
-            // TODO: wire to a real test_notification command if added.
+            void sendOsNotification({
+              title: 'Test notification',
+              body: 'If you can see this, BorgDock notifications are working.',
+              severity: 'info',
+            }).catch(() => {});
             update({ lastTestFiredAt: Date.now() });
           }}>
             Test notification
@@ -143,6 +148,42 @@ export function NotificationSection({ notifications, onChange }: Props) {
             </span>
           )}
         </div>
+
+        {import.meta.env.DEV && (
+          <div className="mt-4 border-t pt-3 border-[var(--color-subtle-border)]">
+            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
+              Dev: fire by severity
+            </div>
+            <div className="mb-2 text-[10.5px] text-[var(--color-text-muted)]">
+              Stripped from production builds. Merged plays the tada sound when the
+              "Play sound on merge" toggle above is on.
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(['info', 'success', 'warning', 'error', 'merged'] as const).map((sev) => (
+                <Button
+                  key={sev}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    void sendOsNotification({
+                      title: `Dev test: ${sev}`,
+                      body: sev === 'merged'
+                        ? '🎉 Pretend a PR just merged.'
+                        : `A ${sev}-severity notification — tests visual + dismiss + actions.`,
+                      severity: sev,
+                      actions: [
+                        { label: 'Open in GitHub', action: 'open-url', url: 'https://github.com' },
+                      ],
+                    }).catch(() => {});
+                    update({ lastTestFiredAt: Date.now() });
+                  }}
+                >
+                  {sev}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
     </>
   );

@@ -254,7 +254,7 @@ export function buildBecameMergeableNotification(pr: PullRequest): InAppNotifica
 export interface OsNotificationOptions {
   title: string;
   body: string;
-  severity?: 'info' | 'success' | 'warning' | 'error';
+  severity?: 'info' | 'success' | 'warning' | 'error' | 'merged';
   id?: string;
   prOwner?: string;
   prRepo?: string;
@@ -280,6 +280,10 @@ export async function sendOsNotification(options: OsNotificationOptions): Promis
     prNumber: options.prNumber,
     actions: options.actions ?? [],
   };
+  if (severity === 'merged') {
+    const { playMergeSoundIfEnabled } = await import('@/services/merge-celebration');
+    playMergeSoundIfEnabled();
+  }
   await invoke('show_flyout_toast', { payload });
 }
 

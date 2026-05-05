@@ -7,9 +7,11 @@ export interface ToastAction {
   url?: string;
 }
 
+export type ToastSeverity = 'info' | 'success' | 'warning' | 'error' | 'merged';
+
 export interface ToastPayload {
   id: string;
-  severity: 'info' | 'success' | 'warning' | 'error';
+  severity: ToastSeverity;
   title: string;
   body: string;
   prOwner?: string;
@@ -28,6 +30,7 @@ export type FlyoutEvent =
   | { type: 'init-complete' }
   | { type: 'user-open' }
   | { type: 'toast'; payload: ToastPayload }
+  | { type: 'dismiss-toast'; id: string }
   | { type: 'close' }
   | { type: 'timer-expired' }
   | { type: 'hover-enter' }
@@ -62,6 +65,13 @@ export function reduceFlyoutMode(mode: FlyoutMode, event: FlyoutEvent, now: numb
         queue: trimmed,
         timerDeadline: now + TOAST_AUTOHIDE_MS,
       };
+    }
+
+    case 'dismiss-toast': {
+      if (mode.kind !== 'toast') return mode;
+      const remaining = mode.queue.filter((t) => t.id !== event.id);
+      if (remaining.length === 0) return { kind: 'idle' };
+      return { ...mode, queue: remaining };
     }
 
     case 'timer-expired':
