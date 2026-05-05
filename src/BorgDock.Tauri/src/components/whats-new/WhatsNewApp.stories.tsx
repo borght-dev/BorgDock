@@ -90,3 +90,59 @@ export const Hydrating = story({
   // shows its pre-hydration UI.
   storeBehavior: 'pending',
 });
+
+export const FirstTimeUser = story({
+  pluginStoreSeed: { 'whats-new-state.json': {} },
+  appVersion: '1.2.0',
+});
+
+export const UpToDate = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+});
+
+export const OneVersionBehind = story({
+  // 1.1.0 is the version directly before 1.2.0 in the real RELEASES array.
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.1.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+});
+
+export const ManyVersionsBehind = story({
+  // 1.0.0 is far enough behind the real changelog to surface several
+  // missed releases. If the real changelog later only ships 1.0.x → 1.2.0,
+  // this story still demonstrates "many behind" correctly.
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.0.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+});
+
+export const AutoOpenDisabledAlready = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: true },
+  },
+  appVersion: '1.2.0',
+});
+
+export const TargetedAtSpecificVersion = story({
+  // Force a specific real-history version to expand instead of the latest.
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+  targetVersion: '1.0.0',
+});
+
+export const TargetedAtMissingVersion = story({
+  // 99.99.99 doesn't exist; useReleasesToShow falls back to newest missed
+  // (or newest overall when none missed).
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+  targetVersion: '99.99.99',
+});
