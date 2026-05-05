@@ -198,3 +198,19 @@ export const MultipleAwaitingMixedAge = story({
 export const AwaitingAcrossRepos = story({
   sessions: awaitingAcrossRepos,
 });
+
+// ---------------------------------------------------------------------------
+// Density axis
+// ---------------------------------------------------------------------------
+
+export const DensityRoomy = story({
+  sessions: oneWorking.concat(multiRepoMixed.slice(0, 4)).filter((s) => s.state !== 'awaiting' && s.state !== 'idle' && s.state !== 'ended'),
+});
+
+export const DensityStandard = story({
+  sessions: moderateLoad,
+});
+
+export const DensityWall = story({
+  sessions: heavyLoad,
+});
