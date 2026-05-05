@@ -6,6 +6,8 @@ import { getControl } from '../../../.storybook/mocks/control';
 import type { Release } from '@/types/whats-new';
 import { WhatsNewApp } from './WhatsNewApp';
 import {
+  dateSpreadHistory,
+  deepHistory,
   releaseEmptySummary,
   releaseFewFixes,
   releaseLongFixList,
@@ -229,4 +231,44 @@ export const ReleaseLongMixed = story({
   ...shapeStoryDefaults,
   appVersion: releaseLongMixed.version,
   releasesOverride: shapeStoryHistory(releaseLongMixed),
+});
+
+// ---------------------------------------------------------------------------
+// Accordion axis
+// ---------------------------------------------------------------------------
+
+export const AccordionAllCollapsed = story({
+  // lastSeenVersion = the newest deepHistory entry, no targetVersion;
+  // useReleasesToShow returns expandedVersion = null (no missed; no target).
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.7.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.7.0',
+  releasesOverride: deepHistory,
+});
+
+export const AccordionTargetExpanded = story({
+  // Force a mid-list version to expand.
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.7.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.7.0',
+  releasesOverride: deepHistory,
+  targetVersion: '1.4.0',
+});
+
+export const AccordionDeepHistory = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.0.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.7.0',
+  releasesOverride: deepHistory,
+});
+
+export const AccordionWithDates = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.7.0', autoOpenDisabled: false },
+  },
+  appVersion: '2.0.0',
+  releasesOverride: dateSpreadHistory,
 });
