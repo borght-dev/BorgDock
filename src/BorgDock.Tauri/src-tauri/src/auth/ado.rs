@@ -4,6 +4,9 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use crate::git::hidden_command;
 use serde::Serialize;
 use std::io;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex as AsyncMutex;
 
 /// Errors that `ado_resolve_auth_header` may surface to the UI.
 /// Serialized as a tagged enum so TS can discriminate.
@@ -48,6 +51,60 @@ pub(crate) fn classify_az_error(
 }
 
 const ADO_RESOURCE_ID: &str = "499b84ac-1321-427f-aa17-267ca6975798";
+
+/// Bearer tokens from `az account get-access-token` are valid ~1h. We cache
+/// for 50 minutes to leave a comfortable margin against clock skew and
+/// in-flight requests that might outlast a tighter window. A single cold
+/// `az.cmd` spawn on Windows is 1–3 s (Python interpreter cold start), so
+/// caching is the difference between an instant palette open and a hang.
+const TOKEN_TTL: Duration = Duration::from_secs(50 * 60);
+
+struct CachedToken {
+    token: String,
+    fetched_at: Instant,
+}
+
+/// Process-wide cache of the az-cli bearer token. `Mutex<Option<…>>` is fine
+/// here — reads are sub-microsecond and never contended in practice (we hold
+/// the lock just long enough to clone the string out).
+static TOKEN_CACHE: Mutex<Option<CachedToken>> = Mutex::new(None);
+
+/// Single-flight gate around `az_cli_token`. When two requests race for a
+/// fresh token (e.g. the work-item palette firing `getWorkItems` and
+/// `getAssignedToMe` in parallel on first open), without this both spawn
+/// their own `az.cmd` and pay the cold start independently. With it, the
+/// second waiter blocks on the async mutex, then finds a fresh cache entry
+/// and returns instantly.
+fn token_fetch_gate() -> Arc<AsyncMutex<()>> {
+    use std::sync::OnceLock;
+    static GATE: OnceLock<Arc<AsyncMutex<()>>> = OnceLock::new();
+    GATE.get_or_init(|| Arc::new(AsyncMutex::new(()))).clone()
+}
+
+fn cached_token() -> Option<String> {
+    let guard = TOKEN_CACHE.lock().ok()?;
+    let entry = guard.as_ref()?;
+    if entry.fetched_at.elapsed() < TOKEN_TTL {
+        Some(entry.token.clone())
+    } else {
+        None
+    }
+}
+
+fn store_token(token: &str) {
+    if let Ok(mut guard) = TOKEN_CACHE.lock() {
+        *guard = Some(CachedToken {
+            token: token.to_string(),
+            fetched_at: Instant::now(),
+        });
+    }
+}
+
+fn clear_token_cache() {
+    if let Ok(mut guard) = TOKEN_CACHE.lock() {
+        *guard = None;
+    }
+}
 
 /// Returns the program name to invoke for Azure CLI.
 ///
@@ -142,12 +199,54 @@ pub(crate) fn resolve_header_internal(
 
 /// Tauri command — returns a ready-to-use `Authorization` header value
 /// based on the caller-supplied auth method and optional PAT.
+///
+/// For `azCli`, the bearer token is cached process-wide for ~50 min and
+/// concurrent fetches are coalesced behind a single-flight async mutex.
+/// First call after app launch (or after TTL expiry) pays the cold
+/// `az.cmd` cost; everything else returns instantly.
+///
+/// `force_refresh = true` (used by the JS client on a 401) bypasses the
+/// cache, evicts it, and fetches a fresh token.
 #[tauri::command]
-pub fn ado_resolve_auth_header(
+pub async fn ado_resolve_auth_header(
     auth_method: String,
     pat: Option<String>,
+    force_refresh: Option<bool>,
 ) -> Result<String, AdoAuthError> {
-    resolve_header_internal(&auth_method, pat)
+    if auth_method != "azCli" {
+        return resolve_header_internal(&auth_method, pat);
+    }
+
+    let force = force_refresh.unwrap_or(false);
+
+    if !force {
+        if let Some(tok) = cached_token() {
+            return Ok(format!("Bearer {tok}"));
+        }
+    } else {
+        clear_token_cache();
+    }
+
+    // Single-flight: only one az.cmd spawn at a time. After acquiring the
+    // gate, re-check the cache — a previous waiter may have already
+    // populated it while we were queued.
+    let gate = token_fetch_gate();
+    let _permit = gate.lock().await;
+
+    if !force {
+        if let Some(tok) = cached_token() {
+            return Ok(format!("Bearer {tok}"));
+        }
+    }
+
+    // az.cmd is a synchronous, several-hundred-ms-to-seconds CLI invocation.
+    // Run it on the blocking pool so we don't tie up a tokio worker thread.
+    let token = tokio::task::spawn_blocking(az_cli_token)
+        .await
+        .map_err(|e| AdoAuthError::TokenFetchFailed(format!("join error: {e}")))??;
+
+    store_token(&token);
+    Ok(format!("Bearer {token}"))
 }
 
 #[cfg(test)]

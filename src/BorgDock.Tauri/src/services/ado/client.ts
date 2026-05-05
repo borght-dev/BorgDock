@@ -31,6 +31,7 @@ export class AdoClient {
     const header = await invoke<string>('ado_resolve_auth_header', {
       authMethod: this.authMethod,
       pat: this.authMethod === 'pat' ? this.pat : null,
+      forceRefresh,
     });
     this.cachedHeader = header;
     return header;
