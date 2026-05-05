@@ -361,3 +361,31 @@ export const InspectorWithFiles: Story = {
     cardEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
   },
 };
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+export const HeavyLoadManySessions = story({
+  sessions: heavyLoad,
+});
+
+export const AllArchived = story({
+  sessions: allArchived,
+});
+
+export const LongLabelsAndBranches = story({
+  sessions: [sessionLongLabel],
+});
+
+export const OnlySnoozedAwaiting = story({
+  sessions: [
+    sessionSnoozed,
+    {
+      ...sessionSnoozed,
+      sessionId: 'curated-snoozed-2',
+      stateSinceMs: 5 * 60_000,
+      snoozedUntilMs: Date.now() + 10 * 60_000,
+    },
+  ],
+});
