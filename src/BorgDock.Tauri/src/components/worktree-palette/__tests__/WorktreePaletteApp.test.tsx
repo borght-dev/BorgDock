@@ -9,7 +9,11 @@ const mockInnerSize = vi.fn(() => Promise.resolve({ width: 520, height: 420 }));
 const mockScaleFactor = vi.fn(() => Promise.resolve(1));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(() => Promise.resolve(() => {})),
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({

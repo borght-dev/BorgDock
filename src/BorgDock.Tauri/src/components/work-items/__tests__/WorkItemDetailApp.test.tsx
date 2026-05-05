@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---- Tauri mocks (must be before component import) ----
 
-const mockInvoke = vi.fn();
+const mockInvoke = vi.fn().mockResolvedValue(undefined);
 const mockSetTitle = vi.fn().mockResolvedValue(undefined);
 const mockClose = vi.fn().mockResolvedValue(undefined);
 const mockShow = vi.fn().mockResolvedValue(undefined);
