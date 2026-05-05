@@ -4,6 +4,7 @@
 // every window storied so far uses:
 //   - getCurrentWindow().close/minimize/maximize/unmaximize/isMaximized  (Phase 2)
 //   - getCurrentWindow().hide/setSize/innerSize/scaleFactor              (Phase 3)
+//   - getCurrentWindow().outerPosition/setPosition/onMoved               (Phase 4)
 //   - currentMonitor()                                                   (Phase 3)
 //
 // hide() and close() are no-ops — without them, the Worktree palette's
@@ -11,12 +12,30 @@
 // Storybook iframe. setSize() updates the recorded windowSize so a
 // follow-up innerSize() reflects the resize, but the iframe itself is
 // unaffected (Storybook controls visible bounds).
+//
+// onMoved() registers under the synthetic channel '__window.onMoved'.
+// Stories drive moves with getControl().emit('__window.onMoved', {x,y}).
+// The '__window.' prefix is reserved for getCurrentWindow() listener
+// emulation so future phases (onCloseRequested, onResized, etc.) can
+// reuse the pattern without colliding with real Tauri event names.
 
-import { getControl } from './control';
+import { getControl, type ChannelListener } from './control';
 
 interface MockPhysicalSize {
   width: number;
   height: number;
+}
+
+interface MockPhysicalPosition {
+  x: number;
+  y: number;
+}
+
+interface PositionInput {
+  x: number;
+  y: number;
+  // Optional discriminator from LogicalPosition / PhysicalPosition.
+  type?: 'Logical' | 'Physical';
 }
 
 interface MockWindow {
@@ -29,7 +48,12 @@ interface MockWindow {
   setSize(size: { width: number; height: number }): Promise<void>;
   innerSize(): Promise<MockPhysicalSize>;
   scaleFactor(): Promise<number>;
+  outerPosition(): Promise<MockPhysicalPosition>;
+  setPosition(pos: PositionInput): Promise<void>;
+  onMoved(cb: (event: { payload: MockPhysicalPosition }) => void): Promise<() => void>;
 }
+
+const ON_MOVED_CHANNEL = '__window.onMoved';
 
 export function getCurrentWindow(): MockWindow {
   const ctrl = getControl();
@@ -68,6 +92,36 @@ export function getCurrentWindow(): MockWindow {
     },
     async scaleFactor() {
       return ctrl.windowSize.scaleFactor;
+    },
+    async outerPosition() {
+      // Real Tauri returns PhysicalPosition. Multiply by scaleFactor so
+      // SqlApp's `pos.x / scale` round-trip lands back at the logical x,y.
+      return {
+        x: ctrl.windowSize.x * ctrl.windowSize.scaleFactor,
+        y: ctrl.windowSize.y * ctrl.windowSize.scaleFactor,
+      };
+    },
+    async setPosition(pos) {
+      ctrl.invocations.push({ command: 'window.setPosition', args: pos });
+      // Logical inputs scale up; Physical pass through. A plain {x,y} with
+      // no type is treated as Logical (matches the most common caller).
+      const isPhysical = pos.type === 'Physical';
+      const factor = isPhysical ? 1 : ctrl.windowSize.scaleFactor;
+      ctrl.windowSize.x = (pos.x * factor) / ctrl.windowSize.scaleFactor;
+      ctrl.windowSize.y = (pos.y * factor) / ctrl.windowSize.scaleFactor;
+    },
+    async onMoved(cb) {
+      let set = ctrl.channels.get(ON_MOVED_CHANNEL);
+      if (!set) {
+        set = new Set();
+        ctrl.channels.set(ON_MOVED_CHANNEL, set);
+      }
+      const wrapped: ChannelListener = (event) =>
+        cb(event as { payload: MockPhysicalPosition });
+      set.add(wrapped);
+      return () => {
+        set?.delete(wrapped);
+      };
     },
   };
 }
