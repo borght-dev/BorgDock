@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkItemPaletteApp } from '../WorkItemPaletteApp';
 
 const mockClose = vi.fn(() => Promise.resolve());
+const mockHide = vi.fn(() => Promise.resolve());
 const mockSetFocus = vi.fn(() => Promise.resolve());
 const mockOnMoved = vi.fn(() => Promise.resolve(() => {}));
 const mockOuterPosition = vi.fn(() => Promise.resolve({ x: 100, y: 200 }));
@@ -30,6 +31,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: vi.fn(() => ({
     close: mockClose,
+    hide: mockHide,
     setFocus: mockSetFocus,
     onMoved: mockOnMoved,
     outerPosition: mockOuterPosition,
@@ -45,6 +47,10 @@ vi.mock('@tauri-apps/api/dpi', () => ({
 
 vi.mock('@tauri-apps/api/webviewWindow', () => ({
   WebviewWindow: vi.fn(),
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(() => Promise.resolve(() => {})),
 }));
 
 vi.mock('@/services/ado/client', () => ({
@@ -122,7 +128,7 @@ describe('WorkItemPaletteApp', () => {
       fireEvent.keyDown(document, { key: 'Escape' });
     });
 
-    expect(mockClose).toHaveBeenCalled();
+    expect(mockHide).toHaveBeenCalled();
   });
 
   it('starts dragging on mouseDown on drag handle', async () => {

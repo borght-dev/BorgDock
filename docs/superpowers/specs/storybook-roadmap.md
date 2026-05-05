@@ -56,6 +56,7 @@ time.
 |---|---|---|---|---|---|
 | 1 | Flyout (sidebar overlay) | `flyout-main.tsx` → `components/flyout/FlyoutApp.tsx` | `2026-05-05-storybook-phase1-flyoutapp-design.md` | `2026-05-05-storybook-phase1-flyoutapp.md` | [#13](https://github.com/borght-dev/BorgDock/pull/13) |
 | 2 | What's New | `whats-new-main.tsx` → `components/whats-new/WhatsNewApp.tsx` | `2026-05-05-storybook-phase2-whatsnew-design.md` | `2026-05-05-storybook-phase2-whatsnew.md` | _(filled in after PR opens)_ |
+| 3 | Worktree (palette) | `worktree-main.tsx` → `components/worktree-palette/WorktreePaletteApp.tsx` | `2026-05-05-storybook-phase3-worktree-design.md` | `2026-05-05-storybook-phase3-worktree.md` | [#15](https://github.com/borght-dev/BorgDock/pull/15) |
 
 ### Pending
 
@@ -72,10 +73,18 @@ will refine them.
 | File Palette | `file-palette-main.tsx` | **M** | `invoke` (file index, recent files, scan progress), `plugin-fs` | Palette UX: stories should cover empty / loading / scan-in-progress / changed-files section / per-root filtering. |
 | Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
 | Work Item Detail | `workitem-detail-main.tsx` | **M** | `invoke` (load/update WIT), `plugin-dialog` (attachments) | Stories per-state (loading / loaded / dirty / saving / saved / error / cancellation). |
-| Worktree | `worktree-main.tsx` | **M** | `invoke` (worktree list, prune, changes), `plugin-shell` | Includes the prune dialog and the changes panel. |
 | Agent Overview | `main-agent-overview.tsx` | **M** | `invoke` (agent status, claude api, sessions); `plugin-shell`; `emit/listen` for live status events | Several live-update flows — the mock event channel will get exercised hard. |
 | SQL | `sql-main.tsx` | **M** | `invoke` (sql exec, schema fetch, ADO connection); custom panic-handling path | Code editor (CodeMirror) + result grid. Stories should cover empty / running / result / error / panic-recovered. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
+
+> **Roadmap correction (Phase 3):** the previous Worktree row described the
+> window as containing the prune dialog and changes panel. That was wrong.
+> `worktree-main.tsx` mounts `WorktreePaletteApp` (a palette listing
+> worktrees across configured repos for quick terminal-launch). The
+> `WorktreePruneDialog` is rendered from `components/settings/MaintenanceSection.tsx`
+> — Settings phase territory. `WorktreeChangesPanel` /
+> `WorktreeDiffOverlay` exist under `components/worktree-changes/` but are
+> not rendered by any window today (orphaned but committed).
 
 ## Cross-cutting workstreams (post-catalog)
 
@@ -108,6 +117,14 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@tauri-apps/plugin-store` → `mocks/tauri-plugin-store.ts`
 - `@/services/windows` → `mocks/services-windows.ts`
 - `@/generated/changelog` → `mocks/generated-changelog.ts`
+- `@tauri-apps/api/dpi` → `mocks/tauri-api-dpi.ts`
+
+> **Phase 3 mock-layer extensions:** `tauri-api-window` now also exports
+> `currentMonitor` and `getCurrentWindow().{hide,setSize,innerSize,scaleFactor}`.
+> `tauri-core` now supports function-form `invokeResponses` —
+> `invokeResponses[command]` may be `(args) => T | Promise<T>` for
+> arg-discriminated responses (used by stories that vary
+> `list_worktrees_bare` per `basePath`).
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).

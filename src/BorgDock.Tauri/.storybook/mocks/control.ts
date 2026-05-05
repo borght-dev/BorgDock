@@ -14,10 +14,23 @@ export type ChannelListener = (event: { payload: unknown }) => void;
 
 export type PluginStoreBehavior = 'normal' | 'pending' | 'reject';
 
+export type InvokeResponse = unknown | ((args: unknown) => unknown);
+
+export interface MonitorState {
+  size: { width: number; height: number };
+  scaleFactor: number;
+}
+
+export interface WindowSizeState {
+  width: number;
+  height: number;
+  scaleFactor: number;
+}
+
 export interface StorybookTauriControl {
   channels: Map<string, Set<ChannelListener>>;
   invocations: InvokeRecord[];
-  invokeResponses: Record<string, unknown>;
+  invokeResponses: Record<string, InvokeResponse>;
 
   // Phase 2 additions
   windowState: { isMaximized: boolean };
@@ -25,6 +38,10 @@ export interface StorybookTauriControl {
   pluginStoreBehavior: PluginStoreBehavior;
   appVersion: string | null;
   releasesOverride: Release[] | null;
+
+  // Phase 3 additions
+  windowSize: WindowSizeState;
+  monitorState: MonitorState | null;
 
   reset(): void;
   emit(channel: string, payload: unknown): void;
@@ -35,6 +52,8 @@ declare global {
     __borgdock_storybook_tauri?: StorybookTauriControl;
   }
 }
+
+const DEFAULT_WINDOW_SIZE: WindowSizeState = { width: 480, height: 600, scaleFactor: 1 };
 
 function createControl(): StorybookTauriControl {
   const ctrl: StorybookTauriControl = {
@@ -48,6 +67,9 @@ function createControl(): StorybookTauriControl {
     appVersion: null,
     releasesOverride: null,
 
+    windowSize: { ...DEFAULT_WINDOW_SIZE },
+    monitorState: null,
+
     reset() {
       ctrl.channels.clear();
       ctrl.invocations.length = 0;
@@ -57,6 +79,10 @@ function createControl(): StorybookTauriControl {
       ctrl.pluginStoreBehavior = 'normal';
       ctrl.appVersion = null;
       ctrl.releasesOverride = null;
+      ctrl.windowSize.width = DEFAULT_WINDOW_SIZE.width;
+      ctrl.windowSize.height = DEFAULT_WINDOW_SIZE.height;
+      ctrl.windowSize.scaleFactor = DEFAULT_WINDOW_SIZE.scaleFactor;
+      ctrl.monitorState = null;
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);

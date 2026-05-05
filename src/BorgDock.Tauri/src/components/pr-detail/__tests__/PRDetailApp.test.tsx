@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockInvoke = vi.fn();
+const mockInvoke = vi.fn().mockResolvedValue(undefined);
 const mockSetTitle = vi.fn().mockResolvedValue(undefined);
 const mockGetCurrentWindow = vi.fn(() => ({
   setTitle: mockSetTitle,

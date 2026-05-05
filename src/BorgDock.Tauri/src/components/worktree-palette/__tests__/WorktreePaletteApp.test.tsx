@@ -3,17 +3,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorktreePaletteApp } from '../WorktreePaletteApp';
 
 const mockClose = vi.fn(() => Promise.resolve());
+const mockHide = vi.fn(() => Promise.resolve());
 const mockSetSize = vi.fn(() => Promise.resolve());
 const mockInnerSize = vi.fn(() => Promise.resolve({ width: 520, height: 420 }));
 const mockScaleFactor = vi.fn(() => Promise.resolve(1));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(() => Promise.resolve(() => {})),
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: vi.fn(() => ({
     close: mockClose,
+    hide: mockHide,
     setSize: mockSetSize,
     innerSize: mockInnerSize,
     scaleFactor: mockScaleFactor,
@@ -298,7 +304,7 @@ describe('WorktreePaletteApp', () => {
       await act(async () => {
         fireEvent.keyDown(palette, { key: 'Escape' });
       });
-      expect(mockClose).toHaveBeenCalled();
+      expect(mockHide).toHaveBeenCalled();
     }
   });
 
@@ -337,7 +343,7 @@ describe('WorktreePaletteApp', () => {
     if (closeBtn) {
       fireEvent.click(closeBtn);
     }
-    expect(mockClose).toHaveBeenCalled();
+    expect(mockHide).toHaveBeenCalled();
   });
 
   it('renders the footer with keyboard shortcuts', async () => {
