@@ -116,10 +116,8 @@ export function FlyoutGlance({
 
   const handleOpenSettings = useCallback(async () => {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const { emitTo } = await import('@tauri-apps/api/event');
       await emitTo('main', 'open-settings', {});
-      await invoke('toggle_sidebar');
     } catch {
       // ignore
     }
