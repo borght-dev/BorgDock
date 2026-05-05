@@ -8,6 +8,7 @@ import { getControl, type WorkItemScenario } from '../../../.storybook/mocks/con
 import {
   bugWithReproSteps,
   canonicalSettings,
+  commentsManyAuthors,
   epicWithCustomFields,
   itemAssignedToOther,
   itemNeverModified,
@@ -178,4 +179,30 @@ export const ItemAssignedToOther: Story = story({
 
 export const ItemNeverModified: Story = story({
   scenario: loadedScenario(itemNeverModified),
+});
+
+// ---------------------------------------------------------------------------
+// Comments axis
+// ---------------------------------------------------------------------------
+
+export const CommentsLoading: Story = story({
+  scenario: {
+    ...loadedScenario(userStoryFreshlyLoaded),
+    commentsBehavior: 'pending',
+  },
+});
+
+export const CommentsEmpty: Story = story({
+  scenario: loadedScenario(userStoryFreshlyLoaded, []),
+});
+
+export const CommentsManyAuthors: Story = story({
+  scenario: loadedScenario(userStoryFreshlyLoaded, commentsManyAuthors),
+});
+
+export const CommentsLoadFailed: Story = story({
+  scenario: {
+    ...loadedScenario(userStoryFreshlyLoaded),
+    commentsBehavior: 'reject',
+  },
 });
