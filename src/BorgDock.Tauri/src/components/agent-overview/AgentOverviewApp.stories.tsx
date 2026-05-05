@@ -61,10 +61,10 @@ function AgentOverviewHarness({ params }: { params: AgentOverviewStoryParams }) 
   const ctrl = getControl();
   // Seed canned invoke responses BEFORE mount so the hook's first
   // invoke('list_agent_sessions') call returns the expected payload.
-  ctrl.invokeResponses['list_agent_sessions'] = params.sessions ?? [];
-  ctrl.invokeResponses['list_worktree_changes'] = params.fileChanges ?? { files: [] };
+  ctrl.invokeResponses.list_agent_sessions = params.sessions ?? [];
+  ctrl.invokeResponses.list_worktree_changes = params.fileChanges ?? { files: [] };
   if (params.diffSnippet !== undefined) {
-    ctrl.invokeResponses['diff_worktree_vs_head'] = params.diffSnippet;
+    ctrl.invokeResponses.diff_worktree_vs_head = params.diffSnippet;
   }
 
   useEffect(() => {
