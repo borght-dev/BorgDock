@@ -395,6 +395,7 @@ pub fn run() {
             platform::window::toggle_sidebar,
             platform::window::hide_sidebar,
             platform::window::hide_flyout,
+            platform::window::window_ready,
             platform::work_area::reserve_work_area,
             platform::work_area::restore_work_area,
             platform::hotkey::register_user_hotkeys,

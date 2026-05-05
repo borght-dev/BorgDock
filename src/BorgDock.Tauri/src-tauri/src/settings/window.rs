@@ -50,7 +50,7 @@ pub async fn open_settings_window(
             .resizable(true)
             .skip_taskbar(false)
             .shadow(true)
-            .visible(true);
+            .visible(false);
 
             if let Some(g) = &win_state {
                 builder = builder
@@ -59,6 +59,17 @@ pub async fn open_settings_window(
             }
 
             let win = builder.build().map_err(|e| e.to_string())?;
+
+            // Snap to stored geometry BEFORE first show to avoid a flash at the
+            // default size/position. Tauri sometimes ignores `inner_size` /
+            // `position` builder args on first build under HiDPI, so re-apply
+            // here while the window is still hidden. The window stays hidden
+            // until the React app calls `settings_window_ready`, so the user
+            // never sees the unstyled default chrome.
+            if let Some(g) = &win_state {
+                win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height))).ok();
+                win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y))).ok();
+            }
 
             // Persist geometry on close
             let win_for_close = win.clone();
@@ -81,12 +92,6 @@ pub async fn open_settings_window(
                 }
             });
 
-            // Snap to stored geometry as a second pass; some Tauri versions
-            // ignore inner_size on first build under HiDPI.
-            if let Some(g) = win_state {
-                win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height))).ok();
-                win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y))).ok();
-            }
             Ok(())
         })();
         let _ = tx.send(result);

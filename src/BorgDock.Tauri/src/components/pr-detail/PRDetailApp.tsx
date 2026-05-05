@@ -33,6 +33,16 @@ export function PrDetailApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Reveal the (invisible-built) window once React has painted.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current) return;
+    revealedRef.current = true;
+    requestAnimationFrame(() => {
+      void invoke('window_ready').catch(() => {});
+    });
+  }, []);
+
   // Keep a ref alongside the state so the load effect can check the latest
   // value without taking pr as a dependency (which would cause re-entry).
   useEffect(() => {

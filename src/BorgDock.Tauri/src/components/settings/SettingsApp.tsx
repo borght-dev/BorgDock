@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -51,6 +52,19 @@ export function SettingsApp() {
     if (!hasLoaded) {
       void useSettingsStore.getState().loadSettings();
     }
+  }, [hasLoaded]);
+
+  // The Rust side builds the window invisible to avoid a flash of the
+  // unstyled default chrome at the wrong size. Reveal it after settings
+  // hydrate and the first frame paints, so the user only ever sees the
+  // fully-rendered UI.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current || !hasLoaded) return;
+    revealedRef.current = true;
+    requestAnimationFrame(() => {
+      void invoke('window_ready').catch(() => {});
+    });
   }, [hasLoaded]);
 
   // Ref-mirror of settings so the debounced save can read latest without

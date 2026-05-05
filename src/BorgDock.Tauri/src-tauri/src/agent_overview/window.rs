@@ -35,7 +35,7 @@ pub(crate) fn show_or_create_agent_overview(app: &tauri::AppHandle) -> Result<()
     .resizable(true)
     .skip_taskbar(false)
     .shadow(true)
-    .visible(true);
+    .visible(false);
 
     if let Some(g) = &win_state {
         builder = builder
@@ -44,6 +44,16 @@ pub(crate) fn show_or_create_agent_overview(app: &tauri::AppHandle) -> Result<()
     }
 
     let win = builder.build().map_err(|e| e.to_string())?;
+
+    // Snap to stored geometry BEFORE first show to avoid a flash at the
+    // default size/position. The window stays hidden until the React app
+    // calls `window_ready`, so the user never sees the unstyled chrome.
+    if let Some(g) = &win_state {
+        win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)))
+            .ok();
+        win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)))
+            .ok();
+    }
 
     // Persist window geometry on close so the next launch restores it.
     let win_for_close = win.clone();
@@ -66,14 +76,6 @@ pub(crate) fn show_or_create_agent_overview(app: &tauri::AppHandle) -> Result<()
         }
     });
 
-    // Snap to stored geometry as a second pass; some Tauri versions
-    // ignore inner_size on first build under HiDPI.
-    if let Some(g) = win_state {
-        win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)))
-            .ok();
-        win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)))
-            .ok();
-    }
     Ok(())
 }
 

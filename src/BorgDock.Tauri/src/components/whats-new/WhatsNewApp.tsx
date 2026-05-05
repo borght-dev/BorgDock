@@ -1,5 +1,6 @@
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
@@ -24,6 +25,16 @@ export function WhatsNewApp() {
   useEffect(() => {
     if (!hydrated) void hydrate();
   }, [hydrated, hydrate]);
+
+  // Reveal the (invisible-built) window once React has painted.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current) return;
+    revealedRef.current = true;
+    requestAnimationFrame(() => {
+      void invoke('window_ready').catch(() => {});
+    });
+  }, []);
 
   const initialTarget = (window as unknown as InjectedWindow).__BORGDOCK_WHATS_NEW__?.version ?? null;
 

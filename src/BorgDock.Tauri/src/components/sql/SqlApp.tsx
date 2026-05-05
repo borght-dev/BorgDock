@@ -203,6 +203,12 @@ export function SqlApp() {
           /* ignore */
         }
       }
+
+      // Reveal the window only after settings + position have been applied,
+      // so the user never sees the default-position / unstyled chrome.
+      requestAnimationFrame(() => {
+        void invoke('window_ready').catch(() => {});
+      });
     })();
   }, []);
 

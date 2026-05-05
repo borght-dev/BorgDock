@@ -113,6 +113,7 @@ export const TAURI_MOCK_SCRIPT = `
           return null;
 
         case 'palette_ready':
+        case 'window_ready':
         case 'open_in_terminal':
         case 'open_in_editor':
         case 'open_file_viewer_window':

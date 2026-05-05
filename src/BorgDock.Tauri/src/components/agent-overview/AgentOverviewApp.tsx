@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAgentSessions } from '@/hooks/useAgentSessions';
 import { useInspectorState } from '@/hooks/useInspectorState';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -16,6 +17,16 @@ import { Titlebar, type Grouping } from './Titlebar';
 import { WorktreeFlat } from './WorktreeFlat';
 
 export function AgentOverviewApp() {
+  // Reveal the (invisible-built) window once React has painted.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current) return;
+    revealedRef.current = true;
+    requestAnimationFrame(() => {
+      void invoke('window_ready').catch(() => {});
+    });
+  }, []);
+
   const sessions = useAgentSessions();
   const [grouping, setGrouping] = useState<Grouping>('repo');
   const [showArchived, setShowArchived] = useState(false);

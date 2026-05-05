@@ -276,6 +276,33 @@ pub fn hide_sidebar(app: tauri::AppHandle) -> Result<(), String> {
     hide_main_window(&app)
 }
 
+/// Frontend handshake: any pop-out window's React app calls this once its DOM
+/// has rendered, to reveal the window without flashing the unstyled default
+/// chrome at the wrong size/position. The window-creation paths build with
+/// `.visible(false)` and rely on this command to flip visibility.
+///
+/// Also re-asserts OS-level focus (Windows' foreground-lock rules sometimes
+/// leave a newly-created WebView2 window focus-less — this replaces the
+/// dedicated `palette_ready` command for that case).
+#[tauri::command]
+pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
+    let label = window.label().to_string();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            if let Some(win) = app_for_run.get_webview_window(&label) {
+                win.show().map_err(|e| e.to_string())?;
+                win.set_focus().map_err(|e| e.to_string())?;
+            }
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+    rx.await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
@@ -425,6 +452,10 @@ pub async fn open_pr_detail_window(
         // back to — see feedback memory "Viewer/detail windows behave like
         // first-class windows".
         .skip_taskbar(false)
+        // Build invisible so the user never sees the unstyled default chrome
+        // at the wrong size/position. The React app calls `window_ready`
+        // once mounted to reveal the window.
+        .visible(false)
         .focused(true)
         .initialization_script(&init_script);
 
@@ -441,11 +472,11 @@ pub async fn open_pr_detail_window(
         let send_result = match result {
             Ok(win) => {
                 log::info!("open_pr_detail_window: build succeeded for {label_for_build}");
-                let _ = win.show();
-                let _ = win.set_focus();
 
-                // Second-pass geometry apply — some Tauri versions ignore the
-                // builder's inner_size on first build under HiDPI.
+                // Apply stored geometry BEFORE first show. Some Tauri versions
+                // ignore the builder's inner_size on first build under HiDPI.
+                // The window stays hidden — `window_ready` from the frontend
+                // reveals it.
                 if let Some(g) = &saved_geometry {
                     let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
                     let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
@@ -559,21 +590,15 @@ pub async fn open_whats_new_window(
         .resizable(true)
         .skip_taskbar(true)
         .center()
+        // Build invisible — `window_ready` from React reveals once painted.
+        .visible(false)
         .focused(true)
         .initialization_script(&init_script)
         .build();
 
         let send_result = match result {
             Ok(win) => {
-                let _ = win.show();
-                let _ = win.set_focus();
                 let _ = win.set_skip_taskbar(true);
-                let win_repaint = win.clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(200));
-                    let _ = win_repaint.set_focus();
-                    force_repaint(&win_repaint);
-                });
                 Ok(())
             }
             Err(e) => {

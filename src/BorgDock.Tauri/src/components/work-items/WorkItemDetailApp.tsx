@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { AdoClient } from '@/services/ado/client';
@@ -230,6 +230,16 @@ export function WorkItemDetailApp() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusText, setStatusText] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
+
+  // Reveal the (invisible-built) window once React has painted.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current) return;
+    revealedRef.current = true;
+    requestAnimationFrame(() => {
+      void invoke('window_ready').catch(() => {});
+    });
+  }, []);
 
   // Get work item ID from URL search params
   const workItemId = useMemo(() => {
