@@ -5,6 +5,26 @@ import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import type { SessionDelta, SessionRecord } from '@/services/agent-overview-types';
 import { AgentOverviewApp } from './AgentOverviewApp';
+import {
+  allArchived,
+  allIdle,
+  allStates,
+  awaitingAcrossRepos,
+  heavyLoad,
+  idleWithArchived,
+  moderateLoad,
+  multiRepoMixed,
+  multipleAwaiting,
+  multipleAwaitingMixedAge,
+  oneAwaiting,
+  oneWorking,
+  sessionAwaiting,
+  sessionIdle,
+  sessionLongLabel,
+  sessionSnoozed,
+  sessionWithFiles,
+  sessionWorking,
+} from './__fixtures__/agent-overview-data';
 
 interface FileChangeRow {
   path: string;
@@ -111,4 +131,16 @@ export const Loading = story({
 
 export const Empty = story({
   sessions: [],
+});
+
+export const OneWorking = story({
+  sessions: oneWorking,
+});
+
+export const OneAwaiting = story({
+  sessions: oneAwaiting,
+});
+
+export const OneIdle = story({
+  sessions: [sessionIdle],
 });
