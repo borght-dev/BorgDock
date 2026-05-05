@@ -3,6 +3,8 @@
 // Singleton control surface used by the Tauri mocks and by story decorators.
 // Lives on window so dynamic-imported mocks and the React tree can both reach it.
 
+import type { Release } from '../../src/types/whats-new';
+
 export interface InvokeRecord {
   command: string;
   args?: unknown;
@@ -10,10 +12,20 @@ export interface InvokeRecord {
 
 export type ChannelListener = (event: { payload: unknown }) => void;
 
+export type PluginStoreBehavior = 'normal' | 'pending' | 'reject';
+
 export interface StorybookTauriControl {
   channels: Map<string, Set<ChannelListener>>;
   invocations: InvokeRecord[];
   invokeResponses: Record<string, unknown>;
+
+  // Phase 2 additions
+  windowState: { isMaximized: boolean };
+  pluginStore: Map<string, Map<string, unknown>>;
+  pluginStoreBehavior: PluginStoreBehavior;
+  appVersion: string | null;
+  releasesOverride: Release[] | null;
+
   reset(): void;
   emit(channel: string, payload: unknown): void;
 }
@@ -29,10 +41,22 @@ function createControl(): StorybookTauriControl {
     channels: new Map(),
     invocations: [],
     invokeResponses: {},
+
+    windowState: { isMaximized: false },
+    pluginStore: new Map(),
+    pluginStoreBehavior: 'normal',
+    appVersion: null,
+    releasesOverride: null,
+
     reset() {
       ctrl.channels.clear();
       ctrl.invocations.length = 0;
       for (const k of Object.keys(ctrl.invokeResponses)) delete ctrl.invokeResponses[k];
+      ctrl.windowState.isMaximized = false;
+      ctrl.pluginStore.clear();
+      ctrl.pluginStoreBehavior = 'normal';
+      ctrl.appVersion = null;
+      ctrl.releasesOverride = null;
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);
