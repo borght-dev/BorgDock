@@ -27,8 +27,12 @@ const config: StorybookConfig = {
       ...(config.resolve.alias ?? {}),
       '@tauri-apps/api/core': resolve(here, 'mocks/tauri-core.ts'),
       '@tauri-apps/api/event': resolve(here, 'mocks/tauri-event.ts'),
+      '@tauri-apps/api/window': resolve(here, 'mocks/tauri-api-window.ts'),
+      '@tauri-apps/api/app': resolve(here, 'mocks/tauri-api-app.ts'),
       '@tauri-apps/plugin-opener': resolve(here, 'mocks/tauri-plugin-opener.ts'),
+      '@tauri-apps/plugin-store': resolve(here, 'mocks/tauri-plugin-store.ts'),
       '@/services/windows': resolve(here, 'mocks/services-windows.ts'),
+      '@/generated/changelog': resolve(here, 'mocks/generated-changelog.ts'),
       '@': resolve(here, '../src'),
     };
     return config;

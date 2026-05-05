@@ -53,10 +53,18 @@ export function useReleasesToShow(
   const [target, setTarget] = useState<string | null>(initialTarget);
 
   useEffect(() => {
+    let cancelled = false;
     import('@tauri-apps/api/app')
       .then(({ getVersion }) => getVersion())
-      .then(setCurrentVersion)
-      .catch(() => setCurrentVersion('0.0.0'));
+      .then((v) => {
+        if (!cancelled) setCurrentVersion(v);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentVersion('0.0.0');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
