@@ -34,7 +34,7 @@ pub fn focus(session_cwd: &Path) -> Result<bool, String> {
 
 #[cfg(windows)]
 fn focus_windows(session_cwd: &Path) -> Result<bool, String> {
-    use sysinfo::System;
+    use sysinfo::{ProcessRefreshKind, System};
     use windows::core::BOOL;
     use windows::Win32::Foundation::{HWND, LPARAM};
     use windows::Win32::UI::WindowsAndMessaging::{
@@ -42,8 +42,11 @@ fn focus_windows(session_cwd: &Path) -> Result<bool, String> {
         ShowWindow, SW_RESTORE,
     };
 
+    // `refresh_processes()` (sysinfo 0.30) does NOT collect cwd — its default
+    // refresh kind is memory/cpu/disk/exe. Without `everything()` here, every
+    // `proc_.cwd()` call below is None and we always return Ok(false).
     let mut sys = System::new();
-    sys.refresh_processes();
+    sys.refresh_processes_specifics(ProcessRefreshKind::everything());
 
     // Find PIDs whose process tree includes a process running in
     // `session_cwd`.
