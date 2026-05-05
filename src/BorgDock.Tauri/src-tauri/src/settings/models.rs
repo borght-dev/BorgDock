@@ -31,8 +31,18 @@ pub struct AppSettings {
     pub claude_api: ClaudeApiSettings,
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_palette_roots: Option<Vec<FilePaletteRoot>>,
     #[serde(default)]
     pub settings_window: Option<WindowGeometry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FilePaletteRoot {
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,6 +129,8 @@ pub struct UiSettings {
     #[serde(default)]
     pub file_palette_roots_collapsed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_palette_active_root_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_palette_changes_collapsed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_palette_changes_mode: Option<String>,
@@ -184,6 +196,7 @@ impl Default for UiSettings {
             worktree_palette_favorites_only: false,
             file_palette_favorites_only: false,
             file_palette_roots_collapsed: false,
+            file_palette_active_root_path: None,
             file_palette_changes_collapsed: None,
             file_palette_changes_mode: None,
             file_palette_scope: None,
@@ -201,14 +214,20 @@ impl Default for UiSettings {
 pub struct NotificationSettings {
     #[serde(default = "default_true")]
     pub toast_on_check_status_change: bool,
-    #[serde(default)]
+    // The TS type spells "PR" as an uppercase acronym; serde's auto camelCase
+    // would emit `toastOnNewPr` (lowercase r), which never matches the
+    // frontend key. The explicit `rename` keeps both sides in sync; the
+    // `alias` lets settings.json files saved before this fix still load.
+    #[serde(default, rename = "toastOnNewPR", alias = "toastOnNewPr")]
     pub toast_on_new_pr: bool,
     #[serde(default = "default_true")]
     pub toast_on_review_update: bool,
     #[serde(default = "default_true")]
     pub toast_on_mergeable: bool,
-    #[serde(default)]
+    #[serde(default, rename = "onlyMyPRs", alias = "onlyMyPrs")]
     pub only_my_prs: bool,
+    #[serde(default = "default_true")]
+    pub play_merge_sound: bool,
     #[serde(default = "default_true")]
     pub review_nudge_enabled: bool,
     #[serde(default = "default_nudge_interval")]
@@ -239,6 +258,7 @@ impl Default for NotificationSettings {
             toast_on_review_update: true,
             toast_on_mergeable: true,
             only_my_prs: false,
+            play_merge_sound: true,
             review_nudge_enabled: true,
             review_nudge_interval_minutes: 60,
             review_nudge_escalation: true,
