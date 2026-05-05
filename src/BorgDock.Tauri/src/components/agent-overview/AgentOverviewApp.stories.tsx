@@ -236,3 +236,41 @@ export const IdleRailArchivedExpanded: Story = {
     await userEvent.click(toggle);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Live-update axis — drives agent-sessions-changed events post-mount
+// ---------------------------------------------------------------------------
+
+export const TransitionWorkingToAwaiting = story({
+  sessions: [sessionWorking],
+  deltas: [
+    {
+      kind: 'upsert',
+      session: { ...sessionWorking, state: 'awaiting', stateSinceMs: 0, lastEventMs: 0 },
+    },
+  ],
+  deltaIntervalMs: 600,
+});
+
+export const TransitionAwaitingToIdle = story({
+  sessions: [sessionAwaiting],
+  deltas: [
+    { kind: 'upsert', session: { ...sessionAwaiting, state: 'idle', lastEventMs: 60_000 } },
+  ],
+  deltaIntervalMs: 800,
+});
+
+export const NewSessionArrives = story({
+  sessions: [],
+  deltas: [
+    { kind: 'upsert', session: sessionWorking },
+    { kind: 'upsert', session: sessionAwaiting },
+  ],
+  deltaIntervalMs: 800,
+});
+
+export const SessionEnds = story({
+  sessions: [sessionWorking],
+  deltas: [{ kind: 'remove', sessionId: sessionWorking.sessionId }],
+  deltaIntervalMs: 1000,
+});
