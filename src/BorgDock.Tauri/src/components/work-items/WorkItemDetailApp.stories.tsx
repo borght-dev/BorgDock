@@ -6,8 +6,14 @@ import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';
 import { getControl, type WorkItemScenario } from '../../../.storybook/mocks/control';
 import {
+  bugWithReproSteps,
   canonicalSettings,
+  epicWithCustomFields,
+  itemAssignedToOther,
+  itemNeverModified,
+  taskMinimalFields,
   userStoryFreshlyLoaded,
+  userStoryWithRichBody,
 } from './__fixtures__/work-item-data';
 import { WorkItemDetailApp } from './WorkItemDetailApp';
 
@@ -48,7 +54,9 @@ function applyParamsBeforeMount(params: WorkItemStoryParams) {
   if (params.attachmentBytes) {
     const bytes = params.attachmentBytes;
     AdoClient.prototype.getStream = async function () {
-      return new Blob([bytes]);
+      // Cast through unknown — Uint8Array<ArrayBufferLike> isn't assignable
+      // to BlobPart's ArrayBufferView<ArrayBuffer> in lib.dom 5.6+.
+      return new Blob([bytes as unknown as BlobPart]);
     };
   }
 
@@ -142,4 +150,32 @@ export const NoIdProvided: Story = story({
 
 export const LoadedClean: Story = story({
   scenario: loadedScenario(userStoryFreshlyLoaded),
+});
+
+// ---------------------------------------------------------------------------
+// Item-shape axis
+// ---------------------------------------------------------------------------
+
+export const UserStoryWithRichBody: Story = story({
+  scenario: loadedScenario(userStoryWithRichBody),
+});
+
+export const BugWithReproSteps: Story = story({
+  scenario: loadedScenario(bugWithReproSteps),
+});
+
+export const TaskMinimalFields: Story = story({
+  scenario: loadedScenario(taskMinimalFields),
+});
+
+export const EpicWithCustomFields: Story = story({
+  scenario: loadedScenario(epicWithCustomFields),
+});
+
+export const ItemAssignedToOther: Story = story({
+  scenario: loadedScenario(itemAssignedToOther),
+});
+
+export const ItemNeverModified: Story = story({
+  scenario: loadedScenario(itemNeverModified),
 });
