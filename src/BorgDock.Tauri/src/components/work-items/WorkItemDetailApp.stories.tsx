@@ -12,6 +12,7 @@ import {
   epicWithCustomFields,
   itemAssignedToOther,
   itemNeverModified,
+  itemWithManyAttachments,
   taskMinimalFields,
   userStoryFreshlyLoaded,
   userStoryWithRichBody,
@@ -281,5 +282,49 @@ export const SaveError: Story = {
     const saveButton = await canvas.findByRole('button', { name: /^save$/i });
     await userEvent.click(saveButton);
     await canvas.findByText(/Save failed/);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Attachment axis
+// ---------------------------------------------------------------------------
+
+export const WithAttachments: Story = story({
+  scenario: loadedScenario(itemWithManyAttachments),
+});
+
+export const AttachmentSaveDialogCanceled: Story = {
+  args: {
+    params: {
+      scenario: loadedScenario(itemWithManyAttachments),
+      dialogSaveResponse: null,
+      attachmentBytes: new Uint8Array([0x42, 0x44, 0x4f, 0x43, 0x4b]),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: /attachment-1\.png/i });
+    await userEvent.click(button);
+    // dialogSaveResponse: null → user cancelled the save dialog.
+    // Production code returns early without writing.
+  },
+};
+
+export const AttachmentDownloaded: Story = {
+  args: {
+    params: {
+      scenario: loadedScenario(itemWithManyAttachments),
+      dialogSaveResponse: '/tmp/attachment-1.png',
+      attachmentBytes: new Uint8Array([0x42, 0x44, 0x4f, 0x43, 0x4b]),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: /attachment-1\.png/i });
+    await userEvent.click(button);
+    // The bytes from attachmentBytes are written to /tmp/attachment-1.png
+    // in the in-memory pluginFs.writes map.
   },
 };
