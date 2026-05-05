@@ -36,9 +36,9 @@ function applyParamsBeforeMount(params: WorkItemStoryParams) {
   const ctrl = getControl();
 
   // Seed the canned load_settings response.
-  ctrl.invokeResponses['load_settings'] = canonicalSettings();
-  ctrl.invokeResponses['window_ready'] = undefined;
-  ctrl.invokeResponses['ado_resolve_auth_header'] = 'Basic c3Rvcnlib29rOg==';
+  ctrl.invokeResponses.load_settings = canonicalSettings();
+  ctrl.invokeResponses.window_ready = undefined;
+  ctrl.invokeResponses.ado_resolve_auth_header = 'Basic c3Rvcnlib29rOg==';
 
   // Seed the scenario.
   const scenario: WorkItemScenario = {
@@ -55,7 +55,7 @@ function applyParamsBeforeMount(params: WorkItemStoryParams) {
   // Monkeypatch AdoClient.getStream for attachment-download stories.
   if (params.attachmentBytes) {
     const bytes = params.attachmentBytes;
-    AdoClient.prototype.getStream = async function () {
+    AdoClient.prototype.getStream = async () => {
       // Cast through unknown — Uint8Array<ArrayBufferLike> isn't assignable
       // to BlobPart's ArrayBufferView<ArrayBuffer> in lib.dom 5.6+.
       return new Blob([bytes as unknown as BlobPart]);
@@ -74,7 +74,7 @@ function applyParamsBeforeMount(params: WorkItemStoryParams) {
   window.history.replaceState({}, '', url);
 }
 
-function restoreAfterMount(_params: WorkItemStoryParams) {
+function restoreAfterMount() {
   // Restore prototype patches if any. Always safe to assign back —
   // we kept the original ref at module load.
   AdoClient.prototype.getStream = ORIGINAL_GET_STREAM;
@@ -86,9 +86,7 @@ function WorkItemDetailHarness({ params }: { params: WorkItemStoryParams }) {
   applyParamsBeforeMount(params);
 
   useEffect(() => {
-    return () => restoreAfterMount(params);
-    // The harness lives for the lifetime of the story — restore once on unmount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => restoreAfterMount();
   }, []);
 
   return (
@@ -328,3 +326,51 @@ export const AttachmentDownloaded: Story = {
     // in the in-memory pluginFs.writes map.
   },
 };
+
+// ---------------------------------------------------------------------------
+// Window-chrome / interaction axis
+// ---------------------------------------------------------------------------
+
+export const DeleteAction: Story = {
+  args: {
+    params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const deleteButton = await canvas.findByRole('button', { name: /^delete$/i });
+    await userEvent.click(deleteButton);
+    // The mocked workitems.deleteWorkItem succeeds; window.close is a
+    // no-op; the iframe survives.
+  },
+};
+
+export const OpenInBrowserClicked: Story = {
+  args: {
+    params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: /open in browser/i });
+    await userEvent.click(button);
+  },
+};
+
+export const CloseButtonClicked: Story = {
+  args: {
+    params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    // The header has a Close icon button (aria-label: "Close"). Match by
+    // tooltip / accessible-name "Close".
+    const closeButton = await canvas.findByRole('button', { name: /^close$/i });
+    await userEvent.click(closeButton);
+  },
+};
+
+export const TitleSetOnLoad: Story = story({
+  scenario: loadedScenario(userStoryFreshlyLoaded),
+});
