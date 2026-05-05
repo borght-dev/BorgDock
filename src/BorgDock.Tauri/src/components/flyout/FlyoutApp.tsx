@@ -233,6 +233,22 @@ export function FlyoutApp() {
               await openUrl(url);
             }
             break;
+          case 'focus-pane':
+            if (toast.sessionId) {
+              const { invoke } = await import('@tauri-apps/api/core');
+              const ok = await invoke<boolean>('focus_session_pane', {
+                sessionId: toast.sessionId,
+              });
+              if (!ok) {
+                const { sendOsNotification } = await import('@/services/notification');
+                void sendOsNotification({
+                  title: 'No terminal window',
+                  body: "Couldn't find a terminal window for this session.",
+                  severity: 'info',
+                }).catch(() => {});
+              }
+            }
+            break;
         }
       } catch (err) {
         log.error('toast action failed', err);

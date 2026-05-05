@@ -148,17 +148,22 @@ function FlyoutToastCard({ toast, onHoverEnter, onHoverLeave, onDismiss, onActio
   }, [onHoverLeave]);
 
   const hasPrContext = !!(toast.prOwner && toast.prRepo && toast.prNumber);
+  const hasSessionContext = !!toast.sessionId;
+  const isClickable = hasPrContext || hasSessionContext;
   const handleCardClick = useCallback(() => {
-    if (!hasPrContext) return;
-    onActionClick('open-pr');
-  }, [hasPrContext, onActionClick]);
+    if (hasPrContext) {
+      onActionClick('open-pr');
+    } else if (hasSessionContext) {
+      onActionClick('focus-pane');
+    }
+  }, [hasPrContext, hasSessionContext, onActionClick]);
 
   return (
     <div
       data-toast=""
       data-testid={`flyout-toast-card-${toast.id}`}
       data-notification-severity={toast.severity}
-      className={clsx('relative', isMerged ? 'w-[400px]' : 'w-[380px]', hasPrContext && 'cursor-pointer')}
+      className={clsx('relative', isMerged ? 'w-[400px]' : 'w-[380px]', isClickable && 'cursor-pointer')}
       style={{
         animation:
           phase === 'enter' || phase === 'visible'

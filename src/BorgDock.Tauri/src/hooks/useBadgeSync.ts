@@ -317,7 +317,7 @@ export function useBadgeSync() {
           sinceMs: number;
           escalation: boolean;
         }>('agent-notify', (event) => {
-          const { repo, worktree, sinceMs, escalation } = event.payload;
+          const { sessionId, repo, worktree, sinceMs, escalation } = event.payload;
           const since = Math.max(1, Math.round(sinceMs / 1000));
           const title = escalation ? 'Claude still waiting' : 'Claude needs your input';
           const body = `${repo}/${worktree} has been waiting ${since}s for your response.`;
@@ -325,6 +325,8 @@ export function useBadgeSync() {
             title,
             body,
             severity: escalation ? 'warning' : 'info',
+            sessionId,
+            actions: [{ label: 'Focus pane', action: 'focus-pane' }],
           }).catch(() => {});
         });
         if (cancelled) {
