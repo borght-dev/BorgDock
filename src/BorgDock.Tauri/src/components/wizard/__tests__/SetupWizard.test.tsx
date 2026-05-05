@@ -173,8 +173,12 @@ describe('SetupWizard', () => {
     });
     fireEvent.click(screen.getByText('Next'));
 
+    // Wait for both the Repos step heading AND the discovered repo row —
+    // discover_repos resolves async, and clicking Next before it lands hits
+    // a disabled button on slow CI runners.
     await waitFor(() => {
       expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText('Next'));
@@ -198,8 +202,12 @@ describe('SetupWizard', () => {
     });
     fireEvent.click(screen.getByText('Next'));
 
+    // Wait for both the Repos step heading AND the discovered repo row —
+    // discover_repos resolves async, and clicking Next before it lands hits
+    // a disabled button on slow CI runners.
     await waitFor(() => {
       expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText('Next'));
@@ -325,8 +333,12 @@ describe('SetupWizard', () => {
     });
     fireEvent.click(screen.getByText('Next'));
 
+    // Wait for both the Repos step heading AND the discovered repo row —
+    // discover_repos resolves async, and clicking Next before it lands hits
+    // a disabled button on slow CI runners.
     await waitFor(() => {
       expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     // Go to Appearance step
@@ -448,8 +460,12 @@ describe('SetupWizard', () => {
     });
     fireEvent.click(screen.getByText('Next'));
 
+    // Wait for both the Repos step heading AND the discovered repo row —
+    // discover_repos resolves async, and clicking Next before it lands hits
+    // a disabled button on slow CI runners.
     await waitFor(() => {
       expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText('Next'));
