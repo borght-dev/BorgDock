@@ -144,3 +144,41 @@ export const OneAwaiting = story({
 export const OneIdle = story({
   sessions: [sessionIdle],
 });
+
+// ---------------------------------------------------------------------------
+// State-coverage axis
+// ---------------------------------------------------------------------------
+
+export const AllStates = story({
+  sessions: allStates,
+});
+
+export const AllStatesByStatus: Story = {
+  args: { params: { sessions: allStates } },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const select = await canvas.findByLabelText('Grouping');
+    await userEvent.selectOptions(select, 'status');
+  },
+};
+
+export const AllStatesByContext: Story = {
+  args: { params: { sessions: multiRepoMixed } },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const select = await canvas.findByLabelText('Grouping');
+    await userEvent.selectOptions(select, 'context');
+  },
+};
+
+export const AllStatesByActivity: Story = {
+  args: { params: { sessions: multiRepoMixed } },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const select = await canvas.findByLabelText('Grouping');
+    await userEvent.selectOptions(select, 'activity');
+  },
+};
