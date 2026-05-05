@@ -8,11 +8,15 @@ import { WhatsNewApp } from './WhatsNewApp';
 import {
   dateSpreadHistory,
   deepHistory,
+  noReleases,
+  oneRelease,
   releaseEmptySummary,
   releaseFewFixes,
+  releaseLongDate,
   releaseLongFixList,
   releaseLongHighlight,
   releaseLongMixed,
+  releaseLongVersion,
   releaseManyHighlights,
   releaseNoFixes,
   releaseNoHighlights,
@@ -333,3 +337,44 @@ export const GotItButtonClickable: Story = {
     // the iframe stays alive.
   },
 };
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+export const NoReleasesShipped = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: null, autoOpenDisabled: false },
+  },
+  appVersion: '0.0.0',
+  releasesOverride: noReleases,
+});
+
+export const OnlyOneReleaseShipped = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: null, autoOpenDisabled: false },
+  },
+  appVersion: '1.0.0',
+  releasesOverride: oneRelease,
+});
+
+export const LongVersionString = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.0.0', autoOpenDisabled: false },
+  },
+  appVersion: releaseLongVersion.version,
+  releasesOverride: shapeStoryHistory(releaseLongVersion),
+});
+
+export const LongDateFormat = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.0.0', autoOpenDisabled: false },
+  },
+  appVersion: releaseLongDate.version,
+  releasesOverride: shapeStoryHistory(releaseLongDate),
+});
+
+export const StoreHydrationFailed = story({
+  storeBehavior: 'reject',
+  appVersion: '1.2.0',
+});
