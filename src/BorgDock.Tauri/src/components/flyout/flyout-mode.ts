@@ -3,7 +3,7 @@ export const TOAST_AUTOHIDE_MS = 7000;
 
 export interface ToastAction {
   label: string;
-  action: 'open-pr' | 'fix-pr' | 'monitor-pr' | 'open-url' | 'merge-pr' | 'start-review';
+  action: 'open-pr' | 'fix-pr' | 'monitor-pr' | 'open-url' | 'merge-pr' | 'start-review' | 'focus-pane';
   url?: string;
 }
 
@@ -17,6 +17,7 @@ export interface ToastPayload {
   prOwner?: string;
   prRepo?: string;
   prNumber?: number;
+  sessionId?: string;
   actions: ToastAction[];
 }
 

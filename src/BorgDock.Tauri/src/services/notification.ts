@@ -259,6 +259,7 @@ export interface OsNotificationOptions {
   prOwner?: string;
   prRepo?: string;
   prNumber?: number;
+  sessionId?: string;
   actions?: { label: string; action: string; url?: string }[];
 }
 
@@ -297,6 +298,7 @@ export async function sendOsNotification(options: OsNotificationOptions): Promis
     prOwner: options.prOwner,
     prRepo: options.prRepo,
     prNumber: options.prNumber,
+    sessionId: options.sessionId,
     actions: options.actions ?? [],
   };
   if (severity === 'merged') {
