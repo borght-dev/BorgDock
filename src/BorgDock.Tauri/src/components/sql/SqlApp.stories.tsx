@@ -14,6 +14,7 @@ import {
   makeSettings,
   resultMultiSet,
   resultSmallSelect,
+  resultTruncated,
   resultUpdate,
   sampleSelectQuery,
   schemaSmall,
@@ -314,6 +315,66 @@ export const ResultMultiSet: Story = {
       cachedSchema: schemaSmall,
       initialQuery: 'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
       executeResponse: resultMultiSet,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// 5. Error / panic axis
+// ---------------------------------------------------------------------------
+
+export const ResultError: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT * FROM dbo.SomeTable;',
+      executeResponse: () => Promise.reject(new Error("Login failed for user 'sa'.")),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultPanicRecovered: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT * FROM sys.geometries;',
+      executeResponse: () =>
+        Promise.reject(
+          new Error(
+            'Internal error: the query result contains an unsupported column type. Try selecting specific columns instead of *.',
+          ),
+        ),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultTruncated: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT * FROM dbo.Product;',
+      executeResponse: resultTruncated,
     },
   },
   play: async ({ canvasElement }) => {
