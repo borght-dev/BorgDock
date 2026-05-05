@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef } from 'react';
 import { Kbd } from '@/components/shared/primitives';
 import type { ParsedQuery } from './parse-query';
@@ -24,7 +23,6 @@ export function FilePaletteSearchPane({
   useEffect(() => {
     const id = window.setTimeout(() => {
       inputRef.current?.focus();
-      invoke('palette_ready').catch(() => {});
     }, 40);
     return () => window.clearTimeout(id);
   }, []);

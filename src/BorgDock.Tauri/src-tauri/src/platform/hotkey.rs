@@ -1,7 +1,24 @@
 use std::sync::Mutex;
 use tauri::webview::WebviewWindowBuilder;
-use tauri::Manager;
+use tauri::{Emitter, Manager, WebviewWindow};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+/// Toggle a palette window: hide if currently visible, otherwise show +
+/// focus + emit `palette-shown` so the React side can refocus its input
+/// and reset transient state. Replaces the previous `win.close()` toggle,
+/// which destroyed the HWND and caused in-flight `invoke()` responses to
+/// `PostMessage` to a dead handle (0x80070578 flood in stderr). Keeping
+/// the WebView2 alive across opens also makes subsequent shows instant —
+/// no re-mount, no re-fetch of cached data.
+fn toggle_palette_visibility(win: &WebviewWindow) {
+    if win.is_visible().unwrap_or(false) {
+        let _ = win.hide();
+    } else {
+        let _ = win.show();
+        let _ = win.set_focus();
+        let _ = win.emit("palette-shown", ());
+    }
+}
 
 /// Currently-registered sidebar toggle shortcut (user-configurable via
 /// settings). Tracked so a later `register_user_hotkeys` call can unregister
@@ -32,7 +49,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
             let app_cb = app_palette.clone();
             let _ = app_palette.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("work-item-palette") {
-                    let _ = win.close();
+                    toggle_palette_visibility(&win);
                     return;
                 }
                 let _ = WebviewWindowBuilder::new(
@@ -47,10 +64,13 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                 .resizable(false)
                 .skip_taskbar(true)
                 .center()
+                .visible(false)
                 .focused(true)
                 .build();
-                // The palette's frontend calls `palette_ready` once its DOM
-                // is mounted to re-assert OS focus on the main thread. No
+                // The palette's frontend calls `window_ready` once its DOM is
+                // mounted; that command shows the window and re-asserts OS
+                // focus on the main thread. Building invisible avoids a flash
+                // of the unstyled default chrome before React paints. No
                 // background-thread focus kick — that pattern violated
                 // Windows' thread affinity for focus APIs and, combined
                 // with a JS-side retry loop, saturated WebView2's
@@ -69,7 +89,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
             let app_cb = app_worktree.clone();
             let _ = app_worktree.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("worktree-palette") {
-                    let _ = win.close();
+                    toggle_palette_visibility(&win);
                     return;
                 }
                 let _ = WebviewWindowBuilder::new(
@@ -84,6 +104,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                 .resizable(false)
                 .skip_taskbar(true)
                 .center()
+                .visible(false)
                 .focused(true)
                 .build();
             });
@@ -101,7 +122,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
             let app_cb = app_file_palette.clone();
             let _ = app_file_palette.run_on_main_thread(move || {
                 if let Some(win) = app_cb.get_webview_window("file-palette") {
-                    let _ = win.close();
+                    toggle_palette_visibility(&win);
                     return;
                 }
                 let _ = WebviewWindowBuilder::new(
@@ -117,6 +138,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                 .resizable(true)
                 .skip_taskbar(true)
                 .center()
+                .visible(false)
                 .focused(true)
                 .build();
             });
@@ -172,6 +194,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                 .decorations(false)
                 .resizable(true)
                 .center()
+                .visible(false)
                 .focused(true)
                 .build();
             });

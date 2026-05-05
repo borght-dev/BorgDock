@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings } from '@/types/settings';
@@ -50,6 +51,17 @@ export function FilePaletteApp() {
     parsed.mode === 'content' ? activeRoot : null,
     parsed.mode === 'content' ? parsed.query : '',
   );
+
+  // Reveal the (invisible-built) window once React has painted, so the user
+  // never sees an unstyled default-size flash.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current) return;
+    revealedRef.current = true;
+    requestAnimationFrame(() => {
+      void invoke('window_ready').catch(() => {});
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -240,6 +252,23 @@ export function FilePaletteApp() {
     };
   }, []);
 
+  // The window is hidden (not destroyed) on Escape, so on each re-show the
+  // Rust toggle emits `palette-shown`. Reset query + selection, refresh,
+  // and refocus the search input (owned by FilePaletteSearchPane).
+  useEffect(() => {
+    const unlisten = listen('palette-shown', () => {
+      setQuery('');
+      setSelectedIndex(0);
+      setRefreshTick((n) => n + 1);
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLInputElement>('.bd-fp-search-input')?.focus(),
+      );
+    });
+    return () => {
+      unlisten.then((fn) => fn()).catch(() => {});
+    };
+  }, []);
+
   const toggleFavoritesOnly = useCallback(async () => {
     const next = !favoritesOnly;
     setFavoritesOnly(next);
@@ -389,7 +418,9 @@ export function FilePaletteApp() {
       if (e.key === 'Escape') {
         e.preventDefault();
         if (query) setQuery('');
-        else getCurrentWindow().close();
+        // Hide rather than close: keeps the WebView2 alive across opens so
+        // in-flight IPC responses don't PostMessage to a dead HWND.
+        else getCurrentWindow().hide();
         return;
       }
       if (e.key === 'ArrowDown') {

@@ -324,11 +324,16 @@ export function useWorkItemPaletteSearch() {
           resizable: true,
           focus: true,
           skipTaskbar: true,
+          // Build invisible — the WorkItemDetailApp calls `window_ready`
+          // once mounted to avoid a flash of unstyled chrome.
+          visible: false,
         });
       } catch (err) {
         console.error('Failed to open detail window:', err);
       }
-      getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
+      // Hide rather than close — the WebView2 stays alive across opens so
+      // in-flight ADO/IPC responses don't PostMessage to a dead HWND.
+      getCurrentWindow().hide().catch(console.debug); /* fire-and-forget */
     },
     [recentIds],
   );

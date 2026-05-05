@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize } from '@tauri-apps/api/dpi';
+import { listen } from '@tauri-apps/api/event';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -301,18 +302,35 @@ export function WorktreePaletteApp() {
     loadWorktrees();
   }, [loadWorktrees]);
 
-  // Auto-focus search after load. `invoke('palette_ready')` re-asserts
-  // OS-level focus on the main thread — the hotkey handler creates the
-  // window with `.focused(true)` but Windows' foreground-lock rules can
-  // leave it focus-less on creation.
+  // The window is hidden (not destroyed) on Escape / close button, so on
+  // each re-show the Rust toggle emits `palette-shown`. Reset query +
+  // selection, refresh worktree data, and refocus the input.
   useEffect(() => {
-    if (!loading) {
-      const id = window.setTimeout(() => {
-        searchRef.current?.focus();
-        invoke('palette_ready').catch(() => {});
-      }, 50);
-      return () => window.clearTimeout(id);
-    }
+    const unlisten = listen('palette-shown', () => {
+      setQuery('');
+      setSelectedIndex(0);
+      setRefreshing(true);
+      loadWorktrees();
+      requestAnimationFrame(() => searchRef.current?.focus());
+    });
+    return () => {
+      unlisten.then((fn) => fn()).catch(() => {});
+    };
+  }, [loadWorktrees]);
+
+  // Reveal the (invisible-built) window once data has loaded and React has
+  // painted, then focus the search input. `window_ready` shows the window
+  // and re-asserts OS focus on the main thread — the hotkey handler builds
+  // it `.visible(false)` to avoid a flash of unstyled chrome.
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (loading || revealedRef.current) return;
+    revealedRef.current = true;
+    const id = window.setTimeout(() => {
+      searchRef.current?.focus();
+      invoke('window_ready').catch(() => {});
+    }, 50);
+    return () => window.clearTimeout(id);
   }, [loading]);
 
   // Auto-resize window to fit the worktree list, capped at the monitor height.
@@ -511,7 +529,9 @@ export function WorktreePaletteApp() {
           if (query) {
             setQuery('');
           } else {
-            getCurrentWindow().close();
+            // Hide rather than close: the WebView2 stays alive across opens
+            // so in-flight IPC responses don't PostMessage a dead HWND.
+            getCurrentWindow().hide();
           }
           break;
       }
@@ -589,7 +609,7 @@ export function WorktreePaletteApp() {
           <IconButton
             size={26}
             tooltip="Close (Esc)"
-            onClick={() => getCurrentWindow().close()}
+            onClick={() => getCurrentWindow().hide()}
             icon={
               <svg
                 width="13"

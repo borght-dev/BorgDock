@@ -40,7 +40,7 @@ describe('FilePaletteApp', () => {
       if (cmd === 'save_settings') return Promise.resolve(null);
       if (cmd === 'read_text_file') return Promise.resolve('// preview stub');
       if (cmd === 'git_changed_files') return Promise.resolve({ local: [], vsBase: [], baseRef: '', inRepo: false });
-      if (cmd === 'palette_ready') return Promise.resolve(null);
+      if (cmd === 'window_ready') return Promise.resolve(null);
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
     const { open } = await import('@tauri-apps/plugin-dialog');

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
 import { WorkItemPaletteRow } from '@/components/work-item-palette/WorkItemPaletteRow';
@@ -26,10 +27,9 @@ export function WorkItemPaletteApp() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Focus input on mount. One paint after mount the input is in the DOM,
-  // so a single .focus() is enough. `invoke('palette_ready')` re-asserts
-  // OS-level focus on the main thread (Windows' foreground-lock rules
-  // sometimes leave a newly-created WebView2 window focus-less).
+  // Reveal the (invisible-built) window once React has painted, focus the
+  // search input, and re-assert OS focus on the main thread. The window is
+  // built `.visible(false)` so the user never sees an unstyled flash.
   //
   // A previous implementation polled setFocus every 50ms × 30 attempts,
   // which combined with a Rust-side std::thread::spawn + sleep(200ms) +
@@ -38,22 +38,39 @@ export function WorkItemPaletteApp() {
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       inputRef.current?.focus();
-      invoke('palette_ready').catch(() => {});
+      invoke('window_ready').catch(() => {});
     });
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // Global keydown for Escape
+  // Global keydown for Escape — hide rather than close so any in-flight
+  // `invoke()` responses still have a live HWND to PostMessage back to.
+  // Closing destroys the window mid-IPC and floods stderr with
+  // "PostMessage failed ; is the messages queue full? Error 0x80070578".
   useEffect(() => {
     function handleGlobalKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
+        getCurrentWindow().hide().catch(console.debug); /* fire-and-forget */
       }
     }
     document.addEventListener('keydown', handleGlobalKey);
     return () => document.removeEventListener('keydown', handleGlobalKey);
   }, []);
+
+  // The window is hidden (not destroyed) on Escape / select, so on each
+  // re-show the Rust toggle emits `palette-shown`. Reset transient state
+  // and refocus the input so every open feels like a fresh palette.
+  useEffect(() => {
+    const unlisten = listen('palette-shown', () => {
+      setSearchText('');
+      setSelectedIndex(-1);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    });
+    return () => {
+      unlisten.then((fn) => fn()).catch(() => {});
+    };
+  }, [setSearchText, setSelectedIndex]);
 
   // Scroll selected item into view
   useEffect(() => {
