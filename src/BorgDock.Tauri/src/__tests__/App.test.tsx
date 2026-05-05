@@ -116,10 +116,6 @@ vi.mock('@/components/layout/Sidebar', () => ({
   ),
 }));
 
-vi.mock('@/components/notifications/NotificationOverlay', () => ({
-  NotificationOverlay: () => <div data-testid="notification-overlay" />,
-}));
-
 vi.mock('@/components/focus', () => ({
   FocusList: () => <div data-testid="focus-list" />,
   MergeToast: () => <div data-testid="merge-toast" />,
@@ -286,7 +282,6 @@ describe('App', () => {
 
     render(<App />);
     expect(screen.getByTestId('sidebar')).toBeTruthy();
-    expect(screen.getByTestId('notification-overlay')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
   });
 

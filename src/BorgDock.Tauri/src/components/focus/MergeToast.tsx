@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pill } from '@/components/shared/primitives';
+import { sendOsNotification } from '@/services/notification';
 import { mergePr } from '@/services/pr-actions';
-import { useNotificationStore } from '@/stores/notification-store';
 import { parseError } from '@/utils/parse-error';
 
 interface MergeRequest {
@@ -34,13 +34,13 @@ export function MergeToast() {
         method: 'squash',
         // Custom error title — focus mode dispatches without a card visible,
         // so the toast needs to identify which PR failed.
-        onError: (_title, err) =>
-          useNotificationStore.getState().show({
+        onError: (_title, err) => {
+          void sendOsNotification({
             title: `Failed to merge PR #${req.prNumber}`,
-            message: parseError(err).message,
+            body: parseError(err).message,
             severity: 'error',
-            actions: [],
-          }),
+          }).catch(() => {});
+        },
       },
     );
     setToasts((prev) => prev.filter((t) => t.id !== req.id));

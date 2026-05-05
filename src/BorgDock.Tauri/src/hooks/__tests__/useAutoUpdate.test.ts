@@ -21,12 +21,14 @@ vi.mock('@tauri-apps/api/app', () => ({
 // Use real zustand stores but reset them between tests
 import { useUpdateStore } from '@/stores/update-store';
 
-const mockNotificationShow = vi.fn();
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: {
-    getState: () => ({ show: mockNotificationShow }),
-  },
+const { mockNotificationShow } = vi.hoisted(() => ({
+  mockNotificationShow: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('@/services/notification', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/services/notification')>('@/services/notification');
+  return { ...actual, sendOsNotification: mockNotificationShow };
+});
 
 import { useAutoUpdate } from '../useAutoUpdate';
 

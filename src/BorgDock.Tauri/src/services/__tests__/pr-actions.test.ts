@@ -10,7 +10,9 @@ const mockRerunWorkflow = vi.fn();
 const mockOpenUrl = vi.fn();
 const mockInvoke = vi.fn();
 const mockCelebrate = vi.fn();
-const mockShow = vi.fn();
+const { mockShow } = vi.hoisted(() => ({
+  mockShow: vi.fn().mockResolvedValue(undefined),
+}));
 const mockRefreshPr = vi.fn();
 
 vi.mock('@/services/github/mutations', () => ({
@@ -40,8 +42,8 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: { getState: () => ({ show: mockShow }) },
+vi.mock('@/services/notification', () => ({
+  sendOsNotification: mockShow,
 }));
 
 vi.mock('@/stores/pr-store', () => ({
@@ -83,7 +85,7 @@ beforeEach(() => {
   mockOpenUrl.mockReset().mockResolvedValue(undefined);
   mockInvoke.mockReset().mockResolvedValue(undefined);
   mockCelebrate.mockReset();
-  mockShow.mockReset();
+  mockShow.mockReset().mockResolvedValue(undefined);
   mockRefreshPr.mockReset();
   mockRepos = [];
 });

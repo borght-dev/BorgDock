@@ -36,10 +36,10 @@ if (typeof window !== 'undefined') {
   Element.prototype.scrollIntoView = Element.prototype.scrollIntoView || (() => {});
 }
 
-// Polyfill ResizeObserver for jsdom — components like NotificationOverlay
-// observe layout to do measure-and-trim of toast bubbles, but jsdom doesn't
-// implement it. The polyfill is a no-op (callbacks never fire) which is
-// fine for unit tests that don't exercise real layout.
+// Polyfill ResizeObserver for jsdom — some components observe layout
+// (e.g. flyout toast queue sizing), but jsdom doesn't implement it.
+// The polyfill is a no-op (callbacks never fire) which is fine for unit
+// tests that don't exercise real layout.
 if (typeof globalThis !== 'undefined' && typeof (globalThis as { ResizeObserver?: unknown }).ResizeObserver === 'undefined') {
   class ResizeObserverPolyfill {
     observe(): void {}

@@ -262,6 +262,25 @@ export interface OsNotificationOptions {
   actions?: { label: string; action: string; url?: string }[];
 }
 
+/** Map a built `InAppNotification` (the legacy in-app overlay shape) to the
+ *  OS-notification payload. Action URLs default to the `open-url` routing in
+ *  FlyoutApp's handleToastAction; PR context comes from repoFullName/prNumber.
+ */
+export function inAppToOsOptions(
+  n: import('@/types').InAppNotification,
+): OsNotificationOptions {
+  const [prOwner, prRepo] = n.repoFullName?.split('/') ?? [undefined, undefined];
+  return {
+    title: n.title,
+    body: n.message,
+    severity: n.severity,
+    prOwner,
+    prRepo,
+    prNumber: n.prNumber,
+    actions: n.actions.map((a) => ({ label: a.label, action: 'open-url', url: a.url })),
+  };
+}
+
 export async function sendOsNotification(options: OsNotificationOptions): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   const severity = options.severity ?? 'info';

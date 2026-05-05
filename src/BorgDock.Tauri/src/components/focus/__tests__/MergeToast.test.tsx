@@ -3,16 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MergeToast } from '../MergeToast';
 
 const mockMergePr = vi.fn().mockResolvedValue(true);
-const mockNotificationShow = vi.fn();
+const { mockNotificationShow } = vi.hoisted(() => ({
+  mockNotificationShow: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('@/services/pr-actions', () => ({
   mergePr: (...args: unknown[]) => mockMergePr(...args),
 }));
 
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: {
-    getState: () => ({ show: mockNotificationShow }),
-  },
+vi.mock('@/services/notification', () => ({
+  sendOsNotification: mockNotificationShow,
 }));
 
 afterEach(cleanup);

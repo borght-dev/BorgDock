@@ -11,12 +11,12 @@
  *   - `window.__borgdock_test_seed(payload)` — writes fixtures into the
  *     pr-store, work-items-store, and settings-store. Partial payloads
  *     only touch the stores named in the payload.
- *   - `window.__borgdock_test_toast(args)` — dispatches a toast through
- *     the real notification-store action so the motion spec exercises the
+ *   - `window.__borgdock_test_toast(args)` — dispatches an OS-level
+ *     toast via `sendOsNotification` so the motion spec exercises the
  *     same rendering path as production notifications.
  */
 
-import { useNotificationStore } from '@/stores/notification-store';
+import { sendOsNotification } from '@/services/notification';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -88,14 +88,13 @@ export function installTestSeed({ isDev }: { isDev: boolean }): void {
   };
 
   // External param is `kind` to keep the test-API surface stable; maps 1:1
-  // to the notification store's `severity` field.
+  // to the OS notification's `severity` field.
   window.__borgdock_test_toast = (args: TestToastArgs) => {
-    useNotificationStore.getState().show({
+    void sendOsNotification({
       title: args.title,
-      message: args.message ?? '',
+      body: args.message ?? '',
       severity: args.kind,
-      actions: [],
-    });
+    }).catch(() => {});
   };
 
   window.__borgdock_test_start_quick_review = (count = 3) => {

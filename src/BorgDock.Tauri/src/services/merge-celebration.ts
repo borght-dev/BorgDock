@@ -1,4 +1,4 @@
-import { useNotificationStore } from '@/stores/notification-store';
+import { sendOsNotification } from '@/services/notification';
 import { useSettingsStore } from '@/stores/settings-store';
 
 export interface CelebratablePr {
@@ -71,15 +71,16 @@ export function playMergeSoundIfEnabled(): void {
 export function celebrateMerge(pr: CelebratablePr): void {
   markCelebrated(pr);
 
-  useNotificationStore.getState().show({
+  // sendOsNotification fires the tada sound itself for severity 'merged'
+  // (gated by the playMergeSound setting), so we don't call
+  // playMergeSoundIfEnabled here — calling both would double-play.
+  void sendOsNotification({
     title: `🎉 PR #${pr.number} merged!`,
-    message: `${pr.title} — ${pr.repoOwner}/${pr.repoName}`,
+    body: `${pr.title} — ${pr.repoOwner}/${pr.repoName}`,
     severity: 'merged',
-    launchUrl: pr.htmlUrl,
+    prOwner: pr.repoOwner,
+    prRepo: pr.repoName,
     prNumber: pr.number,
-    repoFullName: `${pr.repoOwner}/${pr.repoName}`,
-    actions: [{ label: 'View on GitHub', url: pr.htmlUrl }],
-  });
-
-  playMergeSoundIfEnabled();
+    actions: [{ label: 'View on GitHub', action: 'open-url', url: pr.htmlUrl }],
+  }).catch(() => {});
 }

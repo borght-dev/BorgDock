@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockShow = vi.fn();
+const { mockInvoke } = vi.hoisted(() => ({
+  mockInvoke: vi.fn().mockResolvedValue(undefined),
+}));
 const mockSettings = {
   notifications: {
     playMergeSound: true,
@@ -16,8 +18,8 @@ const mockSettings = {
   },
 };
 
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: { getState: () => ({ show: mockShow }) },
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: mockInvoke,
 }));
 
 vi.mock('@/stores/settings-store', () => ({
@@ -37,7 +39,7 @@ class MockAudio {
   }
 }
 beforeEach(() => {
-  mockShow.mockClear();
+  mockInvoke.mockClear();
   mockPlay.mockClear();
   mockSettings.notifications.playMergeSound = true;
   vi.stubGlobal('Audio', MockAudio);
@@ -58,27 +60,39 @@ const samplePr = {
   htmlUrl: 'https://github.com/owner/repo/pull/42',
 };
 
+// celebrateMerge fires the OS notification synchronously (the invoke is awaited
+// inside a fire-and-forget promise) — assertions need a microtask to flush
+// before the call shows up in `mockInvoke.mock.calls`.
+async function flushMicrotasks(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('celebrateMerge', () => {
-  it('fires a merged-severity notification with the correct shape', async () => {
+  it('fires a merged-severity OS notification with the correct shape', async () => {
     const { celebrateMerge } = await import('../merge-celebration');
     celebrateMerge(samplePr);
-    expect(mockShow).toHaveBeenCalledTimes(1);
-    expect(mockShow).toHaveBeenCalledWith(
-      expect.objectContaining({
+    await flushMicrotasks();
+    const showCalls = mockInvoke.mock.calls.filter((c) => c[0] === 'show_flyout_toast');
+    expect(showCalls).toHaveLength(1);
+    expect(showCalls[0]![1]).toMatchObject({
+      payload: expect.objectContaining({
         title: '🎉 PR #42 merged!',
-        message: 'Add feature X — owner/repo',
+        body: 'Add feature X — owner/repo',
         severity: 'merged',
-        launchUrl: 'https://github.com/owner/repo/pull/42',
+        prOwner: 'owner',
+        prRepo: 'repo',
         prNumber: 42,
-        repoFullName: 'owner/repo',
-        actions: [{ label: 'View on GitHub', url: 'https://github.com/owner/repo/pull/42' }],
+        actions: [
+          { label: 'View on GitHub', action: 'open-url', url: 'https://github.com/owner/repo/pull/42' },
+        ],
       }),
-    );
+    });
   });
 
   it('plays the tada sound when playMergeSound is true', async () => {
     const { celebrateMerge } = await import('../merge-celebration');
     celebrateMerge(samplePr);
+    await flushMicrotasks();
     expect(mockPlay).toHaveBeenCalledTimes(1);
   });
 
@@ -86,7 +100,7 @@ describe('celebrateMerge', () => {
     mockSettings.notifications.playMergeSound = false;
     const { celebrateMerge } = await import('../merge-celebration');
     celebrateMerge(samplePr);
-    expect(mockShow).toHaveBeenCalledTimes(1);
+    await flushMicrotasks();
     expect(mockPlay).not.toHaveBeenCalled();
   });
 
@@ -94,7 +108,9 @@ describe('celebrateMerge', () => {
     mockPlay.mockRejectedValueOnce(new Error('autoplay blocked'));
     const { celebrateMerge } = await import('../merge-celebration');
     expect(() => celebrateMerge(samplePr)).not.toThrow();
-    expect(mockShow).toHaveBeenCalledTimes(1);
+    await flushMicrotasks();
+    const showCalls = mockInvoke.mock.calls.filter((c) => c[0] === 'show_flyout_toast');
+    expect(showCalls).toHaveLength(1);
   });
 
   it('swallows Audio constructor errors so a throwing constructor does not block the toast', async () => {
@@ -103,7 +119,9 @@ describe('celebrateMerge', () => {
     });
     const { celebrateMerge } = await import('../merge-celebration');
     expect(() => celebrateMerge(samplePr)).not.toThrow();
-    expect(mockShow).toHaveBeenCalledTimes(1);
+    await flushMicrotasks();
+    const showCalls = mockInvoke.mock.calls.filter((c) => c[0] === 'show_flyout_toast');
+    expect(showCalls).toHaveLength(1);
   });
 });
 

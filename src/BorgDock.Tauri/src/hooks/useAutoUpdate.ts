@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useCallback, useEffect, useRef } from 'react';
-import { useNotificationStore } from '@/stores/notification-store';
+import { sendOsNotification } from '@/services/notification';
 import { useUpdateStore } from '@/stores/update-store';
 import type { AppSettings } from '@/types';
 
@@ -66,12 +66,11 @@ export function useAutoUpdate(settings: AppSettings) {
       await invoke('download_and_install_update');
       unlisten();
 
-      useNotificationStore.getState().show({
+      void sendOsNotification({
         title: 'Update ready',
-        message: 'Restart BorgDock to apply the update.',
+        body: 'Restart BorgDock to apply the update.',
         severity: 'success',
-        actions: [],
-      });
+      }).catch(() => {});
     } catch (err) {
       console.error('Update download failed:', err);
       useUpdateStore.getState().setDownloading(false);
@@ -93,12 +92,11 @@ export function useAutoUpdate(settings: AppSettings) {
         useUpdateStore.getState().setAvailable(updateInfo.version);
         useUpdateStore.getState().setStatusText(`Update available: v${updateInfo.version}`);
 
-        useNotificationStore.getState().show({
+        void sendOsNotification({
           title: `Update available: v${updateInfo.version}`,
-          message: 'A new version of BorgDock is available.',
+          body: 'A new version of BorgDock is available.',
           severity: 'info',
-          actions: [],
-        });
+        }).catch(() => {});
 
         if (settings.updates.autoDownload) {
           await downloadAndInstall();

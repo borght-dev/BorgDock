@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { sendOsNotification } from '@/services/notification';
 import {
   checkoutPrBranch,
   mergePr,
@@ -8,7 +9,6 @@ import {
 } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { openPrDetail } from '@/services/windows';
-import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
@@ -58,7 +58,6 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const [resolvedPos, setResolvedPos] = useState(position);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
-  const showNotification = useNotificationStore((s) => s.show);
 
   // Close on click outside
   useEffect(() => {
@@ -119,17 +118,16 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     (action: () => Promise<void>, errorTitle?: string) => {
       return () => {
         action().catch((err) => {
-          showNotification({
+          void sendOsNotification({
             title: errorTitle ?? 'Action failed',
-            message: parseError(err).message,
+            body: parseError(err).message,
             severity: 'error',
-            actions: [],
-          });
+          }).catch(() => {});
         });
         onClose();
       };
     },
-    [onClose, showNotification],
+    [onClose],
   );
 
   const handleOpenInGitHub = handleAction(async () => {

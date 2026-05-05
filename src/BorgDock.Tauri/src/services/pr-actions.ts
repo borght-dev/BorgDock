@@ -11,8 +11,8 @@ import type { MergeMethod } from '@/services/github/repo';
 import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { celebrateMerge } from '@/services/merge-celebration';
+import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
-import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { parseError } from '@/utils/parse-error';
@@ -58,21 +58,19 @@ export interface CheckoutOpts extends ActionOpts {
 const TERMINAL_REFRESH_DELAY_MS = 1500;
 
 function defaultErrorSink(title: string, err: unknown): void {
-  useNotificationStore.getState().show({
+  void sendOsNotification({
     title,
-    message: parseError(err).message,
+    body: parseError(err).message,
     severity: 'error',
-    actions: [],
-  });
+  }).catch(() => {});
 }
 
 function defaultSuccessSink(title: string, message: string): void {
-  useNotificationStore.getState().show({
+  void sendOsNotification({
     title,
-    message,
+    body: message,
     severity: 'success',
-    actions: [],
-  });
+  }).catch(() => {});
 }
 
 function reportError(title: string, err: unknown, opts?: ActionOpts): void {

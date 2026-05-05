@@ -1,29 +1,29 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { SessionRecord } from '@/services/agent-overview-types';
-import { useNotificationStore } from '@/stores/notification-store';
+import { sendOsNotification } from '@/services/notification';
 import { useInspector } from '../InspectorContext';
 
 const SNOOZE_MS = 5 * 60 * 1000;
 
 export function InspectorActions({ session }: { session: SessionRecord }) {
   const inspector = useInspector();
-  const notify = useNotificationStore((s) => s.show);
 
   async function focus() {
     try {
       const ok = await invoke<boolean>('focus_session_pane', { sessionId: session.sessionId });
       if (!ok) {
-        notify({
+        void sendOsNotification({
           title: 'No terminal window',
-          message: "Couldn't find a terminal window for this session.",
-          severity: 'info', actions: [],
-        });
+          body: "Couldn't find a terminal window for this session.",
+          severity: 'info',
+        }).catch(() => {});
       }
     } catch (e) {
-      notify({
+      void sendOsNotification({
         title: 'Focus pane failed',
-        message: String(e), severity: 'warning', actions: [],
-      });
+        body: String(e),
+        severity: 'warning',
+      }).catch(() => {});
     }
   }
 

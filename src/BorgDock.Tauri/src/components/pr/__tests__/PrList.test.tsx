@@ -36,14 +36,6 @@ vi.mock('@/stores/ui-store', () => {
   return { useUiStore: fn };
 });
 
-vi.mock('@/stores/notification-store', () => {
-  const fn = vi.fn();
-  fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({ show: vi.fn() });
-  });
-  return { useNotificationStore: fn };
-});
-
 vi.mock('@/stores/settings-store', () => {
   const fn = vi.fn();
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {

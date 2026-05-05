@@ -6,9 +6,9 @@ import {
   buildPrMergedNotification,
   buildReviewRequestedNotification,
   detectStateTransitions,
+  inAppToOsOptions,
   sendOsNotification,
 } from '@/services/notification';
-import { useNotificationStore } from '@/stores/notification-store';
 import type { AppSettings, InAppNotification, PullRequestWithChecks } from '@/types';
 
 export function useStateTransitions(settings: AppSettings) {
@@ -104,18 +104,7 @@ export function useStateTransitions(settings: AppSettings) {
         }
 
         if (notification) {
-          useNotificationStore.getState().show(notification);
-
-          // The sidebar is now off-screen most of the time (tray-first mode),
-          // so every transition should deliver a flyout toast regardless of
-          // sidebar visibility.
-          sendOsNotification({
-            title: notification.title,
-            body: notification.message,
-            prOwner: notification.repoFullName?.split('/')[0],
-            prRepo: notification.repoFullName?.split('/')[1],
-            prNumber: notification.prNumber,
-          }).catch(() => {});
+          sendOsNotification(inAppToOsOptions(notification)).catch(() => {});
         }
       }
     },

@@ -1,9 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { useNotificationStore } from '@/stores/notification-store';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePrStore } from '@/stores/pr-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { DESIGN_PRS, DESIGN_WORK_ITEMS } from '../../../tests/e2e/fixtures/design-fixtures';
 import { installTestSeed } from '../test-seed';
+
+const { mockSendOs } = vi.hoisted(() => ({
+  mockSendOs: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('@/services/notification', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/services/notification')>('@/services/notification');
+  return { ...actual, sendOsNotification: mockSendOs };
+});
 
 /**
  * Test-seed hook contract:
@@ -15,8 +23,8 @@ import { installTestSeed } from '../test-seed';
  *   Playwright can exercise the production rendering pipeline without IPC.
  *
  * Assertions use the stores' real field names — `pullRequests` (not `prs`)
- * on the pr-store, `workItems` on the work-items-store, and the notification
- * store's existing `show` action via `__borgdock_test_toast`.
+ * on the pr-store, `workItems` on the work-items-store, and `__borgdock_test_toast`
+ * routes through the OS-level `sendOsNotification` (mocked here).
  */
 
 describe('installTestSeed', () => {
@@ -49,13 +57,8 @@ describe('installTestSeed', () => {
       workItems: [],
     });
 
-    // Reset the notification store so toast assertions aren't polluted.
-    useNotificationStore.setState({
-      active: [],
-      queue: [],
-      activeNotification: null,
-      notifications: [],
-    });
+    // Reset the notification mock so toast assertions aren't polluted.
+    mockSendOs.mockClear();
 
     // Clean up any hooks attached by a previous test.
     delete (window as { __borgdock_test_seed?: unknown }).__borgdock_test_seed;
@@ -109,9 +112,13 @@ describe('installTestSeed', () => {
       message: 'Settings updated',
     });
 
-    const notifState = useNotificationStore.getState();
-    expect(notifState.active).toHaveLength(1);
-    expect(notifState.active[0]!.notification.title).toBe('Saved');
-    expect(notifState.active[0]!.notification.severity).toBe('success');
+    expect(mockSendOs).toHaveBeenCalledTimes(1);
+    expect(mockSendOs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Saved',
+        body: 'Settings updated',
+        severity: 'success',
+      }),
+    );
   });
 });

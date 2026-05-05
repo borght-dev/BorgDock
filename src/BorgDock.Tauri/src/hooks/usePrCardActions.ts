@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { sendOsNotification } from '@/services/notification';
 import {
   bypassMergePr,
   checkoutPrBranch,
@@ -10,7 +11,6 @@ import {
   toggleDraftPr,
 } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
-import { useNotificationStore } from '@/stores/notification-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
@@ -25,7 +25,6 @@ import { parseError } from '@/utils/parse-error';
 export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const { pullRequest: pr, checks, failedCheckNames } = prWithChecks;
   const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
-  const showNotification = useNotificationStore((s) => s.show);
   const settings = useSettingsStore((s) => s.settings);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -38,12 +37,13 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
   );
 
-  const showError = useCallback(
-    (title: string, err: unknown) => {
-      showNotification({ title, message: parseError(err).message, severity: 'error', actions: [] });
-    },
-    [showNotification],
-  );
+  const showError = useCallback((title: string, err: unknown) => {
+    void sendOsNotification({
+      title,
+      body: parseError(err).message,
+      severity: 'error',
+    }).catch(() => {});
+  }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -106,18 +106,17 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
       e.stopPropagation();
       void copyToClipboard(pr.headRef).then((ok) => {
         if (ok) {
-          showNotification({
+          void sendOsNotification({
             title: 'Copied',
-            message: pr.headRef,
+            body: pr.headRef,
             severity: 'success',
-            actions: [],
-          });
+          }).catch(() => {});
         } else {
           showError('Failed to copy branch', new Error('Clipboard unavailable'));
         }
       });
     },
-    [pr.headRef, showNotification, showError],
+    [pr.headRef, showError],
   );
 
   const handleCheckout = useCallback(
@@ -197,18 +196,17 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
       ].join('\n');
       void copyToClipboard(markdown).then((ok) => {
         if (ok) {
-          showNotification({
+          void sendOsNotification({
             title: 'Copied to clipboard',
-            message: `${failedCheckNames.length} failed check(s) copied`,
+            body: `${failedCheckNames.length} failed check(s) copied`,
             severity: 'success',
-            actions: [],
-          });
+          }).catch(() => {});
         } else {
           showError('Failed to copy errors', new Error('Clipboard unavailable'));
         }
       });
     },
-    [failedCheckNames, pr.number, showNotification, showError],
+    [failedCheckNames, pr.number, showError],
   );
 
   return {

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { buildReviewNudgeNotification, sendOsNotification } from '@/services/notification';
+import {
+  buildReviewNudgeNotification,
+  inAppToOsOptions,
+  sendOsNotification,
+} from '@/services/notification';
 import type { ReviewSlaTier } from '@/services/review-sla';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
-import { useNotificationStore } from '@/stores/notification-store';
 import { usePrStore } from '@/stores/pr-store';
-import { useUiStore } from '@/stores/ui-store';
 import type { AppSettings } from '@/types';
 
 function nudgeIntervalMs(baseMinutes: number, tier: ReviewSlaTier, escalation: boolean): number {
@@ -55,18 +57,8 @@ export function useReviewNudges(settings: AppSettings) {
       const waitTime = formatReviewWaitTime(requestedAt);
       const notification = buildReviewNudgeNotification(pr.pullRequest, waitTime, tier);
 
-      useNotificationStore.getState().show(notification);
+      sendOsNotification(inAppToOsOptions(notification)).catch(() => {});
       lastNudgedRef.current.set(prk, now);
-
-      if (!useUiStore.getState().isSidebarVisible) {
-        sendOsNotification({
-          title: notification.title,
-          body: notification.message,
-          prOwner: pr.pullRequest.repoOwner,
-          prRepo: pr.pullRequest.repoName,
-          prNumber: pr.pullRequest.number,
-        }).catch(() => {});
-      }
     }
 
     // Clean up entries for PRs no longer in the review queue

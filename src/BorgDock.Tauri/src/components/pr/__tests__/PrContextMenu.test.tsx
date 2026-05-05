@@ -44,14 +44,6 @@ vi.mock('@/stores/settings-store', () => {
   return { useSettingsStore: fn };
 });
 
-vi.mock('@/stores/notification-store', () => {
-  const fn = vi.fn();
-  fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({ show: vi.fn() });
-  });
-  return { useNotificationStore: fn };
-});
-
 vi.mock('@/hooks/useClaudeActions', () => ({
   useClaudeActions: () => ({
     fixWithClaude: vi.fn().mockResolvedValue(undefined),

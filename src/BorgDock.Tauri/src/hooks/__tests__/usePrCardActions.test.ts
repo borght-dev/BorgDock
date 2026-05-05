@@ -24,14 +24,6 @@ vi.mock('@/services/pr-actions', () => ({
 
 // --- Store mocks ---
 
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: Object.assign(
-    (selector: (state: { show: ReturnType<typeof vi.fn> }) => unknown) =>
-      selector({ show: vi.fn() }),
-    { getState: () => ({ show: vi.fn() }) },
-  ),
-}));
-
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: (selector: (state: { settings: { repos: unknown[] } }) => unknown) =>
     selector({ settings: { repos: [] } }),

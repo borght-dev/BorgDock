@@ -2,7 +2,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef, useState } from 'react';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { NotificationOverlay } from '@/components/notifications/NotificationOverlay';
 import { PrList } from '@/components/pr/PrList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
@@ -16,7 +15,6 @@ import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
-import { useNotificationBus } from '@/hooks/useNotificationBus';
 import { useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
@@ -126,10 +124,6 @@ export default function App() {
   const pollingEnabled = !needsSetup && isInitComplete;
   const { pollNow } = useGitHubPolling(settings, pollingEnabled);
   useExternalMergeCelebration();
-
-  // Mirror toasts fired from any pop-out window into the main sidebar so
-  // notifications fired outside this window still land somewhere stable.
-  useNotificationBus();
 
   // Listen for manual refresh requests (from Header button and keyboard shortcut)
   useEffect(() => {
@@ -338,7 +332,6 @@ export default function App() {
           {activeSection === 'prs' && <PrList />}
           {activeSection === 'workitems' && <WorkItemsSection />}
         </Sidebar>
-        <NotificationOverlay />
         <MergeToast />
         <QuickReviewOverlay />
       </>
@@ -352,7 +345,6 @@ export default function App() {
         {activeSection === 'prs' && <PrList />}
         {activeSection === 'workitems' && <WorkItemsSection />}
       </Sidebar>
-      <NotificationOverlay />
       <MergeToast />
       <QuickReviewOverlay />
     </>

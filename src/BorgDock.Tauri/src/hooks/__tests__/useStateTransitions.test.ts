@@ -4,15 +4,22 @@ import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 
 // --- Mocks ---
 
-const mockShow = vi.fn();
+const { mockSendOs } = vi.hoisted(() => ({
+  mockSendOs: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: Object.assign(() => ({}), { getState: () => ({ show: mockShow }) }),
-}));
+vi.mock('@/services/notification', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/services/notification')>('@/services/notification');
+  return {
+    ...actual,
+    sendOsNotification: mockSendOs,
+  };
+});
 
 import { useStateTransitions } from '../useStateTransitions';
 
@@ -169,7 +176,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('fires notification when check fails (green -> red)', () => {
@@ -186,7 +193,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).toHaveBeenCalledWith(
+    expect(mockSendOs).toHaveBeenCalledWith(
       expect.objectContaining({
         title: expect.stringContaining('Check failed'),
         severity: 'error',
@@ -208,7 +215,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).toHaveBeenCalledWith(
+    expect(mockSendOs).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'All checks passed',
         severity: 'success',
@@ -230,7 +237,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).toHaveBeenCalledWith(
+    expect(mockSendOs).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Changes requested',
         severity: 'warning',
@@ -252,7 +259,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).toHaveBeenCalledWith(
+    expect(mockSendOs).toHaveBeenCalledWith(
       expect.objectContaining({
         severity: 'merged',
       }),
@@ -283,7 +290,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).toHaveBeenCalledWith(
+    expect(mockSendOs).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'PR ready to merge',
         severity: 'success',
@@ -308,7 +315,7 @@ describe('useStateTransitions', () => {
       result.current.processTransitions(newPrs);
     });
 
-    expect(mockShow).toHaveBeenCalledWith(
+    expect(mockSendOs).toHaveBeenCalledWith(
       expect.objectContaining({
         title: expect.stringContaining('Review requested'),
       }),
@@ -332,7 +339,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions(newPrs);
       });
 
-      expect(mockShow).not.toHaveBeenCalled();
+      expect(mockSendOs).not.toHaveBeenCalled();
     });
 
     it('skips allChecksPassed notifications when toastOnCheckStatusChange is false', () => {
@@ -351,7 +358,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions(newPrs);
       });
 
-      expect(mockShow).not.toHaveBeenCalled();
+      expect(mockSendOs).not.toHaveBeenCalled();
     });
 
     it('skips review notifications when toastOnReviewUpdate is false', () => {
@@ -370,7 +377,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions(newPrs);
       });
 
-      expect(mockShow).not.toHaveBeenCalled();
+      expect(mockSendOs).not.toHaveBeenCalled();
     });
 
     it('skips reviewRequested notifications when toastOnReviewUpdate is false', () => {
@@ -390,7 +397,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions(newPrs);
       });
 
-      expect(mockShow).not.toHaveBeenCalled();
+      expect(mockSendOs).not.toHaveBeenCalled();
     });
 
     it('skips mergeable notifications when toastOnMergeable is false', () => {
@@ -420,7 +427,7 @@ describe('useStateTransitions', () => {
       });
 
       // allChecksPassed will still fire, but becameMergeable should not
-      const mergeableCalls = mockShow.mock.calls.filter(
+      const mergeableCalls = mockSendOs.mock.calls.filter(
         (c: unknown[]) => (c[0] as { title: string }).title === 'PR ready to merge',
       );
       expect(mergeableCalls).toHaveLength(0);
@@ -456,7 +463,7 @@ describe('useStateTransitions', () => {
       });
 
       // Should NOT fire because it's bob's PR, not alice's
-      expect(mockShow).not.toHaveBeenCalled();
+      expect(mockSendOs).not.toHaveBeenCalled();
     });
 
     it('allows my own PRs when onlyMyPRs is enabled', () => {
@@ -487,7 +494,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions(newPrs);
       });
 
-      expect(mockShow).toHaveBeenCalled();
+      expect(mockSendOs).toHaveBeenCalled();
     });
   });
 
@@ -517,7 +524,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions([redPr1]);
       });
 
-      expect(mockShow).toHaveBeenCalledTimes(1);
+      expect(mockSendOs).toHaveBeenCalledTimes(1);
 
       // Third poll: PR stays red (no transition, nothing to dedup)
       // To trigger the SAME transition again within dedup window,
@@ -530,14 +537,14 @@ describe('useStateTransitions', () => {
       });
       // This is now a red->green transition (allChecksPassed), separate type
       // The allChecksPassed triggers, but checkFailed:owner/repo#1 is deduped
-      mockShow.mockClear();
+      mockSendOs.mockClear();
 
       act(() => {
         result.current.processTransitions([redPr1]);
       });
 
       // The checkFailed for PR#1 should be deduplicated (same key within window)
-      const checkFailedCalls = mockShow.mock.calls.filter((c: unknown[]) =>
+      const checkFailedCalls = mockSendOs.mock.calls.filter((c: unknown[]) =>
         (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(checkFailedCalls).toHaveLength(0);
@@ -564,7 +571,7 @@ describe('useStateTransitions', () => {
         result.current.processTransitions([redPr]);
       });
 
-      const firstCheckFailedCalls = mockShow.mock.calls.filter((c: unknown[]) =>
+      const firstCheckFailedCalls = mockSendOs.mock.calls.filter((c: unknown[]) =>
         (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(firstCheckFailedCalls).toHaveLength(1);
@@ -576,13 +583,13 @@ describe('useStateTransitions', () => {
       act(() => {
         result.current.processTransitions([greenPr]);
       });
-      mockShow.mockClear();
+      mockSendOs.mockClear();
       act(() => {
         result.current.processTransitions([redPr]);
       });
 
       // Should fire again since the window expired
-      const secondCheckFailedCalls = mockShow.mock.calls.filter((c: unknown[]) =>
+      const secondCheckFailedCalls = mockSendOs.mock.calls.filter((c: unknown[]) =>
         (c[0] as { title: string }).title.includes('Check failed'),
       );
       expect(secondCheckFailedCalls).toHaveLength(1);
@@ -623,7 +630,7 @@ describe('useStateTransitions', () => {
       });
 
       // Should have at least 2 notifications
-      expect(mockShow.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(mockSendOs.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
   });
 });

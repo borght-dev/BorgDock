@@ -2,7 +2,9 @@ import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppSettings, PullRequestWithChecks } from '@/types';
 
-const mockShow = vi.fn();
+const { mockSendOs } = vi.hoisted(() => ({
+  mockSendOs: vi.fn().mockResolvedValue(undefined),
+}));
 const mockBuildReviewNudgeNotification = vi.fn();
 const mockGetReviewSlaTier = vi.fn();
 const mockFormatReviewWaitTime = vi.fn();
@@ -10,12 +12,6 @@ const mockNeedsMyReview = vi.fn<() => PullRequestWithChecks[]>();
 const mockGetReviewRequestedAt = vi.fn();
 
 let mockPullRequests: PullRequestWithChecks[] = [];
-
-vi.mock('@/stores/notification-store', () => ({
-  useNotificationStore: {
-    getState: () => ({ show: mockShow }),
-  },
-}));
 
 vi.mock('@/stores/pr-store', () => ({
   usePrStore: Object.assign(
@@ -30,9 +26,16 @@ vi.mock('@/stores/pr-store', () => ({
   ),
 }));
 
-vi.mock('@/services/notification', () => ({
-  buildReviewNudgeNotification: (...args: unknown[]) => mockBuildReviewNudgeNotification(...args),
-}));
+vi.mock('@/services/notification', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/services/notification')>('@/services/notification');
+  return {
+    ...actual,
+    buildReviewNudgeNotification: (...args: unknown[]) =>
+      mockBuildReviewNudgeNotification(...args),
+    sendOsNotification: mockSendOs,
+  };
+});
 
 vi.mock('@/services/review-sla', () => ({
   getReviewSlaTier: (...args: unknown[]) => mockGetReviewSlaTier(...args),
@@ -183,7 +186,7 @@ describe('useReviewNudges', () => {
 
     renderHook(() => useReviewNudges(makeSettings()));
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('nudges on second poll when review is pending', () => {
@@ -201,12 +204,12 @@ describe('useReviewNudges', () => {
     );
 
     // First poll - should skip
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
 
     // Second poll
     rerender({ prs: [pr, pr] }); // trigger re-render with different array ref
 
-    expect(mockShow).toHaveBeenCalled();
+    expect(mockSendOs).toHaveBeenCalled();
   });
 
   it('does not nudge when reviewNudgeEnabled is false', () => {
@@ -228,7 +231,7 @@ describe('useReviewNudges', () => {
     // Second poll
     rerender({ prs: [pr, pr] });
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('does not nudge when document is visible', () => {
@@ -252,7 +255,7 @@ describe('useReviewNudges', () => {
 
     rerender({ prs: [pr, pr] });
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('does not nudge when no username is configured', () => {
@@ -273,7 +276,7 @@ describe('useReviewNudges', () => {
 
     rerender({ prs: [pr, pr] });
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('does not nudge when review queue is empty', () => {
@@ -292,7 +295,7 @@ describe('useReviewNudges', () => {
 
     rerender({ prs: [pr, pr] });
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('skips PRs without a requestedAt timestamp', () => {
@@ -311,7 +314,7 @@ describe('useReviewNudges', () => {
 
     rerender({ prs: [pr, pr] });
 
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 
   it('respects nudge interval - does not re-nudge too soon', () => {
@@ -330,11 +333,11 @@ describe('useReviewNudges', () => {
 
     // Second poll - should nudge
     rerender({ prs: [pr, pr] });
-    expect(mockShow).toHaveBeenCalledTimes(1);
+    expect(mockSendOs).toHaveBeenCalledTimes(1);
 
     // Third poll immediately - should NOT re-nudge (within interval)
     rerender({ prs: [pr, pr, pr] });
-    expect(mockShow).toHaveBeenCalledTimes(1);
+    expect(mockSendOs).toHaveBeenCalledTimes(1);
   });
 
   it('sets up periodic check interval when enabled', () => {
@@ -361,6 +364,6 @@ describe('useReviewNudges', () => {
   it('does not nudge when pullRequests array is empty', () => {
     mockPullRequests = [];
     renderHook(() => useReviewNudges(makeSettings()));
-    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockSendOs).not.toHaveBeenCalled();
   });
 });

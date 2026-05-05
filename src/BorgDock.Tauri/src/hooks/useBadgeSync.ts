@@ -9,7 +9,7 @@ import {
   rerunChecks,
 } from '@/services/pr-actions';
 import { usePrStore } from '@/stores/pr-store';
-import { useNotificationStore } from '@/stores/notification-store';
+import { sendOsNotification } from '@/services/notification';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -320,13 +320,12 @@ export function useBadgeSync() {
           const { repo, worktree, sinceMs, escalation } = event.payload;
           const since = Math.max(1, Math.round(sinceMs / 1000));
           const title = escalation ? 'Claude still waiting' : 'Claude needs your input';
-          const message = `${repo}/${worktree} has been waiting ${since}s for your response.`;
-          useNotificationStore.getState().show({
+          const body = `${repo}/${worktree} has been waiting ${since}s for your response.`;
+          void sendOsNotification({
             title,
-            message,
+            body,
             severity: escalation ? 'warning' : 'info',
-            actions: [],
-          });
+          }).catch(() => {});
         });
         if (cancelled) {
           fn();
