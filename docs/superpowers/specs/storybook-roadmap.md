@@ -55,6 +55,7 @@ time.
 | # | Window | Entry | Spec | Plan | PR |
 |---|---|---|---|---|---|
 | 1 | Flyout (sidebar overlay) | `flyout-main.tsx` → `components/flyout/FlyoutApp.tsx` | `2026-05-05-storybook-phase1-flyoutapp-design.md` | `2026-05-05-storybook-phase1-flyoutapp.md` | [#13](https://github.com/borght-dev/BorgDock/pull/13) |
+| 2 | What's New | `whats-new-main.tsx` → `components/whats-new/WhatsNewApp.tsx` | `2026-05-05-storybook-phase2-whatsnew-design.md` | `2026-05-05-storybook-phase2-whatsnew.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -65,7 +66,6 @@ will refine them.
 
 | Window | Entry | Size | Tauri surfaces | Notable |
 |---|---|---|---|---|
-| What's New | `whats-new-main.tsx` | **S** | `invoke('get_whats_new_payload')`, `plugin-opener.openUrl` | Mostly content rendering; good warmup phase to validate the mock layer beyond the flyout. Sources changelog content. |
 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | **L** | many (`invoke` heavy: settings load/save, repo scan, ado/github auth, self-test, maintenance ops); `plugin-dialog.open/save`; `emit` for cross-window settings updates | Recently redesigned with rail + sections. Implicitly stories the new `shared/primitives/*` (Toggle, Slider, Select, Field, Seg2, etc.) plus `RepoScanDialog`, `ConnectionEditorDialog`, `SelfTestResultsDialog`. |
 | Pr Detail | `pr-detail-main.tsx` | **L** | `invoke` (PR fetch, checks, comments, review submission); `plugin-clipboard-manager`; window persistence | Large screen with multiple tabs (overview / files / checks / comments). Best storied per-tab to keep stories focused. |
 | File Viewer | `file-viewer-main.tsx` | **M** | `invoke` (file content, syntax info), `plugin-fs`, `plugin-clipboard-manager` | Tree-sitter highlighting must work in Storybook — `public/grammars/` is served by Vite at `/grammars/...` so this should "just work," but verify in the brainstorm. |
@@ -102,8 +102,12 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 
 - `@tauri-apps/api/core` → `mocks/tauri-core.ts`
 - `@tauri-apps/api/event` → `mocks/tauri-event.ts`
+- `@tauri-apps/api/window` → `mocks/tauri-api-window.ts`
+- `@tauri-apps/api/app` → `mocks/tauri-api-app.ts`
 - `@tauri-apps/plugin-opener` → `mocks/tauri-plugin-opener.ts`
+- `@tauri-apps/plugin-store` → `mocks/tauri-plugin-store.ts`
 - `@/services/windows` → `mocks/services-windows.ts`
+- `@/generated/changelog` → `mocks/generated-changelog.ts`
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).
