@@ -12,7 +12,11 @@ import {
   connHorizonProd,
   connLongName,
   makeSettings,
+  sampleSelectQuery,
   schemaSmall,
+  snippetActiveQuery,
+  snippetsEmpty,
+  snippetsFew,
   type QueryResult,
 } from './__fixtures__/sql-data';
 
@@ -209,4 +213,33 @@ export const SchemaError = story({
   settings: makeSettings([connBorgDockDev]),
   cachedSchema: null,
   schemaResponse: () => Promise.reject(new Error('TLS handshake failed')),
+});
+
+// ---------------------------------------------------------------------------
+// 3. Editor / snippets axis
+// ---------------------------------------------------------------------------
+
+export const NoSnippetsEmptyEditor = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsEmpty,
+});
+
+export const NoSnippetsDirtyEditor = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsEmpty,
+  initialQuery: sampleSelectQuery,
+});
+
+export const WithActiveSnippetClean = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsFew,
+  activeSnippetId: snippetActiveQuery.id,
+  initialQuery: snippetActiveQuery.body,
+});
+
+export const WithActiveSnippetDirty = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsFew,
+  activeSnippetId: snippetActiveQuery.id,
+  initialQuery: `${snippetActiveQuery.body}\n-- modified locally\n`,
 });
