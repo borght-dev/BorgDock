@@ -1,5 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+// jsdom gives 0 dimensions to the scroll element, so the virtualizer would
+// render zero rows. Stub it to render every row so selection/content logic
+// can be tested.
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({ count }: { count: number }) => ({
+    getTotalSize: () => count * 30,
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, i) => ({
+        index: i,
+        start: i * 30,
+        size: 30,
+        key: i,
+      })),
+    scrollToIndex: vi.fn(),
+  }),
+}));
+
 import { ResultsTable } from '../ResultsTable';
 
 describe('ResultsTable', () => {
@@ -156,7 +174,7 @@ describe('ResultsTable', () => {
     expect(nullCells.length).toBe(1);
   });
 
-  it('exposes [data-sql-results-table] and one tbody row per data row', () => {
+  it('exposes [data-sql-results-table] and one row element per data row', () => {
     const { container } = render(
       <ResultsTable
         columns={['a', 'b']}
@@ -169,6 +187,6 @@ describe('ResultsTable', () => {
       />,
     );
     expect(container.querySelector('[data-sql-results-table]')).not.toBeNull();
-    expect(container.querySelectorAll('tbody tr').length).toBe(2);
+    expect(container.querySelectorAll('.sql-data-row').length).toBe(2);
   });
 });

@@ -1,3 +1,4 @@
+import { memo, useCallback } from 'react';
 import { Button, Pill } from '@/components/shared/primitives';
 import { AlertIcon, CheckCircleIcon, CopyIcon } from './icons';
 import { ResultsTable } from './ResultsTable';
@@ -15,6 +16,7 @@ interface ResultsPanelProps {
   error: string | null;
   resultSets: ResultSet[];
   executionTimeMs: number;
+  rowsAffected: number | null;
   selectedRowsMap: Map<number, Set<number>>;
   onSelectionChange: (idx: number, sel: Set<number>) => void;
   copyFlash: string | null;
@@ -29,12 +31,42 @@ function pluralRows(n: number) {
   return `${n.toLocaleString()} row${n === 1 ? '' : 's'}`;
 }
 
+interface ResultSetViewProps {
+  idx: number;
+  columns: string[];
+  rows: (string | null)[][];
+  selectedRows: Set<number>;
+  onSelectionChange: (idx: number, sel: Set<number>) => void;
+}
+
+const ResultSetView = memo(function ResultSetView({
+  idx,
+  columns,
+  rows,
+  selectedRows,
+  onSelectionChange,
+}: ResultSetViewProps) {
+  const handle = useCallback(
+    (sel: Set<number>) => onSelectionChange(idx, sel),
+    [idx, onSelectionChange],
+  );
+  return (
+    <ResultsTable
+      columns={columns}
+      rows={rows}
+      selectedRows={selectedRows}
+      onSelectionChange={handle}
+    />
+  );
+});
+
 export function ResultsPanel({
   isRunning,
   hasRun,
   error,
   resultSets,
   executionTimeMs,
+  rowsAffected,
   selectedRowsMap,
   onSelectionChange,
   copyFlash,
@@ -56,13 +88,21 @@ export function ResultsPanel({
     pill = { tone: 'neutral', label: 'running…' };
     summary = 'executing query';
   } else if (hasRun) {
-    pill = { tone: 'success', label: pluralRows(totalRows) };
-    if (populated.length > 0) {
-      const setLabel =
-        populated.length > 1 ? `${populated.length} result sets` : 'result set 1 of 1';
-      summary = `executed in ${executionTimeMs} ms · ${setLabel}`;
+    if (rowsAffected != null) {
+      pill = {
+        tone: 'success',
+        label: `${rowsAffected.toLocaleString()} affected`,
+      };
+      summary = `executed in ${executionTimeMs} ms`;
     } else {
-      summary = `executed in ${executionTimeMs} ms · no rows returned`;
+      pill = { tone: 'success', label: pluralRows(totalRows) };
+      if (populated.length > 0) {
+        const setLabel =
+          populated.length > 1 ? `${populated.length} result sets` : 'result set 1 of 1';
+        summary = `executed in ${executionTimeMs} ms · ${setLabel}`;
+      } else {
+        summary = `executed in ${executionTimeMs} ms · no rows returned`;
+      }
     }
   }
 
@@ -134,11 +174,12 @@ export function ResultsPanel({
                   </span>
                 </div>
               )}
-              <ResultsTable
+              <ResultSetView
+                idx={idx}
                 columns={rs.columns}
                 rows={rs.rows}
                 selectedRows={selectedRowsMap.get(idx) ?? EMPTY}
-                onSelectionChange={(sel) => onSelectionChange(idx, sel)}
+                onSelectionChange={onSelectionChange}
               />
             </div>
           ))}

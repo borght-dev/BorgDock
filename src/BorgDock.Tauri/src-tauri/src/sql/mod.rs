@@ -59,9 +59,58 @@ pub struct QueryResult {
     pub result_sets: Vec<ResultSet>,
     pub execution_time_ms: u64,
     pub total_row_count: usize,
+    /// `Some(n)` when the batch was a DML statement (UPDATE/INSERT/DELETE/MERGE
+    /// and friends) routed through `client.execute()`, which is the only
+    /// tiberius path that surfaces SQL Server's "rows affected" counts. `None`
+    /// for SELECT-shaped batches (rows are reported via `result_sets` instead).
+    pub rows_affected: Option<u64>,
 }
 
 const MAX_ROWS: usize = 10_000;
+
+/// Returns the first SQL keyword in `sql`, uppercased, after skipping leading
+/// whitespace and `--` line / `/* */` block comments. Returns "" if none.
+fn first_sql_keyword(sql: &str) -> String {
+    let bytes = sql.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c.is_ascii_whitespace() {
+            i += 1;
+        } else if c == b'-' && i + 1 < bytes.len() && bytes[i + 1] == b'-' {
+            while i < bytes.len() && bytes[i] != b'\n' {
+                i += 1;
+            }
+        } else if c == b'/' && i + 1 < bytes.len() && bytes[i + 1] == b'*' {
+            i += 2;
+            while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                i += 1;
+            }
+            i = (i + 2).min(bytes.len());
+        } else {
+            break;
+        }
+    }
+    let start = i;
+    while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+        i += 1;
+    }
+    sql[start..i].to_ascii_uppercase()
+}
+
+/// Whether the batch should be routed through `client.execute()` so we can
+/// surface "rows affected". Decision is based on the first keyword only — a
+/// DECLARE/SET-prefixed batch that ends in an UPDATE will go through the
+/// query path and lose affected counts, which is acceptable since the user
+/// can split the batch if they care.
+fn is_data_modifying(sql: &str) -> bool {
+    matches!(
+        first_sql_keyword(sql).as_str(),
+        "UPDATE" | "INSERT" | "DELETE" | "MERGE"
+            | "CREATE" | "ALTER" | "DROP" | "TRUNCATE"
+            | "GRANT" | "REVOKE"
+    )
+}
 
 fn build_config(
     server: &str,
@@ -252,18 +301,31 @@ pub async fn execute_sql_query(
     // types, etc. Running the query body on a spawned task isolates that
     // panic: it surfaces as a JoinError we can convert into a friendly
     // Result, instead of tearing down the whole process.
+    let modifies = is_data_modifying(&query);
+
     let handle = tokio::spawn(async move {
         let mut client = connect(&server, port, config).await?;
 
         let start = std::time::Instant::now();
 
-        let stream = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            client.query(query, &[]),
-        )
-        .await
-        .map_err(|_| "Query timed out after 30 seconds".to_string())?
-        .map_err(|e| format!("Query failed: {e}"))?;
+        if modifies {
+            let exec = client
+                .execute(query, &[])
+                .await
+                .map_err(|e| format!("Query failed: {e}"))?;
+            let execution_time_ms = start.elapsed().as_millis() as u64;
+            return Ok::<QueryResult, String>(QueryResult {
+                result_sets: Vec::new(),
+                execution_time_ms,
+                total_row_count: 0,
+                rows_affected: Some(exec.total()),
+            });
+        }
+
+        let stream = client
+            .query(query, &[])
+            .await
+            .map_err(|e| format!("Query failed: {e}"))?;
 
         let results = stream
             .into_results()
@@ -312,6 +374,7 @@ pub async fn execute_sql_query(
             result_sets,
             execution_time_ms,
             total_row_count,
+            rows_affected: None,
         })
     });
 

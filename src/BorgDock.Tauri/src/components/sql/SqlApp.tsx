@@ -36,6 +36,8 @@ interface QueryResult {
   resultSets: ResultSet[];
   executionTimeMs: number;
   totalRowCount: number;
+  /** `null` for SELECT-shaped batches; populated for UPDATE/INSERT/DELETE/MERGE etc. */
+  rowsAffected: number | null;
 }
 
 const POSITION_KEY = 'borgdock-sql-position';
@@ -744,6 +746,7 @@ export function SqlApp() {
             error={error}
             resultSets={result?.resultSets ?? []}
             executionTimeMs={result?.executionTimeMs ?? 0}
+            rowsAffected={result?.rowsAffected ?? null}
             selectedRowsMap={selectedRowsMap}
             onSelectionChange={handleSelectionChange}
             copyFlash={copyFlash}
@@ -757,19 +760,26 @@ export function SqlApp() {
       <WindowStatusBar
         left={
           result && !error ? (
-            <span className="sql-status-meta bd-mono">
-              {totalRows.toLocaleString()} row{totalRows === 1 ? '' : 's'} ·{' '}
-              {result.executionTimeMs} ms · {totalCols} col{totalCols === 1 ? '' : 's'}
-              {totalSelectedRows > 0 && (
-                <>
-                  {' · '}
-                  <span className="sql-status-meta__selected">{totalSelectedRows} selected</span>
-                </>
-              )}
-              {result.resultSets.some((rs) => rs.truncated) && (
-                <span className="sql-status-meta__truncated"> (truncated)</span>
-              )}
-            </span>
+            result.rowsAffected != null ? (
+              <span className="sql-status-meta bd-mono">
+                {result.rowsAffected.toLocaleString()} row
+                {result.rowsAffected === 1 ? '' : 's'} affected · {result.executionTimeMs} ms
+              </span>
+            ) : (
+              <span className="sql-status-meta bd-mono">
+                {totalRows.toLocaleString()} row{totalRows === 1 ? '' : 's'} ·{' '}
+                {result.executionTimeMs} ms · {totalCols} col{totalCols === 1 ? '' : 's'}
+                {totalSelectedRows > 0 && (
+                  <>
+                    {' · '}
+                    <span className="sql-status-meta__selected">{totalSelectedRows} selected</span>
+                  </>
+                )}
+                {result.resultSets.some((rs) => rs.truncated) && (
+                  <span className="sql-status-meta__truncated"> (truncated)</span>
+                )}
+              </span>
+            )
           ) : (
             <span className="sql-status-meta bd-mono">
               {snippets.length} snippet{snippets.length === 1 ? '' : 's'} ·{' '}
