@@ -272,3 +272,64 @@ export const AccordionWithDates = story({
   appVersion: '2.0.0',
   releasesOverride: dateSpreadHistory,
 });
+
+// ---------------------------------------------------------------------------
+// Window-chrome / interaction axis
+// ---------------------------------------------------------------------------
+
+export const WindowMaximized = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+  windowMaximized: true,
+});
+
+export const WindowNotMaximized = story({
+  pluginStoreSeed: {
+    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+  },
+  appVersion: '1.2.0',
+  windowMaximized: false,
+});
+
+// The two interaction stories use play functions. They do NOT change
+// the production code path — they just exercise the existing UI.
+
+export const DisableAutoOpenInteraction: Story = {
+  args: {
+    params: {
+      pluginStoreSeed: {
+        'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+      },
+      appVersion: '1.2.0',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    // The "Don't auto-open again" checkbox is labeled by aria-label
+    // on the input itself (see WhatsNewApp.tsx footer).
+    const checkbox = await canvas.findByLabelText("Don't auto-open again");
+    await userEvent.click(checkbox);
+  },
+};
+
+export const GotItButtonClickable: Story = {
+  args: {
+    params: {
+      pluginStoreSeed: {
+        'whats-new-state.json': { lastSeenVersion: '1.1.0', autoOpenDisabled: false },
+      },
+      appVersion: '1.2.0',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: /got it/i });
+    await userEvent.click(button);
+    // window.close() is mocked as a no-op that logs to control.invocations;
+    // the iframe stays alive.
+  },
+};
