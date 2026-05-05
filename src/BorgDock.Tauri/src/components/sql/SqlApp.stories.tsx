@@ -384,3 +384,66 @@ export const ResultTruncated: Story = {
     await userEvent.click(runBtn);
   },
 };
+
+// ---------------------------------------------------------------------------
+// 6. Layout / interaction axis
+// ---------------------------------------------------------------------------
+
+export const RailCollapsed = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsFew,
+  railCollapsed: true,
+});
+
+export const CopyValuesRoundtrip: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: sampleSelectQuery,
+      executeResponse: resultSmallSelect,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+
+    const valuesBtn = await canvas.findByRole('button', { name: /^values$/i });
+    await userEvent.click(valuesBtn);
+
+    await waitFor(() => {
+      const ctrl = getControl();
+      expect(ctrl.clipboardWrites.length).toBeGreaterThan(0);
+      // First row of resultSmallSelect → '1\tCustomer 1\t...'
+      expect(ctrl.clipboardWrites[0]).toContain('Customer 1');
+    });
+  },
+};
+
+export const PositionPersistedAfterMove: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+    },
+  },
+  play: async () => {
+    const { waitFor, expect } = await import('storybook/test');
+
+    // Wait for the onMoved listener to register before emitting.
+    await waitFor(() => {
+      const ctrl = getControl();
+      expect(ctrl.channels.has('__window.onMoved')).toBe(true);
+    });
+
+    getControl().emit('__window.onMoved', { x: 240, y: 180 });
+
+    await waitFor(() => {
+      const raw = localStorage.getItem('borgdock-sql-position');
+      expect(raw).toBeTruthy();
+      expect(raw!).toContain('240');
+    });
+  },
+};
