@@ -8,3 +8,4 @@ src-tauri/gen/
 .tauri-signing-key
 .tauri-signing-key.pub
 test-results/
+storybook-static/
