@@ -119,8 +119,8 @@ export const Refreshing: Story = {
 export const WindowReadyDeferred: Story = {
   args: {
     params: {
-      settings: settingsFromHistory([{ repo: repoBorgDock, trees: oneRepoFew.trees }]),
-      listResponses: oneRepoFew.trees,
+      settings: makeSettings([repoBorgDock]),
+      listResponses: [wtMain, wtFeature, wtDetached, wtLongBranch, wtLongPath],
     },
   },
   play: async () => {
@@ -176,7 +176,7 @@ export const OneRepoManyTrees: Story = {
     const { waitFor, expect } = await import('storybook/test');
     await waitFor(() => {
       const ctrl = getControl();
-      expect(ctrl.invocations.some((i) => i.command === 'window_ready')).toBe(true);
+      expect(ctrl.invocations.some((i) => i.command === 'window.setSize')).toBe(true);
     });
   },
 };
@@ -388,7 +388,8 @@ export const EnterOpensTerminal: Story = {
     await userEvent.keyboard('{Enter}');
     await waitFor(() => {
       const ctrl = getControl();
-      expect(ctrl.invocations.some((i) => i.command === 'open_in_terminal')).toBe(true);
+      const last = ctrl.invocations[ctrl.invocations.length - 1];
+      expect(last?.command).toBe('open_in_terminal');
     });
   },
 };
