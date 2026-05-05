@@ -61,6 +61,7 @@
   --color-icon-btn-hover: var(--color-icon-btn-hover);
   --color-icon-btn-pressed: var(--color-icon-btn-pressed);
   --color-icon-btn-fg: var(--color-icon-btn-fg);
+  --color-toggle-knob: var(--color-toggle-knob);
 
   /* Action buttons */
   --color-action-secondary-bg: var(--color-action-secondary-bg);
@@ -327,6 +328,7 @@
   --color-icon-btn-hover: rgba(90, 86, 112, 0.06);
   --color-icon-btn-pressed: rgba(90, 86, 112, 0.1);
   --color-icon-btn-fg: #5a5670;
+  --color-toggle-knob: #ffffff;
 
   /* Action buttons */
   --color-action-secondary-bg: transparent;
@@ -611,6 +613,7 @@
   --color-icon-btn-hover: rgba(138, 133, 160, 0.08);
   --color-icon-btn-pressed: rgba(138, 133, 160, 0.12);
   --color-icon-btn-fg: #8a85a0;
+  --color-toggle-knob: #ffffff;
 
   --color-action-secondary-bg: transparent;
   --color-action-secondary-fg: #9384f7;

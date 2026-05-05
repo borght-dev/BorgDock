@@ -17,7 +17,7 @@ export function Toggle({ on, onChange, disabled, ariaLabel }: ToggleProps) {
       disabled={disabled}
       onClick={() => onChange(!on)}
       className={clsx(
-        'relative h-[18px] w-[32px] rounded-full border transition-colors',
+        'inline-flex h-[18px] w-[32px] items-center rounded-full border transition-colors',
         on
           ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
           : 'bg-[var(--color-surface-hover)] border-[var(--color-strong-border)]',
@@ -25,8 +25,8 @@ export function Toggle({ on, onChange, disabled, ariaLabel }: ToggleProps) {
       )}
     >
       <span
-        className="absolute top-[1px] h-[14px] w-[14px] rounded-full bg-white shadow transition-[left]"
-        style={{ left: on ? 15 : 1 }}
+        className="block h-[14px] w-[14px] shrink-0 rounded-full bg-[var(--color-toggle-knob)] shadow transition-transform"
+        style={{ transform: `translateX(${on ? 15 : 1}px)` }}
       />
     </button>
   );
