@@ -206,3 +206,80 @@ export const CommentsLoadFailed: Story = story({
     commentsBehavior: 'reject',
   },
 });
+
+// ---------------------------------------------------------------------------
+// Save-flow axis
+// ---------------------------------------------------------------------------
+
+export const DirtyTitleEdited: Story = {
+  args: {
+    params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    // Wait for the title textarea to render after load resolves.
+    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
+    await userEvent.clear(titleArea);
+    await userEvent.type(titleArea, 'Implement the dashboard widget (refined)');
+  },
+};
+
+export const SavingInFlight: Story = {
+  args: {
+    params: {
+      scenario: {
+        ...loadedScenario(userStoryFreshlyLoaded),
+        saveBehavior: 'pending',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
+    await userEvent.clear(titleArea);
+    await userEvent.type(titleArea, 'Implement the dashboard widget (saving)');
+    const saveButton = await canvas.findByRole('button', { name: /^save$/i });
+    await userEvent.click(saveButton);
+    // saveBehavior: 'pending' means updateWorkItem never resolves;
+    // button stays in the "Saving..." state for the rest of the story.
+  },
+};
+
+export const SavedSuccess: Story = {
+  args: {
+    params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
+    await userEvent.clear(titleArea);
+    await userEvent.type(titleArea, 'Implement the dashboard widget (saved)');
+    const saveButton = await canvas.findByRole('button', { name: /^save$/i });
+    await userEvent.click(saveButton);
+    await canvas.findByText(/^Saved$/);
+  },
+};
+
+export const SaveError: Story = {
+  args: {
+    params: {
+      scenario: {
+        ...loadedScenario(userStoryFreshlyLoaded),
+        saveBehavior: 'reject',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
+    await userEvent.clear(titleArea);
+    await userEvent.type(titleArea, 'Implement the dashboard widget (will fail)');
+    const saveButton = await canvas.findByRole('button', { name: /^save$/i });
+    await userEvent.click(saveButton);
+    await canvas.findByText(/Save failed/);
+  },
+};
