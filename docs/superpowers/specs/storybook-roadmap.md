@@ -57,6 +57,7 @@ time.
 | 1 | Flyout (sidebar overlay) | `flyout-main.tsx` → `components/flyout/FlyoutApp.tsx` | `2026-05-05-storybook-phase1-flyoutapp-design.md` | `2026-05-05-storybook-phase1-flyoutapp.md` | [#13](https://github.com/borght-dev/BorgDock/pull/13) |
 | 2 | What's New | `whats-new-main.tsx` → `components/whats-new/WhatsNewApp.tsx` | `2026-05-05-storybook-phase2-whatsnew-design.md` | `2026-05-05-storybook-phase2-whatsnew.md` | _(filled in after PR opens)_ |
 | 3 | Worktree (palette) | `worktree-main.tsx` → `components/worktree-palette/WorktreePaletteApp.tsx` | `2026-05-05-storybook-phase3-worktree-design.md` | `2026-05-05-storybook-phase3-worktree.md` | [#15](https://github.com/borght-dev/BorgDock/pull/15) |
+| 4 | Agent Overview | `main-agent-overview.tsx` → `components/agent-overview/AgentOverviewApp.tsx` | `2026-05-05-storybook-phase5-agent-overview-design.md` | `2026-05-05-storybook-phase5-agent-overview.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -73,7 +74,6 @@ will refine them.
 | File Palette | `file-palette-main.tsx` | **M** | `invoke` (file index, recent files, scan progress), `plugin-fs` | Palette UX: stories should cover empty / loading / scan-in-progress / changed-files section / per-root filtering. |
 | Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
 | Work Item Detail | `workitem-detail-main.tsx` | **M** | `invoke` (load/update WIT), `plugin-dialog` (attachments) | Stories per-state (loading / loaded / dirty / saving / saved / error / cancellation). |
-| Agent Overview | `main-agent-overview.tsx` | **M** | `invoke` (agent status, claude api, sessions); `plugin-shell`; `emit/listen` for live status events | Several live-update flows — the mock event channel will get exercised hard. |
 | SQL | `sql-main.tsx` | **M** | `invoke` (sql exec, schema fetch, ADO connection); custom panic-handling path | Code editor (CodeMirror) + result grid. Stories should cover empty / running / result / error / panic-recovered. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
@@ -112,6 +112,7 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@tauri-apps/api/core` → `mocks/tauri-core.ts`
 - `@tauri-apps/api/event` → `mocks/tauri-event.ts`
 - `@tauri-apps/api/window` → `mocks/tauri-api-window.ts`
+- `@tauri-apps/api/webviewWindow` → `mocks/tauri-api-webviewWindow.ts`
 - `@tauri-apps/api/app` → `mocks/tauri-api-app.ts`
 - `@tauri-apps/plugin-opener` → `mocks/tauri-plugin-opener.ts`
 - `@tauri-apps/plugin-store` → `mocks/tauri-plugin-store.ts`
