@@ -182,3 +182,22 @@ export const ContentTooLarge = story({
   contentResponse: () => Promise.reject(ERR_TOO_LARGE),
   diffResponse: DIFF_NOT_IN_REPO,
 });
+
+// ---------------------------------------------------------------------------
+// 3. Mode-resolution axis (3)
+// ---------------------------------------------------------------------------
+
+export const NotInRepoPlainContent = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: DIFF_NOT_IN_REPO,
+});
+
+export const InRepoNoChangesAutoToContent = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: DIFF_IN_REPO_NO_CHANGES,
+});
+
+export const InRepoWithDiffAutoToDiff = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: { patch: PATCH_SINGLE_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+});
