@@ -14,9 +14,14 @@ export function Sidebar({ children }: SidebarProps) {
   const activeSection = useUiStore((s) => s.activeSection);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
   const pullRequests = usePrStore((s) => s.pullRequests);
+  const closedPullRequests = usePrStore((s) => s.closedPullRequests);
 
+  // After an optimistic merge the PR moves from pullRequests → closedPullRequests.
+  // Resolving from both lists keeps the inline detail panel (and its MergedCard)
+  // visible through the merge celebration instead of snapping back to the list.
   const selectedPr = selectedPrNumber
-    ? pullRequests.find((p) => p.pullRequest.number === selectedPrNumber)
+    ? pullRequests.find((p) => p.pullRequest.number === selectedPrNumber) ??
+      closedPullRequests.find((p) => p.pullRequest.number === selectedPrNumber)
     : undefined;
 
   return (

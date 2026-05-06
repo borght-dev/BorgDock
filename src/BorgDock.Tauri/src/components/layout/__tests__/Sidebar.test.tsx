@@ -140,6 +140,23 @@ describe('Sidebar', () => {
     expect(screen.queryByTestId('pr-detail-panel')).toBeNull();
   });
 
+  it('keeps the detail panel visible when the selected PR moves to closedPullRequests (post-merge)', () => {
+    useUiStore.setState({ selectedPrNumber: 1 });
+    usePrStore.setState({
+      pullRequests: [makePr(2)],
+      closedPullRequests: [makePr(1)],
+      username: '',
+    });
+    render(
+      <Sidebar>
+        <div data-testid="child-content">My child</div>
+      </Sidebar>,
+    );
+    expect(screen.getByTestId('pr-detail-panel')).toBeTruthy();
+    expect(screen.getByText('Detail for PR #1')).toBeTruthy();
+    expect(screen.queryByTestId('child-content')).toBeNull();
+  });
+
   it('renders the sidebar shell container', () => {
     const { container } = render(
       <Sidebar>
