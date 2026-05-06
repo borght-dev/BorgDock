@@ -45,6 +45,15 @@ describe('ui-store', () => {
     });
   });
 
+  describe('work item selection', () => {
+    it('sets and reads workItemsSelectedId', () => {
+      useUiStore.getState().setWorkItemsSelectedId(42);
+      expect(useUiStore.getState().workItemsSelectedId).toBe(42);
+      useUiStore.getState().setWorkItemsSelectedId(null);
+      expect(useUiStore.getState().workItemsSelectedId).toBeNull();
+    });
+  });
+
   describe('repo group expansion', () => {
     it('expands a repo group', () => {
       useUiStore.getState().toggleRepoGroup('owner/repo');

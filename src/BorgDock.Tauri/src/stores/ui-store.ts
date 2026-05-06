@@ -8,6 +8,7 @@ interface UiState {
   isSidebarVisible: boolean;
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
+  workItemsSelectedId: number | null;
   expandedRepoGroups: Set<string>;
   isDragging: boolean;
   pendingWorkItemId: number | null;
@@ -19,6 +20,7 @@ interface UiState {
   setSidebarVisible: (visible: boolean) => void;
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
+  setWorkItemsSelectedId: (id: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
   collapseAllRepoGroups: () => void;
   setDragging: (dragging: boolean) => void;
@@ -31,6 +33,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   isSidebarVisible: true,
   activeSection: 'focus',
   selectedPrNumber: null,
+  workItemsSelectedId: null,
   expandedRepoGroups: new Set<string>(),
   isDragging: false,
   pendingWorkItemId: null,
@@ -49,6 +52,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   },
 
   selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),
+
+  setWorkItemsSelectedId: (workItemsSelectedId) => set({ workItemsSelectedId }),
 
   toggleRepoGroup: (repoKey) =>
     set((state) => {
