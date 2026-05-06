@@ -46,6 +46,9 @@ export type { RingProps } from './Ring';
 export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';
 
+export { SegmentedProgress } from './SegmentedProgress';
+export type { SegmentedProgressProps } from './SegmentedProgress';
+
 export { Seg2 } from './Seg2';
 export type { Seg2Option, Seg2Props } from './Seg2';
 

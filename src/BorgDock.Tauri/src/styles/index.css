@@ -2502,6 +2502,10 @@ body.sql-resizing-v .sql-resize-handle {
     }
   }
 
+  @keyframes bd-stripe-march {
+    to { background-position: 17px 0; }
+  }
+
   /* ── Button ──────────────────────────────────────── */
   .bd-btn {
     display: inline-flex;
