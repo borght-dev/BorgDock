@@ -23,6 +23,10 @@ vi.mock('@tauri-apps/api/window', () => ({
     setSize: mockSetSize,
     innerSize: mockInnerSize,
     scaleFactor: mockScaleFactor,
+    minimize: vi.fn(() => Promise.resolve()),
+    maximize: vi.fn(() => Promise.resolve()),
+    unmaximize: vi.fn(() => Promise.resolve()),
+    isMaximized: vi.fn(() => Promise.resolve(false)),
   })),
   currentMonitor: vi.fn(() => Promise.resolve({ size: { width: 1920, height: 1080 } })),
 }));
@@ -93,7 +97,7 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    expect(screen.getByText('WORKTREES')).toBeTruthy();
+    expect(screen.getByText('Worktrees')).toBeTruthy();
   });
 
   it('shows loading state initially', async () => {
@@ -331,7 +335,7 @@ describe('WorktreePaletteApp', () => {
     expect(listCalls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('closes window on close button click', async () => {
+  it('closes window on chrome close button click', async () => {
     await act(async () => {
       render(<WorktreePaletteApp />);
     });
@@ -339,14 +343,18 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    const closeBtn = document.querySelector('[title="Close (Esc)"]');
+    // The shared WindowTitleBar renders min/max/close as the .bd-wc-group cluster.
+    // Esc still calls hide() (kept alive across opens) but the X button issues a
+    // hard close, matching the rest of the chrome family (file-palette, SQL).
+    const closeBtn = document.querySelector('[aria-label="Close"]');
+    expect(closeBtn).toBeTruthy();
     if (closeBtn) {
       fireEvent.click(closeBtn);
     }
-    expect(mockHide).toHaveBeenCalled();
+    expect(mockClose).toHaveBeenCalled();
   });
 
-  it('renders the footer with keyboard shortcuts', async () => {
+  it('renders the status bar with keyboard hints and worktree counts', async () => {
     await act(async () => {
       render(<WorktreePaletteApp />);
     });
@@ -354,9 +362,11 @@ describe('WorktreePaletteApp', () => {
       vi.advanceTimersByTime(100);
     });
 
-    expect(screen.getByText('navigate')).toBeTruthy();
-    expect(screen.getByText('open')).toBeTruthy();
-    expect(screen.getByText('close')).toBeTruthy();
+    // The status bar packs labels and the "{n} of {m} worktrees" string into
+    // single concatenated text nodes between <Kbd> elements, so match by regex.
+    expect(screen.getByText(/nav/)).toBeTruthy();
+    expect(screen.getByText(/open/)).toBeTruthy();
+    expect(screen.getByText(/of \d+ worktrees?/)).toBeTruthy();
   });
 
   it('shows empty state when no repos configured', async () => {

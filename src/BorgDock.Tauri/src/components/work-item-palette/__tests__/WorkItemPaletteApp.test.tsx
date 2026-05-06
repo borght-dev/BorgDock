@@ -38,6 +38,10 @@ vi.mock('@tauri-apps/api/window', () => ({
     scaleFactor: mockScaleFactor,
     setPosition: mockSetPosition,
     startDragging: mockStartDragging,
+    minimize: vi.fn(() => Promise.resolve()),
+    maximize: vi.fn(() => Promise.resolve()),
+    unmaximize: vi.fn(() => Promise.resolve()),
+    isMaximized: vi.fn(() => Promise.resolve(false)),
   })),
 }));
 
@@ -96,20 +100,20 @@ describe('WorkItemPaletteApp', () => {
     expect(document.querySelector('.bd-kbd')).not.toBeNull();
   });
 
-  it('renders the drag handle', async () => {
+  it('renders the shared title bar with a tauri drag region', async () => {
     await act(async () => {
       render(<WorkItemPaletteApp />);
     });
-    const dots = document.querySelectorAll('.rounded-full');
-    expect(dots.length).toBeGreaterThan(0);
+    const titleBar = document.querySelector('.bd-title-bar[data-tauri-drag-region]');
+    expect(titleBar).not.toBeNull();
+    expect(screen.getByText('Work Items')).toBeTruthy();
   });
 
-  it('shows "Esc to close" text', async () => {
+  it('renders an Esc hint in the status bar', async () => {
     await act(async () => {
       render(<WorkItemPaletteApp />);
     });
     expect(screen.getByText('Esc')).toBeTruthy();
-    expect(screen.getByText(/to close/)).toBeTruthy();
   });
 
   it('shows empty browse message when no data', async () => {
@@ -131,28 +135,15 @@ describe('WorkItemPaletteApp', () => {
     expect(mockHide).toHaveBeenCalled();
   });
 
-  it('starts dragging on mouseDown on drag handle', async () => {
+  // Window dragging is handled at the OS level via `data-tauri-drag-region` on
+  // the shared <WindowTitleBar/> — JS no longer calls startDragging(). Verify
+  // the drag region is wired so OS-level dragging keeps working.
+  it('marks the title bar as a tauri drag region', async () => {
     await act(async () => {
       render(<WorkItemPaletteApp />);
     });
-
-    const dragHandle = document.querySelector('.cursor-grab');
-    if (dragHandle) {
-      fireEvent.mouseDown(dragHandle, { button: 0 });
-      expect(mockStartDragging).toHaveBeenCalled();
-    }
-  });
-
-  it('does not start dragging on right-click', async () => {
-    await act(async () => {
-      render(<WorkItemPaletteApp />);
-    });
-
-    const dragHandle = document.querySelector('.cursor-grab');
-    if (dragHandle) {
-      fireEvent.mouseDown(dragHandle, { button: 2 });
-      expect(mockStartDragging).not.toHaveBeenCalled();
-    }
+    expect(document.querySelector('[data-tauri-drag-region]')).not.toBeNull();
+    expect(mockStartDragging).not.toHaveBeenCalled();
   });
 
   it('shows status text for short numeric search', async () => {

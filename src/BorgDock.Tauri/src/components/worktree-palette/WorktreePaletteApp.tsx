@@ -4,7 +4,9 @@ import { listen } from '@tauri-apps/api/event';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WindowStatusBar } from '@/components/shared/chrome';
 import { IconButton, Kbd, Pill } from '@/components/shared/primitives';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings, RepoSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 
@@ -542,28 +544,52 @@ export function WorktreePaletteApp() {
   // ── Render ──
   let flatIndex = 0;
 
+  const totalCount = allEntries.length;
+
   return (
     <div className="bd-wt-palette" onKeyDown={handleKeyDown}>
-      {/* TitleBar */}
-      <div className="bd-wt-titlebar" data-tauri-drag-region>
-        <div className="bd-wt-titlebar-left">
-          <div className="bd-wt-logo">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path
-                d="M4 2v12M12 8c0-3-2-4-4-4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <circle cx="4" cy="14" r="1.6" fill="currentColor" />
-              <circle cx="4" cy="2" r="1.6" fill="currentColor" />
-              <circle cx="12" cy="8" r="1.6" fill="currentColor" />
-            </svg>
-          </div>
-          <span className="bd-wt-title">WORKTREES</span>
-          <Pill tone="ghost">{filtered.length}</Pill>
+      <WindowTitleBar title="Worktrees" meta={<Kbd>Ctrl+F7</Kbd>} />
+
+      <div className="bd-wt-toolbar">
+        <div className="bd-wt-search-wrap">
+          <svg
+            className="bd-wt-search-icon"
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <circle cx="7" cy="7" r="4.5" />
+            <path d="m10.5 10.5 3 3" />
+          </svg>
+          <input
+            ref={searchRef}
+            className="bd-input bd-wt-search"
+            placeholder="Filter by branch, folder, or repo..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            disabled={loading}
+          />
+          {query && (
+            <button
+              type="button"
+              className="bd-wt-search-clear"
+              onClick={() => {
+                setQuery('');
+                searchRef.current?.focus();
+              }}
+              title="Clear"
+            >
+              {'\u2715'}
+            </button>
+          )}
         </div>
-        <div className="bd-wt-titlebar-right">
+        <div className="bd-wt-toolbar-actions">
+          <Pill tone="ghost">{filtered.length}</Pill>
           <IconButton
             size={26}
             active={favoritesOnly}
@@ -606,64 +632,7 @@ export function WorktreePaletteApp() {
               </svg>
             }
           />
-          <IconButton
-            size={26}
-            tooltip="Close (Esc)"
-            onClick={() => getCurrentWindow().hide()}
-            icon={
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              >
-                <path d="m4 4 8 8M12 4l-8 8" />
-              </svg>
-            }
-          />
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="bd-wt-search-wrap relative">
-        <svg
-          className="bd-wt-search-icon absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
-          width="13"
-          height="13"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          aria-hidden
-        >
-          <circle cx="7" cy="7" r="4.5" />
-          <path d="m10.5 10.5 3 3" />
-        </svg>
-        <input
-          ref={searchRef}
-          className="bd-input bd-wt-search w-full px-[33px] py-2 text-[13px] rounded-lg border bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)] outline-none disabled:opacity-55"
-          placeholder="Filter by branch, folder, or repo..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          disabled={loading}
-        />
-        {query && (
-          <button
-            type="button"
-            className="bd-wt-search-clear absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center border-none bg-transparent text-[var(--color-text-muted)] cursor-pointer rounded hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-            onClick={() => {
-              setQuery('');
-              searchRef.current?.focus();
-            }}
-            title="Clear"
-          >
-            {'\u2715'}
-          </button>
-        )}
       </div>
 
       {/* Content */}
@@ -737,23 +706,20 @@ export function WorktreePaletteApp() {
           ))}
       </div>
 
-      {/* Footer */}
-      <div className="bd-wt-footer">
-        <span className="bd-wt-hint">
-          <Kbd>{'\u2191\u2193'}</Kbd>
-          navigate
-        </span>
-        <span className="bd-wt-sep">{'\u00B7'}</span>
-        <span className="bd-wt-hint">
-          <Kbd>{'\u23CE'}</Kbd>
-          open
-        </span>
-        <span className="bd-wt-sep">{'\u00B7'}</span>
-        <span className="bd-wt-hint">
-          <Kbd>esc</Kbd>
-          close
-        </span>
-      </div>
+      <WindowStatusBar
+        left={
+          <span className="bd-mono">
+            {filtered.length} of {totalCount} worktree{totalCount === 1 ? '' : 's'}
+            {favoritesOnly && ' \u00B7 favorites only'}
+          </span>
+        }
+        right={
+          <span className="bd-mono">
+            <Kbd>{'\u2191\u2193'}</Kbd> nav {'\u00B7'} <Kbd>{'\u23CE'}</Kbd> open {'\u00B7'}{' '}
+            <Kbd>esc</Kbd>
+          </span>
+        }
+      />
     </div>
   );
 }

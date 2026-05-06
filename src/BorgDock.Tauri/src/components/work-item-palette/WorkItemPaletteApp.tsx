@@ -2,8 +2,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
-import { WorkItemPaletteRow } from '@/components/work-item-palette/WorkItemPaletteRow';
+import { WindowStatusBar } from '@/components/shared/chrome';
 import { Kbd } from '@/components/shared/primitives';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { WorkItemPaletteRow } from '@/components/work-item-palette/WorkItemPaletteRow';
 import {
   saveCurrentPosition,
   useWorkItemPaletteSearch,
@@ -117,119 +119,86 @@ export function WorkItemPaletteApp() {
     return () => unlisten?.();
   }, []);
 
-  function startDrag(e: React.MouseEvent) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    getCurrentWindow().startDragging();
-  }
-
   // Track flat index offset for sectioned rendering
   let globalOffset = 0;
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--color-card-background)]">
-      <div className="flex h-full w-full flex-col">
-        {/* Drag handle */}
-        <div
-          className="flex h-7 cursor-grab items-center justify-center active:cursor-grabbing bg-[var(--color-surface-raised)]"
-          data-tauri-drag-region
-          onMouseDown={startDrag}
-        >
-          {/* drag handle: bespoke 3-dot grip, no primitive maps */}
-          <div className="flex gap-1">
-            <div className="h-1 w-1 rounded-full bg-[var(--color-text-ghost)]" />
-            <div className="h-1 w-1 rounded-full bg-[var(--color-text-ghost)]" />
-            <div className="h-1 w-1 rounded-full bg-[var(--color-text-ghost)]" />
-          </div>
-        </div>
+    <div className="bd-wp-palette">
+      <WindowTitleBar title="Work Items" meta={<Kbd>Ctrl+F9</Kbd>} />
 
-        {/* Search input */}
-        <div className="px-3 pt-1 pb-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            placeholder="Search by ID, title, or assigned to..."
-            className="bd-input w-full rounded-lg border px-3 py-2.5 text-base outline-none bg-[var(--color-input-bg)] border-[var(--color-input-border)] text-[var(--color-text-primary)] caret-[var(--color-accent)]"
-          />
-        </div>
-
-        {/* Content area */}
-        <div ref={listRef} className="max-h-80 overflow-y-auto">
-          {isSearchMode ? (
-            /* Search results */
-            navItems.map((item, index) => (
-              <WorkItemPaletteRow
-                key={item.id}
-                item={item}
-                isSelected={index === selectedIndex}
-                onMouseEnter={() => setSelectedIndex(index)}
-                onSelect={selectAndClose}
-              />
-            ))
-          ) : (
-            /* Browse sections */
-            <>
-              {browseSections.length === 0 && !isLoadingBrowse && (
-                <div className="px-4 py-6 text-center text-[13px] text-[var(--color-text-muted)]">
-                  Type to search work items
-                </div>
-              )}
-              {isLoadingBrowse && browseSections.length === 0 && (
-                <div className="flex items-center justify-center py-6">
-                  <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent text-[var(--color-text-muted)]" />
-                  <span className="text-[13px] text-[var(--color-text-muted)]">Loading...</span>
-                </div>
-              )}
-              {browseSections.map((section) => {
-                const sectionStart = globalOffset;
-                const rendered = (
-                  <div key={section.label}>
-                    <div className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
-                      {section.label}
-                    </div>
-                    {section.items.map((item, localIndex) => {
-                      const flatIndex = sectionStart + localIndex;
-                      return (
-                        <WorkItemPaletteRow
-                          key={item.id}
-                          item={item}
-                          isSelected={flatIndex === selectedIndex}
-                          onMouseEnter={() => setSelectedIndex(flatIndex)}
-                          onSelect={selectAndClose}
-                        />
-                      );
-                    })}
-                  </div>
-                );
-                globalOffset += section.items.length;
-                return rendered;
-              })}
-            </>
-          )}
-        </div>
-
-        {/* Separator */}
-        {(navItems.length > 0 || browseSections.length > 0) && (
-          <div className="h-px bg-[var(--color-separator)]" />
-        )}
-
-        {/* Status bar */}
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {isSearching && (
-              <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent align-middle" />
-            )}
-            {statusText ||
-              (navItems.length > 0 ? '\u2191\u2193 navigate \u00b7 \u23ce select' : '')}
-          </span>
-          <span className="text-[11px] text-[var(--color-text-faint)]">
-            <Kbd>Esc</Kbd> to close
-          </span>
-        </div>
+      <div className="bd-wp-search-wrap">
+        <input
+          ref={inputRef}
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          onKeyDown={handleInputKeyDown}
+          placeholder="Search by ID, title, or assigned to..."
+          className="bd-input bd-wp-search"
+        />
       </div>
+
+      <div ref={listRef} className="bd-wp-content">
+        {isSearchMode ? (
+          navItems.map((item, index) => (
+            <WorkItemPaletteRow
+              key={item.id}
+              item={item}
+              isSelected={index === selectedIndex}
+              onMouseEnter={() => setSelectedIndex(index)}
+              onSelect={selectAndClose}
+            />
+          ))
+        ) : (
+          <>
+            {browseSections.length === 0 && !isLoadingBrowse && (
+              <div className="bd-wp-empty">Type to search work items</div>
+            )}
+            {isLoadingBrowse && browseSections.length === 0 && (
+              <div className="bd-wp-loading">
+                <span className="bd-wp-spinner" />
+                <span>Loading...</span>
+              </div>
+            )}
+            {browseSections.map((section) => {
+              const sectionStart = globalOffset;
+              const rendered = (
+                <div key={section.label}>
+                  <div className="bd-wp-section-header">{section.label}</div>
+                  {section.items.map((item, localIndex) => {
+                    const flatIndex = sectionStart + localIndex;
+                    return (
+                      <WorkItemPaletteRow
+                        key={item.id}
+                        item={item}
+                        isSelected={flatIndex === selectedIndex}
+                        onMouseEnter={() => setSelectedIndex(flatIndex)}
+                        onSelect={selectAndClose}
+                      />
+                    );
+                  })}
+                </div>
+              );
+              globalOffset += section.items.length;
+              return rendered;
+            })}
+          </>
+        )}
+      </div>
+
+      <WindowStatusBar
+        left={
+          <span className="bd-mono">
+            {isSearching && <span className="bd-wp-spinner bd-wp-spinner--inline" />}
+            {statusText || (navItems.length > 0 ? `${navItems.length} results` : '')}
+          </span>
+        }
+        right={
+          <span className="bd-mono">
+            <Kbd>{'\u2191\u2193'}</Kbd> nav {'\u00b7'} <Kbd>{'\u23ce'}</Kbd> select {'\u00b7'} <Kbd>Esc</Kbd>
+          </span>
+        }
+      />
     </div>
   );
 }
