@@ -215,7 +215,7 @@ export function useBadgeSync() {
         const fn = await listen('expand-sidebar', async () => {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('toggle_sidebar');
+            await invoke('show_or_focus_main');
           } catch {
             // ignore
           }

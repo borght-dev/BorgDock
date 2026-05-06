@@ -24,9 +24,6 @@ describe('SetupWizard', () => {
         },
         repos: [],
         ui: {
-          sidebarEdge: 'right',
-          sidebarMode: 'pinned',
-          sidebarWidthPx: 800,
           theme: 'system',
           globalHotkey: 'Ctrl+Win+Shift+G',
           flyoutHotkey: 'Ctrl+Win+Shift+F',
@@ -217,7 +214,7 @@ describe('SetupWizard', () => {
     });
   });
 
-  it('shows Sidebar Position and Theme pickers on Appearance step', async () => {
+  it('shows Theme picker on Appearance step', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       { owner: 'test', name: 'repo', localPath: '/path', isSelected: true },
@@ -242,10 +239,7 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Sidebar Position')).toBeTruthy();
-      expect(screen.getByText('Theme')).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'left' })).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'right' })).toBeTruthy();
+      expect(screen.getByText('Customize Appearance')).toBeTruthy();
       expect(screen.getByRole('button', { name: 'System' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Light' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Dark' })).toBeTruthy();
@@ -446,7 +440,7 @@ describe('SetupWizard', () => {
     expect(container.querySelector('[data-wizard-step="0"]')).toBeTruthy();
   });
 
-  it('saves sidebarEdge and theme from Appearance step', async () => {
+  it('saves theme from Appearance step', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       { owner: 'test', name: 'repo', localPath: '/path/repo', isSelected: true },
@@ -471,11 +465,10 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Sidebar Position')).toBeTruthy();
+      expect(screen.getByText('Customize Appearance')).toBeTruthy();
     });
 
-    // Change sidebar to 'left' and theme to 'dark'
-    fireEvent.click(screen.getByRole('button', { name: 'left' }));
+    // Change theme to 'dark'
     fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
     fireEvent.click(screen.getByText('Finish'));
 
@@ -484,7 +477,6 @@ describe('SetupWizard', () => {
       expect(saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           ui: expect.objectContaining({
-            sidebarEdge: 'left',
             theme: 'dark',
           }),
         }),

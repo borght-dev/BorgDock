@@ -41,15 +41,12 @@ vi.mock('@/stores/ui-store', () => ({
 
 import { useAutoHide } from '../useAutoHide';
 
-function makeSettings(sidebarMode: 'pinned' | 'floating' = 'floating'): AppSettings {
+function makeSettings(): AppSettings {
   return {
     setupComplete: true,
     gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
     repos: [],
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode,
-      sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
       flyoutHotkey: '',
@@ -117,17 +114,9 @@ describe('useAutoHide', () => {
     expect(typeof result.current.clearTimer).toBe('function');
   });
 
-  it('does not set up mouse listeners in pinned mode', () => {
+  it('sets up mouse listeners', () => {
     const addSpy = vi.spyOn(document.documentElement, 'addEventListener');
-    renderHook(() => useAutoHide(makeSettings('pinned')));
-    expect(addSpy).not.toHaveBeenCalledWith('mouseenter', expect.any(Function));
-    expect(addSpy).not.toHaveBeenCalledWith('mouseleave', expect.any(Function));
-    addSpy.mockRestore();
-  });
-
-  it('sets up mouse listeners in floating mode', () => {
-    const addSpy = vi.spyOn(document.documentElement, 'addEventListener');
-    renderHook(() => useAutoHide(makeSettings('floating')));
+    renderHook(() => useAutoHide(makeSettings()));
     expect(addSpy).toHaveBeenCalledWith('mouseenter', expect.any(Function));
     expect(addSpy).toHaveBeenCalledWith('mouseleave', expect.any(Function));
     addSpy.mockRestore();
@@ -135,16 +124,16 @@ describe('useAutoHide', () => {
 
   it('removes mouse listeners on unmount', () => {
     const removeSpy = vi.spyOn(document.documentElement, 'removeEventListener');
-    const { unmount } = renderHook(() => useAutoHide(makeSettings('floating')));
+    const { unmount } = renderHook(() => useAutoHide(makeSettings()));
     unmount();
     expect(removeSpy).toHaveBeenCalledWith('mouseenter', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('mouseleave', expect.any(Function));
     removeSpy.mockRestore();
   });
 
-  it('hides sidebar after mouse leave delay in floating mode', async () => {
+  it('hides sidebar after mouse leave delay', async () => {
     mockInvoke.mockResolvedValue(undefined);
-    renderHook(() => useAutoHide(makeSettings('floating')));
+    renderHook(() => useAutoHide(makeSettings()));
 
     // Simulate mouseleave
     act(() => {
@@ -163,7 +152,7 @@ describe('useAutoHide', () => {
   });
 
   it('cancels hide timer when mouse enters', () => {
-    renderHook(() => useAutoHide(makeSettings('floating')));
+    renderHook(() => useAutoHide(makeSettings()));
 
     // Start hide
     act(() => {
@@ -184,23 +173,9 @@ describe('useAutoHide', () => {
     expect(mockSetSidebarVisible).not.toHaveBeenCalled();
   });
 
-  it('startHideTimer does nothing in pinned mode', () => {
-    const { result } = renderHook(() => useAutoHide(makeSettings('pinned')));
-
-    act(() => {
-      result.current.startHideTimer();
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-
-    expect(mockSetSidebarVisible).not.toHaveBeenCalled();
-  });
-
-  it('startHideTimer hides sidebar after delay in floating mode', () => {
+  it('startHideTimer hides sidebar after delay', () => {
     mockInvoke.mockResolvedValue(undefined);
-    const { result } = renderHook(() => useAutoHide(makeSettings('floating')));
+    const { result } = renderHook(() => useAutoHide(makeSettings()));
 
     act(() => {
       result.current.startHideTimer();
@@ -214,7 +189,7 @@ describe('useAutoHide', () => {
   });
 
   it('clearTimer prevents pending hide', () => {
-    const { result } = renderHook(() => useAutoHide(makeSettings('floating')));
+    const { result } = renderHook(() => useAutoHide(makeSettings()));
 
     act(() => {
       result.current.startHideTimer();
@@ -233,16 +208,12 @@ describe('useAutoHide', () => {
   });
 
   it('does not hide when mouse is hovering', () => {
-    renderHook(() => useAutoHide(makeSettings('floating')));
+    renderHook(() => useAutoHide(makeSettings()));
 
     // Enter first
     act(() => {
       document.documentElement.dispatchEvent(new MouseEvent('mouseenter'));
     });
-
-    // Then start hide timer manually (should be blocked by hover state)
-    // The hook uses isHoveredRef internally, so calling startHideTimer
-    // directly would still check it
 
     // Leave then enter before timeout
     act(() => {
@@ -267,7 +238,7 @@ describe('useAutoHide', () => {
       mockIsFocused.mockResolvedValue(false);
       mockIsMinimized.mockResolvedValue(false);
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       // Wait for the async listener registration
       await vi.waitFor(() => {
@@ -288,15 +259,13 @@ describe('useAutoHide', () => {
       await vi.waitFor(() => {
         expect(mockSetSidebarVisible).toHaveBeenCalledWith(false);
       });
-
-      expect(mockInvoke).toHaveBeenCalledWith('hide_sidebar');
     });
 
     it('does not hide when window regains focus during debounce', async () => {
       mockInvoke.mockResolvedValue(undefined);
       mockIsFocused.mockResolvedValue(true);
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -332,7 +301,7 @@ describe('useAutoHide', () => {
       mockIsFocused.mockResolvedValue(false);
       mockIsMinimized.mockResolvedValue(true); // minimized
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -362,7 +331,7 @@ describe('useAutoHide', () => {
       mockIsMinimized.mockResolvedValue(false);
       mockIsDragging = true;
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -390,7 +359,7 @@ describe('useAutoHide', () => {
       mockInvoke.mockResolvedValue(undefined);
       mockIsVisible.mockResolvedValue(true);
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -409,7 +378,7 @@ describe('useAutoHide', () => {
       mockInvoke.mockResolvedValue(undefined);
       mockIsVisible.mockResolvedValue(false);
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -430,7 +399,7 @@ describe('useAutoHide', () => {
     });
 
     it('cleans up focus listener on unmount', async () => {
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -442,7 +411,7 @@ describe('useAutoHide', () => {
       mockIsFocused.mockResolvedValue(true);
       mockIsMinimized.mockResolvedValue(false);
 
-      renderHook(() => useAutoHide(makeSettings('floating')));
+      renderHook(() => useAutoHide(makeSettings()));
 
       await vi.waitFor(() => {
         expect(focusChangedCallback).not.toBeNull();
@@ -464,26 +433,6 @@ describe('useAutoHide', () => {
       // stillUnfocused check: isFocused() returns true, so !true = false, early return
       const falseCalls = mockSetSidebarVisible.mock.calls.filter((c: unknown[]) => c[0] === false);
       expect(falseCalls).toHaveLength(0);
-    });
-  });
-
-  describe('hideSidebar', () => {
-    it('calls hide_sidebar when timer fires', async () => {
-      mockInvoke.mockResolvedValue(undefined);
-      renderHook(() => useAutoHide(makeSettings('floating')));
-
-      // Trigger mouseleave to start the hide timer
-      act(() => {
-        document.documentElement.dispatchEvent(new MouseEvent('mouseleave'));
-      });
-
-      act(() => {
-        vi.advanceTimersByTime(3000);
-      });
-
-      await vi.waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith('hide_sidebar');
-      });
     });
   });
 });

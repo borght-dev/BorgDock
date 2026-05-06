@@ -24,9 +24,6 @@ function makeSettings(repos: AppSettings['repos'] = []): AppSettings {
     gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
     repos,
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode: 'pinned',
-      sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
       flyoutHotkey: '',

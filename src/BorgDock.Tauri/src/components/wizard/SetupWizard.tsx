@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { AppSettings, RepoSettings, SidebarEdge, ThemeMode } from '@/types';
+import type { AppSettings, RepoSettings, ThemeMode } from '@/types';
 import { Button, Card, Chip, Dot } from '@/components/shared/primitives';
 import { AuthStep } from './AuthStep';
 import { RepoStep } from './RepoStep';
@@ -31,7 +31,6 @@ export function SetupWizard() {
   const [isScanning, setIsScanning] = useState(false);
 
   // Appearance state
-  const [sidebarEdge, setSidebarEdge] = useState<SidebarEdge>(settings.ui.sidebarEdge);
   const [theme, setTheme] = useState<ThemeMode>(settings.ui.theme);
 
   const canGoNext = useMemo(() => {
@@ -91,13 +90,12 @@ export function SetupWizard() {
         repos: selectedRepos,
         ui: {
           ...settings.ui,
-          sidebarEdge,
           theme,
         },
       };
       await saveSettings(updated);
     }
-  }, [currentStep, isOnFinalStep, repos, settings, authMethod, pat, username, sidebarEdge, theme, saveSettings]);
+  }, [currentStep, isOnFinalStep, repos, settings, authMethod, pat, username, theme, saveSettings]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) {
@@ -195,24 +193,6 @@ export function SetupWizard() {
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
                   You can change these any time in Settings.
                 </p>
-              </div>
-
-              {/* Sidebar Position */}
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-[var(--color-text-secondary)]">
-                  Sidebar Position
-                </span>
-                <div className="flex gap-2">
-                  {(['left', 'right'] as const).map((edge) => (
-                    <Chip
-                      key={edge}
-                      active={sidebarEdge === edge}
-                      onClick={() => setSidebarEdge(edge)}
-                    >
-                      {edge}
-                    </Chip>
-                  ))}
-                </div>
               </div>
 
               {/* Theme */}

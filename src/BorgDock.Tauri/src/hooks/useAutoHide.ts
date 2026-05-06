@@ -7,18 +7,7 @@ const log = createLogger('autoHide');
 const AUTO_HIDE_DELAY_MS = 3000;
 const FOCUS_LOST_DEBOUNCE_MS = 200;
 
-async function hideSidebar() {
-  try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    log.debug('invoke hide_sidebar');
-    await invoke('hide_sidebar');
-    log.debug('hide_sidebar done');
-  } catch (err) {
-    log.error('hideSidebar failed', err);
-  }
-}
-
-export function useAutoHide(settings: AppSettings) {
+export function useAutoHide(_settings: AppSettings) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHoveredRef = useRef(false);
   const setSidebarVisible = useUiStore((s) => s.setSidebarVisible);
@@ -31,24 +20,20 @@ export function useAutoHide(settings: AppSettings) {
   }, []);
 
   const startHideTimer = useCallback(() => {
-    if (settings.ui.sidebarMode !== 'floating') return;
     clearTimer();
     log.debug('auto-hide timer scheduled', { delayMs: AUTO_HIDE_DELAY_MS });
     timerRef.current = setTimeout(() => {
       if (!isHoveredRef.current) {
         log.info('auto-hide timer fired — hiding sidebar');
         setSidebarVisible(false);
-        hideSidebar();
       } else {
         log.debug('auto-hide timer fired but hovered — keeping sidebar');
       }
     }, AUTO_HIDE_DELAY_MS);
-  }, [settings.ui.sidebarMode, clearTimer, setSidebarVisible]);
+  }, [clearTimer, setSidebarVisible]);
 
-  // Auto-hide on mouse leave (floating mode only)
+  // Auto-hide on mouse leave
   useEffect(() => {
-    if (settings.ui.sidebarMode !== 'floating') return;
-
     const handleMouseEnter = () => {
       isHoveredRef.current = true;
       clearTimer();
@@ -67,11 +52,9 @@ export function useAutoHide(settings: AppSettings) {
       document.documentElement.removeEventListener('mouseenter', handleMouseEnter);
       document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [settings.ui.sidebarMode, clearTimer, startHideTimer]);
+  }, [clearTimer, startHideTimer]);
 
-  // Hide sidebar when window loses focus (click outside)
-  // Skip when minimized so the taskbar icon can still restore the window.
-  // Debounced so that transient focus loss during window drag doesn't hide.
+  // Track window focus state
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -109,9 +92,8 @@ export function useAutoHide(settings: AppSettings) {
                 return;
               }
 
-              log.info('focus lost — hiding sidebar');
+              log.info('focus lost — updating visibility state');
               setSidebarVisible(false);
-              hideSidebar();
             }, FOCUS_LOST_DEBOUNCE_MS);
           } else {
             // Focus regained — cancel any pending hide

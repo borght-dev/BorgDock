@@ -35,9 +35,6 @@ function makeSettings(overrides: Partial<AppSettings['azureDevOps']> = {}): AppS
     gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
     repos: [],
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode: 'pinned',
-      sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
       flyoutHotkey: '',

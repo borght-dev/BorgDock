@@ -59,11 +59,8 @@ export function Header() {
   const handleMinimize = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      // Hide explicitly rather than via toggle_sidebar — the toggle path used
-      // to rely on win.is_visible(), which is unreliable for transparent
-      // always-on-top WebView2 windows on Windows.
       useUiStore.getState().setSidebarVisible(false);
-      await invoke('hide_sidebar');
+      await invoke('show_or_focus_main');
     } catch (err) {
       console.error('Failed to minimize:', err);
     }

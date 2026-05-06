@@ -107,7 +107,7 @@ export function FlyoutGlance({
   const handleOpenSidebar = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('toggle_sidebar');
+      await invoke('show_or_focus_main');
     } catch {
       // ignore
     }
@@ -129,7 +129,7 @@ export function FlyoutGlance({
       const { invoke } = await import('@tauri-apps/api/core');
       const { emitTo } = await import('@tauri-apps/api/event');
       await emitTo('main', 'open-focus', {});
-      await invoke('toggle_sidebar');
+      await invoke('show_or_focus_main');
     } catch {
       // ignore
     }

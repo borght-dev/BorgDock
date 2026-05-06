@@ -152,9 +152,6 @@ const fullSettings = {
     },
   ],
   ui: {
-    sidebarEdge: 'right' as const,
-    sidebarMode: 'pinned' as const,
-    sidebarWidthPx: 800,
     theme: 'system' as const,
     globalHotkey: '',
     flyoutHotkey: '',
@@ -381,21 +378,4 @@ describe('App', () => {
     });
   });
 
-  it('positions sidebar on mount', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    useSettingsStore.setState({
-      isLoading: false,
-      settings: fullSettings,
-      loadSettings: vi.fn(),
-    });
-
-    await act(async () => {
-      render(<App />);
-    });
-
-    expect(invoke).toHaveBeenCalledWith('position_sidebar', {
-      edge: 'right',
-      width: 800,
-    });
-  });
 });

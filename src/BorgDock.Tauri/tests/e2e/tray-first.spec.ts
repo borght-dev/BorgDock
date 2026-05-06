@@ -1,12 +1,11 @@
 /**
- * Tray-first boot smoke tests — verify that the App.tsx tray-first useEffect
- * fires the correct invoke command depending on whether setup is needed.
+ * Boot smoke tests — verify that the App.tsx useEffect fires the correct invoke
+ * command depending on whether setup is needed.
  *
- * Task 16 introduced the "tray-first" boot model: on launch the Rust side parks
- * the main window 1×1 off-screen. The frontend mirrors this by immediately
- * invoking `hide_sidebar` when setup is complete, and `show_setup_wizard` when
- * it is not. These tests assert that invariant at the frontend level without
- * needing a real Tauri backend.
+ * The frontend invokes `show_setup_wizard` when setup is incomplete. When setup
+ * is complete, no special parking command is needed — the Tauri window-state
+ * plugin restores position on launch. These tests assert that invariant at the
+ * frontend level without needing a real Tauri backend.
  *
  * Harness notes:
  *  - We use `page.addInitScript` (a string) to install the Tauri mock before
@@ -59,9 +58,6 @@ function buildTrayFirstInitScript(setupComplete: boolean): string {
       ? [{ owner: 'org', name: 'repo', enabled: true, worktreeBasePath: '/home/user/repo', worktreeSubfolder: '.worktrees' }]
       : [],
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode: 'pinned',
-      sidebarWidthPx: 380,
       theme: 'dark',
       globalHotkey: 'Ctrl+Shift+P',
       flyoutHotkey: 'Ctrl+Win+Shift+F',
@@ -130,33 +126,22 @@ test.describe('tray-first boot', () => {
   // a Vite-only server rather than the live tauri dev window.
   test.skip(true, 'page.goto("/") hangs when tauri dev is running; run manually against a Vite-only server');
 
-  test('invokes hide_sidebar when setup is complete', async ({ page }) => {
+  test('does not invoke show_setup_wizard when setup is complete', async ({ page }) => {
     // Install mock before any page JS runs.
     await page.addInitScript(buildTrayFirstInitScript(true));
     await page.goto('/');
 
-    // The App.tsx tray-first useEffect fires when `needsSetup` settles.
-    // `needsSetup === false` when setupComplete=true AND repos.length > 0
-    // AND (authMethod != 'pat' OR pat is set). Our mock satisfies all three.
-    // Poll until hide_sidebar appears in the recorded command list (max 5 s).
-    await page.waitForFunction(
-      () => {
-        const calls = (window as any).__invokedCommands as string[] | undefined;
-        return Array.isArray(calls) && calls.includes('hide_sidebar');
-      },
-      { timeout: 5_000 },
-    );
+    // Wait briefly for the App to settle (the show_setup_wizard effect fires
+    // synchronously if needsSetup, so waiting a moment is sufficient).
+    await page.waitForTimeout(2_000);
 
     const calls: string[] = await page.evaluate(
       () => (window as any).__invokedCommands ?? [],
     );
 
-    // Core invariant: tray-first parks the main window via hide_sidebar.
-    expect(calls).toContain('hide_sidebar');
-
-    // Negative invariants: these commands must NOT be called when setup is done.
+    // When setup is complete, no wizard is shown.
     expect(calls).not.toContain('show_setup_wizard');
-    // Legacy notification command removed in the tray-first rewrite.
+    // Legacy notification command removed.
     expect(calls).not.toContain('send_notification');
   });
 
@@ -178,7 +163,5 @@ test.describe('tray-first boot', () => {
     );
 
     expect(calls).toContain('show_setup_wizard');
-    // The window must NOT be parked while setup is pending.
-    expect(calls).not.toContain('hide_sidebar');
   });
 });

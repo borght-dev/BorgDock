@@ -97,7 +97,7 @@ describe('Header', () => {
     render(<Header />);
     fireEvent.click(screen.getByLabelText('Minimize to badge'));
     await vi.waitFor(() => {
-      expect(invoke).toHaveBeenCalledWith('hide_sidebar');
+      expect(invoke).toHaveBeenCalledWith('show_or_focus_main');
     });
   });
 

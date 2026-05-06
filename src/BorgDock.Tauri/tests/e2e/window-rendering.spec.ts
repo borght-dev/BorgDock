@@ -32,8 +32,7 @@ const SECONDARY_WINDOW_MOCKS = `
             worktreeBasePath: '/home/user/repo',
             worktreeSubfolder: '.worktrees',
           }],
-          ui: { theme: 'dark', sidebarEdge: 'right', sidebarMode: 'pinned',
-                sidebarWidthPx: 380, globalHotkey: 'Ctrl+Shift+P',
+          ui: { theme: 'dark', globalHotkey: 'Ctrl+Shift+P',
                 editorCommand: 'code' },
           notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
           azureDevOps: {
@@ -66,7 +65,7 @@ const SECONDARY_WINDOW_MOCKS = `
       case 'save_settings':
       case 'register_user_hotkeys':
       case 'unregister_hotkey':
-      case 'position_sidebar':
+      case 'show_or_focus_main':
       case 'open_in_terminal':
       case 'open_in_editor':
       case 'execute_sql_query':

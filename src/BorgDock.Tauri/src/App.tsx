@@ -99,24 +99,13 @@ export default function App() {
     }
   }, [isInitComplete, needsSetup]);
 
-  // Show the main window as a centered modal when setup is needed, or park it
-  // off-screen (via hide_sidebar) when setup is complete. This runs on every
-  // needsSetup change so the window is correctly positioned on first launch and
-  // after the wizard finishes.
+  // Show the setup wizard window when setup is needed.
   useEffect(() => {
-    void (async () => {
-      try {
-        if (needsSetup) {
-          await invoke('show_setup_wizard');
-        } else {
-          // When setup completes (or on subsequent launches with setup done),
-          // park the main window off-screen by invoking hide_sidebar.
-          await invoke('hide_sidebar');
-        }
-      } catch {
+    if (needsSetup) {
+      invoke('show_setup_wizard').catch(() => {
         // ignore
-      }
-    })();
+      });
+    }
   }, [needsSetup]);
 
   // Defer polling until init completes — otherwise the first cycle runs
@@ -204,7 +193,7 @@ export default function App() {
     useOnboardingStore.getState().restoreOnboardingState();
   }, []);
 
-  // Register global hotkeys (sidebar toggle + flyout toggle)
+  // Register global hotkeys (main window toggle + flyout toggle)
   useEffect(() => {
     if (settings.ui.globalHotkey) {
       // Normalize: Tauri expects "Super" for the Windows key, not "Win"
@@ -230,18 +219,6 @@ export default function App() {
       );
     };
   }, [settings.ui.globalHotkey, settings.ui.flyoutHotkey]);
-
-  // Position sidebar on the screen edge
-  useEffect(() => {
-    log.debug('positioning sidebar', {
-      edge: settings.ui.sidebarEdge,
-      width: settings.ui.sidebarWidthPx,
-    });
-    invoke('position_sidebar', {
-      edge: settings.ui.sidebarEdge,
-      width: settings.ui.sidebarWidthPx,
-    }).catch((err) => log.error('position_sidebar failed', err));
-  }, [settings.ui.sidebarEdge, settings.ui.sidebarWidthPx]);
 
   // Listen for open-settings event from tray
   useEffect(() => {
