@@ -1,7 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef } from 'react';
 import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
-import type { DiffHunk, DiffLine, HighlightSpan, InlineChange } from '@/types';
+import type { DiffHunk, DiffLine, HighlightSpan, InlineChange, ReviewThread } from '@/types';
 import { DiffLineContent } from './DiffLineContent';
 
 const VIRTUALIZE_THRESHOLD = 500;
@@ -10,6 +10,15 @@ const GUTTER_PX = 40;
 interface SplitDiffViewProps {
   hunks: DiffHunk[];
   syntaxHighlights?: Map<number, HighlightSpan[]> | null;
+  // Thread props forwarded from DiffFileSection — split-mode thread rendering is out of scope
+  // but these props must be accepted so DiffFileSection can forward uniformly.
+  threadsByLine?: Map<number, ReviewThread[]>;
+  openThreadIds?: Set<string>;
+  onToggleThread?: (id: string) => void;
+  onResolve?: (id: string) => void;
+  onUnresolve?: (id: string) => void;
+  onReply?: (id: string, body: string) => void;
+  highlightLine?: number | null;
 }
 
 interface SplitRow {
@@ -23,7 +32,18 @@ interface SplitRow {
   rightOrigIdx?: number;
 }
 
-export function SplitDiffView({ hunks, syntaxHighlights }: SplitDiffViewProps) {
+export function SplitDiffView({
+  hunks,
+  syntaxHighlights,
+  // Thread props intentionally unused in split mode (out of scope for Task 19/20)
+  threadsByLine: _threadsByLine,
+  openThreadIds: _openThreadIds,
+  onToggleThread: _onToggleThread,
+  onResolve: _onResolve,
+  onUnresolve: _onUnresolve,
+  onReply: _onReply,
+  highlightLine: _highlightLine,
+}: SplitDiffViewProps) {
   const rows = useMemo(() => buildSplitRows(hunks), [hunks]);
 
   if (rows.length > VIRTUALIZE_THRESHOLD) {

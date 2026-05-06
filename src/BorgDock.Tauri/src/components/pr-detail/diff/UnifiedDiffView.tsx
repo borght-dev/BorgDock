@@ -1,7 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useMemo, useRef } from 'react';
+import { Fragment, useMemo, useRef } from 'react';
 import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
-import type { DiffHunk, DiffLine, HighlightSpan, InlineChange } from '@/types';
+import type { DiffHunk, DiffLine, HighlightSpan, InlineChange, ReviewThread } from '@/types';
 import { DiffLineContent } from './DiffLineContent';
 import { DiffLineRow } from './DiffLineRow';
 
@@ -10,9 +10,26 @@ const VIRTUALIZE_THRESHOLD = 500;
 interface UnifiedDiffViewProps {
   hunks: DiffHunk[];
   syntaxHighlights?: Map<number, HighlightSpan[]> | null;
+  threadsByLine?: Map<number, ReviewThread[]>;
+  openThreadIds?: Set<string>;
+  onToggleThread?: (id: string) => void;
+  onResolve?: (id: string) => void;
+  onUnresolve?: (id: string) => void;
+  onReply?: (id: string, body: string) => void;
+  highlightLine?: number | null;
 }
 
-export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProps) {
+export function UnifiedDiffView({
+  hunks,
+  syntaxHighlights,
+  threadsByLine,
+  openThreadIds,
+  onToggleThread,
+  onResolve: _onResolve, // unused until Task 20 wires InlineThread
+  onUnresolve: _onUnresolve,
+  onReply: _onReply,
+  highlightLine,
+}: UnifiedDiffViewProps) {
   const allLines = useMemo(() => hunks.flatMap((h) => h.lines), [hunks]);
 
   const inlineMap = useMemo(() => {
@@ -64,13 +81,26 @@ export function UnifiedDiffView({ hunks, syntaxHighlights }: UnifiedDiffViewProp
                 : undefined
             : undefined;
           const syntaxSpans = syntaxHighlights?.get(i);
+          const lineNo = line.type !== 'hunk-header' ? line.newLineNumber : undefined;
+          const lineThreads = lineNo != null ? threadsByLine?.get(lineNo) ?? [] : [];
+          const firstThread = lineThreads[0];
+          const isOpen = firstThread ? openThreadIds?.has(firstThread.id) ?? false : false;
+          const isHighlighted = lineNo != null && highlightLine != null && lineNo === highlightLine;
+
           return (
-            <DiffLineRow
-              key={i}
-              line={line}
-              inlineChanges={inlineChanges}
-              syntaxSpans={syntaxSpans}
-            />
+            <Fragment key={i}>
+              <DiffLineRow
+                line={line}
+                inlineChanges={inlineChanges}
+                syntaxSpans={syntaxSpans}
+                hasThread={lineThreads.length > 0}
+                threadCount={firstThread?.comments.length}
+                threadOpen={isOpen}
+                onToggleThread={firstThread ? () => onToggleThread?.(firstThread.id) : undefined}
+                highlight={isHighlighted}
+              />
+              {/* InlineThread row — wired in Task 20. For now, intentionally not rendered. */}
+            </Fragment>
           );
         })}
       </tbody>

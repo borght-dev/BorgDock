@@ -5,6 +5,16 @@ interface DiffLineRowProps {
   line: DiffLine;
   inlineChanges?: InlineChange[];
   syntaxSpans?: HighlightSpan[];
+  /** When true: row is clickable, chip rendered. */
+  hasThread?: boolean;
+  /** Number of comments in the thread (renders inside the chip when not open). */
+  threadCount?: number;
+  /** When true the chip shows "hide" and the row indicates expansion. */
+  threadOpen?: boolean;
+  /** Click handler for both the row and the chip. */
+  onToggleThread?: () => void;
+  /** Yellow-highlight treatment for the jump-target line. */
+  highlight?: boolean;
 }
 
 /**
@@ -12,7 +22,16 @@ interface DiffLineRowProps {
  * rendering (DiffFileSection / InlineThread, Task 19/20) can pass thread props
  * through a stable surface.
  */
-export function DiffLineRow({ line, inlineChanges, syntaxSpans }: DiffLineRowProps) {
+export function DiffLineRow({
+  line,
+  inlineChanges,
+  syntaxSpans,
+  hasThread,
+  threadCount,
+  threadOpen,
+  onToggleThread,
+  highlight,
+}: DiffLineRowProps) {
   if (line.type === 'hunk-header') {
     return (
       <tr
@@ -48,7 +67,15 @@ export function DiffLineRow({ line, inlineChanges, syntaxSpans }: DiffLineRowPro
     line.type === 'add' ? 'add' : line.type === 'delete' ? 'del' : 'context';
 
   return (
-    <tr data-line-kind={lineKind} style={{ backgroundColor: bgColor }}>
+    <tr
+      data-line-kind={lineKind}
+      onClick={hasThread ? onToggleThread : undefined}
+      style={{
+        backgroundColor: highlight ? 'var(--color-warning-badge-bg)' : bgColor,
+        cursor: hasThread ? 'pointer' : undefined,
+        boxShadow: highlight ? 'inset 3px 0 0 var(--color-status-yellow)' : undefined,
+      }}
+    >
       <td
         className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
         style={{ backgroundColor: gutterBg, userSelect: 'none' }}
@@ -68,6 +95,24 @@ export function DiffLineRow({ line, inlineChanges, syntaxSpans }: DiffLineRowPro
           inlineChanges={inlineChanges}
           syntaxSpans={syntaxSpans}
         />
+        {hasThread && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleThread?.();
+            }}
+            className="ml-3 inline-flex items-center gap-1 rounded-full bg-[var(--color-accent-subtle)] px-2 py-[1px] text-[10px] font-semibold text-[var(--color-accent)]"
+            aria-label={threadOpen ? 'Hide thread' : `${threadCount ?? 1} comment${threadCount === 1 ? '' : 's'}`}
+            data-thread-chip
+          >
+            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                 strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 4h10v6H7l-3 3v-3H3z" />
+            </svg>
+            {threadOpen ? 'hide' : (threadCount ?? 1)}
+          </button>
+        )}
       </td>
     </tr>
   );

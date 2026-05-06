@@ -41,4 +41,46 @@ describe('DiffLineRow', () => {
     );
     expect(container.querySelector('[data-line-kind="context"]')).not.toBeNull();
   });
+
+  it('renders a thread chip when hasThread is true', () => {
+    render(
+      <table><tbody>
+        <DiffLineRow
+          line={line({ type: 'add', newLineNumber: 12 })}
+          hasThread
+          threadCount={2}
+          onToggleThread={() => {}}
+        />
+      </tbody></table>,
+    );
+    expect(screen.getByRole('button', { name: /2 comments/i })).toBeInTheDocument();
+  });
+
+  it('chip toggles to "hide" when threadOpen is true', () => {
+    render(
+      <table><tbody>
+        <DiffLineRow
+          line={line({ type: 'add', newLineNumber: 12 })}
+          hasThread
+          threadCount={2}
+          threadOpen
+          onToggleThread={() => {}}
+        />
+      </tbody></table>,
+    );
+    expect(screen.getByRole('button', { name: /hide/i })).toBeInTheDocument();
+  });
+
+  it('applies highlight styling when highlight is true', () => {
+    const { container } = render(
+      <table><tbody>
+        <DiffLineRow
+          line={line({ type: 'add', newLineNumber: 12 })}
+          highlight
+        />
+      </tbody></table>,
+    );
+    const tr = container.querySelector('tr');
+    expect(tr?.getAttribute('style')).toContain('inset 3px 0 0');
+  });
 });

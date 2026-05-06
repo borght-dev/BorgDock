@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
-import type { DiffFile, DiffViewMode } from '@/types';
+import type { DiffFile, DiffViewMode, ReviewThread } from '@/types';
 import { IconButton, Pill, type PillTone } from '@/components/shared/primitives';
 import { SplitDiffView } from './SplitDiffView';
 import { UnifiedDiffView } from './UnifiedDiffView';
@@ -20,6 +20,16 @@ interface DiffFileSectionProps {
   defaultCollapsed?: boolean;
   onCopyPath: (path: string) => void;
   onOpenInGitHub?: (filename: string) => void;
+  threads?: ReviewThread[];
+  /** Forwarded from FilesTab — only set on the active file when a jump target is consumed. */
+  highlightLine?: number | null;
+  /** Forwarded handlers for thread interactions. */
+  onResolve?: (threadId: string) => void;
+  onUnresolve?: (threadId: string) => void;
+  onReply?: (threadId: string, body: string) => void;
+  /** Forwarded from FilesTab for cross-render persistence. */
+  openThreadIds?: Set<string>;
+  onToggleThread?: (id: string) => void;
 }
 
 function statusPillTone(status: DiffFile['status']): PillTone {
@@ -42,7 +52,23 @@ function statusBadgeLetter(status: DiffFile['status']): string {
 }
 
 export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
-  function DiffFileSection({ file, viewMode, defaultCollapsed, onCopyPath, onOpenInGitHub }, ref) {
+  function DiffFileSection(
+    {
+      file,
+      viewMode,
+      defaultCollapsed,
+      onCopyPath,
+      onOpenInGitHub,
+      threads,
+      highlightLine,
+      onResolve,
+      onUnresolve,
+      onReply,
+      openThreadIds,
+      onToggleThread,
+    },
+    ref,
+  ) {
     const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
     const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -56,6 +82,16 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
     }, [file.hunks, file.patch]);
 
     const syntaxHighlights = useSyntaxHighlight(file.filename, hunks);
+
+    const threadsByLine = useMemo(() => {
+      const map = new Map<number, ReviewThread[]>();
+      for (const t of (threads ?? [])) {
+        const list = map.get(t.line) ?? [];
+        list.push(t);
+        map.set(t.line, list);
+      }
+      return map;
+    }, [threads]);
 
     const displayName =
       file.previousFilename && file.status === 'renamed'
@@ -201,9 +237,29 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
                   : 'No changes to display'}
               </div>
             ) : viewMode === 'unified' ? (
-              <UnifiedDiffView hunks={hunks} syntaxHighlights={syntaxHighlights} />
+              <UnifiedDiffView
+                hunks={hunks}
+                syntaxHighlights={syntaxHighlights}
+                threadsByLine={threadsByLine}
+                openThreadIds={openThreadIds}
+                onToggleThread={onToggleThread}
+                onResolve={onResolve}
+                onUnresolve={onUnresolve}
+                onReply={onReply}
+                highlightLine={highlightLine ?? null}
+              />
             ) : (
-              <SplitDiffView hunks={hunks} syntaxHighlights={syntaxHighlights} />
+              <SplitDiffView
+                hunks={hunks}
+                syntaxHighlights={syntaxHighlights}
+                threadsByLine={threadsByLine}
+                openThreadIds={openThreadIds}
+                onToggleThread={onToggleThread}
+                onResolve={onResolve}
+                onUnresolve={onUnresolve}
+                onReply={onReply}
+                highlightLine={highlightLine ?? null}
+              />
             )}
           </div>
         )}
