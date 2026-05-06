@@ -211,4 +211,38 @@ describe('PrDetailPanel', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(screen.getByTestId('commits-tab')).toBeTruthy();
   });
+
+  describe('terminal state pills', () => {
+    it('renders a Merged pill when mergedAt is set', () => {
+      render(<PrDetailPanel pr={makePr({ pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' } })} />);
+      const pill = screen.getByText('Merged');
+      expect(pill.classList.contains('bd-pill--merged')).toBe(true);
+    });
+
+    it('renders a Closed pill when state is closed and not merged', () => {
+      render(<PrDetailPanel pr={makePr({ pullRequest: { ...makePr().pullRequest, state: 'closed', closedAt: '2026-05-06T12:00:00Z' } })} />);
+      const pill = screen.getByText('Closed');
+      expect(pill.classList.contains('bd-pill--neutral')).toBe(true);
+    });
+
+    it('suppresses the Mergeable pill in terminal state', () => {
+      render(<PrDetailPanel pr={makePr({ pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z', mergeable: true } })} />);
+      expect(screen.queryByText('Mergeable')).toBeNull();
+    });
+
+    it('suppresses the passed-count pill in terminal state', () => {
+      const merged = makePr({
+        pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' },
+        checks: [{ id: 1, name: 'ci', status: 'completed', conclusion: 'success' }] as never,
+        passedCount: 1,
+      });
+      render(<PrDetailPanel pr={merged} />);
+      expect(screen.queryByText(/passed/i)).toBeNull();
+    });
+
+    it('shows Mergeable pill when state is open', () => {
+      render(<PrDetailPanel pr={makePr()} />);
+      expect(screen.getByText('Mergeable')).toBeTruthy();
+    });
+  });
 });

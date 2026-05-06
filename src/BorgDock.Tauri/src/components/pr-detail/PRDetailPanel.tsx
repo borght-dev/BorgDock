@@ -241,6 +241,8 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
   }, [pr.pullRequest.htmlUrl]);
 
   const p = pr.pullRequest;
+  const isMerged = Boolean(p.mergedAt);
+  const isTerminal = isMerged || p.state === 'closed';
   const score = computeMergeScore(pr);
   const reviewLabel = reviewStatusLabel(p.reviewStatus);
   const passedCount = pr.passedCount;
@@ -325,15 +327,17 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
               <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
                 #{p.number}
               </span>
-              {p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
-              {p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
-              {totalChecks > 0 && (
+              {isMerged && <Pill tone="merged">Merged</Pill>}
+              {!isMerged && p.state === 'closed' && <Pill tone="neutral">Closed</Pill>}
+              {!isTerminal && p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
+              {!isTerminal && p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
+              {!isTerminal && totalChecks > 0 && (
                 <Pill tone="success">
                   {passedCount} passed
                 </Pill>
               )}
               {p.isDraft && <Pill tone="draft">Draft</Pill>}
-              {reviewLabel && <Pill tone="neutral">{reviewLabel}</Pill>}
+              {!isTerminal && reviewLabel && <Pill tone="neutral">{reviewLabel}</Pill>}
             </div>
 
             {/* Title */}
