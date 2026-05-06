@@ -84,10 +84,6 @@ vi.mock('@/stores/settings-store', () => {
 });
 
 // Mock child components that are complex
-vi.mock('@/components/pr-detail/MergeReadinessChecklist', () => ({
-  MergeReadinessChecklist: () => <div data-testid="merge-checklist" />,
-}));
-
 vi.mock('@/components/focus/PriorityReasonLabel', () => ({
   PriorityReasonLabel: ({ factors }: { factors: unknown[] }) => (
     <div data-testid="priority-reason">{factors.length} factors</div>
@@ -152,8 +148,6 @@ describe('PrCardContainer', () => {
     uiState = {
       selectPr: vi.fn(),
       selectedPrNumber: null,
-      togglePrExpanded: vi.fn(),
-      expandedPrNumbers: new Set<number>(),
       worktreeBranchMap: new Map(),
     };
   });
@@ -551,40 +545,6 @@ describe('PrCardContainer', () => {
         />,
       );
       expect(container.querySelector('.bd-avatar--them')).toBeInTheDocument();
-    });
-  });
-
-  describe('expanded content', () => {
-    it('shows expanded content when PR number is in expanded set', () => {
-      uiState.expandedPrNumbers = new Set([42]);
-      render(<PrCardContainer prWithChecks={makePr()} />);
-      expect(screen.getByTestId('merge-checklist')).toBeInTheDocument();
-      // baseRef "main" appears in both the PrCardView primitive meta row and the expanded panel
-      expect(screen.getAllByText('main').length).toBeGreaterThan(0);
-    });
-
-    it('shows PR body when expanded and body exists', () => {
-      uiState.expandedPrNumbers = new Set([42]);
-      render(<PrCardContainer prWithChecks={makePr()} />);
-      expect(screen.getByText('Summary')).toBeInTheDocument();
-    });
-
-    it('does not show expanded content when not expanded', () => {
-      uiState.expandedPrNumbers = new Set();
-      render(<PrCardContainer prWithChecks={makePr()} />);
-      expect(screen.queryByTestId('merge-checklist')).not.toBeInTheDocument();
-    });
-
-    it('does not show Summary heading when body is empty', () => {
-      uiState.expandedPrNumbers = new Set([42]);
-      render(
-        <PrCardContainer
-          prWithChecks={makePr({
-            pullRequest: { body: '' } as PullRequestWithChecks['pullRequest'],
-          })}
-        />,
-      );
-      expect(screen.queryByText('Summary')).not.toBeInTheDocument();
     });
   });
 

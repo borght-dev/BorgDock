@@ -9,7 +9,6 @@ interface UiState {
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
   expandedRepoGroups: Set<string>;
-  expandedPrNumbers: Set<number>;
   isDragging: boolean;
   pendingWorkItemId: number | null;
   /** Maps branch name (lowercase) → worktree slot info */
@@ -22,8 +21,6 @@ interface UiState {
   selectPr: (prNumber: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
   collapseAllRepoGroups: () => void;
-  togglePrExpanded: (prNumber: number) => void;
-  collapseAllPrs: () => void;
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
@@ -35,7 +32,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   activeSection: 'focus',
   selectedPrNumber: null,
   expandedRepoGroups: new Set<string>(),
-  expandedPrNumbers: new Set<number>(),
   isDragging: false,
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
@@ -66,19 +62,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
     }),
 
   collapseAllRepoGroups: () => set({ expandedRepoGroups: new Set() }),
-
-  togglePrExpanded: (prNumber) =>
-    set((state) => {
-      const next = new Set(state.expandedPrNumbers);
-      if (next.has(prNumber)) {
-        next.delete(prNumber);
-      } else {
-        next.add(prNumber);
-      }
-      return { expandedPrNumbers: next };
-    }),
-
-  collapseAllPrs: () => set({ expandedPrNumbers: new Set() }),
 
   setDragging: (dragging) => set({ isDragging: dragging }),
 

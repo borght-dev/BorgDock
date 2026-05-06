@@ -114,8 +114,6 @@ describe('PrCardContainer card-click → pop-out detail', () => {
     uiState = {
       selectPr: vi.fn(),
       selectedPrNumber: null,
-      togglePrExpanded: vi.fn(),
-      expandedPrNumbers: new Set<number>(),
       worktreeBranchMap: new Map(),
     };
   });

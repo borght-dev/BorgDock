@@ -26,8 +26,6 @@ vi.mock('@/stores/ui-store', () => {
     return selector({
       selectedPrNumber: null,
       selectPr: vi.fn(),
-      togglePrExpanded: vi.fn(),
-      expandedPrNumbers: new Set<number>(),
       expandedRepoGroups: new Set<string>(),
       toggleRepoGroup: vi.fn(),
       worktreeBranchMap: new Map(),
