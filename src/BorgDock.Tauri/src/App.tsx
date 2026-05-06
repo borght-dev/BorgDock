@@ -9,7 +9,7 @@ import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoHide } from '@/hooks/useAutoHide';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
-import { useBadgeSync } from '@/hooks/useBadgeSync';
+import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
 import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
@@ -164,7 +164,7 @@ export default function App() {
   useReviewNudges(settings);
 
   // Flyout + tray sync (updates tray icon, tooltip, flyout window)
-  useBadgeSync();
+  useFlyoutSync();
 
   // Auto-hide sidebar in floating mode
   useAutoHide(settings);

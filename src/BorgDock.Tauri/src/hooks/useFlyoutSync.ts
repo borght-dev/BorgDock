@@ -87,7 +87,7 @@ function buildFlyoutPayload(
   };
 }
 
-export function useBadgeSync() {
+export function useFlyoutSync() {
   const pullRequests = usePrStore((s) => s.pullRequests);
   const username = usePrStore((s) => s.username);
   const lastPollTimeRaw = usePrStore((s) => s.lastPollTime);

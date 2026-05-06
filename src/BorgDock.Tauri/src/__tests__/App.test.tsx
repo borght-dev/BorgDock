@@ -62,8 +62,8 @@ vi.mock('@/hooks/useAutoHide', () => ({
   useAutoHide: vi.fn(),
 }));
 
-vi.mock('@/hooks/useBadgeSync', () => ({
-  useBadgeSync: vi.fn(),
+vi.mock('@/hooks/useFlyoutSync', () => ({
+  useFlyoutSync: vi.fn(),
 }));
 
 vi.mock('@/hooks/useCacheInit', () => ({

@@ -37,7 +37,7 @@ export interface FlyoutPr {
   totalChecks: number;
   commentCount: number;
   isMine: boolean;
-  // Optional — populated by the live useBadgeSync payload. Older / synthetic
+  // Optional — populated by the live useFlyoutSync payload. Older / synthetic
   // payloads (test seeds) may omit them so the flyout context menu treats
   // these as best-effort.
   htmlUrl?: string;
