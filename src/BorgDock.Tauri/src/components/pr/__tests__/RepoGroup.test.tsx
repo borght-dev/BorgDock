@@ -24,8 +24,6 @@ vi.mock('@/stores/ui-store', () => {
       },
       selectedPrNumber: null,
       selectPr: vi.fn(),
-      togglePrExpanded: vi.fn(),
-      expandedPrNumbers: new Set<number>(),
       worktreeBranchMap: new Map(),
     };
     return selector(state);

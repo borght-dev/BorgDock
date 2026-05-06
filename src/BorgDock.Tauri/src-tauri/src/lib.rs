@@ -106,6 +106,14 @@ pub fn run() {
         .build();
 
     tauri::Builder::default()
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
@@ -117,6 +125,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -368,14 +377,10 @@ pub fn run() {
                 log::error!("register_fixed_hotkeys failed: {e}");
             }
 
-            // Park the main window off-screen at 1×1. This keeps the React
-            // tree alive (WebView2 throttles JS in hidden windows on Windows,
-            // which would slow the polling loop) without showing the sidebar
-            // to the user on startup. The tray icon / hotkey / flyout are
-            // the entry points that call show_main_window to reveal it.
-            if let Err(e) = platform::window::park_main_offscreen(&app.handle().clone()) {
-                log::error!("park_main_offscreen failed: {e}");
-            }
+            // The main window is built invisible (visible: false in
+            // tauri.conf.json) and revealed by the React app calling
+            // `window_ready` after first paint. No off-screen parking needed
+            // now that the window is a regular floating frame.
 
             Ok(())
         })
@@ -391,13 +396,9 @@ pub fn run() {
             auth::ado::az_cli_available,
             auth::ado::ado_resolve_auth_header,
             // Platform
-            platform::window::position_sidebar,
-            platform::window::toggle_sidebar,
-            platform::window::hide_sidebar,
+            platform::window::show_or_focus_main,
             platform::window::hide_flyout,
             platform::window::window_ready,
-            platform::work_area::reserve_work_area,
-            platform::work_area::restore_work_area,
             platform::hotkey::register_user_hotkeys,
             platform::hotkey::unregister_hotkey,
             platform::hotkey::palette_ready,

@@ -71,9 +71,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       { owner: 'test', name: 'repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '' },
     ],
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode: 'pinned',
-      sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
       flyoutHotkey: '',

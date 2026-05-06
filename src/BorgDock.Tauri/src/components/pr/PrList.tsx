@@ -1,11 +1,12 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Card } from '@/components/shared/primitives';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
 import type { PullRequestWithChecks } from '@/types';
 import { PrCardContainer } from './PrCardContainer';
+import { PrToolbar, type PrFilterCounts } from './PrToolbar';
 import { RepoGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { TeamReviewLoad } from './TeamReviewLoad';
@@ -49,41 +50,66 @@ export function PrList() {
   const needsMyReview = usePrStore((s) => s.needsMyReview);
   const groupedByRepo = usePrStore((s) => s.groupedByRepo);
   const filteredPrs = usePrStore((s) => s.filteredPrs);
+  const counts = usePrStore((s) => s.counts);
 
   const groups = groupedByRepo();
   const prs = filteredPrs();
   const reviewQueue = needsMyReview();
   const isFirstLoad = !lastPollTime && isPolling;
 
+  // Map the store's PrFilter-keyed counts onto the PrToolbar's UI-keyed counts.
+  // The two key sets diverge by intent: store keys mirror the underlying
+  // filter ids (`needsReview`, `reviewing`); toolbar keys are short labels
+  // (`needs`, `review`).
+  const c = counts();
+  const prFilterCounts = useMemo<PrFilterCounts>(
+    () => ({
+      all: c.all,
+      needs: c.needsReview,
+      mine: c.mine,
+      failing: c.failing,
+      ready: c.ready,
+      review: c.reviewing,
+      closed: c.closed,
+    }),
+    [c.all, c.needsReview, c.mine, c.failing, c.ready, c.reviewing, c.closed],
+  );
+
   if (isFirstLoad) {
     return (
-      <div className="flex flex-col gap-1.5 p-1">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <SkeletonCard key={i} />
-        ))}
-      </div>
+      <>
+        <PrToolbar counts={prFilterCounts} />
+        <div className="flex flex-col gap-1.5 p-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </>
     );
   }
 
   if (prs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <svg
-          width="32"
-          height="32"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="var(--color-text-ghost)"
-          strokeWidth="1"
-          strokeLinecap="round"
-          className="mb-3"
-        >
-          <path d="M6 3H3v10h10V6" />
-          <path d="M10 2v4h4" />
-          <path d="m10 2 4 4" />
-        </svg>
-        <p className="text-xs text-[var(--color-text-muted)]">No pull requests found</p>
-      </div>
+      <>
+        <PrToolbar counts={prFilterCounts} />
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="var(--color-text-ghost)"
+            strokeWidth="1"
+            strokeLinecap="round"
+            className="mb-3"
+          >
+            <path d="M6 3H3v10h10V6" />
+            <path d="M10 2v4h4" />
+            <path d="m10 2 4 4" />
+          </svg>
+          <p className="text-xs text-[var(--color-text-muted)]">No pull requests found</p>
+        </div>
+      </>
     );
   }
 
@@ -94,6 +120,7 @@ export function PrList() {
 
   return (
     <div className="flex flex-col gap-0.5">
+      <PrToolbar counts={prFilterCounts} />
       {showReviewQueue && (
         <>
           <div

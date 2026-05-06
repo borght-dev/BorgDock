@@ -14,14 +14,16 @@
       {
         "title": "BorgDock",
         "label": "main",
-        "width": 400,
+        "width": 1400,
         "height": 900,
+        "minWidth": 720,
+        "minHeight": 520,
         "decorations": false,
-        "alwaysOnTop": true,
-        "resizable": false,
-        "transparent": true,
-        "shadow": false,
-        "skipTaskbar": true,
+        "resizable": true,
+        "transparent": false,
+        "shadow": true,
+        "center": true,
+        "skipTaskbar": false,
         "visible": false,
         "url": "index.html"
       }

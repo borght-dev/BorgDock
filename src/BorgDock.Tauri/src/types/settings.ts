@@ -1,7 +1,5 @@
 export type AuthMethod = 'ghCli' | 'pat';
 export type AdoAuthMethod = 'azCli' | 'pat';
-export type SidebarEdge = 'left' | 'right';
-export type SidebarMode = 'pinned' | 'floating';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type PostFixAction = 'commitAndNotify' | 'commitOnly' | 'notifyOnly' | 'none';
 
@@ -30,9 +28,6 @@ export interface FilePaletteRoot {
 }
 
 export interface UiSettings {
-  sidebarEdge: SidebarEdge;
-  sidebarMode: SidebarMode;
-  sidebarWidthPx: number;
   theme: ThemeMode;
   globalHotkey: string;
   flyoutHotkey: string;

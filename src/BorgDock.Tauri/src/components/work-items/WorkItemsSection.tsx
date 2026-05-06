@@ -1,25 +1,20 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Button, Card } from '@/components/shared/primitives';
+import { Button, Card, HoverPopover } from '@/components/shared/primitives';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
-import type { WorkItemCardData } from '@/components/work-items/WorkItemCard';
+import { QueriesRail, type QueryRowData } from '@/components/work-items/QueriesRail';
 import { WorkItemDetailPanel } from '@/components/work-items/WorkItemDetailPanel';
 import { parseLinkedPRs } from '@/components/work-items/WorkItemDetailPanel/parseLinkedPRs';
 import { useAdjacentNav } from '@/components/work-items/WorkItemDetailPanel/useAdjacentNav';
-import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
-import { WorkItemList } from '@/components/work-items/WorkItemList';
+import { WorkItemFilterPopover } from '@/components/work-items/WorkItemFilterPopover';
+import { WorkItemRow } from '@/components/work-items/WorkItemRow';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { classifyFields, extractAttachments } from '@/utils/work-item-fields';
-import {
-  flattenQueries,
-  getField,
-  mapQueryTreeNodes,
-  mapToCardData,
-  type WorkItemsStoreSnapshot,
-} from '@/utils/work-item-helpers';
+import { flattenQueries, getField } from '@/utils/work-item-helpers';
 
 export function WorkItemsSection() {
   const settings = useSettingsStore((s) => s.settings);
@@ -37,10 +32,13 @@ export function WorkItemsSection() {
   const trackingFilter = useWorkItemsStore((s) => s.trackingFilter);
   const trackedWorkItemIds = useWorkItemsStore((s) => s.trackedWorkItemIds);
   const workingOnWorkItemIds = useWorkItemsStore((s) => s.workingOnWorkItemIds);
-  const workItemWorktreePaths = useWorkItemsStore((s) => s.workItemWorktreePaths);
   const isLoading = useWorkItemsStore((s) => s.isLoading);
 
-  // Event handlers hook
+  // UI store — persisted selection
+  const persistedSelectedId = useUiStore((s) => s.workItemsSelectedId);
+  const setPersistedSelectedId = useUiStore((s) => s.setWorkItemsSelectedId);
+
+  // Event handlers hook (owns the detail load lifecycle)
   const {
     queryBrowserOpen,
     setQueryBrowserOpen,
@@ -60,13 +58,28 @@ export function WorkItemsSection() {
     handleDownloadAttachment,
     handleSelectQuery,
     handleToggleFavorite,
-    handleRefresh,
   } = useWorkItemHandlers({
     organization: adoSettings.organization,
     project: adoSettings.project,
     personalAccessToken: adoSettings.personalAccessToken,
     authMethod: adoSettings.authMethod,
   });
+
+  // Restore persisted selection on mount: if ui-store has a selected id and
+  // the hook hasn't loaded one yet, kick off the load.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only restore — adding deps would re-trigger on every selection change
+  useEffect(() => {
+    if (persistedSelectedId !== null && selectedWorkItemId === null) {
+      void handleSelectWorkItem(persistedSelectedId);
+    }
+  }, []);
+
+  // Mirror hook → ui-store so the selection survives tab switches and reloads.
+  useEffect(() => {
+    if (selectedWorkItemId !== persistedSelectedId) {
+      setPersistedSelectedId(selectedWorkItemId);
+    }
+  }, [selectedWorkItemId, persistedSelectedId, setPersistedSelectedId]);
 
   // Resolve the selected query name for display
   const selectedQueryName = useMemo(() => {
@@ -76,7 +89,7 @@ export function WorkItemsSection() {
     return match?.name;
   }, [selectedQueryId, queryTree]);
 
-  // Map filtered items to card data
+  // Map filtered items to row data
   const items = filteredWorkItems();
 
   // Persist navlist so the detail panel can do prev/next navigation
@@ -103,38 +116,49 @@ export function WorkItemsSection() {
     [adjacent.prevId, adjacent.nextId, handleSelectWorkItem],
   );
 
-  const cardItems: WorkItemCardData[] = useMemo(() => {
-    const storeSnapshot: WorkItemsStoreSnapshot = {
-      trackedWorkItemIds,
-      workingOnWorkItemIds,
-      workItemWorktreePaths,
-    };
-    return items.map((item) =>
-      mapToCardData(
-        item,
-        storeSnapshot,
-        selectedWorkItemId,
-        adoSettings.organization,
-        adoSettings.project,
-      ),
-    );
-  }, [
-    items,
-    trackedWorkItemIds,
-    workingOnWorkItemIds,
-    workItemWorktreePaths,
-    selectedWorkItemId,
-    adoSettings.organization,
-    adoSettings.project,
-  ]);
+  // Local list-search (sits above store filters; quick text triage only)
+  const [listSearch, setListSearch] = useState('');
 
-  // Query browser tree nodes
-  const queryTreeNodes: AdoQueryTreeNode[] = useMemo(
-    () => mapQueryTreeNodes(queryTree, favoriteQueryIds),
-    [queryTree, favoriteQueryIds],
+  // Filter rows by local search (title or AB#id substring)
+  const visibleItems = useMemo(() => {
+    const q = listSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((it) => {
+      const title = getField(it, 'System.Title').toLowerCase();
+      const idStr = String(it.id);
+      return title.includes(q) || idStr.includes(q);
+    });
+  }, [items, listSearch]);
+
+  // Build row data (lightweight — no card details)
+  const rowItems = useMemo(
+    () =>
+      visibleItems.map((it) => ({
+        id: it.id,
+        type: getField(it, 'System.WorkItemType') || 'Task',
+        title: getField(it, 'System.Title'),
+        state: getField(it, 'System.State'),
+        priority: Number(it.fields['Microsoft.VSTS.Common.Priority']) || undefined,
+        isTracked: trackedWorkItemIds.has(it.id),
+        isWorking: workingOnWorkItemIds.has(it.id),
+      })),
+    [visibleItems, trackedWorkItemIds, workingOnWorkItemIds],
   );
 
-  const favoriteQueries: AdoQueryTreeNode[] = useMemo(() => {
+  // Query browser tree nodes
+  const queryTreeNodes: AdoQueryTreeNode[] = useMemo(() => {
+    function map(qs: typeof queryTree): AdoQueryTreeNode[] {
+      return qs.map((q) => ({
+        ...q,
+        isFavorite: favoriteQueryIds.includes(q.id),
+        isExpanded: false,
+        children: map(q.children),
+      }));
+    }
+    return map(queryTree);
+  }, [queryTree, favoriteQueryIds]);
+
+  const favoriteQueriesForBrowser: AdoQueryTreeNode[] = useMemo(() => {
     const all = flattenQueries(queryTree);
     return all
       .filter((q) => favoriteQueryIds.includes(q.id))
@@ -144,6 +168,23 @@ export function WorkItemsSection() {
         isExpanded: false,
         children: [],
       }));
+  }, [queryTree, favoriteQueryIds]);
+
+  // Rail-friendly query lists
+  const favoriteQueriesForRail: QueryRowData[] = useMemo(() => {
+    const all = flattenQueries(queryTree);
+    return all
+      .filter((q) => !q.isFolder && favoriteQueryIds.includes(q.id))
+      .map((q) => ({ id: q.id, name: q.name }));
+  }, [queryTree, favoriteQueryIds]);
+
+  const myQueriesForRail: QueryRowData[] = useMemo(() => {
+    const all = flattenQueries(queryTree);
+    const favSet = new Set(favoriteQueryIds);
+    return all
+      .filter((q) => !q.isFolder && !favSet.has(q.id))
+      .slice(0, 50)
+      .map((q) => ({ id: q.id, name: q.name }));
   }, [queryTree, favoriteQueryIds]);
 
   // Detail panel data
@@ -208,7 +249,28 @@ export function WorkItemsSection() {
     return extractAttachments(detailItem);
   }, [detailItem]);
 
-  // Not configured state
+  // Track-toggle: also persist to settings (matches old behavior)
+  const handleToggleTracked = useCallback((id: number) => {
+    useWorkItemsStore.getState().toggleTracked(id);
+    const ids = [...useWorkItemsStore.getState().trackedWorkItemIds];
+    const current = useSettingsStore.getState().settings;
+    useSettingsStore.getState().saveSettings({
+      ...current,
+      azureDevOps: { ...current.azureDevOps, trackedWorkItemIds: ids },
+    });
+  }, []);
+
+  const handleToggleWorking = useCallback((id: number) => {
+    useWorkItemsStore.getState().toggleWorkingOn(id);
+    const ids = [...useWorkItemsStore.getState().workingOnWorkItemIds];
+    const current = useSettingsStore.getState().settings;
+    useSettingsStore.getState().saveSettings({
+      ...current,
+      azureDevOps: { ...current.azureDevOps, workingOnWorkItemIds: ids },
+    });
+  }, []);
+
+  // Not configured state — spans all 3 panes (rendered above the grid).
   const hasCredentials =
     adoSettings.authMethod === 'azCli' || !!adoSettings.personalAccessToken;
   if (!adoSettings.organization || !hasCredentials) {
@@ -228,7 +290,11 @@ export function WorkItemsSection() {
           <p className="mb-3 text-[13px] text-[var(--color-text-muted)]">
             Configure Azure DevOps in Settings to see work items
           </p>
-          <Button variant="primary" size="sm" onClick={() => void invoke('open_settings_window', { section: 'ado' }).catch(console.error)}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void invoke('open_settings_window', { section: 'ado' }).catch(console.error)}
+          >
             Open Settings
           </Button>
         </Card>
@@ -237,35 +303,22 @@ export function WorkItemsSection() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Filter bar */}
-      <WorkItemFilterBar
-        states={availableStates()}
-        assignees={availableAssignees()}
-        selectedState={stateFilter === 'all' ? 'All' : stateFilter}
-        selectedAssignee={assignedToFilter === '' ? 'Anyone' : assignedToFilter}
-        trackingFilter={trackingFilter}
-        trackedCount={trackedWorkItemIds.size}
-        workingOnCount={workingOnWorkItemIds.size}
-        onStateChange={(state) =>
-          useWorkItemsStore.getState().setStateFilter(state === 'All' ? 'all' : state)
-        }
-        onAssigneeChange={(assignee) =>
-          useWorkItemsStore.getState().setAssignedToFilter(assignee === 'Anyone' ? '' : assignee)
-        }
-        onTrackingFilterChange={(filter) => useWorkItemsStore.getState().setTrackingFilter(filter)}
-        onRefresh={handleRefresh}
-        onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
-        selectedQueryName={selectedQueryName}
-      />
-
-      {/* Query browser overlay */}
+    <div className="bd-workitems">
       {queryBrowserOpen && (
-        <div className="absolute inset-0 z-40 flex">
-          <div className="w-full">
+        <div
+          className="bd-modal-backdrop"
+          onClick={() => setQueryBrowserOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="bd-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
             <QueryBrowser
               queryTree={queryTreeNodes}
-              favoriteQueries={favoriteQueries}
+              favoriteQueries={favoriteQueriesForBrowser}
               isLoading={isLoading}
               selectedQueryId={selectedQueryId ?? undefined}
               onSelectQuery={handleSelectQuery}
@@ -276,47 +329,87 @@ export function WorkItemsSection() {
         </div>
       )}
 
-      {/* Work items list */}
-      <WorkItemList
-        items={cardItems}
-        worktrees={[]}
-        isLoading={isLoading}
-        isEmpty={items.length === 0 && !!selectedQueryId}
-        selectedQueryName={selectedQueryName}
-        onSelect={handleSelectWorkItem}
-        onToggleTracked={(id) => {
-          useWorkItemsStore.getState().toggleTracked(id);
-          const ids = [...useWorkItemsStore.getState().trackedWorkItemIds];
-          const current = useSettingsStore.getState().settings;
-          useSettingsStore.getState().saveSettings({
-            ...current,
-            azureDevOps: { ...current.azureDevOps, trackedWorkItemIds: ids },
-          });
-        }}
-        onToggleWorkingOn={(id) => {
-          useWorkItemsStore.getState().toggleWorkingOn(id);
-          const ids = [...useWorkItemsStore.getState().workingOnWorkItemIds];
-          const current = useSettingsStore.getState().settings;
-          useSettingsStore.getState().saveSettings({
-            ...current,
-            azureDevOps: { ...current.azureDevOps, workingOnWorkItemIds: ids },
-          });
-        }}
-        onAssignWorktree={(id, path) => {
-          useWorkItemsStore.getState().setWorktreePath(id, path);
-          const paths = useWorkItemsStore.getState().workItemWorktreePaths;
-          const current = useSettingsStore.getState().settings;
-          useSettingsStore.getState().saveSettings({
-            ...current,
-            azureDevOps: { ...current.azureDevOps, workItemWorktreePaths: paths },
-          });
-        }}
-        onOpenInBrowser={handleOpenInBrowser}
+      <QueriesRail
+        favorites={favoriteQueriesForRail}
+        myQueries={myQueriesForRail}
+        selectedId={selectedQueryId ?? undefined}
+        onSelectQuery={handleSelectQuery}
+        onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
       />
 
-      {/* Work item detail overlay */}
-      {selectedWorkItemId !== null && detailData && (
-        <div className="absolute inset-0 z-50">
+      <div className="bd-workitems__items">
+        <div className="bd-workitems__items-toolbar">
+          <div className="bd-input bd-workitems__search">
+            <input
+              type="text"
+              placeholder={`Filter ${items.length} items…`}
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+              aria-label="Filter items"
+            />
+          </div>
+          <HoverPopover
+            maxWidth={260}
+            maxHeight={320}
+            content={
+              <WorkItemFilterPopover
+                states={availableStates()}
+                assignees={availableAssignees()}
+                selectedState={stateFilter === 'all' ? 'All' : stateFilter}
+                selectedAssignee={assignedToFilter === '' ? 'Anyone' : assignedToFilter}
+                trackingFilter={trackingFilter}
+                onStateChange={(s) =>
+                  useWorkItemsStore.getState().setStateFilter(s === 'All' ? 'all' : s)
+                }
+                onAssigneeChange={(a) =>
+                  useWorkItemsStore.getState().setAssignedToFilter(a === 'Anyone' ? '' : a)
+                }
+                onTrackingChange={(t) => useWorkItemsStore.getState().setTrackingFilter(t)}
+              />
+            }
+          >
+            <button type="button" className="bd-icon-btn" aria-label="Filter">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              >
+                <path d="M2 4h12M4 8h8M6 12h4" />
+              </svg>
+            </button>
+          </HoverPopover>
+        </div>
+        <div className="bd-workitems__items-list">
+          {isLoading && rowItems.length === 0 && (
+            <div className="bd-empty">Loading work items…</div>
+          )}
+          {!isLoading &&
+            rowItems.map((it) => (
+              <WorkItemRow
+                key={it.id}
+                item={it}
+                selected={selectedWorkItemId === it.id}
+                onClick={() => void handleSelectWorkItem(it.id)}
+                onToggleTracked={() => handleToggleTracked(it.id)}
+                onToggleWorking={() => handleToggleWorking(it.id)}
+              />
+            ))}
+          {!isLoading && rowItems.length === 0 && selectedQueryId && (
+            <div className="bd-empty">
+              No items in {selectedQueryName ?? 'this query'}
+            </div>
+          )}
+          {!isLoading && !selectedQueryId && (
+            <div className="bd-empty">Pick a query from the rail</div>
+          )}
+        </div>
+      </div>
+
+      <div className="bd-workitems__detail">
+        {selectedWorkItemId !== null && detailData ? (
           <WorkItemDetailPanel
             item={detailData}
             isLoading={isDetailLoading}
@@ -337,8 +430,10 @@ export function WorkItemsSection() {
             adjacent={adjacent}
             onArrowNav={handleArrowNav}
           />
-        </div>
-      )}
+        ) : (
+          <div className="bd-empty">Select a work item</div>
+        )}
+      </div>
     </div>
   );
 }

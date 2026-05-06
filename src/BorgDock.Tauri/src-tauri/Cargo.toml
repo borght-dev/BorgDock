@@ -29,6 +29,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-log = "2"
 tauri-plugin-os = "2"
+tauri-plugin-window-state = "2"
 
 # keyring 3.x defaults to a mock backend unless a platform feature is enabled.
 # apple-native + windows-native + sync-secret-service give us real OS keychains

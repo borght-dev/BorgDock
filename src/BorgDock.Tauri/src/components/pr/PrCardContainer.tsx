@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
@@ -9,6 +9,7 @@ import {
   shapeFromPrWithChecks,
 } from '@/services/pr-action-resolver';
 import type { PriorityFactor } from '@/services/priority-scoring';
+import { openPrDetail } from '@/services/windows';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -17,7 +18,6 @@ import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { HoverActionPillBar } from './HoverActionPillBar';
 import { PrCardView, type PrCardData } from './PrCardView';
 import { PrContextMenu } from './PrContextMenu';
-import { PrCardExpanded } from './PrCardExpanded';
 
 interface PrCardContainerProps {
   prWithChecks: PullRequestWithChecks;
@@ -105,10 +105,7 @@ export const PrCardContainer = memo(function PrCardContainer({
   priorityFactors,
 }: PrCardContainerProps) {
   const { pullRequest: pr } = prWithChecks;
-  const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
-  const togglePrExpanded = useUiStore((s) => s.togglePrExpanded);
-  const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
   const username = usePrStore((s) => s.username);
   const worktreeBranchMap = useUiStore((s) => s.worktreeBranchMap);
 
@@ -123,6 +120,22 @@ export const PrCardContainer = memo(function PrCardContainer({
   const cardData = useMemo(
     () => mapToPrCardData(prWithChecks, isMyPr, worktreeMatch?.slotName),
     [prWithChecks, isMyPr, worktreeMatch?.slotName],
+  );
+
+  // Whole-card click opens the pop-out detail window. Inner action buttons
+  // either stop propagation themselves (HoverActionPillBar, expand toggle,
+  // confirm dialogs) or carry a `data-pr-card-action` ancestor that this
+  // handler skips via closest(). Falls back to no-op on click of inner action.
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      if ((e.target as HTMLElement).closest('[data-pr-card-action]')) return;
+      void openPrDetail({
+        owner: pr.repoOwner,
+        repo: pr.repoName,
+        number: pr.number,
+      });
+    },
+    [pr.number, pr.repoOwner, pr.repoName],
   );
 
   const reviewing = pr.reviewStatus === 'pending';
@@ -142,7 +155,7 @@ export const PrCardContainer = memo(function PrCardContainer({
           density="normal"
           pr={cardData}
           score={mergeScore}
-          onClick={() => selectPr(pr.number)}
+          onClick={handleCardClick}
           onContextMenu={actions.handleContextMenu}
           active={isFocused}
           isFocused={isSelected}
@@ -173,38 +186,11 @@ export const PrCardContainer = memo(function PrCardContainer({
             />
           </div>
         )}
-        <button
-          type="button"
-          data-expand-toggle=""
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
-          onClick={(e) => {
-            e.stopPropagation();
-            togglePrExpanded(pr.number);
-          }}
-          className="absolute right-2 top-2 rounded-md p-1 opacity-0 transition-opacity duration-150 hover:bg-[var(--color-surface-hover)] group-hover:opacity-70"
-        >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            {isExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
-          </svg>
-        </button>
         {workItemIds.length > 0 && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {workItemIds.map((id) => (
               <LinkedWorkItemBadge key={id} workItemId={id} compact />
             ))}
-          </div>
-        )}
-        {isExpanded && (
-          <div className="px-2">
-            <PrCardExpanded prWithChecks={prWithChecks} />
           </div>
         )}
       </div>

@@ -28,7 +28,6 @@ export const TAURI_MOCK_SCRIPT = `
             gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
             repos: [],
             ui: {
-              sidebarEdge: 'right', sidebarMode: 'pinned', sidebarWidthPx: 380,
               theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Shift+F',
               editorCommand: 'code', runAtStartup: false,
             },
@@ -50,8 +49,7 @@ export const TAURI_MOCK_SCRIPT = `
 
         case 'register_user_hotkeys':
         case 'unregister_hotkey':
-        case 'position_sidebar':
-        case 'toggle_sidebar':
+        case 'show_or_focus_main':
         case 'init_cache':
           return null;
 
@@ -386,9 +384,6 @@ export function completedSettings() {
       },
     ],
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode: 'pinned',
-      sidebarWidthPx: 380,
       theme: 'dark',
       globalHotkey: 'Ctrl+Shift+P',
       flyoutHotkey: 'Ctrl+Shift+F',

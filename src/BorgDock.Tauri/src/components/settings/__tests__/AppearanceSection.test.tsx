@@ -11,9 +11,6 @@ vi.mock('@tauri-apps/plugin-autostart', () => ({
 
 function makeUi(overrides?: Partial<UiSettings>): UiSettings {
   return {
-    sidebarEdge: 'right',
-    sidebarMode: 'pinned',
-    sidebarWidthPx: 800,
     theme: 'system',
     globalHotkey: 'Ctrl+Win+Shift+G',
     flyoutHotkey: 'Ctrl+Win+Shift+F',
@@ -62,47 +59,7 @@ describe('AppearanceSection', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ theme: 'system' }));
   });
 
-  // 2. Sidebar edge Seg2 renders both options
-  it('renders sidebar edge Seg2 with both options', () => {
-    render(<AppearanceSection ui={makeUi({ sidebarEdge: 'right' })} onChange={onChange} />);
-    expect(screen.getByText('Left').closest('button')!.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByText('Right').closest('button')!.getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('switches sidebar edge to left', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    fireEvent.click(screen.getByText('Left'));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarEdge: 'left' }));
-  });
-
-  // Sidebar Mode
-  it('renders sidebar mode Seg2 with both options', () => {
-    render(<AppearanceSection ui={makeUi({ sidebarMode: 'pinned' })} onChange={onChange} />);
-    expect(screen.getByText('Pinned').closest('button')!.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText('Floating').closest('button')!.getAttribute('aria-pressed')).toBe('false');
-  });
-
-  it('switches sidebar mode to floating', () => {
-    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    fireEvent.click(screen.getByText('Floating'));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarMode: 'floating' }));
-  });
-
-  // 3. Sidebar width slider has aria-valuenow matching sidebarWidthPx
-  it('renders sidebar width slider with correct aria-valuenow', () => {
-    render(<AppearanceSection ui={makeUi({ sidebarWidthPx: 800 })} onChange={onChange} />);
-    const slider = screen.getByRole('slider');
-    expect(slider.getAttribute('aria-valuenow')).toBe('800');
-  });
-
-  it('updates sidebar width via keyboard', () => {
-    render(<AppearanceSection ui={makeUi({ sidebarWidthPx: 800 })} onChange={onChange} />);
-    const slider = screen.getByRole('slider');
-    fireEvent.keyDown(slider, { key: 'ArrowRight' });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidthPx: 810 }));
-  });
-
-  // 4. HotkeyRecorder renders — at least one is in the DOM
+  // 2. HotkeyRecorder renders — at least one is in the DOM
   it('renders at least one HotkeyRecorder for globalHotkey', () => {
     render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
     // HotkeyRecorder renders the hotkey value as button text
@@ -163,14 +120,12 @@ describe('AppearanceSection', () => {
   });
 
   it('preserves other fields when updating one', () => {
-    const ui = makeUi({ theme: 'dark', sidebarEdge: 'left' });
+    const ui = makeUi({ theme: 'dark' });
     render(<AppearanceSection ui={ui} onChange={onChange} />);
-    fireEvent.click(screen.getByText('Floating'));
+    fireEvent.click(screen.getByText('Light'));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        theme: 'dark',
-        sidebarEdge: 'left',
-        sidebarMode: 'floating',
+        theme: 'light',
       }),
     );
   });

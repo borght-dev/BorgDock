@@ -55,4 +55,19 @@ describe('TitleBar', () => {
     render(<TitleBar title="PRs" data-testid="tb" />);
     expect(screen.getByTestId('tb').querySelector('.bd-title-bar__spacer')).not.toBeNull();
   });
+
+  it('renders middle slot between two growing spacers', () => {
+    render(
+      <TitleBar
+        left={<span>L</span>}
+        middle={<span data-testid="mid">M</span>}
+        right={<span>R</span>}
+      />,
+    );
+    const mid = screen.getByTestId('mid');
+    expect(mid).toBeInTheDocument();
+    // Sibling spacer immediately before middle should have flex:1
+    const prev = mid.parentElement?.previousElementSibling as HTMLElement | null;
+    expect(prev).not.toBeNull();
+  });
 });

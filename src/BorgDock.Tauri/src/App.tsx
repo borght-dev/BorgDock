@@ -1,15 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef, useState } from 'react';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { MainWindow } from '@/components/layout/MainWindow';
 import { PrList } from '@/components/pr/PrList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
-import { useAutoHide } from '@/hooks/useAutoHide';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
-import { useBadgeSync } from '@/hooks/useBadgeSync';
+import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
 import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
@@ -99,24 +98,13 @@ export default function App() {
     }
   }, [isInitComplete, needsSetup]);
 
-  // Show the main window as a centered modal when setup is needed, or park it
-  // off-screen (via hide_sidebar) when setup is complete. This runs on every
-  // needsSetup change so the window is correctly positioned on first launch and
-  // after the wizard finishes.
+  // Show the setup wizard window when setup is needed.
   useEffect(() => {
-    void (async () => {
-      try {
-        if (needsSetup) {
-          await invoke('show_setup_wizard');
-        } else {
-          // When setup completes (or on subsequent launches with setup done),
-          // park the main window off-screen by invoking hide_sidebar.
-          await invoke('hide_sidebar');
-        }
-      } catch {
+    if (needsSetup) {
+      invoke('show_setup_wizard').catch(() => {
         // ignore
-      }
-    })();
+      });
+    }
   }, [needsSetup]);
 
   // Defer polling until init completes — otherwise the first cycle runs
@@ -175,10 +163,7 @@ export default function App() {
   useReviewNudges(settings);
 
   // Flyout + tray sync (updates tray icon, tooltip, flyout window)
-  useBadgeSync();
-
-  // Auto-hide sidebar in floating mode
-  useAutoHide(settings);
+  useFlyoutSync();
 
   // Keyboard navigation
   useKeyboardNav();
@@ -204,7 +189,7 @@ export default function App() {
     useOnboardingStore.getState().restoreOnboardingState();
   }, []);
 
-  // Register global hotkeys (sidebar toggle + flyout toggle)
+  // Register global hotkeys (main window toggle + flyout toggle)
   useEffect(() => {
     if (settings.ui.globalHotkey) {
       // Normalize: Tauri expects "Super" for the Windows key, not "Win"
@@ -230,18 +215,6 @@ export default function App() {
       );
     };
   }, [settings.ui.globalHotkey, settings.ui.flyoutHotkey]);
-
-  // Position sidebar on the screen edge
-  useEffect(() => {
-    log.debug('positioning sidebar', {
-      edge: settings.ui.sidebarEdge,
-      width: settings.ui.sidebarWidthPx,
-    });
-    invoke('position_sidebar', {
-      edge: settings.ui.sidebarEdge,
-      width: settings.ui.sidebarWidthPx,
-    }).catch((err) => log.error('position_sidebar failed', err));
-  }, [settings.ui.sidebarEdge, settings.ui.sidebarWidthPx]);
 
   // Listen for open-settings event from tray
   useEffect(() => {
@@ -327,11 +300,11 @@ export default function App() {
             animation: 'splash-fade-out 200ms ease-out forwards',
           }}
         />
-        <Sidebar>
+        <MainWindow>
           {activeSection === 'focus' && <FocusList />}
           {activeSection === 'prs' && <PrList />}
           {activeSection === 'workitems' && <WorkItemsSection />}
-        </Sidebar>
+        </MainWindow>
         <MergeToast />
         <QuickReviewOverlay />
       </>
@@ -340,11 +313,11 @@ export default function App() {
 
   return (
     <>
-      <Sidebar>
+      <MainWindow>
         {activeSection === 'focus' && <FocusList />}
         {activeSection === 'prs' && <PrList />}
         {activeSection === 'workitems' && <WorkItemsSection />}
-      </Sidebar>
+      </MainWindow>
       <MergeToast />
       <QuickReviewOverlay />
     </>

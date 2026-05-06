@@ -106,12 +106,6 @@ fn default_worktree_subfolder() -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiSettings {
-    #[serde(default = "default_sidebar_edge")]
-    pub sidebar_edge: String,
-    #[serde(default = "default_sidebar_mode")]
-    pub sidebar_mode: String,
-    #[serde(default = "default_sidebar_width")]
-    pub sidebar_width_px: u32,
     #[serde(default = "default_theme")]
     pub theme: String,
     #[serde(default = "default_global_hotkey")]
@@ -153,18 +147,6 @@ pub struct UiSettings {
     pub restore_last_selection: bool,
 }
 
-fn default_sidebar_edge() -> String {
-    "right".to_string()
-}
-
-fn default_sidebar_mode() -> String {
-    "pinned".to_string()
-}
-
-fn default_sidebar_width() -> u32 {
-    800
-}
-
 fn default_theme() -> String {
     "system".to_string()
 }
@@ -185,9 +167,6 @@ fn default_editor_command() -> String {
 impl Default for UiSettings {
     fn default() -> Self {
         Self {
-            sidebar_edge: "right".to_string(),
-            sidebar_mode: "pinned".to_string(),
-            sidebar_width_px: 800,
             theme: "system".to_string(),
             global_hotkey: "Ctrl+Win+Shift+G".to_string(),
             flyout_hotkey: "Ctrl+Win+Shift+F".to_string(),

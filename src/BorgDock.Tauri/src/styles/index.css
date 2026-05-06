@@ -47,8 +47,12 @@
   --color-status-green: var(--color-status-green);
   --color-status-red: var(--color-status-red);
   --color-status-yellow: var(--color-status-yellow);
+  --color-status-amber: var(--color-status-amber);
+  --color-status-blue: var(--color-status-blue);
   --color-status-gray: var(--color-status-gray);
   --color-status-merged: var(--color-status-merged);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-bg-primary: var(--color-bg-primary);
 
   /* Filter chip + tracking */
   --color-tracked-border: var(--color-tracked-border);
@@ -563,6 +567,12 @@
 
   /* ── Status-merged (new — prototype uses this for merged PR pills) ── */
   --color-status-merged: #8250df;
+
+  /* ── Additional status / accent tokens ── */
+  --color-status-amber: #d97706;
+  --color-status-blue: #2563eb;
+  --color-accent-soft: rgba(102, 85, 212, 0.06);
+  --color-bg-primary: #f7f5fb;
 }
 
 /* ---- Dark theme overrides ---- */
@@ -784,6 +794,12 @@
   --elevation-3: 0 20px 60px rgba(0, 0, 0, 0.6);
 
   --color-status-merged: #a371f7;
+
+  /* ── Additional status / accent tokens — dark ── */
+  --color-status-amber: #f59e0b;
+  --color-status-blue: #60a5fa;
+  --color-accent-soft: rgba(124, 106, 246, 0.08);
+  --color-bg-primary: #110f1a;
 }
 
 /* ════════════════════════════════════════════════════════
@@ -2606,6 +2622,9 @@ body.sql-resizing-v .sql-resize-handle {
     background: transparent;
     color: var(--color-text-tertiary);
     cursor: pointer;
+    /* Opt out of titlebar drag region so the button stays clickable when
+       hosted in a `data-tauri-drag-region` titlebar (main window). */
+    -webkit-app-region: no-drag;
     transition:
       background var(--duration-color) ease,
       color var(--duration-color) ease,
@@ -2681,6 +2700,9 @@ body.sql-resizing-v .sql-resize-handle {
     gap: var(--space-5);
     border-bottom: 1px solid var(--color-subtle-border);
     position: relative;
+    /* When hosted in a draggable titlebar (main window section tabs), tab
+       clicks must reach the buttons — opt the whole tab strip out of drag. */
+    -webkit-app-region: no-drag;
   }
   .bd-tabs--dense {
     gap: var(--space-4);
@@ -3006,6 +3028,72 @@ body.sql-resizing-v .sql-resize-handle {
     gap: var(--space-3);
     color: var(--color-text-tertiary);
     font-size: var(--text-small);
+  }
+
+  /* ── MainWindow shell ────────────────────────────────── */
+  .bd-mainwindow {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--color-background);
+    color: var(--color-text-primary);
+    overflow: hidden;
+  }
+  .bd-mainwindow__body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .bd-mainwindow__left,
+  .bd-mainwindow__right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bd-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-status-green);
+    display: inline-block;
+  }
+  .bd-status-dot--red {
+    background: var(--color-status-red);
+  }
+  .bd-spacer {
+    flex: 1;
+  }
+
+  /* ── WindowControls ──────────────────────────────────── */
+  .bd-window-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
+    /* MainWindow titlebar is a Tauri drag region — opt min/max/close out so
+       the buttons don't initiate a window drag. */
+    -webkit-app-region: no-drag;
+  }
+  .bd-window-control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    border-radius: 4px;
+    background: transparent;
+    border: 0;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+  }
+  .bd-window-control:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
+  .bd-window-control--close:hover {
+    background: var(--color-status-red);
+    color: #fff;
   }
 
   /* ════════════════════════════════════════════════════════
@@ -3968,4 +4056,435 @@ body.sql-resizing-v .sql-resize-handle {
   [data-wi-detail][data-rail-collapsed='true'] .wi-rail {
     display: none;
   }
+}
+
+/* ── RepoGroup header (chevron + section label + hr + count pill) ── */
+@layer components {
+  .bd-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .bd-repo-group__header {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 10px;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+  }
+  .bd-repo-group__header:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-repo-group__chevron {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+    transition: transform 200ms;
+  }
+  .bd-repo-group__hr {
+    flex: 1;
+    height: 1px;
+    background: var(--color-subtle-border);
+  }
+  .bd-repo-group__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+}
+
+/* ── PrToolbar (per-section filter pills + search) ─────────── */
+@layer components {
+  .bd-pr-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    background: var(--color-surface);
+  }
+  .bd-pr-toolbar__pills {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .bd-pr-toolbar__search {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 280px;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--color-input-border);
+    background: var(--color-input-bg);
+    border-radius: 6px;
+    color: var(--color-text-ghost);
+  }
+  .bd-pr-toolbar__search:focus-within {
+    border-color: var(--color-accent);
+  }
+  .bd-pr-toolbar__search input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: none;
+    font-size: 11px;
+    color: var(--color-text-primary);
+  }
+  .bd-pr-toolbar__search input::placeholder {
+    color: var(--color-text-ghost);
+  }
+  .bd-pr-toolbar__search-icon {
+    flex-shrink: 0;
+  }
+}
+
+@layer components {
+  /* ---------------- Work Items: 3-pane shell ---------------- */
+  .bd-queries-rail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 14px 0;
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-subtle-border);
+    overflow-y: auto;
+  }
+  .bd-queries-rail__heading {
+    padding: 0 16px 6px;
+  }
+  .bd-queries-rail__heading:not(:first-child) {
+    padding-top: 14px;
+  }
+  .bd-queries-rail__footer {
+    margin-top: auto;
+    padding: 10px 14px;
+    border-top: 1px solid var(--color-subtle-border);
+  }
+  .bd-queries-rail__empty {
+    padding: 4px 16px 4px 27px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+  .bd-query-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 16px;
+    background: transparent;
+    border: 0;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+  .bd-query-row:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-query-row--active {
+    background: var(--color-selected-row-bg);
+    border-left-color: var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  .bd-query-row__star {
+    color: var(--color-accent);
+    width: 11px;
+    flex-shrink: 0;
+  }
+  .bd-query-row__star-spacer {
+    width: 11px;
+    flex-shrink: 0;
+  }
+  .bd-query-row__name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bd-query-row__count {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------------- Work Items: compact row ---------------- */
+  .bd-wi-row {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    border-left: 2px solid transparent;
+    cursor: pointer;
+  }
+  .bd-wi-row:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-wi-row--selected {
+    background: var(--color-selected-row-bg);
+    border-left-color: var(--color-accent);
+  }
+  .bd-wi-row__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .bd-wi-row__id {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
+  .bd-wi-row__title {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1.35;
+  }
+  .bd-wi-row__meta {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .bd-wi-row__meta .sep {
+    opacity: 0.6;
+  }
+  .bd-wi-row__actions {
+    display: inline-flex;
+    gap: 2px;
+    opacity: 0;
+  }
+  .bd-wi-row:hover .bd-wi-row__actions,
+  .bd-wi-row__actions:has(.bd-wi-row__action--on) {
+    opacity: 1;
+  }
+  .bd-wi-row__action {
+    background: transparent;
+    border: 0;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 12px;
+    border-radius: 3px;
+  }
+  .bd-wi-row__action:hover {
+    color: var(--color-text-primary);
+    background: var(--color-surface-hover);
+  }
+  .bd-wi-row__action--on {
+    color: var(--color-accent);
+  }
+
+  /* ---------------- Work Items: filter popover ---------------- */
+  .bd-wi-filter-popover {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    min-width: 240px;
+    background: var(--color-card-background);
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 8px;
+    box-shadow: var(--elevation-2);
+  }
+  /* Cancel Field's bottom margin inside the popover (popover handles spacing). */
+  .bd-wi-filter-popover > div {
+    margin-bottom: 0;
+  }
+
+  /* ---------------- Work Items: 3-pane grid shell ---------------- */
+  .bd-workitems {
+    display: grid;
+    grid-template-columns: 240px 380px 1fr;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .bd-workitems__items {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid var(--color-subtle-border);
+    background: var(--color-background);
+  }
+  .bd-workitems__items-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    background: var(--color-surface);
+  }
+  .bd-workitems__search {
+    flex: 1;
+  }
+  .bd-workitems__items-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .bd-workitems__detail {
+    overflow: auto;
+    background: var(--color-background);
+    min-width: 0;
+  }
+  .bd-empty {
+    padding: 32px 24px;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    text-align: center;
+  }
+  .bd-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-overlay-bg, rgba(0, 0, 0, 0.4));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 32px;
+  }
+  .bd-modal {
+    background: var(--color-card-background);
+    border: 1px solid var(--color-strong-border);
+    border-radius: 10px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--elevation-3);
+  }
+  .bd-modal > * {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── Focus tab ──────────────────────────────────────────────────────────── */
+
+  .bd-focus-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    background: linear-gradient(180deg, var(--color-purple-soft, rgba(102, 85, 212, 0.08)), transparent);
+  }
+
+  .bd-focus-hero__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+
+  .bd-focus-hero__text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bd-focus-hero__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .bd-focus-hero__sub {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    margin-top: 2px;
+  }
+
+  .bd-focus-row {
+    display: grid;
+    grid-template-columns: auto 44px 1fr auto auto;
+    column-gap: 14px;
+    align-items: center;
+    padding: 14px;
+    margin-bottom: 8px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 10px;
+  }
+
+  .bd-focus-row__rank {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: var(--color-surface-hover);
+    color: var(--color-text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bd-focus-row__main {
+    min-width: 0;
+  }
+
+  .bd-focus-row__chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .bd-focus-row__points {
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+
+  .bd-focus-row__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bd-focus-row__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+
+  .bd-focus-row__meta .sep {
+    color: var(--color-text-faint);
+  }
+
+  .bd-focus-row__status {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .bd-focus-row__status[data-tone="failing"] { color: var(--color-status-red); }
+  .bd-focus-row__status[data-tone="running"] { color: var(--color-status-yellow); }
+  .bd-focus-row__status[data-tone="passing"] { color: var(--color-status-green); }
 }

@@ -37,7 +37,7 @@ export interface FlyoutPr {
   totalChecks: number;
   commentCount: number;
   isMine: boolean;
-  // Optional — populated by the live useBadgeSync payload. Older / synthetic
+  // Optional — populated by the live useFlyoutSync payload. Older / synthetic
   // payloads (test seeds) may omit them so the flyout context menu treats
   // these as best-effort.
   htmlUrl?: string;
@@ -107,7 +107,7 @@ export function FlyoutGlance({
   const handleOpenSidebar = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('toggle_sidebar');
+      await invoke('show_or_focus_main');
     } catch {
       // ignore
     }
@@ -129,7 +129,7 @@ export function FlyoutGlance({
       const { invoke } = await import('@tauri-apps/api/core');
       const { emitTo } = await import('@tauri-apps/api/event');
       await emitTo('main', 'open-focus', {});
-      await invoke('toggle_sidebar');
+      await invoke('show_or_focus_main');
     } catch {
       // ignore
     }

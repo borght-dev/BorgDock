@@ -10,8 +10,8 @@ import {
 } from '@/services/pr-actions';
 import { usePrStore } from '@/stores/pr-store';
 import { sendOsNotification } from '@/services/notification';
+import { openPrDetail } from '@/services/windows';
 import { useSettingsStore } from '@/stores/settings-store';
-import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 
 type TrayWorstState = 'failing' | 'pending' | 'passing' | 'idle';
@@ -87,7 +87,7 @@ function buildFlyoutPayload(
   };
 }
 
-export function useBadgeSync() {
+export function useFlyoutSync() {
   const pullRequests = usePrStore((s) => s.pullRequests);
   const username = usePrStore((s) => s.username);
   const lastPollTimeRaw = usePrStore((s) => s.lastPollTime);
@@ -215,7 +215,7 @@ export function useBadgeSync() {
         const fn = await listen('expand-sidebar', async () => {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('toggle_sidebar');
+            await invoke('show_or_focus_main');
           } catch {
             // ignore
           }
@@ -235,7 +235,9 @@ export function useBadgeSync() {
     };
   }, []);
 
-  // Listen for open-pr-detail events
+  // Listen for open-pr-detail events — pop out the detail window. Owner/repo
+  // are derived from the in-memory PR list because external emitters only
+  // include the PR number.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -243,8 +245,16 @@ export function useBadgeSync() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         const fn = await listen<{ number: number }>('open-pr-detail', (event) => {
-          useUiStore.getState().selectPr(event.payload.number);
-          useUiStore.getState().setSidebarVisible(true);
+          const number = event.payload.number;
+          const prw = usePrStore
+            .getState()
+            .pullRequests.find((p) => p.pullRequest.number === number);
+          if (!prw) return;
+          void openPrDetail({
+            owner: prw.pullRequest.repoOwner,
+            repo: prw.pullRequest.repoName,
+            number,
+          });
         });
         if (cancelled) {
           fn();

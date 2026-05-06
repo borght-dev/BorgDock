@@ -36,9 +36,6 @@ export function makeWorktree(overrides?: Partial<WorktreeEntry>): WorktreeEntry 
 }
 
 const BASE_UI: UiSettings = {
-  sidebarEdge: 'right',
-  sidebarMode: 'pinned',
-  sidebarWidthPx: 380,
   theme: 'system',
   globalHotkey: 'CommandOrControl+Shift+B',
   flyoutHotkey: 'CommandOrControl+Shift+F',

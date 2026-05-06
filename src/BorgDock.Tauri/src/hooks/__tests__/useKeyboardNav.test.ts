@@ -9,7 +9,6 @@ const mockFilteredPrs = vi.fn<() => PullRequestWithChecks[]>(() => []);
 const mockFocusPrs = vi.fn<() => PullRequestWithChecks[]>(() => []);
 const mockNeedsMyReview = vi.fn<() => PullRequestWithChecks[]>(() => []);
 const mockCollapseAllRepoGroups = vi.fn();
-const mockCollapseAllPrs = vi.fn();
 const mockStartSinglePr = vi.fn();
 const mockStartSession = vi.fn();
 
@@ -27,7 +26,6 @@ vi.mock('@/stores/ui-store', () => ({
       getState: () => ({
         activeSection: mockActiveSection,
         collapseAllRepoGroups: mockCollapseAllRepoGroups,
-        collapseAllPrs: mockCollapseAllPrs,
       }),
     },
   ),
@@ -271,24 +269,22 @@ describe('useKeyboardNav', () => {
     document.body.removeChild(div);
   });
 
-  it('collapses all groups and PRs on e key', () => {
+  it('collapses all repo groups on e key', () => {
     const prs = [makePr(1)];
     mockFilteredPrs.mockReturnValue(prs);
 
     renderHook(() => useKeyboardNav());
     fireKey('e');
     expect(mockCollapseAllRepoGroups).toHaveBeenCalled();
-    expect(mockCollapseAllPrs).toHaveBeenCalled();
   });
 
-  it('collapses all groups and PRs on E key', () => {
+  it('collapses all repo groups on E key', () => {
     const prs = [makePr(1)];
     mockFilteredPrs.mockReturnValue(prs);
 
     renderHook(() => useKeyboardNav());
     fireKey('E');
     expect(mockCollapseAllRepoGroups).toHaveBeenCalled();
-    expect(mockCollapseAllPrs).toHaveBeenCalled();
   });
 
   it('dispatches refresh event on Ctrl+R', () => {

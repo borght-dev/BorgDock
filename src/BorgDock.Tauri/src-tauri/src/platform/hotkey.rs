@@ -20,10 +20,14 @@ fn toggle_palette_visibility(win: &WebviewWindow) {
     }
 }
 
-/// Currently-registered sidebar toggle shortcut (user-configurable via
-/// settings). Tracked so a later `register_user_hotkeys` call can unregister
-/// just this one, without touching the fixed palette shortcuts
-/// (Ctrl+F7/F8/F9/F10) that are registered once at app setup.
+/// Currently-registered main-window toggle shortcut (user-configurable via
+/// settings). The hotkey calls `show_or_focus_main_sync`, which shows /
+/// focuses / hides the main BorgDock window. Tracked so a later
+/// `register_user_hotkeys` call can unregister just this one, without
+/// touching the fixed palette shortcuts (Ctrl+F7/F8/F9/F10) that are
+/// registered once at app setup. Name predates the main-window rewrite
+/// (was the dock sidebar) but kept as-is to avoid churning the storage
+/// key in user settings.
 static SIDEBAR_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 
 /// Currently-registered flyout toggle shortcut (user-configurable via
@@ -205,8 +209,9 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Register (or re-register) both user-configurable hotkeys: the sidebar
-/// toggle and the flyout toggle. Called from the frontend whenever either
+/// Register (or re-register) both user-configurable hotkeys: the
+/// main-window show/focus/hide toggle (via `show_or_focus_main_sync`) and
+/// the flyout toggle. Called from the frontend whenever either
 /// `settings.ui.globalHotkey` or `settings.ui.flyoutHotkey` changes. Only
 /// touches the user shortcuts; the fixed palette/SQL shortcuts are owned by
 /// `register_fixed_hotkeys` and live for the process lifetime.
@@ -228,7 +233,7 @@ pub fn register_user_hotkeys(
         }
     }
 
-    // Sidebar toggle
+    // Main window show/focus/hide toggle
     let app_toggle = app.clone();
     app.global_shortcut()
         .on_shortcut(sidebar_shortcut.as_str(), move |_app, _shortcut, event| {
@@ -242,26 +247,15 @@ pub fn register_user_hotkeys(
             // SetForegroundWindow in particular has thread restrictions.
             let app_cb = app_toggle.clone();
             match app_toggle.run_on_main_thread(move || {
-                log::info!(
-                    "hotkey toggle running on main thread, sidebar_visible={}",
-                    super::window::sidebar_visible()
-                );
-                if super::window::sidebar_visible() {
-                    if let Err(e) = super::window::hide_main_window(&app_cb) {
-                        log::error!("hotkey: hide_main_window failed: {e}");
-                    }
-                } else {
-                    if let Err(e) = super::window::show_main_window(&app_cb) {
-                        log::error!("hotkey: show_main_window failed: {e}");
-                    }
-                }
+                log::info!("hotkey: running show_or_focus_main_sync on main thread");
+                super::window::show_or_focus_main_sync(&app_cb);
                 log::info!("hotkey toggle main thread work complete");
             }) {
                 Ok(()) => log::info!("hotkey: run_on_main_thread dispatch succeeded"),
                 Err(e) => log::error!("hotkey: run_on_main_thread dispatch failed: {e}"),
             }
         })
-        .map_err(|e| format!("Failed to register sidebar hotkey: {e}"))?;
+        .map_err(|e| format!("Failed to register main-window hotkey: {e}"))?;
 
     if let Ok(mut guard) = SIDEBAR_SHORTCUT.lock() {
         *guard = Some(sidebar_shortcut);
@@ -296,7 +290,7 @@ pub fn unregister_hotkey(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(shortcut) = prev_sidebar {
         app.global_shortcut()
             .unregister(shortcut.as_str())
-            .map_err(|e| format!("Failed to unregister sidebar hotkey: {e}"))?;
+            .map_err(|e| format!("Failed to unregister main-window hotkey: {e}"))?;
     }
     let prev_flyout = FLYOUT_SHORTCUT.lock().ok().and_then(|mut g| g.take());
     if let Some(shortcut) = prev_flyout {

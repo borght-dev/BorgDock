@@ -1,6 +1,6 @@
 // src/components/work-items/WorkItemDetailApp.stories.tsx
 
-import type { Meta, StoryFn, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
 import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';

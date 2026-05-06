@@ -62,8 +62,8 @@ vi.mock('@/hooks/useAutoHide', () => ({
   useAutoHide: vi.fn(),
 }));
 
-vi.mock('@/hooks/useBadgeSync', () => ({
-  useBadgeSync: vi.fn(),
+vi.mock('@/hooks/useFlyoutSync', () => ({
+  useFlyoutSync: vi.fn(),
 }));
 
 vi.mock('@/hooks/useCacheInit', () => ({
@@ -110,9 +110,9 @@ vi.mock('@/components/SplashScreen', () => ({
   SplashScreen: () => <div data-testid="splash-screen" />,
 }));
 
-vi.mock('@/components/layout/Sidebar', () => ({
-  Sidebar: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar">{children}</div>
+vi.mock('@/components/layout/MainWindow', () => ({
+  MainWindow: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="main-window">{children}</div>
   ),
 }));
 
@@ -152,9 +152,6 @@ const fullSettings = {
     },
   ],
   ui: {
-    sidebarEdge: 'right' as const,
-    sidebarMode: 'pinned' as const,
-    sidebarWidthPx: 800,
     theme: 'system' as const,
     globalHotkey: '',
     flyoutHotkey: '',
@@ -281,7 +278,7 @@ describe('App', () => {
     useUiStore.setState({ activeSection: 'focus' });
 
     render(<App />);
-    expect(screen.getByTestId('sidebar')).toBeTruthy();
+    expect(screen.getByTestId('main-window')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
   });
 
@@ -381,21 +378,4 @@ describe('App', () => {
     });
   });
 
-  it('positions sidebar on mount', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    useSettingsStore.setState({
-      isLoading: false,
-      settings: fullSettings,
-      loadSettings: vi.fn(),
-    });
-
-    await act(async () => {
-      render(<App />);
-    });
-
-    expect(invoke).toHaveBeenCalledWith('position_sidebar', {
-      edge: 'right',
-      width: 800,
-    });
-  });
 });

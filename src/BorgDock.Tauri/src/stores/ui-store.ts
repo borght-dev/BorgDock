@@ -5,25 +5,21 @@ import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 export type ActiveSection = 'prs' | 'focus' | 'workitems';
 
 interface UiState {
-  isSidebarVisible: boolean;
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
+  workItemsSelectedId: number | null;
   expandedRepoGroups: Set<string>;
-  expandedPrNumbers: Set<number>;
   isDragging: boolean;
   pendingWorkItemId: number | null;
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
   _hasUserNavigated: boolean;
 
-  toggleSidebar: () => void;
-  setSidebarVisible: (visible: boolean) => void;
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
+  setWorkItemsSelectedId: (id: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
   collapseAllRepoGroups: () => void;
-  togglePrExpanded: (prNumber: number) => void;
-  collapseAllPrs: () => void;
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
@@ -31,19 +27,14 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>()((set, get) => ({
-  isSidebarVisible: true,
   activeSection: 'focus',
   selectedPrNumber: null,
+  workItemsSelectedId: null,
   expandedRepoGroups: new Set<string>(),
-  expandedPrNumbers: new Set<number>(),
   isDragging: false,
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
   _hasUserNavigated: false,
-
-  toggleSidebar: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
-
-  setSidebarVisible: (visible) => set({ isSidebarVisible: visible }),
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });
@@ -53,6 +44,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   },
 
   selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),
+
+  setWorkItemsSelectedId: (workItemsSelectedId) => set({ workItemsSelectedId }),
 
   toggleRepoGroup: (repoKey) =>
     set((state) => {
@@ -66,19 +59,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
     }),
 
   collapseAllRepoGroups: () => set({ expandedRepoGroups: new Set() }),
-
-  togglePrExpanded: (prNumber) =>
-    set((state) => {
-      const next = new Set(state.expandedPrNumbers);
-      if (next.has(prNumber)) {
-        next.delete(prNumber);
-      } else {
-        next.add(prNumber);
-      }
-      return { expandedPrNumbers: next };
-    }),
-
-  collapseAllPrs: () => set({ expandedPrNumbers: new Set() }),
 
   setDragging: (dragging) => set({ isDragging: dragging }),
 

@@ -85,9 +85,6 @@ describe('WorkItemDetailApp invoke() cancellation', () => {
       gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
       repos: [],
       ui: {
-        sidebarEdge: 'right',
-        sidebarMode: 'pinned',
-        sidebarWidthPx: 800,
         theme: 'dark',
         globalHotkey: '',
         flyoutHotkey: '',

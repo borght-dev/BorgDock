@@ -34,9 +34,6 @@ export function canonicalSettings(overrides: Partial<AppSettings> = {}): AppSett
     gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: 'storybook' },
     repos: [],
     ui: {
-      sidebarEdge: 'right',
-      sidebarMode: 'pinned',
-      sidebarWidthPx: 800,
       theme: 'system',
       globalHotkey: '',
       flyoutHotkey: '',

@@ -4,26 +4,9 @@ import { useUiStore } from '../ui-store';
 describe('ui-store', () => {
   beforeEach(() => {
     useUiStore.setState({
-      isSidebarVisible: true,
       activeSection: 'prs',
       selectedPrNumber: null,
       expandedRepoGroups: new Set<string>(),
-      expandedPrNumbers: new Set<number>(),
-    });
-  });
-
-  describe('toggleSidebar', () => {
-    it('toggles sidebar visibility', () => {
-      expect(useUiStore.getState().isSidebarVisible).toBe(true);
-      useUiStore.getState().toggleSidebar();
-      expect(useUiStore.getState().isSidebarVisible).toBe(false);
-      useUiStore.getState().toggleSidebar();
-      expect(useUiStore.getState().isSidebarVisible).toBe(true);
-    });
-
-    it('sets sidebar visibility directly', () => {
-      useUiStore.getState().setSidebarVisible(false);
-      expect(useUiStore.getState().isSidebarVisible).toBe(false);
     });
   });
 
@@ -43,6 +26,15 @@ describe('ui-store', () => {
       expect(useUiStore.getState().selectedPrNumber).toBe(42);
       useUiStore.getState().selectPr(null);
       expect(useUiStore.getState().selectedPrNumber).toBeNull();
+    });
+  });
+
+  describe('work item selection', () => {
+    it('sets and reads workItemsSelectedId', () => {
+      useUiStore.getState().setWorkItemsSelectedId(42);
+      expect(useUiStore.getState().workItemsSelectedId).toBe(42);
+      useUiStore.getState().setWorkItemsSelectedId(null);
+      expect(useUiStore.getState().workItemsSelectedId).toBeNull();
     });
   });
 
@@ -66,22 +58,6 @@ describe('ui-store', () => {
       useUiStore.getState().toggleRepoGroup('a/one');
       expect(useUiStore.getState().expandedRepoGroups.has('a/one')).toBe(false);
       expect(useUiStore.getState().expandedRepoGroups.has('b/two')).toBe(true);
-    });
-  });
-
-  describe('expandedPrNumbers', () => {
-    it('toggles PR expansion', () => {
-      useUiStore.getState().togglePrExpanded(42);
-      expect(useUiStore.getState().expandedPrNumbers.has(42)).toBe(true);
-      useUiStore.getState().togglePrExpanded(42);
-      expect(useUiStore.getState().expandedPrNumbers.has(42)).toBe(false);
-    });
-
-    it('collapseAllPrs clears all expanded', () => {
-      useUiStore.getState().togglePrExpanded(1);
-      useUiStore.getState().togglePrExpanded(2);
-      useUiStore.getState().collapseAllPrs();
-      expect(useUiStore.getState().expandedPrNumbers.size).toBe(0);
     });
   });
 

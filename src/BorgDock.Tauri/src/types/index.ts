@@ -47,8 +47,6 @@ export type {
   PostFixAction,
   RepoPriority,
   RepoSettings,
-  SidebarEdge,
-  SidebarMode,
   SqlServerConnection,
   SqlSettings,
   ThemeMode,

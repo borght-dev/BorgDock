@@ -1,6 +1,6 @@
 import { Card } from '@/components/shared/primitives';
-import { Field, SectionHeader, Seg2, Slider, TextInput, ToggleRow } from '@/components/shared/primitives';
-import type { UiSettings, ThemeMode, SidebarEdge, SidebarMode } from '@/types/settings';
+import { Field, SectionHeader, Seg2, TextInput, ToggleRow } from '@/components/shared/primitives';
+import type { UiSettings, ThemeMode } from '@/types/settings';
 import { HotkeyRecorder } from './HotkeyRecorder';
 import { enable as enableAutostart, disable as disableAutostart } from '@tauri-apps/plugin-autostart';
 
@@ -13,7 +13,7 @@ export function AppearanceSection({ ui, onChange }: Props) {
     <>
       <SectionHeader
         title="Appearance"
-        subtitle="Theme, sidebar layout, hotkeys and the always-on-top tray flyout."
+        subtitle="Theme, hotkeys and the always-on-top tray flyout."
       />
 
       <Card variant="default" padding="md">
@@ -27,45 +27,6 @@ export function AppearanceSection({ ui, onChange }: Props) {
               { value: 'dark',   label: 'Dark' },
             ]}
             onChange={(v) => update({ theme: v as ThemeMode })}
-          />
-        </Field>
-      </Card>
-
-      <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Sidebar</h3>
-        <Field label="Sidebar edge" hint="Which screen edge the sidebar docks to." anchorId="sidebar-edge">
-          <Seg2
-            value={ui.sidebarEdge}
-            options={[
-              { value: 'left',  label: 'Left' },
-              { value: 'right', label: 'Right' },
-            ]}
-            onChange={(v) => update({ sidebarEdge: v as SidebarEdge })}
-          />
-        </Field>
-        <Field
-          label="Sidebar mode"
-          hint="Pinned reserves desktop work area. Floating auto-hides and reveals on hover."
-          anchorId="sidebar-mode"
-        >
-          <Seg2
-            value={ui.sidebarMode}
-            options={[
-              { value: 'pinned',   label: 'Pinned' },
-              { value: 'floating', label: 'Floating' },
-            ]}
-            onChange={(v) => update({ sidebarMode: v as SidebarMode })}
-          />
-        </Field>
-        <Field label="Sidebar width" anchorId="sidebar-width">
-          <Slider
-            ariaLabel="Sidebar width"
-            value={ui.sidebarWidthPx}
-            min={200}
-            max={1200}
-            step={10}
-            suffix=" px"
-            onChange={(sidebarWidthPx) => update({ sidebarWidthPx })}
           />
         </Field>
       </Card>
