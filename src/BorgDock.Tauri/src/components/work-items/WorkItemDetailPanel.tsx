@@ -7,10 +7,7 @@ import { LinksTab } from './WorkItemDetailPanel/LinksTab';
 import { OverviewTab } from './WorkItemDetailPanel/OverviewTab';
 import { RightRail } from './WorkItemDetailPanel/RightRail';
 import { TitleBlock, type TitleBlockChange } from './WorkItemDetailPanel/TitleBlock';
-import {
-  type AdjacentNav,
-  useAdjacentNav,
-} from './WorkItemDetailPanel/useAdjacentNav';
+import type { AdjacentNav } from './WorkItemDetailPanel/useAdjacentNav';
 import {
   type AutoSavePatch,
   type AutoSaveValues,
@@ -81,7 +78,6 @@ export function WorkItemDetailPanel(props: Props) {
   const {
     item,
     isLoading,
-    isSaving,
     statusText,
     availableStates,
     richTextFields,
