@@ -46,7 +46,7 @@ All four are in scope long-term. Each phase is judged against (1) and (2) only;
 
 ## Window inventory
 
-Twelve top-level windows live in `src/BorgDock.Tauri/src/`. One done, eleven to
+Twelve top-level windows live in `src/BorgDock.Tauri/src/`. Nine done, three to
 go. Order below is arbitrary — pick whichever next phase makes sense at the
 time.
 
@@ -142,6 +142,25 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > `getCurrentWindow().onFocusChanged` (synthetic `__window.onFocusChanged`
 > channel — emit a boolean payload via `getControl().emit(...)`). Mirrors
 > the Phase-4 `onMoved` pattern.
+
+> **Phase 8 mock-layer extensions:** `tauri-api-window` now also exposes
+> `getCurrentWindow().startDragging` (records a `window.startDragging`
+> invocation; no-op otherwise). `tauri-api-webviewWindow` now also exports
+> a `WebviewWindow` class — instantiation pushes the label/options into
+> `getControl().webviewWindowsCreated`. `services-ado-workitems` mock
+> replaced its stub-throws with scenario-driven impls keyed off
+> `getControl().workItemPaletteScenario` (browse/search/loading/failure
+> presets — see `__fixtures__/work-item-palette-data.ts` for the
+> canonical shapes). `control.ts` adds `workItemPaletteScenario` and
+> `webviewWindowsCreated` fields.
+
+> **Phase 9 mock-layer extensions:** none. The File Viewer's tree-sitter
+> highlighter runs unmodified inside the Storybook iframe — `.storybook/main.ts`
+> now uses `vite-plugin-static-copy` in `viteFinal` to copy
+> `node_modules/web-tree-sitter/.../web-tree-sitter.wasm` into the iframe
+> output (`public/grammars/*.wasm` is already served at `/grammars/...` by
+> Vite). Confirmed end-to-end via a probe story that mounts a small TSX
+> file and asserts highlighted spans in the rendered DOM.
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).
