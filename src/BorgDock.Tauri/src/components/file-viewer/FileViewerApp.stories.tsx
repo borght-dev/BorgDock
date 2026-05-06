@@ -243,3 +243,54 @@ export const DiffLoadError = story({
   contentResponse: TSX_SAMPLE,
   diffResponse: () => Promise.reject(new Error('git command failed')),
 });
+
+// ---------------------------------------------------------------------------
+// 5. Baseline axis (3)
+// ---------------------------------------------------------------------------
+
+export const VsHEADActive = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: { patch: PATCH_SINGLE_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+});
+
+export const VsMergeBaseDefault = story({
+  baseline: 'mergeBaseDefault',
+  contentResponse: TSX_SAMPLE,
+  diffResponse: ({ baseline }) => ({
+    patch: baseline === 'mergeBaseDefault' ? PATCH_SINGLE_HUNK_TS : '',
+    baselineRef: baseline === 'mergeBaseDefault' ? 'main' : 'HEAD',
+    inRepo: true,
+  }),
+});
+
+export const BaselineSwitchInteraction: Story = {
+  args: {
+    params: {
+      contentResponse: TSX_SAMPLE,
+      diffResponse: ({ baseline }) => ({
+        patch: PATCH_SINGLE_HUNK_TS,
+        baselineRef: baseline === 'mergeBaseDefault' ? 'main' : 'HEAD',
+        inRepo: true,
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    // Wait for the diff response to resolve so the chip's label updates from
+    // 'vs default' to 'vs main' before we click it.
+    const defaultChip = await canvas.findByRole('button', { name: /vs (default|main)/ });
+    await userEvent.click(defaultChip);
+    await waitFor(() => {
+      const ctrl = (window as unknown as {
+        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+      }).__borgdock_storybook_tauri;
+      const calls = ctrl.invocations.filter(
+        (i) =>
+          i.command === 'git_file_diff' &&
+          (i.args as { baseline?: string } | undefined)?.baseline === 'mergeBaseDefault',
+      );
+      expect(calls.length).toBeGreaterThan(0);
+    });
+  },
+};
