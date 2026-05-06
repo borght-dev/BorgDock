@@ -3,7 +3,7 @@ import { createLogger } from '@/services/logger';
 
 const log = createLogger('cache');
 
-export type TabDataType = 'commits' | 'files' | 'reviews' | 'comments';
+export type TabDataType = 'commits' | 'files' | 'reviews' | 'comments' | 'reviewThreads';
 
 export interface CachedTabData<T> {
   data: T;
