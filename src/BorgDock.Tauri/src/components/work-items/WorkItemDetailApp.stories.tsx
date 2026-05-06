@@ -1,6 +1,6 @@
 // src/components/work-items/WorkItemDetailApp.stories.tsx
 
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryFn, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
 import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';
@@ -374,3 +374,26 @@ export const CloseButtonClicked: Story = {
 export const TitleSetOnLoad: Story = story({
   scenario: loadedScenario(userStoryFreshlyLoaded),
 });
+
+// ---------------------------------------------------------------------------
+// v2 variants
+// ---------------------------------------------------------------------------
+
+export const V2Overview: Story = story({
+  scenario: loadedScenario(bugWithReproSteps, commentsManyAuthors),
+});
+V2Overview.storyName = 'v2 — overview';
+
+export const V2NarrowRailCollapsed: Story = {
+  name: 'v2 — narrow (rail collapsed)',
+  args: {
+    params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
+  },
+  decorators: [
+    (StoryC: StoryFn) => (
+      <div style={{ width: 700, height: 700 }}>
+        <StoryC />
+      </div>
+    ),
+  ],
+};
