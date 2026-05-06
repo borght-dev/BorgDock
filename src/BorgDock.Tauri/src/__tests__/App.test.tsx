@@ -110,9 +110,9 @@ vi.mock('@/components/SplashScreen', () => ({
   SplashScreen: () => <div data-testid="splash-screen" />,
 }));
 
-vi.mock('@/components/layout/Sidebar', () => ({
-  Sidebar: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar">{children}</div>
+vi.mock('@/components/layout/MainWindow', () => ({
+  MainWindow: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="main-window">{children}</div>
   ),
 }));
 
@@ -278,7 +278,7 @@ describe('App', () => {
     useUiStore.setState({ activeSection: 'focus' });
 
     render(<App />);
-    expect(screen.getByTestId('sidebar')).toBeTruthy();
+    expect(screen.getByTestId('main-window')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
   });
 

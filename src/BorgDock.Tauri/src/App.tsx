@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef, useState } from 'react';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { MainWindow } from '@/components/layout/MainWindow';
 import { PrList } from '@/components/pr/PrList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
@@ -304,11 +304,11 @@ export default function App() {
             animation: 'splash-fade-out 200ms ease-out forwards',
           }}
         />
-        <Sidebar>
+        <MainWindow>
           {activeSection === 'focus' && <FocusList />}
           {activeSection === 'prs' && <PrList />}
           {activeSection === 'workitems' && <WorkItemsSection />}
-        </Sidebar>
+        </MainWindow>
         <MergeToast />
         <QuickReviewOverlay />
       </>
@@ -317,11 +317,11 @@ export default function App() {
 
   return (
     <>
-      <Sidebar>
+      <MainWindow>
         {activeSection === 'focus' && <FocusList />}
         {activeSection === 'prs' && <PrList />}
         {activeSection === 'workitems' && <WorkItemsSection />}
-      </Sidebar>
+      </MainWindow>
       <MergeToast />
       <QuickReviewOverlay />
     </>
