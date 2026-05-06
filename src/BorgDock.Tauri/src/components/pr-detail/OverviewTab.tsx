@@ -1,164 +1,29 @@
-import clsx from 'clsx';
 import { useCallback, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button, Card } from '@/components/shared/primitives';
-import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
-import { createLogger } from '@/services/logger';
-import { bypassMergePr, closePr, mergePr, toggleDraftPr } from '@/services/pr-actions';
-import { findRepoConfig } from '@/services/repo-lookup';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
 import type { PullRequestWithChecks } from '@/types';
-import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
-import { CheckoutPanel } from './CheckoutPanel';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergedCard } from './MergedCard';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
-
-const log = createLogger('OverviewTab');
 
 interface OverviewTabProps {
   pr: PullRequestWithChecks;
 }
 
-const MergeIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.75"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="3" cy="8" r="1.5" />
-    <circle cx="13" cy="3" r="1.5" />
-    <circle cx="13" cy="13" r="1.5" />
-    <path d="M3 9.5v3" />
-    <path d="M3 6.5C3 6.5 5 5 8 5h3.5" />
-    <path d="M3 9.5C3 9.5 5 11 8 11h3.5" />
-  </svg>
-);
-
-const ExternalIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 2h5v5" />
-    <path d="m14 2-7 7" />
-    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-  </svg>
-);
-
-const CopyIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <rect x="5" y="5" width="9" height="9" rx="1.5" />
-    <path d="M11 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2" />
-  </svg>
-);
-
-const BranchIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="4" cy="3.5" r="1.5" />
-    <circle cx="4" cy="12.5" r="1.5" />
-    <circle cx="12" cy="6.5" r="1.5" />
-    <path d="M4 5v6" />
-    <path d="M12 8c0 2-2 3-4 3s-4-.5-4-2" />
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M11 2.5 13.5 5 5 13.5l-3 .5.5-3z" />
-  </svg>
-);
-
-async function handleOpenInBrowser(url: string) {
-  log.info('open-in-browser clicked', { url });
-  try {
-    const { openUrl } = await import('@tauri-apps/plugin-opener');
-    await openUrl(url);
-    log.info('openUrl succeeded', { url });
-  } catch (err) {
-    log.error('openUrl failed', err, { url });
-  }
-}
-
-async function handleCopyBranch(branch: string) {
-  log.info('copy-branch clicked', { branch });
-  await copyToClipboard(branch);
-}
-
 export function OverviewTab({ pr }: OverviewTabProps) {
   const p = pr.pullRequest;
-  const [actionStatus, setActionStatus] = useState('');
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
-  const [confirmBypass, setConfirmBypass] = useState(false);
   const isOpen = p.state === 'open';
-  const { resolveConflicts } = useClaudeActions();
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
-  const repoConfig = useSettingsStore((s) =>
-    findRepoConfig(s.settings.repos, p.repoOwner, p.repoName),
-  );
-  const repoPath = repoConfig?.worktreeBasePath ?? '';
-  const worktreeSubfolder = repoConfig?.worktreeSubfolder ?? '.worktrees';
-  const favoritePaths = repoConfig?.favoriteWorktreePaths;
-  const favoritesOnlyDefault = useSettingsStore(
-    (s) => s.settings.ui.worktreePaletteFavoritesOnly ?? false,
-  );
-  const windowsTerminalProfile = useSettingsStore(
-    (s) => s.settings.ui.windowsTerminalProfile,
-  );
   const sKey = summaryKey(p.repoOwner, p.repoName, p.number);
   const cachedSummary = useSummaryStore((s) => s.getSummary(sKey, p.updatedAt));
   const summaryLoading = useSummaryStore((s) => s.isLoading(sKey));
@@ -187,202 +52,9 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     }
   }, [sKey, p]);
 
-  const handleResolveConflicts = useCallback(async () => {
-    setActionStatus('Launching Claude to resolve conflicts...');
-    try {
-      await resolveConflicts(pr);
-      setActionStatus('Claude is resolving conflicts');
-    } catch (err) {
-      setActionStatus(`Failed: ${err}`);
-    }
-    setTimeout(() => setActionStatus(''), 5000);
-  }, [pr, resolveConflicts]);
-
-  const handleCheckout = useCallback(() => {
-    setCheckoutOpen((open) => !open);
-  }, []);
-
-  const prRef = {
-    repoOwner: p.repoOwner,
-    repoName: p.repoName,
-    number: p.number,
-    title: p.title,
-    htmlUrl: p.htmlUrl,
-  };
-
-  /**
-   * Capture errors from a pr-actions call into the local "actionStatus" pill
-   * so the failure is visible inline in the OverviewTab, instead of (or in
-   * addition to) the global notification toast.
-   */
-  const captureErrorAsStatus = useCallback(
-    (label: string) => (_title: string, err: unknown) => {
-      setActionStatus(`${label}: ${parseError(err).message}`);
-      setTimeout(() => setActionStatus(''), 5000);
-    },
-    [],
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prRef is constructed inline per render; its individual fields are listed instead to avoid a new object reference on every render triggering unnecessary re-memoization.
-  const handleMerge = useCallback(async () => {
-    setActionStatus('Merging...');
-    const ok = await mergePr(prRef, {
-      method: 'squash',
-      onError: captureErrorAsStatus('Merge failed'),
-    });
-    if (ok) setActionStatus('');
-  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, captureErrorAsStatus]);
-
-  const handleBypassConfirm = useCallback(() => setConfirmBypass(true), []);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prRef is constructed inline per render; its individual fields are listed instead to avoid a new object reference on every render triggering unnecessary re-memoization.
-  const handleBypassExecute = useCallback(async () => {
-    setConfirmBypass(false);
-    setActionStatus('Merging...');
-    const ok = await bypassMergePr(prRef, {
-      onError: captureErrorAsStatus('Bypass merge failed'),
-    });
-    if (ok) setActionStatus('');
-  }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, captureErrorAsStatus]);
-
-  const handleCloseConfirm = useCallback(() => setConfirmClose(true), []);
-
-  const handleCloseExecute = useCallback(async () => {
-    setConfirmClose(false);
-    setActionStatus('Closing...');
-    const ok = await closePr(
-      { repoOwner: p.repoOwner, repoName: p.repoName, number: p.number },
-      { onError: captureErrorAsStatus('Close failed') },
-    );
-    if (ok) setActionStatus('PR closed');
-    setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number, captureErrorAsStatus]);
-
-  const handleToggleDraft = useCallback(async () => {
-    setActionStatus(p.isDraft ? 'Marking ready...' : 'Marking draft...');
-    const ok = await toggleDraftPr(
-      { repoOwner: p.repoOwner, repoName: p.repoName, number: p.number, isDraft: p.isDraft },
-      { onError: captureErrorAsStatus(p.isDraft ? 'Mark ready failed' : 'Mark draft failed') },
-    );
-    if (ok) setActionStatus(p.isDraft ? 'Marked ready!' : 'Marked draft!');
-    setTimeout(() => setActionStatus(''), 3000);
-  }, [p.repoOwner, p.repoName, p.number, p.isDraft, captureErrorAsStatus]);
-
-  const isReady =
-    pr.overallStatus === 'green' &&
-    !p.isDraft &&
-    p.mergeable !== false &&
-    p.reviewStatus === 'approved';
-
   return (
     <div className="px-6 py-5 space-y-5">
       {!isOpen && <MergedCard pr={p} />}
-
-      {/* Action buttons — primary action on the left, danger pair pushed right.
-          Resolve Conflicts (purple-soft) and Bypass Merge (dashed danger) keep className
-          overrides because Button's variant vocabulary doesn't cover those bespoke treatments. */}
-      <div className="flex flex-wrap items-center gap-2">
-        {isOpen && (
-          isReady ? (
-            <Button
-              variant="primary"
-              size="sm"
-              leading={<MergeIcon />}
-              onClick={handleMerge}
-              data-overview-action="merge"
-            >
-              Merge
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              size="sm"
-              leading={<MergeIcon />}
-              onClick={handleMerge}
-              disabled
-              data-overview-action="merge"
-            >
-              Merge
-            </Button>
-          )
-        )}
-        <Button
-          variant="secondary"
-          size="sm"
-          leading={<ExternalIcon />}
-          onClick={() => handleOpenInBrowser(p.htmlUrl)}
-          data-overview-action="browser"
-        >
-          Open in Browser
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          leading={<CopyIcon />}
-          onClick={() => handleCopyBranch(p.headRef)}
-          data-overview-action="copy"
-        >
-          Copy Branch
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          leading={<BranchIcon />}
-          onClick={handleCheckout}
-          aria-expanded={checkoutOpen}
-          data-overview-action="checkout"
-          className={clsx(
-            checkoutOpen &&
-              'bg-[var(--color-accent-soft)] text-[var(--color-accent)] border border-[var(--color-purple-border)]',
-          )}
-        >
-          Checkout
-        </Button>
-        {isOpen && (
-          <Button
-            variant="ghost"
-            size="sm"
-            leading={<EditIcon />}
-            onClick={handleToggleDraft}
-            data-overview-action="draft"
-          >
-            {p.isDraft ? 'Mark Ready' : 'Mark Draft'}
-          </Button>
-        )}
-        {isOpen && p.mergeable === false && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResolveConflicts}
-            data-overview-action="resolve"
-            className="border border-[var(--color-purple-border)] bg-[var(--color-purple-soft)] text-[var(--color-purple)]"
-          >
-            {'✦'} Resolve Conflicts
-          </Button>
-        )}
-        {isOpen && (
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleBypassConfirm}
-              data-overview-action="bypass"
-              className="border-2 border-dashed bg-transparent"
-            >
-              Bypass Merge
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleCloseConfirm}
-              data-overview-action="close"
-              className="bg-transparent"
-            >
-              Close PR
-            </Button>
-          </div>
-        )}
-      </div>
 
       {/* Merge Readiness Checklist */}
       <MergeReadinessChecklist pr={pr} />
@@ -499,51 +171,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           )}
         </div>
       )}
-
-      {/* Action status */}
-      {actionStatus && (
-        <Card padding="sm" className="flex items-center gap-2">
-          {actionStatus.includes('...') && (
-            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          )}
-          <span className="text-xs text-[var(--color-text-secondary)]">{actionStatus}</span>
-        </Card>
-      )}
-
-      {/* Checkout flow */}
-      {checkoutOpen && (
-        <CheckoutPanel
-          branchName={p.headRef}
-          repoBasePath={repoPath}
-          worktreeSubfolder={worktreeSubfolder}
-          favoritePaths={favoritePaths}
-          favoritesOnlyDefault={favoritesOnlyDefault}
-          windowsTerminalProfile={windowsTerminalProfile}
-          onDismiss={() => setCheckoutOpen(false)}
-        />
-      )}
-
-      {/* Close PR confirm dialog */}
-      <ConfirmDialog
-        isOpen={confirmClose}
-        title="Close pull request?"
-        message={`This will close PR #${p.number} without merging. You can reopen it later.`}
-        confirmLabel="Close PR"
-        variant="danger"
-        onConfirm={handleCloseExecute}
-        onCancel={() => setConfirmClose(false)}
-      />
-
-      {/* Bypass Merge confirm dialog */}
-      <ConfirmDialog
-        isOpen={confirmBypass}
-        title="Bypass merge protections?"
-        message={`This will merge PR #${p.number} bypassing branch protection rules. This action cannot be undone.`}
-        confirmLabel="Bypass Merge"
-        variant="danger"
-        onConfirm={handleBypassExecute}
-        onCancel={() => setConfirmBypass(false)}
-      />
 
       {/* Description */}
       {p.body && (
