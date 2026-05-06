@@ -158,3 +158,27 @@ export const LongPath = story({
   contentResponse: TSX_SAMPLE,
   diffResponse: DIFF_NOT_IN_REPO,
 });
+
+// ---------------------------------------------------------------------------
+// 2. Content-load axis (4)
+// ---------------------------------------------------------------------------
+
+export const ContentLoading = story({
+  contentResponse: () => new Promise<string>(() => {}),
+  diffResponse: () => new Promise<DiffOutput>(() => {}),
+});
+
+export const ContentNotFound = story({
+  contentResponse: () => Promise.reject(ERR_NOT_FOUND),
+  diffResponse: DIFF_NOT_IN_REPO,
+});
+
+export const ContentBinary = story({
+  contentResponse: () => Promise.reject(ERR_BINARY),
+  diffResponse: DIFF_NOT_IN_REPO,
+});
+
+export const ContentTooLarge = story({
+  contentResponse: () => Promise.reject(ERR_TOO_LARGE),
+  diffResponse: DIFF_NOT_IN_REPO,
+});
