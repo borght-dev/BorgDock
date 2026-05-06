@@ -1,5 +1,10 @@
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
+  MiniAvatar,
+  PrioBars,
+  StatePill,
+  TypeGlyph,
   WI_PRIO,
   WI_STATES,
   WI_TYPES,
@@ -48,5 +53,57 @@ describe('avatarToneFor', () => {
 
   it('is deterministic', () => {
     expect(avatarToneFor('KV')).toBe(avatarToneFor('KV'));
+  });
+});
+
+describe('TypeGlyph', () => {
+  it('renders the type glyph with title attribute', () => {
+    render(<TypeGlyph type="Bug" />);
+    const el = screen.getByTitle('Bug');
+    expect(el.textContent).toBe('●');
+  });
+
+  it('falls back for unknown types', () => {
+    render(<TypeGlyph type="Mystery" />);
+    expect(screen.getByTitle('Mystery').textContent).toBe('▢');
+  });
+});
+
+describe('PrioBars', () => {
+  it('lights 4 bars for P1', () => {
+    const { container } = render(<PrioBars prio={1} />);
+    const lit = container.querySelectorAll('[data-lit="true"]');
+    expect(lit).toHaveLength(4);
+  });
+
+  it('lights 1 bar for P4', () => {
+    const { container } = render(<PrioBars prio={4} />);
+    expect(container.querySelectorAll('[data-lit="true"]')).toHaveLength(1);
+  });
+
+  it('falls back to P3 for unknown priority', () => {
+    const { container } = render(<PrioBars prio={undefined} />);
+    expect(container.querySelectorAll('[data-lit="true"]')).toHaveLength(2);
+  });
+});
+
+describe('StatePill', () => {
+  it('renders the state label', () => {
+    render(<StatePill state="Testing Failed" />);
+    expect(screen.getByText('Testing Failed')).toBeInTheDocument();
+  });
+
+  it('uses warning tone for Testing Failed', () => {
+    render(<StatePill state="Testing Failed" />);
+    expect(
+      screen.getByText('Testing Failed').closest('.bd-pill'),
+    ).toHaveClass('bd-pill--warning');
+  });
+});
+
+describe('MiniAvatar', () => {
+  it('renders initials', () => {
+    render(<MiniAvatar initials="KV" />);
+    expect(screen.getByText('KV')).toBeInTheDocument();
   });
 });
