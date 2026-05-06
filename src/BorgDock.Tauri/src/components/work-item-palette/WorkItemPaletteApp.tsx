@@ -313,12 +313,12 @@ export function WorkItemPaletteApp() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    padding: '10px 14px 4px',
+                    padding: '8px 14px',
                     position: 'sticky',
                     top: 0,
                     background: 'var(--color-surface)',
                     borderBottom: '1px solid var(--color-subtle-border)',
-                    zIndex: 1,
+                    zIndex: 2,
                   }}
                 >
                   <span

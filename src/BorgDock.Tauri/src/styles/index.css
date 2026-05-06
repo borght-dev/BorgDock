@@ -3777,7 +3777,7 @@ body.sql-resizing-v .sql-resize-handle {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 4px 0 8px;
+    padding: 0 0 8px;
   }
   .bd-wp-content::-webkit-scrollbar { width: 6px; }
   .bd-wp-content::-webkit-scrollbar-track { background: transparent; }

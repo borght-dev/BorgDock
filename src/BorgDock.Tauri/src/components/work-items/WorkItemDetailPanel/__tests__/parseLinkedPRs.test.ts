@@ -8,6 +8,10 @@ describe('parseLinkedPRs', () => {
     expect(parseLinkedPRs([])).toEqual([]);
   });
 
+  it('returns [] when relations is undefined (ADO omits the field)', () => {
+    expect(parseLinkedPRs(undefined)).toEqual([]);
+  });
+
   it('extracts PR id and name from ArtifactLink relations', () => {
     const relations: WorkItemRelation[] = [
       {

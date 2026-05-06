@@ -8,8 +8,9 @@ export interface LinkedPR {
 
 const PR_URL_RE = /Git\/PullRequestId\/[^/]+\/[^/]+\/(\d+)/;
 
-export function parseLinkedPRs(relations: WorkItemRelation[]): LinkedPR[] {
+export function parseLinkedPRs(relations: WorkItemRelation[] | undefined): LinkedPR[] {
   const result: LinkedPR[] = [];
+  if (!relations) return result;
   for (const r of relations) {
     if (r.rel !== 'ArtifactLink') continue;
     let decoded: string;
