@@ -10,6 +10,9 @@ export interface TitleBarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'tit
   meta?: ReactNode;
   /** Override the middle slot entirely. Useful when consumers need a composite title. */
   left?: ReactNode;
+  /** Optional middle slot. When supplied, layout becomes:
+   *  [left] [grow-spacer] [middle] [grow-spacer] [right]. */
+  middle?: ReactNode;
   /** Trailing slot — typically window controls or action buttons. */
   right?: ReactNode;
 }
@@ -23,6 +26,7 @@ export function TitleBar({
   count,
   meta,
   left,
+  middle,
   right,
   className,
   ...rest
@@ -37,6 +41,12 @@ export function TitleBar({
         </>
       )}
       <span className="bd-title-bar__spacer" />
+      {middle && (
+        <>
+          <span data-bd-titlebar-middle="">{middle}</span>
+          <span className="bd-title-bar__spacer" />
+        </>
+      )}
       {right}
     </div>
   );
