@@ -30,4 +30,16 @@ describe('groupItems', () => {
     const groups = groupItems(items, 'assignee', '');
     expect(groups.map((g) => g.label)).toEqual(['KV', 'SS']);
   });
+
+  it('groups by iter using ResultItem.iteration', () => {
+    const itemsWithIter: ResultItem[] = [
+      { id: 10, title: 'x', state: 'Active', workItemType: 'Bug', assignedTo: 'KV', iteration: 'R5.2' },
+      { id: 11, title: 'y', state: 'New', workItemType: 'Task', assignedTo: 'SS', iteration: 'R5.3' },
+      { id: 12, title: 'z', state: 'Active', workItemType: 'Bug', assignedTo: 'KV', iteration: 'R5.2' },
+    ];
+    const groups = groupItems(itemsWithIter, 'iter', '');
+    expect(groups.map((g) => g.label).sort()).toEqual(['R5.2', 'R5.3']);
+    const r52 = groups.find((g) => g.label === 'R5.2');
+    expect(r52?.items).toHaveLength(2);
+  });
 });

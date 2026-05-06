@@ -22,7 +22,7 @@ export function groupItems(
     let key: string;
     if (groupBy === 'state') key = item.state || 'No state';
     else if (groupBy === 'assignee') key = item.assignedTo || 'Unassigned';
-    else key = 'No iteration';
+    else key = item.iteration || 'No iteration';
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(item);
   }

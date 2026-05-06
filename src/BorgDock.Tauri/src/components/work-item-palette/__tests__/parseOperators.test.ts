@@ -63,4 +63,13 @@ describe('applyOperators', () => {
   it('returns input unchanged when ops empty', () => {
     expect(applyOperators(items, [], new Set())).toEqual(items);
   });
+
+  it('filters by iter operator against ResultItem.iteration', () => {
+    const iterItems: ResultItem[] = [
+      { id: 10, title: 'x', state: 'Active', workItemType: 'Bug', assignedTo: 'KV', iteration: 'R5.2' },
+      { id: 11, title: 'y', state: 'New', workItemType: 'Task', assignedTo: 'SS', iteration: 'R5.3' },
+    ];
+    const result = applyOperators(iterItems, [{ kind: 'iter', value: 'R5.2' }], new Set());
+    expect(result.map((i) => i.id)).toEqual([10]);
+  });
 });

@@ -50,6 +50,8 @@ export function applyOperators(
           return item.workItemType.toLowerCase().includes(op.value.toLowerCase());
         case 'assignee':
           return item.assignedTo.toLowerCase().includes(op.value.toLowerCase());
+        case 'iter':
+          return (item.iteration ?? '').toLowerCase().includes(op.value.toLowerCase());
         case 'mention':
           if (op.value.toLowerCase() === 'me') return assignedToMeIds.has(item.id);
           return item.assignedTo.toLowerCase().includes(op.value.toLowerCase());
