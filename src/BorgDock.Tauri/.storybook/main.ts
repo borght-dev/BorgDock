@@ -4,6 +4,7 @@ import type { StorybookConfig } from '@storybook/react-vite';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -21,6 +22,22 @@ const config: StorybookConfig = {
   async viteFinal(config) {
     config.plugins = config.plugins ?? [];
     config.plugins.push(tailwindcss());
+    // Phase 9 — copy the tree-sitter runtime wasm into the Storybook output.
+    // The grammar wasms (public/grammars/*.wasm) are served by Vite's
+    // public-dir mechanism automatically, but the runtime wasm lives in
+    // node_modules/web-tree-sitter/ and needs an explicit copy. Mirrors
+    // the production vite.config.ts plugin invocation.
+    config.plugins.push(
+      viteStaticCopy({
+        targets: [
+          {
+            src: 'node_modules/web-tree-sitter/web-tree-sitter.wasm',
+            dest: '.',
+            rename: { stripBase: true },
+          },
+        ],
+      }),
+    );
 
     config.resolve = config.resolve ?? {};
     config.resolve.alias = {
