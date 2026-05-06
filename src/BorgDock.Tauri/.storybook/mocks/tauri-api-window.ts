@@ -6,6 +6,7 @@
 //   - getCurrentWindow().hide/setSize/innerSize/scaleFactor              (Phase 3)
 //   - getCurrentWindow().outerPosition/setPosition/onMoved               (Phase 4)
 //   - getCurrentWindow().setTitle/getTitle                               (Phase 6)
+//   - getCurrentWindow().onFocusChanged                                  (Phase 7)
 //   - currentMonitor()                                                   (Phase 3)
 //
 // hide() and close() are no-ops — without them, the Worktree palette's
@@ -14,11 +15,12 @@
 // recorded windowSize so a follow-up innerSize() reflects the resize,
 // but the iframe itself is unaffected (Storybook controls visible bounds).
 //
-// onMoved() registers under the synthetic channel '__window.onMoved'.
-// Stories drive moves with getControl().emit('__window.onMoved', {x,y}).
-// The '__window.' prefix is reserved for getCurrentWindow() listener
-// emulation so future phases (onCloseRequested, onResized, etc.) can
-// reuse the pattern without colliding with real Tauri event names.
+// Listener-class methods (onMoved, onFocusChanged) register under
+// synthetic '__window.<name>' channels. Stories drive events with
+// getControl().emit('__window.<name>', payload). The '__window.' prefix
+// is reserved for getCurrentWindow() listener emulation so future phases
+// (onCloseRequested, onResized, etc.) can reuse the pattern without
+// colliding with real Tauri event names.
 
 import { getControl, type ChannelListener } from './control';
 
@@ -52,6 +54,7 @@ interface MockWindow {
   outerPosition(): Promise<MockPhysicalPosition>;
   setPosition(pos: PositionInput): Promise<void>;
   onMoved(cb: (event: { payload: MockPhysicalPosition }) => void): Promise<() => void>;
+  onFocusChanged(cb: (event: { payload: boolean }) => void): Promise<() => void>;
   setTitle(title: string): Promise<void>;
   getTitle(): Promise<string>;
 }
@@ -59,6 +62,7 @@ interface MockWindow {
 export type Window = MockWindow;
 
 const ON_MOVED_CHANNEL = '__window.onMoved';
+const ON_FOCUS_CHANGED_CHANNEL = '__window.onFocusChanged';
 
 export function getCurrentWindow(): MockWindow {
   const ctrl = getControl();
@@ -123,6 +127,19 @@ export function getCurrentWindow(): MockWindow {
       }
       const wrapped: ChannelListener = (event) =>
         cb(event as { payload: MockPhysicalPosition });
+      set.add(wrapped);
+      return () => {
+        set?.delete(wrapped);
+      };
+    },
+    async onFocusChanged(cb) {
+      let set = ctrl.channels.get(ON_FOCUS_CHANGED_CHANNEL);
+      if (!set) {
+        set = new Set();
+        ctrl.channels.set(ON_FOCUS_CHANGED_CHANNEL, set);
+      }
+      const wrapped: ChannelListener = (event) =>
+        cb(event as { payload: boolean });
       set.add(wrapped);
       return () => {
         set?.delete(wrapped);
