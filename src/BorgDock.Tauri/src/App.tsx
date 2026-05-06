@@ -7,7 +7,6 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
-import { useAutoHide } from '@/hooks/useAutoHide';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
@@ -165,9 +164,6 @@ export default function App() {
 
   // Flyout + tray sync (updates tray icon, tooltip, flyout window)
   useFlyoutSync();
-
-  // Auto-hide sidebar in floating mode
-  useAutoHide(settings);
 
   // Keyboard navigation
   useKeyboardNav();

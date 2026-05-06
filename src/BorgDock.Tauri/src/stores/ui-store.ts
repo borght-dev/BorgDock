@@ -5,7 +5,6 @@ import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 export type ActiveSection = 'prs' | 'focus' | 'workitems';
 
 interface UiState {
-  isSidebarVisible: boolean;
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
   workItemsSelectedId: number | null;
@@ -16,8 +15,6 @@ interface UiState {
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
   _hasUserNavigated: boolean;
 
-  toggleSidebar: () => void;
-  setSidebarVisible: (visible: boolean) => void;
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
   setWorkItemsSelectedId: (id: number | null) => void;
@@ -30,7 +27,6 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>()((set, get) => ({
-  isSidebarVisible: true,
   activeSection: 'focus',
   selectedPrNumber: null,
   workItemsSelectedId: null,
@@ -39,10 +35,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
   _hasUserNavigated: false,
-
-  toggleSidebar: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
-
-  setSidebarVisible: (visible) => set({ isSidebarVisible: visible }),
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });

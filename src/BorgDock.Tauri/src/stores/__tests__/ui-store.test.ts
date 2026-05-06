@@ -4,25 +4,9 @@ import { useUiStore } from '../ui-store';
 describe('ui-store', () => {
   beforeEach(() => {
     useUiStore.setState({
-      isSidebarVisible: true,
       activeSection: 'prs',
       selectedPrNumber: null,
       expandedRepoGroups: new Set<string>(),
-    });
-  });
-
-  describe('toggleSidebar', () => {
-    it('toggles sidebar visibility', () => {
-      expect(useUiStore.getState().isSidebarVisible).toBe(true);
-      useUiStore.getState().toggleSidebar();
-      expect(useUiStore.getState().isSidebarVisible).toBe(false);
-      useUiStore.getState().toggleSidebar();
-      expect(useUiStore.getState().isSidebarVisible).toBe(true);
-    });
-
-    it('sets sidebar visibility directly', () => {
-      useUiStore.getState().setSidebarVisible(false);
-      expect(useUiStore.getState().isSidebarVisible).toBe(false);
     });
   });
 
