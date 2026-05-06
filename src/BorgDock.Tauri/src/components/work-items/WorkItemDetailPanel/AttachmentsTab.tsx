@@ -40,6 +40,7 @@ export function AttachmentsTab({ attachments, onDownload }: Props) {
           }}
         >
           <span
+            aria-hidden="true"
             style={{
               width: 56,
               height: 40,

@@ -1,5 +1,5 @@
 // src/components/work-items/WorkItemDetailPanel/TitleBlock.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   MiniAvatar,
   PrioBars,
@@ -52,6 +52,11 @@ export function TitleBlock(props: Props) {
 
   const [editing, setEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
+
+  useEffect(() => {
+    setTitleDraft(title);
+  }, [title]);
+
   const initials = getInitials(assignedTo || '??');
   const prio = priority != null ? WI_PRIO[priority] : null;
 

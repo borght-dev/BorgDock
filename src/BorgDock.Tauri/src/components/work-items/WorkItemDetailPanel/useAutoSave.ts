@@ -13,7 +13,7 @@ export type AutoSavePatch = Partial<AutoSaveValues>;
 
 export interface UseAutoSaveArgs {
   initial: AutoSaveValues;
-  onPatch: (patch: AutoSavePatch) => Promise<void>;
+  onPatch: (patch: AutoSavePatch, target: AutoSaveValues) => Promise<void>;
   debounceMs?: number;
 }
 
@@ -25,6 +25,8 @@ export interface UseAutoSaveResult {
   flush: (values: AutoSaveValues) => void;
   /** Manually clear the error state (e.g. after retry). */
   clearError: () => void;
+  /** Reset the saved baseline (e.g. on adjacent nav) — cancels any pending timer. */
+  reset: (newInitial: AutoSaveValues) => void;
 }
 
 function diff(a: AutoSaveValues, b: AutoSaveValues): AutoSavePatch {
@@ -67,7 +69,7 @@ export function useAutoSave({
         setIsSaving(true);
         setError(null);
         try {
-          await onPatch(patch);
+          await onPatch(patch, target);
           setLastSavedAt(Date.now());
         } catch (err) {
           lastSavedRef.current = prev;
@@ -82,5 +84,14 @@ export function useAutoSave({
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { isSaving, lastSavedAt, error, flush, clearError };
+  const reset = useCallback((newInitial: AutoSaveValues) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingRef.current = null;
+    lastSavedRef.current = newInitial;
+    setIsSaving(false);
+    setLastSavedAt(null);
+    setError(null);
+  }, []);
+
+  return { isSaving, lastSavedAt, error, flush, clearError, reset };
 }

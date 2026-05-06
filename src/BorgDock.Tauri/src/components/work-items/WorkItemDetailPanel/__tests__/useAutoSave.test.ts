@@ -34,7 +34,7 @@ describe('useAutoSave', () => {
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    expect(onPatch).toHaveBeenCalledWith({ title: 'Updated' });
+    expect(onPatch).toHaveBeenCalledWith({ title: 'Updated' }, expect.objectContaining({ title: 'Updated' }));
   });
 
   it('marks isSaving and updates lastSavedAt on success', async () => {
@@ -59,5 +59,36 @@ describe('useAutoSave', () => {
       await Promise.resolve();
     });
     expect(result.current.error).toBe('boom');
+  });
+
+  it('reset clears pending timer and sets a new baseline', async () => {
+    const onPatch = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAutoSave({ initial, onPatch, debounceMs: 500 }));
+
+    // Schedule a flush
+    act(() => result.current.flush({ ...initial, title: 'Mid-edit' }));
+
+    // Reset to a new baseline before the timer fires
+    const newBaseline: AutoSaveValues = { ...initial, title: 'New item title', state: 'New' };
+    act(() => result.current.reset(newBaseline));
+
+    // Original timer should not fire
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+    expect(onPatch).not.toHaveBeenCalled();
+
+    // After reset, only diffs against the new baseline trigger saves
+    act(() => result.current.flush({ ...newBaseline, state: 'Active' }));
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+    expect(onPatch).toHaveBeenCalledTimes(1);
+    expect(onPatch).toHaveBeenCalledWith(
+      { state: 'Active' },
+      expect.objectContaining({ state: 'Active', title: 'New item title' }),
+    );
   });
 });

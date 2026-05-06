@@ -53,9 +53,11 @@ export interface WorkItemFieldUpdates {
 interface Props {
   item: WorkItemDetailData;
   isLoading: boolean;
-  isSaving: boolean;
+  /** @deprecated — managed internally; kept so existing call sites don't break until Phase 2D clean-up. */
+  isSaving?: boolean;
   statusText?: string;
   availableStates: string[];
+  /** @deprecated — unused; kept so existing call sites don't break until Phase 2D clean-up. */
   availableAssignees?: string[];
   richTextFields: DynamicFieldItem[];
   standardFields: DynamicFieldItem[];
@@ -105,17 +107,6 @@ export function WorkItemDetailPanel(props: Props) {
     tags: item.tags,
   });
 
-  // Sync local state when the item identity changes (next/prev nav reload).
-  useEffect(() => {
-    setValues({
-      title: item.title,
-      state: item.state,
-      assignedTo: item.assignedTo,
-      priority: item.priority,
-      tags: item.tags,
-    });
-  }, [item.id, item.title, item.state, item.assignedTo, item.priority, item.tags]);
-
   const auto = useAutoSave({
     initial: {
       title: item.title,
@@ -124,16 +115,29 @@ export function WorkItemDetailPanel(props: Props) {
       priority: item.priority,
       tags: item.tags,
     },
-    onPatch: async (patch: AutoSavePatch) => {
+    onPatch: async (_patch: AutoSavePatch, target: AutoSaveValues) => {
       await onSave({
-        title: patch.title ?? values.title,
-        state: patch.state ?? values.state,
-        assignedTo: patch.assignedTo ?? values.assignedTo,
-        priority: 'priority' in patch ? patch.priority : values.priority,
-        tags: patch.tags ?? values.tags,
+        title: target.title,
+        state: target.state,
+        assignedTo: target.assignedTo,
+        priority: target.priority,
+        tags: target.tags,
       });
     },
   });
+
+  // Sync local state when the item identity changes (next/prev nav reload).
+  useEffect(() => {
+    const next: AutoSaveValues = {
+      title: item.title,
+      state: item.state,
+      assignedTo: item.assignedTo,
+      priority: item.priority,
+      tags: item.tags,
+    };
+    setValues(next);
+    auto.reset(next);
+  }, [item.id, item.title, item.state, item.assignedTo, item.priority, item.tags, auto]);
 
   const handleChange = useCallback(
     (patch: TitleBlockChange) => {
@@ -228,6 +232,7 @@ export function WorkItemDetailPanel(props: Props) {
               disabled={adjacent.prevId === null}
               onClick={() => onArrowNav('prev')}
               className="bd-icon-btn"
+              aria-label="Previous work item"
             >
               ↑
             </button>
@@ -236,6 +241,7 @@ export function WorkItemDetailPanel(props: Props) {
               disabled={adjacent.nextId === null}
               onClick={() => onArrowNav('next')}
               className="bd-icon-btn"
+              aria-label="Next work item"
             >
               ↓
             </button>
