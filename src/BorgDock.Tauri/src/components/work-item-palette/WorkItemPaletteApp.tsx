@@ -23,6 +23,28 @@ import {
 
 const PREFS_KEY = 'borgdock-palette-prefs';
 const NAVLIST_KEY = 'borgdock-palette-navlist';
+const COLLAPSED_KEY = 'borgdock-palette-collapsed';
+
+function loadCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr.filter((x): x is string => typeof x === 'string'));
+    }
+  } catch {
+    /* ignore */
+  }
+  return new Set();
+}
+
+function saveCollapsed(collapsed: Set<string>) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed]));
+  } catch {
+    /* ignore */
+  }
+}
 
 type StateFilter = 'all' | 'open' | 'mine' | 'failing';
 
@@ -91,10 +113,24 @@ export function WorkItemPaletteApp() {
   const initialPrefs = useMemo(loadPrefs, []);
   const [stateFilter, setStateFilter] = useState<StateFilter>(initialPrefs.stateFilter);
   const [groupBy, setGroupBy] = useState<GroupBy>(initialPrefs.groupBy);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(loadCollapsed);
 
   useEffect(() => {
     savePrefs({ stateFilter, groupBy });
   }, [stateFilter, groupBy]);
+
+  useEffect(() => {
+    saveCollapsed(collapsedGroups);
+  }, [collapsedGroups]);
+
+  const toggleGroupCollapsed = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -166,7 +202,12 @@ export function WorkItemPaletteApp() {
   }, [isSearchMode, stateFilter, groupBy, browseSections, filteredItems]);
 
   // Flat order of items for keyboard nav (matches render order).
-  const flatItems = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  // Items in collapsed groups are excluded from keyboard nav and from the
+  // total result count; only headers stay visible for them.
+  const flatItems = useMemo(
+    () => groups.flatMap((g) => (collapsedGroups.has(g.key) ? [] : g.items)),
+    [groups, collapsedGroups],
+  );
 
   // Re-bound selection.
   useEffect(() => {
@@ -304,11 +345,15 @@ export function WorkItemPaletteApp() {
           </div>
         )}
         {groups.map((g) => {
+          const isCollapsed = collapsedGroups.has(g.key);
           const sectionStart = globalOffset;
           const rendered = (
             <div key={g.key}>
               {g.label && (
-                <div
+                <button
+                  type="button"
+                  onClick={() => toggleGroupCollapsed(g.key)}
+                  aria-expanded={!isCollapsed}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -316,11 +361,35 @@ export function WorkItemPaletteApp() {
                     padding: '8px 14px',
                     position: 'sticky',
                     top: 0,
+                    width: '100%',
                     background: 'var(--color-surface)',
                     borderBottom: '1px solid var(--color-subtle-border)',
+                    border: 'none',
+                    borderBottomWidth: 1,
+                    borderBottomStyle: 'solid',
+                    borderBottomColor: 'var(--color-subtle-border)',
                     zIndex: 2,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    textAlign: 'left',
                   }}
                 >
+                  <svg
+                    width={9}
+                    height={9}
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    style={{
+                      color: 'var(--color-text-faint)',
+                      transform: isCollapsed ? 'rotate(-90deg)' : 'none',
+                      transition: 'transform 100ms ease',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <path d="M3 6l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                   <span
                     style={{
                       fontSize: 10,
@@ -341,23 +410,24 @@ export function WorkItemPaletteApp() {
                   >
                     {g.items.length}
                   </span>
-                </div>
+                </button>
               )}
-              {g.items.map((item, localIndex) => {
-                const flatIndex = sectionStart + localIndex;
-                return (
-                  <WorkItemPaletteRow
-                    key={item.id}
-                    item={item}
-                    isSelected={flatIndex === selectedIndex}
-                    onMouseEnter={() => setSelectedIndex(flatIndex)}
-                    onSelect={openItem}
-                  />
-                );
-              })}
+              {!isCollapsed &&
+                g.items.map((item, localIndex) => {
+                  const flatIndex = sectionStart + localIndex;
+                  return (
+                    <WorkItemPaletteRow
+                      key={item.id}
+                      item={item}
+                      isSelected={flatIndex === selectedIndex}
+                      onMouseEnter={() => setSelectedIndex(flatIndex)}
+                      onSelect={openItem}
+                    />
+                  );
+                })}
             </div>
           );
-          globalOffset += g.items.length;
+          if (!isCollapsed) globalOffset += g.items.length;
           return rendered;
         })}
       </div>
