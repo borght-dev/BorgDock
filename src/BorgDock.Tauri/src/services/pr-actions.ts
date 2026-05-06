@@ -101,6 +101,7 @@ export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
   if (!client) return false;
   try {
     await mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number, opts?.method);
+    usePrStore.getState().optimisticallyMarkMerged(pr.repoOwner, pr.repoName, pr.number);
     celebrateMerge(pr);
     scheduleTerminalRefresh(pr.repoOwner, pr.repoName, pr.number);
     return true;
@@ -113,6 +114,7 @@ export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
 export async function bypassMergePr(pr: PrRef, opts?: ActionOpts): Promise<boolean> {
   try {
     await bypassMergePullRequest(pr.repoOwner, pr.repoName, pr.number);
+    usePrStore.getState().optimisticallyMarkMerged(pr.repoOwner, pr.repoName, pr.number);
     celebrateMerge(pr);
     scheduleTerminalRefresh(pr.repoOwner, pr.repoName, pr.number);
     return true;

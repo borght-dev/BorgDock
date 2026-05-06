@@ -14,6 +14,7 @@ const { mockShow } = vi.hoisted(() => ({
   mockShow: vi.fn().mockResolvedValue(undefined),
 }));
 const mockRefreshPr = vi.fn();
+const mockOptimisticallyMarkMerged = vi.fn();
 
 vi.mock('@/services/github/mutations', () => ({
   mergePullRequest: (...args: unknown[]) => mockMergePullRequest(...args),
@@ -47,7 +48,10 @@ vi.mock('@/services/notification', () => ({
 }));
 
 vi.mock('@/stores/pr-store', () => ({
-  usePrStore: { getState: () => ({ refreshPr: mockRefreshPr }) },
+  usePrStore: { getState: () => ({
+    refreshPr: mockRefreshPr,
+    optimisticallyMarkMerged: mockOptimisticallyMarkMerged,
+  }) },
 }));
 
 let mockRepos: Array<{ owner: string; name: string; worktreeBasePath: string }> = [];
@@ -87,6 +91,7 @@ beforeEach(() => {
   mockCelebrate.mockReset();
   mockShow.mockReset().mockResolvedValue(undefined);
   mockRefreshPr.mockReset();
+  mockOptimisticallyMarkMerged.mockReset();
   mockRepos = [];
 });
 
@@ -95,7 +100,7 @@ afterEach(() => {
 });
 
 describe('mergePr', () => {
-  it('merges, celebrates, and schedules a deferred refresh', async () => {
+  it('merges, optimistic-marks, celebrates, and schedules a deferred refresh', async () => {
     expect(await mergePr(samplePr)).toBe(true);
     expect(mockMergePullRequest).toHaveBeenCalledWith(
       expect.anything(),
@@ -104,10 +109,23 @@ describe('mergePr', () => {
       42,
       undefined,
     );
+    expect(mockOptimisticallyMarkMerged).toHaveBeenCalledWith('owner', 'repo', 42);
     expect(mockCelebrate).toHaveBeenCalledWith(samplePr);
+
+    // Ordering: optimistic call happens before celebrate
+    const optimisticOrder = mockOptimisticallyMarkMerged.mock.invocationCallOrder[0];
+    const celebrateOrder = mockCelebrate.mock.invocationCallOrder[0];
+    expect(optimisticOrder).toBeLessThan(celebrateOrder);
+
     expect(mockRefreshPr).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1500);
     expect(mockRefreshPr).toHaveBeenCalledWith('owner', 'repo', 42);
+  });
+
+  it('does NOT call optimisticallyMarkMerged when the merge call fails', async () => {
+    mockMergePullRequest.mockRejectedValueOnce(new Error('405'));
+    expect(await mergePr(samplePr)).toBe(false);
+    expect(mockOptimisticallyMarkMerged).not.toHaveBeenCalled();
   });
 
   it('passes through an explicit method without auto-detection', async () => {
@@ -140,12 +158,19 @@ describe('mergePr', () => {
 });
 
 describe('bypassMergePr', () => {
-  it('celebrates and schedules a refresh on success', async () => {
+  it('optimistic-marks, celebrates, and schedules a refresh on success', async () => {
     expect(await bypassMergePr(samplePr)).toBe(true);
     expect(mockBypassMergePullRequest).toHaveBeenCalledWith('owner', 'repo', 42);
+    expect(mockOptimisticallyMarkMerged).toHaveBeenCalledWith('owner', 'repo', 42);
     expect(mockCelebrate).toHaveBeenCalled();
     vi.advanceTimersByTime(1500);
     expect(mockRefreshPr).toHaveBeenCalled();
+  });
+
+  it('does NOT call optimisticallyMarkMerged when bypass fails', async () => {
+    mockBypassMergePullRequest.mockRejectedValueOnce(new Error('forbidden'));
+    expect(await bypassMergePr(samplePr)).toBe(false);
+    expect(mockOptimisticallyMarkMerged).not.toHaveBeenCalled();
   });
 });
 
