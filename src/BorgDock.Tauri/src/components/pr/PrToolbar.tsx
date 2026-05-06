@@ -64,12 +64,11 @@ export function PrToolbar({ counts }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep local input in sync if the store search is reset externally.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only react to external resets — depending on `search` would cycle on every keystroke
   useEffect(() => {
     if (storedSearch !== search) {
       setSearch(storedSearch);
     }
-    // Intentionally only react to external resets — avoid cycle on keystroke.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: external-reset only
   }, [storedSearch]);
 
   useEffect(() => {

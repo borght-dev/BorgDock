@@ -67,11 +67,11 @@ export function WorkItemsSection() {
 
   // Restore persisted selection on mount: if ui-store has a selected id and
   // the hook hasn't loaded one yet, kick off the load.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only restore — adding deps would re-trigger on every selection change
   useEffect(() => {
     if (persistedSelectedId !== null && selectedWorkItemId === null) {
       void handleSelectWorkItem(persistedSelectedId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mirror hook → ui-store so the selection survives tab switches and reloads.
