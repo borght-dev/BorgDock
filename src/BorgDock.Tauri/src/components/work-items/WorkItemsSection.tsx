@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Button, Card } from '@/components/shared/primitives';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
 import type { WorkItemCardData } from '@/components/work-items/WorkItemCard';
 import { WorkItemDetailPanel } from '@/components/work-items/WorkItemDetailPanel';
+import { useAdjacentNav } from '@/components/work-items/WorkItemDetailPanel/useAdjacentNav';
 import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
 import { WorkItemList } from '@/components/work-items/WorkItemList';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
@@ -44,7 +45,6 @@ export function WorkItemsSection() {
     setQueryBrowserOpen,
     selectedWorkItemId,
     isDetailLoading,
-    isSaving,
     statusText,
     detailItem,
     detailStates,
@@ -77,6 +77,31 @@ export function WorkItemsSection() {
 
   // Map filtered items to card data
   const items = filteredWorkItems();
+
+  // Persist navlist so the detail panel can do prev/next navigation
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    try {
+      localStorage.setItem(
+        'borgdock-palette-navlist',
+        JSON.stringify({ ids: items.map((wi) => wi.id), savedAt: Date.now() }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [items]);
+
+  // Adjacent nav for the in-app side panel
+  const adjacent = useAdjacentNav(selectedWorkItemId);
+  const handleArrowNav = useCallback(
+    (dir: 'prev' | 'next') => {
+      const target = dir === 'prev' ? adjacent.prevId : adjacent.nextId;
+      if (target == null) return;
+      void handleSelectWorkItem(target);
+    },
+    [adjacent.prevId, adjacent.nextId, handleSelectWorkItem],
+  );
+
   const cardItems: WorkItemCardData[] = useMemo(() => {
     const storeSnapshot: WorkItemsStoreSnapshot = {
       trackedWorkItemIds,
@@ -262,10 +287,8 @@ export function WorkItemsSection() {
           <WorkItemDetailPanel
             item={detailData}
             isLoading={isDetailLoading}
-            isSaving={isSaving}
             statusText={statusText}
             availableStates={detailStates}
-            availableAssignees={availableAssignees()}
             richTextFields={richText}
             standardFields={standard}
             customFields={custom}
@@ -278,6 +301,8 @@ export function WorkItemsSection() {
             onOpenInBrowser={handleOpenInBrowser}
             onDownloadAttachment={handleDownloadAttachment}
             onAddComment={handleAddComment}
+            adjacent={adjacent}
+            onArrowNav={handleArrowNav}
           />
         </div>
       )}

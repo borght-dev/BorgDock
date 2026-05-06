@@ -53,12 +53,8 @@ export interface WorkItemFieldUpdates {
 interface Props {
   item: WorkItemDetailData;
   isLoading: boolean;
-  /** @deprecated — managed internally; kept so existing call sites don't break until Phase 2D clean-up. */
-  isSaving?: boolean;
   statusText?: string;
   availableStates: string[];
-  /** @deprecated — unused; kept so existing call sites don't break until Phase 2D clean-up. */
-  availableAssignees?: string[];
   richTextFields: DynamicFieldItem[];
   standardFields: DynamicFieldItem[];
   customFields: DynamicFieldItem[];

@@ -26,6 +26,8 @@ import {
   WorkItemDetailPanel,
   type WorkItemFieldUpdates,
 } from './WorkItemDetailPanel';
+import { parseLinkedPRs } from './WorkItemDetailPanel/parseLinkedPRs';
+import { useAdjacentNav } from './WorkItemDetailPanel/useAdjacentNav';
 
 // ---- Field helpers (shared with WorkItemsSection) ----
 
@@ -227,7 +229,7 @@ export function WorkItemDetailApp() {
   const [comments, setComments] = useState<WorkItemComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [, setIsSaving] = useState(false);
   const [statusText, setStatusText] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
 
@@ -246,6 +248,20 @@ export function WorkItemDetailApp() {
     const params = new URLSearchParams(window.location.search);
     return Number(params.get('id')) || null;
   }, []);
+
+  const adjacent = useAdjacentNav(workItemId);
+
+  const handleArrowNav = useCallback(
+    (dir: 'prev' | 'next') => {
+      const target = dir === 'prev' ? adjacent.prevId : adjacent.nextId;
+      if (target == null) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('id', String(target));
+      window.history.replaceState({}, '', url.toString());
+      window.location.reload();
+    },
+    [adjacent.prevId, adjacent.nextId],
+  );
 
   const getClient = useCallback(() => {
     if (!adoSettings) return null;
@@ -468,6 +484,17 @@ export function WorkItemDetailApp() {
     const htmlUrl =
       workItem.htmlUrl ||
       `https://dev.azure.com/${encodeURIComponent(adoSettings.organization)}/${encodeURIComponent(adoSettings.project)}/_workitems/edit/${workItem.id}`;
+    const iter = String(workItem.fields['System.IterationPath'] ?? '');
+    const area = String(workItem.fields['System.AreaPath'] ?? '');
+    const changedDate = workItem.fields['System.ChangedDate'];
+    let changedAgo: string | undefined;
+    if (typeof changedDate === 'string') {
+      const seconds = Math.floor((Date.now() - new Date(changedDate).getTime()) / 1000);
+      if (seconds < 60) changedAgo = `${seconds}s`;
+      else if (seconds < 3600) changedAgo = `${Math.floor(seconds / 60)}m`;
+      else if (seconds < 86_400) changedAgo = `${Math.floor(seconds / 3600)}h`;
+      else changedAgo = `${Math.floor(seconds / 86_400)}d`;
+    }
     return {
       id: workItem.id,
       title: getField(workItem, 'System.Title'),
@@ -478,6 +505,24 @@ export function WorkItemDetailApp() {
       tags: getField(workItem, 'System.Tags'),
       htmlUrl,
       isNewItem: false,
+      severity:
+        typeof workItem.fields['Microsoft.VSTS.Common.Severity'] === 'string'
+          ? (workItem.fields['Microsoft.VSTS.Common.Severity'] as string)
+          : undefined,
+      reporter: getField(workItem, 'System.CreatedBy'),
+      iteration: iter ? (iter.split(/[\\/]/).pop() ?? iter) : undefined,
+      area: area ? (area.split(/[\\/]/).pop() ?? area) : undefined,
+      backlogPriority:
+        (workItem.fields['Microsoft.VSTS.Common.BacklogPriority'] as
+          | number
+          | string
+          | undefined) ?? undefined,
+      foundIn:
+        typeof workItem.fields['Microsoft.VSTS.Build.FoundIn'] === 'string'
+          ? (workItem.fields['Microsoft.VSTS.Build.FoundIn'] as string)
+          : undefined,
+      changedAgo,
+      linkedPRs: parseLinkedPRs(workItem.relations),
     };
   }, [workItem, adoSettings]);
 
@@ -537,7 +582,6 @@ export function WorkItemDetailApp() {
         <WorkItemDetailPanel
           item={detailData}
           isLoading={isLoading}
-          isSaving={isSaving}
           statusText={statusText}
           availableStates={availableStates}
           richTextFields={processedRichText ?? richText}
@@ -552,6 +596,8 @@ export function WorkItemDetailApp() {
           onOpenInBrowser={handleOpenInBrowser}
           onDownloadAttachment={handleDownloadAttachment}
           onAddComment={handleAddComment}
+          adjacent={adjacent}
+          onArrowNav={handleArrowNav}
         />
       </div>
     </div>
