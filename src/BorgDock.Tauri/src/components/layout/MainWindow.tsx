@@ -1,7 +1,6 @@
 import clsx from 'clsx';
 import { invoke } from '@tauri-apps/api/core';
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
 import { RefreshIcon } from '@/components/shared/icons';
 import { Pill, Tabs, TitleBar, WindowControls } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
@@ -15,8 +14,6 @@ const SECTIONS: { id: ActiveSection; label: string }[] = [
   { id: 'prs', label: 'PRs' },
   { id: 'workitems', label: 'Work Items' },
 ];
-
-const STORAGE_KEY = 'mainWindow.activeSection';
 
 function dispatchRefresh() {
   document.dispatchEvent(new CustomEvent('borgdock-refresh'));
@@ -70,14 +67,8 @@ export function MainWindow({ children }: MainWindowProps) {
   const hasFailing = counts.failing > 0;
   const sb = useStatusBar(activeSection);
 
-  // Persist active section across launches
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, activeSection);
-    } catch {
-      // localStorage may be unavailable (e.g. private mode) — ignore
-    }
-  }, [activeSection]);
+  // Active-section persistence is handled inside useUiStore.setActiveSection
+  // via persistToTauriStore (read back on mount by restorePersistedSection).
 
   return (
     <div className="bd-mainwindow">

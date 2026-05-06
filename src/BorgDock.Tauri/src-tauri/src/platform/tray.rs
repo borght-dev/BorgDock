@@ -15,7 +15,7 @@ static IS_INITIALIZING: AtomicBool = AtomicBool::new(true);
 
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show_flyout = MenuItemBuilder::with_id("show_flyout", "Show flyout").build(app)?;
-    let show = MenuItemBuilder::with_id("show", "Show sidebar").build(app)?;
+    let show = MenuItemBuilder::with_id("show", "Show BorgDock").build(app)?;
     let settings = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
     let whats_new = MenuItemBuilder::with_id("whats_new", "What's new…").build(app)?;
     let agent_overview = MenuItemBuilder::with_id("open_agent_overview", "Agent Overview").build(app)?;
