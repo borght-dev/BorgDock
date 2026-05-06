@@ -47,12 +47,22 @@ describe('getInitials', () => {
 });
 
 describe('avatarToneFor', () => {
-  it('returns one of the supported tones', () => {
-    expect(['blue', 'rose']).toContain(avatarToneFor('KV'));
+  it('returns a stable tone for a given input', () => {
+    const tone = avatarToneFor('KV');
+    expect(['blue', 'rose']).toContain(tone);
+    expect(avatarToneFor('KV')).toBe(tone);
   });
 
-  it('is deterministic', () => {
-    expect(avatarToneFor('KV')).toBe(avatarToneFor('KV'));
+  it('distributes across both tones', () => {
+    const tones = new Set([
+      avatarToneFor('KV'),
+      avatarToneFor('SS'),
+      avatarToneFor('JT'),
+      avatarToneFor('TB'),
+      avatarToneFor('AB'),
+      avatarToneFor('CD'),
+    ]);
+    expect(tones.size).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -98,6 +108,15 @@ describe('StatePill', () => {
     expect(
       screen.getByText('Testing Failed').closest('.bd-pill'),
     ).toHaveClass('bd-pill--warning');
+  });
+
+  it('shrinks height when compact', () => {
+    const { rerender } = render(<StatePill state="Active" />);
+    const normal = (screen.getByText('Active') as HTMLElement).style.height;
+    rerender(<StatePill state="Active" compact />);
+    const compact = (screen.getByText('Active') as HTMLElement).style.height;
+    expect(normal).toBe('20px');
+    expect(compact).toBe('18px');
   });
 });
 

@@ -167,14 +167,13 @@ export function StatePill({ state, compact }: StatePillProps) {
     <span
       className={clsx('bd-pill', `bd-pill--${meta.tone}`)}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
         gap: 5,
         padding: compact ? '1px 6px' : '2px 8px',
+        height: compact ? 18 : 20,
+        lineHeight: 1,
         fontSize: compact ? 10.5 : 11,
+        // fontWeight: design uses 500 here, overriding .bd-pill's 600
         fontWeight: 500,
-        whiteSpace: 'nowrap',
-        lineHeight: 1.4,
       }}
     >
       <span
