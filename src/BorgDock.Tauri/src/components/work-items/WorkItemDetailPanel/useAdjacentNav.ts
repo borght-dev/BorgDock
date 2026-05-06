@@ -18,7 +18,7 @@ export function useAdjacentNav(currentId: number | null): AdjacentNav {
       const raw = localStorage.getItem(NAVLIST_KEY);
       if (!raw) return { prevId: null, nextId: null, total: 0, index: -1 };
       const parsed = JSON.parse(raw) as { ids: number[]; savedAt: number };
-      if (Date.now() - parsed.savedAt > STALE_MS) {
+      if (typeof parsed.savedAt !== 'number' || Date.now() - parsed.savedAt > STALE_MS) {
         return { prevId: null, nextId: null, total: 0, index: -1 };
       }
       const idx = parsed.ids.indexOf(currentId);

@@ -33,4 +33,20 @@ describe('parseLinkedPRs', () => {
     ];
     expect(parseLinkedPRs(relations)).toEqual([]);
   });
+
+  it('skips relations with malformed URLs', () => {
+    const relations: WorkItemRelation[] = [
+      {
+        rel: 'ArtifactLink',
+        url: 'vstfs:///Git/PullRequestId/%ZZ/repo/42',
+        attributes: {},
+      },
+      {
+        rel: 'ArtifactLink',
+        url: 'vstfs:///Git/PullRequestId/abc/myrepo/777',
+        attributes: { comment: 'OK' },
+      },
+    ];
+    expect(parseLinkedPRs(relations)).toEqual([{ id: 777, comment: 'OK' }]);
+  });
 });

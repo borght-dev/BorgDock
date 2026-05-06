@@ -62,13 +62,15 @@ export function useAutoSave({
         if (!target) return;
         const patch = diff(lastSavedRef.current, target);
         if (Object.keys(patch).length === 0) return;
+        const prev = lastSavedRef.current;
+        lastSavedRef.current = target;
         setIsSaving(true);
         setError(null);
         try {
           await onPatch(patch);
-          lastSavedRef.current = target;
           setLastSavedAt(Date.now());
         } catch (err) {
+          lastSavedRef.current = prev;
           setError(err instanceof Error ? err.message : String(err));
         } finally {
           setIsSaving(false);

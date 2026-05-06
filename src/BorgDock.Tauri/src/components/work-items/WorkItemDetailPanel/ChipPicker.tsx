@@ -28,6 +28,8 @@ export function ChipPicker({ label, value, options, onChange, children }: ChipPi
       <button
         type="button"
         title={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         style={{
           display: 'inline-flex',
