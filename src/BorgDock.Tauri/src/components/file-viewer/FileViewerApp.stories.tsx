@@ -133,3 +133,28 @@ type Story = StoryObj<typeof FileViewerHarness>;
 function story(params: FileViewerStoryParams = {}): Story {
   return { args: { params } };
 }
+
+// ---------------------------------------------------------------------------
+// 1. Path / URL axis (3)
+// ---------------------------------------------------------------------------
+
+export const NoPathProvided = story({
+  path: null,
+  contentResponse: () => Promise.reject(new Error('should not be called')),
+  diffResponse: () => Promise.reject(new Error('should not be called')),
+});
+
+export const PathTSXFile = story({
+  path: 'src/components/Counter.tsx',
+  contentResponse: TSX_SAMPLE,
+  diffResponse: DIFF_NOT_IN_REPO,
+});
+
+export const LongPath = story({
+  path:
+    'src/very/deeply/nested/folder/structure/that/keeps/going/and/going/' +
+    'until/the/path/is/much/longer/than/the/toolbar/can/comfortably/show/' +
+    'and/we/want/to/verify/it/truncates/Counter.tsx',
+  contentResponse: TSX_SAMPLE,
+  diffResponse: DIFF_NOT_IN_REPO,
+});
