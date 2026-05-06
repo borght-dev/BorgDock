@@ -83,7 +83,7 @@ describe('WorkItemPaletteApp', () => {
     await act(async () => {
       render(<WorkItemPaletteApp />);
     });
-    expect(screen.getByPlaceholderText('Search by ID, title, or assigned to...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…')).toBeTruthy();
   });
 
   it('renders search input with bd-input class hook', async () => {
@@ -113,7 +113,7 @@ describe('WorkItemPaletteApp', () => {
     await act(async () => {
       render(<WorkItemPaletteApp />);
     });
-    expect(screen.getByText('Esc')).toBeTruthy();
+    expect(screen.getByText('esc')).toBeTruthy();
   });
 
   it('shows empty browse message when no data', async () => {
@@ -151,7 +151,7 @@ describe('WorkItemPaletteApp', () => {
       render(<WorkItemPaletteApp />);
     });
 
-    const input = screen.getByPlaceholderText('Search by ID, title, or assigned to...');
+    const input = screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…');
     await act(async () => {
       fireEvent.change(input, { target: { value: '1' } });
     });
@@ -164,7 +164,7 @@ describe('WorkItemPaletteApp', () => {
       render(<WorkItemPaletteApp />);
     });
 
-    const input = screen.getByPlaceholderText('Search by ID, title, or assigned to...');
+    const input = screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…');
     await act(async () => {
       fireEvent.change(input, { target: { value: 'a' } });
     });
@@ -177,7 +177,7 @@ describe('WorkItemPaletteApp', () => {
       render(<WorkItemPaletteApp />);
     });
 
-    const input = screen.getByPlaceholderText('Search by ID, title, or assigned to...');
+    const input = screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…');
     await act(async () => {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     });
@@ -188,7 +188,7 @@ describe('WorkItemPaletteApp', () => {
       render(<WorkItemPaletteApp />);
     });
 
-    const input = screen.getByPlaceholderText('Search by ID, title, or assigned to...');
+    const input = screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…');
     await act(async () => {
       fireEvent.keyDown(input, { key: 'ArrowUp' });
     });
@@ -209,7 +209,7 @@ describe('WorkItemPaletteApp', () => {
       render(<WorkItemPaletteApp />);
     });
 
-    const input = screen.getByPlaceholderText('Search by ID, title, or assigned to...');
+    const input = screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…');
     await act(async () => {
       fireEvent.change(input, { target: { value: '42' } });
     });
@@ -222,7 +222,7 @@ describe('WorkItemPaletteApp', () => {
       render(<WorkItemPaletteApp />);
     });
 
-    const input = screen.getByPlaceholderText('Search by ID, title, or assigned to...');
+    const input = screen.getByPlaceholderText('Search ID, title, @assignee, state:active, type:bug…');
     await act(async () => {
       fireEvent.keyDown(input, { key: 'Enter' });
     });
