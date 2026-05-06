@@ -5,13 +5,14 @@
 //   - getCurrentWindow().close/minimize/maximize/unmaximize/isMaximized  (Phase 2)
 //   - getCurrentWindow().hide/setSize/innerSize/scaleFactor              (Phase 3)
 //   - getCurrentWindow().outerPosition/setPosition/onMoved               (Phase 4)
+//   - getCurrentWindow().setTitle/getTitle                               (Phase 6)
 //   - currentMonitor()                                                   (Phase 3)
 //
 // hide() and close() are no-ops — without them, the Worktree palette's
-// Esc-to-hide and the WhatsNew "Got it" button would unmount the
-// Storybook iframe. setSize() updates the recorded windowSize so a
-// follow-up innerSize() reflects the resize, but the iframe itself is
-// unaffected (Storybook controls visible bounds).
+// Esc-to-hide, the WhatsNew "Got it" button, and the WorkItemDetail
+// close icon would unmount the Storybook iframe. setSize() updates the
+// recorded windowSize so a follow-up innerSize() reflects the resize,
+// but the iframe itself is unaffected (Storybook controls visible bounds).
 //
 // onMoved() registers under the synthetic channel '__window.onMoved'.
 // Stories drive moves with getControl().emit('__window.onMoved', {x,y}).
@@ -51,7 +52,11 @@ interface MockWindow {
   outerPosition(): Promise<MockPhysicalPosition>;
   setPosition(pos: PositionInput): Promise<void>;
   onMoved(cb: (event: { payload: MockPhysicalPosition }) => void): Promise<() => void>;
+  setTitle(title: string): Promise<void>;
+  getTitle(): Promise<string>;
 }
+
+export type Window = MockWindow;
 
 const ON_MOVED_CHANNEL = '__window.onMoved';
 
@@ -122,6 +127,13 @@ export function getCurrentWindow(): MockWindow {
       return () => {
         set?.delete(wrapped);
       };
+    },
+    async setTitle(title: string) {
+      ctrl.invocations.push({ command: 'window.setTitle', args: { title } });
+      ctrl.windowState.title = title;
+    },
+    async getTitle() {
+      return ctrl.windowState.title;
     },
   };
 }

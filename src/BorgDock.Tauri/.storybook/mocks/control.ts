@@ -4,6 +4,7 @@
 // Lives on window so dynamic-imported mocks and the React tree can both reach it.
 
 import type { Release } from '../../src/types/whats-new';
+import type { WorkItem, WorkItemComment } from '../../src/types/work-item';
 
 export interface InvokeRecord {
   command: string;
@@ -30,13 +31,42 @@ export interface WindowSizeState {
   y: number;
 }
 
+// Phase 6 — work item scenario shape
+export interface WorkItemScenario {
+  workItem: WorkItem | null;
+  states: string[] | null;
+  comments: WorkItemComment[] | null;
+  loadBehavior: 'normal' | 'pending' | 'reject';
+  loadError: string | null;
+  statesBehavior: 'normal' | 'reject';
+  commentsBehavior: 'normal' | 'pending' | 'reject';
+  saveBehavior: 'normal' | 'pending' | 'reject';
+  deleteBehavior: 'normal' | 'reject';
+  addCommentBehavior: 'normal' | 'reject';
+}
+
+// Phase 6 — plugin-dialog responses (each can be a literal or a function).
+export interface PluginDialogControl {
+  openResponse?: string | string[] | null | ((opts?: unknown) => string | string[] | null);
+  saveResponse?: string | null | ((opts?: unknown) => string | null);
+  askResponse?: boolean | ((text: string, opts?: unknown) => boolean);
+  confirmResponse?: boolean | ((text: string, opts?: unknown) => boolean);
+}
+
+// Phase 6 — plugin-fs in-memory filesystem.
+export interface PluginFsControl {
+  writes: Map<string, Uint8Array>;
+  reads: Map<string, Uint8Array>;
+  failNextWrite: boolean;
+}
+
 export interface StorybookTauriControl {
   channels: Map<string, Set<ChannelListener>>;
   invocations: InvokeRecord[];
   invokeResponses: Record<string, InvokeResponse>;
 
-  // Phase 2 additions
-  windowState: { isMaximized: boolean };
+  // Phase 2 fields
+  windowState: { isMaximized: boolean; title: string };
   pluginStore: Map<string, Map<string, unknown>>;
   pluginStoreBehavior: PluginStoreBehavior;
   appVersion: string | null;
@@ -48,6 +78,11 @@ export interface StorybookTauriControl {
 
   // Phase 4 additions
   clipboardWrites: string[];
+
+  // Phase 6 fields
+  workItemScenario: WorkItemScenario;
+  pluginDialog: PluginDialogControl;
+  pluginFs: PluginFsControl;
 
   reset(): void;
   emit(channel: string, payload: unknown): void;
@@ -67,13 +102,28 @@ const DEFAULT_WINDOW_SIZE: WindowSizeState = {
   y: 100,
 };
 
+function defaultScenario(): WorkItemScenario {
+  return {
+    workItem: null,
+    states: null,
+    comments: null,
+    loadBehavior: 'normal',
+    loadError: null,
+    statesBehavior: 'normal',
+    commentsBehavior: 'normal',
+    saveBehavior: 'normal',
+    deleteBehavior: 'normal',
+    addCommentBehavior: 'normal',
+  };
+}
+
 function createControl(): StorybookTauriControl {
   const ctrl: StorybookTauriControl = {
     channels: new Map(),
     invocations: [],
     invokeResponses: {},
 
-    windowState: { isMaximized: false },
+    windowState: { isMaximized: false, title: '' },
     pluginStore: new Map(),
     pluginStoreBehavior: 'normal',
     appVersion: null,
@@ -83,12 +133,17 @@ function createControl(): StorybookTauriControl {
     monitorState: null,
 
     clipboardWrites: [],
+    workItemScenario: defaultScenario(),
+    pluginDialog: {},
+    pluginFs: { writes: new Map(), reads: new Map(), failNextWrite: false },
 
     reset() {
       ctrl.channels.clear();
       ctrl.invocations.length = 0;
       for (const k of Object.keys(ctrl.invokeResponses)) delete ctrl.invokeResponses[k];
+
       ctrl.windowState.isMaximized = false;
+      ctrl.windowState.title = '';
       ctrl.pluginStore.clear();
       ctrl.pluginStoreBehavior = 'normal';
       ctrl.appVersion = null;
@@ -100,6 +155,12 @@ function createControl(): StorybookTauriControl {
       ctrl.windowSize.y = DEFAULT_WINDOW_SIZE.y;
       ctrl.monitorState = null;
       ctrl.clipboardWrites.length = 0;
+
+      ctrl.workItemScenario = defaultScenario();
+      ctrl.pluginDialog = {};
+      ctrl.pluginFs.writes.clear();
+      ctrl.pluginFs.reads.clear();
+      ctrl.pluginFs.failNextWrite = false;
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);

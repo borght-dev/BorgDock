@@ -59,6 +59,7 @@ time.
 | 3 | Worktree (palette) | `worktree-main.tsx` → `components/worktree-palette/WorktreePaletteApp.tsx` | `2026-05-05-storybook-phase3-worktree-design.md` | `2026-05-05-storybook-phase3-worktree.md` | [#15](https://github.com/borght-dev/BorgDock/pull/15) |
 | 4 | Agent Overview | `main-agent-overview.tsx` → `components/agent-overview/AgentOverviewApp.tsx` | `2026-05-05-storybook-phase5-agent-overview-design.md` | `2026-05-05-storybook-phase5-agent-overview.md` | _(filled in after PR opens)_ |
 | 5 | SQL | `sql-main.tsx` → `components/sql/SqlApp.tsx` | `2026-05-05-storybook-phase4-sql-design.md` | `2026-05-05-storybook-phase4-sql.md` | _(filled in after PR opens)_ |
+| 6 | Work Item Detail | `workitem-detail-main.tsx` → `components/work-items/WorkItemDetailApp.tsx` | `2026-05-05-storybook-phase6-workitem-detail-design.md` | `2026-05-05-storybook-phase6-workitem-detail.md` | [#16](https://github.com/borght-dev/BorgDock/pull/16) |
 
 ### Pending
 
@@ -74,7 +75,6 @@ will refine them.
 | File Viewer | `file-viewer-main.tsx` | **M** | `invoke` (file content, syntax info), `plugin-fs`, `plugin-clipboard-manager` | Tree-sitter highlighting must work in Storybook — `public/grammars/` is served by Vite at `/grammars/...` so this should "just work," but verify in the brainstorm. |
 | File Palette | `file-palette-main.tsx` | **M** | `invoke` (file index, recent files, scan progress), `plugin-fs` | Palette UX: stories should cover empty / loading / scan-in-progress / changed-files section / per-root filtering. |
 | Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
-| Work Item Detail | `workitem-detail-main.tsx` | **M** | `invoke` (load/update WIT), `plugin-dialog` (attachments) | Stories per-state (loading / loaded / dirty / saving / saved / error / cancellation). |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
 > **Roadmap correction (Phase 3):** the previous Worktree row described the
@@ -116,7 +116,10 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@tauri-apps/api/app` → `mocks/tauri-api-app.ts`
 - `@tauri-apps/plugin-opener` → `mocks/tauri-plugin-opener.ts`
 - `@tauri-apps/plugin-store` → `mocks/tauri-plugin-store.ts`
+- `@tauri-apps/plugin-dialog` → `mocks/tauri-plugin-dialog.ts`
+- `@tauri-apps/plugin-fs` → `mocks/tauri-plugin-fs.ts`
 - `@/services/windows` → `mocks/services-windows.ts`
+- `@/services/ado/workitems` → `mocks/services-ado-workitems.ts`
 - `@/generated/changelog` → `mocks/generated-changelog.ts`
 - `@tauri-apps/api/dpi` → `mocks/tauri-api-dpi.ts`
 - `@tauri-apps/plugin-clipboard-manager` → `mocks/tauri-plugin-clipboard-manager.ts`
