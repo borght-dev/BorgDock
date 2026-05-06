@@ -62,6 +62,7 @@ time.
 | 6 | Work Item Detail | `workitem-detail-main.tsx` → `components/work-items/WorkItemDetailApp.tsx` | `2026-05-05-storybook-phase6-workitem-detail-design.md` | `2026-05-05-storybook-phase6-workitem-detail.md` | [#16](https://github.com/borght-dev/BorgDock/pull/16) |
 | 7 | File Palette | `file-palette-main.tsx` → `components/file-palette/FilePaletteApp.tsx` | `2026-05-06-storybook-phase7-file-palette-design.md` | `2026-05-06-storybook-phase7-file-palette.md` | _(filled in after PR opens)_ |
 | 8 | File Viewer | `file-viewer-main.tsx` → `components/file-viewer/FileViewerApp.tsx` | `2026-05-06-storybook-phase9-file-viewer-design.md` | `2026-05-06-storybook-phase9-file-viewer.md` | _(filled in after PR opens)_ |
+| 9 | Work Item Palette | `work-item-palette-main.tsx` → `components/work-item-palette/WorkItemPaletteApp.tsx` | `2026-05-06-storybook-phase8-work-item-palette-design.md` | `2026-05-06-storybook-phase8-work-item-palette.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -74,7 +75,6 @@ will refine them.
 |---|---|---|---|---|
 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | **L** | many (`invoke` heavy: settings load/save, repo scan, ado/github auth, self-test, maintenance ops); `plugin-dialog.open/save`; `emit` for cross-window settings updates | Recently redesigned with rail + sections. Implicitly stories the new `shared/primitives/*` (Toggle, Slider, Select, Field, Seg2, etc.) plus `RepoScanDialog`, `ConnectionEditorDialog`, `SelfTestResultsDialog`. |
 | Pr Detail | `pr-detail-main.tsx` | **L** | `invoke` (PR fetch, checks, comments, review submission); `plugin-clipboard-manager`; window persistence | Large screen with multiple tabs (overview / files / checks / comments). Best storied per-tab to keep stories focused. |
-| Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
 > **Roadmap correction (Phase 3):** the previous Worktree row described the

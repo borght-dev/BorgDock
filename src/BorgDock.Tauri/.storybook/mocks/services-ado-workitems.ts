@@ -105,13 +105,68 @@ export async function addWorkItemComment(
   return c;
 }
 
-// --- Symbols re-exported as stubs so stories that accidentally import
-// them via this alias fail loudly instead of silently calling the real
-// HTTP-backed module. Add real mock impls if a future story needs them.
+// --- Phase 8 — Work Item Palette consumers.
+// The four palette-relevant functions read from
+// getControl().workItemPaletteScenario instead of the HTTP-backed module.
+// Every call records on invocations so stories can assert search shape
+// (numeric prefix vs free text), browse fan-out, etc.
 
-export async function getWorkItems(): Promise<WorkItem[]> {
-  return [];
+export async function getWorkItems(_client: unknown, ids: number[]): Promise<WorkItem[]> {
+  const ctrl = getControl();
+  const s = ctrl.workItemPaletteScenario;
+  ctrl.invocations.push({ command: 'workitems.getWorkItems', args: { ids } });
+  if (s.browseBehavior === 'pending') return new Promise(() => {});
+  if (s.browseBehavior === 'reject') throw new Error('storybook: getWorkItems failed');
+  const byId = new Map(s.workItems.map((w) => [w.id, w] as const));
+  return ids.map((id) => byId.get(id)).filter((w): w is WorkItem => Boolean(w));
 }
+
+export async function getAssignedToMe(_client: unknown): Promise<WorkItem[]> {
+  const ctrl = getControl();
+  const s = ctrl.workItemPaletteScenario;
+  ctrl.invocations.push({ command: 'workitems.getAssignedToMe' });
+  if (s.assignedToMeBehavior === 'pending') return new Promise(() => {});
+  if (s.assignedToMeBehavior === 'reject') throw new Error('storybook: getAssignedToMe failed');
+  return s.assignedToMe;
+}
+
+export async function searchWorkItemsByIdPrefix(
+  _client: unknown,
+  prefix: string,
+): Promise<WorkItem[]> {
+  const ctrl = getControl();
+  const s = ctrl.workItemPaletteScenario;
+  ctrl.invocations.push({ command: 'workitems.searchWorkItemsByIdPrefix', args: { prefix } });
+  if (s.searchBehavior === 'pending') return new Promise(() => {});
+  if (s.searchBehavior === 'reject') throw new Error('storybook: search failed');
+  return s.searchPool.filter((w) => String(w.id).startsWith(prefix));
+}
+
+export async function searchWorkItemsByText(
+  _client: unknown,
+  text: string,
+): Promise<WorkItem[]> {
+  const ctrl = getControl();
+  const s = ctrl.workItemPaletteScenario;
+  ctrl.invocations.push({ command: 'workitems.searchWorkItemsByText', args: { text } });
+  if (s.searchBehavior === 'pending') return new Promise(() => {});
+  if (s.searchBehavior === 'reject') throw new Error('storybook: search failed');
+  const lower = text.toLowerCase();
+  return s.searchPool.filter((w) => {
+    const titleField = w.fields['System.Title'];
+    const title = typeof titleField === 'string' ? titleField : '';
+    const assignedField = w.fields['System.AssignedTo'];
+    const assigned =
+      typeof assignedField === 'string'
+        ? assignedField
+        : (assignedField as { displayName?: string } | undefined)?.displayName ?? '';
+    return title.toLowerCase().includes(lower) || assigned.toLowerCase().includes(lower);
+  });
+}
+
+// --- Stubs preserved for future windows. Stories that accidentally hit
+// these fail loudly so the gap is obvious.
+
 export async function createWorkItem(): Promise<WorkItem> {
   throw new Error('storybook: createWorkItem not mocked');
 }
@@ -120,15 +175,6 @@ export async function downloadAttachment(): Promise<Blob> {
 }
 export async function getCurrentUserDisplayName(): Promise<string | null> {
   return null;
-}
-export async function searchWorkItemsByIdPrefix(): Promise<WorkItem[]> {
-  return [];
-}
-export async function searchWorkItemsByText(): Promise<WorkItem[]> {
-  return [];
-}
-export async function getAssignedToMe(): Promise<WorkItem[]> {
-  return [];
 }
 
 // Pure helper — safe to re-export from the real module (no Tauri deps).
