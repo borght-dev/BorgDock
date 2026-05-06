@@ -201,3 +201,45 @@ export const InRepoWithDiffAutoToDiff = story({
   contentResponse: TSX_SAMPLE,
   diffResponse: { patch: PATCH_SINGLE_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
 });
+
+// ---------------------------------------------------------------------------
+// 4. Diff view-mode axis (4)
+// ---------------------------------------------------------------------------
+
+export const UnifiedDiff = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: { patch: PATCH_SINGLE_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+});
+
+export const SplitDiff = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: { patch: PATCH_SINGLE_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+  settings: makeSettings({ fileViewerDefaultViewMode: 'split' }),
+});
+
+export const UnifiedToSplitToggle: Story = {
+  args: {
+    params: {
+      contentResponse: TSX_SAMPLE,
+      diffResponse: { patch: PATCH_SINGLE_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const splitChip = await canvas.findByRole('button', { name: 'Split' });
+    await userEvent.click(splitChip);
+    await waitFor(() => {
+      const ctrl = (window as unknown as {
+        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+      }).__borgdock_storybook_tauri;
+      const saved = ctrl.invocations.find((i) => i.command === 'save_settings');
+      expect(saved).toBeTruthy();
+    });
+  },
+};
+
+export const DiffLoadError = story({
+  contentResponse: TSX_SAMPLE,
+  diffResponse: () => Promise.reject(new Error('git command failed')),
+});
