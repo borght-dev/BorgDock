@@ -99,6 +99,12 @@ interface PrState extends DerivedCache {
     repo: string,
     number: number,
   ) => Promise<PullRequestWithChecks | null>;
+  /** Synchronously mark a PR as merged in the local store and dispatch
+   *  PR_REFRESHED_EVENT, without round-tripping through GitHub. Used by
+   *  pr-actions to give the PR detail window an instant visual update
+   *  after a successful merge / bypass-merge call. The eventual server
+   *  refresh (scheduled by pr-actions) reconciles the optimistic state. */
+  optimisticallyMarkMerged: (owner: string, repo: string, number: number) => void;
 }
 
 function matchesSearch(pr: PullRequestWithChecks, query: string): boolean {
@@ -539,5 +545,49 @@ export const usePrStore = create<PrState>()((set, get) => ({
       document.dispatchEvent(new CustomEvent<PrRefreshedDetail>(PR_REFRESHED_EVENT, { detail }));
     }
     return fresh;
+  },
+  optimisticallyMarkMerged: (owner, repo, number) => {
+    const matches = (p: PullRequestWithChecks) =>
+      p.pullRequest.repoOwner === owner &&
+      p.pullRequest.repoName === repo &&
+      p.pullRequest.number === number;
+
+    const state = get();
+    const idx = state.pullRequests.findIndex(matches);
+    if (idx < 0) return;
+
+    const current = state.pullRequests[idx];
+    const merged: PullRequestWithChecks = {
+      ...current,
+      pullRequest: {
+        ...current.pullRequest,
+        state: 'closed',
+        mergedAt: new Date().toISOString(),
+        mergeable: undefined,
+      },
+    };
+
+    const pullRequests = state.pullRequests.filter((_, i) => i !== idx);
+    const closedPullRequests = [merged, ...state.closedPullRequests.filter((p) => !matches(p))];
+    const newCacheKey = makeCacheKey(pullRequests, state.username, state.reviewRequestTimestamps);
+
+    set({
+      pullRequests,
+      closedPullRequests,
+      _cacheKey: newCacheKey,
+      _cachedPriorityScores: null,
+      _cachedTeamReviewLoad: null,
+      _cachedCounts: null,
+      _cachedFilteredPrs: null,
+      _cachedGroupedByRepo: null,
+      _cachedNeedsMyReview: null,
+      _cachedFocusPrs: null,
+      _viewCacheKey: '',
+    });
+
+    if (typeof document !== 'undefined') {
+      const detail: PrRefreshedDetail = { owner, repo, number, pr: merged };
+      document.dispatchEvent(new CustomEvent<PrRefreshedDetail>(PR_REFRESHED_EVENT, { detail }));
+    }
   },
 }));

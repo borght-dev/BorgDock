@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OverallStatus, PullRequestWithChecks, ReviewStatus } from '@/types';
-import { usePrStore } from '../pr-store';
+import { PR_REFRESHED_EVENT, type PrRefreshedDetail, usePrStore } from '../pr-store';
 
 function makePr(overrides: {
   number?: number;
@@ -365,6 +365,57 @@ describe('pr-store', () => {
       usePrStore.getState().setRateLimit({ remaining: 50, limit: 100, resetAt: new Date() });
       usePrStore.getState().setRateLimit(null);
       expect(usePrStore.getState().rateLimit).toBeNull();
+    });
+  });
+
+  describe('optimisticallyMarkMerged', () => {
+    beforeEach(() => {
+      usePrStore.setState({
+        pullRequests: [makePr({ number: 7, repoOwner: 'o', repoName: 'r' })],
+        closedPullRequests: [],
+      });
+    });
+
+    it('moves the matching PR from open to closed and marks it merged', () => {
+      const beforeIso = new Date().toISOString();
+      usePrStore.getState().optimisticallyMarkMerged('o', 'r', 7);
+      const state = usePrStore.getState();
+
+      expect(state.pullRequests.some((p) => p.pullRequest.number === 7)).toBe(false);
+      expect(state.closedPullRequests[0]?.pullRequest.number).toBe(7);
+      expect(state.closedPullRequests[0]?.pullRequest.state).toBe('closed');
+      expect(state.closedPullRequests[0]?.pullRequest.mergedAt).toBeTruthy();
+      expect(
+        new Date(state.closedPullRequests[0].pullRequest.mergedAt as string).getTime(),
+      ).toBeGreaterThanOrEqual(new Date(beforeIso).getTime());
+    });
+
+    it('dispatches PR_REFRESHED_EVENT with the updated PR', () => {
+      const handler = vi.fn();
+      document.addEventListener(PR_REFRESHED_EVENT, handler);
+      try {
+        usePrStore.getState().optimisticallyMarkMerged('o', 'r', 7);
+        expect(handler).toHaveBeenCalledTimes(1);
+        const detail = (handler.mock.calls[0][0] as CustomEvent<PrRefreshedDetail>).detail;
+        expect(detail.owner).toBe('o');
+        expect(detail.repo).toBe('r');
+        expect(detail.number).toBe(7);
+        expect(detail.pr?.pullRequest.mergedAt).toBeTruthy();
+      } finally {
+        document.removeEventListener(PR_REFRESHED_EVENT, handler);
+      }
+    });
+
+    it('is a no-op when the PR is not in the open list', () => {
+      const handler = vi.fn();
+      document.addEventListener(PR_REFRESHED_EVENT, handler);
+      try {
+        usePrStore.getState().optimisticallyMarkMerged('o', 'r', 999);
+        expect(handler).not.toHaveBeenCalled();
+        expect(usePrStore.getState().closedPullRequests).toHaveLength(0);
+      } finally {
+        document.removeEventListener(PR_REFRESHED_EVENT, handler);
+      }
     });
   });
 });
