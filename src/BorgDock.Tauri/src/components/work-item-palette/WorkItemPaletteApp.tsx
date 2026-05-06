@@ -35,15 +35,21 @@ interface Prefs {
   groupBy: GroupBy;
 }
 
+const STATE_FILTERS: StateFilter[] = ['all', 'open', 'mine', 'failing'];
+const GROUP_BYS: GroupBy[] = ['none', 'state', 'assignee', 'iter'];
+
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Prefs>;
-      return {
-        stateFilter: parsed.stateFilter ?? 'all',
-        groupBy: parsed.groupBy ?? 'none',
-      };
+      const parsed = JSON.parse(raw) as { stateFilter?: unknown; groupBy?: unknown };
+      const stateFilter = STATE_FILTERS.includes(parsed.stateFilter as StateFilter)
+        ? (parsed.stateFilter as StateFilter)
+        : 'all';
+      const groupBy = GROUP_BYS.includes(parsed.groupBy as GroupBy)
+        ? (parsed.groupBy as GroupBy)
+        : 'none';
+      return { stateFilter, groupBy };
     }
   } catch {
     /* ignore */
@@ -290,7 +296,9 @@ export function WorkItemPaletteApp() {
       <div ref={listRef} className="bd-wp-content">
         {flatItems.length === 0 && !isLoadingBrowse && (
           <div className="bd-wp-empty">
-            {isSearchMode ? 'No work items match your filters.' : 'Type to search work items'}
+            {isSearchMode || stateFilter !== 'all' || groupBy !== 'none'
+              ? 'No work items match your filters.'
+              : 'Type to search work items'}
           </div>
         )}
         {isLoadingBrowse && flatItems.length === 0 && (
