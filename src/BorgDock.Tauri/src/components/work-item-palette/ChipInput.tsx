@@ -48,13 +48,12 @@ export const ChipInput = forwardRef<HTMLInputElement, ChipInputProps>(
               whiteSpace: 'nowrap',
             }}
           >
-            {op.kind === 'mention' ? `@${op.value}` : `${op.kind}:${op.value}`}
+            {op.kind === 'mention' ? `@${op.value}` : `${op.rawKey ?? op.kind}:${op.value}`}
           </span>
         ))}
         <input
           ref={ref}
           type="text"
-          role="textbox"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}

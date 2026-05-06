@@ -5,6 +5,8 @@ export type OperatorKind = 'state' | 'type' | 'assignee' | 'iter' | 'mention' | 
 
 export interface ParsedOperator {
   kind: OperatorKind;
+  /** The raw operator key as the user typed it (lowercase). For mentions this is undefined; the value is the user-typed name. */
+  rawKey?: string;
   value: string;
 }
 
@@ -13,24 +15,23 @@ export interface ParsedQuery {
   freeText: string;
 }
 
-const OP_RE = /(\w+):(\S+)|@(\w+)/g;
-
 export function parseOperators(query: string): ParsedQuery {
+  const re = /(\w+):(\S+)|@(\w+)/g;
   const ops: ParsedOperator[] = [];
   let m: RegExpExecArray | null;
-  while ((m = OP_RE.exec(query)) !== null) {
+  while ((m = re.exec(query)) !== null) {
     if (m[3]) {
       ops.push({ kind: 'mention', value: m[3] });
     } else {
-      const key = m[1]!.toLowerCase();
+      const rawKey = m[1]!.toLowerCase();
       const kind: OperatorKind =
-        key === 'state' || key === 'type' || key === 'assignee' || key === 'iter'
-          ? key
+        rawKey === 'state' || rawKey === 'type' || rawKey === 'assignee' || rawKey === 'iter'
+          ? rawKey
           : 'unknown';
-      ops.push({ kind, value: m[2]! });
+      ops.push({ kind, rawKey, value: m[2]! });
     }
   }
-  const freeText = query.replace(OP_RE, '').replace(/\s+/g, ' ').trim();
+  const freeText = query.replace(/(\w+):(\S+)|@(\w+)/g, '').replace(/\s+/g, ' ').trim();
   return { ops, freeText };
 }
 

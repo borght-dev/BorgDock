@@ -6,7 +6,7 @@ import type { ResultItem } from '@/hooks/useWorkItemPaletteSearch';
 describe('parseOperators', () => {
   it('extracts state: tokens', () => {
     const { ops, freeText } = parseOperators('state:active fix toast');
-    expect(ops).toEqual([{ kind: 'state', value: 'active' }]);
+    expect(ops).toEqual([{ kind: 'state', rawKey: 'state', value: 'active' }]);
     expect(freeText).toBe('fix toast');
   });
 
@@ -18,7 +18,7 @@ describe('parseOperators', () => {
 
   it('extracts type: tokens', () => {
     const { ops } = parseOperators('type:bug');
-    expect(ops).toEqual([{ kind: 'type', value: 'bug' }]);
+    expect(ops).toEqual([{ kind: 'type', rawKey: 'type', value: 'bug' }]);
   });
 
   it('handles multiple operators', () => {

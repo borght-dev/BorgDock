@@ -36,5 +36,5 @@ export function groupItems(
     if (b[0] === 'Unassigned') return -1;
     return a[0].localeCompare(b[0]);
   });
-  return entries.map(([key, groupItems]) => ({ key, label: key, items: groupItems }));
+  return entries.map(([key, bucketItems]) => ({ key, label: key, items: bucketItems }));
 }
