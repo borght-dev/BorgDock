@@ -59,7 +59,7 @@ export function ChipPicker({ label, value, options, onChange, children }: ChipPi
           <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && (
+      {open && options.length > 0 && (
         <div
           role="menu"
           style={{

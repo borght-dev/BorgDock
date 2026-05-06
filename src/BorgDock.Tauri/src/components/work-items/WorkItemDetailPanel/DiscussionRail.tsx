@@ -134,10 +134,11 @@ export function DiscussionRail({ comments, isLoading, onAddComment }: Props) {
         }}
       >
         <input
+          disabled={posting}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void submit();
             }

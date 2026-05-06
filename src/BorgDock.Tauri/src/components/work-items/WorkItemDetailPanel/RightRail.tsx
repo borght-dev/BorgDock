@@ -198,7 +198,6 @@ export function RightRail(props: Props) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 7,
-                marginBottom: 6,
               }}
             >
               <span
