@@ -7,6 +7,7 @@ export interface AutoSaveValues {
   assignedTo: string;
   priority?: number;
   tags: string;
+  iteration: string;
 }
 
 export type AutoSavePatch = Partial<AutoSaveValues>;

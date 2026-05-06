@@ -149,6 +149,26 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
           value: updates.tags,
         });
       }
+      // Iteration: panel passes only the last segment of the current path.
+      // Reconstruct the full path by replacing the trailing segment of the
+      // existing iteration. If the user typed a backslash/forward slash,
+      // treat the input as a full path.
+      if (updates.iteration !== undefined) {
+        const currentPath = String(detailItem.fields['System.IterationPath'] ?? '');
+        const currentSeg = currentPath ? (currentPath.split(/[\\/]/).pop() ?? '') : '';
+        if (updates.iteration !== currentSeg) {
+          const fullPath = /[\\/]/.test(updates.iteration)
+            ? updates.iteration
+            : currentPath
+              ? currentPath.replace(/[^\\/]+$/, updates.iteration)
+              : updates.iteration;
+          operations.push({
+            op: 'replace',
+            path: '/fields/System.IterationPath',
+            value: fullPath,
+          });
+        }
+      }
 
       if (operations.length === 0) {
         setStatusText('No changes');

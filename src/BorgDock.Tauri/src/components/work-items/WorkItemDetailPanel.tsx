@@ -52,6 +52,7 @@ export interface WorkItemFieldUpdates {
   priority?: number;
   tags: string;
   workItemType?: string;
+  iteration?: string;
 }
 
 interface Props {
@@ -106,6 +107,7 @@ export function WorkItemDetailPanel(props: Props) {
     assignedTo: item.assignedTo,
     priority: item.priority,
     tags: item.tags,
+    iteration: item.iteration ?? '',
   });
 
   const auto = useAutoSave({
@@ -115,6 +117,7 @@ export function WorkItemDetailPanel(props: Props) {
       assignedTo: item.assignedTo,
       priority: item.priority,
       tags: item.tags,
+      iteration: item.iteration ?? '',
     },
     onPatch: async (_patch: AutoSavePatch, target: AutoSaveValues) => {
       await onSave({
@@ -123,6 +126,7 @@ export function WorkItemDetailPanel(props: Props) {
         assignedTo: target.assignedTo,
         priority: target.priority,
         tags: target.tags,
+        iteration: target.iteration,
       });
     },
   });
@@ -140,6 +144,7 @@ export function WorkItemDetailPanel(props: Props) {
       assignedTo: item.assignedTo,
       priority: item.priority,
       tags: item.tags,
+      iteration: item.iteration ?? '',
     };
     setValues(next);
     resetAutoSave(next);
@@ -150,6 +155,7 @@ export function WorkItemDetailPanel(props: Props) {
     item.assignedTo,
     item.priority,
     item.tags,
+    item.iteration,
     resetAutoSave,
   ]);
 
@@ -233,7 +239,7 @@ export function WorkItemDetailPanel(props: Props) {
           state={values.state}
           priority={values.priority}
           assignedTo={values.assignedTo}
-          iteration={item.iteration}
+          iteration={values.iteration}
           availableStates={availableStates}
           changedAgo={item.changedAgo}
           onChange={handleChange}

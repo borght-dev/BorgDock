@@ -58,10 +58,11 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                     tauri::WebviewUrl::App("work-item-palette.html".into()),
                 )
                 .title("BorgDock Work Item Palette")
-                .inner_size(480.0, 500.0)
+                .inner_size(720.0, 640.0)
+                .min_inner_size(480.0, 400.0)
                 .decorations(false)
                 .always_on_top(true)
-                .resizable(false)
+                .resizable(true)
                 .skip_taskbar(true)
                 .center()
                 .visible(false)

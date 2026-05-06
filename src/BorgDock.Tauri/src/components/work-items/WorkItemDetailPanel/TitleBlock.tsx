@@ -17,6 +17,7 @@ export interface TitleBlockChange {
   assignedTo?: string;
   priority?: number;
   tags?: string;
+  iteration?: string;
 }
 
 interface Props {
@@ -190,7 +191,12 @@ export function TitleBlock(props: Props) {
         <ChipPicker
           label="PRIORITY"
           value={priority != null ? String(priority) : ''}
-          options={['1', '2', '3', '4']}
+          options={[
+            { value: '1', label: 'P1 · Urgent' },
+            { value: '2', label: 'P2 · High' },
+            { value: '3', label: 'P3 · Med' },
+            { value: '4', label: 'P4 · Low' },
+          ]}
           onChange={(next) => onChange({ priority: Number(next) })}
         >
           <span
@@ -209,7 +215,7 @@ export function TitleBlock(props: Props) {
         <ChipPicker
           label="ASSIGNEE"
           value={assignedTo}
-          options={[]}
+          placeholder="display name or email"
           onChange={(next) => onChange({ assignedTo: next })}
         >
           <span
@@ -225,16 +231,16 @@ export function TitleBlock(props: Props) {
             {assignedTo || 'Unassigned'}
           </span>
         </ChipPicker>
-        {iteration && (
-          <ChipPicker
-            label="ITERATION"
-            value={iteration}
-            options={[]}
-            onChange={() => {}}
-          >
-            <span style={{ fontSize: 11.5, color: 'var(--color-text-primary)' }}>{iteration}</span>
-          </ChipPicker>
-        )}
+        <ChipPicker
+          label="ITERATION"
+          value={iteration ?? ''}
+          placeholder="e.g. R5.2.7.5"
+          onChange={(next) => onChange({ iteration: next })}
+        >
+          <span style={{ fontSize: 11.5, color: 'var(--color-text-primary)' }}>
+            {iteration || 'No iteration'}
+          </span>
+        </ChipPicker>
         <span style={{ flex: 1 }} />
         {changedAgo && (
           <span style={{ fontSize: 10.5, color: 'var(--color-text-muted)' }}>

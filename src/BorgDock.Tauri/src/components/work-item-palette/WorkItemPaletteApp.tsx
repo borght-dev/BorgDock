@@ -3,13 +3,9 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
-import { Kbd } from '@/components/shared/primitives';
+import { Dot, Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
-import {
-  MiniAvatar,
-  StatePill,
-  avatarToneFor,
-} from '@/components/work-items/shared/wi-visuals';
+import { MiniAvatar, avatarToneFor } from '@/components/work-items/shared/wi-visuals';
 import { ChipInput } from '@/components/work-item-palette/ChipInput';
 import { FilterChip } from '@/components/work-item-palette/FilterChip';
 import { GroupSeg } from '@/components/work-item-palette/GroupSeg';
@@ -263,9 +259,9 @@ export function WorkItemPaletteApp() {
             active={stateFilter === 'failing'}
             onClick={() => setStateFilter('failing')}
             tone="warning"
-            icon={<StatePill state="Testing Failed" compact />}
+            icon={<Dot tone="yellow" size={6} />}
           >
-            Failing
+            Testing Failed
           </FilterChip>
           <span style={{ flex: 1 }} />
           <span

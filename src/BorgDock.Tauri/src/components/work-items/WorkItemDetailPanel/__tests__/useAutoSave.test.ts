@@ -16,6 +16,7 @@ const initial: AutoSaveValues = {
   assignedTo: 'Alice',
   priority: 2,
   tags: '',
+  iteration: '',
 };
 
 describe('useAutoSave', () => {
