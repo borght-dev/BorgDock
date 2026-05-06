@@ -4,33 +4,31 @@ import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { PullRequestWithChecks } from '@/types';
 import { FocusList } from '../FocusList';
 import { makePr, resetSeq } from './helpers';
 
-// Mock heavy child components
-vi.mock('@/components/pr/PrCardContainer', () => ({
-  PrCardContainer: ({
-    prWithChecks,
-    isFocused,
-    focusMode,
-  }: {
-    prWithChecks: PullRequestWithChecks;
-    isFocused: boolean;
-    focusMode: boolean;
-  }) => (
-    <div
-      data-testid={`pr-card-${prWithChecks.pullRequest.number}`}
-      data-focused={isFocused}
-      data-focus-mode={focusMode}
-    >
-      {prWithChecks.pullRequest.title}
-    </div>
-  ),
-}));
+// Mock heavy primitives
+vi.mock('@/components/shared/primitives', async () => {
+  const actual = await import('@/components/shared/primitives');
+  return {
+    ...actual,
+    Ring: ({ value }: { value: number }) => (
+      <div data-testid="ring" data-value={value} />
+    ),
+    Avatar: ({ initials }: { initials: string }) => (
+      <span data-testid="avatar">{initials}</span>
+    ),
+  };
+});
 
 vi.mock('../FocusEmptyState', () => ({
   FocusEmptyState: () => <div data-testid="focus-empty-state">Empty</div>,
+}));
+
+vi.mock('../PriorityReasonLabel', () => ({
+  PriorityReasonLabel: ({ factors }: { factors: { label: string }[] }) => (
+    <span data-testid="priority-reason">{factors[0]?.label}</span>
+  ),
 }));
 
 vi.mock('@/components/onboarding', () => ({
@@ -115,7 +113,15 @@ describe('FocusList', () => {
     expect(screen.getByTestId('focus-empty-state')).toBeDefined();
   });
 
-  it('renders PR cards for focus PRs', () => {
+  it('renders hero header with correct PR count', () => {
+    const pr1 = makePr({ title: 'Fix login', authorLogin: 'testuser', reviewStatus: 'approved' });
+    const pr2 = makePr({ title: 'Add feature', authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr1, pr2] });
+    render(<FocusList />);
+    expect(screen.getByText(/2 pull requests need your attention/)).toBeDefined();
+  });
+
+  it('renders PR titles in focus rows', () => {
     const pr1 = makePr({ title: 'Fix login', authorLogin: 'testuser', reviewStatus: 'approved' });
     const pr2 = makePr({ title: 'Add feature', authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr1, pr2] });
@@ -124,64 +130,61 @@ describe('FocusList', () => {
     expect(screen.getByText('Add feature')).toBeDefined();
   });
 
-  it('passes focusMode prop to PrCardContainer', () => {
-    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
-    usePrStore.setState({ pullRequests: [pr] });
-    render(<FocusList />);
-    const card = screen.getByTestId(`pr-card-${pr.pullRequest.number}`);
-    expect(card.getAttribute('data-focus-mode')).toBe('true');
-  });
-
-  it('highlights the selected PR', () => {
-    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
-    usePrStore.setState({ pullRequests: [pr] });
-    useUiStore.setState({ selectedPrNumber: pr.pullRequest.number });
-    render(<FocusList />);
-    const card = screen.getByTestId(`pr-card-${pr.pullRequest.number}`);
-    expect(card.getAttribute('data-focused')).toBe('true');
-  });
-
-  it('does not highlight PRs that are not selected', () => {
-    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
-    usePrStore.setState({ pullRequests: [pr] });
-    useUiStore.setState({ selectedPrNumber: 999 });
-    render(<FocusList />);
-    const card = screen.getByTestId(`pr-card-${pr.pullRequest.number}`);
-    expect(card.getAttribute('data-focused')).toBe('false');
-  });
-
-  it('shows Quick Review button when there are PRs needing review', () => {
-    const pr = makePr({
-      authorLogin: 'other',
-      requestedReviewers: ['testuser'],
-    });
-    usePrStore.setState({ pullRequests: [pr] });
-    render(<FocusList />);
-    expect(screen.getByText(/Start Quick Review/)).toBeDefined();
-  });
-
-  it('shows correct count in Quick Review button', () => {
-    const pr1 = makePr({ authorLogin: 'other', requestedReviewers: ['testuser'] });
-    const pr2 = makePr({ authorLogin: 'other', requestedReviewers: ['testuser'] });
+  it('renders rank numbers for each focus PR', () => {
+    const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
+    const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr1, pr2] });
     render(<FocusList />);
-    expect(screen.getByText(/Start Quick Review \(2 PRs\)/)).toBeDefined();
+    expect(screen.getByText('1')).toBeDefined();
+    expect(screen.getByText('2')).toBeDefined();
   });
 
-  it('shows singular PR count in Quick Review button', () => {
+  it('renders Open button for each focus PR', () => {
+    const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
+    const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr1, pr2] });
+    render(<FocusList />);
+    const openButtons = screen.getAllByText('Open');
+    expect(openButtons.length).toBe(2);
+  });
+
+  it('Open button calls selectPr with the PR number', () => {
+    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr] });
+    render(<FocusList />);
+    fireEvent.click(screen.getByText('Open'));
+    expect(useUiStore.getState().selectedPrNumber).toBe(pr.pullRequest.number);
+  });
+
+  it('shows hero CTA "Start Quick Review" when there are focus PRs', () => {
+    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr] });
+    render(<FocusList />);
+    expect(screen.getByText('Start Quick Review')).toBeDefined();
+  });
+
+  it('starts a quick review session when hero CTA is clicked (needsMyReview items)', () => {
     const pr = makePr({ authorLogin: 'other', requestedReviewers: ['testuser'] });
     usePrStore.setState({ pullRequests: [pr] });
     render(<FocusList />);
-    expect(screen.getByText(/Start Quick Review \(1 PR\)/)).toBeDefined();
-  });
-
-  it('starts a quick review session when button is clicked', () => {
-    const pr = makePr({ authorLogin: 'other', requestedReviewers: ['testuser'] });
-    usePrStore.setState({ pullRequests: [pr] });
-    render(<FocusList />);
-    fireEvent.click(screen.getByText(/Start Quick Review/));
+    fireEvent.click(screen.getByText('Start Quick Review'));
     expect(useQuickReviewStore.getState().state).toBe('reviewing');
     expect(useQuickReviewStore.getState().queue.length).toBe(1);
+  });
+
+  it('starts a quick review session from focusPrs when no needsMyReview items', () => {
+    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr] });
+    render(<FocusList />);
+    fireEvent.click(screen.getByText('Start Quick Review'));
+    expect(useQuickReviewStore.getState().state).toBe('reviewing');
+  });
+
+  it('shows singular "pull request" in hero when count is 1', () => {
+    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr] });
+    render(<FocusList />);
+    expect(screen.getByText(/1 pull request need your attention/)).toBeDefined();
   });
 
   it('shows FirstRunOverlay when not yet seen', () => {
@@ -232,13 +235,6 @@ describe('FocusList', () => {
     expect(useOnboardingStore.getState().dismissedBadges.has('focus-mode')).toBe(true);
   });
 
-  it('does not show Quick Review button when no PRs need review', () => {
-    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
-    usePrStore.setState({ pullRequests: [pr] });
-    render(<FocusList />);
-    expect(screen.queryByText(/Start Quick Review/)).toBeNull();
-  });
-
   it('marks each focus PR row with [data-focus-item]', () => {
     const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
     const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
@@ -249,5 +245,20 @@ describe('FocusList', () => {
     const focusPrs = usePrStore.getState().focusPrs();
     expect(rows.length).toBe(focusPrs.length);
     expect(rows.length).toBe(3);
+  });
+
+  it('renders status label for each PR based on overallStatus', () => {
+    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr] });
+    render(<FocusList />);
+    // Default overallStatus in makePr is 'green' → shows 'Passing'
+    expect(screen.getByText('Passing')).toBeDefined();
+  });
+
+  it('renders Ring component for each focus PR', () => {
+    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+    usePrStore.setState({ pullRequests: [pr] });
+    render(<FocusList />);
+    expect(screen.getByTestId('ring')).toBeDefined();
   });
 });
