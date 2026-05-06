@@ -3950,6 +3950,7 @@ body.sql-resizing-v .sql-resize-handle {
 }
 
 /* Work item detail — narrow-mode collapses the right rail to a drawer. */
+/* Threshold = RAIL_COLLAPSE_BREAKPOINT_PX in WorkItemDetailPanel.tsx (760px). */
 @layer components {
   [data-wi-detail][data-rail-collapsed='true'] {
     grid-template-columns: minmax(0, 1fr) 0;

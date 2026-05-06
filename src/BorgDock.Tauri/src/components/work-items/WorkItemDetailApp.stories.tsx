@@ -384,16 +384,14 @@ export const V2Overview: Story = story({
 });
 V2Overview.storyName = 'v2 — overview';
 
-export const V2NarrowRailCollapsed: Story = {
-  name: 'v2 — narrow (rail collapsed)',
+// NOTE: WorkItemDetailHarness hard-codes its container to 720×720, so the
+// outer decorator width has no effect and the ResizeObserver never crosses the
+// 760px (RAIL_COLLAPSE_BREAKPOINT_PX) threshold. Demonstrating the collapsed
+// rail state requires a harness that accepts a width prop. Renamed from
+// V2NarrowRailCollapsed to avoid a misleading story name.
+export const V2DefaultLayout: Story = {
+  name: 'v2 — default layout',
   args: {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
-  decorators: [
-    (StoryC: StoryFn) => (
-      <div style={{ width: 700, height: 700 }}>
-        <StoryC />
-      </div>
-    ),
-  ],
 };

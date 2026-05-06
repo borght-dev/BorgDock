@@ -20,6 +20,10 @@ import type {
   WorkItemComment,
 } from '@/types';
 
+/** Below this width the right rail collapses behind a drawer. Pairs with the
+ * `[data-wi-detail][data-rail-collapsed='true']` rule in styles/index.css. */
+const RAIL_COLLAPSE_BREAKPOINT_PX = 760;
+
 export interface WorkItemDetailData {
   id?: number;
   title: string;
@@ -95,6 +99,7 @@ export function WorkItemDetailPanel(props: Props) {
   } = props;
 
   const [tab, setTab] = useState<'overview' | 'activity' | 'links' | 'files'>('overview');
+  const [railCollapsed, setRailCollapsed] = useState(false);
   const [values, setValues] = useState<AutoSaveValues>({
     title: item.title,
     state: item.state,
@@ -166,8 +171,7 @@ export function WorkItemDetailPanel(props: Props) {
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
-      const collapsed = entry.contentRect.width < 760;
-      el.setAttribute('data-rail-collapsed', collapsed ? 'true' : 'false');
+      setRailCollapsed(entry.contentRect.width < RAIL_COLLAPSE_BREAKPOINT_PX);
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -192,7 +196,7 @@ export function WorkItemDetailPanel(props: Props) {
     <div
       ref={rootRef}
       data-wi-detail
-      data-rail-collapsed="false"
+      data-rail-collapsed={railCollapsed ? 'true' : 'false'}
       style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) 320px',
