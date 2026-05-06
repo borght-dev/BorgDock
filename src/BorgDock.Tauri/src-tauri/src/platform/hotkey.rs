@@ -228,7 +228,7 @@ pub fn register_user_hotkeys(
         }
     }
 
-    // Sidebar toggle
+    // Main window show/focus/hide toggle
     let app_toggle = app.clone();
     app.global_shortcut()
         .on_shortcut(sidebar_shortcut.as_str(), move |_app, _shortcut, event| {
@@ -242,19 +242,8 @@ pub fn register_user_hotkeys(
             // SetForegroundWindow in particular has thread restrictions.
             let app_cb = app_toggle.clone();
             match app_toggle.run_on_main_thread(move || {
-                log::info!(
-                    "hotkey toggle running on main thread, sidebar_visible={}",
-                    super::window::sidebar_visible()
-                );
-                if super::window::sidebar_visible() {
-                    if let Err(e) = super::window::hide_main_window(&app_cb) {
-                        log::error!("hotkey: hide_main_window failed: {e}");
-                    }
-                } else {
-                    if let Err(e) = super::window::show_main_window(&app_cb) {
-                        log::error!("hotkey: show_main_window failed: {e}");
-                    }
-                }
+                log::info!("hotkey: running show_or_focus_main_sync on main thread");
+                super::window::show_or_focus_main_sync(&app_cb);
                 log::info!("hotkey toggle main thread work complete");
             }) {
                 Ok(()) => log::info!("hotkey: run_on_main_thread dispatch succeeded"),
