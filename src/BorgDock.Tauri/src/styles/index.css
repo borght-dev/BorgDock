@@ -3008,6 +3008,34 @@ body.sql-resizing-v .sql-resize-handle {
     font-size: var(--text-small);
   }
 
+  /* ── WindowControls ──────────────────────────────────── */
+  .bd-window-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
+  }
+  .bd-window-control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    border-radius: 4px;
+    background: transparent;
+    border: 0;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+  }
+  .bd-window-control:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
+  .bd-window-control--close:hover {
+    background: var(--color-status-red);
+    color: #fff;
+  }
+
   /* ════════════════════════════════════════════════════════
      PR #5 — Per-surface layout migrated from deleted per-feature
      CSS files. file-palette.css → bd-fp-*; file-viewer.css → bd-fv-*;

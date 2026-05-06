@@ -72,3 +72,5 @@ export type { ToggleRowProps } from './ToggleRow';
 
 export { TitleBar } from './Titlebar';
 export type { TitleBarProps } from './Titlebar';
+
+export { WindowControls } from './WindowControls';
