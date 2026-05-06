@@ -2622,6 +2622,9 @@ body.sql-resizing-v .sql-resize-handle {
     background: transparent;
     color: var(--color-text-tertiary);
     cursor: pointer;
+    /* Opt out of titlebar drag region so the button stays clickable when
+       hosted in a `data-tauri-drag-region` titlebar (main window). */
+    -webkit-app-region: no-drag;
     transition:
       background var(--duration-color) ease,
       color var(--duration-color) ease,
@@ -2697,6 +2700,9 @@ body.sql-resizing-v .sql-resize-handle {
     gap: var(--space-5);
     border-bottom: 1px solid var(--color-subtle-border);
     position: relative;
+    /* When hosted in a draggable titlebar (main window section tabs), tab
+       clicks must reach the buttons — opt the whole tab strip out of drag. */
+    -webkit-app-region: no-drag;
   }
   .bd-tabs--dense {
     gap: var(--space-4);
@@ -3065,6 +3071,9 @@ body.sql-resizing-v .sql-resize-handle {
     align-items: center;
     gap: 2px;
     margin-left: 4px;
+    /* MainWindow titlebar is a Tauri drag region — opt min/max/close out so
+       the buttons don't initiate a window drag. */
+    -webkit-app-region: no-drag;
   }
   .bd-window-control {
     display: inline-flex;

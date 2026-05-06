@@ -82,8 +82,9 @@ export function MainWindow({ children }: MainWindowProps) {
   return (
     <div className="bd-mainwindow">
       <TitleBar
+        data-tauri-drag-region
         left={
-          <span className="bd-mainwindow__left">
+          <span className="bd-mainwindow__left" data-tauri-drag-region>
             <Logo />
             <span className="bd-title-bar__title">BorgDock</span>
             <Pill tone="neutral">{pullRequests.length} open</Pill>
@@ -99,10 +100,11 @@ export function MainWindow({ children }: MainWindowProps) {
               count: s.id === 'focus' && focusCount > 0 ? focusCount : undefined,
             }))}
             dense
+            data-tauri-drag-region="false"
           />
         }
         right={
-          <span className="bd-mainwindow__right">
+          <span className="bd-mainwindow__right" data-tauri-drag-region="false">
             <span
               className={clsx('bd-status-dot', hasFailing && 'bd-status-dot--red')}
               aria-hidden
@@ -112,6 +114,7 @@ export function MainWindow({ children }: MainWindowProps) {
               className="bd-icon-btn"
               aria-label="Refresh"
               onClick={dispatchRefresh}
+              data-tauri-drag-region="false"
             >
               <RefreshIcon />
             </button>
@@ -120,6 +123,7 @@ export function MainWindow({ children }: MainWindowProps) {
               className="bd-icon-btn"
               aria-label="Settings"
               onClick={openSettings}
+              data-tauri-drag-region="false"
             >
               <svg
                 width="14"
