@@ -41,7 +41,11 @@ export function computeOverallStatus(checks: CheckRun[]): OverallStatus {
   if (hasPending) return 'yellow';
 
   const allPassed = checks.every(
-    (c) => c.conclusion === 'success' || c.conclusion === 'skipped' || c.conclusion === 'neutral',
+    (c) =>
+      c.conclusion === 'success' ||
+      c.conclusion === 'skipped' ||
+      c.conclusion === 'neutral' ||
+      c.conclusion === 'cancelled',
   );
   if (allPassed) return 'green';
 

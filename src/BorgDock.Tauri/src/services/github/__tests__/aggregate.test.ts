@@ -102,6 +102,14 @@ describe('computeOverallStatus', () => {
     ];
     expect(computeOverallStatus(checks)).toBe('green');
   });
+
+  it('returns green when checks are mix of success and cancelled', () => {
+    const checks = [
+      makeCheckRun({ conclusion: 'success' }),
+      makeCheckRun({ id: 2, name: 'cancelled-shard', conclusion: 'cancelled' }),
+    ];
+    expect(computeOverallStatus(checks)).toBe('green');
+  });
 });
 
 describe('aggregatePrWithChecks', () => {

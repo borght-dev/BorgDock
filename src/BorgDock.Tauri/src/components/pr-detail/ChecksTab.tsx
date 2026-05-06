@@ -18,7 +18,7 @@ interface ChecksTabProps {
 
 /* ── Helpers ────────────────────────────────────────── */
 
-type CheckState = 'passed' | 'failed' | 'pending' | 'skipped';
+type CheckState = 'passed' | 'failed' | 'pending' | 'skipped' | 'cancelled';
 
 function classifyCheck(run: CheckRun): CheckState {
   if (run.status === 'in_progress' || run.status === 'queued') return 'pending';
@@ -28,8 +28,9 @@ function classifyCheck(run: CheckRun): CheckState {
     case 'failure':
     case 'timed_out':
       return 'failed';
-    case 'skipped':
     case 'cancelled':
+      return 'cancelled';
+    case 'skipped':
     case 'neutral':
       return 'skipped';
     default:
@@ -63,7 +64,11 @@ function groupBySuite(checks: CheckRun[]): Map<number, CheckRun[]> {
 function suiteStatus(runs: CheckRun[]): CheckState {
   if (runs.some((r) => classifyCheck(r) === 'failed')) return 'failed';
   if (runs.some((r) => classifyCheck(r) === 'pending')) return 'pending';
-  if (runs.every((r) => classifyCheck(r) === 'skipped')) return 'skipped';
+  if (runs.every((r) => classifyCheck(r) === 'cancelled')) return 'cancelled';
+  if (runs.every((r) => {
+    const s = classifyCheck(r);
+    return s === 'skipped' || s === 'cancelled';
+  })) return 'skipped';
   return 'passed';
 }
 
@@ -145,6 +150,20 @@ function SkipIcon({ className }: { className?: string }) {
   );
 }
 
+function CancelIcon({ className }: { className?: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="8" cy="8" r="7" fill="var(--color-status-gray)" opacity="0.12" />
+      <path
+        d="M4.5 4.5l7 7"
+        stroke="var(--color-status-gray)"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function StatusSvg({ state, className }: { state: CheckState; className?: string }) {
   switch (state) {
     case 'passed':
@@ -155,6 +174,8 @@ function StatusSvg({ state, className }: { state: CheckState; className?: string
       return <SpinnerIcon className={className} />;
     case 'skipped':
       return <SkipIcon className={className} />;
+    case 'cancelled':
+      return <CancelIcon className={className} />;
   }
 }
 
@@ -165,8 +186,9 @@ function SummaryBar({ checks }: { checks: CheckRun[] }) {
   const failed = checks.filter((c) => classifyCheck(c) === 'failed').length;
   const pending = checks.filter((c) => classifyCheck(c) === 'pending').length;
   const skipped = checks.filter((c) => classifyCheck(c) === 'skipped').length;
+  const cancelled = checks.filter((c) => classifyCheck(c) === 'cancelled').length;
   const total = checks.length;
-  const relevant = total - skipped;
+  const relevant = total - skipped - cancelled;
   const percent = relevant > 0 ? (passed / relevant) * 100 : 0;
   const tone = summaryProgressTone(passed, failed, pending);
 
@@ -192,6 +214,11 @@ function SummaryBar({ checks }: { checks: CheckRun[] }) {
         {skipped > 0 && (
           <Pill tone="neutral" data-check-count="skipped" icon={<SkipIcon />}>
             {skipped} skipped
+          </Pill>
+        )}
+        {cancelled > 0 && (
+          <Pill tone="neutral" data-check-count="cancelled" icon={<CancelIcon />}>
+            {cancelled} cancelled
           </Pill>
         )}
       </div>
@@ -238,7 +265,13 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
   const grouped = groupBySuite(checks);
 
   // Sort: failed suites first, then pending, then passed, then skipped
-  const sortOrder: Record<CheckState, number> = { failed: 0, pending: 1, passed: 2, skipped: 3 };
+  const sortOrder: Record<CheckState, number> = {
+    failed: 0,
+    pending: 1,
+    passed: 2,
+    cancelled: 3,
+    skipped: 4,
+  };
   const sortedEntries = [...grouped.entries()].sort(
     ([, a], [, b]) => sortOrder[suiteStatus(a)] - sortOrder[suiteStatus(b)],
   );

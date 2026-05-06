@@ -95,9 +95,13 @@ describe('ChecksTab', () => {
     expect(screen.getByText('1 failed')).toBeTruthy();
   });
 
-  it('classifies cancelled checks as skipped', () => {
-    const checks = [makeCheck({ id: 1, name: 'cancelled-job', conclusion: 'cancelled' })];
+  it('shows summary counts for cancelled checks separately from skipped', () => {
+    const checks = [
+      makeCheck({ id: 1, name: 'cancelled-shard', conclusion: 'cancelled' }),
+      makeCheck({ id: 2, name: 'optional', conclusion: 'skipped' }),
+    ];
     render(<ChecksTab checks={checks} />);
+    expect(screen.getByText('1 cancelled')).toBeTruthy();
     expect(screen.getByText('1 skipped')).toBeTruthy();
   });
 
