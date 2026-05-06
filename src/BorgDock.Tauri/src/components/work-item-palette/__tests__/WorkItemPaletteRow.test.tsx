@@ -1,57 +1,72 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkItemPaletteRow } from '../WorkItemPaletteRow';
+import type { ResultItem } from '@/hooks/useWorkItemPaletteSearch';
 
-const baseItem = {
-  id: 1234,
-  title: 'Sample work item',
-  state: 'Active',
-  workItemType: 'Bug',
-  assignedTo: 'Alice',
-};
+function makeItem(overrides: Partial<ResultItem> = {}): ResultItem {
+  return {
+    id: 54519,
+    title: 'Quotes: success toast appears even on failure',
+    state: 'Testing Failed',
+    workItemType: 'Bug',
+    assignedTo: 'Koen van der Borght',
+    priority: 2,
+    commentCount: 3,
+    iteration: 'R5.2.7.5',
+    ...overrides,
+  };
+}
 
 describe('WorkItemPaletteRow', () => {
-  it('renders item ID, title, type, and state', () => {
+  it('renders #id, title, and state pill', () => {
     render(
       <WorkItemPaletteRow
-        item={baseItem}
+        item={makeItem()}
         isSelected={false}
-        onMouseEnter={vi.fn()}
-        onSelect={vi.fn()}
+        onMouseEnter={() => {}}
+        onSelect={() => {}}
       />,
     );
-
-    expect(screen.getByText('#1234')).toBeTruthy();
-    expect(screen.getByText('Sample work item')).toBeTruthy();
-    expect(screen.getByText('Bug')).toBeTruthy();
-    expect(screen.getByText('Active')).toBeTruthy();
+    expect(screen.getByText('#54519')).toBeInTheDocument();
+    expect(screen.getByText(/success toast/)).toBeInTheDocument();
+    expect(screen.getByText('Testing Failed')).toBeInTheDocument();
   });
 
-  it('preserves data-palette-row attribute', () => {
-    const { container } = render(
+  it('shows comment count when > 0', () => {
+    render(
       <WorkItemPaletteRow
-        item={baseItem}
+        item={makeItem({ commentCount: 7 })}
         isSelected={false}
-        onMouseEnter={vi.fn()}
-        onSelect={vi.fn()}
+        onMouseEnter={() => {}}
+        onSelect={() => {}}
       />,
     );
-
-    expect(container.querySelector('[data-palette-row]')).not.toBeNull();
+    expect(screen.getByText('7')).toBeInTheDocument();
   });
 
-  it('applies selected background when isSelected is true', () => {
-    const { container } = render(
+  it('hides comment count when missing', () => {
+    render(
       <WorkItemPaletteRow
-        item={baseItem}
-        isSelected={true}
-        onMouseEnter={vi.fn()}
-        onSelect={vi.fn()}
+        item={makeItem({ commentCount: undefined })}
+        isSelected={false}
+        onMouseEnter={() => {}}
+        onSelect={() => {}}
       />,
     );
+    expect(screen.queryByLabelText('Comments')).toBeNull();
+  });
 
-    const row = container.querySelector('[data-palette-row]') as HTMLElement;
-    expect(row).not.toBeNull();
-    expect(row.className).toMatch(/bg-(?:accent|\[var\(--color-accent-subtle\))/);
+  it('fires onSelect when clicked', () => {
+    const onSelect = vi.fn();
+    render(
+      <WorkItemPaletteRow
+        item={makeItem()}
+        isSelected={false}
+        onMouseEnter={() => {}}
+        onSelect={onSelect}
+      />,
+    );
+    fireEvent.mouseDown(screen.getByText(/success toast/));
+    expect(onSelect).toHaveBeenCalledWith(54519);
   });
 });

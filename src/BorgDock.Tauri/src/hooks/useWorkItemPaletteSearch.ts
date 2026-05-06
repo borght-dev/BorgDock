@@ -17,6 +17,12 @@ export interface ResultItem {
   state: string;
   workItemType: string;
   assignedTo: string;
+  /** Numeric priority 1..4 if present. */
+  priority?: number;
+  /** System.IterationPath last segment if present. */
+  iteration?: string;
+  /** Comment count from System.CommentCount if present. */
+  commentCount?: number;
 }
 
 export interface Section {
@@ -35,12 +41,20 @@ function getField(item: WorkItem, field: string): string {
 }
 
 function mapWorkItem(wi: WorkItem): ResultItem {
+  const prioRaw = wi.fields['Microsoft.VSTS.Common.Priority'];
+  const prio = typeof prioRaw === 'number' ? prioRaw : Number(prioRaw) || undefined;
+  const iter = String(wi.fields['System.IterationPath'] ?? '');
+  const lastSeg = iter ? (iter.split(/[\\/]/).pop() ?? iter) : undefined;
+  const cc = wi.fields['System.CommentCount'];
   return {
     id: wi.id,
     title: getField(wi, 'System.Title'),
     state: getField(wi, 'System.State'),
     workItemType: getField(wi, 'System.WorkItemType'),
     assignedTo: getField(wi, 'System.AssignedTo'),
+    priority: prio,
+    iteration: lastSeg,
+    commentCount: typeof cc === 'number' && cc > 0 ? cc : undefined,
   };
 }
 
@@ -81,6 +95,7 @@ export function useWorkItemPaletteSearch() {
   const [workingOnIds, setWorkingOnIds] = useState<Set<number>>(new Set());
   const [recentItems, setRecentItems] = useState<ResultItem[]>([]);
   const [assignedToMeItems, setAssignedToMeItems] = useState<ResultItem[]>([]);
+  const [assignedToMeIds, setAssignedToMeIds] = useState<Set<number>>(new Set());
   const [workingOnItems, setWorkingOnItems] = useState<ResultItem[]>([]);
   const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -160,7 +175,9 @@ export function useWorkItemPaletteSearch() {
         setWorkingOnItems(working);
 
         // Assigned to me
-        setAssignedToMeItems(assignedItems.map(mapWorkItem));
+        const mappedAssigned = assignedItems.map(mapWorkItem);
+        setAssignedToMeItems(mappedAssigned);
+        setAssignedToMeIds(new Set(mappedAssigned.map((i) => i.id)));
 
         // Recent (preserve order)
         const recent = recentIds
@@ -352,6 +369,7 @@ export function useWorkItemPaletteSearch() {
     browseSections,
     browseFlat,
     navItems,
+    assignedToMeIds,
 
     // Actions
     selectAndClose,
