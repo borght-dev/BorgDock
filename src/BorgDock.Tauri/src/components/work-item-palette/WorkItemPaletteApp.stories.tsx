@@ -478,3 +478,48 @@ export const DragHandleStartsDrag: Story = story(
     },
   },
 );
+
+// --- Lifecycle axis (2)
+
+export const WindowReadyOnMount: Story = story(
+  { scenario: emptyBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, waitFor } = await import('storybook/test');
+      await within(canvasElement).findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await waitFor(
+        () => {
+          const found = getControl().invocations.some((i) => i.command === 'window_ready');
+          if (!found) throw new Error('window_ready was not invoked on mount');
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const PaletteShownEventResetsState: Story = story(
+  { scenario: fullBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const input = (await within(canvasElement).findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      )) as HTMLInputElement;
+      await userEvent.type(input, 'abc');
+      await waitFor(() => {
+        if (input.value !== 'abc') throw new Error('input did not accept text');
+      });
+      // Emit palette-shown to trigger the production reset effect.
+      getControl().emit('palette-shown', undefined);
+      await waitFor(
+        () => {
+          if (input.value !== '') throw new Error('input was not cleared');
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
