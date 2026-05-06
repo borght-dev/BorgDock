@@ -131,6 +131,17 @@ function setupStoreState(overrides: Partial<Record<string, unknown>> = {}) {
     },
     filteredPrs: () => prs,
     teamReviewLoad: () => [],
+    counts: () => ({
+      all: prs.length,
+      mine: 0,
+      failing: 0,
+      ready: 0,
+      reviewing: 0,
+      needsReview: 0,
+      closed: closedPrs.length,
+    }),
+    setFilter: vi.fn(),
+    setSearchQuery: vi.fn(),
     ...overrides,
   };
 }
