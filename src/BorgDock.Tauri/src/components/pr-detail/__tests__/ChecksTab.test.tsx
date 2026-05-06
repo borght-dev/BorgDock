@@ -126,7 +126,8 @@ describe('ChecksTab', () => {
       makeCheck({ id: 1, name: 'deploy', status: 'in_progress', conclusion: undefined }),
     ];
     render(<ChecksTab checks={checks} />);
-    expect(screen.getByText('running')).toBeTruthy();
+    // The pending run appears in both the pinned group and the all-suites section.
+    expect(screen.getAllByText('running').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows duration for completed checks', () => {
@@ -211,7 +212,7 @@ describe('ChecksTab', () => {
 
   // ── New PR #4 assertions ────────────────────────────
 
-  it('renders one [data-check-row] per check', () => {
+  it('renders one [data-check-row] per check (pending runs appear in pinned group too)', () => {
     const checks = [
       makeCheck({ id: 1, name: 'ci/build', conclusion: 'success', checkSuiteId: 100 }),
       makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure', checkSuiteId: 100 }),
@@ -224,7 +225,8 @@ describe('ChecksTab', () => {
       }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    expect(container.querySelectorAll('[data-check-row]')).toHaveLength(3);
+    // The 1 pending run appears in both the pinned group and the all-suites section → 4 rows total.
+    expect(container.querySelectorAll('[data-check-row]')).toHaveLength(4);
   });
 
   it('marks failed checks with data-check-state="failed"', () => {
@@ -255,6 +257,29 @@ describe('ChecksTab', () => {
     const { container } = render(<ChecksTab checks={checks} />);
     const pills = container.querySelectorAll('[data-check-count]');
     expect(pills.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('renders a pinned "In progress" group above the rest when any check is running', () => {
+    const checks = [
+      makeCheck({ id: 1, name: 'shard-0', status: 'in_progress', conclusion: undefined }),
+      makeCheck({ id: 2, name: 'shard-1', status: 'completed', conclusion: 'success' }),
+    ];
+    render(<ChecksTab checks={checks} />);
+    const heading = screen.getByText(/in progress · /i);
+    expect(heading).toBeInTheDocument();
+    const pinned = heading.closest('[data-checks-section="pending"]');
+    expect(pinned).not.toBeNull();
+    const tab = pinned!.closest('[data-checks-tab]');
+    const sections = tab?.querySelectorAll('[data-checks-section]') ?? [];
+    expect(sections[0]).toBe(pinned);
+  });
+
+  it('omits the pinned group when nothing is running', () => {
+    const checks = [
+      makeCheck({ id: 1, name: 'shard-0', status: 'completed', conclusion: 'success' }),
+    ];
+    render(<ChecksTab checks={checks} />);
+    expect(screen.queryByText(/in progress · /i)).toBeNull();
   });
 
   it('renders Fix button on failed checks when pr is provided', () => {

@@ -226,6 +226,85 @@ function SummaryBar({ checks }: { checks: CheckRun[] }) {
   );
 }
 
+/* ── Check row ─────────────────────────────────────── */
+
+interface CheckRowProps {
+  run: CheckRun;
+  state: CheckState;
+  onFixClick?: (name: string) => void;
+}
+
+function CheckRow({ run, state, onFixClick }: CheckRowProps) {
+  const duration = formatDuration(run.startedAt, run.completedAt);
+
+  return (
+    <div
+      data-check-row=""
+      data-check-state={state}
+      role="button"
+      tabIndex={0}
+      onClick={() => openUrl(run.htmlUrl).catch(console.error)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') openUrl(run.htmlUrl).catch(console.error);
+      }}
+      className={clsx(
+        'flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors',
+        'hover:bg-[var(--color-surface-hover)]',
+        state === 'failed' &&
+          'bg-[color-mix(in_srgb,var(--color-status-red)_5%,transparent)]',
+      )}
+    >
+      <StatusSvg state={state} />
+      <span
+        className={clsx(
+          'flex-1 truncate text-xs',
+          state === 'failed'
+            ? 'text-[var(--color-status-red)]'
+            : 'text-[var(--color-text-primary)]',
+          state === 'skipped' && 'text-[var(--color-text-muted)]',
+        )}
+      >
+        {run.name}
+      </span>
+      {state === 'pending' && <Pill tone="warning">running</Pill>}
+      {duration && (
+        <span className="text-[10px] text-[var(--color-text-muted)]">
+          {duration}
+        </span>
+      )}
+      {state === 'failed' && onFixClick && (
+        <Button
+          variant="ghost"
+          size="sm"
+          data-check-action="fix"
+          onClick={(e) => {
+            e.stopPropagation();
+            onFixClick(run.name);
+          }}
+          leading={
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 1.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 1.5Z" />
+            </svg>
+          }
+        >
+          Fix
+        </Button>
+      )}
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      >
+        <path d="m6 4 4 4-4 4" />
+      </svg>
+    </div>
+  );
+}
+
 /* ── Main component ────────────────────────────────── */
 
 export function ChecksTab({ checks, pr }: ChecksTabProps) {
@@ -262,9 +341,7 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
     );
   }
 
-  const grouped = groupBySuite(checks);
-
-  // Sort: failed suites first, then pending, then passed, then skipped
+  const pendingRuns = checks.filter((c) => classifyCheck(c) === 'pending');
   const sortOrder: Record<CheckState, number> = {
     failed: 0,
     pending: 1,
@@ -272,6 +349,7 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
     cancelled: 3,
     skipped: 4,
   };
+  const grouped = groupBySuite(checks);
   const sortedEntries = [...grouped.entries()].sort(
     ([, a], [, b]) => sortOrder[suiteStatus(a)] - sortOrder[suiteStatus(b)],
   );
@@ -280,86 +358,38 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
     <div className="space-y-3 p-3" data-checks-tab="">
       <SummaryBar checks={checks} />
 
-      <div className="space-y-2">
+      {pendingRuns.length > 0 && (
+        <div data-checks-section="pending" className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex text-[var(--color-status-yellow)]">
+              <SpinnerIcon />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+              In progress · {pendingRuns.length}
+            </span>
+          </div>
+          <Card
+            padding="sm"
+            className="overflow-hidden border border-[var(--color-status-yellow)]"
+          >
+            {pendingRuns.map((run) => (
+              <CheckRow key={run.id} run={run} state={classifyCheck(run)} />
+            ))}
+          </Card>
+        </div>
+      )}
+
+      <div className="space-y-2" data-checks-section="all">
         {sortedEntries.map(([suiteId, runs]) => {
-          // Sort within suite: failed first
           const sortedRuns = [...runs].sort(
             (a, b) => sortOrder[classifyCheck(a)] - sortOrder[classifyCheck(b)],
           );
-
           return (
             <div key={suiteId} className="space-y-1">
               {sortedRuns.map((run) => {
                 const state = classifyCheck(run);
-                const duration = formatDuration(run.startedAt, run.completedAt);
-
-                return (
-                  <div
-                    key={run.id}
-                    data-check-row=""
-                    data-check-state={state}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openUrl(run.htmlUrl).catch(console.error)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') openUrl(run.htmlUrl).catch(console.error);
-                    }}
-                    className={clsx(
-                      'flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors',
-                      'hover:bg-[var(--color-surface-hover)]',
-                      state === 'failed' &&
-                        'bg-[color-mix(in_srgb,var(--color-status-red)_5%,transparent)]',
-                    )}
-                  >
-                    <StatusSvg state={state} />
-                    <span
-                      className={clsx(
-                        'flex-1 truncate text-xs',
-                        state === 'failed'
-                          ? 'text-[var(--color-status-red)]'
-                          : 'text-[var(--color-text-primary)]',
-                        state === 'skipped' && 'text-[var(--color-text-muted)]',
-                      )}
-                    >
-                      {run.name}
-                    </span>
-                    {state === 'pending' && <Pill tone="warning">running</Pill>}
-                    {duration && (
-                      <span className="text-[10px] text-[var(--color-text-muted)]">
-                        {duration}
-                      </span>
-                    )}
-                    {state === 'failed' && pr && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        data-check-action="fix"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFixCheck(run.name);
-                        }}
-                        leading={
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 1.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 1.5Z" />
-                          </svg>
-                        }
-                      >
-                        Fix
-                      </Button>
-                    )}
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    >
-                      <path d="m6 4 4 4-4 4" />
-                    </svg>
-                  </div>
-                );
+                const onFixClick = pr ? (name: string) => handleFixCheck(name) : undefined;
+                return <CheckRow key={run.id} run={run} state={state} onFixClick={onFixClick} />;
               })}
             </div>
           );
