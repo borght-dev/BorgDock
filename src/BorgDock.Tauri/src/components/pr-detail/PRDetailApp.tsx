@@ -39,7 +39,7 @@ export function PrDetailApp() {
     if (revealedRef.current) return;
     revealedRef.current = true;
     requestAnimationFrame(() => {
-      void invoke('window_ready').catch(() => {});
+      void invoke('window_ready')?.catch(() => {});
     });
   }, []);
 
