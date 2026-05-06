@@ -19,6 +19,7 @@ import { Button, Card, Pill } from '@/components/shared/primitives';
 import { DiffFileSection } from './diff/DiffFileSection';
 import { DiffFileTree } from './diff/DiffFileTree';
 import { DiffToolbar } from './diff/DiffToolbar';
+import { ReviewComposer } from './ReviewComposer';
 
 interface FilesTabProps {
   prNumber: number;
@@ -60,36 +61,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   const [commits, setCommits] = useState<PullRequestCommit[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
 
-  // Review composer — anchored at the bottom of the diff scroll, mirroring
-  // GitHub's "Files changed → Review changes" workflow.
-  const [reviewBody, setReviewBody] = useState('');
-  const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>(
-    'COMMENT',
-  );
-  const [reviewStatus, setReviewStatus] = useState('');
-  const handleSubmitReview = useCallback(async () => {
-    const client = getClient();
-    if (!client) return;
-    setReviewStatus('Submitting review...');
-    try {
-      await submitReview(
-        client,
-        repoOwner,
-        repoName,
-        prNumber,
-        reviewEvent,
-        reviewBody || undefined,
-      );
-      setReviewStatus('Review submitted!');
-      setReviewBody('');
-      // Review keeps the PR open — refresh immediately so the review-status
-      // pill on the header updates without waiting for the next poll.
-      void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
-    } catch (err) {
-      setReviewStatus(`Review failed: ${err}`);
-    }
-    setTimeout(() => setReviewStatus(''), 3000);
-  }, [repoOwner, repoName, prNumber, reviewEvent, reviewBody]);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   // Persisted preferences
   const [viewMode, setViewMode] = useState<DiffViewMode>(() => {
@@ -441,7 +413,43 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
         commits={commits}
         selectedCommit={selectedCommit}
         onCommitChange={setSelectedCommit}
+        onSubmitReview={() => setComposerOpen((o) => !o)}
       />
+
+      {composerOpen && (
+        <div className="border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-3">
+          <ReviewComposer
+            kind="review"
+            inline
+            onCancel={() => setComposerOpen(false)}
+            onSubmit={async (payload) => {
+              if (payload.kind !== 'review') return;
+              const eventMap: Record<string, 'APPROVE' | 'COMMENT' | 'REQUEST_CHANGES'> = {
+                approve: 'APPROVE',
+                comment: 'COMMENT',
+                request: 'REQUEST_CHANGES',
+              };
+              const event = eventMap[payload.decision];
+              const client = getClient();
+              if (!client || !event) return;
+              try {
+                await submitReview(
+                  client,
+                  repoOwner,
+                  repoName,
+                  prNumber,
+                  event,
+                  payload.body || undefined,
+                );
+                setComposerOpen(false);
+                void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
+              } catch (err) {
+                console.error('submitReview failed', err);
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* Large PR warning */}
       {files.length > 300 && (
@@ -504,43 +512,6 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
             );
           })}
 
-          {/* Submit Review — bottom anchor of the diff scroll, GitHub-style */}
-          <div className="border-t border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-4 space-y-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-              Submit Review
-            </div>
-            <textarea
-              value={reviewBody}
-              onChange={(e) => setReviewBody(e.target.value)}
-              placeholder="Review comment (optional for APPROVE)"
-              rows={3}
-              className="w-full resize-y rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-            />
-            <div className="flex items-center gap-2">
-              <select
-                value={reviewEvent}
-                onChange={(e) => setReviewEvent(e.target.value as typeof reviewEvent)}
-                className="rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-              >
-                <option value="COMMENT">Comment</option>
-                <option value="APPROVE">Approve</option>
-                <option value="REQUEST_CHANGES">Request Changes</option>
-              </select>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSubmitReview}
-                data-files-action="submit-review"
-              >
-                Submit
-              </Button>
-              {reviewStatus && (
-                <span className="text-[11px] text-[var(--color-text-secondary)]">
-                  {reviewStatus}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

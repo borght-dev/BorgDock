@@ -53,7 +53,31 @@ vi.mock('../diff/DiffFileTree', () => ({
 }));
 
 vi.mock('../diff/DiffToolbar', () => ({
-  DiffToolbar: () => <div data-testid="diff-toolbar">Toolbar</div>,
+  DiffToolbar: ({ onSubmitReview }: { onSubmitReview?: () => void }) => (
+    <div data-testid="diff-toolbar">
+      Toolbar
+      {onSubmitReview && (
+        <button type="button" onClick={onSubmitReview}>Submit review</button>
+      )}
+    </div>
+  ),
+}));
+
+vi.mock('../ReviewComposer', () => ({
+  ReviewComposer: ({
+    onSubmit,
+    onCancel,
+  }: {
+    onSubmit: (payload: { kind: string; decision: string; body: string }) => void;
+    onCancel: () => void;
+  }) => (
+    <div data-testid="review-composer">
+      <button type="button" onClick={() => onSubmit({ kind: 'review', decision: 'approve', body: 'looks good' })}>
+        Submit approve
+      </button>
+      <button type="button" onClick={onCancel}>Cancel</button>
+    </div>
+  ),
 }));
 
 import { FilesTab } from '../FilesTab';
@@ -352,10 +376,11 @@ describe('FilesTab', () => {
     expect(localStorage.getItem('borgdock:diff-view-mode')).toBe('unified');
   });
 
-  // ---- Submit Review composer ----
+  // ---- Submit Review composer (toolbar-anchored) ----
 
-  it('renders Submit Review composer at the bottom of the diff scroll', async () => {
+  it('toolbar Submit review button toggles the composer panel', async () => {
     mockGetPRFiles.mockResolvedValue([makeFile()]);
+    const { fireEvent } = await import('@testing-library/react');
     render(
       <FilesTab
         prNumber={1}
@@ -364,14 +389,21 @@ describe('FilesTab', () => {
         prUpdatedAt="2024-01-01T00:00:00Z"
       />,
     );
-    await waitFor(() => {
-      expect(screen.getByText('Submit Review')).toBeTruthy();
-      expect(screen.getByDisplayValue('Comment')).toBeTruthy();
-      expect(screen.getByText('Submit')).toBeTruthy();
-    });
+    await waitFor(() => expect(screen.getByTestId('diff-toolbar')).toBeTruthy());
+
+    // Composer hidden initially
+    expect(screen.queryByTestId('review-composer')).toBeNull();
+
+    // Click toolbar button → composer opens
+    fireEvent.click(screen.getByRole('button', { name: /submit review/i }));
+    expect(screen.getByTestId('review-composer')).toBeTruthy();
+
+    // Click again → composer closes (toggle)
+    fireEvent.click(screen.getByRole('button', { name: /submit review/i }));
+    expect(screen.queryByTestId('review-composer')).toBeNull();
   });
 
-  it('submits review with selected event and body', async () => {
+  it('submits review via composer and calls submitReview mutation', async () => {
     mockGetPRFiles.mockResolvedValue([makeFile()]);
     mockSubmitReview.mockResolvedValue(undefined);
     const { fireEvent } = await import('@testing-library/react');
@@ -383,13 +415,14 @@ describe('FilesTab', () => {
         prUpdatedAt="2024-01-01T00:00:00Z"
       />,
     );
-    await waitFor(() => screen.getByText('Submit Review'));
+    await waitFor(() => expect(screen.getByTestId('diff-toolbar')).toBeTruthy());
 
-    fireEvent.change(screen.getByPlaceholderText('Review comment (optional for APPROVE)'), {
-      target: { value: 'looks good' },
-    });
-    fireEvent.change(screen.getByDisplayValue('Comment'), { target: { value: 'APPROVE' } });
-    fireEvent.click(screen.getByText('Submit'));
+    // Open composer
+    fireEvent.click(screen.getByRole('button', { name: /submit review/i }));
+    await waitFor(() => expect(screen.getByTestId('review-composer')).toBeTruthy());
+
+    // The mock ReviewComposer submits approve + body "looks good"
+    fireEvent.click(screen.getByRole('button', { name: /submit approve/i }));
 
     await waitFor(() => {
       expect(mockSubmitReview).toHaveBeenCalledWith(

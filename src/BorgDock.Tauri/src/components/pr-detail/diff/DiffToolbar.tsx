@@ -1,5 +1,5 @@
 import type { DiffViewMode, FileStatusFilter, PullRequestCommit } from '@/types';
-import { Chip, IconButton } from '@/components/shared/primitives';
+import { Button, Chip, IconButton } from '@/components/shared/primitives';
 
 interface DiffToolbarProps {
   viewMode: DiffViewMode;
@@ -16,6 +16,7 @@ interface DiffToolbarProps {
   commits: PullRequestCommit[];
   selectedCommit: string | null;
   onCommitChange: (sha: string | null) => void;
+  onSubmitReview?: () => void;
 }
 
 const STATUS_FILTERS = ['all', 'added', 'modified', 'deleted'] as const;
@@ -88,6 +89,7 @@ export function DiffToolbar({
   commits,
   selectedCommit,
   onCommitChange,
+  onSubmitReview,
 }: DiffToolbarProps) {
   return (
     <div
@@ -162,6 +164,15 @@ export function DiffToolbar({
             </option>
           ))}
         </select>
+      )}
+
+      {onSubmitReview && (
+        <>
+          <span className="mx-1 inline-block h-[18px] w-px bg-[var(--color-subtle-border)]" />
+          <Button variant="primary" size="sm" onClick={onSubmitReview} data-files-action="submit-review">
+            Submit review
+          </Button>
+        </>
       )}
     </div>
   );
