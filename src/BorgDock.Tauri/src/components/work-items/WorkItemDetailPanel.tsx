@@ -126,6 +126,11 @@ export function WorkItemDetailPanel(props: Props) {
       });
     },
   });
+  // useAutoSave returns a fresh object literal each render; the inner
+  // members (flush/reset) are useCallback-stable. Bind them by name so
+  // dep arrays don't see spurious changes that infinite-loop the sync
+  // effect below.
+  const { flush: flushAutoSave, reset: resetAutoSave } = auto;
 
   // Sync local state when the item identity changes (next/prev nav reload).
   useEffect(() => {
@@ -137,18 +142,26 @@ export function WorkItemDetailPanel(props: Props) {
       tags: item.tags,
     };
     setValues(next);
-    auto.reset(next);
-  }, [item.id, item.title, item.state, item.assignedTo, item.priority, item.tags, auto]);
+    resetAutoSave(next);
+  }, [
+    item.id,
+    item.title,
+    item.state,
+    item.assignedTo,
+    item.priority,
+    item.tags,
+    resetAutoSave,
+  ]);
 
   const handleChange = useCallback(
     (patch: TitleBlockChange) => {
       setValues((prev) => {
         const next = { ...prev, ...patch };
-        auto.flush(next);
+        flushAutoSave(next);
         return next;
       });
     },
-    [auto],
+    [flushAutoSave],
   );
 
   const linkedPRs = useMemo(() => item.linkedPRs ?? [], [item.linkedPRs]);
