@@ -69,6 +69,7 @@ export function DiffLineRow({
   return (
     <tr
       data-line-kind={lineKind}
+      data-line-no={line.newLineNumber ?? line.oldLineNumber ?? ''}
       onClick={hasThread ? onToggleThread : undefined}
       style={{
         backgroundColor: highlight ? 'var(--color-warning-badge-bg)' : bgColor,

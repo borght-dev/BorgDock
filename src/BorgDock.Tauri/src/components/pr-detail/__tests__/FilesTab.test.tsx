@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import type { PullRequestFileChange } from '@/types';
 
 // Mock IntersectionObserver for jsdom
@@ -14,6 +15,7 @@ beforeEach(() => {
 const mockGetClient = vi.fn();
 const mockGetPRFiles = vi.fn();
 const mockGetPRCommits = vi.fn();
+const mockGetReviewThreads = vi.fn();
 
 vi.mock('@/services/github/singleton', () => ({
   getClient: () => mockGetClient(),
@@ -23,6 +25,7 @@ vi.mock('@/services/github', () => ({
   getPRFiles: (...args: unknown[]) => mockGetPRFiles(...args),
   getPRCommits: (...args: unknown[]) => mockGetPRCommits(...args),
   getCommitFiles: vi.fn(),
+  getReviewThreads: (...args: unknown[]) => mockGetReviewThreads(...args),
 }));
 
 const mockSubmitReview = vi.fn();
@@ -76,6 +79,7 @@ describe('FilesTab', () => {
     vi.clearAllMocks();
     mockGetClient.mockReturnValue({});
     mockGetPRCommits.mockResolvedValue([]);
+    mockGetReviewThreads.mockResolvedValue([]);
   });
 
   it('shows loading skeleton initially', () => {
@@ -396,6 +400,36 @@ describe('FilesTab', () => {
         'APPROVE',
         'looks good',
       );
+    });
+  });
+  it('consumes a jump-store target: renders without crash and clears the target', async () => {
+    mockGetPRFiles.mockResolvedValue([makeFile({ filename: 'src/foo.ts' })]);
+
+    // Stage a jump target before render
+    usePrDetailJumpStore.getState().setJumpTarget({
+      filePath: 'src/foo.ts',
+      line: 12,
+      threadId: 't1',
+      ts: Date.now(),
+    });
+
+    render(
+      <FilesTab
+        prNumber={1}
+        repoOwner="owner"
+        repoName="repo"
+        prUpdatedAt="2024-01-01T00:00:00Z"
+      />,
+    );
+
+    // Component renders the diff section for the file
+    await waitFor(() => {
+      expect(screen.getByTestId('diff-section-src/foo.ts')).toBeTruthy();
+    });
+
+    // Jump target is cleared after consumption
+    await waitFor(() => {
+      expect(usePrDetailJumpStore.getState().target).toBeNull();
     });
   });
 });

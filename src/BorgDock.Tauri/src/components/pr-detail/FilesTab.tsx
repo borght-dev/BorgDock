@@ -2,9 +2,10 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
-import { getCommitFiles, getPRCommits, getPRFiles } from '@/services/github';
+import { getCommitFiles, getPRCommits, getPRFiles, getReviewThreads } from '@/services/github';
 import { submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { usePrStore } from '@/stores/pr-store';
 import type {
   DiffFile,
@@ -12,6 +13,7 @@ import type {
   FileStatusFilter,
   PullRequestCommit,
   PullRequestFileChange,
+  ReviewThread,
 } from '@/types';
 import { Button, Card, Pill } from '@/components/shared/primitives';
 import { DiffFileSection } from './diff/DiffFileSection';
@@ -110,6 +112,12 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [expandKey, setExpandKey] = useState(0);
 
+  const [threads, setThreads] = useState<ReviewThread[]>([]);
+  const [openThreadIds, setOpenThreadIds] = useState<Set<string>>(new Set());
+  const [highlightLine, setHighlightLine] = useState<{ filePath: string; line: number } | null>(
+    null,
+  );
+
   const [retryKey, setRetryKey] = useState(0);
   const diffPaneRef = useRef<HTMLDivElement>(null);
   const fileSectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -205,6 +213,53 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   // Resolve which files to display
   const files = selectedCommit ? (commitFiles ?? []) : (cachedFiles ?? []);
   const loading = selectedCommit ? commitFilesLoading : prFilesLoading;
+
+  // Fetch review threads after files load
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const client = getClient();
+      if (!client) return;
+      const patches = new Map<string, string | undefined>();
+      for (const f of files) patches.set(f.filename, f.patch);
+      try {
+        const t = await getReviewThreads(client, repoOwner, repoName, prNumber, patches);
+        if (!cancelled) setThreads(t);
+      } catch {
+        // Threads are optional — ignore failures.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [repoOwner, repoName, prNumber, files]);
+
+  // Subscribe to jump store
+  const jumpTarget = usePrDetailJumpStore((s) => s.target);
+  useEffect(() => {
+    if (!jumpTarget) return;
+    setActiveFile(jumpTarget.filePath);
+    setHighlightLine({ filePath: jumpTarget.filePath, line: jumpTarget.line });
+    if (jumpTarget.threadId) {
+      const tid = jumpTarget.threadId;
+      setOpenThreadIds((prev) => {
+        const next = new Set(prev);
+        next.add(tid);
+        return next;
+      });
+    }
+    const fileEl = fileSectionRefs.current.get(jumpTarget.filePath);
+    if (fileEl) {
+      fileEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      requestAnimationFrame(() => {
+        const lineEl = fileEl.querySelector<HTMLElement>(
+          `[data-line-kind][data-line-no="${jumpTarget.line}"]`,
+        );
+        lineEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+    usePrDetailJumpStore.getState().clearJumpTarget();
+  }, [jumpTarget]);
 
   // Filtered files
   const filteredFiles = useMemo(() => {
@@ -416,20 +471,38 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
 
         {/* Diff pane */}
         <div ref={diffPaneRef} className="flex-1 overflow-y-auto min-w-0">
-          {filteredFiles.map((file) => (
-            <DiffFileSection
-              key={`${file.filename}-${expandKey}`}
-              ref={(el) => {
-                if (el) fileSectionRefs.current.set(file.filename, el);
-                else fileSectionRefs.current.delete(file.filename);
-              }}
-              file={file}
-              viewMode={viewMode}
-              defaultCollapsed={!allExpanded}
-              onCopyPath={handleCopyPath}
-              onOpenInGitHub={htmlUrl ? handleOpenInGitHub : undefined}
-            />
-          ))}
+          {filteredFiles.map((file) => {
+            const fileThreads = threads.filter((t) => t.filePath === file.filename);
+            const fileHighlightLine =
+              highlightLine && highlightLine.filePath === file.filename
+                ? highlightLine.line
+                : null;
+            return (
+              <DiffFileSection
+                key={`${file.filename}-${expandKey}`}
+                ref={(el) => {
+                  if (el) fileSectionRefs.current.set(file.filename, el);
+                  else fileSectionRefs.current.delete(file.filename);
+                }}
+                file={file}
+                viewMode={viewMode}
+                defaultCollapsed={!allExpanded}
+                onCopyPath={handleCopyPath}
+                onOpenInGitHub={htmlUrl ? handleOpenInGitHub : undefined}
+                threads={fileThreads}
+                openThreadIds={openThreadIds}
+                onToggleThread={(id) => {
+                  setOpenThreadIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  });
+                }}
+                highlightLine={fileHighlightLine}
+              />
+            );
+          })}
 
           {/* Submit Review — bottom anchor of the diff scroll, GitHub-style */}
           <div className="border-t border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-4 space-y-2">
