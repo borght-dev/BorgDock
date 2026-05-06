@@ -1,115 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
-
-/// Tracks whether the main sidebar window is currently shown.
-///
-/// We can't rely on `WebviewWindow::is_visible()` on Windows: for transparent
-/// always-on-top WebView2 windows it returns `false` even when the window is
-/// actually on screen. Every code path that shows or hides the main window
-/// must update this flag so the hotkey and tray can decide which direction
-/// to toggle.
-static SIDEBAR_VISIBLE: AtomicBool = AtomicBool::new(true);
-
-/// Returns whether the sidebar is currently shown (according to our tracked
-/// state).
-pub(crate) fn sidebar_visible() -> bool {
-    SIDEBAR_VISIBLE.load(Ordering::SeqCst)
-}
-
-/// Move the main window to a 1×1 off-screen position. Used so its React tree
-/// keeps running (WebView2 throttles JS in hidden windows on Windows) without
-/// being visible to the user. Called at startup and whenever the user hides
-/// the sidebar.
-pub(crate) fn park_main_offscreen(app: &tauri::AppHandle) -> Result<(), String> {
-    let win = get_main_window(app)?;
-    let scale = win.scale_factor().unwrap_or(1.0);
-    // Prefer the primary monitor so the parked window's "home" stays anchored
-    // there — otherwise the next show_main_window picks whichever monitor the
-    // OS originally spawned the window on, which on Windows is often the
-    // secondary display.
-    let mon_x = win
-        .primary_monitor()
-        .ok()
-        .flatten()
-        .or_else(|| win.current_monitor().ok().flatten())
-        .map(|m| m.position().x)
-        .unwrap_or(0);
-    let off_x = mon_x - (32000.0 * scale) as i32;
-    let off_y = -(32000.0 * scale) as i32;
-    win.set_position(tauri::Position::Physical(PhysicalPosition::new(off_x, off_y)))
-        .map_err(|e| e.to_string())?;
-    win.set_size(tauri::Size::Physical(PhysicalSize::new(1, 1)))
-        .map_err(|e| e.to_string())?;
-    win.show().map_err(|e| e.to_string())?;
-    SIDEBAR_VISIBLE.store(false, Ordering::SeqCst);
-    Ok(())
-}
-
-/// Show the main sidebar window, focus it, and force a repaint.
-///
-/// Windows + transparent + always-on-top WebView2 windows need aggressive
-/// prodding after `.show()` to actually render — size/position must be
-/// reapplied and the Z-order toggled. This helper exists so every call site
-/// (hotkey, tray, toggle command) goes through the same sequence.
-pub(crate) fn show_main_window(app: &tauri::AppHandle) -> Result<(), String> {
-    log::info!("show_main_window: begin");
-    let win = get_main_window(app)?;
-
-    // The window may be parked off-screen at 1×1 (from startup or a hide).
-    // Re-apply the configured sidebar edge/width so it docks correctly before
-    // we show it. Load settings synchronously — this is a fast file read.
-    match crate::settings::load_settings_internal() {
-        Ok(settings) => {
-            let edge = &settings.ui.sidebar_edge;
-            let width = settings.ui.sidebar_width_px;
-            if let Err(e) = apply_sidebar_position(&win, edge, width) {
-                log::warn!("show_main_window: apply_sidebar_position failed: {e}");
-            }
-        }
-        Err(e) => {
-            log::warn!("show_main_window: could not load settings for position: {e}");
-        }
-    }
-
-    // If minimized, unminimize first — `show()` alone won't restore it.
-    let _ = win.unminimize();
-
-    win.show().map_err(|e| {
-        log::error!("show_main_window: show() failed: {e}");
-        e.to_string()
-    })?;
-
-    // Toggle always-on-top to force a Z-order refresh. Transparent WebView2
-    // windows sometimes stay behind other windows after a hide→show cycle.
-    let _ = win.set_always_on_top(false);
-    let _ = win.set_always_on_top(true);
-
-    // Reapply position and size to force the compositor to repaint.
-    // A single set_size is sometimes not enough — resize by 1px and back so
-    // the WM_SIZE message definitely fires.
-    if let Ok(size) = win.outer_size() {
-        if size.width > 1 {
-            let shrunk = PhysicalSize::new(size.width - 1, size.height);
-            let _ = win.set_size(tauri::Size::Physical(shrunk));
-        }
-        let _ = win.set_size(tauri::Size::Physical(size));
-    }
-
-    if let Err(e) = win.set_focus() {
-        log::warn!("show_main_window: set_focus() failed: {e}");
-    }
-
-    SIDEBAR_VISIBLE.store(true, Ordering::SeqCst);
-    log::info!("show_main_window: done");
-    Ok(())
-}
-
-/// Hide the main sidebar window by parking it off-screen. Idempotent.
-/// Parking (rather than calling `win.hide()`) keeps the React tree alive and
-/// prevents WebView2 from throttling the JS polling loop on Windows.
-pub(crate) fn hide_main_window(app: &tauri::AppHandle) -> Result<(), String> {
-    park_main_offscreen(app)
-}
 
 // ---------------------------------------------------------------------------
 // Flyout window (replaces the old floating badge)
@@ -259,23 +148,6 @@ fn force_repaint(win: &WebviewWindow) {
 // Existing commands
 // ---------------------------------------------------------------------------
 
-#[tauri::command]
-pub fn position_sidebar(app: tauri::AppHandle, edge: String, width: u32) -> Result<(), String> {
-    let win = get_main_window(&app)?;
-    apply_sidebar_position(&win, &edge, width)
-}
-
-#[tauri::command]
-pub fn toggle_sidebar(app: tauri::AppHandle) -> Result<bool, String> {
-    show_main_window(&app)?;
-    Ok(true)
-}
-
-#[tauri::command]
-pub fn hide_sidebar(app: tauri::AppHandle) -> Result<(), String> {
-    hide_main_window(&app)
-}
-
 /// Frontend handshake: any pop-out window's React app calls this once its DOM
 /// has rendered, to reveal the window without flashing the unstyled default
 /// chrome at the wrong size/position. The window-creation paths build with
@@ -342,10 +214,7 @@ pub async fn resize_flyout(
 }
 
 /// Resize the main window into a centered ~520×640 modal and show it. Used
-/// on first run to host the setup wizard. The main window is normally parked
-/// off-screen at 1×1 (see park_main_offscreen); this command reshapes it
-/// into a centered modal for the duration of setup, then hide_sidebar can
-/// park it again once setup completes.
+/// on first run to host the setup wizard.
 #[tauri::command]
 pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
@@ -369,7 +238,6 @@ pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
             }
             win.show().map_err(|e| e.to_string())?;
             let _ = win.set_focus();
-            SIDEBAR_VISIBLE.store(true, Ordering::SeqCst);
             Ok(())
         })();
         let _ = tx.send(result);
@@ -663,50 +531,4 @@ pub(crate) fn show_or_focus_main_sync(app: &tauri::AppHandle) {
 fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
     app.get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())
-}
-
-fn apply_sidebar_position(win: &WebviewWindow, edge: &str, width: u32) -> Result<(), String> {
-    // The math below treats `physical_width` as both the inner and outer
-    // width. That requires the main window in tauri.conf.json to be
-    // `decorations: false`, `resizable: false`, AND `shadow: false`. With
-    // shadow on, tao's set_inner_size takes an "undecorated_with_shadows"
-    // path (tao .../windows/window.rs `undecorated_with_shadows`) that
-    // expands the outer rect by `window_rect - client_rect` to preserve the
-    // requested inner size. That makes outer != inner, and a docked sidebar
-    // ends up a handful of pixels off the screen edge.
-    //
-    // Always dock to the primary monitor so the sidebar lands on the user's
-    // main display regardless of where Tauri/WebView2 happened to spawn the
-    // window initially. We fall back to current_monitor only if the platform
-    // can't report a primary (rare — typically headless test environments).
-    let monitor = win
-        .primary_monitor()
-        .map_err(|e| e.to_string())?
-        .or_else(|| win.current_monitor().ok().flatten())
-        .ok_or("No monitor found")?;
-
-    let screen_size = monitor.size();
-    let screen_pos = monitor.position();
-    let scale = win.scale_factor().unwrap_or(1.0);
-
-    let physical_width = (width as f64 * scale) as u32;
-    let height = screen_size.height;
-
-    let x = match edge {
-        "left" => screen_pos.x,
-        _ => screen_pos.x + (screen_size.width as i32 - physical_width as i32),
-    };
-
-    win.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
-        x,
-        screen_pos.y,
-    )))
-    .map_err(|e| e.to_string())?;
-    win.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-        physical_width,
-        height,
-    )))
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
 }
