@@ -4032,3 +4032,49 @@ body.sql-resizing-v .sql-resize-handle {
     display: none;
   }
 }
+
+/* ── PrToolbar (per-section filter pills + search) ─────────── */
+@layer components {
+  .bd-pr-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    background: var(--color-surface);
+  }
+  .bd-pr-toolbar__pills {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .bd-pr-toolbar__search {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 280px;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--color-input-border);
+    background: var(--color-input-bg);
+    border-radius: 6px;
+    color: var(--color-text-ghost);
+  }
+  .bd-pr-toolbar__search:focus-within {
+    border-color: var(--color-accent);
+  }
+  .bd-pr-toolbar__search input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: none;
+    font-size: 11px;
+    color: var(--color-text-primary);
+  }
+  .bd-pr-toolbar__search input::placeholder {
+    color: var(--color-text-ghost);
+  }
+  .bd-pr-toolbar__search-icon {
+    flex-shrink: 0;
+  }
+}
