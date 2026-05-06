@@ -131,12 +131,9 @@ pub fn bootstrap_from_jsonl(
     retention: Duration,
 ) -> usize {
     use crate::agent_overview::cwd_resolver::read_cwd_from_jsonl;
-    use serde::Deserialize as _;
 
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct LineProbe {
-        #[serde(default)]
-        cwd: Option<String>,
         #[serde(rename = "gitBranch", default)]
         git_branch: Option<String>,
     }
