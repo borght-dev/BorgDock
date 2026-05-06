@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
+import type { CheckRun } from '@/types/check-run';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -34,10 +35,92 @@ vi.mock('../CommentsTab', () => ({
   CommentsTab: () => <div data-testid="comments-tab">Comments</div>,
 }));
 
+// Mock ActionBar, ActivityStrip, CheckoutPanel so PRDetailPanel tests stay focused
+vi.mock('../ActionBar', () => ({
+  ActionBar: () => <div data-action-bar />,
+}));
+vi.mock('../ActivityStrip', () => ({
+  ActivityStrip: () => <div data-activity-strip />,
+}));
+vi.mock('../CheckoutPanel', () => ({
+  CheckoutPanel: () => <div data-testid="checkout-panel" />,
+}));
+vi.mock('@/components/shared/ConfirmDialog', () => ({
+  ConfirmDialog: () => null,
+}));
+
+// Mock usePrActions — return a stable no-op actions object
+vi.mock('../usePrActions', () => ({
+  usePrActions: () => ({
+    onMerge: vi.fn(),
+    onBypassConfirm: vi.fn(),
+    onBypassExecute: vi.fn(),
+    onCloseConfirm: vi.fn(),
+    onCloseExecute: vi.fn(),
+    onToggleDraft: vi.fn(),
+    onResolveConflicts: vi.fn(),
+    onOpenInBrowser: vi.fn(),
+    onCopyBranch: vi.fn(),
+    onCheckoutToggle: vi.fn(),
+    actionStatus: '',
+    isReady: true,
+    checkoutOpen: false,
+    setCheckoutOpen: vi.fn(),
+    confirmClose: false,
+    setConfirmClose: vi.fn(),
+    confirmBypass: false,
+    setConfirmBypass: vi.fn(),
+    repoPath: '',
+    worktreeSubfolder: '.worktrees',
+    favoritePaths: undefined,
+    favoritesOnlyDefault: false,
+    windowsTerminalProfile: undefined,
+  }),
+}));
+
 // Import after mocks
 import { PrDetailPanel } from '../PRDetailPanel';
 
-function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
+const stubCheck: CheckRun = {
+  id: 1,
+  name: 'ci',
+  status: 'completed',
+  conclusion: 'success',
+  htmlUrl: '',
+  checkSuiteId: 1,
+};
+
+interface FakePrOptions {
+  pendingCheckNames?: string[];
+  passedCount?: number;
+  failedCheckNames?: string[];
+  skippedCount?: number;
+}
+
+function makePr(overrides: Partial<PullRequestWithChecks> & FakePrOptions = {}): PullRequestWithChecks {
+  const {
+    pendingCheckNames = [],
+    passedCount = 0,
+    failedCheckNames = [],
+    skippedCount = 0,
+    ...rest
+  } = overrides;
+
+  // Build a checks array big enough to match the totals.
+  // passedCount + pendingCheckNames.length + failedCheckNames.length checks (all stubs).
+  const totalRaw = passedCount + pendingCheckNames.length + failedCheckNames.length;
+  const checks: CheckRun[] = Array.from({ length: totalRaw }, (_, i) => {
+    let name: string;
+    if (i < passedCount) {
+      name = `passed-${i}`;
+    } else if (i < passedCount + pendingCheckNames.length) {
+      name = pendingCheckNames[i - passedCount] ?? `pending-${i}`;
+    } else {
+      name = failedCheckNames[i - passedCount - pendingCheckNames.length] ?? `failed-${i}`;
+    }
+    return { ...stubCheck, id: i + 1, name };
+  });
+
   return {
     pullRequest: {
       number: 42,
@@ -63,14 +146,15 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       changedFiles: 3,
       commitCount: 1,
       requestedReviewers: [],
+      ...rest.pullRequest,
     },
-    checks: [],
     overallStatus: 'green',
-    failedCheckNames: [],
-    pendingCheckNames: [],
-    passedCount: 0,
-    skippedCount: 0,
-    ...overrides,
+    ...rest,
+    checks: rest.checks ?? checks,
+    failedCheckNames,
+    pendingCheckNames,
+    passedCount,
+    skippedCount,
   };
 }
 
@@ -233,7 +317,7 @@ describe('PrDetailPanel', () => {
     it('suppresses the passed-count pill in terminal state', () => {
       const merged = makePr({
         pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' },
-        checks: [{ id: 1, name: 'ci', status: 'completed', conclusion: 'success' }] as never,
+        checks: [{ id: 1, name: 'ci', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 }],
         passedCount: 1,
       });
       render(<PrDetailPanel pr={merged} />);
@@ -244,5 +328,34 @@ describe('PrDetailPanel', () => {
       render(<PrDetailPanel pr={makePr()} />);
       expect(screen.getByText('Mergeable')).toBeTruthy();
     });
+  });
+
+  it('shows a yellow "N running" pill in the header when checks are pending', () => {
+    render(<PrDetailPanel pr={makePr({ pendingCheckNames: ['shard-0', 'shard-1'] })} />);
+    expect(screen.getByText(/2 running/i)).toBeInTheDocument();
+  });
+
+  it('renders an ActionBar when the PR is open', () => {
+    render(<PrDetailPanel pr={makePr()} />);
+    expect(document.querySelector('[data-action-bar]')).not.toBeNull();
+  });
+
+  it('renders an ActivityStrip when there are checks', () => {
+    render(<PrDetailPanel pr={makePr({ pendingCheckNames: ['x'], passedCount: 0 })} />);
+    expect(document.querySelector('[data-activity-strip]')).not.toBeNull();
+  });
+
+  it('Checks tab badge uses passed/total format', () => {
+    render(
+      <PrDetailPanel
+        pr={makePr({
+          passedCount: 13,
+          pendingCheckNames: ['a', 'b'],
+        })}
+      />,
+    );
+    const badge = screen.getByRole('tab', { name: /checks/i }).querySelector('.bd-tab__count');
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent).toBe('13/15');
   });
 });

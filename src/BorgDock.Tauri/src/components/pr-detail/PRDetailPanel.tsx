@@ -2,18 +2,24 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import { WindowControls } from '@/components/shared/chrome';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
 import type { TabDef } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import { openPrDetail } from '@/services/windows';
 import { useUiStore } from '@/stores/ui-store';
+import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import type { PullRequestWithChecks } from '@/types';
+import { ActionBar } from './ActionBar';
+import { ActivityStrip } from './ActivityStrip';
+import { CheckoutPanel } from './CheckoutPanel';
 import { ChecksTab } from './ChecksTab';
 import { CommentsTab } from './CommentsTab';
 import { CommitsTab } from './CommitsTab';
 import { FilesTab } from './FilesTab';
 import { OverviewTab } from './OverviewTab';
 import { ReviewsTab } from './ReviewsTab';
+import { usePrActions } from './usePrActions';
 
 const log = createLogger('PrDetailPanel');
 
@@ -122,6 +128,14 @@ const ArrowRightIcon = () => (
   >
     <path d="M3 8h10" />
     <path d="m9 4 4 4-4 4" />
+  </svg>
+);
+
+const HeaderSpinnerIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="animate-spin"
+       aria-hidden="true">
+    <circle cx="8" cy="8" r="6" stroke="currentColor" opacity="0.3" strokeWidth="1.6" />
+    <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 
@@ -240,6 +254,16 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
     }
   }, [pr.pullRequest.htmlUrl]);
 
+  const actions = usePrActions(pr);
+
+  // Cross-tab deep-link bus — switch to Files when a jump target is set.
+  const jumpTarget = usePrDetailJumpStore((s) => s.target);
+  useEffect(() => {
+    if (jumpTarget && activeTab !== 'Files') {
+      setActiveTab('Files');
+    }
+  }, [jumpTarget, activeTab]);
+
   const p = pr.pullRequest;
   const isMerged = Boolean(p.mergedAt);
   const isTerminal = isMerged || p.state === 'closed';
@@ -252,7 +276,12 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
     { id: 'Overview', label: 'Overview' },
     { id: 'Commits', label: 'Commits', count: p.commitCount },
     { id: 'Files', label: 'Files', count: p.changedFiles },
-    { id: 'Checks', label: 'Checks', count: pr.checks.length },
+    {
+      id: 'Checks',
+      label: 'Checks',
+      count: `${pr.passedCount}/${totalChecks}`,
+      indicator: pr.pendingCheckNames.length > 0 ? <HeaderSpinnerIcon /> : undefined,
+    },
     { id: 'Reviews', label: 'Reviews' },
     { id: 'Comments', label: 'Comments' },
   ];
@@ -336,6 +365,11 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
                   {passedCount} passed
                 </Pill>
               )}
+              {!isTerminal && pr.pendingCheckNames.length > 0 && (
+                <Pill tone="warning" icon={<HeaderSpinnerIcon />}>
+                  {pr.pendingCheckNames.length} running
+                </Pill>
+              )}
               {p.isDraft && <Pill tone="draft">Draft</Pill>}
               {!isTerminal && reviewLabel && <Pill tone="neutral">{reviewLabel}</Pill>}
             </div>
@@ -393,6 +427,27 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
           </div>
         </div>
       </div>
+
+      {/* Action bar — sticky, all PR actions */}
+      <ActionBar
+        actions={actions}
+        prState={p.state}
+        isDraft={p.isDraft}
+        mergeable={p.mergeable}
+      />
+
+      {/* Activity strip — persistent checks summary, click-to-jump */}
+      {pr.checks.length > 0 && (
+        <div className="border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-2.5">
+          <ActivityStrip
+            passed={pr.passedCount}
+            running={pr.pendingCheckNames.length}
+            failing={pr.failedCheckNames.length}
+            total={totalChecks}
+            onJumpToChecks={() => setActiveTab('Checks')}
+          />
+        </div>
+      )}
 
       {/* Tab bar — sits on the same surface card as the header */}
       <div className="bg-[var(--color-surface)] border-b border-[var(--color-subtle-border)] px-[22px]">
@@ -455,6 +510,50 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
           </div>
         )}
       </div>
+
+      {actions.checkoutOpen && (
+        <CheckoutPanel
+          branchName={p.headRef}
+          repoBasePath={actions.repoPath}
+          worktreeSubfolder={actions.worktreeSubfolder}
+          favoritePaths={actions.favoritePaths}
+          favoritesOnlyDefault={actions.favoritesOnlyDefault}
+          windowsTerminalProfile={actions.windowsTerminalProfile}
+          onDismiss={() => actions.setCheckoutOpen(false)}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={actions.confirmClose}
+        title="Close pull request?"
+        message={`This will close PR #${p.number} without merging. You can reopen it later.`}
+        confirmLabel="Close PR"
+        variant="danger"
+        onConfirm={actions.onCloseExecute}
+        onCancel={() => actions.setConfirmClose(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={actions.confirmBypass}
+        title="Bypass merge protections?"
+        message={`This will merge PR #${p.number} bypassing branch protection rules. This action cannot be undone.`}
+        confirmLabel="Bypass Merge"
+        variant="danger"
+        onConfirm={actions.onBypassExecute}
+        onCancel={() => actions.setConfirmBypass(false)}
+      />
+
+      {actions.actionStatus && (
+        <div
+          data-action-status
+          className="absolute bottom-4 right-4 rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-3 py-2 text-xs text-[var(--color-text-secondary)] shadow-md"
+        >
+          {actions.actionStatus.includes('...') && (
+            <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          )}
+          {actions.actionStatus}
+        </div>
+      )}
     </div>
   );
 }
