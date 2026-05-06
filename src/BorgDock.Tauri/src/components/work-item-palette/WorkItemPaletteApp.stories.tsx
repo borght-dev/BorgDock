@@ -239,3 +239,77 @@ export const SearchOneResult: Story = story(
     },
   },
 );
+
+// --- Search-content axis (3)
+
+export const SearchByIdPrefix: Story = story(
+  { scenario: fullBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, '12');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          // searchPoolMixed has ids 12, 120, 124 starting with "12"
+          if (!text.includes('3 results')) {
+            throw new Error(`expected 3 results, saw: ${text.slice(0, 200)}`);
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const SearchByTextTitle: Story = story(
+  { scenario: fullBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'auth');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          // 3 items in searchPoolMixed have "auth" in their title
+          if (!text.includes('3 results')) {
+            throw new Error(`expected 3 results, saw: ${text.slice(0, 200)}`);
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const SearchByTextAssignee: Story = story(
+  { scenario: fullBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'alex');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          // 2 items in searchPoolMixed are assigned to "Alex Reviewer"
+          if (!text.includes('2 results')) {
+            throw new Error(`expected 2 results, saw: ${text.slice(0, 200)}`);
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
