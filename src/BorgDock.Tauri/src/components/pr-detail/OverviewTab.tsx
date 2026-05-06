@@ -20,6 +20,7 @@ import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
 import { CheckoutPanel } from './CheckoutPanel';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
+import { MergedCard } from './MergedCard';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
 const log = createLogger('OverviewTab');
@@ -142,6 +143,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmBypass, setConfirmBypass] = useState(false);
+  const isOpen = p.state === 'open';
   const { resolveConflicts } = useClaudeActions();
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
@@ -274,31 +276,35 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
   return (
     <div className="px-6 py-5 space-y-5">
+      {!isOpen && <MergedCard pr={p} />}
+
       {/* Action buttons — primary action on the left, danger pair pushed right.
           Resolve Conflicts (purple-soft) and Bypass Merge (dashed danger) keep className
           overrides because Button's variant vocabulary doesn't cover those bespoke treatments. */}
       <div className="flex flex-wrap items-center gap-2">
-        {isReady ? (
-          <Button
-            variant="primary"
-            size="sm"
-            leading={<MergeIcon />}
-            onClick={handleMerge}
-            data-overview-action="merge"
-          >
-            Merge
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            size="sm"
-            leading={<MergeIcon />}
-            onClick={handleMerge}
-            disabled
-            data-overview-action="merge"
-          >
-            Merge
-          </Button>
+        {isOpen && (
+          isReady ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leading={<MergeIcon />}
+              onClick={handleMerge}
+              data-overview-action="merge"
+            >
+              Merge
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              leading={<MergeIcon />}
+              onClick={handleMerge}
+              disabled
+              data-overview-action="merge"
+            >
+              Merge
+            </Button>
+          )
         )}
         <Button
           variant="secondary"
@@ -332,16 +338,18 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         >
           Checkout
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          leading={<EditIcon />}
-          onClick={handleToggleDraft}
-          data-overview-action="draft"
-        >
-          {p.isDraft ? 'Mark Ready' : 'Mark Draft'}
-        </Button>
-        {p.mergeable === false && (
+        {isOpen && (
+          <Button
+            variant="ghost"
+            size="sm"
+            leading={<EditIcon />}
+            onClick={handleToggleDraft}
+            data-overview-action="draft"
+          >
+            {p.isDraft ? 'Mark Ready' : 'Mark Draft'}
+          </Button>
+        )}
+        {isOpen && p.mergeable === false && (
           <Button
             variant="ghost"
             size="sm"
@@ -352,17 +360,17 @@ export function OverviewTab({ pr }: OverviewTabProps) {
             {'✦'} Resolve Conflicts
           </Button>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={handleBypassConfirm}
-            data-overview-action="bypass"
-            className="border-2 border-dashed bg-transparent"
-          >
-            Bypass Merge
-          </Button>
-          {p.state === 'open' && (
+        {isOpen && (
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleBypassConfirm}
+              data-overview-action="bypass"
+              className="border-2 border-dashed bg-transparent"
+            >
+              Bypass Merge
+            </Button>
             <Button
               variant="danger"
               size="sm"
@@ -372,8 +380,8 @@ export function OverviewTab({ pr }: OverviewTabProps) {
             >
               Close PR
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Merge Readiness Checklist */}

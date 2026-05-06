@@ -416,4 +416,56 @@ describe('OverviewTab', () => {
     const { container } = render(<OverviewTab pr={makePr()} />);
     expect(container.querySelector('[data-overview-action="merge"]')).toBeTruthy();
   });
+
+  describe('terminal state UI', () => {
+    it('hides Merge / Bypass Merge / Mark Draft / Close PR when state is closed', () => {
+      const merged = makePr({
+        pullRequest: {
+          ...makePr().pullRequest,
+          state: 'closed',
+          mergedAt: '2026-05-06T12:00:00Z',
+        },
+      });
+      render(<OverviewTab pr={merged} />);
+      expect(screen.queryByText('Merge')).toBeNull();
+      expect(screen.queryByText('Bypass Merge')).toBeNull();
+      expect(screen.queryByText('Mark Draft')).toBeNull();
+      expect(screen.queryByText('Mark Ready')).toBeNull();
+      expect(screen.queryByText('Close PR')).toBeNull();
+    });
+
+    it('still shows Open in Browser, Copy Branch, Checkout when closed', () => {
+      const merged = makePr({
+        pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' },
+      });
+      render(<OverviewTab pr={merged} />);
+      expect(screen.getByText('Open in Browser')).toBeTruthy();
+      expect(screen.getByText('Copy Branch')).toBeTruthy();
+      expect(screen.getByText('Checkout')).toBeTruthy();
+    });
+
+    it('renders MergedCard above the action row when merged', () => {
+      const merged = makePr({
+        pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' },
+      });
+      const { container } = render(<OverviewTab pr={merged} />);
+      const card = container.querySelector('[data-merged-card]');
+      expect(card).toBeTruthy();
+      expect(card?.getAttribute('data-variant')).toBe('merged');
+    });
+
+    it('renders MergedCard with closed variant when state is closed and not merged', () => {
+      const closed = makePr({
+        pullRequest: { ...makePr().pullRequest, state: 'closed', closedAt: '2026-05-06T12:00:00Z' },
+      });
+      const { container } = render(<OverviewTab pr={closed} />);
+      const card = container.querySelector('[data-merged-card]');
+      expect(card?.getAttribute('data-variant')).toBe('closed');
+    });
+
+    it('does not render MergedCard for open PRs', () => {
+      const { container } = render(<OverviewTab pr={makePr()} />);
+      expect(container.querySelector('[data-merged-card]')).toBeNull();
+    });
+  });
 });
