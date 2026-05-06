@@ -1,8 +1,27 @@
-import { useCallback, useRef, useState } from 'react';
-import { Button, IconButton, Pill, type PillTone } from '@/components/shared/primitives';
-import { useAdoImageAuth } from '@/hooks/useAdoImageAuth';
-import { sanitizeHtml } from '@/utils/sanitize-html';
-import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '../../types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Kbd, Tabs } from '@/components/shared/primitives';
+import { ActivityTab } from './WorkItemDetailPanel/ActivityTab';
+import { AttachmentsTab } from './WorkItemDetailPanel/AttachmentsTab';
+import { DiscussionRail } from './WorkItemDetailPanel/DiscussionRail';
+import { LinksTab } from './WorkItemDetailPanel/LinksTab';
+import { OverviewTab } from './WorkItemDetailPanel/OverviewTab';
+import { RightRail } from './WorkItemDetailPanel/RightRail';
+import { TitleBlock, type TitleBlockChange } from './WorkItemDetailPanel/TitleBlock';
+import {
+  type AdjacentNav,
+  useAdjacentNav,
+} from './WorkItemDetailPanel/useAdjacentNav';
+import {
+  type AutoSavePatch,
+  type AutoSaveValues,
+  useAutoSave,
+} from './WorkItemDetailPanel/useAutoSave';
+import type { LinkedPR } from './WorkItemDetailPanel/parseLinkedPRs';
+import type {
+  DynamicFieldItem,
+  WorkItemAttachment,
+  WorkItemComment,
+} from '@/types';
 
 export interface WorkItemDetailData {
   id?: number;
@@ -14,9 +33,27 @@ export interface WorkItemDetailData {
   tags: string;
   htmlUrl: string;
   isNewItem: boolean;
+  /** Severity (Microsoft.VSTS.Common.Severity) if present. */
+  severity?: string;
+  reporter?: string;
+  iteration?: string;
+  area?: string;
+  backlogPriority?: number | string;
+  foundIn?: string;
+  changedAgo?: string;
+  linkedPRs?: LinkedPR[];
 }
 
-interface WorkItemDetailPanelProps {
+export interface WorkItemFieldUpdates {
+  title: string;
+  state: string;
+  assignedTo: string;
+  priority?: number;
+  tags: string;
+  workItemType?: string;
+}
+
+interface Props {
   item: WorkItemDetailData;
   isLoading: boolean;
   isSaving: boolean;
@@ -29,165 +66,103 @@ interface WorkItemDetailPanelProps {
   attachments: WorkItemAttachment[];
   comments?: WorkItemComment[];
   isLoadingComments?: boolean;
-  onSave: (updates: WorkItemFieldUpdates) => void;
+  onSave: (updates: WorkItemFieldUpdates) => Promise<void> | void;
   onDelete?: () => void;
   onClose: () => void;
   onOpenInBrowser: (url: string) => void;
   onDownloadAttachment: (attachment: WorkItemAttachment) => void;
   onAddComment?: (text: string) => Promise<void>;
+  /** Optional adjacent nav callback — if absent, ↑↓ buttons hide. */
+  onArrowNav?: (dir: 'prev' | 'next') => void;
+  adjacent?: AdjacentNav;
 }
 
-export interface WorkItemFieldUpdates {
-  title: string;
-  state: string;
-  assignedTo: string;
-  priority?: number;
-  tags: string;
-  workItemType?: string;
-}
+export function WorkItemDetailPanel(props: Props) {
+  const {
+    item,
+    isLoading,
+    isSaving,
+    statusText,
+    availableStates,
+    richTextFields,
+    standardFields,
+    customFields,
+    attachments,
+    comments,
+    isLoadingComments,
+    onSave,
+    onDelete,
+    onClose,
+    onOpenInBrowser,
+    onDownloadAttachment,
+    onAddComment,
+    onArrowNav,
+    adjacent,
+  } = props;
 
-const WORK_ITEM_TYPES = ['User Story', 'Bug', 'Task', 'Feature', 'Epic'];
-const PRIORITIES = [
-  { value: 1, label: '1 - Critical' },
-  { value: 2, label: '2 - High' },
-  { value: 3, label: '3 - Medium' },
-  { value: 4, label: '4 - Low' },
-];
-
-function stateColor(state: string): string {
-  const s = state.toLowerCase();
-  if (s === 'new') return 'var(--color-accent)';
-  if (['active', 'committed', 'in progress'].includes(s)) return 'var(--color-accent)';
-  if (['resolved', 'done', 'closed'].includes(s)) return 'var(--color-status-green)';
-  if (s === 'removed') return 'var(--color-status-gray)';
-  return 'var(--color-status-yellow)';
-}
-
-// Mirrored from WorkItemCard. Kept inline; if a third consumer appears, lift to
-// a shared `state-tones.ts` helper.
-function pillTone(state: string): PillTone {
-  const s = state.toLowerCase();
-  if (s === 'active' || s === 'committed' || s === 'in progress') return 'warning';
-  if (s === 'resolved' || s === 'done' || s === 'closed') return 'success';
-  if (s === 'removed') return 'neutral';
-  if (s === 'new') return 'neutral';
-  return 'neutral';
-}
-
-function formatRelativeDate(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+  const [tab, setTab] = useState<'overview' | 'activity' | 'links' | 'files'>('overview');
+  const [values, setValues] = useState<AutoSaveValues>({
+    title: item.title,
+    state: item.state,
+    assignedTo: item.assignedTo,
+    priority: item.priority,
+    tags: item.tags,
   });
-}
 
-function avatarInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function FieldSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-4">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-ghost)]">
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function ReadOnlyField({ field }: { field: DynamicFieldItem }) {
-  const htmlRef = useRef<HTMLDivElement>(null);
-  useAdoImageAuth(htmlRef, field.htmlContent);
-
-  if (!field.value && !field.htmlContent) return null;
-  return (
-    <div className="mb-2">
-      <label className="mb-0.5 block text-[11px] font-medium text-[var(--color-text-muted)]">
-        {field.label}
-      </label>
-      {field.isHtml && field.htmlContent ? (
-        <div
-          ref={htmlRef}
-          className="prose-sm rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-2 text-[13px] text-[var(--color-text-secondary)] [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(field.htmlContent) }}
-        />
-      ) : (
-        <div className="text-[13px] text-[var(--color-text-secondary)]">{field.value}</div>
-      )}
-    </div>
-  );
-}
-
-export function WorkItemDetailPanel({
-  item,
-  isLoading,
-  isSaving,
-  statusText,
-  availableStates,
-  availableAssignees,
-  richTextFields,
-  standardFields,
-  customFields,
-  attachments,
-  comments,
-  isLoadingComments,
-  onSave,
-  onDelete,
-  onClose,
-  onOpenInBrowser,
-  onDownloadAttachment,
-  onAddComment,
-}: WorkItemDetailPanelProps) {
-  const [title, setTitle] = useState(item.title);
-  const [state, setState] = useState(item.state);
-  const [assignedTo, setAssignedTo] = useState(item.assignedTo);
-  const [priority, setPriority] = useState(item.priority);
-  const [tags, setTags] = useState(item.tags);
-  const [newItemType, setNewItemType] = useState(item.workItemType || 'Task');
-  const [commentText, setCommentText] = useState('');
-  const [isPostingComment, setIsPostingComment] = useState(false);
-
-  const handleAddComment = useCallback(async () => {
-    if (!commentText.trim() || !onAddComment) return;
-    setIsPostingComment(true);
-    try {
-      await onAddComment(commentText.trim());
-      setCommentText('');
-    } finally {
-      setIsPostingComment(false);
-    }
-  }, [commentText, onAddComment]);
-
-  const handleSave = useCallback(() => {
-    onSave({
-      title,
-      state,
-      assignedTo,
-      priority,
-      tags,
-      workItemType: item.isNewItem ? newItemType : undefined,
+  // Sync local state when the item identity changes (next/prev nav reload).
+  useEffect(() => {
+    setValues({
+      title: item.title,
+      state: item.state,
+      assignedTo: item.assignedTo,
+      priority: item.priority,
+      tags: item.tags,
     });
-  }, [title, state, assignedTo, priority, tags, newItemType, item.isNewItem, onSave]);
+  }, [item.id, item.title, item.state, item.assignedTo, item.priority, item.tags]);
 
-  const color = stateColor(state);
+  const auto = useAutoSave({
+    initial: {
+      title: item.title,
+      state: item.state,
+      assignedTo: item.assignedTo,
+      priority: item.priority,
+      tags: item.tags,
+    },
+    onPatch: async (patch: AutoSavePatch) => {
+      await onSave({
+        title: patch.title ?? values.title,
+        state: patch.state ?? values.state,
+        assignedTo: patch.assignedTo ?? values.assignedTo,
+        priority: 'priority' in patch ? patch.priority : values.priority,
+        tags: patch.tags ?? values.tags,
+      });
+    },
+  });
+
+  const handleChange = useCallback(
+    (patch: TitleBlockChange) => {
+      setValues((prev) => {
+        const next = { ...prev, ...patch };
+        auto.flush(next);
+        return next;
+      });
+    },
+    [auto],
+  );
+
+  const linkedPRs = useMemo(() => item.linkedPRs ?? [], [item.linkedPRs]);
+
+  const savedLabel = useMemo(() => {
+    if (auto.error) return `Save failed — ${auto.error}`;
+    if (auto.isSaving) return 'Saving…';
+    if (auto.lastSavedAt) {
+      const ago = Math.floor((Date.now() - auto.lastSavedAt) / 1000);
+      if (ago < 5) return 'Saved just now';
+      if (ago < 60) return `Saved ${ago}s ago`;
+      return `Saved ${Math.floor(ago / 60)}m ago`;
+    }
+    return 'Auto-saves on blur';
+  }, [auto.error, auto.isSaving, auto.lastSavedAt]);
 
   if (isLoading) {
     return (
@@ -197,337 +172,183 @@ export function WorkItemDetailPanel({
     );
   }
 
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'links', label: 'Links', count: linkedPRs.length || undefined },
+    { id: 'files', label: 'Attachments', count: attachments.length || undefined },
+  ];
+
   return (
-    <div className="flex h-full flex-col bg-[var(--color-surface)]">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[var(--color-subtle-border)] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Pill tone={pillTone(state)}>
-            {item.isNewItem ? newItemType : item.workItemType}
-          </Pill>
-          {!item.isNewItem && item.id && (
-            <span className="text-[13px] text-[var(--color-text-muted)]">#{item.id}</span>
-          )}
-          {item.isNewItem && (
-            <span className="text-[13px] text-[var(--color-text-muted)]">New Work Item</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          {!item.isNewItem && item.htmlUrl && (
-            <IconButton
-              size={22}
-              tooltip="Open in browser"
-              onClick={() => onOpenInBrowser(item.htmlUrl)}
-              icon={
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                >
-                  <path
-                    d="M6 3H3v10h10v-3M9 3h4v4M14 2L7 9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
-            />
-          )}
-          <IconButton
-            size={22}
-            tooltip="Close"
-            onClick={onClose}
-            icon={
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
-            }
-          />
-        </div>
-      </div>
+    <div
+      data-wi-detail
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) 320px',
+        height: '100%',
+        background: 'var(--color-surface)',
+        containerType: 'inline-size',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          borderRight: '1px solid var(--color-subtle-border)',
+        }}
+      >
+        <TitleBlock
+          id={item.id}
+          title={values.title}
+          workItemType={item.workItemType}
+          state={values.state}
+          priority={values.priority}
+          assignedTo={values.assignedTo}
+          iteration={item.iteration}
+          availableStates={availableStates}
+          changedAgo={item.changedAgo}
+          onChange={handleChange}
+          onCopyId={() => {
+            if (item.id) navigator.clipboard?.writeText(`#${item.id}`).catch(() => {});
+          }}
+          onOpenInBrowser={() => onOpenInBrowser(item.htmlUrl)}
+        />
 
-      {/* Form fields */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {/* Type selector (new items only) */}
-        {item.isNewItem && (
-          <div className="mb-3">
-            <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
-              Type
-            </label>
-            <select
-              value={newItemType}
-              onChange={(e) => setNewItemType(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-            >
-              {WORK_ITEM_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Title */}
-        <div className="mb-3">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
-            Title
-          </label>
-          <textarea
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            rows={2}
-            className="w-full resize-none rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-          />
-        </div>
-
-        {/* State */}
-        <div className="mb-3">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
-            State
-          </label>
-          <div className="relative">
-            {/* style: work-item state-driven dot color — hex string varies per state */}
-            <span
-              className="absolute left-2.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
-              style={{ backgroundColor: color }}
-            />
-            <select
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] py-1.5 pl-7 pr-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-            >
-              {availableStates.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Assigned To */}
-        <div className="mb-3">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
-            Assigned To
-          </label>
-          {availableAssignees && availableAssignees.length > 0 ? (
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-            >
-              <option value="">Unassigned</option>
-              {availableAssignees.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-            />
-          )}
-        </div>
-
-        {/* Priority */}
-        <div className="mb-3">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
-            Priority
-          </label>
-          <select
-            value={priority ?? ''}
-            onChange={(e) => setPriority(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+        {adjacent && (adjacent.prevId !== null || adjacent.nextId !== null) && onArrowNav && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 4,
+              padding: '4px 28px',
+              borderBottom: '1px solid var(--color-subtle-border)',
+              background: 'var(--color-surface)',
+              fontSize: 11,
+              color: 'var(--color-text-muted)',
+            }}
           >
-            <option value="">None</option>
-            {PRIORITIES.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+            <button
+              type="button"
+              disabled={adjacent.prevId === null}
+              onClick={() => onArrowNav('prev')}
+              className="bd-icon-btn"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={adjacent.nextId === null}
+              onClick={() => onArrowNav('next')}
+              className="bd-icon-btn"
+            >
+              ↓
+            </button>
+            {adjacent.total > 0 && (
+              <span style={{ alignSelf: 'center' }}>
+                {adjacent.index + 1} / {adjacent.total}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div
+          style={{
+            padding: '0 28px',
+            background: 'var(--color-surface)',
+            borderBottom: '1px solid var(--color-subtle-border)',
+          }}
+        >
+          <Tabs value={tab} onChange={(id) => setTab(id as typeof tab)} tabs={tabs} />
         </div>
 
-        {/* Tags */}
-        <div className="mb-4">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--color-text-muted)]">
-            Tags
-          </label>
-          <input
-            type="text"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="tag1; tag2"
-            className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-          />
+        <div
+          className="bd-scroll"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            background: 'var(--color-background)',
+            padding: '20px 28px 80px',
+          }}
+        >
+          {tab === 'overview' && (
+            <OverviewTab
+              richTextFields={richTextFields}
+              standardFields={standardFields}
+              customFields={customFields}
+            />
+          )}
+          {tab === 'activity' && <ActivityTab />}
+          {tab === 'links' && <LinksTab linkedPRs={linkedPRs} />}
+          {tab === 'files' && (
+            <AttachmentsTab attachments={attachments} onDownload={onDownloadAttachment} />
+          )}
         </div>
 
-        {/* Rich text fields */}
-        {richTextFields.length > 0 && (
-          <FieldSection title="Details">
-            {richTextFields.map((f) => (
-              <ReadOnlyField key={f.fieldKey} field={f} />
-            ))}
-          </FieldSection>
-        )}
-
-        {/* Standard fields */}
-        {standardFields.length > 0 && (
-          <FieldSection title="Fields">
-            {standardFields.map((f) => (
-              <ReadOnlyField key={f.fieldKey} field={f} />
-            ))}
-          </FieldSection>
-        )}
-
-        {/* Custom fields */}
-        {customFields.length > 0 && (
-          <FieldSection title="Custom Fields">
-            {customFields.map((f) => (
-              <ReadOnlyField key={f.fieldKey} field={f} />
-            ))}
-          </FieldSection>
-        )}
-
-        {/* Attachments */}
-        {attachments.length > 0 && (
-          <FieldSection title="Attachments">
-            <div className="space-y-1">
-              {attachments.map((a) => (
-                <button
-                  key={a.id}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)]"
-                  onClick={() => onDownloadAttachment(a)}
-                >
-                  <svg
-                    className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                  >
-                    <path
-                      d="M3 10v2.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V10M8 2v8M5 7l3 3 3-3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="min-w-0 truncate">{a.fileName}</span>
-                  <span className="ml-auto shrink-0 text-[11px] text-[var(--color-text-ghost)]">
-                    {formatSize(a.size)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </FieldSection>
-        )}
-
-        {/* Discussion / Comments */}
-        {!item.isNewItem && (
-          <FieldSection title="Discussion">
-            {isLoadingComments && (
-              <div className="space-y-3">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="animate-pulse space-y-1.5">
-                    <div className="flex gap-2">
-                      <div className="h-5 w-5 rounded-full bg-[var(--color-surface-raised)]" />
-                      <div className="h-3 w-24 rounded bg-[var(--color-surface-raised)]" />
-                    </div>
-                    <div className="h-8 w-full rounded bg-[var(--color-surface-raised)]" />
-                  </div>
-                ))}
-              </div>
-            )}
-            {!isLoadingComments && comments && comments.length === 0 && (
-              <p className="text-[12px] text-[var(--color-text-ghost)]">No comments yet.</p>
-            )}
-            {!isLoadingComments && comments && comments.length > 0 && (
-              <div className="space-y-3">
-                {comments.map((c) => (
-                  <div
-                    key={c.id}
-                    className="rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] p-2.5"
-                  >
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[7px] font-bold text-[var(--color-avatar-text)]">
-                        {avatarInitials(c.createdBy.displayName)}
-                      </span>
-                      <span className="text-[12px] font-medium text-[var(--color-text-primary)]">
-                        {c.createdBy.displayName}
-                      </span>
-                      <span className="text-[10px] text-[var(--color-text-ghost)]">
-                        {formatRelativeDate(c.createdDate)}
-                      </span>
-                    </div>
-                    <div
-                      className="prose-sm text-[13px] text-[var(--color-text-secondary)] [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_a]:text-[var(--color-accent)] [&_a]:underline"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.text) }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Add comment */}
-            {onAddComment && (
-              <div className="mt-3">
-                <textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  rows={2}
-                  placeholder="Add a comment..."
-                  className="w-full resize-none rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-                />
-                <div className="mt-1.5 flex justify-end">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleAddComment}
-                    disabled={isPostingComment || !commentText.trim()}
-                  >
-                    {isPostingComment ? 'Posting...' : 'Comment'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </FieldSection>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between border-t border-[var(--color-subtle-border)] px-4 py-3">
-        <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 28px',
+            borderTop: '1px solid var(--color-subtle-border)',
+            background: 'var(--color-status-bar-bg)',
+          }}
+        >
+          <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            {savedLabel}
+            {statusText ? ` · ${statusText}` : ''}
+          </span>
+          {auto.error && (
+            <Button variant="secondary" size="sm" onClick={() => auto.flush(values)}>
+              Retry
+            </Button>
+          )}
+          <span style={{ flex: 1 }} />
           {!item.isNewItem && onDelete && (
-            <Button variant="danger" size="md" onClick={onDelete}>
+            <Button variant="danger" size="sm" onClick={onDelete}>
               Delete
             </Button>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          {statusText && (
-            <span className="text-[12px] text-[var(--color-text-muted)]">{statusText}</span>
+          {item.htmlUrl && (
+            <Button variant="secondary" size="sm" onClick={() => onOpenInBrowser(item.htmlUrl)}>
+              Open in ADO ↗
+            </Button>
           )}
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleSave}
-            disabled={isSaving || !title.trim()}
-          >
-            {isSaving ? 'Saving...' : item.isNewItem ? 'Create' : 'Save'}
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            <Kbd>esc</Kbd> Close
           </Button>
         </div>
+      </div>
+
+      <div
+        className="bd-scroll wi-rail"
+        style={{
+          overflowY: 'auto',
+          background: 'var(--color-surface)',
+          padding: '16px 18px 32px',
+        }}
+      >
+        <RightRail
+          state={values.state}
+          priority={values.priority}
+          severity={item.severity}
+          workItemType={item.workItemType}
+          assignedTo={values.assignedTo}
+          reporter={item.reporter ?? ''}
+          iteration={item.iteration ?? ''}
+          area={item.area ?? ''}
+          backlogPriority={item.backlogPriority}
+          foundIn={item.foundIn}
+          tags={values.tags ? values.tags.split(';').map((t) => t.trim()).filter(Boolean) : []}
+          linkedPRs={linkedPRs}
+        />
+        {!item.isNewItem && onAddComment && (
+          <DiscussionRail
+            comments={comments ?? []}
+            isLoading={!!isLoadingComments}
+            onAddComment={onAddComment}
+          />
+        )}
       </div>
     </div>
   );
