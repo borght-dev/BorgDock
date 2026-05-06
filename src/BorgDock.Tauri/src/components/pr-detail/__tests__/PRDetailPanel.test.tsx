@@ -28,11 +28,8 @@ vi.mock('../FilesTab', () => ({
 vi.mock('../ChecksTab', () => ({
   ChecksTab: () => <div data-testid="checks-tab">Checks</div>,
 }));
-vi.mock('../ReviewsTab', () => ({
-  ReviewsTab: () => <div data-testid="reviews-tab">Reviews</div>,
-}));
-vi.mock('../CommentsTab', () => ({
-  CommentsTab: () => <div data-testid="comments-tab">Comments</div>,
+vi.mock('../DiscussionTab', () => ({
+  DiscussionTab: () => <div data-testid="discussion-tab">Discussion</div>,
 }));
 
 // Mock ActionBar, ActivityStrip, CheckoutPanel so PRDetailPanel tests stay focused
@@ -184,8 +181,7 @@ describe('PrDetailPanel', () => {
     expect(screen.getByRole('tab', { name: 'Commits' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Files' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Checks' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Reviews' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Comments' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Discussion' })).toBeTruthy();
   });
 
   it('shows Overview tab content by default', () => {
@@ -222,11 +218,11 @@ describe('PrDetailPanel', () => {
     expect(checksTab.closest('.hidden')).toBeNull();
   });
 
-  it('switches to Reviews tab on click', () => {
+  it('switches to Discussion tab on click', () => {
     render(<PrDetailPanel pr={makePr()} />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Reviews' }));
-    const reviewsTab = screen.getByTestId('reviews-tab');
-    expect(reviewsTab.closest('.hidden')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Discussion' }));
+    const discussionTab = screen.getByTestId('discussion-tab');
+    expect(discussionTab.closest('.hidden')).toBeNull();
   });
 
   it('close button calls selectPr(null)', () => {
@@ -357,5 +353,12 @@ describe('PrDetailPanel', () => {
     const badge = screen.getByRole('tab', { name: /checks/i }).querySelector('.bd-tab__count');
     expect(badge).not.toBeNull();
     expect(badge!.textContent).toBe('13/15');
+  });
+
+  it('exposes a Discussion tab and no Reviews/Comments tabs', () => {
+    render(<PrDetailPanel pr={makePr()} />);
+    expect(screen.getByRole('tab', { name: /discussion/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /^reviews$/i })).toBeNull();
+    expect(screen.queryByRole('tab', { name: /^comments$/i })).toBeNull();
   });
 });

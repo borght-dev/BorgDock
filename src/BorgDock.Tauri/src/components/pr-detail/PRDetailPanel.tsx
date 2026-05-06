@@ -14,11 +14,10 @@ import { ActionBar } from './ActionBar';
 import { ActivityStrip } from './ActivityStrip';
 import { CheckoutPanel } from './CheckoutPanel';
 import { ChecksTab } from './ChecksTab';
-import { CommentsTab } from './CommentsTab';
 import { CommitsTab } from './CommitsTab';
+import { DiscussionTab } from './DiscussionTab';
 import { FilesTab } from './FilesTab';
 import { OverviewTab } from './OverviewTab';
-import { ReviewsTab } from './ReviewsTab';
 import { usePrActions } from './usePrActions';
 
 const log = createLogger('PrDetailPanel');
@@ -183,7 +182,7 @@ function initialsFor(login: string): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
-const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Reviews', 'Comments'] as const;
+const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Discussion'] as const;
 type Tab = (typeof tabs)[number];
 
 interface PrDetailPanelProps {
@@ -282,8 +281,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
       count: `${pr.passedCount}/${totalChecks}`,
       indicator: pr.pendingCheckNames.length > 0 ? <HeaderSpinnerIcon /> : undefined,
     },
-    { id: 'Reviews', label: 'Reviews' },
-    { id: 'Comments', label: 'Comments' },
+    { id: 'Discussion', label: 'Discussion' },
   ];
 
   return (
@@ -489,23 +487,19 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
             <ChecksTab checks={pr.checks} pr={pr} />
           </div>
         )}
-        {mountedTabs.has('Reviews') && (
-          <div className={activeTab === 'Reviews' ? '' : 'hidden'}>
-            <ReviewsTab
+        {mountedTabs.has('Discussion') && (
+          <div className={activeTab === 'Discussion' ? '' : 'hidden'}>
+            <DiscussionTab
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}
               repoName={pr.pullRequest.repoName}
               prUpdatedAt={pr.pullRequest.updatedAt}
-            />
-          </div>
-        )}
-        {mountedTabs.has('Comments') && (
-          <div className={activeTab === 'Comments' ? '' : 'hidden'}>
-            <CommentsTab
-              prNumber={pr.pullRequest.number}
-              repoOwner={pr.pullRequest.repoOwner}
-              repoName={pr.pullRequest.repoName}
-              prUpdatedAt={pr.pullRequest.updatedAt}
+              onJumpToFile={(target) => {
+                usePrDetailJumpStore
+                  .getState()
+                  .setJumpTarget({ ...target, ts: Date.now() });
+                setActiveTab('Files');
+              }}
             />
           </div>
         )}

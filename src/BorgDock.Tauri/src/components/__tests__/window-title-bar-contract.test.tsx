@@ -82,11 +82,8 @@ vi.mock('@/components/pr-detail/FilesTab', () => ({
 vi.mock('@/components/pr-detail/ChecksTab', () => ({
   ChecksTab: () => <div />,
 }));
-vi.mock('@/components/pr-detail/ReviewsTab', () => ({
-  ReviewsTab: () => <div />,
-}));
-vi.mock('@/components/pr-detail/CommentsTab', () => ({
-  CommentsTab: () => <div />,
+vi.mock('@/components/pr-detail/DiscussionTab', () => ({
+  DiscussionTab: () => <div />,
 }));
 
 // Heavy SqlApp dependencies — schema fetching + editor — are not part of
