@@ -3948,3 +3948,13 @@ body.sql-resizing-v .sql-resize-handle {
 .bd-fp-find-strip button:hover {
   color: var(--color-text-primary);
 }
+
+/* Work item detail — narrow-mode collapses the right rail to a drawer. */
+@layer components {
+  [data-wi-detail][data-rail-collapsed='true'] {
+    grid-template-columns: minmax(0, 1fr) 0;
+  }
+  [data-wi-detail][data-rail-collapsed='true'] .wi-rail {
+    display: none;
+  }
+}

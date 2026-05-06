@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Kbd, Tabs } from '@/components/shared/primitives';
 import { ActivityTab } from './WorkItemDetailPanel/ActivityTab';
 import { AttachmentsTab } from './WorkItemDetailPanel/AttachmentsTab';
@@ -160,6 +160,19 @@ export function WorkItemDetailPanel(props: Props) {
     return 'Auto-saves on blur';
   }, [auto.error, auto.isSaving, auto.lastSavedAt]);
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const collapsed = entry.contentRect.width < 760;
+      el.setAttribute('data-rail-collapsed', collapsed ? 'true' : 'false');
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--color-surface)]">
@@ -177,7 +190,9 @@ export function WorkItemDetailPanel(props: Props) {
 
   return (
     <div
+      ref={rootRef}
       data-wi-detail
+      data-rail-collapsed="false"
       style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) 320px',
