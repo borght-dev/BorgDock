@@ -76,6 +76,7 @@ export function usePrActions(pr: PullRequestWithChecks): PrActions {
     htmlUrl: p.htmlUrl,
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit field deps avoid object reference churn from prRefBase
   const onMerge = useCallback(async () => {
     setActionStatus('Merging...');
     const ok = await mergePr(prRefBase, {
@@ -83,10 +84,10 @@ export function usePrActions(pr: PullRequestWithChecks): PrActions {
       onError: captureErrorAsStatus('Merge failed'),
     });
     if (ok) setActionStatus('');
-    // biome-ignore lint/correctness/useExhaustiveDependencies: explicit field deps avoid object reference churn
   }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, captureErrorAsStatus]);
 
   const onBypassConfirm = useCallback(() => setConfirmBypass(true), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit field deps avoid object reference churn from prRefBase
   const onBypassExecute = useCallback(async () => {
     setConfirmBypass(false);
     setActionStatus('Merging...');
@@ -94,7 +95,6 @@ export function usePrActions(pr: PullRequestWithChecks): PrActions {
       onError: captureErrorAsStatus('Bypass merge failed'),
     });
     if (ok) setActionStatus('');
-    // biome-ignore lint/correctness/useExhaustiveDependencies: explicit field deps avoid object reference churn
   }, [p.repoOwner, p.repoName, p.number, p.title, p.htmlUrl, captureErrorAsStatus]);
 
   const onCloseConfirm = useCallback(() => setConfirmClose(true), []);
