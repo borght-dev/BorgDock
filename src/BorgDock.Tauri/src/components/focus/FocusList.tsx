@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { FeatureBadge, FirstRunOverlay, InlineHint } from '@/components/onboarding';
 import { Avatar, Button, Pill, Ring } from '@/components/shared/primitives';
+import { openPrDetail } from '@/services/windows';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useUiStore } from '@/stores/ui-store';
-import type { OverallStatus } from '@/types';
+import type { OverallStatus, PullRequestWithChecks } from '@/types';
 import { FocusEmptyState } from './FocusEmptyState';
 import { PriorityReasonLabel } from './PriorityReasonLabel';
 
@@ -31,11 +31,18 @@ function initialsFor(login: string): string {
 
 // ── component ──────────────────────────────────────────────────────────────
 
+function openPrDetailFor(prw: PullRequestWithChecks): void {
+  void openPrDetail({
+    owner: prw.pullRequest.repoOwner,
+    repo: prw.pullRequest.repoName,
+    number: prw.pullRequest.number,
+  });
+}
+
 export function FocusList() {
   const focusPrs = usePrStore((s) => s.focusPrs)();
   const priorityScores = usePrStore((s) => s.priorityScores)();
   const needsMyReview = usePrStore((s) => s.needsMyReview)();
-  const selectPr = useUiStore((s) => s.selectPr);
   const startSession = useQuickReviewStore((s) => s.startSession);
   const hasSeenFocusOverlay = useOnboardingStore((s) => s.hasSeenFocusOverlay);
   const markFocusOverlaySeen = useOnboardingStore((s) => s.markFocusOverlaySeen);
@@ -86,7 +93,7 @@ export function FocusList() {
           <FirstRunOverlay
             message="These are the PRs that need your attention"
             ctaLabel="Open first PR"
-            onCtaClick={() => selectPr(focusPrs[0]!.pullRequest.number)}
+            onCtaClick={() => openPrDetailFor(focusPrs[0]!)}
             onDismiss={markFocusOverlaySeen}
           />
         )}
@@ -143,11 +150,12 @@ export function FocusList() {
                 {/* Status label */}
                 <div className="bd-focus-row__status" data-tone={tone}>{label}</div>
 
-                {/* Open button */}
+                {/* Open button — pops out the PR detail window (the inline
+                    detail panel was removed in the main-window rewrite). */}
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => selectPr(pr.pullRequest.number)}
+                  onClick={() => openPrDetailFor(pr)}
                 >
                   Open
                 </Button>

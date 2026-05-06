@@ -7,6 +7,17 @@ import { useUiStore } from '@/stores/ui-store';
 import { FocusList } from '../FocusList';
 import { makePr, resetSeq } from './helpers';
 
+// Spy on the pop-out invoke. The Open button and FirstRunOverlay CTA both
+// pop out the detail window; the inline detail panel was removed in the
+// main-window rewrite.
+const mockOpenPrDetail = vi.fn();
+vi.mock('@/services/windows', () => ({
+  openPrDetail: (...args: unknown[]) => {
+    mockOpenPrDetail(...args);
+    return Promise.resolve();
+  },
+}));
+
 // Mock heavy primitives
 vi.mock('@/components/shared/primitives', async () => {
   const actual = await import('@/components/shared/primitives');
@@ -86,6 +97,7 @@ afterEach(cleanup);
 describe('FocusList', () => {
   beforeEach(() => {
     resetSeq();
+    mockOpenPrDetail.mockClear();
     // Reset all stores to defaults
     usePrStore.setState({
       pullRequests: [],
@@ -148,12 +160,16 @@ describe('FocusList', () => {
     expect(openButtons.length).toBe(2);
   });
 
-  it('Open button calls selectPr with the PR number', () => {
+  it('Open button pops out the PR detail window with owner/repo/number', () => {
     const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr] });
     render(<FocusList />);
     fireEvent.click(screen.getByText('Open'));
-    expect(useUiStore.getState().selectedPrNumber).toBe(pr.pullRequest.number);
+    expect(mockOpenPrDetail).toHaveBeenCalledWith({
+      owner: pr.pullRequest.repoOwner,
+      repo: pr.pullRequest.repoName,
+      number: pr.pullRequest.number,
+    });
   });
 
   it('shows hero CTA "Start Quick Review" when there are focus PRs', () => {
@@ -212,13 +228,17 @@ describe('FocusList', () => {
     expect(useOnboardingStore.getState().hasSeenFocusOverlay).toBe(true);
   });
 
-  it('selects first PR when CTA is clicked in FirstRunOverlay', () => {
+  it('pops out PR detail when CTA is clicked in FirstRunOverlay', () => {
     const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr] });
     useOnboardingStore.setState({ hasSeenFocusOverlay: false });
     render(<FocusList />);
     fireEvent.click(screen.getByText('CTA'));
-    expect(useUiStore.getState().selectedPrNumber).toBe(pr.pullRequest.number);
+    expect(mockOpenPrDetail).toHaveBeenCalledWith({
+      owner: pr.pullRequest.repoOwner,
+      repo: pr.pullRequest.repoName,
+      number: pr.pullRequest.number,
+    });
   });
 
   it('shows inline hint about priority ranking', () => {
