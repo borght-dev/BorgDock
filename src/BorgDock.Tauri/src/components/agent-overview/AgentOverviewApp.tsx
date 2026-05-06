@@ -27,6 +27,36 @@ export function AgentOverviewApp() {
     });
   }, []);
 
+  // Sync `.dark` class with the main window's theme. The synchronous bootstrap
+  // in agent-overview.html applies the right class on open; this keeps it live
+  // when the user toggles theme elsewhere or when the OS preference flips.
+  useEffect(() => {
+    const apply = (effective: 'light' | 'dark') => {
+      document.documentElement.classList.toggle('dark', effective === 'dark');
+    };
+    const resolve = () => {
+      const stored = (() => {
+        try { return localStorage.getItem('borgdock-theme'); } catch { return null; }
+      })();
+      if (stored === 'dark' || stored === 'light') return stored;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'borgdock-theme') return;
+      apply(resolve());
+    };
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemChange = () => apply(resolve());
+
+    window.addEventListener('storage', onStorage);
+    mq.addEventListener('change', onSystemChange);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      mq.removeEventListener('change', onSystemChange);
+    };
+  }, []);
+
   const sessions = useAgentSessions();
   const [grouping, setGrouping] = useState<Grouping>('repo');
   const [showArchived, setShowArchived] = useState(false);
