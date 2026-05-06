@@ -9,7 +9,9 @@ import {
   resolveReviewThread,
   unresolveReviewThread,
 } from '@/services/github';
+import { postComment, submitReview } from '@/services/github/mutations';
 import { getClient } from '@/services/github/singleton';
+import { usePrStore } from '@/stores/pr-store';
 import type { ClaudeReviewComment, ReviewThread } from '@/types';
 import { buildDiscussionItems, type DiscussionItem } from './discussion/buildDiscussionItems';
 import { CodeThreadCard, type CodeThreadJumpTarget } from './CodeThreadCard';
@@ -68,6 +70,7 @@ export function DiscussionTab({
   const [filter, setFilter] = useState<Filter>('all');
   const [showResolved, setShowResolved] = useState(false);
   const [composing, setComposing] = useState<null | 'comment' | 'review'>(null);
+  const [refetchKey, setRefetchKey] = useState(0);
 
   const fetchReviews = useCallback(async () => {
     const client = getClient();
@@ -84,13 +87,14 @@ export function DiscussionTab({
   }, [repoOwner, repoName, prNumber]);
 
   const fetchThreads = useCallback(async (): Promise<ReviewThread[]> => {
+    void refetchKey;  // dependency: bumping refetchKey re-creates this fn → useCachedTabData re-fetches
     const client = getClient();
     if (!client) return [];
     const files = await getPRFiles(client, repoOwner, repoName, prNumber);
     const patches = new Map<string, string | undefined>();
     for (const f of files) patches.set(f.filename, f.patch);
     return await getReviewThreads(client, repoOwner, repoName, prNumber, patches);
-  }, [repoOwner, repoName, prNumber]);
+  }, [repoOwner, repoName, prNumber, refetchKey]);
 
   const { data: reviews } = useCachedTabData(repoOwner, repoName, prNumber, 'reviews', prUpdatedAt, fetchReviews);
   const { data: comments } = useCachedTabData(repoOwner, repoName, prNumber, 'comments', prUpdatedAt, fetchComments);
@@ -127,20 +131,45 @@ export function DiscussionTab({
     const client = getClient();
     if (!client) return;
     await resolveReviewThread(client, threadId);
+    setRefetchKey((k) => k + 1);
   }, []);
 
   const handleUnresolve = useCallback(async (threadId: string) => {
     const client = getClient();
     if (!client) return;
     await unresolveReviewThread(client, threadId);
+    setRefetchKey((k) => k + 1);
   }, []);
 
   const handleComposerSubmit = useCallback(
-    async (_payload: ReviewComposerSubmitPayload) => {
-      // Wired in Task 23 (final wire-up). For now, just close the composer.
-      setComposing(null);
+    async (payload: ReviewComposerSubmitPayload) => {
+      const client = getClient();
+      if (!client) return;
+      try {
+        if (payload.kind === 'comment') {
+          await postComment(client, repoOwner, repoName, prNumber, payload.body);
+        } else {
+          const eventMap = {
+            approve: 'APPROVE',
+            comment: 'COMMENT',
+            request: 'REQUEST_CHANGES',
+          } as const;
+          await submitReview(
+            client,
+            repoOwner,
+            repoName,
+            prNumber,
+            eventMap[payload.decision],
+            payload.body || undefined,
+          );
+        }
+        setComposing(null);
+        void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
+      } catch (err) {
+        console.error('compose submit failed', err);
+      }
     },
-    [],
+    [repoOwner, repoName, prNumber],
   );
 
   return (

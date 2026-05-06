@@ -361,4 +361,16 @@ describe('PrDetailPanel', () => {
     expect(screen.queryByRole('tab', { name: /^reviews$/i })).toBeNull();
     expect(screen.queryByRole('tab', { name: /^comments$/i })).toBeNull();
   });
+
+  it('renders ActionBar, ActivityStrip, smart Checks tab badge, and Discussion tab', () => {
+    render(<PrDetailPanel pr={makePr({ pendingCheckNames: ['x'], passedCount: 5 })} />);
+
+    expect(document.querySelector('[data-action-bar]')).not.toBeNull();
+    expect(document.querySelector('[data-activity-strip]')).not.toBeNull();
+
+    const checksTab = screen.getByRole('tab', { name: /checks/i });
+    expect(checksTab.querySelector('.bd-tab__indicator')).not.toBeNull();
+
+    expect(screen.getByRole('tab', { name: /discussion/i })).toBeInTheDocument();
+  });
 });
