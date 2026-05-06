@@ -336,12 +336,14 @@ describe('PrCardContainer', () => {
   });
 
   describe('click interactions', () => {
-    it('calls selectPr when card is clicked', () => {
-      const selectPr = vi.fn();
-      uiState.selectPr = selectPr;
+    it('opens the pop-out detail window when the card is clicked', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
       render(<PrCardContainer prWithChecks={makePr()} />);
       fireEvent.click(screen.getByText('Add feature X'));
-      expect(selectPr).toHaveBeenCalledWith(42);
+      expect(invoke).toHaveBeenCalledWith(
+        'open_pr_detail_window',
+        expect.objectContaining({ owner: 'test', repo: 'repo', number: 42 }),
+      );
     });
 
     it('opens context menu on right click', () => {

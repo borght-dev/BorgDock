@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
@@ -9,6 +9,7 @@ import {
   shapeFromPrWithChecks,
 } from '@/services/pr-action-resolver';
 import type { PriorityFactor } from '@/services/priority-scoring';
+import { openPrDetail } from '@/services/windows';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -105,7 +106,6 @@ export const PrCardContainer = memo(function PrCardContainer({
   priorityFactors,
 }: PrCardContainerProps) {
   const { pullRequest: pr } = prWithChecks;
-  const selectPr = useUiStore((s) => s.selectPr);
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
   const togglePrExpanded = useUiStore((s) => s.togglePrExpanded);
   const isExpanded = useUiStore((s) => s.expandedPrNumbers.has(pr.number));
@@ -125,6 +125,22 @@ export const PrCardContainer = memo(function PrCardContainer({
     [prWithChecks, isMyPr, worktreeMatch?.slotName],
   );
 
+  // Whole-card click opens the pop-out detail window. Inner action buttons
+  // either stop propagation themselves (HoverActionPillBar, expand toggle,
+  // confirm dialogs) or carry a `data-pr-card-action` ancestor that this
+  // handler skips via closest(). Falls back to no-op on click of inner action.
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      if ((e.target as HTMLElement).closest('[data-pr-card-action]')) return;
+      void openPrDetail({
+        owner: pr.repoOwner,
+        repo: pr.repoName,
+        number: pr.number,
+      });
+    },
+    [pr.number, pr.repoOwner, pr.repoName],
+  );
+
   const reviewing = pr.reviewStatus === 'pending';
   const primary = primaryFor(shapeFromPrWithChecks(prWithChecks, isMyPr, reviewing));
   const isOpen = pr.state === 'open';
@@ -142,7 +158,7 @@ export const PrCardContainer = memo(function PrCardContainer({
           density="normal"
           pr={cardData}
           score={mergeScore}
-          onClick={() => selectPr(pr.number)}
+          onClick={handleCardClick}
           onContextMenu={actions.handleContextMenu}
           active={isFocused}
           isFocused={isSelected}
