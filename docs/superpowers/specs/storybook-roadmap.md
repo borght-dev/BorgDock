@@ -60,6 +60,7 @@ time.
 | 4 | Agent Overview | `main-agent-overview.tsx` → `components/agent-overview/AgentOverviewApp.tsx` | `2026-05-05-storybook-phase5-agent-overview-design.md` | `2026-05-05-storybook-phase5-agent-overview.md` | _(filled in after PR opens)_ |
 | 5 | SQL | `sql-main.tsx` → `components/sql/SqlApp.tsx` | `2026-05-05-storybook-phase4-sql-design.md` | `2026-05-05-storybook-phase4-sql.md` | _(filled in after PR opens)_ |
 | 6 | Work Item Detail | `workitem-detail-main.tsx` → `components/work-items/WorkItemDetailApp.tsx` | `2026-05-05-storybook-phase6-workitem-detail-design.md` | `2026-05-05-storybook-phase6-workitem-detail.md` | [#16](https://github.com/borght-dev/BorgDock/pull/16) |
+| 7 | File Palette | `file-palette-main.tsx` → `components/file-palette/FilePaletteApp.tsx` | `2026-05-06-storybook-phase7-file-palette-design.md` | `2026-05-06-storybook-phase7-file-palette.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -73,7 +74,6 @@ will refine them.
 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | **L** | many (`invoke` heavy: settings load/save, repo scan, ado/github auth, self-test, maintenance ops); `plugin-dialog.open/save`; `emit` for cross-window settings updates | Recently redesigned with rail + sections. Implicitly stories the new `shared/primitives/*` (Toggle, Slider, Select, Field, Seg2, etc.) plus `RepoScanDialog`, `ConnectionEditorDialog`, `SelfTestResultsDialog`. |
 | Pr Detail | `pr-detail-main.tsx` | **L** | `invoke` (PR fetch, checks, comments, review submission); `plugin-clipboard-manager`; window persistence | Large screen with multiple tabs (overview / files / checks / comments). Best storied per-tab to keep stories focused. |
 | File Viewer | `file-viewer-main.tsx` | **M** | `invoke` (file content, syntax info), `plugin-fs`, `plugin-clipboard-manager` | Tree-sitter highlighting must work in Storybook — `public/grammars/` is served by Vite at `/grammars/...` so this should "just work," but verify in the brainstorm. |
-| File Palette | `file-palette-main.tsx` | **M** | `invoke` (file index, recent files, scan progress), `plugin-fs` | Palette UX: stories should cover empty / loading / scan-in-progress / changed-files section / per-root filtering. |
 | Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
@@ -137,6 +137,11 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > `clipboard.writeText` invocation) and `windowSize` gains `x` / `y`
 > fields for the position round-trip used by SqlApp's saved-position
 > persistence.
+
+> **Phase 7 mock-layer extensions:** `tauri-api-window` now also exposes
+> `getCurrentWindow().onFocusChanged` (synthetic `__window.onFocusChanged`
+> channel — emit a boolean payload via `getControl().emit(...)`). Mirrors
+> the Phase-4 `onMoved` pattern.
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).
