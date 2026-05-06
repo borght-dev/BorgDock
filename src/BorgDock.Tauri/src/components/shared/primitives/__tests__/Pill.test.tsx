@@ -17,6 +17,7 @@ describe('Pill', () => {
     ['neutral', 'bd-pill--neutral'],
     ['draft', 'bd-pill--draft'],
     ['ghost', 'bd-pill--ghost'],
+    ['merged', 'bd-pill--merged'],
   ] as const)('applies the correct tone class for %s', (tone, expected) => {
     render(<Pill tone={tone}>x</Pill>);
     expect(screen.getByText('x')).toHaveClass(expected);

@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export type PillTone = 'success' | 'warning' | 'error' | 'neutral' | 'draft' | 'ghost';
+export type PillTone = 'success' | 'warning' | 'error' | 'neutral' | 'draft' | 'ghost' | 'merged';
 
 export interface PillProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'children'> {
   /** Semantic tone — drives the background/foreground/border triple. */
