@@ -369,3 +369,112 @@ export const AdoNotConfigured: Story = story(
     },
   },
 );
+
+// --- Interaction axis (4)
+
+export const HoverHighlightsRow: Story = story(
+  {
+    scenario: fullBrowseScenario(),
+    workingOnWorkItemIds: [101, 200],
+    recentWorkItemIds: [103, 201, 200],
+  },
+  {
+    play: async ({ canvasElement }) => {
+      const { userEvent, waitFor } = await import('storybook/test');
+      const rows = await waitFor(
+        () => {
+          const found = canvasElement.querySelectorAll('[data-palette-row]');
+          if (found.length < 2) throw new Error('expected ≥2 rows');
+          return found;
+        },
+        { timeout: 2000 },
+      );
+      await userEvent.hover(rows[1] as Element);
+      await waitFor(() => {
+        const cls = (rows[1] as HTMLElement).className;
+        if (!cls.includes('accent-subtle')) {
+          throw new Error('hover did not promote selection class');
+        }
+      });
+    },
+  },
+);
+
+export const EnterOpensDetailWindow: Story = story(
+  {
+    scenario: fullBrowseScenario(),
+    workingOnWorkItemIds: [101],
+    recentWorkItemIds: [],
+  },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, fireEvent, waitFor } = await import('storybook/test');
+      const input = (await within(canvasElement).findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      )) as HTMLInputElement;
+      // Wait for browse data to land + initial selection.
+      await waitFor(
+        () => {
+          if (canvasElement.querySelectorAll('[data-palette-row]').length === 0)
+            throw new Error('rows not yet rendered');
+        },
+        { timeout: 2000 },
+      );
+      input.focus();
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      await waitFor(
+        () => {
+          const created = getControl().webviewWindowsCreated;
+          if (created.length === 0) throw new Error('no detail window opened');
+          if (!created.some((w) => w.label.startsWith('workitem-detail-'))) {
+            throw new Error(`unexpected label: ${created[0]?.label}`);
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const EscapeHidesPalette: Story = story(
+  { scenario: emptyBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, fireEvent, waitFor } = await import('storybook/test');
+      // Wait for input to mount so the global keydown listener is wired.
+      await within(canvasElement).findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      fireEvent.keyDown(document, { key: 'Escape' });
+      await waitFor(
+        () => {
+          const found = getControl().invocations.some((i) => i.command === 'window.hide');
+          if (!found) throw new Error('window.hide not invoked');
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const DragHandleStartsDrag: Story = story(
+  { scenario: emptyBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, fireEvent, waitFor } = await import('storybook/test');
+      await within(canvasElement).findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      const handle = canvasElement.querySelector('[data-tauri-drag-region]') as HTMLElement;
+      if (!handle) throw new Error('drag handle not found');
+      fireEvent.mouseDown(handle, { button: 0 });
+      await waitFor(
+        () => {
+          const found = getControl().invocations.some((i) => i.command === 'window.startDragging');
+          if (!found) throw new Error('window.startDragging not invoked');
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
