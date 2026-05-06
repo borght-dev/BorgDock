@@ -613,6 +613,53 @@ pub async fn open_whats_new_window(
     rx.await.map_err(|e| e.to_string())?
 }
 
+/// Show the main window if hidden, focus it if shown-but-unfocused, or hide it
+/// if it's the foreground window. Replaces the old `toggle_sidebar`.
+#[tauri::command]
+pub async fn show_or_focus_main(app: tauri::AppHandle) -> Result<(), String> {
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            let win = app_for_run
+                .get_webview_window("main")
+                .ok_or_else(|| "main window not found".to_string())?;
+            let visible = win.is_visible().unwrap_or(false);
+            let focused = win.is_focused().unwrap_or(false);
+            if !visible {
+                win.show().map_err(|e| e.to_string())?;
+                let _ = win.unminimize();
+                win.set_focus().map_err(|e| e.to_string())?;
+            } else if !focused {
+                win.set_focus().map_err(|e| e.to_string())?;
+            } else {
+                win.hide().map_err(|e| e.to_string())?;
+            }
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+    rx.await.map_err(|e| e.to_string())?
+}
+
+/// Synchronous variant for use inside tray callbacks (already on main thread).
+pub(crate) fn show_or_focus_main_sync(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let visible = win.is_visible().unwrap_or(false);
+        let focused = win.is_focused().unwrap_or(false);
+        if !visible {
+            let _ = win.show();
+            let _ = win.unminimize();
+            let _ = win.set_focus();
+        } else if !focused {
+            let _ = win.set_focus();
+        } else {
+            let _ = win.hide();
+        }
+    }
+}
+
 fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
     app.get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())

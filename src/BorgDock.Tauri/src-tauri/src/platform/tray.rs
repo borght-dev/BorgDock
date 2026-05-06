@@ -56,14 +56,19 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 });
             }
             "show" => {
-                let _ = crate::platform::window::show_main_window(app);
+                let app_handle = app.clone();
+                let _ = app.run_on_main_thread(move || {
+                    crate::platform::window::show_or_focus_main_sync(&app_handle);
+                });
             }
             "settings" => {
-                if let Ok(()) = crate::platform::window::show_main_window(app) {
-                    if let Some(win) = app.get_webview_window("main") {
+                let app_handle = app.clone();
+                let _ = app.run_on_main_thread(move || {
+                    crate::platform::window::show_or_focus_main_sync(&app_handle);
+                    if let Some(win) = app_handle.get_webview_window("main") {
                         let _ = win.emit("open-settings", ());
                     }
-                }
+                });
             }
             "whats_new" => {
                 let app_handle = app.clone();
@@ -92,7 +97,9 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            // Left-click toggles the flyout
+            // Left-click shows/focuses/hides the main window (same as the
+            // global hotkey). The flyout is reachable via its own hotkey or
+            // the "Show flyout" tray-menu item.
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
@@ -102,9 +109,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 let app = tray.app_handle().clone();
                 let app_inner = app.clone();
                 let _ = app.run_on_main_thread(move || {
-                    if let Err(e) = super::window::toggle_flyout(&app_inner) {
-                        log::error!("toggle_flyout failed: {e}");
-                    }
+                    crate::platform::window::show_or_focus_main_sync(&app_inner);
                 });
             }
         })

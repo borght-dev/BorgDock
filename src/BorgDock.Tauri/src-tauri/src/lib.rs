@@ -403,6 +403,7 @@ pub fn run() {
             platform::window::position_sidebar,
             platform::window::toggle_sidebar,
             platform::window::hide_sidebar,
+            platform::window::show_or_focus_main,
             platform::window::hide_flyout,
             platform::window::window_ready,
             platform::work_area::reserve_work_area,
