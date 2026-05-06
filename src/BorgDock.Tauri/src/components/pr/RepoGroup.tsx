@@ -43,15 +43,18 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
   const failing = countFailing(prs);
 
   return (
-    <div className="mb-0.5">
-      {/* Header */}
+    <div className="mb-0.5 bd-repo-group">
+      {/* Header \u2014 chevron + section label + horizontal rule + count pill.
+          Wrapper stays a single <button> so the entire row is clickable as one
+          target (matches keyboard-nav expectations). The inner chevron / hr are
+          decorative, not separate buttons. */}
       <button
         onClick={() => toggleRepoGroup(repoKey)}
-        className="group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
+        className="bd-repo-group__header"
       >
         <svg
-          width="10"
-          height="10"
+          width="13"
+          height="13"
           viewBox="0 0 16 16"
           fill="none"
           stroke="currentColor"
@@ -59,33 +62,15 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
           className={clsx(
-            'shrink-0 text-[var(--color-text-ghost)] transition-transform duration-200',
+            'bd-repo-group__chevron',
             isExpanded ? 'rotate-90' : 'rotate-0',
           )}
         >
           <path d="m6 4 4 4-4 4" />
         </svg>
-        {/* Repo icon */}
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="var(--color-text-ghost)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0"
-        >
-          <path d="M4 2v12M12 8c0-3-2-4-4-4" />
-          <circle cx="4" cy="14" r="1.5" fill="var(--color-text-ghost)" stroke="none" />
-          <circle cx="4" cy="2" r="1.5" fill="var(--color-text-ghost)" stroke="none" />
-          <circle cx="12" cy="8" r="1.5" fill="var(--color-text-ghost)" stroke="none" />
-        </svg>
-        <span className="truncate text-[11px] font-semibold tracking-tight text-[var(--color-text-secondary)]">
-          {repoKey}
-        </span>
-        <div className="ml-auto flex items-center gap-1">
+        <span className="bd-section-label">{repoKey}</span>
+        <span className="bd-repo-group__hr" aria-hidden />
+        <span className="bd-repo-group__count">
           {failing > 0 && (
             <span
               className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]"
@@ -94,10 +79,10 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
               {'\u2716'}
             </span>
           )}
-          <Pill tone="neutral" className="tabular-nums">
+          <Pill tone="ghost" className="tabular-nums">
             {prs.length}
           </Pill>
-        </div>
+        </span>
       </button>
 
       {/* Content */}
