@@ -2,6 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { Fragment, useMemo, useRef } from 'react';
 import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
 import type { DiffHunk, DiffLine, HighlightSpan, InlineChange, ReviewThread } from '@/types';
+import { InlineThread } from '../InlineThread';
 import { DiffLineContent } from './DiffLineContent';
 import { DiffLineRow } from './DiffLineRow';
 
@@ -25,9 +26,9 @@ export function UnifiedDiffView({
   threadsByLine,
   openThreadIds,
   onToggleThread,
-  onResolve: _onResolve, // unused until Task 20 wires InlineThread
-  onUnresolve: _onUnresolve,
-  onReply: _onReply,
+  onResolve,
+  onUnresolve,
+  onReply,
   highlightLine,
 }: UnifiedDiffViewProps) {
   const allLines = useMemo(() => hunks.flatMap((h) => h.lines), [hunks]);
@@ -99,7 +100,19 @@ export function UnifiedDiffView({
                 onToggleThread={firstThread ? () => onToggleThread?.(firstThread.id) : undefined}
                 highlight={isHighlighted}
               />
-              {/* InlineThread row — wired in Task 20. For now, intentionally not rendered. */}
+              {isOpen && firstThread && (
+                <tr>
+                  <td colSpan={3} className="p-0">
+                    <InlineThread
+                      thread={firstThread}
+                      onClose={() => onToggleThread?.(firstThread.id)}
+                      onResolve={onResolve}
+                      onUnresolve={onUnresolve}
+                      onReply={onReply}
+                    />
+                  </td>
+                </tr>
+              )}
             </Fragment>
           );
         })}
