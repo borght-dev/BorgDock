@@ -60,6 +60,22 @@ export interface PluginFsControl {
   failNextWrite: boolean;
 }
 
+// Phase 8 — work-item palette scenario shape
+export interface WorkItemPaletteScenario {
+  workItems: WorkItem[];
+  assignedToMe: WorkItem[];
+  searchPool: WorkItem[];
+  browseBehavior: 'normal' | 'pending' | 'reject';
+  assignedToMeBehavior: 'normal' | 'pending' | 'reject';
+  searchBehavior: 'normal' | 'pending' | 'reject';
+}
+
+// Phase 8 — record of new WebviewWindow(...) constructions during a story.
+export interface WebviewWindowRecord {
+  label: string;
+  options: Record<string, unknown>;
+}
+
 export interface StorybookTauriControl {
   channels: Map<string, Set<ChannelListener>>;
   invocations: InvokeRecord[];
@@ -83,6 +99,10 @@ export interface StorybookTauriControl {
   workItemScenario: WorkItemScenario;
   pluginDialog: PluginDialogControl;
   pluginFs: PluginFsControl;
+
+  // Phase 8 fields
+  workItemPaletteScenario: WorkItemPaletteScenario;
+  webviewWindowsCreated: WebviewWindowRecord[];
 
   reset(): void;
   emit(channel: string, payload: unknown): void;
@@ -117,6 +137,17 @@ function defaultScenario(): WorkItemScenario {
   };
 }
 
+function defaultPaletteScenario(): WorkItemPaletteScenario {
+  return {
+    workItems: [],
+    assignedToMe: [],
+    searchPool: [],
+    browseBehavior: 'normal',
+    assignedToMeBehavior: 'normal',
+    searchBehavior: 'normal',
+  };
+}
+
 function createControl(): StorybookTauriControl {
   const ctrl: StorybookTauriControl = {
     channels: new Map(),
@@ -136,6 +167,9 @@ function createControl(): StorybookTauriControl {
     workItemScenario: defaultScenario(),
     pluginDialog: {},
     pluginFs: { writes: new Map(), reads: new Map(), failNextWrite: false },
+
+    workItemPaletteScenario: defaultPaletteScenario(),
+    webviewWindowsCreated: [],
 
     reset() {
       ctrl.channels.clear();
@@ -161,6 +195,9 @@ function createControl(): StorybookTauriControl {
       ctrl.pluginFs.writes.clear();
       ctrl.pluginFs.reads.clear();
       ctrl.pluginFs.failNextWrite = false;
+
+      ctrl.workItemPaletteScenario = defaultPaletteScenario();
+      ctrl.webviewWindowsCreated.length = 0;
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);
