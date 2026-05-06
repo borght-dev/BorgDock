@@ -317,15 +317,15 @@ export function useWorkItemPaletteSearch() {
         new WebviewWindow(`workitem-detail-${id}`, {
           url: `workitem-detail.html?id=${id}`,
           title: `Work Item #${id}`,
-          width: 550,
-          height: 700,
+          width: 1180,
+          height: 820,
+          minWidth: 720,
+          minHeight: 520,
           center: true,
           decorations: false,
           resizable: true,
           focus: true,
-          skipTaskbar: true,
-          // Build invisible — the WorkItemDetailApp calls `window_ready`
-          // once mounted to avoid a flash of unstyled chrome.
+          skipTaskbar: false, // viewer windows are first-class — appear in Alt+Tab
           visible: false,
         });
       } catch (err) {
