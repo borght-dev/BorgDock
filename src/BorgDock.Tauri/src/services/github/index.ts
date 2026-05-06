@@ -26,3 +26,9 @@ export {
   getReviews,
   splitStructuredReview,
 } from './reviews';
+export {
+  buildSnippetFromPatch,
+  getReviewThreads,
+  resolveReviewThread,
+  unresolveReviewThread,
+} from './reviewThreads';

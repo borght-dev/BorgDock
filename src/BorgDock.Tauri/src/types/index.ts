@@ -70,3 +70,9 @@ export type {
   WorkItemRelation,
 } from './work-item';
 export type { WorktreeInfo } from './worktree';
+export type {
+  ReviewVerdict,
+  ReviewThread,
+  ReviewThreadComment,
+  ReviewThreadSnippetLine,
+} from './review-thread';
