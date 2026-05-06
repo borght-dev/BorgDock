@@ -10,6 +10,8 @@ import {
   fullBrowseScenario,
   loadingBrowseScenario,
   recentIds,
+  searchPendingScenario,
+  searchPoolMixed,
   workingOnIds,
 } from './__fixtures__/work-item-palette-data';
 
@@ -116,3 +118,124 @@ export const DedupAcrossSections: Story = story({
   workingOnWorkItemIds: [101, 200],
   recentWorkItemIds: [103, 201, 200],
 });
+
+// --- Search-state axis (5)
+
+export const SearchTypeTooShortText: Story = story(
+  { scenario: fullBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'a');
+      await waitFor(() => {
+        const text = canvasElement.textContent ?? '';
+        if (!text.includes('Type at least 2 characters')) {
+          throw new Error('expected too-short-text status');
+        }
+      });
+    },
+  },
+);
+
+export const SearchTypeTooShortNumeric: Story = story(
+  { scenario: fullBrowseScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, '5');
+      await waitFor(() => {
+        const text = canvasElement.textContent ?? '';
+        if (!text.includes('Type at least 2 digits')) {
+          throw new Error('expected too-short-numeric status');
+        }
+      });
+    },
+  },
+);
+
+export const SearchInFlight: Story = story(
+  { scenario: searchPendingScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'auth');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          if (!text.includes('Searching')) {
+            throw new Error('expected Searching status');
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const SearchNoResults: Story = story(
+  {
+    scenario: {
+      ...fullBrowseScenario(),
+      searchPool: [], // empty pool → no matches for any query
+    },
+  },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'missing');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          if (!text.includes('No results')) {
+            throw new Error('expected No results status');
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const SearchOneResult: Story = story(
+  {
+    scenario: {
+      ...fullBrowseScenario(),
+      searchPool: [searchPoolMixed[0]!], // exactly one match for 'login'
+    },
+  },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'login');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          if (!text.includes('1 result')) {
+            throw new Error('expected 1 result status');
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
