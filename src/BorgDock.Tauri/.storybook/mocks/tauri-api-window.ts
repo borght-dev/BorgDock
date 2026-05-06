@@ -7,6 +7,7 @@
 //   - getCurrentWindow().outerPosition/setPosition/onMoved               (Phase 4)
 //   - getCurrentWindow().setTitle/getTitle                               (Phase 6)
 //   - getCurrentWindow().onFocusChanged                                  (Phase 7)
+//   - getCurrentWindow().startDragging                                   (Phase 8)
 //   - currentMonitor()                                                   (Phase 3)
 //
 // hide() and close() are no-ops — without them, the Worktree palette's
@@ -57,6 +58,7 @@ interface MockWindow {
   onFocusChanged(cb: (event: { payload: boolean }) => void): Promise<() => void>;
   setTitle(title: string): Promise<void>;
   getTitle(): Promise<string>;
+  startDragging(): Promise<void>;
 }
 
 export type Window = MockWindow;
@@ -151,6 +153,9 @@ export function getCurrentWindow(): MockWindow {
     },
     async getTitle() {
       return ctrl.windowState.title;
+    },
+    async startDragging() {
+      ctrl.invocations.push({ command: 'window.startDragging' });
     },
   };
 }
