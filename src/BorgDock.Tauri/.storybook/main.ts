@@ -33,6 +33,7 @@ const config: StorybookConfig = {
       '@tauri-apps/api/dpi': resolve(here, 'mocks/tauri-api-dpi.ts'),
       '@tauri-apps/plugin-opener': resolve(here, 'mocks/tauri-plugin-opener.ts'),
       '@tauri-apps/plugin-store': resolve(here, 'mocks/tauri-plugin-store.ts'),
+      '@tauri-apps/plugin-clipboard-manager': resolve(here, 'mocks/tauri-plugin-clipboard-manager.ts'),
       '@/services/windows': resolve(here, 'mocks/services-windows.ts'),
       '@/generated/changelog': resolve(here, 'mocks/generated-changelog.ts'),
       '@': resolve(here, '../src'),

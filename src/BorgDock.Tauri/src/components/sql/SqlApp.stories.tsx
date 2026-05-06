@@ -1,0 +1,449 @@
+// src/components/sql/SqlApp.stories.tsx
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useEffect } from 'react';
+import { getControl } from '../../../.storybook/mocks/control';
+import type { AppSettings } from '@/types/settings';
+import type { SqlSchemaPayload } from '@/types/sql-schema';
+import type { SqlSnippet } from './snippet-types';
+import { SqlApp } from './SqlApp';
+import {
+  connBorgDockDev,
+  connHorizonProd,
+  connLongName,
+  makeSettings,
+  resultMultiSet,
+  resultSmallSelect,
+  resultTruncated,
+  resultUpdate,
+  sampleSelectQuery,
+  schemaSmall,
+  snippetActiveQuery,
+  snippetsEmpty,
+  snippetsFew,
+  type QueryResult,
+} from './__fixtures__/sql-data';
+
+// Keys SqlApp persists state to. Cleared before every story so stories
+// don't bleed layout / position / snippet selections into each other.
+const SQL_LOCALSTORAGE_KEYS = [
+  'borgdock-sql-position',
+  'borgdock-sql-last-query',
+  'borgdock.sql.railWidth',
+  'borgdock.sql.railCollapsed',
+  'borgdock.sql.editorHeight',
+  'borgdock.sql.activeSnippet',
+  'borgdock.sql.snippets',
+];
+
+interface SqlStoryParams {
+  /** AppSettings the load_settings invoke returns. */
+  settings?: AppSettings;
+  /** When true, load_settings returns a never-resolving promise. */
+  loadSettingsPending?: boolean;
+  /** Static schema OR fn (args) => schema | Promise<schema>. */
+  schemaResponse?:
+    | SqlSchemaPayload
+    | null
+    | ((args: { connectionName: string }) => SqlSchemaPayload | null | Promise<SqlSchemaPayload | null>);
+  /** Cached schema returned from cache_load_sql_schema. */
+  cachedSchema?: SqlSchemaPayload | null;
+  /** Static result OR fn returning a result, value, or rejection. */
+  executeResponse?:
+    | QueryResult
+    | ((args: { connectionName: string; query: string }) => QueryResult | Promise<QueryResult>);
+  /** Snippets returned by sql_snippets_list (and pre-seeded into localStorage). */
+  snippetsResponse?: SqlSnippet[];
+  /** Pre-populated borgdock-sql-last-query so the editor mounts non-empty. */
+  initialQuery?: string;
+  /** Active snippet id pre-seeded into localStorage. */
+  activeSnippetId?: string;
+  /** When set, localStorage['borgdock.sql.railCollapsed'] is set before mount. */
+  railCollapsed?: boolean;
+  /** Saved window position written to localStorage before mount. */
+  savedPosition?: { x: number; y: number };
+  /** When provided, currentMonitor() returns this. */
+  monitorState?: { size: { width: number; height: number }; scaleFactor: number } | null;
+}
+
+function clearSqlLocalStorage() {
+  for (const key of SQL_LOCALSTORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function SqlHarness({ params }: { params: SqlStoryParams }) {
+  // Clear leftover state and seed fresh state synchronously, before
+  // SqlApp's first render. Global preview decorator already called reset().
+  clearSqlLocalStorage();
+
+  const ctrl = getControl();
+
+  if (params.loadSettingsPending) {
+    ctrl.invokeResponses['load_settings'] = () => new Promise(() => {});
+  } else if (params.settings) {
+    ctrl.invokeResponses['load_settings'] = params.settings;
+  } else {
+    ctrl.invokeResponses['load_settings'] = makeSettings([connBorgDockDev]);
+  }
+
+  if (params.schemaResponse !== undefined) {
+    ctrl.invokeResponses['fetch_sql_schema'] = params.schemaResponse;
+  } else {
+    ctrl.invokeResponses['fetch_sql_schema'] = schemaSmall;
+  }
+  ctrl.invokeResponses['cache_load_sql_schema'] = params.cachedSchema ?? null;
+  ctrl.invokeResponses['cache_save_sql_schema'] = undefined;
+
+  if (params.executeResponse !== undefined) {
+    ctrl.invokeResponses['execute_sql_query'] = params.executeResponse;
+  }
+
+  ctrl.invokeResponses['sql_snippets_list'] = params.snippetsResponse ?? [];
+  ctrl.invokeResponses['sql_snippets_save'] = undefined;
+  ctrl.invokeResponses['sql_snippets_delete'] = undefined;
+  ctrl.invokeResponses['window_ready'] = undefined;
+
+  if (params.initialQuery !== undefined) {
+    try {
+      localStorage.setItem('borgdock-sql-last-query', params.initialQuery);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (params.activeSnippetId !== undefined) {
+    try {
+      localStorage.setItem('borgdock.sql.activeSnippet', params.activeSnippetId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (params.railCollapsed) {
+    try {
+      localStorage.setItem('borgdock.sql.railCollapsed', '1');
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (params.savedPosition) {
+    try {
+      localStorage.setItem(
+        'borgdock-sql-position',
+        JSON.stringify(params.savedPosition),
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (params.monitorState !== undefined) ctrl.monitorState = params.monitorState;
+
+  // Cleanup on unmount so a follow-up story's beforeEach gets a clean slate
+  // even if its own clearSqlLocalStorage() ran before mount of the previous
+  // story's last useEffect cleanup.
+  useEffect(() => {
+    return () => {
+      clearSqlLocalStorage();
+    };
+  }, []);
+
+  return (
+    <div style={{ width: 1280, height: 800 }}>
+      <SqlApp />
+    </div>
+  );
+}
+
+const meta: Meta<typeof SqlHarness> = {
+  title: 'Sql/SqlApp',
+  component: SqlHarness,
+  parameters: { layout: 'fullscreen' },
+};
+
+export default meta;
+
+type Story = StoryObj<typeof SqlHarness>;
+
+function story(params: SqlStoryParams): Story {
+  return { args: { params } };
+}
+
+// ---------------------------------------------------------------------------
+// 1. Loading / connection axis
+// ---------------------------------------------------------------------------
+
+export const Loading = story({ loadSettingsPending: true });
+
+export const NoConnections = story({
+  settings: makeSettings([]),
+});
+
+export const OneConnection = story({
+  settings: makeSettings([connBorgDockDev]),
+});
+
+export const MultipleConnections = story({
+  settings: (() => {
+    const s = makeSettings([connHorizonProd, connBorgDockDev, connLongName]);
+    s.sql.lastUsedConnection = connBorgDockDev.name;
+    return s;
+  })(),
+});
+
+// ---------------------------------------------------------------------------
+// 2. Schema axis
+// ---------------------------------------------------------------------------
+
+export const SchemaPending = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: null,
+  schemaResponse: () => new Promise<SqlSchemaPayload>(() => {}),
+});
+
+export const SchemaCached = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: schemaSmall,
+  schemaResponse: schemaSmall,
+});
+
+export const SchemaError = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: null,
+  schemaResponse: () => Promise.reject(new Error('TLS handshake failed')),
+});
+
+// ---------------------------------------------------------------------------
+// 3. Editor / snippets axis
+// ---------------------------------------------------------------------------
+
+export const NoSnippetsEmptyEditor = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsEmpty,
+});
+
+export const NoSnippetsDirtyEditor = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsEmpty,
+  initialQuery: sampleSelectQuery,
+});
+
+export const WithActiveSnippetClean = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsFew,
+  activeSnippetId: snippetActiveQuery.id,
+  initialQuery: snippetActiveQuery.body,
+});
+
+export const WithActiveSnippetDirty = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsFew,
+  activeSnippetId: snippetActiveQuery.id,
+  initialQuery: `${snippetActiveQuery.body}\n-- modified locally\n`,
+});
+
+// ---------------------------------------------------------------------------
+// 4. Run / result axis
+// ---------------------------------------------------------------------------
+
+export const ResultIdle = story({
+  settings: makeSettings([connBorgDockDev]),
+  cachedSchema: schemaSmall,
+});
+
+export const ResultRunning: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: sampleSelectQuery,
+      executeResponse: () => new Promise<QueryResult>(() => {}),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultSuccessSelect: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: sampleSelectQuery,
+      executeResponse: resultSmallSelect,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultSuccessUpdate: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: "UPDATE dbo.Customer SET IsActive = 1 WHERE Region = 'EU';",
+      executeResponse: resultUpdate,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultMultiSet: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
+      executeResponse: resultMultiSet,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// 5. Error / panic axis
+// ---------------------------------------------------------------------------
+
+export const ResultError: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT * FROM dbo.SomeTable;',
+      executeResponse: () => Promise.reject(new Error("Login failed for user 'sa'.")),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultPanicRecovered: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT * FROM sys.geometries;',
+      executeResponse: () =>
+        Promise.reject(
+          new Error(
+            'Internal error: the query result contains an unsupported column type. Try selecting specific columns instead of *.',
+          ),
+        ),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+export const ResultTruncated: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: 'SELECT * FROM dbo.Product;',
+      executeResponse: resultTruncated,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// 6. Layout / interaction axis
+// ---------------------------------------------------------------------------
+
+export const RailCollapsed = story({
+  settings: makeSettings([connBorgDockDev]),
+  snippetsResponse: snippetsFew,
+  railCollapsed: true,
+});
+
+export const CopyValuesRoundtrip: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+      initialQuery: sampleSelectQuery,
+      executeResponse: resultSmallSelect,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const runBtn = await canvas.findByRole('button', { name: /run/i });
+    await userEvent.click(runBtn);
+
+    const valuesBtn = await canvas.findByRole('button', { name: /^values$/i });
+    await userEvent.click(valuesBtn);
+
+    await waitFor(() => {
+      const ctrl = getControl();
+      expect(ctrl.clipboardWrites.length).toBeGreaterThan(0);
+      // First row of resultSmallSelect → '1\tCustomer 1\t...'
+      expect(ctrl.clipboardWrites[0]).toContain('Customer 1');
+    });
+  },
+};
+
+export const PositionPersistedAfterMove: Story = {
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+      cachedSchema: schemaSmall,
+    },
+  },
+  play: async () => {
+    const { waitFor, expect } = await import('storybook/test');
+
+    // Wait for the onMoved listener to register before emitting.
+    await waitFor(() => {
+      const ctrl = getControl();
+      expect(ctrl.channels.has('__window.onMoved')).toBe(true);
+    });
+
+    getControl().emit('__window.onMoved', { x: 240, y: 180 });
+
+    await waitFor(() => {
+      const raw = localStorage.getItem('borgdock-sql-position');
+      expect(raw).toBeTruthy();
+      expect(raw!).toContain('240');
+    });
+  },
+};

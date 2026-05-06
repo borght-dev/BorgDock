@@ -58,6 +58,7 @@ time.
 | 2 | What's New | `whats-new-main.tsx` → `components/whats-new/WhatsNewApp.tsx` | `2026-05-05-storybook-phase2-whatsnew-design.md` | `2026-05-05-storybook-phase2-whatsnew.md` | _(filled in after PR opens)_ |
 | 3 | Worktree (palette) | `worktree-main.tsx` → `components/worktree-palette/WorktreePaletteApp.tsx` | `2026-05-05-storybook-phase3-worktree-design.md` | `2026-05-05-storybook-phase3-worktree.md` | [#15](https://github.com/borght-dev/BorgDock/pull/15) |
 | 4 | Agent Overview | `main-agent-overview.tsx` → `components/agent-overview/AgentOverviewApp.tsx` | `2026-05-05-storybook-phase5-agent-overview-design.md` | `2026-05-05-storybook-phase5-agent-overview.md` | _(filled in after PR opens)_ |
+| 5 | SQL | `sql-main.tsx` → `components/sql/SqlApp.tsx` | `2026-05-05-storybook-phase4-sql-design.md` | `2026-05-05-storybook-phase4-sql.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -74,7 +75,6 @@ will refine them.
 | File Palette | `file-palette-main.tsx` | **M** | `invoke` (file index, recent files, scan progress), `plugin-fs` | Palette UX: stories should cover empty / loading / scan-in-progress / changed-files section / per-root filtering. |
 | Work Item Palette | `work-item-palette-main.tsx` | **M** | `invoke` (ADO query exec, cached items) | Mirrors File Palette's UX; some shared decisions in mock layer. |
 | Work Item Detail | `workitem-detail-main.tsx` | **M** | `invoke` (load/update WIT), `plugin-dialog` (attachments) | Stories per-state (loading / loaded / dirty / saving / saved / error / cancellation). |
-| SQL | `sql-main.tsx` | **M** | `invoke` (sql exec, schema fetch, ADO connection); custom panic-handling path | Code editor (CodeMirror) + result grid. Stories should cover empty / running / result / error / panic-recovered. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
 > **Roadmap correction (Phase 3):** the previous Worktree row described the
@@ -119,6 +119,7 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@/services/windows` → `mocks/services-windows.ts`
 - `@/generated/changelog` → `mocks/generated-changelog.ts`
 - `@tauri-apps/api/dpi` → `mocks/tauri-api-dpi.ts`
+- `@tauri-apps/plugin-clipboard-manager` → `mocks/tauri-plugin-clipboard-manager.ts`
 
 > **Phase 3 mock-layer extensions:** `tauri-api-window` now also exports
 > `currentMonitor` and `getCurrentWindow().{hide,setSize,innerSize,scaleFactor}`.
@@ -126,6 +127,13 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > `invokeResponses[command]` may be `(args) => T | Promise<T>` for
 > arg-discriminated responses (used by stories that vary
 > `list_worktrees_bare` per `basePath`).
+
+> **Phase 4 mock-layer extensions:** `tauri-api-window` now also exposes
+> `getCurrentWindow().{outerPosition, setPosition, onMoved}`. `control.ts`
+> records `clipboardWrites: string[]` (populated by every
+> `clipboard.writeText` invocation) and `windowSize` gains `x` / `y`
+> fields for the position round-trip used by SqlApp's saved-position
+> persistence.
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).

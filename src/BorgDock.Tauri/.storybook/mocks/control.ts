@@ -25,6 +25,9 @@ export interface WindowSizeState {
   width: number;
   height: number;
   scaleFactor: number;
+  // Phase 4 additions — outer-position state for getCurrentWindow().outerPosition / setPosition.
+  x: number;
+  y: number;
 }
 
 export interface StorybookTauriControl {
@@ -43,6 +46,9 @@ export interface StorybookTauriControl {
   windowSize: WindowSizeState;
   monitorState: MonitorState | null;
 
+  // Phase 4 additions
+  clipboardWrites: string[];
+
   reset(): void;
   emit(channel: string, payload: unknown): void;
 }
@@ -53,7 +59,13 @@ declare global {
   }
 }
 
-const DEFAULT_WINDOW_SIZE: WindowSizeState = { width: 480, height: 600, scaleFactor: 1 };
+const DEFAULT_WINDOW_SIZE: WindowSizeState = {
+  width: 480,
+  height: 600,
+  scaleFactor: 1,
+  x: 100,
+  y: 100,
+};
 
 function createControl(): StorybookTauriControl {
   const ctrl: StorybookTauriControl = {
@@ -70,6 +82,8 @@ function createControl(): StorybookTauriControl {
     windowSize: { ...DEFAULT_WINDOW_SIZE },
     monitorState: null,
 
+    clipboardWrites: [],
+
     reset() {
       ctrl.channels.clear();
       ctrl.invocations.length = 0;
@@ -82,7 +96,10 @@ function createControl(): StorybookTauriControl {
       ctrl.windowSize.width = DEFAULT_WINDOW_SIZE.width;
       ctrl.windowSize.height = DEFAULT_WINDOW_SIZE.height;
       ctrl.windowSize.scaleFactor = DEFAULT_WINDOW_SIZE.scaleFactor;
+      ctrl.windowSize.x = DEFAULT_WINDOW_SIZE.x;
+      ctrl.windowSize.y = DEFAULT_WINDOW_SIZE.y;
       ctrl.monitorState = null;
+      ctrl.clipboardWrites.length = 0;
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);
