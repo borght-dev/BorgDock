@@ -72,4 +72,11 @@ describe('MergedCard', () => {
     const card = container.querySelector('[data-merged-card]');
     expect(card?.getAttribute('data-variant')).toBe('closed');
   });
+
+  it('clamps a future-timestamp (clock skew) to just now', () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    const pr = makePr({ mergedAt: future });
+    render(<MergedCard pr={pr} />);
+    expect(screen.getByText('Merged just now')).toBeTruthy();
+  });
 });
