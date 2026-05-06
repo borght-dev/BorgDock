@@ -294,3 +294,148 @@ export const BaselineSwitchInteraction: Story = {
     });
   },
 };
+
+// ---------------------------------------------------------------------------
+// 6. Toolbar action axis (4)
+// ---------------------------------------------------------------------------
+
+export const CopyAllSuccess: Story = {
+  args: {
+    params: {
+      contentResponse: TSX_SAMPLE,
+      diffResponse: DIFF_NOT_IN_REPO,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    // Wait for content to load — Copy all is disabled until then.
+    const copyBtn = await canvas.findByRole('button', { name: 'Copy all' });
+    await waitFor(() => {
+      if ((copyBtn as HTMLButtonElement).disabled) throw new Error('not ready');
+    });
+    await userEvent.click(copyBtn);
+    await canvas.findByRole('button', { name: 'Copied' });
+  },
+};
+
+export const CopyAllDisabled: Story = {
+  args: {
+    params: {
+      contentResponse: () => Promise.reject(ERR_NOT_FOUND),
+      diffResponse: DIFF_NOT_IN_REPO,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      const btn = canvas.getByRole('button', { name: 'Copy all' }) as HTMLButtonElement;
+      expect(btn.disabled).toBe(true);
+    });
+  },
+};
+
+export const OpenInEditorClicked: Story = {
+  args: {
+    params: {
+      contentResponse: TSX_SAMPLE,
+      diffResponse: DIFF_NOT_IN_REPO,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const btn = await canvas.findByRole('button', { name: 'Open in editor' });
+    await userEvent.click(btn);
+    await waitFor(() => {
+      const ctrl = (window as unknown as {
+        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+      }).__borgdock_storybook_tauri;
+      const call = ctrl.invocations.find((i) => i.command === 'open_in_editor');
+      expect(call).toBeTruthy();
+      expect((call?.args as { path?: string } | undefined)?.path).toBeTruthy();
+    });
+  },
+};
+
+export const CloseClicked: Story = {
+  args: {
+    params: {
+      contentResponse: TSX_SAMPLE,
+      diffResponse: DIFF_NOT_IN_REPO,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { within, userEvent, waitFor, expect } = await import('storybook/test');
+    const canvas = within(canvasElement);
+    const closeBtn = await canvas.findByRole('button', { name: /close/i });
+    await userEvent.click(closeBtn);
+    await waitFor(() => {
+      const ctrl = (window as unknown as {
+        __borgdock_storybook_tauri: { invocations: Array<{ command: string }> };
+      }).__borgdock_storybook_tauri;
+      const call = ctrl.invocations.find((i) => i.command === 'window.close');
+      expect(call).toBeTruthy();
+    });
+  },
+};
+
+// ---------------------------------------------------------------------------
+// 7. Diff content shape axis (3)
+// ---------------------------------------------------------------------------
+
+export const DiffAddOnly = story({
+  path: 'src/lib/new-helper.ts',
+  contentResponse: 'export function helper(x: number) { return x * 2; }\n',
+  diffResponse: { patch: PATCH_ADD_ONLY_TS, baselineRef: 'HEAD', inRepo: true },
+});
+
+export const DiffDeleteOnly = story({
+  path: 'src/lib/old-helper.ts',
+  contentResponse: '',
+  diffResponse: { patch: PATCH_DELETE_ONLY_TS, baselineRef: 'HEAD', inRepo: true },
+});
+
+export const DiffMultiHunk = story({
+  path: 'src/services/api.ts',
+  contentResponse: LARGE_TS_SAMPLE,
+  diffResponse: { patch: PATCH_MULTI_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+});
+
+// ---------------------------------------------------------------------------
+// 8. Syntax-highlight probe (1)
+// ---------------------------------------------------------------------------
+
+/**
+ * The acceptance test for "tree-sitter wasm works in the Storybook iframe".
+ * If either the runtime wasm (/web-tree-sitter.wasm) or the grammar wasm
+ * (/grammars/tree-sitter-tsx.wasm) fails to load, the highlighter falls
+ * back silently to plain spans — every character ends up inside a generic
+ * <span>, with no `.hl-*` classes. This play function fails fast in that
+ * case by asserting at least one element with a `.hl-*` class is present
+ * after the highlighter resolves.
+ */
+export const ContentTSXSyntaxProbe: Story = {
+  args: {
+    params: {
+      path: 'src/components/Counter.tsx',
+      contentResponse: TSX_SAMPLE,
+      diffResponse: DIFF_NOT_IN_REPO,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const { waitFor, expect } = await import('storybook/test');
+    // The highlighter is async (wasm load + parse). Give it up to ~5s on
+    // first run, but typical wall-time is sub-200ms once cached.
+    await waitFor(
+      () => {
+        const hits = canvasElement.querySelectorAll(
+          '.hl-keyword, .hl-string, .hl-tag, .hl-property',
+        );
+        expect(hits.length).toBeGreaterThan(0);
+      },
+      { timeout: 5000, interval: 100 },
+    );
+  },
+};
