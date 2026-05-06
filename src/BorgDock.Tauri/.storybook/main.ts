@@ -28,6 +28,7 @@ const config: StorybookConfig = {
       '@tauri-apps/api/core': resolve(here, 'mocks/tauri-core.ts'),
       '@tauri-apps/api/event': resolve(here, 'mocks/tauri-event.ts'),
       '@tauri-apps/api/window': resolve(here, 'mocks/tauri-api-window.ts'),
+      '@tauri-apps/api/webviewWindow': resolve(here, 'mocks/tauri-api-webviewWindow.ts'),
       '@tauri-apps/api/app': resolve(here, 'mocks/tauri-api-app.ts'),
       '@tauri-apps/api/dpi': resolve(here, 'mocks/tauri-api-dpi.ts'),
       '@tauri-apps/plugin-opener': resolve(here, 'mocks/tauri-plugin-opener.ts'),
