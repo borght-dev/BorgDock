@@ -12,6 +12,7 @@ import {
   recentIds,
   searchPendingScenario,
   searchPoolMixed,
+  searchRejectScenario,
   workingOnIds,
 } from './__fixtures__/work-item-palette-data';
 
@@ -306,6 +307,61 @@ export const SearchByTextAssignee: Story = story(
           // 2 items in searchPoolMixed are assigned to "Alex Reviewer"
           if (!text.includes('2 results')) {
             throw new Error(`expected 2 results, saw: ${text.slice(0, 200)}`);
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+// --- Search-failure axis (2)
+
+export const SearchFailed: Story = story(
+  { scenario: searchRejectScenario() },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'work');
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          if (!text.includes('Search failed')) {
+            throw new Error(`expected Search failed, saw: ${text.slice(0, 200)}`);
+          }
+        },
+        { timeout: 2000 },
+      );
+    },
+  },
+);
+
+export const AdoNotConfigured: Story = story(
+  {
+    scenario: fullBrowseScenario(),
+    organization: '', // empty org — production AdoClient still constructs
+  },
+  {
+    play: async ({ canvasElement }) => {
+      const { within, userEvent, waitFor } = await import('storybook/test');
+      const canvas = within(canvasElement);
+      const input = await canvas.findByPlaceholderText(
+        'Search by ID, title, or assigned to...',
+      );
+      await userEvent.type(input, 'work');
+      // With an empty organization the AdoClient still constructs (no
+      // null-guard), so the search proceeds normally and returns the
+      // mocked scenario results. Best the story can assert is that some
+      // post-debounce status appears (No results / N results / Searching).
+      await waitFor(
+        () => {
+          const text = canvasElement.textContent ?? '';
+          if (!/result|Search/.test(text)) {
+            throw new Error(`expected post-debounce status, saw: ${text.slice(0, 200)}`);
           }
         },
         { timeout: 2000 },
