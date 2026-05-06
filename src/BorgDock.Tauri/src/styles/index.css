@@ -4261,4 +4261,21 @@ body.sql-resizing-v .sql-resize-handle {
   .bd-wi-row__action--on {
     color: var(--color-accent);
   }
+
+  /* ---------------- Work Items: filter popover ---------------- */
+  .bd-wi-filter-popover {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    min-width: 240px;
+    background: var(--color-card-background);
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 8px;
+    box-shadow: var(--elevation-2);
+  }
+  /* Cancel Field's bottom margin inside the popover (popover handles spacing). */
+  .bd-wi-filter-popover > div {
+    margin-bottom: 0;
+  }
 }
