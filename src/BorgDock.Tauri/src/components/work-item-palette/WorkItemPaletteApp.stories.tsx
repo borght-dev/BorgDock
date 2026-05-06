@@ -457,24 +457,23 @@ export const EscapeHidesPalette: Story = story(
   },
 );
 
-export const DragHandleStartsDrag: Story = story(
+export const DragRegionPresent: Story = story(
   { scenario: emptyBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, fireEvent, waitFor } = await import('storybook/test');
+      const { within } = await import('storybook/test');
       await within(canvasElement).findByPlaceholderText(
         'Search by ID, title, or assigned to...',
       );
-      const handle = canvasElement.querySelector('[data-tauri-drag-region]') as HTMLElement;
-      if (!handle) throw new Error('drag handle not found');
-      fireEvent.mouseDown(handle, { button: 0 });
-      await waitFor(
-        () => {
-          const found = getControl().invocations.some((i) => i.command === 'window.startDragging');
-          if (!found) throw new Error('window.startDragging not invoked');
-        },
-        { timeout: 2000 },
-      );
+      // After the WindowTitleBar refactor (master at e864f267), the
+      // 3-dot grip + onMouseDown -> startDragging() pattern was replaced
+      // by an OS-level data-tauri-drag-region attribute on the title bar.
+      // The story now asserts the attribute is rendered (so the OS knows
+      // the user can drag the window from the title bar) — matching the
+      // production-test assertion pattern in
+      // __tests__/WorkItemPaletteApp.test.tsx.
+      const region = canvasElement.querySelector('[data-tauri-drag-region]');
+      if (!region) throw new Error('data-tauri-drag-region not found');
     },
   },
 );
