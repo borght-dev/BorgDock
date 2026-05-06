@@ -137,6 +137,7 @@ export function WorkItemDetailPanel(props: Props) {
   const { flush: flushAutoSave, reset: resetAutoSave } = auto;
 
   // Sync local state when the item identity changes (next/prev nav reload).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: item.id triggers re-sync on identity change even though it isn't read in the body
   useEffect(() => {
     const next: AutoSaveValues = {
       title: item.title,
