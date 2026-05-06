@@ -3008,6 +3008,41 @@ body.sql-resizing-v .sql-resize-handle {
     font-size: var(--text-small);
   }
 
+  /* ── MainWindow shell ────────────────────────────────── */
+  .bd-mainwindow {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--color-background);
+    color: var(--color-text-primary);
+    overflow: hidden;
+  }
+  .bd-mainwindow__body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .bd-mainwindow__left,
+  .bd-mainwindow__right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bd-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-status-green);
+    display: inline-block;
+  }
+  .bd-status-dot--red {
+    background: var(--color-status-red);
+  }
+  .bd-spacer {
+    flex: 1;
+  }
+
   /* ── WindowControls ──────────────────────────────────── */
   .bd-window-controls {
     display: inline-flex;

@@ -40,7 +40,7 @@ export function Sidebar({ children }: SidebarProps) {
           children
         )}
       </div>
-      <StatusBar />
+      <StatusBar left="" right="" />
     </div>
   );
 }
