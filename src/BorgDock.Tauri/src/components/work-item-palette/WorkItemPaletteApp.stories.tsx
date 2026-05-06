@@ -86,3 +86,33 @@ export const BrowsePartialSections: Story = story({
   recentWorkItemIds: recentIds,
   workingOnWorkItemIds: [], // no Working On section
 });
+
+// --- Section-shape axis (4)
+
+export const OnlyWorkingOn: Story = story({
+  scenario: fullBrowseScenario(),
+  workingOnWorkItemIds: [101], // matches browsePoolMixed[0]
+  recentWorkItemIds: [],
+});
+
+export const OnlyAssignedToMe: Story = story({
+  scenario: fullBrowseScenario(),
+  workingOnWorkItemIds: [],
+  recentWorkItemIds: [],
+});
+
+export const OnlyRecent: Story = story({
+  scenario: {
+    ...fullBrowseScenario(),
+    assignedToMe: [], // suppress assigned-to-me so only Recent renders
+  },
+  workingOnWorkItemIds: [],
+  recentWorkItemIds: [103, 201, 200],
+});
+
+export const DedupAcrossSections: Story = story({
+  // 200 is in both workingOn AND recentIds; it should only appear under Working On
+  scenario: fullBrowseScenario(),
+  workingOnWorkItemIds: [101, 200],
+  recentWorkItemIds: [103, 201, 200],
+});
