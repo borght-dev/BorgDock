@@ -244,10 +244,10 @@ export function WorkItemDetailApp() {
   }, []);
 
   // Get work item ID from URL search params
-  const workItemId = useMemo(() => {
+  const [workItemId, setWorkItemId] = useState<number | null>(() => {
     const params = new URLSearchParams(window.location.search);
     return Number(params.get('id')) || null;
-  }, []);
+  });
 
   const adjacent = useAdjacentNav(workItemId);
 
@@ -258,7 +258,7 @@ export function WorkItemDetailApp() {
       const url = new URL(window.location.href);
       url.searchParams.set('id', String(target));
       window.history.replaceState({}, '', url.toString());
-      window.location.reload();
+      setWorkItemId(target);
     },
     [adjacent.prevId, adjacent.nextId],
   );
@@ -507,7 +507,7 @@ export function WorkItemDetailApp() {
       isNewItem: false,
       severity:
         typeof workItem.fields['Microsoft.VSTS.Common.Severity'] === 'string'
-          ? (workItem.fields['Microsoft.VSTS.Common.Severity'] as string)
+          ? workItem.fields['Microsoft.VSTS.Common.Severity']
           : undefined,
       reporter: getField(workItem, 'System.CreatedBy'),
       iteration: iter ? (iter.split(/[\\/]/).pop() ?? iter) : undefined,
@@ -519,7 +519,7 @@ export function WorkItemDetailApp() {
           | undefined) ?? undefined,
       foundIn:
         typeof workItem.fields['Microsoft.VSTS.Build.FoundIn'] === 'string'
-          ? (workItem.fields['Microsoft.VSTS.Build.FoundIn'] as string)
+          ? workItem.fields['Microsoft.VSTS.Build.FoundIn']
           : undefined,
       changedAgo,
       linkedPRs: parseLinkedPRs(workItem.relations),

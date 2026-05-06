@@ -5,6 +5,7 @@ import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
 import type { WorkItemCardData } from '@/components/work-items/WorkItemCard';
 import { WorkItemDetailPanel } from '@/components/work-items/WorkItemDetailPanel';
+import { parseLinkedPRs } from '@/components/work-items/WorkItemDetailPanel/parseLinkedPRs';
 import { useAdjacentNav } from '@/components/work-items/WorkItemDetailPanel/useAdjacentNav';
 import { WorkItemFilterBar } from '@/components/work-items/WorkItemFilterBar';
 import { WorkItemList } from '@/components/work-items/WorkItemList';
@@ -162,6 +163,38 @@ export function WorkItemsSection() {
       tags: getField(detailItem, 'System.Tags'),
       htmlUrl,
       isNewItem: false,
+      severity:
+        typeof detailItem.fields['Microsoft.VSTS.Common.Severity'] === 'string'
+          ? detailItem.fields['Microsoft.VSTS.Common.Severity']
+          : undefined,
+      reporter: getField(detailItem, 'System.CreatedBy'),
+      iteration: (() => {
+        const p = String(detailItem.fields['System.IterationPath'] ?? '');
+        return p ? (p.split(/[\\/]/).pop() ?? p) : undefined;
+      })(),
+      area: (() => {
+        const p = String(detailItem.fields['System.AreaPath'] ?? '');
+        return p ? (p.split(/[\\/]/).pop() ?? p) : undefined;
+      })(),
+      backlogPriority:
+        (detailItem.fields['Microsoft.VSTS.Common.BacklogPriority'] as
+          | number
+          | string
+          | undefined) ?? undefined,
+      foundIn:
+        typeof detailItem.fields['Microsoft.VSTS.Build.FoundIn'] === 'string'
+          ? detailItem.fields['Microsoft.VSTS.Build.FoundIn']
+          : undefined,
+      changedAgo: (() => {
+        const cd = detailItem.fields['System.ChangedDate'];
+        if (typeof cd !== 'string') return undefined;
+        const seconds = Math.floor((Date.now() - new Date(cd).getTime()) / 1000);
+        if (seconds < 60) return `${seconds}s`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+        if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h`;
+        return `${Math.floor(seconds / 86_400)}d`;
+      })(),
+      linkedPRs: parseLinkedPRs(detailItem.relations),
     };
   }, [detailItem, adoSettings.organization, adoSettings.project]);
 
