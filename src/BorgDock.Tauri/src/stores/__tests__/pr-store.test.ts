@@ -386,7 +386,7 @@ describe('pr-store', () => {
       expect(state.closedPullRequests[0]?.pullRequest.state).toBe('closed');
       expect(state.closedPullRequests[0]?.pullRequest.mergedAt).toBeTruthy();
       expect(
-        new Date(state.closedPullRequests[0].pullRequest.mergedAt as string).getTime(),
+        new Date(state.closedPullRequests[0]!.pullRequest.mergedAt as string).getTime(),
       ).toBeGreaterThanOrEqual(new Date(beforeIso).getTime());
     });
 
@@ -396,7 +396,7 @@ describe('pr-store', () => {
       try {
         usePrStore.getState().optimisticallyMarkMerged('o', 'r', 7);
         expect(handler).toHaveBeenCalledTimes(1);
-        const detail = (handler.mock.calls[0][0] as CustomEvent<PrRefreshedDetail>).detail;
+        const detail = (handler.mock.calls[0]![0] as CustomEvent<PrRefreshedDetail>).detail;
         expect(detail.owner).toBe('o');
         expect(detail.repo).toBe('r');
         expect(detail.number).toBe(7);

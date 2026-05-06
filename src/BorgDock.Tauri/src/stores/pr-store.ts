@@ -556,7 +556,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
     const idx = state.pullRequests.findIndex(matches);
     if (idx < 0) return;
 
-    const current = state.pullRequests[idx];
+    const current = state.pullRequests[idx]!;
     const merged: PullRequestWithChecks = {
       ...current,
       pullRequest: {

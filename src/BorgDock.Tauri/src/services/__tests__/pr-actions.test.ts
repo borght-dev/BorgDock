@@ -113,8 +113,8 @@ describe('mergePr', () => {
     expect(mockCelebrate).toHaveBeenCalledWith(samplePr);
 
     // Ordering: optimistic call happens before celebrate
-    const optimisticOrder = mockOptimisticallyMarkMerged.mock.invocationCallOrder[0];
-    const celebrateOrder = mockCelebrate.mock.invocationCallOrder[0];
+    const optimisticOrder = mockOptimisticallyMarkMerged.mock.invocationCallOrder[0]!;
+    const celebrateOrder = mockCelebrate.mock.invocationCallOrder[0]!;
     expect(optimisticOrder).toBeLessThan(celebrateOrder);
 
     expect(mockRefreshPr).not.toHaveBeenCalled();
