@@ -23,9 +23,6 @@ const defaultSettings: AppSettings = {
   },
   repos: [],
   ui: {
-    sidebarEdge: 'right',
-    sidebarMode: 'pinned',
-    sidebarWidthPx: 800,
     theme: 'system',
     globalHotkey: 'Ctrl+Win+Shift+G',
     flyoutHotkey: 'Ctrl+Win+Shift+F',
