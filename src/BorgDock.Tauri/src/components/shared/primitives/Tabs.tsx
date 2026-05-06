@@ -1,10 +1,13 @@
 import clsx from 'clsx';
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 export interface TabDef {
   id: string;
   label: string;
-  count?: number;
+  /** Trailing count badge. Accepts numbers (e.g. 12) or strings (e.g. "13/15"). */
+  count?: number | string;
+  /** Optional adornment rendered before the label — e.g. a yellow spinner. */
+  indicator?: ReactNode;
 }
 
 export interface TabsProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
@@ -47,10 +50,15 @@ export function Tabs({
             className={clsx('bd-tab', active ? 'bd-tab--active' : 'bd-tab--inactive')}
             onClick={() => onChange(tab.id)}
           >
+            {tab.indicator !== undefined && (
+              <span className="bd-tab__indicator" aria-hidden="true">
+                {tab.indicator}
+              </span>
+            )}
             {tab.label}
             {tab.count !== undefined && (
               <span className="bd-tab__count" aria-hidden="true">
-                {tab.count}
+                {String(tab.count)}
               </span>
             )}
           </button>

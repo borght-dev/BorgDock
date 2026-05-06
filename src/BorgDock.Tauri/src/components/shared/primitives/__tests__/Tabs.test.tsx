@@ -54,4 +54,34 @@ describe('Tabs', () => {
     render(<Tabs value="overview" onChange={() => {}} tabs={TABS} dense />);
     expect(screen.getByRole('tablist')).toHaveClass('bd-tabs--dense');
   });
+
+  it('renders a string count verbatim', () => {
+    render(
+      <Tabs
+        value="checks"
+        onChange={() => {}}
+        tabs={[{ id: 'checks', label: 'Checks', count: '13/15' }]}
+      />,
+    );
+    expect(screen.getByText('13/15')).toBeInTheDocument();
+  });
+
+  it('renders an indicator before the label when provided', () => {
+    render(
+      <Tabs
+        value="checks"
+        onChange={() => {}}
+        tabs={[
+          {
+            id: 'checks',
+            label: 'Checks',
+            indicator: <span data-testid="ind">●</span>,
+          },
+        ]}
+      />,
+    );
+    const tab = screen.getByRole('tab', { name: /checks/i });
+    expect(tab.querySelector('[data-testid="ind"]')).not.toBeNull();
+    expect(tab.querySelector('.bd-tab__indicator')).not.toBeNull();
+  });
 });

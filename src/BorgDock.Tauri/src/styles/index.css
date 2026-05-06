@@ -2730,6 +2730,12 @@ body.sql-resizing-v .sql-resize-handle {
     background: var(--color-surface-hover);
     color: var(--color-text-tertiary);
   }
+  .bd-tab__indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+    color: var(--color-status-yellow);
+  }
 
   /* ── Avatar ──────────────────────────────────────── */
   .bd-avatar {
