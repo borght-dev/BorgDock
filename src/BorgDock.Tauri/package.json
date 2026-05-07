@@ -78,6 +78,7 @@
     "http-server": "^14.1.1",
     "jsdom": "^29.1.1",
     "playwright": "^1.59.1",
+    "serve-handler": "^6.1.7",
     "storybook": "^10.3.6",
     "tailwindcss": "^4.2.4",
     "tree-sitter-cli": "^0.26.8",
