@@ -10,6 +10,6 @@ The build-time Vite plugin lifts the image out of the bullet, copies it to
 `/whats-new/<version>/<name>.png`.
 
 Constraints:
-- Current-release highlights require an image (enforced by `npm run validate-release`).
+- Current-release highlights require an image (enforced by `bun run validate-release`).
 - Historical releases render a gradient fallback when an image is missing.
 - First `![](...)` in a bullet is the hero; additional images stay inline in the description.

@@ -21,19 +21,14 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: src/BorgDock.Tauri
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/BorgDock.Tauri/package-lock.json
-      - run: npm ci --include=optional
-      - run: npm run lint
-      - run: npm test -- --reporter=verbose
+          bun-version: '1.3.10'
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run test -- --reporter=verbose
 
   playwright:
     name: playwright (${{ matrix.os }})
@@ -51,19 +46,14 @@ jobs:
           - os: windows-latest
             project: webview-win
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: src/BorgDock.Tauri
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/BorgDock.Tauri/package-lock.json
-      - run: npm ci --include=optional
-      - run: npx playwright install chromium --with-deps
-      - run: npm run test:e2e -- --project=${{ matrix.project }}
+          bun-version: '1.3.10'
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install chromium --with-deps
+      - run: bun run test:e2e -- --project=${{ matrix.project }}
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

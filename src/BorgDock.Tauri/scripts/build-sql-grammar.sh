@@ -7,7 +7,9 @@
 # `node_modules/tree-sitter-wasms/out/` — see vite.config.ts.
 #
 # Usage: bash scripts/build-sql-grammar.sh
-# Requires: tree-sitter CLI (already a devDependency in package.json)
+# Requires:
+#   - tree-sitter CLI (devDependency in package.json) — installed by `bun install`.
+#   - npm CLI on PATH for `npm pack` (bun has no registry-fetch equivalent).
 #
 # Output: public/grammars/tree-sitter-sql.wasm (commit this file to the repo).
 
@@ -15,12 +17,18 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TAURI_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$TAURI_DIR/../.." && pwd)"
 OUTPUT="$TAURI_DIR/public/grammars/tree-sitter-sql.wasm"
-TS_CLI="$TAURI_DIR/node_modules/.bin/tree-sitter"
+# bun's hoisted workspace install puts CLIs at the repo root's node_modules/.bin.
+if [ -x "$REPO_ROOT/node_modules/.bin/tree-sitter" ]; then
+  TS_CLI="$REPO_ROOT/node_modules/.bin/tree-sitter"
+else
+  TS_CLI="$TAURI_DIR/node_modules/.bin/tree-sitter"
+fi
 
 if [ ! -x "$TS_CLI" ]; then
   echo "tree-sitter CLI not found at $TS_CLI" >&2
-  echo "Run 'npm install' in $TAURI_DIR first." >&2
+  echo "Run 'bun install' from the repo root first." >&2
   exit 1
 fi
 

@@ -18,7 +18,7 @@
  *    array as it fills up without a fixed sleep.
  *
  * TODO: These tests are skipped because `page.goto('/')` (the main sidebar
- * window / index.html) times out when `npm run tauri dev` is running alongside
+ * window / index.html) times out when `bun run tauri dev` is running alongside
  * Playwright. The same pre-existing issue affects the `pr-list` and
  * `settings` specs — navigating to the main window while the Tauri WebView2
  * process holds it open causes Playwright's Chromium instance to hang on
@@ -27,8 +27,8 @@
  *
  * To run these tests manually:
  *   1. Stop any running `tauri dev` process.
- *   2. Start Vite standalone: `npm run dev` (serves http://localhost:1420).
- *   3. Run: `npm run test:e2e -- tray-first`
+ *   2. Start Vite standalone: `bun run dev` (serves http://localhost:1420).
+ *   3. Run: `bun run test:e2e -- tray-first`
  *
  * The skip can be removed once the E2E harness is configured to run against a
  * dedicated Vite-only preview server (not the live Tauri dev window).

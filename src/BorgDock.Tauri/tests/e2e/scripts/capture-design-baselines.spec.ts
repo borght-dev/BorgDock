@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  * design canvas as a per-surface PNG under
  * `__screenshots__/<project>/design/<surface>-<theme>.png`.
  *
- * Triggered via: `npm run test:e2e:capture-design` (which passes
+ * Triggered via: `bun run test:e2e:capture-design` (which passes
  * --update-snapshots). Running without --update-snapshots turns this
  * into a drift check — useful in CI to notice if someone edited the
  * design bundle without reviewing the PNG churn.
@@ -185,7 +185,7 @@ test.describe('design-baseline capture', () => {
       ];
       // First run (no baseline on disk) writes the PNG as the baseline.
       // Subsequent runs compare at maxDiffPixelRatio:0 (exact). Intended
-      // workflow: run via `npm run test:e2e:capture-design` (passes
+      // workflow: run via `bun run test:e2e:capture-design` (passes
       // --update-snapshots so re-captures overwrite).
       await expect(locator).toHaveScreenshot(snapshotName, {
         // Exact capture: we're writing the reference, not comparing to it.

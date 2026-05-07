@@ -38,7 +38,7 @@ To replace the vendored copy with a new upstream bundle:
 2. Extract the new bundle there in one move so the git diff tracks the
    change atomically: `cp -R /path/to/new/borgdock src/BorgDock.Tauri/tests/e2e/design-bundle/borgdock`
 3. Re-run the capture script to regenerate all baselines:
-   `npm run test:e2e:capture-design`
+   `bun run test:e2e:capture-design`
 4. Note the change in the `## CHANGES` section below (new upstream
    fetch date, any known artboard delta).
 

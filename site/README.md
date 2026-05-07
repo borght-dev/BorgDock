@@ -52,10 +52,13 @@ any width. See `.mockup-scroll` in `src/styles/global.css`.
 ## Development
 
 ```sh
-npm install
-npm run dev       # http://localhost:4321
-npm run build     # → dist/  (type-checks, then builds)
-npm run preview   # preview the production build
+# From the repo root — bun installs the whole workspace, including this site
+bun install
+
+# Then either from this directory or from the repo root:
+bun run dev       # http://localhost:4321  (or `bun run site:dev` from root)
+bun run build     # → dist/  (type-checks, then builds)
+bun run preview   # preview the production build
 ```
 
 ## Deploy

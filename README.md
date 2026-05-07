@@ -58,22 +58,23 @@ The Reviews tab renders full Claude Code review comments with Markdown formattin
 ## Requirements
 
 - Windows 10 or 11 / macOS / Linux
-- [Node.js](https://nodejs.org/) (LTS)
+- [Bun](https://bun.sh/) 1.3 or newer
 - [Rust](https://www.rust-lang.org/tools/install) (for Tauri)
 - [GitHub CLI (`gh`)](https://cli.github.com/) (recommended) or a GitHub Personal Access Token
+- npm CLI on PATH only if you rebuild tree-sitter grammars (see `src/BorgDock.Tauri/scripts/build-grammars.sh`)
 
 ## Getting Started
 
 ```bash
 # Clone the repository
 git clone https://github.com/your-org/BorgDock.git
-cd BorgDock/src/BorgDock.Tauri
+cd BorgDock
 
-# Install dependencies
-npm install
+# Install dependencies (single bun workspace install at the repo root)
+bun install
 
-# Run in dev mode
-npm run tauri dev
+# Run the desktop app in dev mode
+bun run tauri dev
 ```
 
 On first launch, the setup wizard will guide you through authentication and repository configuration.

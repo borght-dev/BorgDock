@@ -1,0 +1,21 @@
+# Lefthook pre-commit checks. Run with `bunx lefthook run pre-commit` to test
+# manually. Bypass for emergencies with `LEFTHOOK=0 git commit ...`.
+#
+# Cross-platform notes:
+# - Lefthook itself runs natively on macOS, Linux, and Windows (no shell dep).
+# - We use `root:` instead of `cd <dir> && ...` so the cwd change works
+#   regardless of the user's shell (cmd.exe, PowerShell, bash, zsh).
+# - `bunx <cli>` is portable — bun ships as a single binary on every platform.
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      root: "src/BorgDock.Tauri/"
+      glob: "src/**/*.{ts,tsx,js,jsx}"
+      run: bunx biome check {staged_files}
+    typecheck:
+      # tsc has no per-file mode; we run the whole project. The glob just
+      # gates whether the hook fires at all when relevant files are staged.
+      root: "src/BorgDock.Tauri/"
+      glob: "src/**/*.{ts,tsx}"
+      run: bunx tsc --noEmit

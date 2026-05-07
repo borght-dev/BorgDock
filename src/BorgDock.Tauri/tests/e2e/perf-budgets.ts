@@ -3,7 +3,7 @@
  *
  * Calibration procedure (run once on PR #0, re-run if the runner
  * hardware changes):
- *   1. Run `npm run test:e2e -- performance.spec.ts --project=<name>`
+ *   1. Run `bun run test:e2e -- performance.spec.ts --project=<name>`
  *      three times, capture the median of each metric.
  *   2. Set the budget to median * 1.25 (25% headroom for noise).
  *   3. Subsequent PRs must stay under the budget or justify.

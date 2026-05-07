@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds every tree-sitter grammar WASM we use for syntax highlighting, straight
-# from the grammar source packages on npm. The prebuilt `tree-sitter-wasms` npm
-# package is pinned at 0.1.13 (last publish) and ships wasms with the *old*
+# from the grammar source packages on the npm registry. The prebuilt
+# `tree-sitter-wasms` npm package is pinned at 0.1.13 (last publish) and ships
+# wasms with the *old*
 # `dylink` custom section; `web-tree-sitter` ≥0.24 requires the new `dylink.0`
 # section, so those prebuilt binaries fail to load with "need dylink section".
 #
@@ -13,20 +14,32 @@
 #   With no argument, builds all grammars.
 #   With a name (e.g. "tsx"), builds only that one.
 #
-# Requires: tree-sitter CLI (devDependency in package.json). On first run it
-# will download wasi-sdk into %LOCALAPPDATA%/tree-sitter — on Windows you may
-# need to Unblock-File the downloaded binaries (see CLAUDE.md).
+# Requires:
+#   - tree-sitter CLI (devDependency in package.json) — installed by `bun install`.
+#   - npm CLI on PATH for `npm pack` (used to fetch grammar tarballs from the
+#     registry — bun has no equivalent registry-fetch command yet).
+#
+# On first run the tree-sitter CLI will download wasi-sdk into
+# %LOCALAPPDATA%/tree-sitter — on Windows you may need to Unblock-File the
+# downloaded binaries (see CLAUDE.md).
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TAURI_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TS_CLI="$TAURI_DIR/node_modules/.bin/tree-sitter"
+REPO_ROOT="$(cd "$TAURI_DIR/../.." && pwd)"
+# bun's hoisted workspace install puts CLIs at the repo root's node_modules/.bin.
+# Fall back to the member's node_modules for non-workspace npm setups.
+if [ -x "$REPO_ROOT/node_modules/.bin/tree-sitter" ]; then
+  TS_CLI="$REPO_ROOT/node_modules/.bin/tree-sitter"
+else
+  TS_CLI="$TAURI_DIR/node_modules/.bin/tree-sitter"
+fi
 OUT_DIR="$TAURI_DIR/public/grammars"
 
 if [ ! -x "$TS_CLI" ]; then
   echo "tree-sitter CLI not found at $TS_CLI" >&2
-  echo "Run 'npm install' in $TAURI_DIR first." >&2
+  echo "Run 'bun install' from the repo root first." >&2
   exit 1
 fi
 
