@@ -10,11 +10,13 @@ import {
   makeSettings,
   oneRepoFew,
   oneRepoMany,
+  type RepoTrees,
   repoBorgDock,
   repoNoBasePath,
   repoWithFavs,
   twoReposBalanced,
   twoReposLopsided,
+  type WorktreeEntry,
   wtDetached,
   wtFavoriteCandidate1,
   wtFavoriteCandidate2,
@@ -22,8 +24,6 @@ import {
   wtLongBranch,
   wtLongPath,
   wtMain,
-  type RepoTrees,
-  type WorktreeEntry,
 } from './__fixtures__/worktree-data';
 import { WorktreePaletteApp } from './WorktreePaletteApp';
 
@@ -330,12 +330,7 @@ export const FavoritesOnlyEmpty = story({
 
 export const FavoritesOnlyWithMix = story({
   settings: makeSettings([repoWithFavs], { worktreePaletteFavoritesOnly: true }),
-  listResponses: [
-    wtMain,
-    wtFavoriteCandidate1,
-    wtFavoriteCandidate2,
-    wtFeature,
-  ],
+  listResponses: [wtMain, wtFavoriteCandidate1, wtFavoriteCandidate2, wtFeature],
 });
 
 // ---------------------------------------------------------------------------
@@ -399,8 +394,13 @@ export const ToggleFavoriteOptimistic: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const starBtn = await canvas.findByRole('button', { name: /mark as favorite/i });
-    await userEvent.click(starBtn);
+    // oneRepoFew has 3 unfavorited worktrees, all with identically-labelled
+    // star buttons. Click the first one — the optimistic toggle then triggers
+    // the save_settings invocation we're asserting on.
+    const starBtns = await canvas.findAllByRole('button', { name: /mark as favorite/i });
+    const firstStar = starBtns[0];
+    if (!firstStar) throw new Error('expected at least one star button');
+    await userEvent.click(firstStar);
     await waitFor(() => {
       const ctrl = getControl();
       expect(ctrl.invocations.some((i) => i.command === 'save_settings')).toBe(true);
@@ -426,7 +426,9 @@ export const PaletteReshown: Story = {
     // A second load_settings should fire.
     await waitFor(() => {
       const ctrl = getControl();
-      expect(ctrl.invocations.filter((i) => i.command === 'load_settings').length).toBeGreaterThanOrEqual(2);
+      expect(
+        ctrl.invocations.filter((i) => i.command === 'load_settings').length,
+      ).toBeGreaterThanOrEqual(2);
     });
   },
 };

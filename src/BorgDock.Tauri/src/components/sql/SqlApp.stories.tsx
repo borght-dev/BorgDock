@@ -1,18 +1,17 @@
 // src/components/sql/SqlApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useEffect } from 'react';
-import { getControl } from '../../../.storybook/mocks/control';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { AppSettings } from '@/types/settings';
 import type { SqlSchemaPayload } from '@/types/sql-schema';
-import type { SqlSnippet } from './snippet-types';
-import { SqlApp } from './SqlApp';
+import { getControl } from '../../../.storybook/mocks/control';
 import {
   connBorgDockDev,
   connHorizonProd,
   connLongName,
   makeSettings,
+  type QueryResult,
   resultMultiSet,
   resultSmallSelect,
   resultTruncated,
@@ -22,8 +21,9 @@ import {
   snippetActiveQuery,
   snippetsEmpty,
   snippetsFew,
-  type QueryResult,
 } from './__fixtures__/sql-data';
+import { SqlApp } from './SqlApp';
+import type { SqlSnippet } from './snippet-types';
 
 // Keys SqlApp persists state to. Cleared before every story so stories
 // don't bleed layout / position / snippet selections into each other.
@@ -46,7 +46,9 @@ interface SqlStoryParams {
   schemaResponse?:
     | SqlSchemaPayload
     | null
-    | ((args: { connectionName: string }) => SqlSchemaPayload | null | Promise<SqlSchemaPayload | null>);
+    | ((args: {
+        connectionName: string;
+      }) => SqlSchemaPayload | null | Promise<SqlSchemaPayload | null>);
   /** Cached schema returned from cache_load_sql_schema. */
   cachedSchema?: SqlSchemaPayload | null;
   /** Static result OR fn returning a result, value, or rejection. */
@@ -135,10 +137,7 @@ function SqlHarness({ params }: { params: SqlStoryParams }) {
 
   if (params.savedPosition) {
     try {
-      localStorage.setItem(
-        'borgdock-sql-position',
-        JSON.stringify(params.savedPosition),
-      );
+      localStorage.setItem('borgdock-sql-position', JSON.stringify(params.savedPosition));
     } catch {
       /* ignore */
     }
@@ -311,7 +310,8 @@ export const ResultMultiSet: Story = {
     params: {
       settings: makeSettings([connBorgDockDev]),
       cachedSchema: schemaSmall,
-      initialQuery: 'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
+      initialQuery:
+        'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
       executeResponse: resultMultiSet,
     },
   },
@@ -415,26 +415,8 @@ export const CopyValuesRoundtrip: Story = {
   },
 };
 
-export const PositionPersistedAfterMove: Story = {
-  args: {
-    params: {
-      settings: makeSettings([connBorgDockDev]),
-      cachedSchema: schemaSmall,
-    },
-  },
-  play: async () => {
-    // Wait for the onMoved listener to register before emitting.
-    await waitFor(() => {
-      const ctrl = getControl();
-      expect(ctrl.channels.has('__window.onMoved')).toBe(true);
-    });
-
-    getControl().emit('__window.onMoved', { x: 240, y: 180 });
-
-    await waitFor(() => {
-      const raw = localStorage.getItem('borgdock-sql-position');
-      expect(raw).toBeTruthy();
-      expect(raw!).toContain('240');
-    });
-  },
-};
+// PositionPersistedAfterMove was removed alongside the JS-side window-position
+// persistence (commit 63644d3c — `refactor(sql): remove localStorage position,
+// rely on unified geometry store`). Window position is now restored by the
+// Rust-side persist_window_geometry helper before the React app mounts; there
+// is no `__window.onMoved` listener and no `borgdock-sql-position` key.

@@ -1,8 +1,8 @@
 // src/components/work-items/WorkItemDetailApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';
 import { getControl, type WorkItemScenario } from '../../../.storybook/mocks/control';
@@ -65,13 +65,9 @@ function applyParamsBeforeMount(params: WorkItemStoryParams) {
 
   // Set the URL ?id=… so URLSearchParams picks it up.
   const desiredId =
-    params.id === null
-      ? null
-      : (params.id ?? scenario.workItem?.id ?? userStoryFreshlyLoaded.id);
+    params.id === null ? null : (params.id ?? scenario.workItem?.id ?? userStoryFreshlyLoaded.id);
   const url =
-    desiredId !== null
-      ? `${window.location.pathname}?id=${desiredId}`
-      : window.location.pathname;
+    desiredId !== null ? `${window.location.pathname}?id=${desiredId}` : window.location.pathname;
   window.history.replaceState({}, '', url);
 }
 
@@ -211,16 +207,32 @@ export const CommentsLoadFailed: Story = story({
 // Save-flow axis
 // ---------------------------------------------------------------------------
 
+// TitleBlock renders the title as a click-to-edit `<h1>` (text node). It
+// becomes an `<input>` only after the user clicks it. Saves are automatic via
+// useAutoSave (500ms debounce after each change) — there is no Save button;
+// committing the title input via blur or Enter triggers the save.
+async function editTitle(canvasElement: HTMLElement, newTitle: string): Promise<void> {
+  const canvas = within(canvasElement);
+  const heading = await canvas.findByRole('heading', {
+    name: /Implement the dashboard widget/i,
+  });
+  await userEvent.click(heading);
+  const input = (await canvas.findByDisplayValue(
+    /Implement the dashboard widget/i,
+  )) as HTMLInputElement;
+  await userEvent.clear(input);
+  await userEvent.type(input, newTitle);
+  // Enter commits the edit (TitleBlock blurs on Enter), which calls onChange
+  // and kicks the autosave debounce.
+  await userEvent.keyboard('{Enter}');
+}
+
 export const DirtyTitleEdited: Story = {
   args: {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    // Wait for the title textarea to render after load resolves.
-    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
-    await userEvent.clear(titleArea);
-    await userEvent.type(titleArea, 'Implement the dashboard widget (refined)');
+    await editTitle(canvasElement, 'Implement the dashboard widget (refined)');
   },
 };
 
@@ -235,13 +247,10 @@ export const SavingInFlight: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
-    await userEvent.clear(titleArea);
-    await userEvent.type(titleArea, 'Implement the dashboard widget (saving)');
-    const saveButton = await canvas.findByRole('button', { name: /^save$/i });
-    await userEvent.click(saveButton);
+    await editTitle(canvasElement, 'Implement the dashboard widget (saving)');
     // saveBehavior: 'pending' means updateWorkItem never resolves;
-    // button stays in the "Saving..." state for the rest of the story.
+    // useAutoSave will surface "Saving…" in the status bar.
+    await canvas.findByText(/Saving/i);
   },
 };
 
@@ -251,12 +260,8 @@ export const SavedSuccess: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
-    await userEvent.clear(titleArea);
-    await userEvent.type(titleArea, 'Implement the dashboard widget (saved)');
-    const saveButton = await canvas.findByRole('button', { name: /^save$/i });
-    await userEvent.click(saveButton);
-    await canvas.findByText(/^Saved$/);
+    await editTitle(canvasElement, 'Implement the dashboard widget (saved)');
+    await canvas.findByText(/^Saved /i);
   },
 };
 
@@ -271,12 +276,8 @@ export const SaveError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
-    await userEvent.clear(titleArea);
-    await userEvent.type(titleArea, 'Implement the dashboard widget (will fail)');
-    const saveButton = await canvas.findByRole('button', { name: /^save$/i });
-    await userEvent.click(saveButton);
-    await canvas.findByText(/Save failed/);
+    await editTitle(canvasElement, 'Implement the dashboard widget (will fail)');
+    await canvas.findByText(/Save failed/i);
   },
 };
 
@@ -288,6 +289,14 @@ export const WithAttachments: Story = story({
   scenario: loadedScenario(itemWithManyAttachments),
 });
 
+// Default tab is "overview"; AttachmentsTab is rendered only when the
+// "Attachments" tab is active. Activate it before searching for attachment rows.
+async function openAttachmentsTab(canvasElement: HTMLElement): Promise<void> {
+  const canvas = within(canvasElement);
+  const tab = await canvas.findByRole('tab', { name: /attachments/i });
+  await userEvent.click(tab);
+}
+
 export const AttachmentSaveDialogCanceled: Story = {
   args: {
     params: {
@@ -298,6 +307,7 @@ export const AttachmentSaveDialogCanceled: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await openAttachmentsTab(canvasElement);
     const button = await canvas.findByRole('button', { name: /attachment-1\.png/i });
     await userEvent.click(button);
     // dialogSaveResponse: null → user cancelled the save dialog.
@@ -315,6 +325,7 @@ export const AttachmentDownloaded: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await openAttachmentsTab(canvasElement);
     const button = await canvas.findByRole('button', { name: /attachment-1\.png/i });
     await userEvent.click(button);
     // The bytes from attachmentBytes are written to /tmp/attachment-1.png
@@ -345,7 +356,9 @@ export const OpenInBrowserClicked: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const button = await canvas.findByRole('button', { name: /open in browser/i });
+    // The "open in ADO" button is a small icon button (children: "↗"),
+    // labelled via the title attribute "Open in ADO".
+    const button = await canvas.findByTitle(/open in ado/i);
     await userEvent.click(button);
   },
 };
