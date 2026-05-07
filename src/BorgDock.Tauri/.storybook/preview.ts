@@ -2,12 +2,6 @@
 
 import type { Preview } from '@storybook/react-vite';
 import '../src/styles/index.css';
-// Window-entry-specific stylesheets. In production these are loaded by each
-// window's *-main.tsx entry. Storybook bypasses those entries (stories import
-// the React component directly), so the styles must be loaded globally here
-// or the stories render with bare structural markup. Add new stylesheets to
-// this list whenever a new window adds one.
-import '../src/styles/agent-overview.css';
 import { getControl } from './mocks/control';
 
 function applyTheme(theme: string) {
