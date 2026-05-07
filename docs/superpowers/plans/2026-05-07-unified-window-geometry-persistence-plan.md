@@ -24,10 +24,10 @@
 - `src-tauri/src/lib.rs` — register `Arc<WindowGeometryStore>` in `manage(...)`, spawn flusher in `setup()`, call `persist_window_geometry` for `main`.
 - `src-tauri/src/platform/hotkey.rs` — call `persist_window_geometry` from `open_or_toggle_palette` after build succeeds.
 - `src-tauri/src/platform/window.rs` — call helper from `open_pr_detail_window` and `open_whats_new_window`. Delete the manual save/restore in `open_pr_detail_window` (current lines 303-384 area).
-- `src-tauri/src/agent_overview/window.rs` — call helper. Delete the manual save/restore (lines 24, 72).
+- `src-tauri/src/agent_overview/window.rs` — call helper. Delete the manual save/restore (lines 21-77).
 - `src-tauri/src/file_palette/windows.rs` — call helper from `open_file_viewer_window`.
-- `src-tauri/src/settings/window.rs` — call helper.
-- `src-tauri/src/settings/models.rs` — delete `pr_detail.window_state` and `agent_overview.window_state` fields and their references.
+- `src-tauri/src/settings/window.rs` — call helper. Delete the manual save/restore (lines 31-93).
+- `src-tauri/src/settings/models.rs` — delete `pr_detail.window_state`, `agent_overview.window_state`, and `settings_window` fields. Delete `WindowGeometry` struct itself if no remaining references.
 - `src/components/sql/SqlApp.tsx` — delete localStorage position persistence (`POSITION_KEY`, `loadSavedPosition`, `saveCurrentPosition`, the `onMoved` effect, the `setPosition` block).
 
 **Note on `workitem-detail`:** the spec listed it as a builder integration site, but no Rust builder for it exists today (only a capability file). `kind_of` still handles `workitem-detail-*` for future use; no wiring task is needed.
@@ -611,29 +611,86 @@ git commit -m "feat(window-geometry): persist palettes and SQL via open_or_toggl
 - Modify: `src-tauri/src/platform/window.rs`
 - Modify: `src-tauri/src/settings/models.rs`
 
-- [ ] **Step 1: Locate the manual block**
+`open_pr_detail_window` (`platform/window.rs` starting ~line 263) has four geometry chunks to delete and replace with one helper call. The `init_script`, `force_repaint` thread, and existing-window short-circuit stay untouched.
 
-In `platform/window.rs`, the `open_pr_detail_window` async command currently does three things related to geometry:
+- [ ] **Step 1: Delete the `saved_geometry` lookup (lines 301-305)**
 
-1. Loads `Settings.pr_detail.window_state` near line 303 (`saved_geometry` binding).
-2. In the build closure, applies that geometry to the builder via `inner_size` + `position` (around lines 341-344).
-3. Installs a `win.on_window_event(CloseRequested)` listener that writes back to `Settings.pr_detail.window_state` (around lines 367-384).
+```rust
+    // Restore last-used geometry (saved when the previous PR window closed).
+    // Falls back to centered + default size if nothing is stored yet.
+    let saved_geometry = crate::settings::load_settings_internal()
+        .ok()
+        .and_then(|s| s.pr_detail.window_state.clone());
+```
 
-All three are replaced by one `persist_window_geometry` call.
+Delete these five lines.
 
-- [ ] **Step 2: Delete the manual save/restore**
+- [ ] **Step 2: Replace the conditional builder restore (lines 341-347) with a plain `.center()`**
 
-Remove:
-- The `saved_geometry` binding (line ~303).
-- The conditional `if let Some(g) = &saved_geometry { builder = builder.inner_size(...).position(...); } else { builder = builder.center(); }` — replace with a plain `.center()`.
-- The `if let Some(g) = &saved_geometry { let _ = win.set_size(...); let _ = win.set_position(...); }` block after the build (around lines 359-362).
-- The `win.on_window_event(move |event| { if let CloseRequested { .. } = event { … settings.pr_detail.window_state = Some(geom); … } })` block (around lines 367-384).
+Current:
 
-Keep the rest of `open_pr_detail_window` (the `init_script`, `force_repaint` thread, the existing-window short-circuit at the top).
+```rust
+        if let Some(g) = &saved_geometry {
+            builder = builder
+                .inner_size(g.width as f64, g.height as f64)
+                .position(g.x as f64, g.y as f64);
+        } else {
+            builder = builder.center();
+        }
+```
 
-- [ ] **Step 3: Add the helper call**
+Replace with:
 
-Where the deleted `on_window_event` listener was, add:
+```rust
+        builder = builder.center();
+```
+
+- [ ] **Step 3: Delete the post-build HiDPI snap (lines 354-362)**
+
+```rust
+                // Apply stored geometry BEFORE first show. Some Tauri versions
+                // ignore the builder's inner_size on first build under HiDPI.
+                // The window stays hidden — `window_ready` from the frontend
+                // reveals it.
+                if let Some(g) = &saved_geometry {
+                    let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
+                    let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
+                }
+```
+
+Delete this block.
+
+- [ ] **Step 4: Delete the on-close save listener (lines 364-384)**
+
+```rust
+                // Persist outer geometry on close so the next PR window opens
+                // where the user left this one.
+                let win_for_close = win.clone();
+                win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        let pos = win_for_close.outer_position().ok();
+                        let size = win_for_close.outer_size().ok();
+                        if let (Some(p), Some(s)) = (pos, size) {
+                            let geom = crate::settings::models::WindowGeometry {
+                                x: p.x,
+                                y: p.y,
+                                width: s.width,
+                                height: s.height,
+                            };
+                            if let Ok(mut settings) = crate::settings::load_settings_internal() {
+                                settings.pr_detail.window_state = Some(geom);
+                                let _ = crate::settings::save_settings_internal(&settings);
+                            }
+                        }
+                    }
+                });
+```
+
+Delete this block.
+
+- [ ] **Step 5: Add the helper call**
+
+Where the deleted on-close listener was, before the `force_repaint` thread spawn (currently line 386):
 
 ```rust
                 crate::platform::window_geometry::persist_window_geometry(
@@ -641,11 +698,9 @@ Where the deleted `on_window_event` listener was, add:
                 );
 ```
 
-This goes inside the `Ok(win) => { … }` arm of the existing `match result { Ok(win) => { … } Err(e) => … }`, before the `Ok(())` that ends the closure.
+- [ ] **Step 6: Delete the `window_state` field on `PrDetailSettings`**
 
-- [ ] **Step 4: Delete the `window_state` field on `PrDetailSettings`**
-
-In `settings/models.rs` around line 564:
+In `settings/models.rs` around line 564, change:
 
 ```rust
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -658,7 +713,7 @@ pub struct PrDetailSettings {
 }
 ```
 
-becomes:
+to:
 
 ```rust
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -666,24 +721,22 @@ becomes:
 pub struct PrDetailSettings {}
 ```
 
-(Empty struct, but kept so the `Settings.pr_detail` field type doesn't churn elsewhere. Future per-PR-detail prefs land here.)
+(Empty struct kept so `Settings.pr_detail` type doesn't churn — future per-PR-detail prefs land here.)
 
-If `WindowGeometry` becomes unused after Task 9, leave it for now — Task 9 will check.
-
-- [ ] **Step 5: Verify it compiles**
+- [ ] **Step 7: Verify it compiles**
 
 Run: `cargo check -p borgdock`
-Expected: clean. (If `WindowGeometry` shows as unused after this task, that's expected — Task 9 also removes its other reference.)
+Expected: clean. `WindowGeometry` and `PhysicalSize`/`PhysicalPosition` may show as unused if not referenced elsewhere in `platform/window.rs` — leave for now; Task 12 step 7 cleans up after `Settings::settings_window` and `Settings::agent_overview::window_state` are also gone.
 
-- [ ] **Step 6: Smoke test**
+- [ ] **Step 8: Smoke test**
 
 `npm run tauri dev`. Click a PR card. Move/resize the pop-out. Close it. Click another PR card — pop-out opens at last geometry.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add src-tauri/src/platform/window.rs src-tauri/src/settings/models.rs
-git commit -m "refactor(window-geometry): pr-detail uses unified store, remove manual"
+git commit -m "refactor(window-geometry): pr-detail uses unified store"
 ```
 
 ---
@@ -890,35 +943,150 @@ git commit -m "feat(window-geometry): persist whats-new window"
 
 ---
 
-### Task 12: Wire settings window
+### Task 12: Wire settings window and remove its manual save/restore
 
 **Files:**
 - Modify: `src-tauri/src/settings/window.rs`
+- Modify: `src-tauri/src/settings/models.rs`
 
-- [ ] **Step 1: Add the helper call**
+`open_settings_window` mirrors agent-overview's structure (the user copy-pasted the pattern). Same four chunks to delete + replace.
 
-In `settings/window.rs`, find the `WebviewWindowBuilder::new` (around line 41) and the `.build()` call that follows. After build success, add the helper call. The exact placement depends on how the function is structured (tray-callback vs main-thread closure), but the call goes right after the `Ok(win)` arm, before any subsequent operation.
+- [ ] **Step 1: Delete the `win_state` lookup (lines 31-34)**
 
 ```rust
-            crate::platform::window_geometry::persist_window_geometry(
-                &app, &win, "settings",
-            );
+            let settings = load_settings_internal().ok();
+            let win_state = settings
+                .as_ref()
+                .and_then(|s| s.settings_window.clone());
 ```
 
-- [ ] **Step 2: Verify it compiles**
+Delete these four lines.
+
+- [ ] **Step 2: Replace conditional builder restore (lines 55-59) with `.center()`**
+
+Current:
+
+```rust
+            if let Some(g) = &win_state {
+                builder = builder
+                    .inner_size(g.width as f64, g.height as f64)
+                    .position(g.x as f64, g.y as f64);
+            }
+```
+
+Replace with `.center()` inserted into the builder chain. Specifically, change the chain ending `.visible(false);` (line 53) to `.center().visible(false);`:
+
+```rust
+            let mut builder = WebviewWindowBuilder::new(
+                &app,
+                "settings",
+                WebviewUrl::App(url.into()),
+            )
+            .title("BorgDock — Settings")
+            .inner_size(DEFAULT_W, DEFAULT_H)
+            .min_inner_size(MIN_W, MIN_H)
+            .decorations(false)
+            .resizable(true)
+            .skip_taskbar(false)
+            .shadow(true)
+            .center()
+            .visible(false);
+```
+
+Then delete the entire `if let Some(g) = &win_state { ... }` block at lines 55-59.
+
+- [ ] **Step 3: Delete the post-build HiDPI snap (lines 63-72)**
+
+```rust
+            // Snap to stored geometry BEFORE first show to avoid a flash at the
+            // default size/position. Tauri sometimes ignores `inner_size` /
+            // `position` builder args on first build under HiDPI, so re-apply
+            // here while the window is still hidden. The window stays hidden
+            // until the React app calls `settings_window_ready`, so the user
+            // never sees the unstyled default chrome.
+            if let Some(g) = &win_state {
+                win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height))).ok();
+                win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y))).ok();
+            }
+```
+
+Delete this block.
+
+- [ ] **Step 4: Delete the on-close save listener (lines 74-93)**
+
+```rust
+            // Persist geometry on close
+            let win_for_close = win.clone();
+            win.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    let pos = win_for_close.outer_position().ok();
+                    let size = win_for_close.outer_size().ok();
+                    if let (Some(p), Some(s)) = (pos, size) {
+                        let geom = crate::settings::models::WindowGeometry {
+                            x: p.x,
+                            y: p.y,
+                            width: s.width,
+                            height: s.height,
+                        };
+                        if let Ok(mut settings) = load_settings_internal() {
+                            settings.settings_window = Some(geom);
+                            let _ = save_settings_internal(&settings);
+                        }
+                    }
+                }
+            });
+```
+
+Delete this block.
+
+- [ ] **Step 5: Add the helper call**
+
+Where the deleted on-close listener was, before `Ok(())`:
+
+```rust
+            crate::platform::window_geometry::persist_window_geometry(&app, &win, "settings");
+
+            Ok(())
+```
+
+- [ ] **Step 6: Clean up unused imports**
+
+After the deletions, `PhysicalPosition`, `PhysicalSize`, `load_settings_internal`, `save_settings_internal` are no longer used. The final imports at the top of `settings/window.rs` should be:
+
+```rust
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+```
+
+(`Emitter` stays — used by the existing-window deep-link emit on line 26. `Manager` stays for `app.get_webview_window` at line 22.)
+
+- [ ] **Step 7: Delete `Settings::settings_window` field**
+
+Find the `settings_window` field on the top-level `Settings` struct in `settings/models.rs` and delete it. (Run `grep -n "settings_window" src-tauri/src/settings/models.rs` to find the exact line — it's a top-level `Option<WindowGeometry>`.) Also remove `settings_window: None,` from the `Default` impl.
+
+- [ ] **Step 8: Delete `WindowGeometry` if unused**
+
+After this task, run:
+
+```bash
+grep -rn "WindowGeometry" src-tauri/src/
+```
+
+If the only remaining reference is the struct definition itself in `settings/models.rs` (around line 555-562), delete the struct definition too. If `PrDetailSettings` or anything else still references it, leave it.
+
+- [ ] **Step 9: Verify it compiles**
 
 Run: `cargo check -p borgdock`
 Expected: clean.
 
-- [ ] **Step 3: Smoke test**
+- [ ] **Step 10: Smoke test**
 
-Open Settings (tray menu). Move/resize. Close. Reopen — geometry restored.
+Open Settings (tray menu → Settings). Move/resize. Close. Reopen — geometry restored. Run Ctrl+F8/F9/F10 to confirm palettes still work (the `WindowGeometry` cleanup didn't touch their wiring).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add src-tauri/src/settings/window.rs
-git commit -m "feat(window-geometry): persist settings window"
+git add src-tauri/src/settings/window.rs src-tauri/src/settings/models.rs
+git commit -m "refactor(window-geometry): settings window uses unified store"
 ```
 
 ---
