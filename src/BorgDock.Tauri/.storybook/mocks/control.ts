@@ -225,7 +225,7 @@ function createControl(): StorybookTauriControl {
 
       // Phase 11
       ctrl.githubResponses = {};
-      for (const k of Object.keys(ctrl.prActionResponses)) delete ctrl.prActionResponses[k];
+      ctrl.prActionResponses = {};
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);

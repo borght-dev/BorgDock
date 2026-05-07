@@ -177,7 +177,7 @@ export type GithubResponses = {
   tokenGetter?: () => string | Promise<string>;
 };
 
-export type PrActionResponses = Record<string, '__throw__' | ((payload: unknown) => unknown)>;
+export type PrActionResponses = Record<string, '__throw__' | '__fail__' | ((args: unknown) => unknown)>;
 
 interface Control {
   // …existing fields…
