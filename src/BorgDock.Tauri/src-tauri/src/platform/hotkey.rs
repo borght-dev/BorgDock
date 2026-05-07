@@ -142,7 +142,10 @@ fn open_or_toggle_palette(app: &tauri::AppHandle, spec: &PaletteSpec) {
         builder = builder.min_inner_size(w, h);
     }
     match builder.build() {
-        Ok(_) => log::info!("palette[{label}]: build succeeded in {:?}", t0.elapsed()),
+        Ok(win) => {
+            log::info!("palette[{label}]: build succeeded in {:?}", t0.elapsed());
+            crate::platform::window_geometry::persist_window_geometry(app, &win, spec.label);
+        }
         Err(e) => log::error!("palette[{label}]: build failed in {:?}: {e}", t0.elapsed()),
     }
 }
