@@ -5,8 +5,9 @@
 
 import type { Release } from '../../src/types/whats-new';
 import type { WorkItem, WorkItemComment } from '../../src/types/work-item';
-import type { PullRequest } from '../../src/types/pull-request';
+import type { PullRequest, PullRequestCommit, PullRequestFileChange } from '../../src/types/pull-request';
 import type { CheckRun } from '../../src/types/check-run';
+import type { ReviewThread } from '../../src/types/review-thread';
 
 export interface InvokeRecord {
   command: string;
@@ -87,6 +88,11 @@ export type GithubResponses = {
     | CheckRun[]
     | ((args: { ref: string }) => CheckRun[] | Promise<CheckRun[]> | Promise<never>);
   tokenGetter?: () => string | Promise<string>;
+  // Phase 11 / FilesTab additions
+  getPRFiles?: PullRequestFileChange[] | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
+  getCommitFiles?: PullRequestFileChange[] | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
+  getPRCommits?: PullRequestCommit[] | (() => PullRequestCommit[] | Promise<PullRequestCommit[]>);
+  getReviewThreads?: ReviewThread[] | (() => ReviewThread[] | Promise<ReviewThread[]>);
 };
 
 // Phase 11 — pr-actions overrides
