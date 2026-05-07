@@ -2,9 +2,22 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
+import { createRequire } from "module";
 import path from "path";
 import { changelogPlugin } from "./scripts/changelog/vite-plugin";
 import pkg from "./package.json";
+
+const require = createRequire(import.meta.url);
+// Resolve web-tree-sitter from wherever the package manager actually
+// installed it (npm: nested in src/BorgDock.Tauri/node_modules, bun
+// workspace: hoisted to repo root). Without this, vite-plugin-static-copy's
+// relative path breaks when node_modules isn't directly under vite root.
+// web-tree-sitter's package.json `exports` field doesn't whitelist
+// ./package.json, so resolve via its main entry and walk up.
+const webTreeSitterWasm = path.join(
+  path.dirname(require.resolve("web-tree-sitter")),
+  "web-tree-sitter.wasm",
+);
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -23,7 +36,7 @@ export default defineConfig({
       targets: [
         {
           // Tree-sitter runtime — served at /web-tree-sitter.wasm
-          src: "node_modules/web-tree-sitter/web-tree-sitter.wasm",
+          src: webTreeSitterWasm,
           dest: ".",
           rename: { stripBase: true },
         },

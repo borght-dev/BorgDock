@@ -1,0 +1,6 @@
+[install]
+# Hoisted linker matches npm/yarn-classic layout so TypeScript and other
+# tools can resolve transitive deps via flat node_modules. Bun's default
+# `isolated` linker hides transitive deps behind .bun/<name>+<version>/
+# symlinks that tsc doesn't follow.
+linker = "hoisted"
