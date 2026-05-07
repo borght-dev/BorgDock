@@ -505,8 +505,6 @@ pub struct AgentOverviewSettings {
     #[serde(default)]
     pub auto_open_on_startup: bool,
     #[serde(default)]
-    pub window_state: Option<WindowGeometry>,
-    #[serde(default)]
     pub repo_short_names: std::collections::HashMap<String, String>,
     #[serde(default = "default_notify_after")]
     pub awaiting_notify_after_seconds: u32,
@@ -539,7 +537,6 @@ impl Default for AgentOverviewSettings {
             // values — flip them via Settings → Agent Overview.
             enabled: true,
             auto_open_on_startup: true,
-            window_state: None,
             repo_short_names: std::collections::HashMap::new(),
             awaiting_notify_after_seconds: default_notify_after(),
             awaiting_notify_escalate_seconds: default_notify_escalate(),
