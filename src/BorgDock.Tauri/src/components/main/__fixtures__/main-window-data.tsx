@@ -434,7 +434,12 @@ export function withWizard(
     settings: {
       setupComplete: false,
       gitHub: {
+        // Spread baseline first so real values take precedence over safe defaults.
+        // Safe defaults cover required GitHubSettings fields when the baseline is
+        // empty (e.g. in vitest/jsdom where the Tauri store is unavailable).
         ...(SETTINGS_BASELINE as AppSettings).gitHub,
+        pollIntervalSeconds: (SETTINGS_BASELINE as AppSettings).gitHub?.pollIntervalSeconds ?? 60,
+        username: (SETTINGS_BASELINE as AppSettings).gitHub?.username ?? '',
         authMethod: options.authMethod ?? 'ghCli',
         personalAccessToken: options.hasToken ? 'mock-token' : '',
       },
