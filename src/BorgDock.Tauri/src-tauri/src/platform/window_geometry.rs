@@ -25,6 +25,19 @@ pub fn kind_of(label: &str) -> &str {
     label
 }
 
+/// A monitor's bounds in physical pixels: `(origin_x, origin_y, width, height)`.
+pub type MonitorBounds = (i32, i32, u32, u32);
+
+/// True if `(x, y)` lies inside any of the supplied monitors. Right and
+/// bottom edges are exclusive (a window placed exactly at `mx + mw` is on
+/// the next monitor over, not this one).
+pub fn is_position_on_screen(pos: (i32, i32), monitors: &[MonitorBounds]) -> bool {
+    let (x, y) = pos;
+    monitors.iter().any(|&(mx, my, mw, mh)| {
+        x >= mx && x < mx + mw as i32 && y >= my && y < my + mh as i32
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,5 +55,27 @@ mod tests {
         assert_eq!(kind_of("pr-detail-Gomocha-FSP-fsp-horizon-1571"), "pr-detail");
         assert_eq!(kind_of("file-viewer-abc123def456"), "file-viewer");
         assert_eq!(kind_of("workitem-detail-7777"), "workitem-detail");
+    }
+
+    #[test]
+    fn position_inside_a_monitor_is_valid() {
+        let monitors = vec![(0, 0, 1920, 1080)];
+        assert!(is_position_on_screen((100, 100), &monitors));
+    }
+
+    #[test]
+    fn position_off_all_monitors_is_invalid() {
+        let monitors = vec![(0, 0, 1920, 1080)];
+        assert!(!is_position_on_screen((3000, 100), &monitors));
+        assert!(!is_position_on_screen((-100, 100), &monitors));
+        assert!(!is_position_on_screen((100, -100), &monitors));
+        assert!(!is_position_on_screen((1920, 100), &monitors)); // boundary: right edge exclusive
+    }
+
+    #[test]
+    fn position_on_secondary_monitor_is_valid() {
+        // Primary at (0, 0), secondary to its right at (1920, 0)
+        let monitors = vec![(0, 0, 1920, 1080), (1920, 0, 1920, 1080)];
+        assert!(is_position_on_screen((2500, 500), &monitors));
     }
 }
