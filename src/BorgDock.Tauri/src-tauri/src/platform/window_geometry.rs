@@ -196,7 +196,21 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
                     height = height.max(min_h_phys);
                 }
             }
-            let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(width, height)));
+            match win.set_size(tauri::Size::Physical(PhysicalSize::new(width, height))) {
+                Ok(()) => {
+                    let actual = win.inner_size().ok();
+                    log::info!(
+                        "persist_window_geometry[{label}]: set_size({}x{}) ok, inner_size now {:?}",
+                        width, height, actual
+                    );
+                }
+                Err(e) => {
+                    log::error!(
+                        "persist_window_geometry[{label}]: set_size({}x{}) failed: {}",
+                        width, height, e
+                    );
+                }
+            }
             let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
             if g.maximized {
                 let _ = win.maximize();
