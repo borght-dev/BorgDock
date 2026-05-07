@@ -1,0 +1,25 @@
+{
+  "name": "borgdock-monorepo",
+  "private": true,
+  "workspaces": [
+    "src/BorgDock.Tauri",
+    "site"
+  ],
+  "packageManager": "bun@1.3.10",
+  "scripts": {
+    "postinstall": "lefthook install || true",
+    "dev": "cd src/BorgDock.Tauri && bun run dev",
+    "build": "cd src/BorgDock.Tauri && bun run build",
+    "test": "cd src/BorgDock.Tauri && bun run test",
+    "test:e2e": "cd src/BorgDock.Tauri && bun run test:e2e",
+    "lint": "cd src/BorgDock.Tauri && bun run lint",
+    "lint:fix": "cd src/BorgDock.Tauri && bun run lint:fix",
+    "tauri": "cd src/BorgDock.Tauri && bun run tauri",
+    "storybook": "cd src/BorgDock.Tauri && bun run storybook",
+    "site:dev": "cd site && bun run dev",
+    "site:build": "cd site && bun run build"
+  },
+  "devDependencies": {
+    "lefthook": "^1.7.0"
+  }
+}
