@@ -417,6 +417,16 @@ No changes.
   - Leave Main/Sidebar as the only remaining Pending row.
 - Phase 11 commits ordered: mock-layer + control-surface first, fixtures second, then stories per file (window-shell, panel, tabs in order, then auxiliaries), then roadmap edit last.
 
+## Implementation notes
+
+The implementation diverged from this spec in three places, each captured here so future readers don't conclude the catalog drifted unaccounted-for:
+
+- **OverviewTab > StaleChecks** is a documented placeholder. Production currently has no stale-check rendering anywhere in `OverviewTab`, `MergeReadinessChecklist`, or `ActivityStrip`, and `CheckRun` has no `headSha` field for the comparison the spec implied. The story renders identically to `OpenWithChecksRunning` until the feature is implemented; its `name` field is set to `'StaleChecks (placeholder — production has no stale rendering yet)'` so the placeholder status is visible in the Storybook sidebar.
+- **OverviewTab click-through stories use a `render` override** that swaps in `<PrDetailPanel pr={args.pr} />` for the three flow stories. The spec implied click-throughs would attach as `play` functions to the existing axis stories, but the action buttons (Merge / Close / Mark Ready) live in `ActionBar` inside `PrDetailPanel` — not in `OverviewTab` itself. The companion stories (`OpenWithChecksRunning — Close flow`, `OpenAllGreenMergeable — Merge flow`, `Draft — Mark ready flow`) keep the catalog organizationally aligned with the spec's "OverviewTab > X" rows while exercising the right rendered tree.
+- **ReviewComposer dropped `Submitting` / `SubmitFailure`** in favor of `CommentKind` and `RequestChanges`. Production `ReviewComposer` is fully synchronous: `onSubmit` is typed `(payload) => void`, called without `await`, with no try/catch and no internal "in-flight" or "errored" state. Feeding `() => new Promise(() => {})` or a throwing callback would render identically to the base state. The substitutions exercise real visual branches (kind=comment hides the decision-pill row and changes button labels; the request-changes pill has distinct error-tone styling).
+
+Total final story count: **53** across 10 files (vs the spec's projected ~48 — the gap is the 3 OverviewTab companion stories and the 2 click-throughs being authored as separate exports rather than play overrides on existing stories).
+
 ## What comes next (out of scope here)
 
 - Phase 12 (Main / Sidebar). The final window. Will reuse the `services/github/{pulls,checks,auth}` mocks added here, plus likely add `services/github/pr-store` and other singleton wiring.
