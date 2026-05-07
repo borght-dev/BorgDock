@@ -1,6 +1,7 @@
 // src/components/work-items/WorkItemDetailApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
 import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';
@@ -215,7 +216,6 @@ export const DirtyTitleEdited: Story = {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     // Wait for the title textarea to render after load resolves.
     const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
@@ -234,7 +234,6 @@ export const SavingInFlight: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
     await userEvent.clear(titleArea);
@@ -251,7 +250,6 @@ export const SavedSuccess: Story = {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
     await userEvent.clear(titleArea);
@@ -272,7 +270,6 @@ export const SaveError: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const titleArea = await canvas.findByDisplayValue(/Implement the dashboard widget/i);
     await userEvent.clear(titleArea);
@@ -300,7 +297,6 @@ export const AttachmentSaveDialogCanceled: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const button = await canvas.findByRole('button', { name: /attachment-1\.png/i });
     await userEvent.click(button);
@@ -318,7 +314,6 @@ export const AttachmentDownloaded: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const button = await canvas.findByRole('button', { name: /attachment-1\.png/i });
     await userEvent.click(button);
@@ -336,7 +331,6 @@ export const DeleteAction: Story = {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const deleteButton = await canvas.findByRole('button', { name: /^delete$/i });
     await userEvent.click(deleteButton);
@@ -350,7 +344,6 @@ export const OpenInBrowserClicked: Story = {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const button = await canvas.findByRole('button', { name: /open in browser/i });
     await userEvent.click(button);
@@ -362,7 +355,6 @@ export const CloseButtonClicked: Story = {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     // The header has a Close icon button (aria-label: "Close"). Match by
     // tooltip / accessible-name "Close".

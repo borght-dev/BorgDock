@@ -1,6 +1,7 @@
 // src/components/work-item-palette/WorkItemPaletteApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { useMemo } from 'react';
 import { WorkItemPaletteApp } from './WorkItemPaletteApp';
 import { getControl, type WorkItemPaletteScenario } from '../../../.storybook/mocks/control';
@@ -126,7 +127,6 @@ export const SearchTypeTooShortText: Story = story(
   { scenario: fullBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -146,7 +146,6 @@ export const SearchTypeTooShortNumeric: Story = story(
   { scenario: fullBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -166,7 +165,6 @@ export const SearchInFlight: Story = story(
   { scenario: searchPendingScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -194,7 +192,6 @@ export const SearchNoResults: Story = story(
   },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -222,7 +219,6 @@ export const SearchOneResult: Story = story(
   },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -247,7 +243,6 @@ export const SearchByIdPrefix: Story = story(
   { scenario: fullBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -271,7 +266,6 @@ export const SearchByTextTitle: Story = story(
   { scenario: fullBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -295,7 +289,6 @@ export const SearchByTextAssignee: Story = story(
   { scenario: fullBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -321,7 +314,6 @@ export const SearchFailed: Story = story(
   { scenario: searchRejectScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -347,7 +339,6 @@ export const AdoNotConfigured: Story = story(
   },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const canvas = within(canvasElement);
       const input = await canvas.findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -380,7 +371,6 @@ export const HoverHighlightsRow: Story = story(
   },
   {
     play: async ({ canvasElement }) => {
-      const { userEvent, waitFor } = await import('storybook/test');
       const rows = await waitFor(
         () => {
           const found = canvasElement.querySelectorAll('[data-palette-row]');
@@ -408,7 +398,6 @@ export const EnterOpensDetailWindow: Story = story(
   },
   {
     play: async ({ canvasElement }) => {
-      const { within, fireEvent, waitFor } = await import('storybook/test');
       const input = (await within(canvasElement).findByPlaceholderText(
         'Search by ID, title, or assigned to...',
       )) as HTMLInputElement;
@@ -440,7 +429,6 @@ export const EscapeHidesPalette: Story = story(
   { scenario: emptyBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, fireEvent, waitFor } = await import('storybook/test');
       // Wait for input to mount so the global keydown listener is wired.
       await within(canvasElement).findByPlaceholderText(
         'Search by ID, title, or assigned to...',
@@ -461,7 +449,6 @@ export const DragRegionPresent: Story = story(
   { scenario: emptyBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within } = await import('storybook/test');
       await within(canvasElement).findByPlaceholderText(
         'Search by ID, title, or assigned to...',
       );
@@ -484,7 +471,6 @@ export const WindowReadyOnMount: Story = story(
   { scenario: emptyBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, waitFor } = await import('storybook/test');
       await within(canvasElement).findByPlaceholderText(
         'Search by ID, title, or assigned to...',
       );
@@ -503,7 +489,6 @@ export const PaletteShownEventResetsState: Story = story(
   { scenario: fullBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      const { within, userEvent, waitFor } = await import('storybook/test');
       const input = (await within(canvasElement).findByPlaceholderText(
         'Search by ID, title, or assigned to...',
       )) as HTMLInputElement;

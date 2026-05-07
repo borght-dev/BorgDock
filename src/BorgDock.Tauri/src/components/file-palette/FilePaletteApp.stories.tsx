@@ -1,6 +1,7 @@
 // src/components/file-palette/FilePaletteApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
@@ -171,7 +172,6 @@ export const DefaultMixed: Story = story({
 export const FilenameSearchActive: Story = {
   args: { params: { invokeResponses: loadedPalette() } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-1');
@@ -187,7 +187,6 @@ export const ContentSearchActive: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, '>foo');
@@ -207,7 +206,6 @@ export const SymbolSearchActive: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, '@App');
@@ -221,7 +219,6 @@ export const SymbolSearchActive: Story = {
 export const ResultsEmptyNoMatch: Story = {
   args: { params: { invokeResponses: loadedPalette() } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'zzznosuchstring');
@@ -286,7 +283,6 @@ export const PreviewFileLoading: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-0');
@@ -305,7 +301,6 @@ export const PreviewFileOk: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-00');
@@ -328,7 +323,6 @@ export const PreviewFileBinary: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-00');
@@ -349,7 +343,6 @@ export const PreviewDiffOk: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const rows = await canvas.findAllByRole('button');
     const diffRow = rows.find((r) => r.textContent?.includes('App.tsx'));
@@ -371,7 +364,6 @@ export const AddCustomRoot: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const addBtn = await canvas.findByRole('button', { name: /add.*root/i });
     await userEvent.click(addBtn);
@@ -381,7 +373,6 @@ export const AddCustomRoot: Story = {
 export const PaletteReshown: Story = {
   args: { params: { invokeResponses: loadedPalette() } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'foo');
@@ -399,7 +390,6 @@ export const WindowFocusRefresh: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within } = await import('storybook/test');
     const canvas = within(canvasElement);
     await canvas.findByPlaceholderText(/search/i);
     const before = getControl().invocations.filter((i) => i.command === 'git_changed_files')
@@ -419,7 +409,6 @@ export const WindowFocusRefresh: Story = {
 export const EscHidesWindow: Story = {
   args: { params: { invokeResponses: loadedPalette() } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.click(input);
@@ -430,7 +419,6 @@ export const EscHidesWindow: Story = {
 export const EnterOpensViewer: Story = {
   args: { params: { invokeResponses: loadedPalette() } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-00');

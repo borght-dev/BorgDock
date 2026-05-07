@@ -1,6 +1,7 @@
 // src/components/sql/SqlApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import type { AppSettings } from '@/types/settings';
@@ -267,7 +268,6 @@ export const ResultRunning: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -284,7 +284,6 @@ export const ResultSuccessSelect: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -301,7 +300,6 @@ export const ResultSuccessUpdate: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -318,7 +316,6 @@ export const ResultMultiSet: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -339,7 +336,6 @@ export const ResultError: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -361,7 +357,6 @@ export const ResultPanicRecovered: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -378,7 +373,6 @@ export const ResultTruncated: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -405,7 +399,6 @@ export const CopyValuesRoundtrip: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     const runBtn = await canvas.findByRole('button', { name: /run/i });
     await userEvent.click(runBtn);
@@ -430,8 +423,6 @@ export const PositionPersistedAfterMove: Story = {
     },
   },
   play: async () => {
-    const { waitFor, expect } = await import('storybook/test');
-
     // Wait for the onMoved listener to register before emitting.
     await waitFor(() => {
       const ctrl = getControl();
