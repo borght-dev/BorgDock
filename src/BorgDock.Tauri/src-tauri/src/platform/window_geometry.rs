@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow};
+use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewWindow};
 use tokio::sync::Notify;
 
 pub type GeometryMap = HashMap<String, Geometry>;
@@ -31,6 +31,20 @@ pub fn write_atomic(path: &Path, map: &GeometryMap) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Persisted window geometry.
+///
+/// `x` / `y` are *physical* outer-position pixels — they're tied to a
+/// specific monitor's physical coordinate space, so storing them in
+/// physical units is correct and survives multi-monitor layouts.
+///
+/// `width` / `height` are *logical* (CSS / DIP) inner-size pixels.
+/// Storing them in physical pixels (via `outer_size().width`) was wrong:
+/// `win.scale_factor()` reports `1.0` at startup before the window has
+/// been positioned on its target monitor, so re-applying the saved
+/// physical width as physical produced a tiny window once Per-Monitor
+/// DPI on a high-DPI display kicked in. Saving logical lets Tauri +
+/// Windows convert to the right physical size on whichever monitor the
+/// window ends up on.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Geometry {
     pub x: i32,
@@ -182,32 +196,29 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
             .unwrap_or_default();
 
         if is_position_on_screen((g.x, g.y), &monitors) {
-            let (mut width, mut height) = (g.width, g.height);
+            let (mut width, mut height) = (g.width as f64, g.height as f64);
             if let Some((min_lw, min_lh)) = min_logical_size_for_kind(&kind) {
-                let scale = win.scale_factor().unwrap_or(1.0);
-                let min_w_phys = (min_lw * scale).round() as u32;
-                let min_h_phys = (min_lh * scale).round() as u32;
-                if width < min_w_phys || height < min_h_phys {
+                if width < min_lw || height < min_lh {
                     log::info!(
-                        "persist_window_geometry[{label}]: clamping saved size {}x{} up to min {}x{} (scale={})",
-                        width, height, min_w_phys, min_h_phys, scale
+                        "persist_window_geometry[{label}]: clamping saved size {}x{} up to min {}x{} (logical)",
+                        width as u32, height as u32, min_lw as u32, min_lh as u32
                     );
-                    width = width.max(min_w_phys);
-                    height = height.max(min_h_phys);
+                    width = width.max(min_lw);
+                    height = height.max(min_lh);
                 }
             }
-            match win.set_size(tauri::Size::Physical(PhysicalSize::new(width, height))) {
+            match win.set_size(tauri::Size::Logical(LogicalSize::new(width, height))) {
                 Ok(()) => {
                     let actual = win.inner_size().ok();
                     log::info!(
-                        "persist_window_geometry[{label}]: set_size({}x{}) ok, inner_size now {:?}",
-                        width, height, actual
+                        "persist_window_geometry[{label}]: set_size(logical {}x{}) ok, inner_size now {:?}",
+                        width as u32, height as u32, actual
                     );
                 }
                 Err(e) => {
                     log::error!(
-                        "persist_window_geometry[{label}]: set_size({}x{}) failed: {}",
-                        width, height, e
+                        "persist_window_geometry[{label}]: set_size(logical {}x{}) failed: {}",
+                        width as u32, height as u32, e
                     );
                 }
             }
@@ -247,15 +258,14 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
 
 fn capture(win: &WebviewWindow) -> Option<Geometry> {
     let pos = win.outer_position().ok()?;
-    let size = win.outer_size().ok()?;
+    let phys = win.outer_size().ok()?;
+    // Convert physical → logical so the saved width/height are stable
+    // across monitors with different DPI (see `Geometry` doc comment).
+    let scale = win.scale_factor().ok()?;
+    let width = ((phys.width as f64) / scale).round() as u32;
+    let height = ((phys.height as f64) / scale).round() as u32;
     let maximized = win.is_maximized().unwrap_or(false);
-    Some(Geometry {
-        x: pos.x,
-        y: pos.y,
-        width: size.width,
-        height: size.height,
-        maximized,
-    })
+    Some(Geometry { x: pos.x, y: pos.y, width, height, maximized })
 }
 
 #[cfg(test)]
