@@ -1,10 +1,11 @@
 // src/components/whats-new/WhatsNewApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import type { Release } from '@/types/whats-new';
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   dateSpreadHistory,
   deepHistory,
@@ -116,12 +117,21 @@ export const FirstTimeUser = story({
   appVersion: '1.2.0',
 });
 
-export const UpToDate = story({
-  pluginStoreSeed: {
-    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+export const UpToDate: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/whats-new.png',
+    width: 600,
+    height: 800,
+  }),
+  args: {
+    params: {
+      pluginStoreSeed: {
+        'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+      },
+      appVersion: '1.2.0',
+    },
   },
-  appVersion: '1.2.0',
-});
+};
 
 export const OneVersionBehind = story({
   // 1.1.0 is the version directly before 1.2.0 in the real RELEASES array.

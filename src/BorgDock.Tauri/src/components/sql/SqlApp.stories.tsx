@@ -6,6 +6,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { AppSettings } from '@/types/settings';
 import type { SqlSchemaPayload } from '@/types/sql-schema';
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   connBorgDockDev,
   connHorizonProd,
@@ -185,9 +186,18 @@ export const NoConnections = story({
   settings: makeSettings([]),
 });
 
-export const OneConnection = story({
-  settings: makeSettings([connBorgDockDev]),
-});
+export const OneConnection: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/sql.png',
+    width: 1000,
+    height: 700,
+  }),
+  args: {
+    params: {
+      settings: makeSettings([connBorgDockDev]),
+    },
+  },
+};
 
 export const MultipleConnections = story({
   settings: (() => {

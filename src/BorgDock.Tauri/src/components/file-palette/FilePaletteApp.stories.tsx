@@ -1,9 +1,10 @@
 // src/components/file-palette/FilePaletteApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   binaryError,
   canonicalSettings,
@@ -126,9 +127,18 @@ export const SettingsLoadFailed: Story = story({
 // Roots-column axis
 // ---------------------------------------------------------------------------
 
-export const SingleWorktreeRoot: Story = story({
-  invokeResponses: loadedPalette(),
-});
+export const SingleWorktreeRoot: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/file-palette.png',
+    width: 720,
+    height: 600,
+  }),
+  args: {
+    params: {
+      invokeResponses: loadedPalette(),
+    },
+  },
+};
 
 export const MultipleRootsActive: Story = story({
   invokeResponses: loadedPalette({
@@ -393,16 +403,12 @@ export const WindowFocusRefresh: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByPlaceholderText(/search/i);
-    const before = getControl().invocations.filter((i) => i.command === 'git_changed_files')
-      .length;
+    const before = getControl().invocations.filter((i) => i.command === 'git_changed_files').length;
     getControl().emit('__window.onFocusChanged', true);
     await new Promise((r) => setTimeout(r, 0));
-    const after = getControl().invocations.filter((i) => i.command === 'git_changed_files')
-      .length;
+    const after = getControl().invocations.filter((i) => i.command === 'git_changed_files').length;
     if (after <= before) {
-      console.warn(
-        '[storybook] WindowFocusRefresh: no new git_changed_files invocation observed',
-      );
+      console.warn('[storybook] WindowFocusRefresh: no new git_changed_files invocation observed');
     }
   },
 };

@@ -1,11 +1,11 @@
 // src/components/agent-overview/AgentOverviewApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
-import { getControl } from '../../../.storybook/mocks/control';
+import { userEvent, within } from 'storybook/test';
 import type { SessionDelta, SessionRecord } from '@/services/agent-overview-types';
-import { AgentOverviewApp } from './AgentOverviewApp';
+import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   allArchived,
   allIdle,
@@ -14,9 +14,9 @@ import {
   heavyLoad,
   idleWithArchived,
   moderateLoad,
-  multiRepoMixed,
   multipleAwaiting,
   multipleAwaitingMixedAge,
+  multiRepoMixed,
   oneAwaiting,
   oneWorking,
   sessionAwaiting,
@@ -26,6 +26,7 @@ import {
   sessionWithFiles,
   sessionWorking,
 } from './__fixtures__/agent-overview-data';
+import { AgentOverviewApp } from './AgentOverviewApp';
 
 interface FileChangeRow {
   path: string;
@@ -150,9 +151,18 @@ export const OneIdle = story({
 // State-coverage axis
 // ---------------------------------------------------------------------------
 
-export const AllStates = story({
-  sessions: allStates,
-});
+export const AllStates: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/agent-overview.png',
+    width: 720,
+    height: 800,
+  }),
+  args: {
+    params: {
+      sessions: allStates,
+    },
+  },
+};
 
 export const AllStatesByStatus: Story = {
   args: { params: { sessions: allStates } },
@@ -202,7 +212,9 @@ export const AwaitingAcrossRepos = story({
 // ---------------------------------------------------------------------------
 
 export const DensityRoomy = story({
-  sessions: oneWorking.concat(multiRepoMixed.slice(0, 4)).filter((s) => s.state !== 'awaiting' && s.state !== 'idle' && s.state !== 'ended'),
+  sessions: oneWorking
+    .concat(multiRepoMixed.slice(0, 4))
+    .filter((s) => s.state !== 'awaiting' && s.state !== 'idle' && s.state !== 'ended'),
 });
 
 export const DensityStandard = story({
@@ -251,9 +263,7 @@ export const TransitionWorkingToAwaiting = story({
 
 export const TransitionAwaitingToIdle = story({
   sessions: [sessionAwaiting],
-  deltas: [
-    { kind: 'upsert', session: { ...sessionAwaiting, state: 'idle', lastEventMs: 60_000 } },
-  ],
+  deltas: [{ kind: 'upsert', session: { ...sessionAwaiting, state: 'idle', lastEventMs: 60_000 } }],
   deltaIntervalMs: 800,
 });
 

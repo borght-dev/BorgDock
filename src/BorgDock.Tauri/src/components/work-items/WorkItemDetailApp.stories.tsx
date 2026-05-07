@@ -6,6 +6,7 @@ import { userEvent, within } from 'storybook/test';
 import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';
 import { getControl, type WorkItemScenario } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   bugWithReproSteps,
   canonicalSettings,
@@ -145,9 +146,18 @@ export const NoIdProvided: Story = story({
   id: null,
 });
 
-export const LoadedClean: Story = story({
-  scenario: loadedScenario(userStoryFreshlyLoaded),
-});
+export const LoadedClean: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/work-item-detail.png',
+    width: 800,
+    height: 900,
+  }),
+  args: {
+    params: {
+      scenario: loadedScenario(userStoryFreshlyLoaded),
+    },
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Item-shape axis

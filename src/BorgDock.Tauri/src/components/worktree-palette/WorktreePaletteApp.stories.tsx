@@ -2,8 +2,8 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   fiveRepos,
   makeRepo,
@@ -188,10 +188,19 @@ export const OneRepoMixedDetached = story({
 // 4. Multi-repo grouping axis
 // ---------------------------------------------------------------------------
 
-export const TwoReposBalanced = story({
-  settings: settingsFromHistory(twoReposBalanced),
-  listResponses: buildRepoListResponses(twoReposBalanced),
-});
+export const TwoReposBalanced: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/worktree-palette.png',
+    width: 720,
+    height: 600,
+  }),
+  args: {
+    params: {
+      settings: settingsFromHistory(twoReposBalanced),
+      listResponses: buildRepoListResponses(twoReposBalanced),
+    },
+  },
+};
 
 export const TwoReposLopsided = story({
   settings: settingsFromHistory(twoReposLopsided),
