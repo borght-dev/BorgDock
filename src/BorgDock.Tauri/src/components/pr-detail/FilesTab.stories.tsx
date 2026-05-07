@@ -197,10 +197,12 @@ export const Deleted: Story = {
 // default — allExpanded=true), the bubble should be visible without interaction.
 // This story is visually distinct from SmallDiff only when the inline thread
 // rendering path in DiffFileSection is active.
+const inlineThreadPr = makePr({ pullRequest: { commentCount: 1 } });
+
 export const WithInlineThread: Story = {
   name: 'WithInlineThread',
   decorators: [
-    withPrDetail(makePr({ pullRequest: { commentCount: 1 } }), {
+    withPrDetail(inlineThreadPr, {
       githubResponses: {
         getPRFiles: smallDiffFiles,
         getReviewThreads: [inlineThread],
@@ -208,10 +210,10 @@ export const WithInlineThread: Story = {
     }),
   ],
   args: {
-    prNumber: makePr({ pullRequest: { commentCount: 1 } }).pullRequest.number,
-    repoOwner: makePr({ pullRequest: { commentCount: 1 } }).pullRequest.repoOwner,
-    repoName: makePr({ pullRequest: { commentCount: 1 } }).pullRequest.repoName,
-    htmlUrl: makePr({ pullRequest: { commentCount: 1 } }).pullRequest.htmlUrl,
-    prUpdatedAt: makePr({ pullRequest: { commentCount: 1 } }).pullRequest.updatedAt,
+    prNumber: inlineThreadPr.pullRequest.number,
+    repoOwner: inlineThreadPr.pullRequest.repoOwner,
+    repoName: inlineThreadPr.pullRequest.repoName,
+    htmlUrl: inlineThreadPr.pullRequest.htmlUrl,
+    prUpdatedAt: inlineThreadPr.pullRequest.updatedAt,
   },
 };

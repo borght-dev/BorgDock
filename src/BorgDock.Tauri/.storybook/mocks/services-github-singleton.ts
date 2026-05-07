@@ -16,6 +16,11 @@ const DUMMY_CLIENT = {
   graphql: async <T>(): Promise<T> => {
     throw new Error('services-github-singleton mock: direct client.graphql() not supported');
   },
+  post: async (path: string, body: unknown) => {
+    const ctrl = (await import('./control')).getControl();
+    ctrl.invocations.push({ command: 'github.client.post', args: { path, body } });
+    return null;
+  },
 };
 
 let _client: typeof DUMMY_CLIENT | null = null;
