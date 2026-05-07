@@ -33,8 +33,6 @@ pub struct AppSettings {
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_palette_roots: Option<Vec<FilePaletteRoot>>,
-    #[serde(default)]
-    pub settings_window: Option<WindowGeometry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -547,15 +545,6 @@ impl Default for AgentOverviewSettings {
             auto_archive_after_hours: None,
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WindowGeometry {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
