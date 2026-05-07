@@ -64,7 +64,7 @@ time.
 | 9 | Work Item Palette | `work-item-palette-main.tsx` → `components/work-item-palette/WorkItemPaletteApp.tsx` | `2026-05-06-storybook-phase8-work-item-palette-design.md` | `2026-05-06-storybook-phase8-work-item-palette.md` | _(filled in after PR opens)_ |
 | 10 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | `2026-05-06-storybook-phase10-settings-design.md` | `2026-05-06-storybook-phase10-settings.md` | _(filled in after PR opens)_ |
 | 11 | PR Detail | `pr-detail-main.tsx` → `components/pr-detail/PRDetailApp.tsx` | `2026-05-07-storybook-phase11-pr-detail-design.md` | `2026-05-07-storybook-phase11-pr-detail.md` | _(filled in after PR opens)_ |
-| 12 | Main / Sidebar | `main.tsx` → `App.tsx` | `2026-05-08-storybook-phase12-main-sidebar-design.md` | `2026-05-08-storybook-phase12-main-sidebar.md` | _(filled in after PR opens)_ |
+| 12 | Main / Sidebar | `main.tsx` → `App.tsx` | `2026-05-08-storybook-phase12-main-sidebar-design.md` | `2026-05-08-storybook-phase12-main-sidebar.md` | [#33](https://github.com/borght-dev/BorgDock/pull/33) |
 
 ### Pending
 
