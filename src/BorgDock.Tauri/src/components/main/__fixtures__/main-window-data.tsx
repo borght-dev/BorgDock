@@ -19,7 +19,7 @@ import { type GithubResponses, getControl } from '../../../../.storybook/mocks/c
 
 // ── Deep-merge helper ─────────────────────────────────────────
 
-type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 function deepMerge<T>(base: T, over: DeepPartial<T> | undefined): T {
   if (!over) return base;
@@ -343,8 +343,10 @@ export const WORK_ITEMS_CANONICAL: WorkItem[] = [
 // ── Decorator ─────────────────────────────────────────────────
 
 export interface WithMainWindowOptions {
-  /** Top-level override only. Merges shallowly. */
-  settings?: Partial<AppSettings>;
+  /** Settings overrides — deep-merged into SETTINGS_BASELINE so nested
+   *  sub-objects (gitHub, ui, notifications, etc.) only patch the keys
+   *  the story specifies. */
+  settings?: DeepPartial<AppSettings>;
   /** Override init state (default: complete). Set { isComplete: false } to render splash. */
   init?: Partial<{ isComplete: boolean }>;
   /** Override UI store (default: section='focus'). */
@@ -380,20 +382,31 @@ export function withMainWindow(options: WithMainWindowOptions = {}): Decorator {
   return (Story) => {
     const ctrl = getControl();
 
+    // Clear any keys left over from a prior story before re-seeding. Without
+    // this, invokeResponses / githubResponses accumulate across stories and
+    // leak responses into unrelated test runs.
+    for (const k of Object.keys(ctrl.invokeResponses)) delete ctrl.invokeResponses[k];
+    const ghr = ctrl.githubResponses as Record<string, unknown>;
+    for (const k of Object.keys(ghr)) delete ghr[k];
+
     // Default invoke responses — every command App's hooks call must have a defined response
     // or tauri-core falls through to the "no response" path which logs a warning.
     Object.assign(ctrl.invokeResponses, DEFAULT_INVOKES, options.invokeResponses ?? {});
     Object.assign(ctrl.githubResponses, options.githubResponses ?? {});
 
-    // Restore baselines first, then layer overrides.
+    // Restore baselines first, then layer overrides. Set/Map fields snapshotted
+    // at module load are shared by reference across stories — reconstruct them
+    // on every reset so a mutating story can't corrupt the baseline.
     useSettingsStore.setState({
-      settings: { ...SETTINGS_BASELINE, ...(options.settings ?? {}) } as AppSettings,
+      settings: deepMerge(SETTINGS_BASELINE, options.settings),
       isLoading: false,
       hasLoaded: true,
     });
 
     useUiStore.setState({
       ...UI_BASELINE,
+      expandedRepoGroups: new Set<string>(),
+      worktreeBranchMap: new Map(),
       activeSection: options.ui?.activeSection ?? 'focus',
     });
 
@@ -407,9 +420,17 @@ export function withMainWindow(options: WithMainWindowOptions = {}): Decorator {
       pullRequests: options.pullRequests ?? PRS_CANONICAL,
     });
 
-    useOnboardingStore.setState({ ...ONBOARDING_BASELINE });
+    useOnboardingStore.setState({
+      ...ONBOARDING_BASELINE,
+      dismissedBadges: new Set(),
+      dismissedHints: new Set(),
+    });
     useWorkItemsStore.setState({
       ...WORKITEMS_BASELINE,
+      trackedWorkItemIds: new Set<number>(),
+      workingOnWorkItemIds: new Set<number>(),
+      witTypeRefs: new Map<string, string>(),
+      workItemTypeLayouts: new Map(),
       workItems: options.workItems ?? WORK_ITEMS_CANONICAL,
     });
 
@@ -454,6 +475,6 @@ export function withWizard(
             },
           ]
         : [],
-    } as Partial<AppSettings>,
+    } as DeepPartial<AppSettings>,
   });
 }
