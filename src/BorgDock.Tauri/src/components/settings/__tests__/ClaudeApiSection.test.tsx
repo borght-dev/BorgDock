@@ -16,7 +16,7 @@ function makeApi(overrides?: Partial<ClaudeApiSettings>): ClaudeApiSettings {
 }
 
 describe('ClaudeApiSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(c: ClaudeApiSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

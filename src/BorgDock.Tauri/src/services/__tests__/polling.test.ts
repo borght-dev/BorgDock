@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PollingManager } from '../polling';
 
 describe('PollingManager', () => {
-  let pollFn: ReturnType<typeof vi.fn>;
+  let pollFn: ReturnType<typeof vi.fn<() => Promise<unknown>>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    pollFn = vi.fn().mockResolvedValue('result');
+    pollFn = vi.fn<() => Promise<unknown>>().mockResolvedValue('result');
   });
 
   afterEach(() => {

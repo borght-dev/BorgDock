@@ -26,7 +26,7 @@ const devConn = {
 };
 
 describe('SqlSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(s: SqlSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

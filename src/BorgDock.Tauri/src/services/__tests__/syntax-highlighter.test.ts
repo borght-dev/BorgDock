@@ -47,7 +47,9 @@ function buildTreeSitterMock(rootNode: ReturnType<typeof makeMockNode> | null = 
 
   const mockLanguage = { name: 'typescript' };
 
-  const MockParserClass = vi.fn().mockImplementation(() => mockParser);
+  const MockParserClass = vi.fn(function MockParser() {
+    return mockParser;
+  });
   (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
 
   const MockLanguageClass = {
@@ -278,13 +280,15 @@ describe('highlightLines', () => {
   });
 
   it('handles exception during parsing gracefully', async () => {
-    const MockParserClass = vi.fn().mockImplementation(() => ({
-      setLanguage: vi.fn(),
-      parse: vi.fn().mockImplementation(() => {
-        throw new Error('Parse error');
-      }),
-      delete: vi.fn(),
-    }));
+    const MockParserClass = vi.fn(function MockParser() {
+      return {
+        setLanguage: vi.fn(),
+        parse: vi.fn(function parse() {
+          throw new Error('Parse error');
+        }),
+        delete: vi.fn(),
+      };
+    });
     (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
     const MockLanguageClass = { load: vi.fn().mockResolvedValue({ name: 'typescript' }) };
 

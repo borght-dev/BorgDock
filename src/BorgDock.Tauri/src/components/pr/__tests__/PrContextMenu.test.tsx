@@ -102,8 +102,8 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
 
 describe('PrContextMenu', () => {
   const defaultPosition = { x: 100, y: 200 };
-  let onClose: ReturnType<typeof vi.fn>;
-  let onConfirmAction: ReturnType<typeof vi.fn>;
+  let onClose: ReturnType<typeof vi.fn<() => void>>;
+  let onConfirmAction: ReturnType<typeof vi.fn<(action: 'close' | 'bypass' | 'draft') => void>>;
 
   beforeEach(() => {
     vi.clearAllMocks();

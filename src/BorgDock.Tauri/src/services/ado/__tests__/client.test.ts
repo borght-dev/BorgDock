@@ -245,8 +245,9 @@ describe('AdoClient.getStream', () => {
   });
 
   it('returns a blob on success', async () => {
-    const blobContent = new Blob(['file data']);
-    const response = new Response(blobContent, { status: 200 });
+    // jsdom 29 dropped Blob.stream(); pass the content as a string and let
+    // Response wrap it. getStream still returns a Blob via response.blob().
+    const response = new Response('file data', { status: 200 });
     fetchSpy.mockResolvedValueOnce(response);
 
     const client = new AdoClient('org', 'project', 'pat');

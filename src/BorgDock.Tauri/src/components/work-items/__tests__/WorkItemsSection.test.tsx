@@ -4,10 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // ---- Mocks (before component import) ----
 
 vi.mock('@/services/ado/client', () => ({
-  AdoClient: vi.fn().mockImplementation(() => ({
-    get: vi.fn(),
-    getStream: vi.fn(),
-  })),
+  AdoClient: vi.fn(function MockAdoClient() {
+    return {
+      get: vi.fn(),
+      getStream: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('@/services/ado/queries', () => ({
