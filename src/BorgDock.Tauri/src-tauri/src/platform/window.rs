@@ -298,12 +298,6 @@ pub async fn open_pr_detail_window(
     );
     log::info!("open_pr_detail_window: init_script built, dispatching to main thread");
 
-    // Restore last-used geometry (saved when the previous PR window closed).
-    // Falls back to centered + default size if nothing is stored yet.
-    let saved_geometry = crate::settings::load_settings_internal()
-        .ok()
-        .and_then(|s| s.pr_detail.window_state.clone());
-
     // Window creation must happen on the main (GUI) thread. When this command
     // runs on a worker thread (which async tauri commands do), calling
     // WebviewWindowBuilder::build() directly can hang because it dispatches to
@@ -338,13 +332,7 @@ pub async fn open_pr_detail_window(
         .focused(true)
         .initialization_script(&init_script);
 
-        if let Some(g) = &saved_geometry {
-            builder = builder
-                .inner_size(g.width as f64, g.height as f64)
-                .position(g.x as f64, g.y as f64);
-        } else {
-            builder = builder.center();
-        }
+        builder = builder.center();
 
         let result = builder.build();
 
@@ -352,36 +340,11 @@ pub async fn open_pr_detail_window(
             Ok(win) => {
                 log::info!("open_pr_detail_window: build succeeded for {label_for_build}");
 
-                // Apply stored geometry BEFORE first show. Some Tauri versions
-                // ignore the builder's inner_size on first build under HiDPI.
-                // The window stays hidden — `window_ready` from the frontend
-                // reveals it.
-                if let Some(g) = &saved_geometry {
-                    let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
-                    let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
-                }
-
-                // Persist outer geometry on close so the next PR window opens
-                // where the user left this one.
-                let win_for_close = win.clone();
-                win.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        let pos = win_for_close.outer_position().ok();
-                        let size = win_for_close.outer_size().ok();
-                        if let (Some(p), Some(s)) = (pos, size) {
-                            let geom = crate::settings::models::WindowGeometry {
-                                x: p.x,
-                                y: p.y,
-                                width: s.width,
-                                height: s.height,
-                            };
-                            if let Ok(mut settings) = crate::settings::load_settings_internal() {
-                                settings.pr_detail.window_state = Some(geom);
-                                let _ = crate::settings::save_settings_internal(&settings);
-                            }
-                        }
-                    }
-                });
+                crate::platform::window_geometry::persist_window_geometry(
+                    &app_for_build,
+                    &win,
+                    &label_for_build,
+                );
 
                 // Schedule a delayed repaint so the window doesn't render blank
                 // on Windows if another window held focus at creation time.

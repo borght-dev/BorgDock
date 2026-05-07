@@ -563,12 +563,7 @@ pub struct WindowGeometry {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PrDetailSettings {
-    /// Persisted from the most recently closed PR detail window. New PR
-    /// windows restore to this geometry instead of always centering.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub window_state: Option<WindowGeometry>,
-}
+pub struct PrDetailSettings {}
 
 #[cfg(test)]
 mod agent_overview_settings_tests {
