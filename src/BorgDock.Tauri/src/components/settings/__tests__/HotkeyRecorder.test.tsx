@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HotkeyRecorder } from '../HotkeyRecorder';
 
 describe('HotkeyRecorder', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(shortcut: string) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

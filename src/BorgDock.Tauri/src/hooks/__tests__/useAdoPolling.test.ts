@@ -9,12 +9,14 @@ const mockGetQueryTree = vi.fn();
 const mockExecuteQuery = vi.fn();
 
 vi.mock('@/services/ado/client', () => ({
-  AdoClient: vi.fn().mockImplementation((org: string, project: string, pat: string) => ({
-    org,
-    project,
-    pat,
-    isConfigured: true,
-  })),
+  AdoClient: vi.fn(function MockAdoClient(org: string, project: string, pat: string) {
+    return {
+      org,
+      project,
+      pat,
+      isConfigured: true,
+    };
+  }),
 }));
 
 vi.mock('@/services/ado/workitems', () => ({

@@ -25,7 +25,7 @@ function makeGitHub(overrides?: Partial<GitHubSettings>): GitHubSettings {
 }
 
 describe('GitHubSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(g: GitHubSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

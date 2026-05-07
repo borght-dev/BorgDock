@@ -24,7 +24,7 @@ function makeUi(overrides?: Partial<UiSettings>): UiSettings {
 }
 
 describe('AppearanceSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(u: UiSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

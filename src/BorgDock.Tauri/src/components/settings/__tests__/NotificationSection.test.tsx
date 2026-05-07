@@ -21,7 +21,7 @@ function makeNotifications(overrides?: Partial<NotificationSettings>): Notificat
 }
 
 describe('NotificationSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(n: NotificationSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

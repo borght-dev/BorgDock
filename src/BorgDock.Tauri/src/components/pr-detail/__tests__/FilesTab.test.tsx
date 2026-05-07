@@ -5,11 +5,13 @@ import type { PullRequestFileChange } from '@/types';
 
 // Mock IntersectionObserver for jsdom
 beforeEach(() => {
-  globalThis.IntersectionObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }));
+  globalThis.IntersectionObserver = vi.fn(function MockIntersectionObserver() {
+    return {
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    };
+  }) as unknown as typeof IntersectionObserver;
 });
 
 const mockGetClient = vi.fn();

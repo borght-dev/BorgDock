@@ -11,7 +11,7 @@ function makeClaude(overrides?: Partial<ClaudeCodeSettings>): ClaudeCodeSettings
 }
 
 describe('ClaudeSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(c: ClaudeCodeSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();

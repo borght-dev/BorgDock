@@ -41,10 +41,12 @@ vi.mock('@/services/ado/workitems', () => ({
 }));
 
 vi.mock('@/services/ado/client', () => ({
-  AdoClient: vi.fn().mockImplementation(() => ({
-    get: vi.fn(),
-    getStream: vi.fn(),
-  })),
+  AdoClient: vi.fn(function MockAdoClient() {
+    return {
+      get: vi.fn(),
+      getStream: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('@/hooks/useAdoImageAuth', () => ({

@@ -12,9 +12,11 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
 }));
 
 vi.mock('@/services/ado/client', () => ({
-  AdoClient: vi.fn().mockImplementation(() => ({
-    testConnection: vi.fn().mockResolvedValue(null),
-  })),
+  AdoClient: vi.fn(function MockAdoClient() {
+    return {
+      testConnection: vi.fn().mockResolvedValue(null),
+    };
+  }),
 }));
 
 function makeAdo(overrides?: Partial<AzureDevOpsSettings>): AzureDevOpsSettings {
@@ -38,7 +40,7 @@ function makeAdo(overrides?: Partial<AzureDevOpsSettings>): AzureDevOpsSettings 
 }
 
 describe('AdoSection', () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(a: AzureDevOpsSettings) => void>>;
 
   beforeEach(() => {
     onChange = vi.fn();
@@ -121,12 +123,11 @@ describe('AdoSection', () => {
 
   it('shows error banner after failed test connection', async () => {
     const { AdoClient } = await import('@/services/ado/client');
-    vi.mocked(AdoClient).mockImplementation(
-      () =>
-        ({
-          testConnection: vi.fn().mockResolvedValue('Auth failed'),
-        }) as unknown as InstanceType<typeof AdoClient>,
-    );
+    vi.mocked(AdoClient).mockImplementation(function () {
+      return {
+        testConnection: vi.fn().mockResolvedValue('Auth failed'),
+      } as unknown as InstanceType<typeof AdoClient>;
+    });
 
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
     fireEvent.click(screen.getByText('Test connection'));
@@ -138,12 +139,11 @@ describe('AdoSection', () => {
 
   it('shows error when test connection throws', async () => {
     const { AdoClient } = await import('@/services/ado/client');
-    vi.mocked(AdoClient).mockImplementation(
-      () =>
-        ({
-          testConnection: vi.fn().mockRejectedValue(new Error('Network error')),
-        }) as unknown as InstanceType<typeof AdoClient>,
-    );
+    vi.mocked(AdoClient).mockImplementation(function () {
+      return {
+        testConnection: vi.fn().mockRejectedValue(new Error('Network error')),
+      } as unknown as InstanceType<typeof AdoClient>;
+    });
 
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
     fireEvent.click(screen.getByText('Test connection'));
@@ -159,12 +159,11 @@ describe('AdoSection', () => {
     const testPromise = new Promise<null>((r) => {
       resolveTest = () => r(null);
     });
-    vi.mocked(AdoClient).mockImplementation(
-      () =>
-        ({
-          testConnection: vi.fn().mockReturnValue(testPromise),
-        }) as unknown as InstanceType<typeof AdoClient>,
-    );
+    vi.mocked(AdoClient).mockImplementation(function () {
+      return {
+        testConnection: vi.fn().mockReturnValue(testPromise),
+      } as unknown as InstanceType<typeof AdoClient>;
+    });
 
     render(<AdoSection azureDevOps={makeAdo()} onChange={onChange} />);
     fireEvent.click(screen.getByText('Test connection'));

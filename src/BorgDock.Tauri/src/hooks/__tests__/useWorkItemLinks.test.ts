@@ -6,7 +6,9 @@ import type { PullRequest, WorkItem } from '@/types';
 const mockGetWorkItems = vi.fn();
 
 vi.mock('@/services/ado/client', () => ({
-  AdoClient: vi.fn().mockImplementation(() => ({})),
+  AdoClient: vi.fn(function MockAdoClient() {
+    return {};
+  }),
 }));
 
 vi.mock('@/services/ado/workitems', () => ({
