@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow};
 use tokio::sync::Notify;
 
 pub type GeometryMap = HashMap<String, Geometry>;
@@ -126,6 +127,91 @@ pub fn is_position_on_screen(pos: (i32, i32), monitors: &[MonitorBounds]) -> boo
     let (x, y) = pos;
     monitors.iter().any(|&(mx, my, mw, mh)| {
         x >= mx && x < mx + mw as i32 && y >= my && y < my + mh as i32
+    })
+}
+
+/// Apply any saved geometry to `win`, then attach a listener that captures
+/// future moves/resizes/closes back into the store. Called from each
+/// window-creating builder right after `.build()` succeeds.
+///
+/// Restoration only fires when the saved `(x, y)` lies within at least one
+/// currently-connected monitor — protects against waking up with a window
+/// stranded on a now-disconnected display.
+///
+/// MUST be called from the main thread (set_position / set_size /
+/// is_maximized / available_monitors all have GUI-thread affinity on
+/// Windows). Every existing window-builder site we wire into already runs
+/// inside `app.run_on_main_thread`.
+pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str) {
+    let kind = kind_of(label).to_string();
+    let store = match app.try_state::<Arc<WindowGeometryStore>>() {
+        Some(s) => s.inner().clone(),
+        None => {
+            log::error!("persist_window_geometry[{label}]: store not registered in Tauri state");
+            return;
+        }
+    };
+
+    if let Some(g) = store.get(&kind) {
+        let monitors: Vec<MonitorBounds> = app
+            .available_monitors()
+            .map(|ms| {
+                ms.into_iter()
+                    .map(|m| {
+                        let p = m.position();
+                        let s = m.size();
+                        (p.x, p.y, s.width, s.height)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        if is_position_on_screen((g.x, g.y), &monitors) {
+            let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
+            let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
+            if g.maximized {
+                let _ = win.maximize();
+            }
+            log::info!("persist_window_geometry[{label}]: restored kind={kind}");
+        } else {
+            log::info!(
+                "persist_window_geometry[{label}]: saved geometry off-screen, falling back to default placement"
+            );
+        }
+    }
+
+    let win_for_handler = win.clone();
+    let store_for_handler = store.clone();
+    let kind_for_handler = kind.clone();
+
+    win.on_window_event(move |event| match event {
+        tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+            if let Some(g) = capture(&win_for_handler) {
+                store_for_handler.put(kind_for_handler.clone(), g);
+            }
+        }
+        tauri::WindowEvent::CloseRequested { .. } => {
+            if let Some(g) = capture(&win_for_handler) {
+                store_for_handler.put(kind_for_handler.clone(), g);
+                if let Err(e) = store_for_handler.flush_now() {
+                    log::error!("persist_window_geometry[close]: flush failed: {e}");
+                }
+            }
+        }
+        _ => {}
+    });
+}
+
+fn capture(win: &WebviewWindow) -> Option<Geometry> {
+    let pos = win.outer_position().ok()?;
+    let size = win.outer_size().ok()?;
+    let maximized = win.is_maximized().unwrap_or(false);
+    Some(Geometry {
+        x: pos.x,
+        y: pos.y,
+        width: size.width,
+        height: size.height,
+        maximized,
     })
 }
 
