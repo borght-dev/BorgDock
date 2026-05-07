@@ -80,7 +80,7 @@ pub fn kind_of(label: &str) -> &str {
 /// `min_inner_size` configured by their builders.
 fn min_logical_size_for_kind(kind: &str) -> Option<(f64, f64)> {
     match kind {
-        "main" => Some((1500.0, 900.0)),
+        "main" => Some((1200.0, 720.0)),
         _ => None,
     }
 }
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn min_logical_size_only_set_for_main() {
-        assert_eq!(min_logical_size_for_kind("main"), Some((1500.0, 900.0)));
+        assert_eq!(min_logical_size_for_kind("main"), Some((1200.0, 720.0)));
         assert!(min_logical_size_for_kind("sql").is_none());
         assert!(min_logical_size_for_kind("pr-detail").is_none());
         assert!(min_logical_size_for_kind("file-palette").is_none());
