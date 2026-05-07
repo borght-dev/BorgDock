@@ -11,7 +11,12 @@ pre-commit:
   commands:
     biome:
       root: "src/BorgDock.Tauri/"
-      glob: "src/**/*.{ts,tsx,js,jsx}"
+      # Match biome's `files.includes` in biome.json — root-level config files
+      # like vite.config.ts / playwright.config.ts are intentionally outside
+      # biome's scope, so don't hand them to biome (it exits 1 on "0 files").
+      glob:
+        - "src/BorgDock.Tauri/src/**/*.{ts,tsx,js,jsx}"
+        - "src/BorgDock.Tauri/.storybook/**/*.{ts,tsx,js,jsx}"
       run: bunx biome check {staged_files}
     typecheck:
       # tsc has no per-file mode; we run the whole project. The glob just
