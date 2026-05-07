@@ -1,4 +1,4 @@
-// src/components/pr-detail/__fixtures__/pr-detail-data.ts
+// src/components/pr-detail/__fixtures__/pr-detail-data.tsx
 
 import type { ReactNode } from 'react';
 import type { Decorator } from '@storybook/react-vite';
@@ -202,6 +202,9 @@ export const richDiscussionPr: PullRequestWithChecks = makePr({
 // ── Decorator + frame ─────────────────────────────────────────
 
 export interface WithPrDetailOptions {
+  /** Top-level override only. Merges shallowly — passing { gitHub: { username: 'x' } }
+   *  replaces the entire gitHub sub-object. For deep overrides, build a complete
+   *  AppSettings via Object.assign / spread before passing. */
   settings?: Partial<AppSettings>;
   injectedPrParams?: { owner: string; repo: string; number: number } | null;
   invokeResponses?: Record<string, unknown>;
