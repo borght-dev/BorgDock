@@ -77,22 +77,13 @@ export const InitInProgress: Story = {
 // 200ms timer and never resolve it, freezing the component in the fadingOut
 // branch. freezeAnimations ensures the CSS animation is static for snapshot
 // capture.
+//
+// The patch is installed in beforeEach and torn down via the returned cleanup
+// so it doesn't leak into other stories or test runs (Storybook 10 idiom for
+// scoped global mutations).
 export const FadingOut: Story = {
   decorators: [
     freezeAnimations,
-    (Story) => {
-      const realSetTimeout = window.setTimeout;
-      // Intercept only the 200ms fade timer that App.tsx uses for the splash
-      // fade-out; let all other timers (React internals etc.) through normally.
-      window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
-        if (ms === 200) {
-          // Drop the timer — fadingOut stays true indefinitely for this story.
-          return 0 as unknown as ReturnType<typeof setTimeout>;
-        }
-        return realSetTimeout(fn, ms, ...args);
-      }) as typeof window.setTimeout;
-      return <Story />;
-    },
     withMainWindow({
       init: { isComplete: true },
       settings: {
@@ -110,6 +101,19 @@ export const FadingOut: Story = {
       pullRequests: PRS_CANONICAL,
     }),
   ],
+  beforeEach: () => {
+    const real = window.setTimeout;
+    // Intercept only the 200ms fade timer App.tsx uses for the splash fade-out;
+    // let everything else (React internals, etc.) through to the real impl.
+    window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+      if (ms === 200) return 0 as unknown as ReturnType<typeof setTimeout>;
+      // biome-ignore lint/suspicious/noExplicitAny: passthrough to real impl with variadic args
+      return (real as any)(fn, ms, ...args);
+    }) as typeof window.setTimeout;
+    return () => {
+      window.setTimeout = real;
+    };
+  },
 };
 
 // Fully loaded main window — setup complete, init done, PRs populated.
