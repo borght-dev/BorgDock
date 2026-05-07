@@ -6,7 +6,7 @@
  * browser default; it does not stop propagation.
  *
  * In dev mode we deliberately leave the default menu alone so the "Inspect"
- * item is reachable — `npm run tauri dev` otherwise has no way to open
+ * item is reachable — `bun run tauri dev` otherwise has no way to open
  * devtools on chromeless windows.
  */
 export function disableDefaultContextMenu() {

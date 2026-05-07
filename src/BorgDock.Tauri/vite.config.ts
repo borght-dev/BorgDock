@@ -56,7 +56,7 @@ export default defineConfig({
     exclude: [
       // Playwright e2e specs (run by Playwright, not vitest) — but keep
       // vitest unit tests that live under tests/e2e/**/__tests__ (e.g.
-      // design-fixtures.test.ts) runnable via `npm test`.
+      // design-fixtures.test.ts) runnable via `bun run test`.
       "tests/e2e/**/*.spec.ts",
       "tests/e2e/design-bundle/**",
       "tests/e2e/scripts/**",

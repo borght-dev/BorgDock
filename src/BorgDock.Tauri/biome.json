@@ -38,6 +38,6 @@
     }
   },
   "files": {
-    "includes": ["src/**", ".storybook/**", "!src/styles/index.css"]
+    "includes": ["src/**", ".storybook/**", "!src/styles/index.css", "!src/generated/**"]
   }
 }
