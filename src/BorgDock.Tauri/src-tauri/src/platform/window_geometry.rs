@@ -1,4 +1,31 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::Path;
+
+pub type GeometryMap = HashMap<String, Geometry>;
+
+/// Read the geometry file. Returns an empty map if the file is missing,
+/// unreadable, or contains invalid JSON. We never want a corrupted file
+/// to keep the user from launching — worst case is windows fall back to
+/// default placement.
+pub fn read_or_empty(path: &Path) -> GeometryMap {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(_) => return GeometryMap::new(),
+    };
+    serde_json::from_slice(&bytes).unwrap_or_default()
+}
+
+/// Write atomically: serialize to a sibling `.tmp`, then `rename` over the
+/// target. Crash mid-write leaves the previous valid file intact. Same
+/// approach `settings::save_settings_internal` uses.
+pub fn write_atomic(path: &Path, map: &GeometryMap) -> std::io::Result<()> {
+    let tmp = path.with_extension("json.tmp");
+    let json = serde_json::to_vec_pretty(map).map_err(std::io::Error::other)?;
+    std::fs::write(&tmp, json)?;
+    std::fs::rename(&tmp, path)?;
+    Ok(())
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Geometry {
@@ -77,5 +104,39 @@ mod tests {
         // Primary at (0, 0), secondary to its right at (1920, 0)
         let monitors = vec![(0, 0, 1920, 1080), (1920, 0, 1920, 1080)];
         assert!(is_position_on_screen((2500, 500), &monitors));
+    }
+
+    #[test]
+    fn write_atomic_then_read_or_empty_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("window-geometry.json");
+
+        let mut map = GeometryMap::new();
+        map.insert(
+            "main".to_string(),
+            Geometry { x: 100, y: 200, width: 800, height: 600, maximized: false },
+        );
+        map.insert(
+            "sql".to_string(),
+            Geometry { x: -50, y: 300, width: 1200, height: 800, maximized: true },
+        );
+
+        write_atomic(&path, &map).unwrap();
+        assert_eq!(read_or_empty(&path), map);
+    }
+
+    #[test]
+    fn read_or_empty_on_missing_file_returns_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nonexistent.json");
+        assert_eq!(read_or_empty(&path), GeometryMap::new());
+    }
+
+    #[test]
+    fn read_or_empty_on_garbage_returns_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("garbage.json");
+        std::fs::write(&path, b"not valid json").unwrap();
+        assert_eq!(read_or_empty(&path), GeometryMap::new());
     }
 }
