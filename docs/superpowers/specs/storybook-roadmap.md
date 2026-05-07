@@ -208,10 +208,10 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > invokeResponses-driven stories (e.g. CheckoutPanel's `checkout_pr:
 > '__throw__'`) use the same shorthand without each mock implementing it.
 >
-> A `.storybook/mocks/play-helpers.ts` module also lands this phase,
-> exporting `findButton(regex)` and `waitFor(get, timeoutMs)` for
-> click-through play functions across `OverviewTab.stories.tsx`,
-> `ReviewComposer.stories.tsx`, and others.
+> Interactive play functions use `within(canvasElement)` + `element.click()`
+> from `storybook/test` (the idiomatic Storybook 9 pattern). The earlier
+> `.storybook/mocks/play-helpers.ts` shim was removed in phase 11 once the
+> stories were migrated to the canvas-scoped Testing Library API.
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).
