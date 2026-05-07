@@ -7,12 +7,37 @@ A desktop app that monitors GitHub PRs as a docked sidebar. Built with Tauri + R
 ## Quick Commands
 
 ```bash
-cd src/BorgDock.Tauri
-npm install                     # Install dependencies
-npm run dev                     # Dev mode with hot reload
-npm run build                   # Production build
-npm run tauri dev               # Launch Tauri dev window
+# From the repo root — single bun workspace install for both
+# src/BorgDock.Tauri (the desktop app) and site/ (the marketing site)
+bun install
+
+# From the repo root: root scripts cd into the workspace member.
+# Or run from src/BorgDock.Tauri directly — same result.
+bun run dev                     # Dev mode with hot reload
+bun run build                   # Production build (tsc -b && vite build)
+bun run tauri dev               # Launch Tauri dev window
+bun run lint                    # biome lint
+bun run test                    # vitest
+bun run site:build              # Astro marketing site build
 ```
+
+**Package manager:** Bun 1.3+. The repo is a bun workspace (`/package.json` + `/bun.lock` + `/bunfig.toml` pinning the hoisted linker). The Tauri app workspace member is named `borgdock-app`; the marketing site is `borgdock-site`. `bun --filter` has been observed to misbehave in 1.3.10 with these names — root scripts use `cd <member> && bun run <script>` instead, which works through bun's bundled cross-platform shell on macOS, Linux, and Windows.
+
+**npm CLI is also required** (alongside bun) for one specific case: `scripts/build-grammars.sh` and `scripts/build-sql-grammar.sh` use `npm pack` to fetch grammar tarballs from the npm registry. Bun has no equivalent registry-fetch command yet (`bun pm pack` only packs the local package).
+
+## React Compiler escape hatch
+
+The React Compiler (`babel-plugin-react-compiler`, wired into `@vitejs/plugin-react` in `vite.config.ts`) auto-memoizes function components and hooks at build time. If a specific component breaks under compilation — usually because it relied on referential identity for a side effect — opt it out file-locally with the `"use no memo"` directive at the very top of the file:
+
+```ts
+"use no memo";
+
+import { useState } from 'react';
+
+export function MyComponent() { /* ... */ }
+```
+
+This is a per-file escape hatch. The compiler skips that file; everything else still gets memoized. If you have to use this directive, leave a one-line comment explaining why.
 
 ## Project Layout
 
@@ -89,7 +114,9 @@ Existing precedent: when adding a feature that uses `@tauri-apps/plugin-dialog` 
 
 Rust's `std::process::Command::new("az")` on Windows uses `CreateProcessW`, which only auto-appends `.exe` — not `.cmd`, `.bat`, or the rest of `PATHEXT`. Azure CLI ships as `az.cmd` (a batch wrapper around the Python entry point), so bare `"az"` fails with `NotFound` even when `az` works in Windows Terminal, cmd.exe, or PowerShell (those honor `PATHEXT`).
 
-**Rule:** when spawning a CLI tool from Rust on Windows via `hidden_command`/`Command::new`, check whether the tool ships as `.exe` (like `gh.exe`, `git.exe`) or as a batch wrapper (`az.cmd`, `npm.cmd`, `yarn.cmd`, most Python-wrapped CLIs). Batch wrappers need the extension spelled out, ideally behind a `cfg!(windows)` guard. See `src-tauri/src/auth/ado.rs::az_program()` for the canonical pattern.
+**Rule:** when spawning a CLI tool from Rust on Windows via `hidden_command`/`Command::new`, check whether the tool ships as `.exe` (like `gh.exe`, `git.exe`, `bun.exe`) or as a batch wrapper (`az.cmd`, `npm.cmd`, `yarn.cmd`, most Python-wrapped CLIs). Batch wrappers need the extension spelled out, ideally behind a `cfg!(windows)` guard. See `src-tauri/src/auth/ado.rs::az_program()` for the canonical pattern.
+
+(Bun itself ships as `bun.exe` on Windows, not as a batch wrapper, so spawning bun from Rust uses the bare name without this concern. The rule still applies to npm CLI invocations and any Python-wrapped CLI we spawn.)
 
 ## SQL query execution: tiberius panics on unsupported column types
 
