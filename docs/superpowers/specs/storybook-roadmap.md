@@ -64,17 +64,13 @@ time.
 | 9 | Work Item Palette | `work-item-palette-main.tsx` → `components/work-item-palette/WorkItemPaletteApp.tsx` | `2026-05-06-storybook-phase8-work-item-palette-design.md` | `2026-05-06-storybook-phase8-work-item-palette.md` | _(filled in after PR opens)_ |
 | 10 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | `2026-05-06-storybook-phase10-settings-design.md` | `2026-05-06-storybook-phase10-settings.md` | _(filled in after PR opens)_ |
 | 11 | PR Detail | `pr-detail-main.tsx` → `components/pr-detail/PRDetailApp.tsx` | `2026-05-07-storybook-phase11-pr-detail-design.md` | `2026-05-07-storybook-phase11-pr-detail.md` | _(filled in after PR opens)_ |
+| 12 | Main / Sidebar | `main.tsx` → `App.tsx` | `2026-05-08-storybook-phase12-main-sidebar-design.md` | `2026-05-08-storybook-phase12-main-sidebar.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
-Each row notes: rough size estimate (S/M/L), the dominant Tauri surfaces it
-exercises, and any obvious shared-component coverage that comes "for free"
-when the screen is storied. Estimates are rough; the brainstorm for each phase
-will refine them.
-
-| Window | Entry | Size | Tauri surfaces | Notable |
-|---|---|---|---|---|
-| Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
+_Catalog complete — every top-level window has its window-level stories. See
+"Cross-cutting workstreams (post-catalog)" below for the next phases of work
+(component-level stories, visual regression, hero-shot pipeline, static hosting)._
 
 > **Roadmap correction (Phase 3):** the previous Worktree row described the
 > window as containing the prune dialog and changes panel. That was wrong.
@@ -132,6 +128,8 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@/services/github/singleton` → `mocks/services-github-singleton.ts`
 - `@/services/github` → `mocks/services-github-barrel.ts`
 - `@/services/pr-actions` → `mocks/services-pr-actions.ts`
+- `@tauri-apps/plugin-updater` → `mocks/tauri-plugin-updater.ts`
+- `@tauri-apps/plugin-notification` → `mocks/tauri-plugin-notification.ts`
 
 > **Phase 3 mock-layer extensions:** `tauri-api-window` now also exports
 > `currentMonitor` and `getCurrentWindow().{hide,setSize,innerSize,scaleFactor}`.
@@ -212,6 +210,25 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > from `storybook/test` (the idiomatic Storybook 9 pattern). The earlier
 > `.storybook/mocks/play-helpers.ts` shim was removed in phase 11 once the
 > stories were migrated to the canvas-scoped Testing Library API.
+
+> **Phase 12 mock-layer extensions:** two new defensive aliases —
+> `@tauri-apps/plugin-updater` and `@tauri-apps/plugin-notification`. Today's
+> production code routes both through Tauri IPC (`invoke('check_for_update')`,
+> `invoke('show_flyout_toast')`) rather than the JS plugin APIs, so the new
+> mocks are coverage-only; story authors driving update / notification flow
+> seed the corresponding `tauri-core.invokeResponses` keys instead. Stories
+> drive the main window via `withMainWindow` (multi-store seed across settings,
+> ui, init, pr, onboarding, work-items, quick-review) and a `freezeAnimations`
+> decorator. The README hero composition mounts both `<App />` and
+> `<PrDetailApp />` simultaneously inside a CSS-grid `HeroCompositionFrame`;
+> both share Zustand stores so the seeded fixtures are coherent across both
+> windows.
+>
+> Phase 12 also migrated the storybook test runner from `@storybook/test-runner`
+> to `@storybook/addon-vitest` + `@vitest/browser-playwright` (foundation
+> commit). `bun run test` now runs vitest browser-mode for storybook
+> alongside the unit suites; addon-vitest auto-generates one smoke test per
+> story (Phase 12 added 25 new stories → +25 tests).
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).
