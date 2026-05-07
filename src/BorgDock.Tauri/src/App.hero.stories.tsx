@@ -11,6 +11,7 @@
 // own frame.
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { screenshot } from '../.storybook/screenshot';
 import App from './App';
 import {
   CHECKS_FOR_REF,
@@ -60,6 +61,11 @@ type Story = StoryObj<typeof App>;
 //     reveal effect resolves silently.
 
 export const Hero_ReadmeMain: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/readme-main.png',
+    width: 1600,
+    height: 1000,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
@@ -98,6 +104,11 @@ export const Hero_ReadmeMain: Story = {
 // PRS_CANONICAL so usePriorities has PRs to sort.
 
 export const Hero_DocFocusList: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/doc-focus-list.png',
+    width: 480,
+    height: 800,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
@@ -119,6 +130,11 @@ export const Hero_DocFocusList: Story = {
 // Same PRS_CANONICAL seed as the focus section so the list is populated.
 
 export const Hero_DocPrsList: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/doc-prs-list.png',
+    width: 480,
+    height: 800,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
@@ -140,6 +156,11 @@ export const Hero_DocPrsList: Story = {
 // with WORK_ITEMS_CANONICAL (three ADO tasks spanning Active / New / Resolved).
 
 export const Hero_DocWorkItems: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/doc-work-items.png',
+    width: 480,
+    height: 800,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
