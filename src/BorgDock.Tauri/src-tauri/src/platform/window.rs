@@ -441,6 +441,11 @@ pub async fn open_whats_new_window(
         let send_result = match result {
             Ok(win) => {
                 let _ = win.set_skip_taskbar(true);
+                crate::platform::window_geometry::persist_window_geometry(
+                    &app_for_build,
+                    &win,
+                    "whats-new",
+                );
                 Ok(())
             }
             Err(e) => {
