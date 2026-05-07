@@ -1,7 +1,7 @@
 # Storybook Phase 11 — PR Detail
 
 **Status:** design approved, plan pending
-**Scope:** add an exhaustive Storybook catalog for the PR Detail window — `src/BorgDock.Tauri/src/pr-detail-main.tsx` → `src/BorgDock.Tauri/src/components/pr-detail/PRDetailApp.tsx`. This phase covers (i) `PRDetailApp.stories.tsx` for the window-shell load/error states, (ii) `PRDetailPanel.stories.tsx` for the whole panel, (iii) one `<Tab>.stories.tsx` per of the 5 tabs, (iv) one stories file each for `CheckoutPanel`, `MergeReadinessChecklist`, `ReviewComposer`. Four new mock aliases (`@/services/github/pulls`, `@/services/github/checks`, `@/services/github/auth`, `@/components/pr-detail/usePrActions`), two new control-surface fields, no production code changes.
+**Scope:** add an exhaustive Storybook catalog for the PR Detail window — `src/BorgDock.Tauri/src/pr-detail-main.tsx` → `src/BorgDock.Tauri/src/components/pr-detail/PRDetailApp.tsx`. This phase covers (i) `PRDetailApp.stories.tsx` for the window-shell load/error states, (ii) `PRDetailPanel.stories.tsx` for the whole panel, (iii) one `<Tab>.stories.tsx` per of the 5 tabs, (iv) one stories file each for `CheckoutPanel`, `MergeReadinessChecklist`, `ReviewComposer`. Four new mock aliases (`@/services/github/pulls`, `@/services/github/checks`, `@/services/github/auth`, `@/services/pr-actions`), two new control-surface fields, no production code changes.
 
 ## Why
 
@@ -9,8 +9,7 @@ Per `docs/superpowers/specs/storybook-roadmap.md`, this is the eleventh window t
 
 - **Visual catalog of the entire PR-review surface.** Five tabs × multiple states × auxiliary components (CheckoutPanel, MergeReadinessChecklist, ReviewComposer, ActionBar, ActivityStrip, MergedCard) means the catalog covers ~80% of the PR-review UI without needing component-level stories.
 - **First storied window with non-trivial GitHub HTTP services.** Phases 1–10 either avoided HTTP entirely or used `invoke`-only Rust-backed data. PR Detail's `PrDetailApp` calls `getOpenPRs` + `getCheckRunsForRef` directly. Mocking `@/services/github/{pulls,checks,auth}` is new — but it's the right unblock for Phase 12 (Main/Sidebar) which uses the same services.
-- **First per-component-file alias.** `usePrActions` lives at `src/components/pr-detail/usePrActions.ts` — not a package-level path. We use Vite's regex-alias capability (`{ find: /\/usePrActions$/, replacement: '...' }`) to intercept the import without touching production code. Pattern is reusable for future per-component mocks.
-- **Click-through action testing.** Per user-approved scope, this phase introduces play-function-driven click-through stories for the headline actions (merge / approve / close / mark-ready / submit-review / submit-comment). Mocked `usePrActions` records to `getControl().invocations`, and play functions assert recorded calls. First storybook phase to verify *interaction* in addition to *render*.
+- **Click-through action testing.** Per user-approved scope, this phase introduces play-function-driven click-through stories for the headline actions (merge / close / mark-ready) plus ReviewComposer's prop-callback flow (approve / comment). The action mocks live at `@/services/pr-actions` (the network-mutation layer that `usePrActions` calls into) — `mergePr`, `bypassMergePr`, `closePr`, `toggleDraftPr` record into `getControl().invocations` and return controllable booleans. The `usePrActions` hook itself runs unmodified, so its `actionStatus` text, `confirmClose` state, and `isReady` calculation remain faithful to production. First storybook phase to verify *interaction* in addition to *render*.
 - **Implicit shake-out for `shared/primitives/Tabs`, `Pill`, `Ring`, `TitleBar`, `Avatar`, `IconButton`, `WindowControls`, `ConfirmDialog`.** Like Phase 10 with Settings primitives, PR Detail provides implicit usage data on the higher-level shared components without committing to a dedicated primitive showcase phase.
 
 ## Non-Goals
@@ -27,7 +26,8 @@ Per `docs/superpowers/specs/storybook-roadmap.md`, this is the eleventh window t
 - **Storying the post-action panel-refresh wire.** When a story's play function records `prAction.merge`, we don't dispatch a synthetic `PR_REFRESHED_EVENT` to flip the panel to "merged" — the *visual* "merged" state is already covered by the `Merged` story which poses by fixture. Click-through stories assert *invocation*, not post-render state. Keeps play functions simple and stable.
 - **Storying `usePrDetailJumpStore` deep-link arrival** (the cross-window "jump to thread X" wire). Not visually distinct from the parent thread story; the jump is mid-render scroll behaviour, fragile to assert.
 - **Storying every `services/github/auth` PAT shape.** The mock returns the configured PAT or a fixed dummy; we don't enumerate auth failure modes here.
-- **Storying `usePrActions` failure paths beyond the headline 5.** The action-mock supports `prActionResponses[name] === '__throw__'` for any action, but we story the failure axis only for `submitReview` (in `ReviewComposer.stories.tsx`).
+- **Storying `pr-actions` failure paths beyond the headline three.** The action mock supports `prActionResponses[name] === '__throw__'` for any function, but we story the failure axis only for `mergePr` (the visual `Merge failed` status banner in OverviewTab) — the others have identical UI behaviour.
+- **Storying `useClaudeActions.resolveConflicts`.** `usePrActions.onResolveConflicts` calls into Claude's worktree-launch flow; out of scope here. The `MergeConflict` story poses the *button* but does not click it.
 
 ## Constraints
 
@@ -43,7 +43,7 @@ Per `docs/superpowers/specs/storybook-roadmap.md`, this is the eleventh window t
     ':(exclude)src/BorgDock.Tauri/src/components/pr-detail/*.stories.tsx'
   ```
   showing zero changes.
-- Storybook 9 + React-Vite + Tailwind v4 setup stays as-is. Only additive changes to `.storybook/main.ts` (four new alias entries — three string-form, one regex-form for `usePrActions`).
+- Storybook 9 + React-Vite + Tailwind v4 setup stays as-is. Only additive changes to `.storybook/main.ts` (four new string-form alias entries).
 - Two new fields on `window.__borgdock_storybook_tauri` (`githubResponses`, `prActionResponses`); existing fields untouched. `control.ts::reset()` clears the new fields on every story render.
 - **Wave 2b is sequential.** No parallel agents on adjacent storybook phases. The mock-layer + control-surface commit lands first; fixtures second; story commits per file follow.
 
@@ -54,13 +54,13 @@ Per `docs/superpowers/specs/storybook-roadmap.md`, this is the eleventh window t
 ```
 src/BorgDock.Tauri/
 ├── .storybook/
-│   ├── main.ts                                        # 4 new aliases (3 string + 1 regex)
+│   ├── main.ts                                        # 4 new string aliases
 │   └── mocks/
-│       ├── control.ts                                 # +3 fields, +reset() clears
+│       ├── control.ts                                 # +2 fields, +reset() clears
 │       ├── services-github-pulls.ts                   # NEW
 │       ├── services-github-checks.ts                  # NEW
 │       ├── services-github-auth.ts                    # NEW
-│       └── pr-detail-actions.ts                       # NEW (mock for usePrActions)
+│       └── services-pr-actions.ts                     # NEW (mock for @/services/pr-actions)
 └── src/components/pr-detail/
     ├── __fixtures__/
     │   └── pr-detail-data.ts                          # PR fixtures + decorators + helpers
@@ -80,16 +80,16 @@ Total story files: 10. Total stories: ~48.
 
 ### Mock-layer extensions
 
-Four new aliases in `.storybook/main.ts` `viteFinal.resolve.alias`:
+Four new string aliases in `.storybook/main.ts` `viteFinal.resolve.alias`:
 
-| Alias | Mock module | Form |
-|---|---|---|
-| `@/services/github/pulls` | `mocks/services-github-pulls.ts` | string |
-| `@/services/github/checks` | `mocks/services-github-checks.ts` | string |
-| `@/services/github/auth` | `mocks/services-github-auth.ts` | string |
-| (regex) `/\/usePrActions$/` | `mocks/pr-detail-actions.ts` | regex |
+| Alias | Mock module |
+|---|---|
+| `@/services/github/pulls` | `mocks/services-github-pulls.ts` |
+| `@/services/github/checks` | `mocks/services-github-checks.ts` |
+| `@/services/github/auth` | `mocks/services-github-auth.ts` |
+| `@/services/pr-actions` | `mocks/services-pr-actions.ts` |
 
-The regex form intercepts both `'./usePrActions'` (relative, used by `PRDetailPanel.tsx`) and `'@/components/pr-detail/usePrActions'` (absolute, if any consumer uses that form). This avoids any production code change. **Verification step in plan:** after Storybook builds, confirm the alias resolved by inspecting the resulting bundle for the mock's signature string.
+All four are package-level aliases — no regex form required, no production code touched. `usePrActions` (the hook in `components/pr-detail/usePrActions.ts`) runs unmodified, but its inner imports of `mergePr`/`bypassMergePr`/`closePr`/`toggleDraftPr` are intercepted by the alias.
 
 `mocks/services-github-pulls.ts`:
 
@@ -114,35 +114,55 @@ export async function getOpenPRs(
 
 `mocks/services-github-checks.ts` and `mocks/services-github-auth.ts` follow the same shape, reading `githubResponses.getCheckRunsForRef` and `githubResponses.tokenGetter` respectively. Auth mock defaults to returning the PAT it's passed (`async (pat: string) => pat`).
 
-`mocks/pr-detail-actions.ts`:
+`mocks/services-pr-actions.ts`:
 
 ```ts
-// Drop-in replacement for components/pr-detail/usePrActions. Returns a PrActions
-// impl whose methods record into getControl().invocations and (optionally) throw
-// based on getControl().prActionResponses[name].
+// Drop-in replacement for @/services/pr-actions. Each mutation records the
+// call into getControl().invocations and returns true (success). The story
+// can override behaviour via getControl().prActionResponses[name]:
+//   - '__throw__' → reject with an Error
+//   - '__fail__'  → resolve to false (production calls onError)
+//   - function    → call it; the function's return value is the result
 
-import type { PrActions } from '@/components/pr-detail/usePrActions';
-import type { PullRequestWithChecks } from '@/types';
+import type { PrRef, MergePrOpts, ActionOpts, ClosePrInput, ToggleDraftInput, RerunChecksInput, CheckoutInput, CheckoutResult } from '@/services/pr-actions';
 import { getControl } from './control';
 
-const ACTION_NAMES = [
-  'merge', 'close', 'reopen', 'markReady', 'markDraft',
-  'approve', 'requestChanges', 'comment', 'submitReview',
-] as const;
+type Behavior = '__throw__' | '__fail__' | ((args: unknown) => unknown);
 
-export function usePrActions(_pr: PullRequestWithChecks): PrActions {
-  const make = (name: string) => async (payload?: unknown) => {
-    const ctrl = getControl();
-    ctrl.invocations.push({ command: `prAction.${name}`, args: { payload } });
-    const override = ctrl.prActionResponses[name];
-    if (override === '__throw__') throw new Error(`mock prAction.${name} failed`);
-    if (typeof override === 'function') return override(payload);
-  };
-  return Object.fromEntries(ACTION_NAMES.map((n) => [n, make(n)])) as unknown as PrActions;
+async function record<T>(name: string, args: unknown, defaultResult: T): Promise<T> {
+  const ctrl = getControl();
+  ctrl.invocations.push({ command: `prAction.${name}`, args });
+  const override = ctrl.prActionResponses[name] as Behavior | undefined;
+  if (override === '__throw__') throw new Error(`mock prAction.${name} threw`);
+  if (override === '__fail__') return false as unknown as T;
+  if (typeof override === 'function') return (await override(args)) as T;
+  return defaultResult;
+}
+
+export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
+  return record('mergePr', { pr, opts }, true);
+}
+export async function bypassMergePr(pr: PrRef, opts?: ActionOpts): Promise<boolean> {
+  return record('bypassMergePr', { pr, opts }, true);
+}
+export async function closePr(pr: ClosePrInput, opts?: ActionOpts): Promise<boolean> {
+  return record('closePr', { pr, opts }, true);
+}
+export async function toggleDraftPr(pr: ToggleDraftInput, opts?: ActionOpts): Promise<boolean> {
+  return record('toggleDraftPr', { pr, opts }, true);
+}
+export async function rerunChecks(input: RerunChecksInput, opts?: ActionOpts): Promise<boolean> {
+  return record('rerunChecks', { input, opts }, true);
+}
+export async function checkoutPrBranch(input: CheckoutInput, opts?: ActionOpts): Promise<CheckoutResult | null> {
+  return record('checkoutPrBranch', { input, opts }, { worktreePath: '/tmp/wt', terminalLaunched: true } as unknown as CheckoutResult);
+}
+export async function openPrInBrowser(htmlUrl: string, opts?: ActionOpts): Promise<boolean> {
+  return record('openPrInBrowser', { htmlUrl, opts }, true);
 }
 ```
 
-The exact action names mirror those exported by the production `usePrActions` (verified during plan via reading the file). If the production type adds a method this mock will fail TS — that's the desired drift detector.
+The mock re-exports every function from `@/services/pr-actions` with matching signatures. If the production module adds, removes, or renames an export, TS will fail Storybook's `npm run build-storybook` — that's the desired drift detector. (The actual list of exports is verified during the plan's first task by reading the source file.)
 
 ### Control-surface additions (`mocks/control.ts`)
 
@@ -328,13 +348,15 @@ Five play functions, attached to existing stories rather than new ones:
 
 | Story | Play action | Asserts |
 |---|---|---|
-| `OverviewTab > OpenAllGreenMergeable` | click "Merge" | `getControl().invocations` contains `{ command: 'prAction.merge' }` |
-| `OverviewTab > Draft` | click "Mark ready for review" | `prAction.markReady` recorded |
-| `OverviewTab > OpenWithChecksRunning` | click "Close" | `prAction.close` recorded |
-| `ReviewComposer > WithComment` | click "Approve" | `prAction.approve` recorded |
-| `ReviewComposer > WithComment` | click "Submit comment" | `prAction.comment` recorded |
+| `OverviewTab > OpenAllGreenMergeable` | click "Merge" | `getControl().invocations` contains `{ command: 'prAction.mergePr' }` |
+| `OverviewTab > Draft` | click "Mark ready for review" | `prAction.toggleDraftPr` recorded |
+| `OverviewTab > OpenWithChecksRunning` | click "Close" → confirm dialog → click confirm | `prAction.closePr` recorded |
+| `ReviewComposer > WithComment` | switch decision to "Approve", click submit | story's `onSubmit` spy called with `{ kind: 'review', decision: 'approve', body: '...' }` |
+| `ReviewComposer > WithComment` | mode="comment", click submit | story's `onSubmit` spy called with `{ kind: 'comment', body: '...' }` |
 
-No post-state assertion (panel doesn't auto-refresh in stories). Click-through verifies wiring; visual post-state is covered by the parallel fixture-posed story (`Merged`, `Closed`, etc.).
+The first three rows assert against `getControl().invocations` (the mocked `services/pr-actions` records there). The last two rows assert against a story-local Vitest spy passed as `onSubmit` — `ReviewComposer` is a presentation component with no service imports, so its tests are purely prop-driven.
+
+No post-state assertion on the OverviewTab rows (panel doesn't auto-refresh in stories). Click-through verifies wiring; visual post-state is covered by the parallel fixture-posed story (`Merged`, `Closed`, etc.).
 
 ## Tooling additions
 
@@ -357,7 +379,7 @@ No changes.
 
 ## Risks & mitigations
 
-1. **Per-component module aliasing is new.** `usePrActions` is at `src/components/pr-detail/usePrActions.ts` and `PRDetailPanel.tsx` imports it via `'./usePrActions'` (relative). String aliases match exact import strings, so a string alias on the absolute path would miss the relative import. Mitigation: use Vite's regex-form alias `{ find: /\/usePrActions$/, replacement: '<absolute path to mock>' }` which matches both forms. Plan must verify the regex resolves correctly by inspecting the Storybook bundle output.
+1. **`@/services/pr-actions` mock surface drift.** `mergePr`, `bypassMergePr`, `closePr`, `toggleDraftPr`, `rerunChecks`, `checkoutPrBranch`, `openPrInBrowser` are the seven exports we re-implement. If production adds an eighth, anything in `usePrActions` (or any other consumer) that imports the new export will fail at Storybook bundle time. Mitigation: the mock imports its parameter / return types from production, so a signature drift fails TS check. A net-new export will fail at runtime under Storybook (Vite resolves the alias and the mock has no such export). Plan's drift-detection step at end-of-phase: `grep -E "^export (async )?function" src/services/pr-actions.ts | sort` and verify the mock covers them all.
 
 2. **GitHub services mocking surface drift.** `getOpenPRs` and `getCheckRunsForRef` signatures could change in production. Mitigation: mock files import the *type* `typeof getOpenPRs` from production and re-export the same name with an explicit type annotation. TS will fail Storybook's `npm run build-storybook` if the signature drifts.
 
@@ -365,7 +387,7 @@ No changes.
 
 4. **Action click-through brittleness.** Play functions clicking buttons inside a deeply-nested ActionBar can break on minor layout changes. Mitigation: prefer accessible-name selectors (`getByRole('button', { name: /merge/i })`) over CSS selectors. Each play function asserts only on `getControl().invocations` content, never on subsequent panel re-render — keeps coupling low.
 
-5. **`PR_REFRESHED_EVENT` decoupling.** The mocked `usePrActions` does NOT dispatch `PR_REFRESHED_EVENT`. Risk: a future test could expect the panel to re-render after a click. Mitigation: this phase explicitly leaves post-state visual coverage to fixture-posed stories (`Merged`, `Closed`). Documented in Non-Goals.
+5. **`PR_REFRESHED_EVENT` decoupling.** The real `pr-actions` functions dispatch `PR_REFRESHED_EVENT` after mutation success; the mocks do NOT. Risk: a future test could expect the panel to re-render after a click. Mitigation: this phase explicitly leaves post-state visual coverage to fixture-posed stories (`Merged`, `Closed`). Documented in Non-Goals.
 
 6. **Zustand store leakage across stories.** `useSettingsStore`, `useUiStore`, `usePrDetailJumpStore` are module singletons. Mitigation: `withPrDetail` decorator runs `setState` unconditionally before each render (Phase 10 pattern). For `useUiStore` and `usePrDetailJumpStore`, the `withPrDetail` decorator resets them to a known baseline.
 
@@ -385,12 +407,12 @@ No changes.
 - `npm run test` passes (existing 2772+ tests stay green; this phase adds zero vitest tests).
 - `npm run build-storybook` succeeds and produces a valid `storybook-static/` output.
 - Production tree byte-identical to `origin/master` per the `git diff` in Constraints.
-- New mock files (`services-github-pulls.ts`, `services-github-checks.ts`, `services-github-auth.ts`, `pr-detail-actions.ts`) exist; new alias entries in `.storybook/main.ts` follow the existing pattern (3 string + 1 regex; the regex is the file's first regex-form alias).
+- New mock files (`services-github-pulls.ts`, `services-github-checks.ts`, `services-github-auth.ts`, `services-pr-actions.ts`) exist; new alias entries in `.storybook/main.ts` follow the existing string-form pattern.
 - `mocks/control.ts` exposes the three new fields and `reset()` clears them.
 - Five action click-through play functions execute and assert their respective `invocations` entries when run via Storybook's test-runner, OR if test-runner is not invoked in this phase, their *render* must complete without throwing.
 - `docs/superpowers/specs/storybook-roadmap.md` updated:
   - Move PR Detail row from Pending → Done as row 11.
-  - Add a "Phase 11 mock-layer extensions" callout block describing the four new aliases (note the `usePrActions` regex form), the two new control fields (`githubResponses`, `prActionResponses`), and the cross-reference to `services/github/{pulls,checks,auth}` mocks.
+  - Add a "Phase 11 mock-layer extensions" callout block describing the four new string aliases (`@/services/github/pulls`, `@/services/github/checks`, `@/services/github/auth`, `@/services/pr-actions`), the two new control fields (`githubResponses`, `prActionResponses`), and a note that the action mock intercepts the network-mutation layer rather than the `usePrActions` hook (the hook itself runs unmodified).
   - Update the alias inventory list at the top of the mock-layer section.
   - Leave Main/Sidebar as the only remaining Pending row.
 - Phase 11 commits ordered: mock-layer + control-surface first, fixtures second, then stories per file (window-shell, panel, tabs in order, then auxiliaries), then roadmap edit last.
