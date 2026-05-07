@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { WorkItemFieldUpdates } from '@/components/work-items/WorkItemDetailPanel';
 import { AdoClient } from '@/services/ado/client';
+import { getProjectFields, indexFieldsByRef } from '@/services/ado/fields';
+import {
+  getProcessLayout,
+  getProcessWitTypeRefs,
+  getProjectProcessId,
+} from '@/services/ado/layout';
 import { executeQuery } from '@/services/ado/queries';
 import {
   addWorkItemComment,
@@ -47,6 +53,44 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
     return new AdoClient(organization, project, personalAccessToken ?? '', authMethod);
   }, [organization, project, personalAccessToken, authMethod]);
 
+  /** Fire-and-forget loader for the process layout that drives detail-panel
+   *  tabs. Caches processId once per session and witTypeRefs once per process;
+   *  fetches a layout per work-item-type on first sighting. Any failure is
+   *  swallowed (the UI falls back to a flat Overview tab). */
+  const ensureLayoutLoaded = useCallback(
+    async (client: AdoClient, witFriendlyName: string) => {
+      const store = useWorkItemsStore.getState();
+      if (store.workItemTypeLayouts.has(witFriendlyName)) return;
+
+      let processId = store.processId;
+      if (!store.processIdResolved) {
+        processId = await getProjectProcessId(client, project);
+        useWorkItemsStore.getState().setProcessId(processId);
+        useWorkItemsStore.getState().setProcessIdResolved(true);
+      }
+      if (!processId) {
+        useWorkItemsStore.getState().setWorkItemTypeLayout(witFriendlyName, null);
+        return;
+      }
+
+      let refs = useWorkItemsStore.getState().witTypeRefs;
+      if (refs.size === 0) {
+        refs = await getProcessWitTypeRefs(client, processId);
+        useWorkItemsStore.getState().setWitTypeRefs(refs);
+      }
+
+      const witRefName = refs.get(witFriendlyName);
+      if (!witRefName) {
+        useWorkItemsStore.getState().setWorkItemTypeLayout(witFriendlyName, null);
+        return;
+      }
+
+      const layout = await getProcessLayout(client, processId, witRefName);
+      useWorkItemsStore.getState().setWorkItemTypeLayout(witFriendlyName, layout);
+    },
+    [project],
+  );
+
   const handleSelectWorkItem = useCallback(
     async (id: number) => {
       setSelectedWorkItemId(id);
@@ -70,6 +114,17 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
           .catch((err) => console.error('Failed to load comments:', err))
           .finally(() => setIsLoadingComments(false));
 
+        // Load project field definitions once per session.
+        // This drives rich-text vs plain-text rendering in the detail panel
+        // and lets us render configured-but-empty HTML fields like QA Notes.
+        if (useWorkItemsStore.getState().fieldDefinitions === null) {
+          getProjectFields(client)
+            .then((fields) =>
+              useWorkItemsStore.getState().setFieldDefinitions(indexFieldsByRef(fields)),
+            )
+            .catch((err) => console.error('Failed to load field definitions:', err));
+        }
+
         // Load available states for the work item type
         const itemType = getField(fullItem, 'System.WorkItemType');
         if (itemType) {
@@ -80,6 +135,11 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
             // Fallback: use current state
             setDetailStates([getField(fullItem, 'System.State')]);
           }
+
+          // Fire-and-forget: load the process layout to drive detail tabs.
+          ensureLayoutLoaded(client, itemType).catch((err) =>
+            console.error('Failed to load process layout:', err),
+          );
         }
       } catch (err) {
         console.error('Failed to load work item detail:', err);
@@ -88,7 +148,7 @@ export function useWorkItemHandlers(options: UseWorkItemHandlersOptions) {
         setIsDetailLoading(false);
       }
     },
-    [getClient],
+    [getClient, ensureLayoutLoaded],
   );
 
   // Pick up work item ID from command palette

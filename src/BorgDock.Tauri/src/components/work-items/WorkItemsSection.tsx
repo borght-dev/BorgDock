@@ -33,6 +33,8 @@ export function WorkItemsSection() {
   const trackedWorkItemIds = useWorkItemsStore((s) => s.trackedWorkItemIds);
   const workingOnWorkItemIds = useWorkItemsStore((s) => s.workingOnWorkItemIds);
   const isLoading = useWorkItemsStore((s) => s.isLoading);
+  const fieldDefinitions = useWorkItemsStore((s) => s.fieldDefinitions);
+  const workItemTypeLayouts = useWorkItemsStore((s) => s.workItemTypeLayouts);
 
   // UI store — persisted selection
   const persistedSelectedId = useUiStore((s) => s.workItemsSelectedId);
@@ -241,8 +243,14 @@ export function WorkItemsSection() {
 
   const { richText, standard, custom } = useMemo(() => {
     if (!detailItem) return { richText: [], standard: [], custom: [] };
-    return classifyFields(detailItem);
-  }, [detailItem]);
+    return classifyFields(detailItem, fieldDefinitions);
+  }, [detailItem, fieldDefinitions]);
+
+  const detailLayout = useMemo(() => {
+    if (!detailItem) return null;
+    const witType = getField(detailItem, 'System.WorkItemType');
+    return witType ? (workItemTypeLayouts.get(witType) ?? null) : null;
+  }, [detailItem, workItemTypeLayouts]);
 
   const attachments = useMemo(() => {
     if (!detailItem) return [];
@@ -418,6 +426,8 @@ export function WorkItemsSection() {
             richTextFields={richText}
             standardFields={standard}
             customFields={custom}
+            extraTabs={detailLayout?.extraTabs}
+            detailsFieldKeys={detailLayout?.detailsFieldKeys}
             attachments={attachments}
             comments={detailComments}
             isLoadingComments={isLoadingComments}
