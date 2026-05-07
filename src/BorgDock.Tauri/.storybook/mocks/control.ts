@@ -5,6 +5,8 @@
 
 import type { Release } from '../../src/types/whats-new';
 import type { WorkItem, WorkItemComment } from '../../src/types/work-item';
+import type { PullRequest } from '../../src/types/pull-request';
+import type { CheckRun } from '../../src/types/check-run';
 
 export interface InvokeRecord {
   command: string;
@@ -76,6 +78,20 @@ export interface WebviewWindowRecord {
   options: Record<string, unknown>;
 }
 
+// Phase 11 — github service responses
+export type GithubResponses = {
+  getOpenPRs?:
+    | PullRequest[]
+    | ((args: { owner: string; repo: string }) => PullRequest[] | Promise<PullRequest[]> | Promise<never>);
+  getCheckRunsForRef?:
+    | CheckRun[]
+    | ((args: { ref: string }) => CheckRun[] | Promise<CheckRun[]> | Promise<never>);
+  tokenGetter?: () => string | Promise<string>;
+};
+
+// Phase 11 — pr-actions overrides
+export type PrActionResponses = Record<string, '__throw__' | '__fail__' | ((args: unknown) => unknown)>;
+
 export interface StorybookTauriControl {
   channels: Map<string, Set<ChannelListener>>;
   invocations: InvokeRecord[];
@@ -103,6 +119,10 @@ export interface StorybookTauriControl {
   // Phase 8 fields
   workItemPaletteScenario: WorkItemPaletteScenario;
   webviewWindowsCreated: WebviewWindowRecord[];
+
+  // Phase 11 fields
+  githubResponses: GithubResponses;
+  prActionResponses: PrActionResponses;
 
   reset(): void;
   emit(channel: string, payload: unknown): void;
@@ -171,6 +191,10 @@ function createControl(): StorybookTauriControl {
     workItemPaletteScenario: defaultPaletteScenario(),
     webviewWindowsCreated: [],
 
+    // Phase 11
+    githubResponses: {},
+    prActionResponses: {},
+
     reset() {
       ctrl.channels.clear();
       ctrl.invocations.length = 0;
@@ -198,6 +222,10 @@ function createControl(): StorybookTauriControl {
 
       ctrl.workItemPaletteScenario = defaultPaletteScenario();
       ctrl.webviewWindowsCreated.length = 0;
+
+      // Phase 11
+      ctrl.githubResponses = {};
+      for (const k of Object.keys(ctrl.prActionResponses)) delete ctrl.prActionResponses[k];
     },
     emit(channel, payload) {
       const set = ctrl.channels.get(channel);
