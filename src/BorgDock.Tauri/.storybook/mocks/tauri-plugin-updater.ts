@@ -1,8 +1,16 @@
 // .storybook/mocks/tauri-plugin-updater.ts
 //
-// Mock for @tauri-apps/plugin-updater. Records calls into getControl()
-// and returns either no update (default) or a fake Update object whose
-// downloadAndInstall() / download() methods also record.
+// Defensive mock for @tauri-apps/plugin-updater. The current production
+// `useAutoUpdate` hook does NOT import this package directly — it routes
+// through Tauri IPC via `invoke('check_for_update')` and
+// `invoke('download_and_install_update')`. Stories that need to drive
+// update flow should seed those keys via `getControl().invokeResponses`
+// against the tauri-core mock, NOT this file.
+//
+// This mock exists so that any future code path that imports the JS
+// plugin API directly is captured (no story is silently calling the
+// real package). Records calls into getControl().invocations and supports
+// per-story overrides through invokeResponses['updater.*'].
 
 import { getControl } from './control';
 
