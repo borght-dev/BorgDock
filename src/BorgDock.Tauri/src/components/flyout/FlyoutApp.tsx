@@ -148,37 +148,53 @@ export function FlyoutApp() {
         dispatch({ type: 'close' });
       }
     };
-    (window as unknown as { __borgdock_test_flyout_seed?: typeof seed }).__borgdock_test_flyout_seed =
-      seed;
+    (
+      window as unknown as { __borgdock_test_flyout_seed?: typeof seed }
+    ).__borgdock_test_flyout_seed = seed;
     return () => {
       delete (window as unknown as { __borgdock_test_flyout_seed?: typeof seed })
         .__borgdock_test_flyout_seed;
     };
   }, []);
 
-  // Close on blur — same as before, but also dispatch close so the reducer
-  // returns to idle.
+  // Reset reducer whenever the OS reports the flyout window lost focus. We
+  // listen on Tauri's window-focus event rather than a DOM `blur` listener
+  // so the close dispatch also fires when Rust hides the window externally
+  // (the click-outside mouse hook and the tray-toggle hide path both call
+  // `win.hide()` directly). Without this, the reducer would stay in
+  // `glance`/`toast` while the window is hidden, and the next
+  // `show_flyout_toast` would render the new payload as a banner on top of
+  // the stale glance instead of as a fresh toast bubble.
   useEffect(() => {
     let cancelled = false;
-    let hidden = false;
-    const hide = async () => {
-      if (hidden) return;
-      hidden = true;
-      if (cancelled) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        if (cancelled) return;
-        await invoke('hide_flyout');
-      } catch {
-        // ignore
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const fn = await getCurrentWindow().onFocusChanged(async ({ payload: focused }) => {
+          if (cancelled || focused) return;
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            if (cancelled) return;
+            await invoke('hide_flyout');
+          } catch {
+            // ignore — window may already be hidden
+          }
+          if (cancelled) return;
+          dispatch({ type: 'close' });
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch (err) {
+        console.error('[Flyout] focus listener failed:', err);
       }
-      if (cancelled) return;
-      dispatch({ type: 'close' });
-    };
-    window.addEventListener('blur', hide);
+    })();
     return () => {
       cancelled = true;
-      window.removeEventListener('blur', hide);
+      unlisten?.();
     };
   }, []);
 

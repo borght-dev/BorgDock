@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow};
+use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewWindow};
 use tokio::sync::Notify;
 
 pub type GeometryMap = HashMap<String, Geometry>;
@@ -31,6 +31,20 @@ pub fn write_atomic(path: &Path, map: &GeometryMap) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Persisted window geometry.
+///
+/// `x` / `y` are *physical* outer-position pixels — they're tied to a
+/// specific monitor's physical coordinate space, so storing them in
+/// physical units is correct and survives multi-monitor layouts.
+///
+/// `width` / `height` are *logical* (CSS / DIP) inner-size pixels.
+/// Storing them in physical pixels (via `outer_size().width`) was wrong:
+/// `win.scale_factor()` reports `1.0` at startup before the window has
+/// been positioned on its target monitor, so re-applying the saved
+/// physical width as physical produced a tiny window once Per-Monitor
+/// DPI on a high-DPI display kicked in. Saving logical lets Tauri +
+/// Windows convert to the right physical size on whichever monitor the
+/// window ends up on.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Geometry {
     pub x: i32,
@@ -54,6 +68,21 @@ pub fn kind_of(label: &str) -> &str {
         return "workitem-detail";
     }
     label
+}
+
+/// Minimum size (in *logical* CSS pixels) a saved geometry must clear before
+/// it's applied verbatim. Older geometry below this floor — typically saved
+/// before a layout change widened the window's content — gets stretched up
+/// to the floor on restore so the window opens at a usable size.
+///
+/// Keep "main" in sync with `tauri.conf.json`'s `minWidth`/`minHeight` for
+/// the main window. Other kinds fall back to no clamp here and rely on the
+/// `min_inner_size` configured by their builders.
+fn min_logical_size_for_kind(kind: &str) -> Option<(f64, f64)> {
+    match kind {
+        "main" => Some((1200.0, 720.0)),
+        _ => None,
+    }
 }
 
 /// In-memory cache + on-disk JSON store for window geometry. Lives behind
@@ -167,7 +196,32 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
             .unwrap_or_default();
 
         if is_position_on_screen((g.x, g.y), &monitors) {
-            let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
+            let (mut width, mut height) = (g.width as f64, g.height as f64);
+            if let Some((min_lw, min_lh)) = min_logical_size_for_kind(&kind) {
+                if width < min_lw || height < min_lh {
+                    log::info!(
+                        "persist_window_geometry[{label}]: clamping saved size {}x{} up to min {}x{} (logical)",
+                        width as u32, height as u32, min_lw as u32, min_lh as u32
+                    );
+                    width = width.max(min_lw);
+                    height = height.max(min_lh);
+                }
+            }
+            match win.set_size(tauri::Size::Logical(LogicalSize::new(width, height))) {
+                Ok(()) => {
+                    let actual = win.inner_size().ok();
+                    log::info!(
+                        "persist_window_geometry[{label}]: set_size(logical {}x{}) ok, inner_size now {:?}",
+                        width as u32, height as u32, actual
+                    );
+                }
+                Err(e) => {
+                    log::error!(
+                        "persist_window_geometry[{label}]: set_size(logical {}x{}) failed: {}",
+                        width as u32, height as u32, e
+                    );
+                }
+            }
             let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
             if g.maximized {
                 let _ = win.maximize();
@@ -204,15 +258,14 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
 
 fn capture(win: &WebviewWindow) -> Option<Geometry> {
     let pos = win.outer_position().ok()?;
-    let size = win.outer_size().ok()?;
+    let phys = win.outer_size().ok()?;
+    // Convert physical → logical so the saved width/height are stable
+    // across monitors with different DPI (see `Geometry` doc comment).
+    let scale = win.scale_factor().ok()?;
+    let width = ((phys.width as f64) / scale).round() as u32;
+    let height = ((phys.height as f64) / scale).round() as u32;
     let maximized = win.is_maximized().unwrap_or(false);
-    Some(Geometry {
-        x: pos.x,
-        y: pos.y,
-        width: size.width,
-        height: size.height,
-        maximized,
-    })
+    Some(Geometry { x: pos.x, y: pos.y, width, height, maximized })
 }
 
 #[cfg(test)]
@@ -232,6 +285,14 @@ mod tests {
         assert_eq!(kind_of("pr-detail-Gomocha-FSP-fsp-horizon-1571"), "pr-detail");
         assert_eq!(kind_of("file-viewer-abc123def456"), "file-viewer");
         assert_eq!(kind_of("workitem-detail-7777"), "workitem-detail");
+    }
+
+    #[test]
+    fn min_logical_size_only_set_for_main() {
+        assert_eq!(min_logical_size_for_kind("main"), Some((1200.0, 720.0)));
+        assert!(min_logical_size_for_kind("sql").is_none());
+        assert!(min_logical_size_for_kind("pr-detail").is_none());
+        assert!(min_logical_size_for_kind("file-palette").is_none());
     }
 
     #[test]

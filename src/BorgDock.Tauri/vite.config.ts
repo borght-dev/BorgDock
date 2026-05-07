@@ -14,10 +14,12 @@ const require = createRequire(import.meta.url);
 // relative path breaks when node_modules isn't directly under vite root.
 // web-tree-sitter's package.json `exports` field doesn't whitelist
 // ./package.json, so resolve via its main entry and walk up.
-const webTreeSitterWasm = path.join(
-  path.dirname(require.resolve("web-tree-sitter")),
-  "web-tree-sitter.wasm",
-);
+// Forward slashes only — vite-plugin-static-copy passes `src` to fast-glob,
+// which on Windows treats backslashes from path.join as escape chars and
+// silently matches nothing.
+const webTreeSitterWasm = path
+  .join(path.dirname(require.resolve("web-tree-sitter")), "web-tree-sitter.wasm")
+  .replace(/\\/g, "/");
 
 const host = process.env.TAURI_DEV_HOST;
 
