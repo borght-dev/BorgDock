@@ -1,20 +1,21 @@
 // src/components/work-items/WorkItemsSection.stories.tsx
 //
-// Work-items section stories — 4 stories exercising the main window work-items
-// view: canonical, loading, failure (empty + fetch error simulation), and
-// search active.
+// Work-items section stories — 4 stories exercising the main window
+// work-items view: canonical, loading, no-query (cold-start empty state),
+// and search active.
 //
-// Note on WorkItemsFailure: the work-items store has no top-level `error`
-// field and WorkItemsSection does not render a dedicated error UI from store
-// state. The failure story is rendered as empty items + a note; the section
-// renders the empty-state branch, which is the closest visual approximation
-// of a post-failure state today.
+// Note: the work-items store has no top-level `error` field and
+// WorkItemsSection does not render a dedicated failure UI from store state.
+// The "WorkItemsFailure" cell from the spec is therefore unfilled; the
+// closest visual we can drive today is the cold-start empty state, captured
+// as WorkItemsNoQuery below.
 
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import App from '../../App';
 import {
   MainWindowFrame,
+  reposSettings,
   WORK_ITEMS_CANONICAL,
   withMainWindow,
 } from '../main/__fixtures__/main-window-data';
@@ -33,21 +34,6 @@ const meta: Meta<typeof App> = {
 };
 export default meta;
 type Story = StoryObj<typeof App>;
-
-function reposSettings() {
-  return {
-    setupComplete: true,
-    repos: [
-      {
-        owner: 'borght-dev',
-        name: 'BorgDock',
-        enabled: true,
-        worktreeBasePath: '',
-        worktreeSubfolder: '',
-      },
-    ],
-  };
-}
 
 // ── A. Canonical ───────────────────────────────────────────────
 
@@ -79,13 +65,14 @@ export const WorkItemsLoading: Story = {
   ],
 };
 
-// ── C. Failure (empty + no store-level error field) ────────────
+// ── C. No query selected (cold-start empty state) ──────────────
 //
-// WorkItemsSection has no dedicated error UI driven by a store `error` field
-// (the field doesn't exist). This story renders the empty-state branch as the
-// closest approximation of a post-failure view. isLoading is false and
-// workItems is empty to show the section's empty state.
-export const WorkItemsFailure: Story = {
+// Renders the section's "pick a query from the rail" empty state.
+// `isLoading: false, workItems: []` matches both a cold start (no query
+// selected yet) and a post-failure state — the section has no error UI
+// distinguishing the two, so we name this story by what it actually
+// renders rather than by the spec's "failure" cell.
+export const WorkItemsNoQuery: Story = {
   decorators: [
     (Story) => {
       useWorkItemsStore.setState({ isLoading: false, workItems: [] });

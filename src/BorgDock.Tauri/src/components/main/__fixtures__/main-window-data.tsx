@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -41,6 +42,7 @@ const INIT_BASELINE = useInitStore.getState();
 const PR_BASELINE = usePrStore.getState();
 const ONBOARDING_BASELINE = useOnboardingStore.getState();
 const WORKITEMS_BASELINE = useWorkItemsStore.getState();
+const QUICK_REVIEW_BASELINE = useQuickReviewStore.getState();
 
 // ── Animation freezer decorator ───────────────────────────────
 
@@ -434,7 +436,41 @@ export function withMainWindow(options: WithMainWindowOptions = {}): Decorator {
       workItems: options.workItems ?? WORK_ITEMS_CANONICAL,
     });
 
+    // QuickReview store leaks 'reviewing' state across stories without an
+    // explicit reset — once FocusWithQuickReview seeds state='reviewing',
+    // every subsequent story would render the QuickReview overlay on top
+    // of unrelated content. Reconstruct `decisions` (Map) on every reset
+    // so a mutating story can't corrupt the baseline by reference.
+    useQuickReviewStore.setState({
+      ...QUICK_REVIEW_BASELINE,
+      decisions: new Map(),
+    });
+
     return Story();
+  };
+}
+
+// ── Common settings helpers ───────────────────────────────────
+
+/**
+ * Canonical "setup complete + one BorgDock repo" settings shape used by most
+ * fully-loaded section stories. Returned as a fresh object per call (not
+ * `as const`) so the inferred type stays mutable and assignable to
+ * `DeepPartial<AppSettings>` — readonly tuples don't satisfy the mutable
+ * `repos` array type.
+ */
+export function reposSettings(): DeepPartial<AppSettings> {
+  return {
+    setupComplete: true,
+    repos: [
+      {
+        owner: 'borght-dev',
+        name: 'BorgDock',
+        enabled: true,
+        worktreeBasePath: '',
+        worktreeSubfolder: '',
+      },
+    ],
   };
 }
 

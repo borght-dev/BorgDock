@@ -14,6 +14,7 @@ import {
   PRS_MANY_REPOS,
   PRS_MERGE_CONFLICTS,
   PRS_WITH_FAILURES,
+  reposSettings,
   withMainWindow,
 } from '../main/__fixtures__/main-window-data';
 
@@ -31,21 +32,6 @@ const meta: Meta<typeof App> = {
 };
 export default meta;
 type Story = StoryObj<typeof App>;
-
-function reposSettings() {
-  return {
-    setupComplete: true,
-    repos: [
-      {
-        owner: 'borght-dev',
-        name: 'BorgDock',
-        enabled: true,
-        worktreeBasePath: '',
-        worktreeSubfolder: '',
-      },
-    ],
-  };
-}
 
 // ── A. Canonical ───────────────────────────────────────────────
 

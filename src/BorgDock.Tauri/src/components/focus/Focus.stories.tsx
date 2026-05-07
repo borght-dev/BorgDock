@@ -5,11 +5,13 @@
 
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
+import { getControl } from '../../../.storybook/mocks/control';
 import App from '../../App';
 import {
   MainWindowFrame,
   PRS_CANONICAL,
   PRS_EMPTY,
+  reposSettings,
   withMainWindow,
 } from '../main/__fixtures__/main-window-data';
 
@@ -27,21 +29,6 @@ const meta: Meta<typeof App> = {
 };
 export default meta;
 type Story = StoryObj<typeof App>;
-
-function reposSettings() {
-  return {
-    setupComplete: true,
-    repos: [
-      {
-        owner: 'borght-dev',
-        name: 'BorgDock',
-        enabled: true,
-        worktreeBasePath: '',
-        worktreeSubfolder: '',
-      },
-    ],
-  };
-}
 
 // ── A. Canonical ───────────────────────────────────────────────
 
@@ -100,8 +87,20 @@ export const FocusWithQuickReview: Story = {
 // Focus section with a merge toast visible. MergeToast installs
 // window.__borgdockQueueMerge in a useEffect on mount. The play function waits
 // one tick so the effect has run before calling it.
+//
+// MergeToast schedules a 3-second setTimeout that calls mergePr from
+// @/services/pr-actions. The storybook alias for that module already returns
+// Promise.resolve(true) by default, but we register an explicit no-op
+// override here so the eventual auto-merge call is captured in
+// ctrl.invocations and there is no ambiguity about what fires when the
+// timer expires (story may still be visible in addon-vitest snapshot tests).
 export const FocusWithMergeToast: Story = {
   decorators: [
+    (Story) => {
+      const ctrl = getControl();
+      ctrl.prActionResponses.mergePr = () => Promise.resolve(true);
+      return <Story />;
+    },
     withMainWindow({
       ui: { activeSection: 'focus' },
       pullRequests: PRS_CANONICAL,
