@@ -10,8 +10,8 @@ import { defineConfig, devices } from '@playwright/test';
  *   OS-level font rasterization differences, not WebView-engine
  *   differences. Running the real WebView would require driving a
  *   packaged Tauri build through WebDriver, which is out of scope.
- * - Auto-starts `npm run dev` (pure Vite, no Tauri) so CI does not
- *   require a second shell. If `npm run tauri dev` is already running
+ * - Auto-starts `bun run dev` (pure Vite, no Tauri) so CI does not
+ *   require a second shell. If `bun run tauri dev` is already running
  *   locally, `reuseExistingServer: !process.env.CI` reuses its
  *   bundled Vite at 1420 instead of starting a new one.
  * - Snapshot paths include {projectName} so mac/win baselines sit in
@@ -37,7 +37,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run dev',
+      command: 'bun run dev',
       url: 'http://localhost:1420',
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
@@ -50,7 +50,7 @@ export default defineConfig({
       // Babel's in-browser transformer needs http(s) to fetch them;
       // file:// navigation fails with CORS (only chrome/data/http/https
       // schemes are allowed by Chromium). Serving over http unblocks it.
-      command: 'npx http-server tests/e2e/design-bundle -p 1421 -s --cors -c-1 -d false',
+      command: 'bunx http-server tests/e2e/design-bundle -p 1421 -s --cors -c-1 -d false',
       url: 'http://localhost:1421',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
