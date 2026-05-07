@@ -42,9 +42,23 @@ pub(crate) fn build_flyout_window(app: &tauri::AppHandle) -> Result<WebviewWindo
     .build()
     .map_err(|e| e.to_string())?;
 
+    // Position before pre-warm so the brief show happens at the final
+    // (corner-of-screen) location, not at Tauri's default centered position.
     if let Err(e) = position_flyout_near_tray(&win, FLYOUT_GLANCE_W, FLYOUT_GLANCE_H) {
         log::warn!("initial flyout positioning failed: {e}");
     }
+
+    // Pre-warm WebView2: WebView2's renderer lazy-initializes on the first
+    // `show()`. Without this, the first user-triggered hotkey press shows
+    // a blank/unpainted window — the user sees nothing happen, presses
+    // again (which hides), presses a third time before content actually
+    // renders. The show()/hide() pair forces WebView2 to start its render
+    // pipeline now; subsequent toggle_flyout shows paint immediately.
+    // Imperceptible at runtime — the window is transparent, shadowless,
+    // and skip-taskbar, so even the few-frames flash is invisible.
+    let _ = win.show();
+    let _ = win.hide();
+
     Ok(win)
 }
 
