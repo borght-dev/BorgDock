@@ -19,7 +19,6 @@
     "fs:default",
     "fs:allow-temp-write-recursive",
     "log:default",
-    "os:default",
-    "window-state:default"
+    "os:default"
   ]
 }
