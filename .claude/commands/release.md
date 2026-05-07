@@ -38,7 +38,7 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
 
 5. **Validate** the release note by running the strict validator:
    ```
-   cd src/BorgDock.Tauri && npm run validate-release -- <VERSION>
+   cd src/BorgDock.Tauri && bun run validate-release -- <VERSION>
    ```
    If any highlight is missing a hero image, the validator prints `file:line` with a remediation hint and exits non-zero. Fix and re-run until it prints `OK`.
 
@@ -76,4 +76,4 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
 - If any step fails, stop and report the error — do not continue with partial state.
 - **Version mismatch is the #1 cause of broken releases.** Always bump all three Tauri config files before tagging.
 - The asset filename pattern is `BorgDock_<VERSION>_x64-setup.exe` (+ `.sig` when signed). The version in the filename comes from `tauri.conf.json`, NOT the git tag — so they must match.
-- **Hero images are required for all current-release highlights.** Running `npm run validate-release -- <VERSION>` before tagging catches missing images. Historical versions are frozen; missing images there render a gradient fallback at runtime.
+- **Hero images are required for all current-release highlights.** Running `bun run validate-release -- <VERSION>` before tagging catches missing images. Historical versions are frozen; missing images there render a gradient fallback at runtime.
