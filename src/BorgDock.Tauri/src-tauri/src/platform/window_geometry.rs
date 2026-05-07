@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::sync::Notify;
 
 pub type GeometryMap = HashMap<String, Geometry>;
 
@@ -50,6 +53,67 @@ pub fn kind_of(label: &str) -> &str {
         return "workitem-detail";
     }
     label
+}
+
+/// In-memory cache + on-disk JSON store for window geometry. Lives behind
+/// `Arc<...>` and is registered as Tauri-managed state in `setup()`.
+/// Mutations (`put`) are non-blocking — they signal a debounced flusher
+/// task that writes the file ~250 ms after the last change. `flush_now()`
+/// is synchronous and used on `CloseRequested` so the close path doesn't
+/// lose the final geometry.
+pub struct WindowGeometryStore {
+    map: Mutex<GeometryMap>,
+    notify: Notify,
+    path: PathBuf,
+}
+
+impl WindowGeometryStore {
+    /// Read the on-disk file once and seed the cache. Missing/corrupt file
+    /// → empty cache (intentional: never block launch on geometry IO).
+    pub fn load(app_data_dir: &Path) -> Self {
+        let path = app_data_dir.join("window-geometry.json");
+        Self {
+            map: Mutex::new(read_or_empty(&path)),
+            notify: Notify::new(),
+            path,
+        }
+    }
+
+    pub fn get(&self, kind: &str) -> Option<Geometry> {
+        self.map.lock().ok()?.get(kind).copied()
+    }
+
+    pub fn put(&self, kind: String, geom: Geometry) {
+        if let Ok(mut map) = self.map.lock() {
+            map.insert(kind, geom);
+        }
+        self.notify.notify_one();
+    }
+
+    pub fn flush_now(&self) -> std::io::Result<()> {
+        let snapshot = self
+            .map
+            .lock()
+            .map_err(|_| std::io::Error::other("geometry map mutex poisoned"))?
+            .clone();
+        write_atomic(&self.path, &snapshot)
+    }
+
+    /// Spawn the background flusher. Pulls work via `Notify`; debounces by
+    /// sleeping 250 ms after each wake before writing. Continuous drag
+    /// (hundreds of `Moved` events) collapses into a single write at the
+    /// end. Idempotent flushes are cheap so we don't track dirty state.
+    pub fn spawn_flusher(self: Arc<Self>) {
+        tauri::async_runtime::spawn(async move {
+            loop {
+                self.notify.notified().await;
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                if let Err(e) = self.flush_now() {
+                    log::error!("window-geometry: debounced flush failed: {e}");
+                }
+            }
+        });
+    }
 }
 
 /// A monitor's bounds in physical pixels: `(origin_x, origin_y, width, height)`.
