@@ -74,6 +74,7 @@ pub async fn open_file_viewer_window(
             .focused(true)
             .build()
             .map_err(|e| format!("failed to build viewer window: {e}"))?;
+            crate::platform::window_geometry::persist_window_geometry(&app_for_run, &win, &label);
             bring_to_front(&win);
             Ok(())
         })();
