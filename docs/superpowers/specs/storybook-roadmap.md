@@ -46,7 +46,7 @@ All four are in scope long-term. Each phase is judged against (1) and (2) only;
 
 ## Window inventory
 
-Twelve top-level windows live in `src/BorgDock.Tauri/src/`. One done, eleven to
+Twelve top-level windows live in `src/BorgDock.Tauri/src/`. Ten done, two to
 go. Order below is arbitrary — pick whichever next phase makes sense at the
 time.
 
@@ -63,6 +63,7 @@ time.
 | 7 | File Palette | `file-palette-main.tsx` → `components/file-palette/FilePaletteApp.tsx` | `2026-05-06-storybook-phase7-file-palette-design.md` | `2026-05-06-storybook-phase7-file-palette.md` | _(filled in after PR opens)_ |
 | 8 | File Viewer | `file-viewer-main.tsx` → `components/file-viewer/FileViewerApp.tsx` | `2026-05-06-storybook-phase9-file-viewer-design.md` | `2026-05-06-storybook-phase9-file-viewer.md` | _(filled in after PR opens)_ |
 | 9 | Work Item Palette | `work-item-palette-main.tsx` → `components/work-item-palette/WorkItemPaletteApp.tsx` | `2026-05-06-storybook-phase8-work-item-palette-design.md` | `2026-05-06-storybook-phase8-work-item-palette.md` | _(filled in after PR opens)_ |
+| 10 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | `2026-05-06-storybook-phase10-settings-design.md` | `2026-05-06-storybook-phase10-settings.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -73,7 +74,6 @@ will refine them.
 
 | Window | Entry | Size | Tauri surfaces | Notable |
 |---|---|---|---|---|
-| Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | **L** | many (`invoke` heavy: settings load/save, repo scan, ado/github auth, self-test, maintenance ops); `plugin-dialog.open/save`; `emit` for cross-window settings updates | Recently redesigned with rail + sections. Implicitly stories the new `shared/primitives/*` (Toggle, Slider, Select, Field, Seg2, etc.) plus `RepoScanDialog`, `ConnectionEditorDialog`, `SelfTestResultsDialog`. |
 | Pr Detail | `pr-detail-main.tsx` | **L** | `invoke` (PR fetch, checks, comments, review submission); `plugin-clipboard-manager`; window persistence | Large screen with multiple tabs (overview / files / checks / comments). Best storied per-tab to keep stories focused. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
@@ -123,6 +123,7 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@/generated/changelog` → `mocks/generated-changelog.ts`
 - `@tauri-apps/api/dpi` → `mocks/tauri-api-dpi.ts`
 - `@tauri-apps/plugin-clipboard-manager` → `mocks/tauri-plugin-clipboard-manager.ts`
+- `@tauri-apps/plugin-autostart` → `mocks/tauri-plugin-autostart.ts`
 
 > **Phase 3 mock-layer extensions:** `tauri-api-window` now also exports
 > `currentMonitor` and `getCurrentWindow().{hide,setSize,innerSize,scaleFactor}`.
@@ -142,6 +143,33 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > `getCurrentWindow().onFocusChanged` (synthetic `__window.onFocusChanged`
 > channel — emit a boolean payload via `getControl().emit(...)`). Mirrors
 > the Phase-4 `onMoved` pattern.
+
+> **Phase 8 mock-layer extensions:** `tauri-api-window` now also exposes
+> `getCurrentWindow().startDragging` (records a `window.startDragging`
+> invocation; no-op otherwise). `tauri-api-webviewWindow` now also exports
+> a `WebviewWindow` class — instantiation pushes the label/options into
+> `getControl().webviewWindowsCreated`. `services-ado-workitems` mock
+> replaced its stub-throws with scenario-driven impls keyed off
+> `getControl().workItemPaletteScenario` (browse/search/loading/failure
+> presets — see `__fixtures__/work-item-palette-data.ts` for the
+> canonical shapes). `control.ts` adds `workItemPaletteScenario` and
+> `webviewWindowsCreated` fields.
+
+> **Phase 9 mock-layer extensions:** none. The File Viewer's tree-sitter
+> highlighter runs unmodified inside the Storybook iframe — `.storybook/main.ts`
+> now uses `vite-plugin-static-copy` in `viteFinal` to copy
+> `node_modules/web-tree-sitter/.../web-tree-sitter.wasm` into the iframe
+> output (`public/grammars/*.wasm` is already served at `/grammars/...` by
+> Vite). Confirmed end-to-end via a probe story that mounts a small TSX
+> file and asserts highlighted spans in the rendered DOM.
+
+> **Phase 10 mock-layer extensions:** new alias `@tauri-apps/plugin-autostart`
+> → `mocks/tauri-plugin-autostart.ts`. Mock exposes `enable()` / `disable()`,
+> both push `autostart.enable` / `autostart.disable` invocations into the
+> standard `getControl().invocations` log. `enable()` / `disable()` reject
+> when `getControl().invokeResponses['autostart.enable']` (resp. `.disable`)
+> is the literal string `'__throw__'` — used by the `AutostartFailure` story
+> to exercise the production catch branch in `AppearanceSection`.
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).
