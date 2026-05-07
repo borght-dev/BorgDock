@@ -56,6 +56,9 @@ const config: StorybookConfig = {
       '@tauri-apps/plugin-autostart': resolve(here, 'mocks/tauri-plugin-autostart.ts'),
       '@/services/windows': resolve(here, 'mocks/services-windows.ts'),
       '@/services/ado/workitems': resolve(here, 'mocks/services-ado-workitems.ts'),
+      '@/services/github/pulls': resolve(here, 'mocks/services-github-pulls.ts'),
+      '@/services/github/checks': resolve(here, 'mocks/services-github-checks.ts'),
+      '@/services/github/auth': resolve(here, 'mocks/services-github-auth.ts'),
       '@/generated/changelog': resolve(here, 'mocks/generated-changelog.ts'),
       '@': resolve(here, '../src'),
     };
