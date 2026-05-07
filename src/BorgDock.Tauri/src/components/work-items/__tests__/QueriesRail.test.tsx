@@ -11,6 +11,7 @@ describe('QueriesRail', () => {
         myQueries={[{ id: 'q2', name: 'Active Bugs', count: 28 }]}
         selectedId="q1"
         onSelectQuery={onSelect}
+        onToggleFavorite={() => {}}
         onOpenQueryBrowser={() => {}}
       />,
     );
@@ -29,10 +30,35 @@ describe('QueriesRail', () => {
         myQueries={[]}
         selectedId={undefined}
         onSelectQuery={() => {}}
+        onToggleFavorite={() => {}}
         onOpenQueryBrowser={onOpenBrowser}
       />,
     );
     fireEvent.click(screen.getByText(/Browse all queries/));
     expect(onOpenBrowser).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles favorite from the rail star button without selecting the query', () => {
+    const onSelect = vi.fn();
+    const onToggleFavorite = vi.fn();
+    render(
+      <QueriesRail
+        favorites={[{ id: 'q1', name: 'Assigned to Me' }]}
+        myQueries={[{ id: 'q2', name: 'Active Bugs' }]}
+        selectedId={undefined}
+        onSelectQuery={onSelect}
+        onToggleFavorite={onToggleFavorite}
+        onOpenQueryBrowser={() => {}}
+      />,
+    );
+
+    // Add to favorites from My Queries.
+    fireEvent.click(screen.getByLabelText('Add Active Bugs to favorites'));
+    expect(onToggleFavorite).toHaveBeenCalledWith('q2');
+    expect(onSelect).not.toHaveBeenCalled();
+
+    // Remove from favorites in the Favorites section.
+    fireEvent.click(screen.getByLabelText('Remove Assigned to Me from favorites'));
+    expect(onToggleFavorite).toHaveBeenCalledWith('q1');
   });
 });

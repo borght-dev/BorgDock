@@ -342,6 +342,7 @@ export function WorkItemsSection() {
         myQueries={myQueriesForRail}
         selectedId={selectedQueryId ?? undefined}
         onSelectQuery={handleSelectQuery}
+        onToggleFavorite={handleToggleFavorite}
         onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
       />
 
