@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { PrDetailApp } from './PRDetailApp';
 import {
   openPr,
+  PanelFrame,
   SETTINGS_BASELINE,
   withPrDetail,
 } from './__fixtures__/pr-detail-data';
@@ -11,6 +12,7 @@ import {
 const meta: Meta<typeof PrDetailApp> = {
   title: 'PR Detail/PRDetailApp',
   component: PrDetailApp,
+  decorators: [(Story) => <PanelFrame><Story /></PanelFrame>],
 };
 export default meta;
 type Story = StoryObj<typeof PrDetailApp>;

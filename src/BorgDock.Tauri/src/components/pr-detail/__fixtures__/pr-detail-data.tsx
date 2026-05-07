@@ -257,10 +257,61 @@ export function withPrDetail(
   };
 }
 
-export function PanelFrame({ children }: { children: ReactNode }) {
+// Production PR Detail window opens at 800x900 (min 480x480) per
+// src-tauri/src/platform/window.rs::open_pr_detail_window. PanelFrame
+// constrains stories to that size with a subtle macOS-style chrome so the
+// catalog reflects how the window actually feels in use, instead of the
+// stretched-edge-to-edge default Storybook iframe.
+//
+// The scoped CSS overrides are necessary because production components
+// (PrDetailApp, PrDetailPanel) use Tailwind's h-screen / w-screen which
+// resolve to 100vh / 100vw and would still reach to the iframe edges
+// without the override. Scoped to .storybook-pr-detail-frame so we don't
+// affect any other story group.
+
+const PR_DETAIL_FRAME_STYLE = `
+.storybook-pr-detail-frame .h-screen { height: 100% !important; }
+.storybook-pr-detail-frame .w-screen { width: 100% !important; }
+`;
+
+export function PanelFrame({
+  children,
+  width = 800,
+  height = 900,
+}: {
+  children: ReactNode;
+  width?: number;
+  height?: number;
+}) {
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-background)]">
-      <div className="relative flex-1 overflow-y-auto">{children}</div>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '24px',
+        background: 'var(--color-app-background, #1a1a1a)',
+      }}
+    >
+      <style>{PR_DETAIL_FRAME_STYLE}</style>
+      <div
+        className="storybook-pr-detail-frame"
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          overflow: 'hidden',
+          borderRadius: 10,
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+          position: 'relative',
+        }}
+      >
+        <div className="flex h-full flex-col bg-[var(--color-background)]">
+          <div className="relative flex-1 overflow-y-auto">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
