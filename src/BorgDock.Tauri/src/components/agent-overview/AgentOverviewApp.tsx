@@ -15,6 +15,7 @@ import { Statusbar } from './Statusbar';
 import { StatusGrouped } from './StatusGrouped';
 import { Titlebar, type Grouping } from './Titlebar';
 import { WorktreeFlat } from './WorktreeFlat';
+import './agent-overview.css';
 
 export function AgentOverviewApp() {
   // Reveal the (invisible-built) window once React has painted.

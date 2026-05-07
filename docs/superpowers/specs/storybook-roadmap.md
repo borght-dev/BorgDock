@@ -46,8 +46,7 @@ All four are in scope long-term. Each phase is judged against (1) and (2) only;
 
 ## Window inventory
 
-Twelve top-level windows live in `src/BorgDock.Tauri/src/`. Ten done, two to
-go. Order below is arbitrary — pick whichever next phase makes sense at the
+Twelve top-level windows live in `src/BorgDock.Tauri/src/`. Eleven done, one to go. Order below is arbitrary — pick whichever next phase makes sense at the
 time.
 
 ### Done
@@ -64,6 +63,7 @@ time.
 | 8 | File Viewer | `file-viewer-main.tsx` → `components/file-viewer/FileViewerApp.tsx` | `2026-05-06-storybook-phase9-file-viewer-design.md` | `2026-05-06-storybook-phase9-file-viewer.md` | _(filled in after PR opens)_ |
 | 9 | Work Item Palette | `work-item-palette-main.tsx` → `components/work-item-palette/WorkItemPaletteApp.tsx` | `2026-05-06-storybook-phase8-work-item-palette-design.md` | `2026-05-06-storybook-phase8-work-item-palette.md` | _(filled in after PR opens)_ |
 | 10 | Settings | `settings-main.tsx` → `components/settings/SettingsApp.tsx` | `2026-05-06-storybook-phase10-settings-design.md` | `2026-05-06-storybook-phase10-settings.md` | _(filled in after PR opens)_ |
+| 11 | PR Detail | `pr-detail-main.tsx` → `components/pr-detail/PRDetailApp.tsx` | `2026-05-07-storybook-phase11-pr-detail-design.md` | `2026-05-07-storybook-phase11-pr-detail.md` | _(filled in after PR opens)_ |
 
 ### Pending
 
@@ -74,7 +74,6 @@ will refine them.
 
 | Window | Entry | Size | Tauri surfaces | Notable |
 |---|---|---|---|---|
-| Pr Detail | `pr-detail-main.tsx` | **L** | `invoke` (PR fetch, checks, comments, review submission); `plugin-clipboard-manager`; window persistence | Large screen with multiple tabs (overview / files / checks / comments). Best storied per-tab to keep stories focused. |
 | Main / Sidebar | `App.tsx` (entry: `main.tsx`) | **L** | many (`invoke`, `listen`, multiple plugins, autostart, updater, notifications) | The biggest screen and the orchestrator. Story it last so we've already learned everything from the smaller windows. |
 
 > **Roadmap correction (Phase 3):** the previous Worktree row described the
@@ -124,6 +123,15 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 - `@tauri-apps/api/dpi` → `mocks/tauri-api-dpi.ts`
 - `@tauri-apps/plugin-clipboard-manager` → `mocks/tauri-plugin-clipboard-manager.ts`
 - `@tauri-apps/plugin-autostart` → `mocks/tauri-plugin-autostart.ts`
+- `@/services/github/pulls` → `mocks/services-github-pulls.ts`
+- `@/services/github/checks` → `mocks/services-github-checks.ts`
+- `@/services/github/auth` → `mocks/services-github-auth.ts`
+- `@/services/github/reviewThreads` → `mocks/services-github-reviewThreads.ts`
+- `@/services/github/reviews` → `mocks/services-github-reviews.ts`
+- `@/services/github/mutations` → `mocks/services-github-mutations.ts`
+- `@/services/github/singleton` → `mocks/services-github-singleton.ts`
+- `@/services/github` → `mocks/services-github-barrel.ts`
+- `@/services/pr-actions` → `mocks/services-pr-actions.ts`
 
 > **Phase 3 mock-layer extensions:** `tauri-api-window` now also exports
 > `currentMonitor` and `getCurrentWindow().{hide,setSize,innerSize,scaleFactor}`.
@@ -170,6 +178,40 @@ Keep this list in sync with `.storybook/main.ts` aliases and `.storybook/mocks/*
 > when `getControl().invokeResponses['autostart.enable']` (resp. `.disable`)
 > is the literal string `'__throw__'` — used by the `AutostartFailure` story
 > to exercise the production catch branch in `AppearanceSection`.
+
+> **Phase 11 mock-layer extensions:** nine new aliases for the GitHub
+> services and the pr-actions mutation layer. The PR Detail window
+> hydrates via `getOpenPRs` + `getCheckRunsForRef` from `@/services/github/*`,
+> and its `usePrActions` hook routes through `@/services/pr-actions` for
+> mutations. To intercept those without touching production code, this
+> phase adds:
+>
+> - `@/services/github/{pulls, checks, auth, reviewThreads, reviews,
+>   mutations, singleton}` mocks plus a barrel alias for the `@/services/github`
+>   index (without the barrel alias the sub-path mocks are unreachable for
+>   any consumer that imports via the index — Vite alias resolution doesn't
+>   follow into the production barrel's relative re-exports).
+> - `@/services/pr-actions` mock that re-exports the seven mutation
+>   functions, each recording into `getControl().invocations` and supporting
+>   `prActionResponses[name] = '__throw__' | '__fail__' | function`
+>   overrides.
+>
+> Two new control-surface fields: `githubResponses` (per-call canned
+> values for the GH service mocks — `getOpenPRs`, `getCheckRunsForRef`,
+> `tokenGetter`, `getPRFiles`, `getCommitFiles`, `getPRCommits`,
+> `getReviewThreads`, `getReviews`, `getAllComments`) and `prActionResponses`
+> (per-action override map keyed by mutation function name).
+>
+> `tauri-core.ts` invoke mock now also honors the `'__throw__'` sentinel
+> as a shorthand for "reject with a synthetic error" — previously this
+> sentinel was per-mock; centralizing it in tauri-core lets all
+> invokeResponses-driven stories (e.g. CheckoutPanel's `checkout_pr:
+> '__throw__'`) use the same shorthand without each mock implementing it.
+>
+> Interactive play functions use `within(canvasElement)` + `element.click()`
+> from `storybook/test` (the idiomatic Storybook 9 pattern). The earlier
+> `.storybook/mocks/play-helpers.ts` shim was removed in phase 11 once the
+> stories were migrated to the canvas-scoped Testing Library API.
 
 When a new window's spec needs a plugin not in this list, the spec must:
 1. Add the alias in that window's plan (Storybook config edit).

@@ -1,6 +1,7 @@
 // src/components/whats-new/WhatsNewApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
 import type { Release } from '@/types/whats-new';
 import { getControl } from '../../../.storybook/mocks/control';
@@ -310,7 +311,6 @@ export const DisableAutoOpenInteraction: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     // The "Don't auto-open again" checkbox is labeled by aria-label
     // on the input itself (see WhatsNewApp.tsx footer).
@@ -329,7 +329,6 @@ export const GotItButtonClickable: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const button = await canvas.findByRole('button', { name: /got it/i });
     await userEvent.click(button);

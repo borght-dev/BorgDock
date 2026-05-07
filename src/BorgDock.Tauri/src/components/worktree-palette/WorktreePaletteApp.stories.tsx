@@ -1,6 +1,7 @@
 // src/components/worktree-palette/WorktreePaletteApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { getControl } from '../../../.storybook/mocks/control';
 import {
@@ -109,7 +110,6 @@ export const Refreshing: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const refresh = await canvas.findByRole('button', { name: /refresh/i });
     await userEvent.click(refresh);
@@ -124,7 +124,6 @@ export const WindowReadyDeferred: Story = {
     },
   },
   play: async () => {
-    const { waitFor, expect } = await import('storybook/test');
     await waitFor(() => {
       const ctrl = getControl();
       expect(ctrl.invocations.some((i) => i.command === 'window_ready')).toBe(true);
@@ -173,7 +172,6 @@ export const OneRepoManyTrees: Story = {
     },
   },
   play: async () => {
-    const { waitFor, expect } = await import('storybook/test');
     await waitFor(() => {
       const ctrl = getControl();
       expect(ctrl.invocations.some((i) => i.command === 'window.setSize')).toBe(true);
@@ -277,7 +275,6 @@ export const FilterMatchingByBranch: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/filter by branch/i);
     await userEvent.type(input, 'feature');
@@ -292,7 +289,6 @@ export const FilterMatchingByFolder: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/filter by branch/i);
     await userEvent.type(input, 'storybook');
@@ -307,7 +303,6 @@ export const FilterMatchingByRepo: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/filter by branch/i);
     await userEvent.type(input, 'borgdock');
@@ -322,7 +317,6 @@ export const FilterNoMatch: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/filter by branch/i);
     await userEvent.type(input, 'zzz');
@@ -361,7 +355,6 @@ export const MidListSelected: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/filter by branch/i);
     input.focus();
@@ -381,7 +374,6 @@ export const EnterOpensTerminal: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     const input = await canvas.findByPlaceholderText(/filter by branch/i);
     input.focus();
@@ -406,7 +398,6 @@ export const ToggleFavoriteOptimistic: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     const starBtn = await canvas.findByRole('button', { name: /mark as favorite/i });
     await userEvent.click(starBtn);
@@ -425,7 +416,6 @@ export const PaletteReshown: Story = {
     },
   },
   play: async () => {
-    const { waitFor, expect } = await import('storybook/test');
     // Wait for the first load_settings to land.
     await waitFor(() => {
       const ctrl = getControl();

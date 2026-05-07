@@ -14,6 +14,11 @@ export async function invoke<T = unknown>(command: string, args?: unknown): Prom
   const ctrl = getControl();
   ctrl.invocations.push({ command, args });
   const response = ctrl.invokeResponses[command];
+  // Sentinel: '__throw__' rejects with a synthetic error. Mirrors the
+  // per-mock convention in tauri-plugin-autostart.ts and services-pr-actions.ts.
+  if (response === '__throw__') {
+    throw new Error(`mock invoke '${command}' threw`);
+  }
   if (typeof response === 'function') {
     return (await (response as (a: unknown) => unknown)(args)) as T;
   }

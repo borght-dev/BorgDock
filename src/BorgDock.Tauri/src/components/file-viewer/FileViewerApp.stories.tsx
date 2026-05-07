@@ -1,6 +1,7 @@
 // src/components/file-viewer/FileViewerApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
@@ -225,7 +226,6 @@ export const UnifiedToSplitToggle: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     const splitChip = await canvas.findByRole('button', { name: 'Split' });
     await userEvent.click(splitChip);
@@ -275,7 +275,6 @@ export const BaselineSwitchInteraction: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     // Wait for the diff response to resolve so the chip's label updates from
     // 'vs default' to 'vs main' before we click it.
@@ -307,7 +306,6 @@ export const CopyAllSuccess: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor } = await import('storybook/test');
     const canvas = within(canvasElement);
     // Wait for content to load — Copy all is disabled until then.
     const copyBtn = await canvas.findByRole('button', { name: 'Copy all' });
@@ -327,7 +325,6 @@ export const CopyAllDisabled: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     await waitFor(() => {
       const btn = canvas.getByRole('button', { name: 'Copy all' }) as HTMLButtonElement;
@@ -344,7 +341,6 @@ export const OpenInEditorClicked: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     const btn = await canvas.findByRole('button', { name: 'Open in editor' });
     await userEvent.click(btn);
@@ -367,7 +363,6 @@ export const CloseClicked: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent, waitFor, expect } = await import('storybook/test');
     const canvas = within(canvasElement);
     const closeBtn = await canvas.findByRole('button', { name: /close/i });
     await userEvent.click(closeBtn);
@@ -425,7 +420,6 @@ export const ContentTSXSyntaxProbe: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { waitFor, expect } = await import('storybook/test');
     // The highlighter is async (wasm load + parse). Give it up to ~5s on
     // first run, but typical wall-time is sub-200ms once cached.
     await waitFor(

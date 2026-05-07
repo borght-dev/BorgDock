@@ -1,6 +1,7 @@
 // src/components/agent-overview/AgentOverviewApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import type { SessionDelta, SessionRecord } from '@/services/agent-overview-types';
@@ -156,7 +157,6 @@ export const AllStates = story({
 export const AllStatesByStatus: Story = {
   args: { params: { sessions: allStates } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const select = await canvas.findByLabelText('Grouping');
     await userEvent.selectOptions(select, 'status');
@@ -166,7 +166,6 @@ export const AllStatesByStatus: Story = {
 export const AllStatesByContext: Story = {
   args: { params: { sessions: multiRepoMixed } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const select = await canvas.findByLabelText('Grouping');
     await userEvent.selectOptions(select, 'context');
@@ -176,7 +175,6 @@ export const AllStatesByContext: Story = {
 export const AllStatesByActivity: Story = {
   args: { params: { sessions: multiRepoMixed } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const select = await canvas.findByLabelText('Grouping');
     await userEvent.selectOptions(select, 'activity');
@@ -230,7 +228,6 @@ export const IdleRailWithArchived = story({
 export const IdleRailArchivedExpanded: Story = {
   args: { params: { sessions: idleWithArchived } },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const toggle = await canvas.findByTestId('statusbar-archived-toggle');
     await userEvent.click(toggle);
@@ -282,7 +279,6 @@ export const SessionEnds = story({
 export const InspectorHovered: Story = {
   args: { params: { sessions: [sessionAwaiting] } },
   play: async ({ canvasElement }) => {
-    const { within } = await import('storybook/test');
     const canvas = within(canvasElement);
     const card = await canvas.findByText(sessionAwaiting.label);
     const cardEl = card.closest('[data-session-id]');
@@ -326,7 +322,6 @@ export const InspectorPinned: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('storybook/test');
     const canvas = within(canvasElement);
     const card = await canvas.findByText(sessionWithFiles.label);
     const cardEl = card.closest('[data-session-id]') as HTMLElement | null;
@@ -353,7 +348,6 @@ export const InspectorWithFiles: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const { within } = await import('storybook/test');
     const canvas = within(canvasElement);
     const card = await canvas.findByText(sessionWithFiles.label);
     const cardEl = card.closest('[data-session-id]');
