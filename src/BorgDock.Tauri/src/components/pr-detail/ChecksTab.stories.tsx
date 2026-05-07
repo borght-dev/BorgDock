@@ -64,15 +64,15 @@ const allPendingPr = makePr({
 const allGreenPr = makePr({
   checks: allGreen,
   overallStatus: 'green',
-  passedCount: 3,
+  passedCount: allGreen.length,
   pendingCheckNames: [],
 });
 
 const mixedPr = makePr({
   checks: mixed,
   overallStatus: 'red',
-  passedCount: 4,
-  failedCheckNames: ['CI / lint', 'CI / e2e'],
+  passedCount: mixed.filter((c) => c.conclusion === 'success').length,
+  failedCheckNames: mixed.filter((c) => c.conclusion === 'failure').map((c) => c.name),
   pendingCheckNames: [],
 });
 
