@@ -60,8 +60,18 @@ export const WizardRepos: Story = {
 };
 
 // Wizard triggered by PAT auth method with no token. settings.setupComplete is true
-// (prior setup was done) but the PAT field is empty, so App's needsSetup gate fires
-// again and shows the wizard at step 0 with the PAT UI visible.
+// (prior setup was done) AND repos is non-empty, so App's needsSetup gate fires
+// via the LAST branch (`authMethod === 'pat' && !personalAccessToken`) rather
+// than the `!setupComplete` branch that WizardAuth uses. This is the re-trigger
+// path: a user who previously completed setup with PAT auth but whose token
+// was cleared / invalidated.
 export const WizardPatMissing: Story = {
-  decorators: [withWizard({ authMethod: 'pat', hasToken: false, hasRepos: false })],
+  decorators: [
+    withWizard({
+      authMethod: 'pat',
+      hasToken: false,
+      hasRepos: true,
+      setupComplete: true,
+    }),
+  ],
 };

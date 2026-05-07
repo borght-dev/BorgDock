@@ -447,13 +447,24 @@ export function withMainWindow(options: WithMainWindowOptions = {}): Decorator {
  * Deviations from plan: RepoSettings requires enabled + worktreeBasePath +
  * worktreeSubfolder (all required by the RepoSettings interface), so the
  * repos array provides sensible defaults for those fields.
+ *
+ * `setupComplete` defaults to false (the !setupComplete gating branch in
+ * App.tsx). Pass `setupComplete: true` together with `hasRepos: true` to
+ * exercise the PAT-empty re-trigger branch instead — useful for stories
+ * that need to land on the wizard via `authMethod === 'pat' && !personalAccessToken`
+ * after a previously-completed setup.
  */
 export function withWizard(
-  options: { authMethod?: 'ghCli' | 'pat'; hasToken?: boolean; hasRepos?: boolean } = {},
+  options: {
+    authMethod?: 'ghCli' | 'pat';
+    hasToken?: boolean;
+    hasRepos?: boolean;
+    setupComplete?: boolean;
+  } = {},
 ): Decorator {
   return withMainWindow({
     settings: {
-      setupComplete: false,
+      setupComplete: options.setupComplete ?? false,
       gitHub: {
         // Spread baseline first so real values take precedence over safe defaults.
         // Safe defaults cover required GitHubSettings fields when the baseline is
