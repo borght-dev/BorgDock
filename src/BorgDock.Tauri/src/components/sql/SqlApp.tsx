@@ -40,7 +40,6 @@ interface QueryResult {
   rowsAffected: number | null;
 }
 
-const POSITION_KEY = 'borgdock-sql-position';
 const QUERY_KEY = 'borgdock-sql-last-query';
 const RAIL_WIDTH_KEY = 'borgdock.sql.railWidth';
 const RAIL_COLLAPSED_KEY = 'borgdock.sql.railCollapsed';
@@ -53,35 +52,6 @@ const RAIL_MAX = 480;
 const RAIL_DEFAULT = 240;
 const EDITOR_MIN = 80;
 const EDITOR_DEFAULT = 220;
-
-function loadSavedPosition(): { x: number; y: number } | null {
-  try {
-    const raw = localStorage.getItem(POSITION_KEY);
-    if (!raw) return null;
-    const pos = JSON.parse(raw);
-    if (typeof pos.x === 'number' && typeof pos.y === 'number') return pos;
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-async function saveCurrentPosition() {
-  try {
-    const win = getCurrentWindow();
-    const pos = await win.outerPosition();
-    const scale = await win.scaleFactor();
-    localStorage.setItem(
-      POSITION_KEY,
-      JSON.stringify({
-        x: Math.round(pos.x / scale),
-        y: Math.round(pos.y / scale),
-      }),
-    );
-  } catch {
-    /* ignore */
-  }
-}
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -188,38 +158,13 @@ export function SqlApp() {
         console.error('Failed to load settings:', err);
       }
 
-      const saved = loadSavedPosition();
-      if (
-        saved &&
-        saved.x >= 0 &&
-        saved.y >= 0 &&
-        saved.x < screen.width &&
-        saved.y < screen.height
-      ) {
-        try {
-          const { LogicalPosition } = await import('@tauri-apps/api/dpi');
-          await getCurrentWindow().setPosition(new LogicalPosition(saved.x, saved.y));
-        } catch {
-          /* ignore */
-        }
-      }
-
-      // Reveal the window only after settings + position have been applied,
-      // so the user never sees the default-position / unstyled chrome.
+      // Reveal the window after settings have been applied. Position and
+      // size are restored by the Rust-side persist_window_geometry helper
+      // before the React app mounts, so no JS-side restore is needed.
       requestAnimationFrame(() => {
         void invoke('window_ready').catch(() => {});
       });
     })();
-  }, []);
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    (async () => {
-      unlisten = await getCurrentWindow().onMoved(() => {
-        saveCurrentPosition();
-      });
-    })();
-    return () => unlisten?.();
   }, []);
 
   /* ── Persist query (debounced) ────────────────────────── */
