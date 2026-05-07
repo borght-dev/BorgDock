@@ -125,7 +125,6 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -153,6 +152,39 @@ pub fn run() {
 
             if let Err(e) = platform::window::build_flyout_window(&app.handle().clone()) {
                 log::error!("build_flyout_window failed: {e}");
+            }
+
+            // Window geometry store: load once, register, spawn flusher,
+            // then wire main on the GUI thread so it picks up restored
+            // geometry. Main is declared in tauri.conf.json (built before
+            // setup runs), so we look it up by label.
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| format!("app_data_dir unavailable: {e}"))?;
+            std::fs::create_dir_all(&app_data_dir)
+                .map_err(|e| format!("create app data dir: {e}"))?;
+
+            let geometry_store = std::sync::Arc::new(
+                crate::platform::window_geometry::WindowGeometryStore::load(&app_data_dir),
+            );
+            geometry_store.clone().spawn_flusher();
+            app.manage(geometry_store.clone());
+
+            if let Some(main_win) = app.get_webview_window("main") {
+                let app_handle = app.handle().clone();
+                app_handle
+                    .clone()
+                    .run_on_main_thread(move || {
+                        crate::platform::window_geometry::persist_window_geometry(
+                            &app_handle, &main_win, "main",
+                        );
+                    })
+                    .map_err(|e| format!("dispatch persist_window_geometry for main: {e}"))?;
+            } else {
+                log::error!(
+                    "setup: main window not found at startup; geometry persistence skipped"
+                );
             }
 
             let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();

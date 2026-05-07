@@ -114,9 +114,9 @@ export class AdoClient {
     return `${this.baseUrl}/${relativePath}${separator}api-version=${apiVersion}`;
   }
 
-  private buildOrgUrl(relativePath: string): string {
+  private buildOrgUrl(relativePath: string, apiVersion = '7.1'): string {
     const separator = relativePath.includes('?') ? '&' : '?';
-    return `https://dev.azure.com/${encodeURIComponent(this.org)}/_apis/${relativePath}${separator}api-version=7.1`;
+    return `https://dev.azure.com/${encodeURIComponent(this.org)}/_apis/${relativePath}${separator}api-version=${apiVersion}`;
   }
 
   private get commonHeaders(): Record<string, string> {
@@ -129,8 +129,8 @@ export class AdoClient {
     return this.handleResponse<T>(response, url);
   }
 
-  async getOrgLevel<T>(relativePath: string): Promise<T> {
-    const url = this.buildOrgUrl(relativePath);
+  async getOrgLevel<T>(relativePath: string, apiVersion?: string): Promise<T> {
+    const url = this.buildOrgUrl(relativePath, apiVersion);
     const response = await this.fetchWithRetry(url, { headers: this.commonHeaders });
     return this.handleResponse<T>(response, url);
   }

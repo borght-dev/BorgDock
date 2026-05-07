@@ -116,6 +116,21 @@ cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' ca
 
 Or run cargo from cmd.exe / PowerShell where MSYS isn't involved.
 
+## Check for existing patterns before implementing
+
+Before writing a new component, hook, command, store, or utility, search the codebase for something similar that already exists. Reuse it, or extract the shared piece into a reusable abstraction — don't fork a near-duplicate.
+
+Concrete examples:
+- New pop-out window? `open_pr_detail_window` / `open_workitem_detail_window` in `src-tauri/src/lib.rs` already encode the main-thread + oneshot pattern. Follow it; don't reinvent.
+- New list with filter/sort/group? `WorkItemsSection` and the PR list have done this already — check whether the existing query/store machinery covers your case.
+- New keyboard shortcut? Hotkeys are centralized in `src-tauri/src/platform/hotkey.rs` and the frontend's `useHotkeys` plumbing — wire into those, don't add a parallel listener.
+- New ADO/GitHub API call? `src/services/ado/client.ts` and the GitHub services already handle auth, retries, and rate limits — extend them instead of opening a raw `fetch`.
+- New panel/section in the main window? Check `src/components/work-items/` for the existing section/rail/panel split before introducing a fourth layout primitive.
+
+If a similar thing exists but doesn't quite fit, the right move is usually to extract the shared core (a hook, a util, a base component) and have both the old and new call sites consume it — not to copy-paste-tweak.
+
+When in doubt, grep first, then ask the user "I saw X already does Y — should I extend it or build a separate thing?" before writing code.
+
 ## Self-Improvement
 
 Whenever you learn something new that is important to remember, run into the same issue twice, or encounter an issue that might happen again — update this CLAUDE.md so the next session avoids the same pitfalls.

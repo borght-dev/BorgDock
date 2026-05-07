@@ -42,9 +42,23 @@ pub(crate) fn build_flyout_window(app: &tauri::AppHandle) -> Result<WebviewWindo
     .build()
     .map_err(|e| e.to_string())?;
 
+    // Position before pre-warm so the brief show happens at the final
+    // (corner-of-screen) location, not at Tauri's default centered position.
     if let Err(e) = position_flyout_near_tray(&win, FLYOUT_GLANCE_W, FLYOUT_GLANCE_H) {
         log::warn!("initial flyout positioning failed: {e}");
     }
+
+    // Pre-warm WebView2: WebView2's renderer lazy-initializes on the first
+    // `show()`. Without this, the first user-triggered hotkey press shows
+    // a blank/unpainted window — the user sees nothing happen, presses
+    // again (which hides), presses a third time before content actually
+    // renders. The show()/hide() pair forces WebView2 to start its render
+    // pipeline now; subsequent toggle_flyout shows paint immediately.
+    // Imperceptible at runtime — the window is transparent, shadowless,
+    // and skip-taskbar, so even the few-frames flash is invisible.
+    let _ = win.show();
+    let _ = win.hide();
+
     Ok(win)
 }
 
@@ -159,20 +173,31 @@ fn force_repaint(win: &WebviewWindow) {
 #[tauri::command]
 pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     let label = window.label().to_string();
+    log::info!("window_ready[{label}]: entry");
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
+    let label_for_log = label.clone();
+    log::info!("window_ready[{label}]: dispatching to main thread");
     app.run_on_main_thread(move || {
+        log::info!("window_ready[{label_for_log}]: on main thread");
         let result = (|| -> Result<(), String> {
-            if let Some(win) = app_for_run.get_webview_window(&label) {
+            if let Some(win) = app_for_run.get_webview_window(&label_for_log) {
+                log::info!("window_ready[{label_for_log}]: calling show()");
                 win.show().map_err(|e| e.to_string())?;
+                log::info!("window_ready[{label_for_log}]: show ok, calling set_focus()");
                 win.set_focus().map_err(|e| e.to_string())?;
+                log::info!("window_ready[{label_for_log}]: set_focus ok");
+            } else {
+                log::warn!("window_ready[{label_for_log}]: window not found");
             }
             Ok(())
         })();
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    let r = rx.await.map_err(|e| e.to_string())?;
+    log::info!("window_ready[{label}]: returning ok={}", r.is_ok());
+    r
 }
 
 #[tauri::command]
@@ -287,12 +312,6 @@ pub async fn open_pr_detail_window(
     );
     log::info!("open_pr_detail_window: init_script built, dispatching to main thread");
 
-    // Restore last-used geometry (saved when the previous PR window closed).
-    // Falls back to centered + default size if nothing is stored yet.
-    let saved_geometry = crate::settings::load_settings_internal()
-        .ok()
-        .and_then(|s| s.pr_detail.window_state.clone());
-
     // Window creation must happen on the main (GUI) thread. When this command
     // runs on a worker thread (which async tauri commands do), calling
     // WebviewWindowBuilder::build() directly can hang because it dispatches to
@@ -327,13 +346,7 @@ pub async fn open_pr_detail_window(
         .focused(true)
         .initialization_script(&init_script);
 
-        if let Some(g) = &saved_geometry {
-            builder = builder
-                .inner_size(g.width as f64, g.height as f64)
-                .position(g.x as f64, g.y as f64);
-        } else {
-            builder = builder.center();
-        }
+        builder = builder.center();
 
         let result = builder.build();
 
@@ -341,36 +354,11 @@ pub async fn open_pr_detail_window(
             Ok(win) => {
                 log::info!("open_pr_detail_window: build succeeded for {label_for_build}");
 
-                // Apply stored geometry BEFORE first show. Some Tauri versions
-                // ignore the builder's inner_size on first build under HiDPI.
-                // The window stays hidden — `window_ready` from the frontend
-                // reveals it.
-                if let Some(g) = &saved_geometry {
-                    let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
-                    let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
-                }
-
-                // Persist outer geometry on close so the next PR window opens
-                // where the user left this one.
-                let win_for_close = win.clone();
-                win.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        let pos = win_for_close.outer_position().ok();
-                        let size = win_for_close.outer_size().ok();
-                        if let (Some(p), Some(s)) = (pos, size) {
-                            let geom = crate::settings::models::WindowGeometry {
-                                x: p.x,
-                                y: p.y,
-                                width: s.width,
-                                height: s.height,
-                            };
-                            if let Ok(mut settings) = crate::settings::load_settings_internal() {
-                                settings.pr_detail.window_state = Some(geom);
-                                let _ = crate::settings::save_settings_internal(&settings);
-                            }
-                        }
-                    }
-                });
+                crate::platform::window_geometry::persist_window_geometry(
+                    &app_for_build,
+                    &win,
+                    &label_for_build,
+                );
 
                 // Schedule a delayed repaint so the window doesn't render blank
                 // on Windows if another window held focus at creation time.
@@ -467,6 +455,11 @@ pub async fn open_whats_new_window(
         let send_result = match result {
             Ok(win) => {
                 let _ = win.set_skip_taskbar(true);
+                crate::platform::window_geometry::persist_window_geometry(
+                    &app_for_build,
+                    &win,
+                    "whats-new",
+                );
                 Ok(())
             }
             Err(e) => {

@@ -54,17 +54,6 @@ pub async fn open_file_viewer_window(
     let app_for_run = app.clone();
     app.run_on_main_thread(move || {
         let result = (|| -> Result<(), String> {
-            // The file-palette is built `always_on_top(true)` so it floats
-            // while the user types. In Win32 z-order a non-TOPMOST window
-            // cannot be placed above a TOPMOST one, so without this the
-            // viewer always renders behind the palette no matter what
-            // `bring_to_front` does. Drop the palette's AOT here so the
-            // newly-focused viewer can actually come on top. The palette
-            // stays visible and remains interactive via mouse click.
-            if let Some(palette) = app_for_run.get_webview_window("file-palette") {
-                let _ = palette.set_always_on_top(false);
-            }
-
             if let Some(win) = app_for_run.get_webview_window(&label) {
                 bring_to_front(&win);
                 return Ok(());
@@ -85,6 +74,7 @@ pub async fn open_file_viewer_window(
             .focused(true)
             .build()
             .map_err(|e| format!("failed to build viewer window: {e}"))?;
+            crate::platform::window_geometry::persist_window_geometry(&app_for_run, &win, &label);
             bring_to_front(&win);
             Ok(())
         })();

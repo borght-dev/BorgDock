@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Kbd, Tabs } from '@/components/shared/primitives';
+import type { ProcessTab } from '@/services/ado/layout';
 import { ActivityTab } from './WorkItemDetailPanel/ActivityTab';
 import { AttachmentsTab } from './WorkItemDetailPanel/AttachmentsTab';
 import { DiscussionRail } from './WorkItemDetailPanel/DiscussionRail';
 import { LinksTab } from './WorkItemDetailPanel/LinksTab';
 import { OverviewTab } from './WorkItemDetailPanel/OverviewTab';
+import { buildDetailTabs } from './WorkItemDetailPanel/partitionFields';
 import { RightRail } from './WorkItemDetailPanel/RightRail';
 import { TitleBlock, type TitleBlockChange } from './WorkItemDetailPanel/TitleBlock';
 import type { AdjacentNav } from './WorkItemDetailPanel/useAdjacentNav';
@@ -63,6 +65,12 @@ interface Props {
   richTextFields: DynamicFieldItem[];
   standardFields: DynamicFieldItem[];
   customFields: DynamicFieldItem[];
+  /** ADO layout-derived custom pages, rendered as extra tabs after Overview. */
+  extraTabs?: ProcessTab[];
+  /** Field reference names ADO marks as belonging to the implicit Details
+   *  page. Anything not in this set and not claimed by an extraTab also
+   *  falls through to Overview. */
+  detailsFieldKeys?: string[];
   attachments: WorkItemAttachment[];
   comments?: WorkItemComment[];
   isLoadingComments?: boolean;
@@ -86,6 +94,8 @@ export function WorkItemDetailPanel(props: Props) {
     richTextFields,
     standardFields,
     customFields,
+    extraTabs,
+    detailsFieldKeys,
     attachments,
     comments,
     isLoadingComments,
@@ -99,7 +109,7 @@ export function WorkItemDetailPanel(props: Props) {
     adjacent,
   } = props;
 
-  const [tab, setTab] = useState<'overview' | 'activity' | 'links' | 'files'>('overview');
+  const [tab, setTab] = useState<string>('overview');
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [values, setValues] = useState<AutoSaveValues>({
     title: item.title,
@@ -197,6 +207,29 @@ export function WorkItemDetailPanel(props: Props) {
     return () => ro.disconnect();
   }, []);
 
+  const detailSlices = useMemo(
+    () =>
+      buildDetailTabs(
+        { richText: richTextFields, standard: standardFields, custom: customFields },
+        detailsFieldKeys,
+        extraTabs,
+      ),
+    [richTextFields, standardFields, customFields, detailsFieldKeys, extraTabs],
+  );
+
+  // If the active tab disappears (e.g. the user navigated to an item
+  // whose layout doesn't include the current page), snap back to Overview.
+  useEffect(() => {
+    if (
+      tab !== 'activity' &&
+      tab !== 'links' &&
+      tab !== 'files' &&
+      !detailSlices.some((s) => s.id === tab)
+    ) {
+      setTab('overview');
+    }
+  }, [detailSlices, tab]);
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--color-surface)]">
@@ -206,11 +239,13 @@ export function WorkItemDetailPanel(props: Props) {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
+    ...detailSlices.map((s) => ({ id: s.id, label: s.label })),
     { id: 'activity', label: 'Activity' },
     { id: 'links', label: 'Links', count: linkedPRs.length || undefined },
     { id: 'files', label: 'Attachments', count: attachments.length || undefined },
   ];
+
+  const activeSlice = detailSlices.find((s) => s.id === tab);
 
   return (
     <div
@@ -307,11 +342,11 @@ export function WorkItemDetailPanel(props: Props) {
             padding: '20px 28px 80px',
           }}
         >
-          {tab === 'overview' && (
+          {activeSlice && (
             <OverviewTab
-              richTextFields={richTextFields}
-              standardFields={standardFields}
-              customFields={customFields}
+              richTextFields={activeSlice.fields.richText}
+              standardFields={activeSlice.fields.standard}
+              customFields={activeSlice.fields.custom}
             />
           )}
           {tab === 'activity' && <ActivityTab />}

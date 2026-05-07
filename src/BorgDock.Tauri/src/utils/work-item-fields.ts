@@ -1,7 +1,10 @@
+import type { AdoFieldMeta } from '@/services/ado/fields';
 import type { DynamicFieldItem, WorkItem, WorkItemAttachment } from '@/types';
 
 // ---- Rich text / standard / custom field classification ----
 
+// Fallback list used when ADO field metadata isn't loaded yet.
+// Once metadata arrives the `type === 'html' | 'history'` check supersedes this.
 export const RICH_TEXT_FIELDS = new Set([
   'System.Description',
   'Microsoft.VSTS.TCM.ReproSteps',
@@ -95,7 +98,23 @@ export function friendlyLabel(key: string): string {
   return last.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
-export function classifyFields(item: WorkItem): {
+function isHtmlType(meta: AdoFieldMeta | undefined): boolean {
+  if (!meta) return false;
+  return meta.type === 'html' || meta.type === 'history';
+}
+
+function isCustomRef(refName: string): boolean {
+  return (
+    refName.startsWith('Custom.') ||
+    refName.startsWith('Microsoft.VSTS.CMMI.') ||
+    (!refName.startsWith('System.') && !refName.startsWith('Microsoft.VSTS.'))
+  );
+}
+
+export function classifyFields(
+  item: WorkItem,
+  fieldDefinitions?: Map<string, AdoFieldMeta> | null,
+): {
   richText: DynamicFieldItem[];
   standard: DynamicFieldItem[];
   custom: DynamicFieldItem[];
@@ -104,11 +123,14 @@ export function classifyFields(item: WorkItem): {
   const standard: DynamicFieldItem[] = [];
   const custom: DynamicFieldItem[] = [];
 
+  const labelFor = (key: string) => fieldDefinitions?.get(key)?.name ?? friendlyLabel(key);
+
   for (const [key, value] of Object.entries(item.fields)) {
     if (SKIP_FIELDS.has(key)) continue;
 
-    const isKnownHtml = RICH_TEXT_FIELDS.has(key);
-    const label = friendlyLabel(key);
+    const meta = fieldDefinitions?.get(key);
+    const isKnownHtml = isHtmlType(meta) || (!meta && RICH_TEXT_FIELDS.has(key));
+    const label = labelFor(key);
 
     // Handle known rich-text fields
     if (isKnownHtml) {
@@ -128,9 +150,8 @@ export function classifyFields(item: WorkItem): {
     const formatted = formatFieldValue(value);
     if (!formatted) continue;
 
-    // Detect HTML in string values that aren't in the known set
-    const isHtml = typeof value === 'string' && looksLikeHtml(value);
-    if (isHtml) {
+    // Detect HTML in string values when metadata isn't available
+    if (!meta && typeof value === 'string' && looksLikeHtml(value)) {
       richText.push({
         fieldKey: key,
         label,
@@ -141,20 +162,15 @@ export function classifyFields(item: WorkItem): {
       continue;
     }
 
-    const isCustom =
-      key.startsWith('Custom.') ||
-      key.startsWith('Microsoft.VSTS.CMMI.') ||
-      (!key.startsWith('System.') && !key.startsWith('Microsoft.VSTS.'));
-
     const field: DynamicFieldItem = {
       fieldKey: key,
       label,
       value: formatted,
       isHtml: false,
-      section: isCustom ? 'custom' : 'standard',
+      section: isCustomRef(key) ? 'custom' : 'standard',
     };
 
-    if (isCustom) {
+    if (isCustomRef(key)) {
       custom.push(field);
     } else {
       standard.push(field);

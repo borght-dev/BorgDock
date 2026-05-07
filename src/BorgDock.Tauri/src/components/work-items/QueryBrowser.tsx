@@ -91,8 +91,8 @@ function QueryTreeItem({
             className={clsx(
               'ml-auto shrink-0 p-0.5 transition-colors',
               node.isFavorite
-                ? 'text-[var(--color-status-yellow)]'
-                : 'text-[var(--color-text-ghost)] opacity-0 group-hover/item:opacity-100 hover:text-[var(--color-status-yellow)]',
+                ? 'text-[var(--color-accent)]'
+                : 'text-[var(--color-text-ghost)] opacity-0 group-hover/item:opacity-100 hover:text-[var(--color-accent)]',
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -213,7 +213,7 @@ export function QueryBrowser({
                       onClick={() => onSelectQuery(q.id)}
                     >
                       <svg
-                        className="h-3 w-3 text-[var(--color-status-yellow)]"
+                        className="h-3 w-3 text-[var(--color-accent)]"
                         viewBox="0 0 16 16"
                         fill="currentColor"
                       >

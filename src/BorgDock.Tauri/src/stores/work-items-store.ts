@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import type { AdoFieldMeta } from '@/services/ado/fields';
+import type { ProcessLayout } from '@/services/ado/layout';
 import type { AdoQuery, WorkItem } from '@/types';
 
 interface WorkItemsState {
@@ -16,6 +18,15 @@ interface WorkItemsState {
   recentWorkItemIds: number[];
   currentUserDisplayName: string;
   isLoading: boolean;
+  fieldDefinitions: Map<string, AdoFieldMeta> | null;
+  processId: string | null;
+  processIdResolved: boolean;
+  /** Map<witFriendlyName, processWitRefName> populated lazily. */
+  witTypeRefs: Map<string, string>;
+  /** Map<witFriendlyName, ProcessLayout | null>. `null` value means we
+   *  attempted to load the layout for this type and it isn't available
+   *  (legacy process, missing perms) — don't retry. */
+  workItemTypeLayouts: Map<string, ProcessLayout | null>;
 
   filteredWorkItems: () => WorkItem[];
   favoriteQueries: () => AdoQuery[];
@@ -38,6 +49,11 @@ interface WorkItemsState {
   setRecentWorkItemIds: (ids: number[]) => void;
   setCurrentUserDisplayName: (name: string) => void;
   setIsLoading: (loading: boolean) => void;
+  setFieldDefinitions: (defs: Map<string, AdoFieldMeta> | null) => void;
+  setProcessId: (id: string | null) => void;
+  setProcessIdResolved: (resolved: boolean) => void;
+  setWitTypeRefs: (refs: Map<string, string>) => void;
+  setWorkItemTypeLayout: (witFriendlyName: string, layout: ProcessLayout | null) => void;
 }
 
 function getField(item: WorkItem, field: string): string {
@@ -78,6 +94,11 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
   recentWorkItemIds: [],
   currentUserDisplayName: '',
   isLoading: false,
+  fieldDefinitions: null,
+  processId: null,
+  processIdResolved: false,
+  witTypeRefs: new Map<string, string>(),
+  workItemTypeLayouts: new Map<string, ProcessLayout | null>(),
 
   filteredWorkItems: () => {
     const {
@@ -226,4 +247,14 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
 
   setCurrentUserDisplayName: (name) => set({ currentUserDisplayName: name }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setFieldDefinitions: (defs) => set({ fieldDefinitions: defs }),
+  setProcessId: (id) => set({ processId: id }),
+  setProcessIdResolved: (resolved) => set({ processIdResolved: resolved }),
+  setWitTypeRefs: (refs) => set({ witTypeRefs: refs }),
+  setWorkItemTypeLayout: (witFriendlyName, layout) =>
+    set((state) => {
+      const next = new Map(state.workItemTypeLayouts);
+      next.set(witFriendlyName, layout);
+      return { workItemTypeLayouts: next };
+    }),
 }));

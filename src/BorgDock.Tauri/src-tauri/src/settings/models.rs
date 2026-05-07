@@ -33,8 +33,6 @@ pub struct AppSettings {
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_palette_roots: Option<Vec<FilePaletteRoot>>,
-    #[serde(default)]
-    pub settings_window: Option<WindowGeometry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -505,8 +503,6 @@ pub struct AgentOverviewSettings {
     #[serde(default)]
     pub auto_open_on_startup: bool,
     #[serde(default)]
-    pub window_state: Option<WindowGeometry>,
-    #[serde(default)]
     pub repo_short_names: std::collections::HashMap<String, String>,
     #[serde(default = "default_notify_after")]
     pub awaiting_notify_after_seconds: u32,
@@ -539,7 +535,6 @@ impl Default for AgentOverviewSettings {
             // values — flip them via Settings → Agent Overview.
             enabled: true,
             auto_open_on_startup: true,
-            window_state: None,
             repo_short_names: std::collections::HashMap::new(),
             awaiting_notify_after_seconds: default_notify_after(),
             awaiting_notify_escalate_seconds: default_notify_escalate(),
@@ -552,23 +547,9 @@ impl Default for AgentOverviewSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WindowGeometry {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PrDetailSettings {
-    /// Persisted from the most recently closed PR detail window. New PR
-    /// windows restore to this geometry instead of always centering.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub window_state: Option<WindowGeometry>,
-}
+pub struct PrDetailSettings {}
 
 #[cfg(test)]
 mod agent_overview_settings_tests {
