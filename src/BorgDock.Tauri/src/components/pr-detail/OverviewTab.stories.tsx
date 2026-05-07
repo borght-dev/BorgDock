@@ -14,24 +14,7 @@ import {
   withPrDetail,
 } from './__fixtures__/pr-detail-data';
 import { getControl } from '../../../.storybook/mocks/control';
-
-// ── Play helpers ───────────────────────────────────────────────
-
-function findButton(label: RegExp): HTMLButtonElement | undefined {
-  return Array.from(document.querySelectorAll('button')).find((b) =>
-    label.test(b.textContent ?? ''),
-  ) as HTMLButtonElement | undefined;
-}
-
-async function waitFor<T>(get: () => T | undefined, timeoutMs = 1500): Promise<T> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const v = get();
-    if (v !== undefined) return v;
-    await new Promise((r) => setTimeout(r, 25));
-  }
-  throw new Error('waitFor: timed out');
-}
+import { findButton, waitFor } from '../../../.storybook/mocks/play-helpers';
 
 // ── Meta ───────────────────────────────────────────────────────
 
@@ -106,6 +89,7 @@ export const MergeConflict: Story = {
 };
 
 export const StaleChecks: Story = {
+  name: 'StaleChecks (placeholder — production has no stale rendering yet)',
   decorators: [withPrDetail(staleChecksPr)],
   args: { pr: staleChecksPr },
   // note: production currently has no stale-check rendering — the OverviewTab and
