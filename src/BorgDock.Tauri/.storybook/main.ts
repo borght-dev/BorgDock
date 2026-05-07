@@ -121,6 +121,14 @@ const config: StorybookConfig = {
         find: '@tauri-apps/plugin-autostart',
         replacement: resolve(here, 'mocks/tauri-plugin-autostart.ts'),
       },
+      {
+        find: '@tauri-apps/plugin-updater',
+        replacement: resolve(here, 'mocks/tauri-plugin-updater.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-notification',
+        replacement: resolve(here, 'mocks/tauri-plugin-notification.ts'),
+      },
       { find: '@/services/windows', replacement: resolve(here, 'mocks/services-windows.ts') },
       {
         find: '@/services/ado/workitems',
