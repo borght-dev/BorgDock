@@ -56,6 +56,21 @@ pub fn kind_of(label: &str) -> &str {
     label
 }
 
+/// Minimum size (in *logical* CSS pixels) a saved geometry must clear before
+/// it's applied verbatim. Older geometry below this floor — typically saved
+/// before a layout change widened the window's content — gets stretched up
+/// to the floor on restore so the window opens at a usable size.
+///
+/// Keep "main" in sync with `tauri.conf.json`'s `minWidth`/`minHeight` for
+/// the main window. Other kinds fall back to no clamp here and rely on the
+/// `min_inner_size` configured by their builders.
+fn min_logical_size_for_kind(kind: &str) -> Option<(f64, f64)> {
+    match kind {
+        "main" => Some((1200.0, 720.0)),
+        _ => None,
+    }
+}
+
 /// In-memory cache + on-disk JSON store for window geometry. Lives behind
 /// `Arc<...>` and is registered as Tauri-managed state in `setup()`.
 /// Mutations (`put`) are non-blocking — they signal a debounced flusher
@@ -167,7 +182,21 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
             .unwrap_or_default();
 
         if is_position_on_screen((g.x, g.y), &monitors) {
-            let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(g.width, g.height)));
+            let (mut width, mut height) = (g.width, g.height);
+            if let Some((min_lw, min_lh)) = min_logical_size_for_kind(&kind) {
+                let scale = win.scale_factor().unwrap_or(1.0);
+                let min_w_phys = (min_lw * scale).round() as u32;
+                let min_h_phys = (min_lh * scale).round() as u32;
+                if width < min_w_phys || height < min_h_phys {
+                    log::info!(
+                        "persist_window_geometry[{label}]: clamping saved size {}x{} up to min {}x{} (scale={})",
+                        width, height, min_w_phys, min_h_phys, scale
+                    );
+                    width = width.max(min_w_phys);
+                    height = height.max(min_h_phys);
+                }
+            }
+            let _ = win.set_size(tauri::Size::Physical(PhysicalSize::new(width, height)));
             let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
             if g.maximized {
                 let _ = win.maximize();
@@ -232,6 +261,14 @@ mod tests {
         assert_eq!(kind_of("pr-detail-Gomocha-FSP-fsp-horizon-1571"), "pr-detail");
         assert_eq!(kind_of("file-viewer-abc123def456"), "file-viewer");
         assert_eq!(kind_of("workitem-detail-7777"), "workitem-detail");
+    }
+
+    #[test]
+    fn min_logical_size_only_set_for_main() {
+        assert_eq!(min_logical_size_for_kind("main"), Some((1200.0, 720.0)));
+        assert!(min_logical_size_for_kind("sql").is_none());
+        assert!(min_logical_size_for_kind("pr-detail").is_none());
+        assert!(min_logical_size_for_kind("file-palette").is_none());
     }
 
     #[test]
