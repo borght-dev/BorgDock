@@ -218,7 +218,7 @@ export interface WithPrDetailOptions {
 // initial shape the production store ships with; if that's undefined,
 // fall back to an empty object cast as AppSettings (the section/tab
 // stories will rarely depend on settings beyond `repos`).
-const SETTINGS_BASELINE: AppSettings =
+export const SETTINGS_BASELINE: AppSettings =
   (useSettingsStore.getState().settings as AppSettings | undefined) ??
   ({} as AppSettings);
 const UI_BASELINE = useUiStore.getState();
