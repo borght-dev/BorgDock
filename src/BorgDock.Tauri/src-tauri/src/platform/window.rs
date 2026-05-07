@@ -159,20 +159,31 @@ fn force_repaint(win: &WebviewWindow) {
 #[tauri::command]
 pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     let label = window.label().to_string();
+    log::info!("window_ready[{label}]: entry");
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
+    let label_for_log = label.clone();
+    log::info!("window_ready[{label}]: dispatching to main thread");
     app.run_on_main_thread(move || {
+        log::info!("window_ready[{label_for_log}]: on main thread");
         let result = (|| -> Result<(), String> {
-            if let Some(win) = app_for_run.get_webview_window(&label) {
+            if let Some(win) = app_for_run.get_webview_window(&label_for_log) {
+                log::info!("window_ready[{label_for_log}]: calling show()");
                 win.show().map_err(|e| e.to_string())?;
+                log::info!("window_ready[{label_for_log}]: show ok, calling set_focus()");
                 win.set_focus().map_err(|e| e.to_string())?;
+                log::info!("window_ready[{label_for_log}]: set_focus ok");
+            } else {
+                log::warn!("window_ready[{label_for_log}]: window not found");
             }
             Ok(())
         })();
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    let r = rx.await.map_err(|e| e.to_string())?;
+    log::info!("window_ready[{label}]: returning ok={}", r.is_ok());
+    r
 }
 
 #[tauri::command]
