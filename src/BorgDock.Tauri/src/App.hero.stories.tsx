@@ -13,11 +13,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import App from './App';
 import {
+  CHECKS_FOR_REF,
   freezeAnimations,
   HeroCompositionFrame,
   MainWindowFrame,
   PRS_CANONICAL,
   reposSettings,
+  SETTINGS_BASELINE,
   WORK_ITEMS_CANONICAL,
   withMainWindow,
 } from './components/main/__fixtures__/main-window-data';
@@ -45,13 +47,17 @@ type Story = StoryObj<typeof App>;
 //   - githubResponses.getOpenPRs returns the bare PullRequest[] that
 //     PrDetailApp fetches (PRS_CANONICAL contains PullRequestWithChecks[];
 //     extracting .pullRequest gives the bare shape getOpenPRs expects).
-//   - getCheckRunsForRef returns the checks for PR #42's headRef so the
-//     PR Detail panel renders CI status correctly.
-//   - window_ready is registered as an invoke stub so PrDetailApp's
-//     reveal effect resolves silently (DEFAULT_INVOKES covers load_settings
-//     and cache_init; window_ready is specific to PrDetailApp).
-
-const PR_42 = PRS_CANONICAL.find((p) => p.pullRequest.number === 42)!;
+//   - getCheckRunsForRef returns CHECKS_FOR_REF.default (a non-empty
+//     CheckRun[]) so the PR Detail panel renders visible CI status. The
+//     wrapped PR_42.checks array is empty in BASE_PR_WITH_CHECKS, which
+//     would leave the right column thin.
+//   - load_settings invoke is seeded with SETTINGS_BASELINE — PrDetailApp's
+//     hydration calls invoke('load_settings') directly and immediately
+//     reads settings.ui?.theme. Without a real settings shape, that throws
+//     TypeError and the panel surfaces "Failed to load pull request"
+//     instead of the intended detail view (mirrors PRDetailApp.stories.tsx).
+//   - window_ready is registered as a no-op invoke stub so PrDetailApp's
+//     reveal effect resolves silently.
 
 export const Hero_ReadmeMain: Story = {
   decorators: [
@@ -61,11 +67,12 @@ export const Hero_ReadmeMain: Story = {
       pullRequests: PRS_CANONICAL,
       settings: reposSettings(),
       invokeResponses: {
+        load_settings: SETTINGS_BASELINE,
         window_ready: undefined,
       },
       githubResponses: {
         getOpenPRs: PRS_CANONICAL.map((p) => p.pullRequest),
-        getCheckRunsForRef: PR_42.checks,
+        getCheckRunsForRef: CHECKS_FOR_REF.default,
       },
     }),
     (Story) => {
