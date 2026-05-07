@@ -61,6 +61,7 @@ const config: StorybookConfig = {
       '@/services/github/auth': resolve(here, 'mocks/services-github-auth.ts'),
       '@/services/github/reviewThreads': resolve(here, 'mocks/services-github-reviewThreads.ts'),
       '@/services/github/singleton': resolve(here, 'mocks/services-github-singleton.ts'),
+      '@/services/github/mutations': resolve(here, 'mocks/services-github-mutations.ts'),
       '@/services/github': resolve(here, 'mocks/services-github-barrel.ts'),
       '@/services/pr-actions': resolve(here, 'mocks/services-pr-actions.ts'),
       '@/generated/changelog': resolve(here, 'mocks/generated-changelog.ts'),

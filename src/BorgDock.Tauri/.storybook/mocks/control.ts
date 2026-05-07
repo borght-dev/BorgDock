@@ -8,6 +8,7 @@ import type { WorkItem, WorkItemComment } from '../../src/types/work-item';
 import type { PullRequest, PullRequestCommit, PullRequestFileChange } from '../../src/types/pull-request';
 import type { CheckRun } from '../../src/types/check-run';
 import type { ReviewThread } from '../../src/types/review-thread';
+import type { ClaudeReviewComment } from '../../src/types/claude-review';
 
 export interface InvokeRecord {
   command: string;
@@ -79,6 +80,15 @@ export interface WebviewWindowRecord {
   options: Record<string, unknown>;
 }
 
+// Phase 11 — raw review shape (mirrors buildDiscussionItems.ts)
+export interface RawReview {
+  id: number;
+  state: string;
+  body: string | null;
+  submitted_at: string;
+  user: { login: string } | null;
+}
+
 // Phase 11 — github service responses
 export type GithubResponses = {
   getOpenPRs?:
@@ -93,6 +103,9 @@ export type GithubResponses = {
   getCommitFiles?: PullRequestFileChange[] | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
   getPRCommits?: PullRequestCommit[] | (() => PullRequestCommit[] | Promise<PullRequestCommit[]>);
   getReviewThreads?: ReviewThread[] | (() => ReviewThread[] | Promise<ReviewThread[]>);
+  // DiscussionTab additions
+  getReviews?: RawReview[] | (() => RawReview[] | Promise<RawReview[]>);
+  getAllComments?: ClaudeReviewComment[] | (() => ClaudeReviewComment[] | Promise<ClaudeReviewComment[]>);
 };
 
 // Phase 11 — pr-actions overrides

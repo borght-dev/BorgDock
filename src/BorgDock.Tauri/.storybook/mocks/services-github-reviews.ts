@@ -4,9 +4,11 @@
 // getAllComments and getReviews from the @/services/github barrel. This stub
 // lets those barrel consumers resolve without hitting the production module.
 //
-// If a future story needs specific review data, expand githubResponses in
-// control.ts and read from it here (mirroring the pulls mock pattern).
+// Stories seed data via:
+//   getControl().githubResponses.getReviews = [...]
+//   getControl().githubResponses.getAllComments = [...]
 
+import type { RawReview } from './control';
 import { getControl } from './control';
 
 export async function getReviews(
@@ -14,7 +16,7 @@ export async function getReviews(
   _owner: string,
   _repo: string,
   _prNumber: number,
-): Promise<unknown[]> {
+): Promise<RawReview[]> {
   const r = getControl().githubResponses.getReviews;
   if (typeof r === 'function') return r();
   return r ?? [];
@@ -43,7 +45,7 @@ export async function getAllComments(
   _owner: string,
   _repo: string,
   _prNumber: number,
-): Promise<unknown[]> {
+): Promise<import('../../src/types/claude-review').ClaudeReviewComment[]> {
   const r = getControl().githubResponses.getAllComments;
   if (typeof r === 'function') return r();
   return r ?? [];
