@@ -8,7 +8,13 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type { AppSettings, PullRequestWithChecks, WorkItem, WorkItemRelation } from '@/types';
+import type {
+  AppSettings,
+  CheckRun,
+  PullRequestWithChecks,
+  WorkItem,
+  WorkItemRelation,
+} from '@/types';
 import { type GithubResponses, getControl } from '../../../../.storybook/mocks/control';
 
 // ── Deep-merge helper ─────────────────────────────────────────
@@ -246,7 +252,7 @@ export const PRS_EMPTY: PullRequestWithChecks[] = [];
 
 // ── Check fixtures ────────────────────────────────────────────
 
-const BASE_CHECKS = [
+const BASE_CHECKS: CheckRun[] = [
   {
     id: 1001,
     name: 'CI / build',
@@ -263,7 +269,7 @@ const BASE_CHECKS = [
   },
 ];
 
-const FAILING_CHECKS = [
+const FAILING_CHECKS: CheckRun[] = [
   {
     id: 2001,
     name: 'CI / build',
@@ -280,7 +286,7 @@ const FAILING_CHECKS = [
   },
 ];
 
-export const CHECKS_FOR_REF: Record<string, typeof BASE_CHECKS> = {
+export const CHECKS_FOR_REF: Record<string, CheckRun[]> = {
   default: BASE_CHECKS,
   failing: FAILING_CHECKS,
 };
