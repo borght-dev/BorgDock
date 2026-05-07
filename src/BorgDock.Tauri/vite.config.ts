@@ -26,7 +26,11 @@ export default defineConfig({
     __BORGDOCK_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
-    react(),
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
     tailwindcss(),
     changelogPlugin({
       packageRoot: __dirname,
