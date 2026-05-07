@@ -25,6 +25,7 @@ import {
   releaseSingleHighlight,
   shapeStoryHistory,
 } from './__fixtures__/whats-new-data';
+import { HeroBanner } from './HeroBanner';
 import { WhatsNewApp } from './WhatsNewApp';
 
 interface PluginStoreSeed {
@@ -387,3 +388,24 @@ export const StoreHydrationFailed = story({
   storeBehavior: 'reject',
   appVersion: '1.2.0',
 });
+
+// ---------------------------------------------------------------------------
+// Hero_WhatsNewTemplate
+//
+// Template story used as the baseline for per-release whatsnew banner shots.
+// Per-release stories (added in release PRs) copy this template and add their
+// own parameters.screenshot pointing at the release-specific PNG asset.
+//
+// HeroBanner signature: { hero: { src: string; alt: string } | null; kind: Kind }
+// When hero=null the component renders the gradient + icon fallback at 74px height.
+// ---------------------------------------------------------------------------
+
+export const Hero_WhatsNewTemplate: StoryObj = {
+  // No parameters.screenshot here — this is the *template*. Per-release
+  // stories copy this story and add their own parameters.screenshot.
+  render: () => (
+    <div style={{ width: 450, height: 74, padding: 0 }}>
+      <HeroBanner hero={null} kind="new" />
+    </div>
+  ),
+};
