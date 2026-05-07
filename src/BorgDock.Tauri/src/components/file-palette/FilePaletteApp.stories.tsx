@@ -96,6 +96,7 @@ function loadedPalette(
     list_worktrees_bare: [wtMainBorgDock],
     list_root_files: { entries: mediumFileIndex, truncated: false },
     git_changed_files: changedFilesEmpty,
+    read_text_file: tsxFileSample,
     save_settings: undefined,
     open_file_viewer_window: undefined,
     open_in_editor: undefined,
@@ -365,7 +366,7 @@ export const AddCustomRoot: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const addBtn = await canvas.findByRole('button', { name: /add.*root/i });
+    const addBtn = await canvas.findByRole('button', { name: /add custom path/i });
     await userEvent.click(addBtn);
   },
 };

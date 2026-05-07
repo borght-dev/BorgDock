@@ -89,9 +89,9 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
     return () => { cancelled = true; };
   }, [path]);
 
-  const ext = relPath.includes('.') ? relPath.split('.').pop() : 'txt';
-  const lines = state.kind === 'ok' ? state.content.split('\n').length : 0;
-  const sizeKb = state.kind === 'ok' ? Math.round(state.content.length / 102.4) / 10 : 0;
+  const ext = relPath?.includes('.') ? relPath.split('.').pop() : 'txt';
+  const lines = state.kind === 'ok' && state.content ? state.content.split('\n').length : 0;
+  const sizeKb = state.kind === 'ok' && state.content ? Math.round(state.content.length / 102.4) / 10 : 0;
 
   return (
     <div className="bd-fp-preview bd-fp-preview--file">
