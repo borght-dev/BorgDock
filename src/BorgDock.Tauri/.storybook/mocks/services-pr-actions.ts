@@ -29,6 +29,10 @@ async function record<T>(name: string, args: unknown, defaultResult: T): Promise
   ctrl.invocations.push({ command: `prAction.${name}`, args });
   const override = ctrl.prActionResponses[name] as Behavior | undefined;
   if (override === '__throw__') throw new Error(`mock prAction.${name} threw`);
+  // '__fail__' mimics production's "caught error → return false" path.
+  // The cast is only correct when T extends boolean — which holds for all
+  // seven current production functions. Revisit if a non-boolean mutation
+  // is added.
   if (override === '__fail__') return false as unknown as T;
   if (typeof override === 'function') return (await override(args)) as T;
   return defaultResult;

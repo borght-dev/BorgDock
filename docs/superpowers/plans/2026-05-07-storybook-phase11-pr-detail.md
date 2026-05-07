@@ -131,10 +131,10 @@ Inside the `reset()` body (around line 174–201), add the resets at the end (af
 
       // Phase 11
       ctrl.githubResponses = {};
-      for (const k of Object.keys(ctrl.prActionResponses)) delete ctrl.prActionResponses[k];
+      ctrl.prActionResponses = {};
 ```
 
-(We delete-keys-in-place on `prActionResponses` rather than reassigning so any downstream reference holders stay valid.)
+Both fields use simple reassignment to match the `pluginDialog` precedent. Mocks read via `getControl().<field>` on each call, so no captured references exist that need preservation.
 
 - [ ] **Step 6: TypeScript check**
 
