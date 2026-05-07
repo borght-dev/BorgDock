@@ -3044,6 +3044,7 @@ body.sql-resizing-v .sql-resize-handle {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
   }
   .bd-mainwindow__left,
   .bd-mainwindow__right {
