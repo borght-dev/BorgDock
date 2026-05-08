@@ -8,22 +8,14 @@ import { getGitHubToken } from '@/services/github/auth';
 import { getCheckRunsForRef } from '@/services/github/checks';
 import { getOpenPRs } from '@/services/github/pulls';
 import { initClient } from '@/services/github/singleton';
-import {
-  PR_REFRESHED_EVENT,
-  type PrRefreshedDetail,
-} from '@/stores/pr-store';
+import { PR_REFRESHED_EVENT, type PrRefreshedDetail } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
 import { PrDetailPanel } from './PRDetailPanel';
 
 const XIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-    <path
-      d="M2 2l6 6M8 2l-6 6"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-    />
+    <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
   </svg>
 );
 
@@ -220,14 +212,21 @@ export function PrDetailApp() {
     </div>
   );
 
+  // Playwright wait-target: the first IPC roundtrip (load_settings + cache
+  // peek) has resolved; the window is rendering its real surface (error,
+  // spinner-with-cached-PR, or detail panel). Absent until `isLoading`
+  // flips to false.
+  const appReady = !isLoading ? 'true' : undefined;
+
   if (error) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-background)]">
+      <div
+        className="flex h-screen flex-col bg-[var(--color-background)]"
+        data-app-ready={appReady}
+      >
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-[13px] text-[var(--color-text-muted)]">
-            {error}
-          </p>
+          <p className="text-[13px] text-[var(--color-text-muted)]">{error}</p>
         </div>
       </div>
     );
@@ -235,7 +234,10 @@ export function PrDetailApp() {
 
   if (isLoading || !pr) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-background)]">
+      <div
+        className="flex h-screen flex-col bg-[var(--color-background)]"
+        data-app-ready={appReady}
+      >
         {preloadHeader}
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
@@ -245,7 +247,7 @@ export function PrDetailApp() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-background)]">
+    <div className="flex h-screen flex-col bg-[var(--color-background)]" data-app-ready={appReady}>
       <div className="relative flex-1 overflow-y-auto">
         <PrDetailPanel pr={pr} popOutWindow />
       </div>

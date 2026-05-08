@@ -1,27 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings } from '@/types/settings';
-import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
-import { RailSearchInput } from './RailSearchInput';
-import { RailSectionList } from './RailSectionList';
-import { RailSearchResults } from './RailSearchResults';
-import { PulseProvider } from './useFieldPulse';
-// Existing section components — bodies are rewritten in later tasks.
-import { GitHubSection }        from './GitHubSection';
-import { RepoSection }          from './RepoSection';
-import { AdoSection }           from './AdoSection';
-import { SqlSection }           from './SqlSection';
-import { AppearanceSection }    from './AppearanceSection';
-import { NotificationSection }  from './NotificationSection';
-import { ClaudeSection }        from './ClaudeSection';
-import { ClaudeApiSection }     from './ClaudeApiSection';
+import { AdoSection } from './AdoSection';
 import { AgentOverviewSection } from './AgentOverviewSection';
-import { UpdateSection }        from './UpdateSection';
-import { MaintenanceSection }   from './MaintenanceSection';
-
+import { AppearanceSection } from './AppearanceSection';
+import { ClaudeApiSection } from './ClaudeApiSection';
+import { ClaudeSection } from './ClaudeSection';
+// Existing section components — bodies are rewritten in later tasks.
+import { GitHubSection } from './GitHubSection';
+import { MaintenanceSection } from './MaintenanceSection';
+import { NotificationSection } from './NotificationSection';
+import { RailSearchInput } from './RailSearchInput';
+import { RailSearchResults } from './RailSearchResults';
+import { RailSectionList } from './RailSectionList';
+import { RepoSection } from './RepoSection';
+import { SqlSection } from './SqlSection';
+import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
+import { UpdateSection } from './UpdateSection';
+import { PulseProvider } from './useFieldPulse';
 
 const STORAGE_KEY = 'settings.lastSection';
 
@@ -86,7 +85,9 @@ export function SettingsApp() {
         setActive(e.payload as SettingsSectionId);
       }
     });
-    return () => { unlistenP.then((un) => un()); };
+    return () => {
+      unlistenP.then((un) => un());
+    };
   }, []);
 
   // Debounced save + flush on window close
@@ -117,17 +118,50 @@ export function SettingsApp() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   const sectionContent = useMemo(() => {
     switch (active) {
-      case 'github':         return <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />;
-      case 'repos':          return <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />;
-      case 'ado':            return <AdoSection azureDevOps={settings.azureDevOps} onChange={(azureDevOps) => update({ azureDevOps })} />;
-      case 'sql':            return <SqlSection sql={settings.sql} onChange={(sql) => update({ sql })} />;
-      case 'appearance':     return <AppearanceSection ui={settings.ui} onChange={(ui) => update({ ui })} />;
-      case 'notif':          return <NotificationSection notifications={settings.notifications} onChange={(notifications) => update({ notifications })} />;
-      case 'claude':         return <ClaudeSection claudeCode={settings.claudeCode} onChange={(claudeCode) => update({ claudeCode })} />;
-      case 'claude-api':     return <ClaudeApiSection claudeApi={settings.claudeApi} onChange={(claudeApi) => update({ claudeApi })} />;
-      case 'agent-overview': return <AgentOverviewSection />;
-      case 'updates':        return <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />;
-      case 'maintenance':    return <MaintenanceSection />;
+      case 'github':
+        return <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />;
+      case 'repos':
+        return <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />;
+      case 'ado':
+        return (
+          <AdoSection
+            azureDevOps={settings.azureDevOps}
+            onChange={(azureDevOps) => update({ azureDevOps })}
+          />
+        );
+      case 'sql':
+        return <SqlSection sql={settings.sql} onChange={(sql) => update({ sql })} />;
+      case 'appearance':
+        return <AppearanceSection ui={settings.ui} onChange={(ui) => update({ ui })} />;
+      case 'notif':
+        return (
+          <NotificationSection
+            notifications={settings.notifications}
+            onChange={(notifications) => update({ notifications })}
+          />
+        );
+      case 'claude':
+        return (
+          <ClaudeSection
+            claudeCode={settings.claudeCode}
+            onChange={(claudeCode) => update({ claudeCode })}
+          />
+        );
+      case 'claude-api':
+        return (
+          <ClaudeApiSection
+            claudeApi={settings.claudeApi}
+            onChange={(claudeApi) => update({ claudeApi })}
+          />
+        );
+      case 'agent-overview':
+        return <AgentOverviewSection />;
+      case 'updates':
+        return (
+          <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />
+        );
+      case 'maintenance':
+        return <MaintenanceSection />;
     }
   }, [active, settings]);
 
@@ -135,29 +169,37 @@ export function SettingsApp() {
 
   return (
     <PulseProvider value={{ pulseAnchor, setPulseAnchor }}>
-    <div className="flex h-screen flex-col bg-[var(--color-background)] text-[var(--color-text-primary)]">
-      <WindowTitleBar
-        title="BorgDock"
-        meta={
-          <span className="ml-2 flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
-            <span className="text-[var(--color-text-faint)]">›</span>
-            <span className="font-medium text-[var(--color-text-secondary)]">Settings</span>
-            <span className="text-[var(--color-text-faint)]">›</span>
-            <span>{breadcrumb}</span>
-          </span>
-        }
-      />
-      <div className="grid flex-1 min-h-0" style={{ gridTemplateColumns: '232px 1fr' }}>
-        <aside
-          className="flex flex-col border-r border-[var(--color-subtle-border)]"
-          style={{ background: 'linear-gradient(180deg, var(--color-sidebar-gradient-top), var(--color-sidebar-gradient-bottom))' }}
-        >
-          <div className="px-3.5 pb-2.5 pt-3.5">
-            <RailSearchInput value={search} onChange={setSearch} />
-          </div>
-          <div className="flex-1 overflow-auto px-2 pb-3.5 pt-1">
-            {search.trim()
-              ? <RailSearchResults
+      {/* `data-app-ready` flips on once the settings store finishes its first
+        load. Playwright waits on this before driving the window. */}
+      <div
+        className="flex h-screen flex-col bg-[var(--color-background)] text-[var(--color-text-primary)]"
+        data-app-ready={hasLoaded ? 'true' : undefined}
+      >
+        <WindowTitleBar
+          title="BorgDock"
+          meta={
+            <span className="ml-2 flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
+              <span className="text-[var(--color-text-faint)]">›</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">Settings</span>
+              <span className="text-[var(--color-text-faint)]">›</span>
+              <span>{breadcrumb}</span>
+            </span>
+          }
+        />
+        <div className="grid flex-1 min-h-0" style={{ gridTemplateColumns: '232px 1fr' }}>
+          <aside
+            className="flex flex-col border-r border-[var(--color-subtle-border)]"
+            style={{
+              background:
+                'linear-gradient(180deg, var(--color-sidebar-gradient-top), var(--color-sidebar-gradient-bottom))',
+            }}
+          >
+            <div className="px-3.5 pb-2.5 pt-3.5">
+              <RailSearchInput value={search} onChange={setSearch} />
+            </div>
+            <div className="flex-1 overflow-auto px-2 pb-3.5 pt-1">
+              {search.trim() ? (
+                <RailSearchResults
                   query={search}
                   onSelect={({ sectionId, anchorId }) => {
                     setActive(sectionId);
@@ -166,19 +208,19 @@ export function SettingsApp() {
                     requestAnimationFrame(() => setPulseAnchor(anchorId));
                   }}
                 />
-              : <RailSectionList active={active} onSelect={setActive} />}
-          </div>
-          <div className="flex items-center gap-2 border-t border-[var(--color-subtle-border)] px-3.5 py-2.5 text-[10.5px] text-[var(--color-text-muted)]">
-            <span className="ml-auto font-mono">v{__BORGDOCK_VERSION__}</span>
-          </div>
-        </aside>
-        <main className="overflow-auto bg-[var(--color-background)]">
-          <div className="mx-auto max-w-[720px] px-9 pb-16 pt-7">
-            {sectionContent}
-          </div>
-        </main>
+              ) : (
+                <RailSectionList active={active} onSelect={setActive} />
+              )}
+            </div>
+            <div className="flex items-center gap-2 border-t border-[var(--color-subtle-border)] px-3.5 py-2.5 text-[10.5px] text-[var(--color-text-muted)]">
+              <span className="ml-auto font-mono">v{__BORGDOCK_VERSION__}</span>
+            </div>
+          </aside>
+          <main className="overflow-auto bg-[var(--color-background)]">
+            <div className="mx-auto max-w-[720px] px-9 pb-16 pt-7">{sectionContent}</div>
+          </main>
+        </div>
       </div>
-    </div>
     </PulseProvider>
   );
 }

@@ -81,6 +81,10 @@ function readBool(key: string, fallback: boolean) {
 
 export function SqlApp() {
   const [sqlSettings, setSqlSettings] = useState<SqlSettings | null>(null);
+  // Playwright wait-target: flips to true after the initial load_settings
+  // roundtrip resolves (success OR failure — either way the window is
+  // rendering its real surface, not pre-mount).
+  const [appReady, setAppReady] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState<string>('');
   const { schema, status: schemaStatus, refresh: refreshSchema } = useSqlSchema(selectedConnection);
 
@@ -156,6 +160,8 @@ export function SqlApp() {
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
+      } finally {
+        setAppReady(true);
       }
 
       // Reveal the window after settings have been applied. Position and
@@ -503,7 +509,7 @@ export function SqlApp() {
   const railTrack = railCollapsed ? '36px 0 1fr' : `${railWidth}px 6px 1fr`;
 
   return (
-    <div className="sql-app">
+    <div className="sql-app" data-app-ready={appReady ? 'true' : undefined}>
       <WindowTitleBar title="BorgDock SQL" meta={<Kbd>Ctrl+F10</Kbd>} />
 
       {/* ── Toolbar ─────────────────────────────────────── */}

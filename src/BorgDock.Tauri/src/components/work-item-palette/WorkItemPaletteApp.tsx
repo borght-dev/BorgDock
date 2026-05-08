@@ -5,21 +5,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { Dot, Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
-import { MiniAvatar, avatarToneFor } from '@/components/work-items/shared/wi-visuals';
 import { ChipInput } from '@/components/work-item-palette/ChipInput';
 import { FilterChip } from '@/components/work-item-palette/FilterChip';
 import { GroupSeg } from '@/components/work-item-palette/GroupSeg';
-import { WorkItemPaletteRow } from '@/components/work-item-palette/WorkItemPaletteRow';
 import { applyOperators, parseOperators } from '@/components/work-item-palette/parseOperators';
 import {
   type GroupBy,
-  type ItemGroup,
   groupItems,
+  type ItemGroup,
 } from '@/components/work-item-palette/useGroupedItems';
-import {
-  saveCurrentPosition,
-  useWorkItemPaletteSearch,
-} from '@/hooks/useWorkItemPaletteSearch';
+import { WorkItemPaletteRow } from '@/components/work-item-palette/WorkItemPaletteRow';
+import { avatarToneFor, MiniAvatar } from '@/components/work-items/shared/wi-visuals';
+import { saveCurrentPosition, useWorkItemPaletteSearch } from '@/hooks/useWorkItemPaletteSearch';
 
 const PREFS_KEY = 'borgdock-palette-prefs';
 const NAVLIST_KEY = 'borgdock-palette-navlist';
@@ -85,10 +82,7 @@ function savePrefs(prefs: Prefs) {
 
 function saveNavlist(ids: number[]) {
   try {
-    localStorage.setItem(
-      NAVLIST_KEY,
-      JSON.stringify({ ids, savedAt: Date.now() }),
-    );
+    localStorage.setItem(NAVLIST_KEY, JSON.stringify({ ids, savedAt: Date.now() }));
   } catch {
     /* ignore */
   }
@@ -262,7 +256,10 @@ export function WorkItemPaletteApp() {
 
   let globalOffset = 0;
   return (
-    <div className="bd-wp-palette">
+    // The palette shell is interactive from first paint — search input,
+    // filters, and the empty state all render before the hook's IPC
+    // resolves. Marking ready synchronously matches that UX.
+    <div className="bd-wp-palette" data-app-ready="true">
       <WindowTitleBar title="Work Items" meta={<Kbd>Ctrl+F9</Kbd>} />
 
       <div className="bd-wp-search-wrap">

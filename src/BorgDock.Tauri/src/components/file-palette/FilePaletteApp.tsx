@@ -2,28 +2,38 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
+import { Kbd } from '@/components/shared/primitives';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
-import { Kbd } from '@/components/shared/primitives';
-import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
-import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
-import { joinRootAndRel } from './join-path';
-import { parseQuery, type ParsedQuery } from './parse-query';
-import { buildRootEntries, FilePaletteRootsColumn, type RootEntry } from './FilePaletteRootsColumn';
+import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
 import { FilePalettePreviewPane } from './FilePalettePreviewPane';
-import { FilePaletteSearchPane } from './FilePaletteSearchPane';
 import { FilePaletteResultsList, type ResultEntry } from './FilePaletteResultsList';
+import { buildRootEntries, FilePaletteRootsColumn, type RootEntry } from './FilePaletteRootsColumn';
+import { FilePaletteSearchPane } from './FilePaletteSearchPane';
+import { joinRootAndRel } from './join-path';
+import { type ParsedQuery, parseQuery } from './parse-query';
 import { useBackgroundIndexer } from './use-background-indexer';
 import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
 import { useWorktreeChangeCounts } from './use-worktree-change-counts';
-import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
 
-interface WorktreeEntry { path: string; branchName: string; isMainWorktree: boolean; }
+interface WorktreeEntry {
+  path: string;
+  branchName: string;
+  isMainWorktree: boolean;
+}
 
 export type Selection =
-  | { kind: 'diff'; source: 'changes'; path: string; baseline: 'HEAD' | 'mergeBaseDefault'; group: 'local' | 'vsBase' }
+  | {
+      kind: 'diff';
+      source: 'changes';
+      path: string;
+      baseline: 'HEAD' | 'mergeBaseDefault';
+      group: 'local' | 'vsBase';
+    }
   | { kind: 'file'; source: 'results'; path: string; line?: number; symbol?: string };
 
 export function FilePaletteApp() {
@@ -70,12 +80,18 @@ export function FilePaletteApp() {
         setSettings(s);
         const repos = s.repos.filter((r) => r.enabled && r.worktreeBasePath);
         const collected: Record<string, string[]> = {};
-        await Promise.allSettled(repos.map(async (r) => {
-          try {
-            const wts = await invoke<WorktreeEntry[]>('list_worktrees_bare', { basePath: r.worktreeBasePath });
-            collected[`${r.owner}/${r.name}`] = wts.map((w) => w.path);
-          } catch { collected[`${r.owner}/${r.name}`] = []; }
-        }));
+        await Promise.allSettled(
+          repos.map(async (r) => {
+            try {
+              const wts = await invoke<WorktreeEntry[]>('list_worktrees_bare', {
+                basePath: r.worktreeBasePath,
+              });
+              collected[`${r.owner}/${r.name}`] = wts.map((w) => w.path);
+            } catch {
+              collected[`${r.owner}/${r.name}`] = [];
+            }
+          }),
+        );
         setWorktreePathsByRepo(collected);
         setActiveRoot(s.ui?.filePaletteActiveRootPath ?? null);
         setFavoritesOnly(s.ui?.filePaletteFavoritesOnly ?? false);
@@ -100,9 +116,7 @@ export function FilePaletteApp() {
   const visibleRootPaths = useMemo(
     () =>
       roots
-        .filter((r) =>
-          r.source === 'custom' || (favoritesOnly ? favoritePaths.has(r.path) : true),
-        )
+        .filter((r) => r.source === 'custom' || (favoritesOnly ? favoritePaths.has(r.path) : true))
         .map((r) => r.path),
     [roots, favoritesOnly, favoritePaths],
   );
@@ -137,24 +151,29 @@ export function FilePaletteApp() {
     }
   }, [scope]);
 
-  const selectRoot = useCallback(async (path: string) => {
-    refreshOneCount(path);
-    setActiveRoot(path);
-    setRootsCollapsed(true);
-    try {
-      const s = await invoke<AppSettings>('load_settings');
-      await invoke('save_settings', {
-        settings: {
-          ...s,
-          ui: {
-            ...s.ui,
-            filePaletteActiveRootPath: path,
-            filePaletteRootsCollapsed: true,
+  const selectRoot = useCallback(
+    async (path: string) => {
+      refreshOneCount(path);
+      setActiveRoot(path);
+      setRootsCollapsed(true);
+      try {
+        const s = await invoke<AppSettings>('load_settings');
+        await invoke('save_settings', {
+          settings: {
+            ...s,
+            ui: {
+              ...s.ui,
+              filePaletteActiveRootPath: path,
+              filePaletteRootsCollapsed: true,
+            },
           },
-        },
-      });
-    } catch { /* ignore */ }
-  }, [refreshOneCount]);
+        });
+      } catch {
+        /* ignore */
+      }
+    },
+    [refreshOneCount],
+  );
 
   const addCustomRoot = useCallback(async () => {
     let chosen: string | null;
@@ -212,7 +231,9 @@ export function FilePaletteApp() {
       await invoke('save_settings', {
         settings: { ...s, ui: { ...s.ui, filePaletteRootsCollapsed: next } },
       });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [rootsCollapsed]);
 
   const toggleChangesCollapse = useCallback(async () => {
@@ -224,7 +245,9 @@ export function FilePaletteApp() {
             settings: { ...s, ui: { ...s.ui, filePaletteChangesCollapsed: next } },
           }),
         )
-        .catch(() => { /* ignore */ });
+        .catch(() => {
+          /* ignore */
+        });
       return next;
     });
   }, []);
@@ -237,7 +260,9 @@ export function FilePaletteApp() {
           settings: { ...s, ui: { ...s.ui, filePaletteChangesMode: mode } },
         }),
       )
-      .catch(() => { /* ignore */ });
+      .catch(() => {
+        /* ignore */
+      });
   }, []);
 
   useEffect(() => {
@@ -288,7 +313,8 @@ export function FilePaletteApp() {
       const wasFav = favoritePaths.has(root.path);
       setFavoritePaths((prev) => {
         const n = new Set(prev);
-        if (wasFav) n.delete(root.path); else n.add(root.path);
+        if (wasFav) n.delete(root.path);
+        else n.add(root.path);
         return n;
       });
       try {
@@ -307,7 +333,8 @@ export function FilePaletteApp() {
       } catch {
         setFavoritePaths((prev) => {
           const n = new Set(prev);
-          if (wasFav) n.add(root.path); else n.delete(root.path);
+          if (wasFav) n.add(root.path);
+          else n.delete(root.path);
           return n;
         });
       }
@@ -349,8 +376,7 @@ export function FilePaletteApp() {
   // results range — subtract the Changes offset first, otherwise we'd index into
   // the wrong list or read a stale cell.
   const resultsSelectedIndex = selectedIndex - changesVisibleRows.length;
-  const selectedResult =
-    resultsSelectedIndex >= 0 ? results[resultsSelectedIndex] ?? null : null;
+  const selectedResult = resultsSelectedIndex >= 0 ? (results[resultsSelectedIndex] ?? null) : null;
 
   const currentContentHit = useMemo(() => {
     if (parsed.mode !== 'content' || !selectedResult) return null;
@@ -449,13 +475,18 @@ export function FilePaletteApp() {
     rowRefs.current.get(selectedIndex)?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  const activeRootCount = activeRoot ? changeCounts.get(activeRoot) ?? null : null;
-  const activeRootLabel =
-    roots.find((r) => r.path === activeRoot)?.label ?? '—';
+  const activeRootCount = activeRoot ? (changeCounts.get(activeRoot) ?? null) : null;
+  const activeRootLabel = roots.find((r) => r.path === activeRoot)?.label ?? '—';
   const indexedCount = fileIndex.entries.length;
 
   return (
-    <div data-window="palette" className="bd-fp-root" onKeyDown={handleKey} tabIndex={-1}>
+    <div
+      data-window="palette"
+      data-app-ready={settings ? 'true' : undefined}
+      className="bd-fp-root"
+      onKeyDown={handleKey}
+      tabIndex={-1}
+    >
       <WindowTitleBar title="Files" meta={<Kbd>Ctrl+F8</Kbd>} />
       <div className={`bd-fp-body${rootsCollapsed ? ' bd-fp-body--collapsed' : ''}`}>
         <FilePaletteRootsColumn
@@ -481,11 +512,15 @@ export function FilePaletteApp() {
             scope={scope}
             onScopeChange={(s) => {
               setScope(s);
-              void invoke<AppSettings>('load_settings').then((settings) =>
-                invoke('save_settings', {
-                  settings: { ...settings, ui: { ...settings.ui, filePaletteScope: s } },
-                }),
-              ).catch(() => { /* ignore */ });
+              void invoke<AppSettings>('load_settings')
+                .then((settings) =>
+                  invoke('save_settings', {
+                    settings: { ...settings, ui: { ...settings.ui, filePaletteScope: s } },
+                  }),
+                )
+                .catch(() => {
+                  /* ignore */
+                });
             }}
             changesCount={changesVisibleRows.length}
           />
@@ -511,14 +546,18 @@ export function FilePaletteApp() {
               onChangeMode={changeMode}
               refreshTick={refreshTick}
               onVisibleRowsChange={setChangesVisibleRows}
-              rowRef={(el, i) => { rowRefs.current.set(i, el); }}
+              rowRef={(el, i) => {
+                rowRefs.current.set(i, el);
+              }}
             />
           )}
-          {(scope === 'all' || scope === 'filename' || scope === 'content' || scope === 'symbol') && (
-            loadError ? (
+          {(scope === 'all' || scope === 'filename' || scope === 'content' || scope === 'symbol') &&
+            (loadError ? (
               <div className="bd-fp-empty">Load error: {loadError}</div>
             ) : roots.length === 0 ? (
-              <div className="bd-fp-empty">No roots configured. Add worktrees or paths under Settings.</div>
+              <div className="bd-fp-empty">
+                No roots configured. Add worktrees or paths under Settings.
+              </div>
             ) : fileIndex.loading && parsed.mode === 'filename' ? (
               <div className="bd-fp-empty">Loading file index…</div>
             ) : parsed.mode === 'symbol' && indexer.indexing && results.length === 0 ? (
@@ -529,12 +568,17 @@ export function FilePaletteApp() {
               <div className="bd-fp-empty">Searching…</div>
             ) : results.length === 0 && parsed.query ? (
               parsed.mode === 'filename' ? (
-                <div className="bd-fp-empty">No filenames matching &lsquo;{parsed.query}&rsquo;.</div>
+                <div className="bd-fp-empty">
+                  No filenames matching &lsquo;{parsed.query}&rsquo;.
+                </div>
               ) : parsed.mode === 'content' ? (
-                <div className="bd-fp-empty">No content matches for &lsquo;{parsed.query}&rsquo;.</div>
+                <div className="bd-fp-empty">
+                  No content matches for &lsquo;{parsed.query}&rsquo;.
+                </div>
               ) : (
                 <div className="bd-fp-empty">
-                  No implementations found for &lsquo;{parsed.query}&rsquo; in this root. v1 supports TS, JS, C#, Rust.
+                  No implementations found for &lsquo;{parsed.query}&rsquo; in this root. v1
+                  supports TS, JS, C#, Rust.
                 </div>
               )
             ) : (
@@ -547,8 +591,7 @@ export function FilePaletteApp() {
                   rowRefs.current.set(i + changesVisibleRows.length, el);
                 }}
               />
-            )
-          )}
+            ))}
         </div>
         <FilePalettePreviewPane
           rootPath={activeRoot}
@@ -556,8 +599,9 @@ export function FilePaletteApp() {
           contentHit={currentContentHit}
           onIdentifierJump={jumpToSymbol}
           onPopOut={(path, baseline) => {
-            invoke('open_file_viewer_window', { path, baseline })
-              .catch((e) => console.error('open_file_viewer_window failed', e));
+            invoke('open_file_viewer_window', { path, baseline }).catch((e) =>
+              console.error('open_file_viewer_window failed', e),
+            );
           }}
         />
       </div>
@@ -574,8 +618,12 @@ export function FilePaletteApp() {
                 {(activeRootCount.addTotal > 0 || activeRootCount.delTotal > 0) && (
                   <>
                     {' · '}
-                    <span style={{ color: 'var(--color-status-green)' }}>+{activeRootCount.addTotal}</span>{' '}
-                    <span style={{ color: 'var(--color-status-red)' }}>−{activeRootCount.delTotal}</span>
+                    <span style={{ color: 'var(--color-status-green)' }}>
+                      +{activeRootCount.addTotal}
+                    </span>{' '}
+                    <span style={{ color: 'var(--color-status-red)' }}>
+                      −{activeRootCount.delTotal}
+                    </span>
                   </>
                 )}
               </>
@@ -584,7 +632,8 @@ export function FilePaletteApp() {
         }
         right={
           <span className="bd-mono">
-            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Ctrl+/</Kbd> diff view · <Kbd>Esc</Kbd>
+            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Ctrl+/</Kbd> diff
+            view · <Kbd>Esc</Kbd>
           </span>
         }
       />

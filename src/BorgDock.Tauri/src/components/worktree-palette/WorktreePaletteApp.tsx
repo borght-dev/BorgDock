@@ -547,7 +547,14 @@ export function WorktreePaletteApp() {
   const totalCount = allEntries.length;
 
   return (
-    <div className="bd-wt-palette" onKeyDown={handleKeyDown}>
+    // `data-app-ready` flips to true once the initial worktree scan
+    // resolves (success or failure). Playwright waits on this before
+    // exercising the palette.
+    <div
+      className="bd-wt-palette"
+      data-app-ready={loading ? undefined : 'true'}
+      onKeyDown={handleKeyDown}
+    >
       <WindowTitleBar title="Worktrees" meta={<Kbd>Ctrl+F7</Kbd>} />
 
       <div className="bd-wt-toolbar">

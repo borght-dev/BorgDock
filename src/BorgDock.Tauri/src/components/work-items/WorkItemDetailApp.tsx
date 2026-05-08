@@ -533,10 +533,8 @@ export function WorkItemDetailApp() {
       iteration: iter ? (iter.split(/[\\/]/).pop() ?? iter) : undefined,
       area: area ? (area.split(/[\\/]/).pop() ?? area) : undefined,
       backlogPriority:
-        (workItem.fields['Microsoft.VSTS.Common.BacklogPriority'] as
-          | number
-          | string
-          | undefined) ?? undefined,
+        (workItem.fields['Microsoft.VSTS.Common.BacklogPriority'] as number | string | undefined) ??
+        undefined,
       foundIn:
         typeof workItem.fields['Microsoft.VSTS.Build.FoundIn'] === 'string'
           ? workItem.fields['Microsoft.VSTS.Build.FoundIn']
@@ -567,15 +565,18 @@ export function WorkItemDetailApp() {
       ? `Work Item #${workItemId}`
       : 'Work Item';
 
+  // Playwright wait-target: flips on after the initial load_settings +
+  // getWorkItem roundtrip resolves (success OR failure path). Either way,
+  // the window is rendering its real surface (error, spinner, or panel).
+  const appReady = !isLoading ? 'true' : undefined;
+
   if (error) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]" data-app-ready={appReady}>
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
           <Card padding="md">
-            <p className="text-[13px] text-[var(--color-text-muted)]">
-              {error}
-            </p>
+            <p className="text-[13px] text-[var(--color-text-muted)]">{error}</p>
           </Card>
         </div>
       </div>
@@ -584,7 +585,7 @@ export function WorkItemDetailApp() {
 
   if (!detailData) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+      <div className="flex h-screen flex-col bg-[var(--color-surface)]" data-app-ready={appReady}>
         <WindowTitleBar title={titleText} />
         <div className="flex flex-1 items-center justify-center">
           <Card padding="md">
@@ -596,7 +597,7 @@ export function WorkItemDetailApp() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <div className="flex h-screen flex-col bg-[var(--color-surface)]" data-app-ready={appReady}>
       <WindowTitleBar title={titleText} />
       <div className="flex-1 overflow-y-auto">
         <WorkItemDetailPanel
