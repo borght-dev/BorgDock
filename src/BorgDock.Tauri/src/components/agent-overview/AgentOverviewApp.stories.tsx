@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { userEvent, within } from 'storybook/test';
 import type { SessionDelta, SessionRecord } from '@/services/agent-overview-types';
 import { getControl } from '../../../.storybook/mocks/control';
-import { screenshot } from '../../../.storybook/screenshot';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import {
   allArchived,
   allIdle,
@@ -393,3 +393,56 @@ export const OnlySnoozedAwaiting = story({
     },
   ],
 });
+
+// ── Animation: state progression via live-update deltas ───────────────
+//
+// Starts with three sessions (working, awaiting, idle), then fires a
+// sequence of agent-sessions-changed deltas at 1.2-second intervals to
+// show state transitions: working→awaiting, awaiting→finished, finished→ended.
+// The harness's built-in delta mechanism emits each event post-mount so
+// the capture sees the transitions in motion.
+// 6.5s @ 12fps = ~78 frames.
+export const Anim_StateProgression: Story = {
+  parameters: animation({
+    output: 'site/public/anim/agent-overview-states.gif',
+    width: 720,
+    height: 800,
+    fps: 12,
+    duration: 6500,
+  }),
+  args: {
+    params: {
+      sessions: [sessionWorking, sessionAwaiting, sessionIdle],
+      viewportWidth: 720,
+      viewportHeight: 800,
+      deltas: [
+        // working → awaiting (needs your input)
+        {
+          kind: 'upsert',
+          session: { ...sessionWorking, state: 'awaiting', stateSinceMs: 0, lastEventMs: 0 },
+        },
+        // awaiting (original) → finished
+        {
+          kind: 'upsert',
+          session: {
+            ...sessionAwaiting,
+            state: 'finished',
+            stateSinceMs: 0,
+            task: 'All checks pass — 1247 passing',
+          },
+        },
+        // finished → ended
+        {
+          kind: 'upsert',
+          session: {
+            ...sessionAwaiting,
+            state: 'ended',
+            stateSinceMs: 10_000,
+            lastEventMs: 10_000,
+          },
+        },
+      ],
+      deltaIntervalMs: 1200,
+    },
+  },
+};

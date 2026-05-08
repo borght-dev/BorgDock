@@ -6,8 +6,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { userEvent, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
+import { animation } from '../../../.storybook/screenshot';
 import App from '../../App';
 import { MainWindowFrame, withWizard } from '../main/__fixtures__/main-window-data';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const meta: Meta<typeof App> = {
   title: 'Main Window/App/Wizard',
@@ -74,4 +77,40 @@ export const WizardPatMissing: Story = {
       setupComplete: true,
     }),
   ],
+};
+
+// ── Animation: step through Auth → Repos ─────────────────────────────
+//
+// Starts on wizard step 0 (AuthStep) with PAT auth + token filled in so
+// the Next button is enabled immediately. Clicks Next to advance to step 1
+// (RepoStep). discover_repos is seeded to return two repos so the step
+// renders non-empty after the async call lands.
+// 5.5s @ 12fps = ~66 frames.
+export const Anim_StepThrough: Story = {
+  parameters: animation({
+    output: 'site/public/anim/wizard-stepthrough.gif',
+    width: 480,
+    height: 900,
+    fps: 12,
+    duration: 5500,
+  }),
+  decorators: [
+    (Story) => {
+      const ctrl = getControl();
+      ctrl.invokeResponses.discover_repos = [
+        { owner: 'borght-dev', name: 'BorgDock', localPath: '/Users/dev/BorgDock' },
+        { owner: 'borght-dev', name: 'borgdock-site', localPath: '/Users/dev/borgdock-site' },
+      ];
+      return <Story />;
+    },
+    withWizard({ authMethod: 'pat', hasToken: true, hasRepos: false }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await pause(700);
+    const next = await canvas.findByRole('button', { name: /next/i });
+    await userEvent.click(next);
+    // Wait for discover_repos mock to settle and RepoStep to render.
+    await pause(1500);
+  },
 };
