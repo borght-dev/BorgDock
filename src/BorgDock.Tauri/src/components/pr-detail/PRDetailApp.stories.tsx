@@ -1,9 +1,12 @@
 // src/components/pr-detail/PRDetailApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { screenshot } from '../../../.storybook/screenshot';
+import { userEvent, within } from 'storybook/test';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import { openPr, PanelFrame, SETTINGS_BASELINE, withPrDetail } from './__fixtures__/pr-detail-data';
 import { PrDetailApp } from './PRDetailApp';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const meta: Meta<typeof PrDetailApp> = {
   title: 'PR Detail/PRDetailApp',
@@ -90,4 +93,45 @@ export const LoadSettingsRejects: Story = {
       },
     }),
   ],
+};
+
+// ── Animation: tab carousel ───────────────────────────────────
+//
+// Cycles through Overview → Files → Checks → Discussion. Pauses 900ms
+// on each tab so the GIF reads as deliberate. Total duration ~5.5s at
+// 12 fps = ~66 frames, encoded GIF ~150-300 KB.
+export const Anim_TabCarousel: Story = {
+  parameters: animation({
+    output: 'site/public/anim/pr-detail-tabs.gif',
+    width: 800,
+    height: 900,
+    fps: 12,
+    duration: 6500,
+  }),
+  decorators: [
+    withPrDetail(openPr, {
+      invokeResponses: baseInvokes,
+      githubResponses: {
+        getOpenPRs: [openPr.pullRequest],
+        getCheckRunsForRef: openPr.checks,
+      },
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement);
+    // Initial state shows Overview. Wait a beat so the GIF starts on
+    // the loaded panel rather than mid-mount.
+    await pause(700);
+
+    const click = async (name: RegExp) => {
+      const tab = await c.findByRole('tab', { name });
+      await userEvent.click(tab);
+      await pause(900);
+    };
+
+    await click(/^files$/i);
+    await click(/^checks$/i);
+    await click(/^discussion$/i);
+    await click(/^overview$/i);
+  },
 };

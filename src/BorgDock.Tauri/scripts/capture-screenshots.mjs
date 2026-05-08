@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 // scripts/capture-screenshots.mjs
 //
-// Story-driven screenshot pipeline. Replaces scripts/screenshot-heroes.mjs.
+// Story-driven screenshot + animation pipeline. Replaces
+// scripts/screenshot-heroes.mjs.
+//
+// Static stories opt in via `parameters.screenshot`; animated stories
+// opt in via `parameters.animation` AND a `play` function that drives
+// the interaction. A single story may carry both.
 //
 // Flow:
 //   1. Build storybook-static/ if missing or stale.
@@ -9,20 +14,26 @@
 //      (Storybook 10's index.json does not include story parameters,
 //      so the filter happens at runtime per-story below.)
 //   3. Spin up a static server pointing at storybook-static/.
-//   4. Launch Chromium. For each story:
-//        a. Navigate to iframe.html?id=<id>.
-//        b. Read parameters.screenshot from the running preview's
-//           __STORYBOOK_PREVIEW__.storyStoreValue.
-//        c. If present, set viewport, wait for fonts/layout, capture PNG.
-//        d. If absent, skip silently.
-//   5. Report captured / skipped / errors.
+//   4. Launch Chromium. For each story, probe parameters.screenshot
+//      AND parameters.animation; collect tagged ones.
+//   5. Detect duplicate output paths across both static and animated.
+//   6. Capture each tagged story (re-navigate per story for fresh state).
+//      Static = single PNG. Animated = frame loop + ffmpeg encode → GIF.
+//   7. Report captured / skipped / errors.
+//
+// CLI flags:
+//   --rebuild           Force storybook-static/ rebuild even if present.
+//   --skip-animations   Skip animation captures (useful while iterating
+//                       on static shots — animations are slower).
 
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ffmpegStatic from 'ffmpeg-static';
 import handler from 'serve-handler';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,8 +81,9 @@ function enumerateStoryIds() {
 }
 
 // Probe a story's parameters via Storybook's runtime preview API after
-// navigating to its iframe. Returns parameters.screenshot or undefined.
-async function readScreenshotParam(page) {
+// navigating to its iframe. Returns { screenshot, animation } — either
+// or both may be undefined.
+async function readCaptureParams(page) {
   // Storybook 10 exposes the preview on window.__STORYBOOK_PREVIEW__.
   // currentRender.story.parameters is populated after the story has been
   // prepared and rendered — that's the marker we wait for.
@@ -84,7 +96,10 @@ async function readScreenshotParam(page) {
   );
   return await page.evaluate(() => {
     const params = window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters;
-    return params?.screenshot;
+    return {
+      screenshot: params?.screenshot,
+      animation: params?.animation,
+    };
   });
 }
 
@@ -100,17 +115,20 @@ function startStaticServer() {
   });
 }
 
-// Navigate to a story's iframe and probe its parameters.screenshot.
-// Returns the screenshot params if present, else undefined.
+// Navigate to a story's iframe and probe its capture parameters.
+// Returns { screenshot, animation } — either, both, or neither may
+// be defined.
 async function visitAndProbe(page, baseUrl, storyId) {
   await page.goto(`${baseUrl}/iframe.html?id=${storyId}&viewMode=story`, {
     waitUntil: 'domcontentloaded',
   });
-  return await readScreenshotParam(page);
+  return await readCaptureParams(page);
 }
 
 async function captureStory(page, sp, storyId) {
   await page.setViewportSize({ width: sp.width, height: sp.height });
+  // Animation-disable injection — applies to static captures only. For
+  // animated captures, we DON'T disable animations (defeats the point).
   await page.addStyleTag({
     content: `*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }`,
   });
@@ -131,8 +149,119 @@ async function captureStory(page, sp, storyId) {
   console.log(`wrote ${path.relative(repoRoot, outPath)}`);
 }
 
+// Run ffmpeg-static with the given args. Resolves on exit code 0,
+// rejects with stderr on any non-zero exit.
+function runFfmpeg(args) {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegStatic) {
+      reject(new Error('ffmpeg-static binary not found — run `bun install`'));
+      return;
+    }
+    const proc = spawn(ffmpegStatic, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    proc.stderr.on('data', (d) => (stderr += d.toString()));
+    proc.on('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited ${code}: ${stderr.split('\n').slice(-5).join('\n')}`));
+    });
+  });
+}
+
+// Capture an animated story to a GIF. Frames are screenshotted at `fps`
+// while the story renders + the play function runs; collected frames are
+// piped through ffmpeg-static (two-pass palette generation) to produce
+// a GIF at parameters.animation.output.
+//
+// Animation runs from the moment the page loads. Storybook's
+// `play` function fires automatically after the story's component
+// mounts, which happens shortly after navigation. Frame capture begins
+// as soon as the story's parameters are populated and runs for the
+// full `duration`. If `play` resolves earlier, the remaining frames
+// pad the GIF with the final state — usually fine.
+async function captureAnimation(page, ap, storyId) {
+  const fps = ap.fps ?? 12;
+  const duration = ap.duration ?? 5000;
+  const interval = 1000 / fps;
+
+  await page.setViewportSize({ width: ap.width, height: ap.height });
+
+  // Re-navigate fresh so play function runs from the start.
+  // Note: parent caller already navigated, but we re-navigate here to
+  // align play-function start with frame-loop start.
+  await page.evaluate(() => document.fonts.ready);
+
+  if (ap.waitFor) {
+    await page.waitForSelector(ap.waitFor, { timeout: 5000 });
+  }
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'borgdock-anim-'));
+  let frameIndex = 0;
+  const startedAt = Date.now();
+
+  // Frame loop — capture until duration elapsed.
+  while (Date.now() - startedAt < duration) {
+    const frameStart = Date.now();
+    const framePath = path.join(tmpDir, `frame_${String(frameIndex).padStart(4, '0')}.png`);
+    try {
+      await page.screenshot({ path: framePath, omitBackground: false });
+      frameIndex++;
+    } catch (err) {
+      // Ignore screenshot races (page may be transitioning) — drop the frame.
+      console.warn(`  frame ${frameIndex} dropped: ${err?.message ?? err}`);
+    }
+    const elapsed = Date.now() - frameStart;
+    const wait = Math.max(0, interval - elapsed);
+    if (wait > 0) await page.waitForTimeout(wait);
+  }
+
+  if (frameIndex === 0) {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    throw new Error(`captured 0 frames for ${storyId}`);
+  }
+
+  // Encode: two-pass palette generation for clean GIF output.
+  const outPath = path.resolve(repoRoot, ap.output);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  const palette = path.join(tmpDir, 'palette.png');
+
+  await runFfmpeg([
+    '-y',
+    '-framerate',
+    String(fps),
+    '-i',
+    path.join(tmpDir, 'frame_%04d.png'),
+    '-filter_complex',
+    '[0:v] palettegen=stats_mode=full',
+    palette,
+  ]);
+
+  await runFfmpeg([
+    '-y',
+    '-framerate',
+    String(fps),
+    '-i',
+    path.join(tmpDir, 'frame_%04d.png'),
+    '-i',
+    palette,
+    '-filter_complex',
+    '[0:v][1:v] paletteuse=dither=bayer:bayer_scale=5',
+    '-loop',
+    '0',
+    outPath,
+  ]);
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  const stat = fs.statSync(outPath);
+  const sizeKB = Math.round(stat.size / 1024);
+  console.log(
+    `wrote ${path.relative(repoRoot, outPath)} (${frameIndex} frames @ ${fps}fps, ${sizeKB} KB)`,
+  );
+}
+
 async function main() {
   await ensureStorybookBuilt();
+
+  const skipAnimations = process.argv.includes('--skip-animations');
 
   const allStories = enumerateStoryIds();
   if (allStories.length === 0) fail('no stories found in storybook-static/index.json');
@@ -142,52 +271,59 @@ async function main() {
     `capture-screenshots: serving storybook-static/ at ${url}; probing ${allStories.length} stories…`,
   );
 
-  // deviceScaleFactor is set on the context. Stories that need a non-default
-  // dsf would require re-creating the context; defer that until a story
-  // actually asks for one (none currently do).
   const browser = await chromium.launch();
   const context = await browser.newContext({ deviceScaleFactor: 2 });
   const page = await context.newPage();
 
-  // First pass: visit each story and collect its parameters.screenshot.
-  // We do the navigation and the capture in two passes so we can detect
-  // duplicate output paths before writing any PNGs.
-  const tagged = [];
+  // First pass: visit each story and collect parameters.screenshot AND
+  // parameters.animation. We probe both together to avoid double-navigation
+  // overhead, and detect duplicate output paths before writing anything.
+  const taggedStatic = [];
+  const taggedAnimated = [];
   for (const story of allStories) {
     try {
-      const sp = await visitAndProbe(page, url, story.id);
-      if (sp) tagged.push({ story, sp });
+      const params = await visitAndProbe(page, url, story.id);
+      if (params.screenshot) taggedStatic.push({ story, sp: params.screenshot });
+      if (params.animation && !skipAnimations) taggedAnimated.push({ story, ap: params.animation });
     } catch (err) {
       console.error(`capture-screenshots: probe failed for ${story.id}: ${err?.message ?? err}`);
     }
   }
 
-  if (tagged.length === 0) {
+  if (taggedStatic.length === 0 && taggedAnimated.length === 0) {
     await browser.close();
     server.close();
-    fail('no stories with parameters.screenshot found (all probes returned undefined)');
+    fail('no stories with parameters.screenshot or parameters.animation found');
   }
 
-  // Detect duplicate output paths.
+  // Detect duplicate output paths across BOTH static and animated.
   const seen = new Map();
-  for (const { story, sp } of tagged) {
-    if (seen.has(sp.output)) {
-      await browser.close();
-      server.close();
-      fail(`duplicate output path "${sp.output}" — used by ${seen.get(sp.output)} and ${story.id}`);
+  const checkDup = (output, storyId, kind) => {
+    if (seen.has(output)) {
+      throw new Error(
+        `duplicate output path "${output}" — used by ${seen.get(output)} and ${storyId} (${kind})`,
+      );
     }
-    seen.set(sp.output, story.id);
+    seen.set(output, storyId);
+  };
+  try {
+    for (const { story, sp } of taggedStatic) checkDup(sp.output, story.id, 'screenshot');
+    for (const { story, ap } of taggedAnimated) checkDup(ap.output, story.id, 'animation');
+  } catch (err) {
+    await browser.close();
+    server.close();
+    fail(err.message);
   }
 
   console.log(
-    `capture-screenshots: ${tagged.length} of ${allStories.length} stories tagged; capturing…`,
+    `capture-screenshots: ${taggedStatic.length} static + ${taggedAnimated.length} animated tagged; capturing…`,
   );
 
-  // Second pass: capture each tagged story. Re-navigation is unavoidable
-  // because we need to apply the per-story viewport size.
   let count = 0;
   let errors = 0;
-  for (const { story, sp } of tagged) {
+
+  // Static pass.
+  for (const { story, sp } of taggedStatic) {
     try {
       await page.setViewportSize({ width: sp.width, height: sp.height });
       await page.goto(`${url}/iframe.html?id=${story.id}&viewMode=story`, {
@@ -196,7 +332,29 @@ async function main() {
       await captureStory(page, sp, story.id);
       count++;
     } catch (err) {
-      console.error(`capture-screenshots: capture failed for ${story.id}: ${err?.message ?? err}`);
+      console.error(`capture-screenshots: static capture failed for ${story.id}: ${err?.message ?? err}`);
+      errors++;
+    }
+  }
+
+  // Animation pass — slower (frame loop + ffmpeg encode per story).
+  for (const { story, ap } of taggedAnimated) {
+    try {
+      await page.setViewportSize({ width: ap.width, height: ap.height });
+      await page.goto(`${url}/iframe.html?id=${story.id}&viewMode=story`, {
+        waitUntil: 'domcontentloaded',
+      });
+      // Wait for story params to be populated before starting the frame loop.
+      await page.waitForFunction(
+        () => window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters !== undefined,
+        { timeout: 15000 },
+      );
+      await captureAnimation(page, ap, story.id);
+      count++;
+    } catch (err) {
+      console.error(
+        `capture-screenshots: animation capture failed for ${story.id}: ${err?.message ?? err}`,
+      );
       errors++;
     }
   }
