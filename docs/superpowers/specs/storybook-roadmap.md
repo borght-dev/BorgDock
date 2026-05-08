@@ -93,9 +93,13 @@ Sequenced after enough screens are storied to be worthwhile:
 - **Visual regression.** Pick between Storybook's test-runner, Chromatic, or
   Playwright-driven snapshots of Storybook URLs. Decision deferred until ≥3
   screens are done so we have enough breadth to evaluate tooling.
-- **Hero-shot pipeline.** Rewire `scripts/screenshot-heroes.mjs` to drive
-  Storybook URLs (or Storybook test-runner snapshots) instead of a live `tauri
-  dev` window. Removes the ad-hoc state-seeding currently in that script.
+- ~~**Hero-shot pipeline.**~~ **Done.** `scripts/capture-screenshots.mjs`
+  reads `parameters.screenshot` from each Storybook story (via the runtime
+  preview API — Storybook 10's static `index.json` does not include
+  parameters) and writes PNGs to repo-relative paths. Replaces the
+  hand-built `design/mockups/whats-new-<VERSION>.html` flow. See
+  `2026-05-08-screenshot-pipeline-design.md` and the corresponding plan.
+  PR _(filled in after PR opens)_.
 - **Static Storybook hosting.** Once the catalog is broad enough to be useful
   to non-developers (designers, contributors, reviewers), publish
   `storybook build` output somewhere durable.
