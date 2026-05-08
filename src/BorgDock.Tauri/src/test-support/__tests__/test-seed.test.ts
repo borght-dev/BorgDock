@@ -1,8 +1,91 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePrStore } from '@/stores/pr-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import { DESIGN_PRS, DESIGN_WORK_ITEMS } from '../../../tests/e2e/fixtures/design-fixtures';
+import type { PullRequestWithChecks, WorkItem } from '@/types';
 import { installTestSeed } from '../test-seed';
+
+// Inline minimal fixtures: the legacy `tests/e2e/fixtures/design-fixtures.ts`
+// was deleted alongside the visual-diff Playwright tree. The test-seed contract
+// only needs valid `PullRequestWithChecks` / `WorkItem` shapes — we don't need
+// the full design canvas dataset to verify the hook installs and writes to
+// stores correctly.
+const DESIGN_PRS: PullRequestWithChecks[] = [
+  {
+    pullRequest: {
+      number: 708,
+      title: 'Test PR 708',
+      headRef: 'feat/a',
+      baseRef: 'master',
+      authorLogin: 'alice',
+      authorAvatarUrl: '',
+      state: 'open',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-02T00:00:00Z',
+      isDraft: false,
+      htmlUrl: 'https://example.com/pr/708',
+      body: '',
+      repoOwner: 'acme',
+      repoName: 'borgdock',
+      reviewStatus: 'none',
+      commentCount: 0,
+      labels: [],
+      additions: 1,
+      deletions: 0,
+      changedFiles: 1,
+      commitCount: 1,
+      requestedReviewers: [],
+    },
+    checks: [],
+    overallStatus: 'green',
+    failedCheckNames: [],
+    pendingCheckNames: [],
+    passedCount: 0,
+    skippedCount: 0,
+  },
+  {
+    pullRequest: {
+      number: 710,
+      title: 'Test PR 710',
+      headRef: 'feat/b',
+      baseRef: 'master',
+      authorLogin: 'bob',
+      authorAvatarUrl: '',
+      state: 'open',
+      createdAt: '2026-01-03T00:00:00Z',
+      updatedAt: '2026-01-04T00:00:00Z',
+      isDraft: false,
+      htmlUrl: 'https://example.com/pr/710',
+      body: '',
+      repoOwner: 'acme',
+      repoName: 'borgdock',
+      reviewStatus: 'none',
+      commentCount: 0,
+      labels: [],
+      additions: 2,
+      deletions: 0,
+      changedFiles: 1,
+      commitCount: 1,
+      requestedReviewers: [],
+    },
+    checks: [],
+    overallStatus: 'green',
+    failedCheckNames: [],
+    pendingCheckNames: [],
+    passedCount: 0,
+    skippedCount: 0,
+  },
+];
+
+const DESIGN_WORK_ITEMS: WorkItem[] = [
+  {
+    id: 1,
+    rev: 1,
+    url: 'https://example.com/wi/1',
+    fields: { 'System.Title': 'Test Work Item' },
+    relations: [],
+    htmlUrl: 'https://example.com/wi/1',
+  },
+];
 
 const { mockSendOs } = vi.hoisted(() => ({
   mockSendOs: vi.fn().mockResolvedValue(undefined),
