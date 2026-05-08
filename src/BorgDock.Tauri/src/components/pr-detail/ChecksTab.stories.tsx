@@ -1,18 +1,24 @@
 // src/components/pr-detail/ChecksTab.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent } from 'storybook/test';
 import type { CheckRun } from '@/types';
+import { animation } from '../../../.storybook/screenshot';
+import { makePr, PanelFrame, withPrDetail } from './__fixtures__/pr-detail-data';
 import { ChecksTab } from './ChecksTab';
-import {
-  makePr,
-  PanelFrame,
-  withPrDetail,
-} from './__fixtures__/pr-detail-data';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const meta: Meta<typeof ChecksTab> = {
   title: 'PR Detail/ChecksTab',
   component: ChecksTab,
-  decorators: [(Story) => <PanelFrame><Story /></PanelFrame>],
+  decorators: [
+    (Story) => (
+      <PanelFrame>
+        <Story />
+      </PanelFrame>
+    ),
+  ],
 };
 export default meta;
 type Story = StoryObj<typeof ChecksTab>;
@@ -35,12 +41,54 @@ const allGreen: CheckRun[] = ['build', 'test', 'lint'].map((name, i) => ({
 }));
 
 const mixed: CheckRun[] = [
-  { id: 5001, name: 'CI / build', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5002, name: 'CI / test', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5003, name: 'CI / lint', status: 'completed', conclusion: 'failure', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5004, name: 'CI / typecheck', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5005, name: 'CI / e2e', status: 'completed', conclusion: 'failure', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5006, name: 'CI / docs', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
+  {
+    id: 5001,
+    name: 'CI / build',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5002,
+    name: 'CI / test',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5003,
+    name: 'CI / lint',
+    status: 'completed',
+    conclusion: 'failure',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5004,
+    name: 'CI / typecheck',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5005,
+    name: 'CI / e2e',
+    status: 'completed',
+    conclusion: 'failure',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5006,
+    name: 'CI / docs',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
 ];
 
 const allFailed: CheckRun[] = ['build', 'test', 'lint', 'typecheck', 'e2e', 'docs'].map(
@@ -114,4 +162,40 @@ export const AllFailedExpandable: Story = {
 export const NoChecks: Story = {
   decorators: [withPrDetail(noChecksPr)],
   args: { checks: [], pr: noChecksPr },
+};
+
+// ── Animation: expand failed check → Fix button ───────────────
+//
+// Opens the Checks tab with a mixed set (some failures), waits for the
+// content to settle, then hovers over the first failed check row so the
+// "Fix" (Send to Claude Code) action button is visible. The `Fix` button
+// only appears on rows where state === 'failed' AND pr is provided.
+export const Anim_ChecksTabExpand: Story = {
+  parameters: animation({
+    output: 'site/public/anim/checks-expand.gif',
+    width: 800,
+    height: 900,
+    fps: 12,
+    duration: 5500,
+  }),
+  decorators: [withPrDetail(mixedPr)],
+  args: { checks: mixed, pr: mixedPr },
+  play: async ({ canvasElement }) => {
+    await pause(800);
+    // Find the first failed check row — it carries data-check-state="failed".
+    // Hover over it so the Fix button becomes visually prominent.
+    const failedRows = canvasElement.querySelectorAll(
+      '[data-check-row][data-check-state="failed"]',
+    );
+    if (failedRows.length > 0) {
+      await userEvent.hover(failedRows[0] as HTMLElement);
+      await pause(1800);
+      // Also find and hover the Fix button to draw the viewer's eye.
+      const fixBtn = canvasElement.querySelector('[data-check-action="fix"]');
+      if (fixBtn) {
+        await userEvent.hover(fixBtn as HTMLElement);
+        await pause(900);
+      }
+    }
+  },
 };

@@ -5,7 +5,9 @@
 // conflicts, and rate-limited.
 
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent } from 'storybook/test';
 import { usePrStore } from '@/stores/pr-store';
+import { animation } from '../../../.storybook/screenshot';
 import App from '../../App';
 import {
   MainWindowFrame,
@@ -17,6 +19,8 @@ import {
   reposSettings,
   withMainWindow,
 } from '../main/__fixtures__/main-window-data';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const frame: Decorator = (Story) => (
   <MainWindowFrame>
@@ -121,4 +125,40 @@ export const PrsRateLimited: Story = {
       settings: reposSettings(),
     }),
   ],
+};
+
+// ── G. Animation: hover PR card → action pills reveal ──────────
+//
+// Hovers over the first PR card so the HoverActionPillBar fades in,
+// then moves to the second card to show the reveal is per-card.
+// The pill bar uses CSS group-hover opacity; userEvent.hover triggers
+// the CSS :hover pseudo-class so the bar becomes visible.
+export const Anim_PrCardHoverActions: Story = {
+  parameters: animation({
+    output: 'site/public/anim/pr-card-hover.gif',
+    width: 720,
+    height: 700,
+    fps: 12,
+    duration: 5000,
+  }),
+  decorators: [
+    withMainWindow({
+      ui: { activeSection: 'prs' },
+      pullRequests: PRS_CANONICAL,
+      settings: reposSettings(),
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    await pause(800);
+    // Find PR cards by their data attribute — each card is a [data-pr-card] div.
+    const cards = canvasElement.querySelectorAll('[data-pr-card]');
+    if (cards.length > 0) {
+      await userEvent.hover(cards[0] as HTMLElement);
+      await pause(1500);
+    }
+    if (cards.length > 1) {
+      await userEvent.hover(cards[1] as HTMLElement);
+      await pause(1500);
+    }
+  },
 };

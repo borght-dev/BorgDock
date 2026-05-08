@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { AppSettings } from '@/types/settings';
 import { getControl } from '../../../.storybook/mocks/control';
-import { screenshot } from '../../../.storybook/screenshot';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import {
   DIFF_IN_REPO_NO_CHANGES,
   DIFF_NOT_IN_REPO,
@@ -44,6 +44,8 @@ interface FileViewerStoryParams {
   /** Override save_settings to capture/discard. Default: undefined (no-op resolve). */
   saveSettingsResponse?: unknown | ((args: unknown) => unknown);
 }
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ORIGINAL_CLIPBOARD_WRITE_TEXT =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -449,5 +451,51 @@ export const ContentTSXSyntaxProbe: Story = {
       },
       { timeout: 5000, interval: 100 },
     );
+  },
+};
+
+// ---------------------------------------------------------------------------
+// 9. Animation: diff overlay scroll
+// ---------------------------------------------------------------------------
+
+// Opens a file that has diff changes (auto-starts in diff mode), scrolls the
+// content pane down, then switches to the plain "File" view by clicking the
+// File chip. Demonstrates both the diff overlay and the view-mode toggle.
+export const Anim_DiffOverlayScroll: Story = {
+  parameters: animation({
+    output: 'site/public/anim/file-viewer-diff.gif',
+    width: 1000,
+    height: 700,
+    fps: 12,
+    duration: 6500,
+  }),
+  args: {
+    params: {
+      path: 'src/services/api.ts',
+      contentResponse: LARGE_TS_SAMPLE,
+      diffResponse: { patch: PATCH_MULTI_HUNK_TS, baselineRef: 'HEAD', inRepo: true },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Wait for content to load — the "File" chip and code should be visible.
+    await pause(800);
+    // Scroll the content area down to show more diff context.
+    const scrollable = canvasElement.querySelector(
+      '.bd-fv-source, [data-fv-scroll], .overflow-y-auto, .overflow-auto',
+    );
+    if (scrollable) {
+      (scrollable as HTMLElement).scrollTop = 200;
+    }
+    await pause(1000);
+    // Switch from diff mode to plain file content by clicking the File chip.
+    const fileChip = await canvas.findByRole('button', { name: /^file$/i });
+    await userEvent.click(fileChip);
+    await pause(1500);
+    // Scroll down a bit in content view to reveal more syntax-highlighted code.
+    if (scrollable) {
+      (scrollable as HTMLElement).scrollTop = 300;
+    }
+    await pause(800);
   },
 };
