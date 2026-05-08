@@ -29,7 +29,10 @@ export async function renderSmoke(
     pageErrors.push(err.message);
   });
 
-  await page.waitForSelector('[data-app-ready]', {
+  // 'attached' (not 'visible') because some App roots set the attribute on
+  // a `display: contents` wrapper — the element renders no visible box itself.
+  await page.waitForSelector('[data-app-ready="true"]', {
+    state: 'attached',
     timeout: opts.readyTimeout ?? 10_000,
   });
 

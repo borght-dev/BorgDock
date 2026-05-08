@@ -13,13 +13,90 @@ export type Scenario =
   | 'palette-loaded'
   | 'first-run';
 
+/**
+ * Mirror of AppSettings (src/types/settings.ts) — full shape so the
+ * settings store hydrates without TypeError on nested property access.
+ * Keep in sync with `defaultSettings` in `stores/settings-store.ts`.
+ */
 const HAPPY_SETTINGS = {
-  githubToken: 'ghp_test_token',
-  adoPat: 'ado_test_pat',
-  adoOrg: 'test-org',
-  theme: 'light',
-  flyoutHotkey: 'Alt+Space',
-  showRecentlyClosed: false,
+  setupComplete: true,
+  gitHub: {
+    authMethod: 'ghCli',
+    pollIntervalSeconds: 60,
+    username: 'test-user',
+    personalAccessToken: 'ghp_test_token',
+  },
+  repos: [],
+  ui: {
+    theme: 'light',
+    globalHotkey: 'Ctrl+Win+Shift+G',
+    flyoutHotkey: 'Alt+Space',
+    editorCommand: 'code',
+    runAtStartup: false,
+    quickReviewHotkey: '',
+    startMinimizedToTray: false,
+    restoreLastSelection: true,
+  },
+  notifications: {
+    toastOnCheckStatusChange: true,
+    toastOnNewPR: false,
+    toastOnReviewUpdate: true,
+    toastOnMergeable: true,
+    onlyMyPRs: false,
+    playMergeSound: true,
+    reviewNudgeEnabled: true,
+    reviewNudgeIntervalMinutes: 60,
+    reviewNudgeEscalation: true,
+    deduplicationWindowSeconds: 60,
+    channels: { tray: true, system: true, sound: true, emailDigest: false },
+  },
+  claudeCode: { defaultPostFixAction: 'commitAndNotify' },
+  claudeApi: {
+    model: 'claude-sonnet-4-6',
+    maxTokens: 1024,
+    prSummaryEnabled: true,
+    diffExplanationsEnabled: true,
+    reviewNudgePhrasingEnabled: false,
+    commitMessageSuggestionsEnabled: false,
+  },
+  claudeReview: { botUsername: 'claude[bot]' },
+  updates: { autoCheckEnabled: true, autoDownload: true },
+  azureDevOps: {
+    organization: 'test-org',
+    project: 'test-project',
+    authMethod: 'pat',
+    authAutoDetected: true,
+    pollIntervalSeconds: 120,
+    favoriteQueryIds: [],
+    trackedWorkItemIds: [],
+    workingOnWorkItemIds: [],
+    workItemWorktreePaths: {},
+    recentWorkItemIds: [],
+    linkMatchBy: 'branch',
+    showWorkItemStateOnPrCard: true,
+    updatePrStatusWhenWiDone: false,
+    personalAccessToken: 'ado_test_pat',
+  },
+  sql: {
+    connections: [],
+    readOnlyByDefault: true,
+    confirmDestructiveWithoutWhere: true,
+  },
+  repoPriority: {},
+};
+
+const EMPTY_SETTINGS = {
+  ...HAPPY_SETTINGS,
+  setupComplete: false,
+  gitHub: { ...HAPPY_SETTINGS.gitHub, username: '', personalAccessToken: '' },
+  ui: { ...HAPPY_SETTINGS.ui, theme: 'system' },
+  azureDevOps: {
+    ...HAPPY_SETTINGS.azureDevOps,
+    organization: '',
+    project: '',
+    personalAccessToken: '',
+    authAutoDetected: false,
+  },
 };
 
 const SAMPLE_PRS = [
@@ -80,7 +157,7 @@ export function seedScenario(scenario: Scenario): MockHandlers {
   switch (scenario) {
     case 'empty':
       return {
-        load_settings: { githubToken: '', adoPat: '', adoOrg: '', theme: 'system' },
+        load_settings: EMPTY_SETTINGS,
         check_github_auth: { authenticated: false, login: '' },
         cache_load_prs: [],
         get_flyout_data: { prs: [], workItems: [] },
@@ -130,7 +207,7 @@ export function seedScenario(scenario: Scenario): MockHandlers {
 
     case 'first-run':
       return {
-        load_settings: { githubToken: '', adoPat: '', adoOrg: '', theme: 'system' },
+        load_settings: EMPTY_SETTINGS,
         check_github_auth: { authenticated: false, login: '' },
         cache_load_prs: [],
         // Force the wizard to show

@@ -51,6 +51,42 @@ Generated 2026-05-08 from `grep invoke<` across `src/`. Used by `helpers/mock-ta
 | `reveal_in_file_manager` | `null` | |
 | `show_setup_wizard` | `null` | |
 | `window_ready` | `null` | App boot signal — must succeed silently |
+| `cache_init` | `null` | Called by useCacheInit on mount |
+| `cache_save_tab_data` | `null` | |
+| `cache_save_etags` | `null` | |
+| `cache_save_prs` | `null` | |
+| `cache_flyout_data` | `null` | |
+| `cache_save_sql_schema` | `null` | |
+| `clear_cache` | `{ bytesFreed: 0 }` | Settings maintenance |
+| `set_credential` | `null` | OS keychain write — no-op in tests |
+| `reset_all_settings` | `null` | |
+| `download_and_install_update` | `null` | |
+| `open_log_folder` | `null` | |
+| `open_pr_detail_window` | `null` | Asserted by pr-list spec |
+| `open_settings_window` | `null` | |
+| `open_whats_new_window` | `null` | |
+| `open_workitem_detail_window` | `null` | |
+| `show_or_focus_main` | `null` | |
+| `show_flyout_toast` | `null` | |
+| `hide_flyout` | `null` | |
+| `resize_flyout` | `null` | |
+| `update_tray_icon` | `null` | |
+| `update_tray_tooltip` | `null` | |
+| `set_agent_overview_enabled` | `null` | |
+| `dismiss_agent_session` | `null` | |
+| `mark_agent_session_seen` | `null` | |
+| `snooze_agent_session` | `null` | |
+| `remove_worktree` | `null` | |
+| `git_checkout` | `null` | |
+| `git_fetch` | `null` | |
+| `run_gh_command` | `''` | |
+| `launch_claude_code` | `null` | |
+| `sql_snippets_save` | `null` | |
+| `sql_snippets_delete` | `null` | |
+
+## Built-in Tauri plugin commands
+
+The mock auto-handles `plugin:*` commands (event/log/store/app/window/webview/dialog) with reasonable defaults so windows don't blow up during boot. See `pluginDefault` in `helpers/mock-tauri.ts`. The `__TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener` shim is also installed so `unlisten()` calls succeed.
 
 ## Conventions
 

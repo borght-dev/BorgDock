@@ -84,6 +84,28 @@ export async function bootApp(
   await installMockTauri(page, handlers);
   const path = entry === '' ? '/' : `/${entry}`;
   await page.goto(path);
+
+  // Some windows wait on a Tauri event (e.g. flyout's `init-complete`) that
+  // never fires in a pure-Vite test. Each such window exposes a test-seed
+  // function on `window.__borgdock_test_*_seed` from a DEV-only useEffect;
+  // we call it after the effect has had a tick to run so the reducer leaves
+  // its initializing state and `data-app-ready` flips to true.
+  if (entry === 'flyout.html') {
+    await page.waitForFunction(
+      () =>
+        typeof (window as unknown as { __borgdock_test_flyout_seed?: unknown })
+          .__borgdock_test_flyout_seed === 'function',
+      { timeout: 5_000 },
+    );
+    await page.evaluate(() => {
+      (
+        window as unknown as {
+          __borgdock_test_flyout_seed: (p: { mode: 'glance' }) => void;
+        }
+      ).__borgdock_test_flyout_seed({ mode: 'glance' });
+    });
+  }
+
   await renderSmoke(page);
 }
 

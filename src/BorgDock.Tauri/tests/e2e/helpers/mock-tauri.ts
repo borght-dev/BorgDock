@@ -47,17 +47,72 @@ export function serializeHandlers(
  * succeeds without any per-test setup; specs override what they need.
  */
 export const DEFAULT_HANDLERS: MockHandlers = {
+  // Mirror of the AppSettings shape (src/types/settings.ts) — minimal but
+  // structurally complete so the settings store hydrates without TypeError.
+  // Specs that need richer settings should override via seed.ts.
   load_settings: {
-    githubToken: '',
-    adoPat: '',
-    adoOrg: '',
-    theme: 'system',
-    flyoutHotkey: 'Alt+Space',
-    showRecentlyClosed: false,
+    setupComplete: false,
+    gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
+    repos: [],
+    ui: {
+      theme: 'system',
+      globalHotkey: 'Ctrl+Win+Shift+G',
+      flyoutHotkey: 'Ctrl+Win+Shift+F',
+      editorCommand: 'code',
+      runAtStartup: false,
+      quickReviewHotkey: '',
+      startMinimizedToTray: false,
+      restoreLastSelection: true,
+    },
+    notifications: {
+      toastOnCheckStatusChange: true,
+      toastOnNewPR: false,
+      toastOnReviewUpdate: true,
+      toastOnMergeable: true,
+      onlyMyPRs: false,
+      playMergeSound: true,
+      reviewNudgeEnabled: true,
+      reviewNudgeIntervalMinutes: 60,
+      reviewNudgeEscalation: true,
+      deduplicationWindowSeconds: 60,
+      channels: { tray: true, system: true, sound: true, emailDigest: false },
+    },
+    claudeCode: { defaultPostFixAction: 'commitAndNotify' },
+    claudeApi: {
+      model: 'claude-sonnet-4-6',
+      maxTokens: 1024,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
+    },
+    claudeReview: { botUsername: 'claude[bot]' },
+    updates: { autoCheckEnabled: true, autoDownload: true },
+    azureDevOps: {
+      organization: '',
+      project: '',
+      authMethod: 'azCli',
+      authAutoDetected: false,
+      pollIntervalSeconds: 120,
+      favoriteQueryIds: [],
+      trackedWorkItemIds: [],
+      workingOnWorkItemIds: [],
+      workItemWorktreePaths: {},
+      recentWorkItemIds: [],
+      linkMatchBy: 'branch',
+      showWorkItemStateOnPrCard: true,
+      updatePrStatusWhenWiDone: false,
+    },
+    sql: {
+      connections: [],
+      readOnlyByDefault: true,
+      confirmDestructiveWithoutWhere: true,
+    },
+    repoPriority: {},
   },
   save_settings: null,
   check_github_auth: { authenticated: false, login: '' },
-  gh_cli_token: '',
+  gh_cli_token: 'gho_test_token',
   cache_load_prs: [],
   cache_load_etags: {},
   ado_fetch: null,
@@ -99,6 +154,41 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   reveal_in_file_manager: null,
   show_setup_wizard: null,
   window_ready: null,
+  // Additional commands surfaced during smoke (cache, agent, window mgmt,
+  // worktree mutations, gh/git plumbing). Defaults are conservative no-ops
+  // or empty arrays — specs override when they need real values.
+  cache_init: null,
+  cache_save_tab_data: null,
+  cache_save_etags: null,
+  cache_save_prs: null,
+  cache_flyout_data: null,
+  cache_save_sql_schema: null,
+  clear_cache: { bytesFreed: 0 },
+  set_credential: null,
+  reset_all_settings: null,
+  download_and_install_update: null,
+  open_log_folder: null,
+  open_pr_detail_window: null,
+  open_settings_window: null,
+  open_whats_new_window: null,
+  open_workitem_detail_window: null,
+  show_or_focus_main: null,
+  show_flyout_toast: null,
+  hide_flyout: null,
+  resize_flyout: null,
+  update_tray_icon: null,
+  update_tray_tooltip: null,
+  set_agent_overview_enabled: null,
+  dismiss_agent_session: null,
+  mark_agent_session_seen: null,
+  snooze_agent_session: null,
+  remove_worktree: null,
+  git_checkout: null,
+  git_fetch: null,
+  run_gh_command: '',
+  launch_claude_code: null,
+  sql_snippets_save: null,
+  sql_snippets_delete: null,
 };
 
 /**
@@ -129,15 +219,59 @@ export async function installMockTauri(
       }
     }
 
+    // Built-in Tauri plugin commands (log, store, app, event) are noisy
+    // infrastructure that every window calls during boot. Default them to
+    // no-op success so specs only care about app-level commands.
+    const pluginDefault = (cmd: string): unknown => {
+      // store: plugin:store|load returns a numeric resource id; subsequent
+      // get returns [value, exists]. Match the real shape so the JS wrapper
+      // doesn't blow up during destructure.
+      if (cmd === 'plugin:store|load') return 1;
+      if (cmd === 'plugin:store|get_store') return null;
+      if (cmd === 'plugin:store|get') return [undefined, false];
+      if (cmd === 'plugin:store|has') return false;
+      if (cmd === 'plugin:store|keys') return [];
+      if (cmd === 'plugin:store|values') return [];
+      if (cmd === 'plugin:store|entries') return [];
+      if (cmd === 'plugin:store|length') return 0;
+      if (cmd === 'plugin:app|version') return '0.0.0-test';
+      if (cmd === 'plugin:app|name') return 'BorgDock';
+      if (cmd === 'plugin:app|tauri_version') return '2.0.0';
+      // event listen returns a numeric eventId that unlisten then passes to
+      // window.__TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener (stubbed below).
+      if (cmd === 'plugin:event|listen') return 1;
+      if (cmd === 'plugin:event|emit') return null;
+      if (cmd === 'plugin:event|emit_to') return null;
+      if (cmd === 'plugin:event|unlisten') return null;
+      // log, window, webview, dialog, set, save, clear, etc.: no-op.
+      return null;
+    };
+
+    // The event API's _unlisten() calls
+    // window.__TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener(event, id).
+    // Without this stub, every component that returns from listen().then(unlisten)
+    // throws "Cannot read properties of undefined (reading 'unregisterListener')".
+    (window as unknown as {
+      __TAURI_EVENT_PLUGIN_INTERNALS__: { unregisterListener: () => void };
+    }).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+      unregisterListener: () => {},
+    };
+
     const tauriInternals = {
       invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
         invokeLog.push({ cmd, args });
         const handler = handlers.get(cmd);
-        if (!handler) throw new Error(`mock-tauri: unhandled command "${cmd}"`);
-        return await handler(args);
+        if (handler) return await handler(args);
+        if (cmd.startsWith('plugin:')) return pluginDefault(cmd);
+        throw new Error(`mock-tauri: unhandled command "${cmd}"`);
       },
       transformCallback: (cb: unknown) => cb,
-      metadata: { currentWebview: { label: 'main' } },
+      // Both currentWindow and currentWebview are read by @tauri-apps/api
+      // (window.js, webview.js, webviewWindow.js) via the metadata field.
+      metadata: {
+        currentWindow: { label: 'main' },
+        currentWebview: { label: 'main' },
+      },
     };
 
     (window as unknown as { __TAURI_INTERNALS__: unknown }).__TAURI_INTERNALS__ = tauriInternals;
