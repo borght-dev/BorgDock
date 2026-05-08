@@ -10,6 +10,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import { userEvent, within } from 'storybook/test';
+import { useSettingsStore } from '@/stores/settings-store';
 import { animation, screenshot } from '../.storybook/screenshot';
 import App from './App';
 import {
@@ -25,6 +26,15 @@ import {
   WORK_ITEMS_CANONICAL,
   withMainWindow,
 } from './components/main/__fixtures__/main-window-data';
+
+// load_settings invoke handler that returns whatever the seed currently put
+// into the settings store. Production App.tsx fires loadSettings on mount,
+// which calls invoke('load_settings') and replaces the store contents — so
+// without this, the decorator's seeded settings get overwritten by whatever
+// the static SETTINGS_BASELINE returns (which lacks setupComplete=true and
+// triggers the setup wizard).
+const liveLoadSettings = () => useSettingsStore.getState().settings;
+
 import { PrDetailApp } from './components/pr-detail/PRDetailApp';
 import {
   connBorgDockDev,
@@ -268,7 +278,7 @@ export const Anim_OpenPrDetailWindow: Story = {
       pullRequests: PRS_CANONICAL,
       settings: reposSettings(),
       invokeResponses: {
-        load_settings: SETTINGS_BASELINE,
+        load_settings: liveLoadSettings,
         window_ready: undefined,
         // Intercept the production open_pr_detail_window invoke and trigger
         // the slide-in animation. The callback is late-bound via
