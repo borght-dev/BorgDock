@@ -159,6 +159,7 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   // or empty arrays — specs override when they need real values.
   cache_init: null,
   cache_save_tab_data: null,
+  cache_load_tab_data: null,
   cache_save_etags: null,
   cache_save_prs: null,
   cache_flyout_data: null,
