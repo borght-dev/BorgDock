@@ -1,8 +1,8 @@
 // .storybook/main.ts
 
-import type { StorybookConfig } from '@storybook/react-vite';
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { StorybookConfig } from '@storybook/react-vite';
 import tailwindcss from '@tailwindcss/vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
@@ -14,12 +14,39 @@ const config: StorybookConfig = {
     options: {},
   },
   stories: ['../src/**/*.stories.@(ts|tsx)'],
-  addons: ['@storybook/addon-themes'],
+  addons: ['@storybook/addon-themes', '@storybook/addon-vitest'],
   typescript: {
     check: false,
     reactDocgen: 'react-docgen-typescript',
   },
   async viteFinal(config) {
+    // Pre-bundle React's runtime entries (and zustand) so the addon-vitest
+    // browser project doesn't trigger a mid-test re-optimization that
+    // re-instantiates the React dispatcher and crashes hooks with
+    // "Cannot read properties of null (reading 'useState')". zustand's
+    // store hook imports React directly; without pre-bundling it resolves
+    // to a separate React copy than Storybook's pre-bundled one and the
+    // dispatcher comes back null. See storybookjs/storybook#32049.
+    config.optimizeDeps = {
+      ...config.optimizeDeps,
+      include: [
+        ...(config.optimizeDeps?.include ?? []),
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'zustand',
+      ],
+    };
+
+    // Bun workspace hoists React to BOTH the repo root and src/BorgDock.Tauri.
+    // Without dedupe, Vite resolves `react` differently depending on which
+    // module imports it (a hook from a story → one copy, a hook from a
+    // node_modules/zustand → potentially the other). Two React copies →
+    // separate dispatcher state → null hook crashes inside the test runner.
+    config.resolve = config.resolve ?? {};
+    config.resolve.dedupe = [...(config.resolve.dedupe ?? []), 'react', 'react-dom'];
+
     config.plugins = config.plugins ?? [];
     config.plugins.push(tailwindcss());
     // Phase 9 — copy the tree-sitter runtime wasm into the Storybook output.
@@ -67,25 +94,75 @@ const config: StorybookConfig = {
       { find: '@tauri-apps/api/core', replacement: resolve(here, 'mocks/tauri-core.ts') },
       { find: '@tauri-apps/api/event', replacement: resolve(here, 'mocks/tauri-event.ts') },
       { find: '@tauri-apps/api/window', replacement: resolve(here, 'mocks/tauri-api-window.ts') },
-      { find: '@tauri-apps/api/webviewWindow', replacement: resolve(here, 'mocks/tauri-api-webviewWindow.ts') },
+      {
+        find: '@tauri-apps/api/webviewWindow',
+        replacement: resolve(here, 'mocks/tauri-api-webviewWindow.ts'),
+      },
       { find: '@tauri-apps/api/app', replacement: resolve(here, 'mocks/tauri-api-app.ts') },
       { find: '@tauri-apps/api/dpi', replacement: resolve(here, 'mocks/tauri-api-dpi.ts') },
-      { find: '@tauri-apps/plugin-opener', replacement: resolve(here, 'mocks/tauri-plugin-opener.ts') },
-      { find: '@tauri-apps/plugin-store', replacement: resolve(here, 'mocks/tauri-plugin-store.ts') },
-      { find: '@tauri-apps/plugin-clipboard-manager', replacement: resolve(here, 'mocks/tauri-plugin-clipboard-manager.ts') },
-      { find: '@tauri-apps/plugin-dialog', replacement: resolve(here, 'mocks/tauri-plugin-dialog.ts') },
+      {
+        find: '@tauri-apps/plugin-opener',
+        replacement: resolve(here, 'mocks/tauri-plugin-opener.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-store',
+        replacement: resolve(here, 'mocks/tauri-plugin-store.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-clipboard-manager',
+        replacement: resolve(here, 'mocks/tauri-plugin-clipboard-manager.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-dialog',
+        replacement: resolve(here, 'mocks/tauri-plugin-dialog.ts'),
+      },
       { find: '@tauri-apps/plugin-fs', replacement: resolve(here, 'mocks/tauri-plugin-fs.ts') },
-      { find: '@tauri-apps/plugin-autostart', replacement: resolve(here, 'mocks/tauri-plugin-autostart.ts') },
+      {
+        find: '@tauri-apps/plugin-autostart',
+        replacement: resolve(here, 'mocks/tauri-plugin-autostart.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-updater',
+        replacement: resolve(here, 'mocks/tauri-plugin-updater.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-notification',
+        replacement: resolve(here, 'mocks/tauri-plugin-notification.ts'),
+      },
       { find: '@/services/windows', replacement: resolve(here, 'mocks/services-windows.ts') },
-      { find: '@/services/ado/workitems', replacement: resolve(here, 'mocks/services-ado-workitems.ts') },
-      { find: '@/services/github/pulls', replacement: resolve(here, 'mocks/services-github-pulls.ts') },
-      { find: '@/services/github/checks', replacement: resolve(here, 'mocks/services-github-checks.ts') },
-      { find: '@/services/github/auth', replacement: resolve(here, 'mocks/services-github-auth.ts') },
-      { find: '@/services/github/reviewThreads', replacement: resolve(here, 'mocks/services-github-reviewThreads.ts') },
-      { find: '@/services/github/singleton', replacement: resolve(here, 'mocks/services-github-singleton.ts') },
-      { find: '@/services/github/mutations', replacement: resolve(here, 'mocks/services-github-mutations.ts') },
+      {
+        find: '@/services/ado/workitems',
+        replacement: resolve(here, 'mocks/services-ado-workitems.ts'),
+      },
+      {
+        find: '@/services/github/pulls',
+        replacement: resolve(here, 'mocks/services-github-pulls.ts'),
+      },
+      {
+        find: '@/services/github/checks',
+        replacement: resolve(here, 'mocks/services-github-checks.ts'),
+      },
+      {
+        find: '@/services/github/auth',
+        replacement: resolve(here, 'mocks/services-github-auth.ts'),
+      },
+      {
+        find: '@/services/github/reviewThreads',
+        replacement: resolve(here, 'mocks/services-github-reviewThreads.ts'),
+      },
+      {
+        find: '@/services/github/singleton',
+        replacement: resolve(here, 'mocks/services-github-singleton.ts'),
+      },
+      {
+        find: '@/services/github/mutations',
+        replacement: resolve(here, 'mocks/services-github-mutations.ts'),
+      },
       // Anchored regex: matches ONLY the exact bare barrel import, not sub-modules.
-      { find: /^@\/services\/github$/, replacement: resolve(here, 'mocks/services-github-barrel.ts') },
+      {
+        find: /^@\/services\/github$/,
+        replacement: resolve(here, 'mocks/services-github-barrel.ts'),
+      },
       { find: '@/services/pr-actions', replacement: resolve(here, 'mocks/services-pr-actions.ts') },
       { find: '@/generated/changelog', replacement: resolve(here, 'mocks/generated-changelog.ts') },
       // Bare '@' catch-all goes last so specific mocks above take priority.

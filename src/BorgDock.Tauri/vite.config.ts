@@ -1,11 +1,18 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { createRequire } from "module";
+import { fileURLToPath } from "node:url";
 import path from "path";
+import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
+import { playwright } from "@vitest/browser-playwright";
 import { changelogPlugin } from "./scripts/changelog/vite-plugin";
 import pkg from "./package.json";
+
+const dirname =
+  typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 const require = createRequire(import.meta.url);
 // Resolve web-tree-sitter from wherever the package manager actually
@@ -22,6 +29,29 @@ const webTreeSitterWasm = path
   .replace(/\\/g, "/");
 
 const host = process.env.TAURI_DEV_HOST;
+
+// Coverage exclude list shared between projects via the top-level
+// `test.coverage` config — vitest 4 hoists coverage to the root.
+const COVERAGE_EXCLUDE = [
+  "src/**/__tests__/**",
+  "src/types/**",
+  "src/vite-env.d.ts",
+  "src/**/*.d.ts",
+  "src/main.tsx",
+  "src/work-item-palette-main.tsx",
+  "src/pr-detail-main.tsx",
+  "src/sql-main.tsx",
+  "src/workitem-detail-main.tsx",
+  "src/worktree-main.tsx",
+  "src/whats-new-main.tsx",
+  "src/file-palette-main.tsx",
+  "src/file-viewer-main.tsx",
+  "src/main-agent-overview.tsx",
+  "src/settings-main.tsx",
+  "src/test-setup.ts",
+  "src/test-utils/**",
+  "src/**/index.ts",
+];
 
 export default defineConfig({
   define: {
@@ -53,53 +83,6 @@ export default defineConfig({
     // serves the public dir at root automatically, so they end up at
     // /grammars/tree-sitter-<name>.wasm without any copy plugin.
   ],
-  test: {
-    environment: "jsdom",
-    exclude: [
-      // Playwright e2e specs (run by Playwright, not vitest) — but keep
-      // vitest unit tests that live under tests/e2e/**/__tests__ (e.g.
-      // design-fixtures.test.ts) runnable via `bun run test`.
-      "tests/e2e/**/*.spec.ts",
-      "tests/e2e/design-bundle/**",
-      "tests/e2e/scripts/**",
-      "tests/e2e/helpers/**",
-      "node_modules/**",
-    ],
-    setupFiles: ["./src/test-setup.ts"],
-    globals: true,
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "html", "clover", "json"],
-      reportsDirectory: "./coverage",
-      include: ["src/**/*.{ts,tsx}"],
-      exclude: [
-        "src/**/__tests__/**",
-        "src/types/**",
-        "src/vite-env.d.ts",
-        "src/**/*.d.ts",
-        "src/main.tsx",
-        "src/work-item-palette-main.tsx",
-        "src/pr-detail-main.tsx",
-        "src/sql-main.tsx",
-        "src/workitem-detail-main.tsx",
-        "src/worktree-main.tsx",
-        "src/whats-new-main.tsx",
-        "src/file-palette-main.tsx",
-        "src/file-viewer-main.tsx",
-        "src/main-agent-overview.tsx",
-        "src/settings-main.tsx",
-        "src/test-setup.ts",
-        "src/test-utils/**",
-        "src/**/index.ts",
-      ],
-      thresholds: {
-        statements: 90,
-        branches: 90,
-        functions: 90,
-        lines: 90,
-      },
-    },
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -110,15 +93,15 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         flyout: path.resolve(__dirname, "flyout.html"),
-        'work-item-palette': path.resolve(__dirname, "work-item-palette.html"),
-        'workitem-detail': path.resolve(__dirname, "workitem-detail.html"),
-        'pr-detail': path.resolve(__dirname, "pr-detail.html"),
+        "work-item-palette": path.resolve(__dirname, "work-item-palette.html"),
+        "workitem-detail": path.resolve(__dirname, "workitem-detail.html"),
+        "pr-detail": path.resolve(__dirname, "pr-detail.html"),
         sql: path.resolve(__dirname, "sql.html"),
         worktree: path.resolve(__dirname, "worktree.html"),
-        'whats-new': path.resolve(__dirname, "whats-new.html"),
+        "whats-new": path.resolve(__dirname, "whats-new.html"),
         filepalette: path.resolve(__dirname, "file-palette.html"),
         fileviewer: path.resolve(__dirname, "file-viewer.html"),
-        'agent-overview': path.resolve(__dirname, "agent-overview.html"),
+        "agent-overview": path.resolve(__dirname, "agent-overview.html"),
         settings: path.resolve(__dirname, "settings.html"),
       },
     },
@@ -138,5 +121,62 @@ export default defineConfig({
     watch: {
       ignored: ["**/src-tauri/**"],
     },
+  },
+  test: {
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "clover", "json"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: COVERAGE_EXCLUDE,
+      thresholds: {
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
+      },
+    },
+    projects: [
+      {
+        // Unit tests — jsdom, src/test-setup.ts.
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "jsdom",
+          exclude: [
+            // Playwright e2e specs (run by Playwright, not vitest) — but keep
+            // vitest unit tests that live under tests/e2e/**/__tests__ (e.g.
+            // design-fixtures.test.ts) runnable via `bun run test`.
+            "tests/e2e/**/*.spec.ts",
+            "tests/e2e/design-bundle/**",
+            "tests/e2e/scripts/**",
+            "tests/e2e/helpers/**",
+            "node_modules/**",
+          ],
+          setupFiles: ["./src/test-setup.ts"],
+          globals: true,
+        },
+      },
+      {
+        // Storybook stories — runs each story (and its play function) inside
+        // headless Chromium via Playwright. Replaces @storybook/test-runner.
+        // Docs: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon
+        extends: true,
+        plugins: [
+          storybookTest({
+            configDir: path.join(dirname, ".storybook"),
+          }),
+        ],
+        test: {
+          name: "storybook",
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright({}),
+            instances: [{ browser: "chromium" }],
+          },
+        },
+      },
+    ],
   },
 });

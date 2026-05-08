@@ -1,8 +1,9 @@
 // src/components/file-viewer/FileViewerApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import type { AppSettings } from '@/types/settings';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
   DIFF_IN_REPO_NO_CHANGES,
@@ -11,15 +12,14 @@ import {
   ERR_NOT_FOUND,
   ERR_TOO_LARGE,
   LARGE_TS_SAMPLE,
+  makeSettings,
   PATCH_ADD_ONLY_TS,
   PATCH_DELETE_ONLY_TS,
   PATCH_MULTI_HUNK_TS,
   PATCH_SINGLE_HUNK_TS,
   TSX_SAMPLE,
-  makeSettings,
 } from './__fixtures__/file-viewer-data';
 import { FileViewerApp } from './FileViewerApp';
-import type { AppSettings } from '@/types/settings';
 
 interface DiffOutput {
   patch: string;
@@ -33,9 +33,7 @@ interface FileViewerStoryParams {
   /** ?baseline query-string param. */
   baseline?: 'HEAD' | 'mergeBaseDefault';
   /** Static content OR fn returning content / promise / rejection. */
-  contentResponse?:
-    | string
-    | ((args: { path: string }) => string | Promise<string>);
+  contentResponse?: string | ((args: { path: string }) => string | Promise<string>);
   /** Custom load_settings response. Defaults to makeSettings(). */
   settings?: AppSettings;
   /** Static diff OR fn keyed on baseline. */
@@ -59,11 +57,7 @@ function applyParamsBeforeMount(params: FileViewerStoryParams) {
   if (path !== null) search.set('path', path);
   if (params.baseline) search.set('baseline', params.baseline);
   const qs = search.toString();
-  window.history.replaceState(
-    {},
-    '',
-    `${window.location.pathname}${qs ? `?${qs}` : ''}`,
-  );
+  window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
 
   // Canned invoke responses.
   ctrl.invokeResponses.load_settings = params.settings ?? makeSettings();
@@ -87,14 +81,20 @@ function applyParamsBeforeMount(params: FileViewerStoryParams) {
     ctrl.invokeResponses.git_file_diff = DIFF_NOT_IN_REPO;
   }
 
-  // navigator.clipboard stub for stories that click "Copy all" — the
-  // real Storybook iframe Chrome supports clipboard, but headless test
-  // runs on some CI hosts don't. Stub if missing; restore on unmount.
-  if (!('clipboard' in navigator) || typeof navigator.clipboard?.writeText !== 'function') {
+  // navigator.clipboard stub for stories that click "Copy all". Chromium
+  // exposes navigator.clipboard but writeText() rejects with "Document is
+  // not focused" inside the headless test-runner iframe — which makes
+  // FileViewerToolbar's catch-and-ignore swallow the error and leaves the
+  // button stuck on "Copy all". Always override writeText with a no-op
+  // resolve; restore on unmount.
+  if (!('clipboard' in navigator)) {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: async (_text: string) => {} },
     });
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (navigator.clipboard as any).writeText = async (_text: string) => {};
   }
 }
 
@@ -230,9 +230,11 @@ export const UnifiedToSplitToggle: Story = {
     const splitChip = await canvas.findByRole('button', { name: 'Split' });
     await userEvent.click(splitChip);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+        }
+      ).__borgdock_storybook_tauri;
       const saved = ctrl.invocations.find((i) => i.command === 'save_settings');
       expect(saved).toBeTruthy();
     });
@@ -281,9 +283,11 @@ export const BaselineSwitchInteraction: Story = {
     const defaultChip = await canvas.findByRole('button', { name: /vs (default|main)/ });
     await userEvent.click(defaultChip);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+        }
+      ).__borgdock_storybook_tauri;
       const calls = ctrl.invocations.filter(
         (i) =>
           i.command === 'git_file_diff' &&
@@ -345,9 +349,11 @@ export const OpenInEditorClicked: Story = {
     const btn = await canvas.findByRole('button', { name: 'Open in editor' });
     await userEvent.click(btn);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+        }
+      ).__borgdock_storybook_tauri;
       const call = ctrl.invocations.find((i) => i.command === 'open_in_editor');
       expect(call).toBeTruthy();
       expect((call?.args as { path?: string } | undefined)?.path).toBeTruthy();
@@ -367,9 +373,11 @@ export const CloseClicked: Story = {
     const closeBtn = await canvas.findByRole('button', { name: /close/i });
     await userEvent.click(closeBtn);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string }> };
+        }
+      ).__borgdock_storybook_tauri;
       const call = ctrl.invocations.find((i) => i.command === 'window.close');
       expect(call).toBeTruthy();
     });
