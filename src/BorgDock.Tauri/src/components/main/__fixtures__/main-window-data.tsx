@@ -2,6 +2,7 @@
 
 import type { Decorator } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -145,6 +146,115 @@ export function HeroCompositionFrame({ children }: { children: ReactNode }) {
         {children}
       </div>
     </div>
+  );
+}
+
+// Animated composition frame: first window on the left, second window
+// slides in from the right when `open` flips to true.
+export interface SlideInCompositionFrameProps {
+  /** The primary window (left column). */
+  children: ReactNode;
+  /** The secondary window — starts off-screen, slides in when `open` is true. */
+  slideIn: ReactNode;
+  /** Left-column width in px. Default 480. */
+  leftWidth?: number;
+  /** Frame height in px. Default 1000. */
+  height?: number;
+  /** Total frame width in px (left + right). Default 1600. */
+  totalWidth?: number;
+  /** When true, the slide-in column translates to 0 (visible). Default false. */
+  open?: boolean;
+}
+
+export function SlideInCompositionFrame({
+  children,
+  slideIn,
+  leftWidth = 480,
+  height = 1000,
+  totalWidth = 1600,
+  open = false,
+}: SlideInCompositionFrameProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '24px',
+        background: 'var(--color-app-background, #1a1a1a)',
+      }}
+    >
+      <style>{FRAME_STYLE}</style>
+      <div
+        className="storybook-main-frame"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `${leftWidth}px 1fr`,
+          gap: '16px',
+          width: `${totalWidth}px`,
+          height: `${height}px`,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ height: '100%', overflow: 'hidden' }}>{children}</div>
+        <div
+          data-slide-in=""
+          style={{
+            height: '100%',
+            overflow: 'hidden',
+            transform: open ? 'translateX(0)' : 'translateX(105%)',
+            transition: 'transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+          }}
+        >
+          {slideIn}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// CrossWindowDecorator wires a SlideInCompositionFrame to a callback on
+// window so the story play function (or an intercepted invoke) can open it.
+//
+// Usage in a decorator:
+//   (Story) => <CrossWindowShell left={<Story />} right={<PrDetailApp />} ... />
+//
+// The play function calls `window.__BORGDOCK_SLIDE_OPEN__()` to trigger.
+export function CrossWindowShell({
+  left,
+  right,
+  leftWidth = 480,
+  height = 1000,
+  totalWidth = 1600,
+}: {
+  left: ReactNode;
+  right: ReactNode;
+  leftWidth?: number;
+  height?: number;
+  totalWidth?: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__ = () => setOpen(true);
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__;
+    };
+  }, []);
+
+  return (
+    <SlideInCompositionFrame
+      open={open}
+      slideIn={right}
+      leftWidth={leftWidth}
+      height={height}
+      totalWidth={totalWidth}
+    >
+      {left}
+    </SlideInCompositionFrame>
   );
 }
 
