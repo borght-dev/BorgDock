@@ -99,7 +99,7 @@ Sequenced after enough screens are storied to be worthwhile:
   parameters) and writes PNGs to repo-relative paths. Replaces the
   hand-built `design/mockups/whats-new-<VERSION>.html` flow. See
   `2026-05-08-screenshot-pipeline-design.md` and the corresponding plan.
-  PR _(filled in after PR opens)_.
+  PR [#34](https://github.com/borght-dev/BorgDock/pull/34).
 - **Static Storybook hosting.** Once the catalog is broad enough to be useful
   to non-developers (designers, contributors, reviewers), publish
   `storybook build` output somewhere durable.
