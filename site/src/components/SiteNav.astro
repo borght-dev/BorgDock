@@ -2,7 +2,7 @@
 import { BorgDockLogo } from '~/components/ui/BorgDockLogo';
 import ThemeToggle from '~/components/ThemeToggle';
 
-type NavKey = 'home' | 'features' | 'gallery' | 'changelog' | 'download';
+type NavKey = 'home' | 'features' | 'gallery' | 'captures' | 'changelog' | 'download';
 
 interface Props {
   current?: NavKey;
@@ -20,6 +20,7 @@ interface Link {
 const links: Link[] = [
   { key: 'features', label: 'Features', href: '/features' },
   { key: 'gallery', label: 'Gallery', href: '/gallery' },
+  { key: 'captures', label: 'Captures', href: '/captures' },
   { key: 'changelog', label: 'Changelog', href: '/changelog' },
   { key: 'github', label: 'GitHub', href: 'https://github.com/borght-dev/borgdock', external: true },
   { key: 'download', label: 'Download', href: '/download' },
