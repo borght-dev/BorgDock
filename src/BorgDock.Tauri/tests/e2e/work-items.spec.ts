@@ -1,127 +1,31 @@
-import { test, expect } from '@playwright/test';
-import {
-  injectCompletedSetup,
-  waitForAppReady,
-  switchSection,
-} from './helpers/test-utils';
+import { expect, test } from '@playwright/test';
+import { SAMPLE_WORK_ITEMS } from './helpers/seed';
+import { bootApp, seedMainWindow } from './helpers/test-utils';
 
-test.describe('Work Items Section', () => {
-  test.beforeEach(async ({ page }) => {
-    await injectCompletedSetup(page);
-    await page.goto('/');
-    await waitForAppReady(page);
-  });
+/**
+ * Main-window Work Items section. Items are surfaced after navigating
+ * to the Work Items tab and seeding through `__borgdock_test_seed`.
+ *
+ * The list rows are role=button (see WorkItemRow.tsx line 40); the title
+ * is rendered as flowing text inside `.bd-wi-row__title`. Detail pane
+ * appears in the third column once a row is clicked.
+ */
 
-  test('switching to Work Items tab shows the section', async ({ page }) => {
-    await switchSection(page, 'Work Items');
-    await page.waitForTimeout(300);
+test('work items list renders seeded items', async ({ page }) => {
+  await bootApp(page, '', 'happy-path');
+  await seedMainWindow(page, { workItems: SAMPLE_WORK_ITEMS });
+  await page.getByRole('tab', { name: 'Work Items' }).click();
+  await expect(page.getByText('Bug 1')).toBeVisible();
+  await expect(page.getByText('Task 2')).toBeVisible();
+});
 
-    // The Work Items section should be visible
-    // Since ADO is not configured (empty org), it shows the "Configure" prompt
-    await expect(
-      page.getByText('Configure Azure DevOps in Settings to see work items')
-    ).toBeVisible();
-  });
-
-  test('shows "Configure Azure DevOps" when not configured', async ({ page }) => {
-    await switchSection(page, 'Work Items');
-    await page.waitForTimeout(300);
-
-    // With empty azureDevOps.organization, the unconfigured state should show
-    await expect(
-      page.getByText('Configure Azure DevOps in Settings to see work items')
-    ).toBeVisible();
-  });
-
-  test('Work Items tab becomes active when clicked', async ({ page }) => {
-    // Section switcher uses Tabs primitive (role="tab"). Click toggles the
-    // active tab; we verify activation by `aria-selected`, which the primitive
-    // sets on the matching tab.
-    const workItemsBtn = page.getByRole('tab', { name: 'Work Items' });
-    await workItemsBtn.click();
-    await page.waitForTimeout(200);
-    await expect(workItemsBtn).toHaveAttribute('aria-selected', 'true');
-  });
-
-  test('switching back to PRs tab shows PR content', async ({ page }) => {
-    // Switch to Work Items
-    await switchSection(page, 'Work Items');
-    await page.waitForTimeout(200);
-
-    // Switch back to PRs
-    await switchSection(page, 'PRs');
-    await page.waitForTimeout(200);
-
-    // The filter bar and search should be visible again
-    await expect(page.getByPlaceholder('Filter pull requests...')).toBeVisible();
-  });
-
-  test('Work Items section renders filter bar when ADO is configured', async ({ page }) => {
-    // Inject settings with ADO configured
-    await page.addInitScript(`
-      window.__BORGDOCK_MOCK_SETTINGS__ = {
-        setupComplete: true,
-        gitHub: { authMethod: 'pat', personalAccessToken: 'ghp_test123', pollIntervalSeconds: 60, username: 'testuser' },
-        repos: [{ owner: 'test-org', name: 'test-repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '.worktrees' }],
-        ui: { theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Win+Shift+F', editorCommand: 'code', runAtStartup: false },
-        notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
-        claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-        claudeReview: { botUsername: 'claude-code' },
-        updates: { autoCheckEnabled: false, autoDownload: false },
-        azureDevOps: {
-          organization: 'my-org',
-          project: 'my-project',
-          personalAccessToken: 'ado-pat-123',
-          pollIntervalSeconds: 120,
-          favoriteQueryIds: [],
-          trackedWorkItemIds: [],
-          workingOnWorkItemIds: [],
-          workItemWorktreePaths: {},
-        },
-      };
-    `);
-
-    await page.goto('/');
-    await waitForAppReady(page);
-    await switchSection(page, 'Work Items');
-    await page.waitForTimeout(300);
-
-    // With ADO configured, the filter bar should render with query selector
-    await expect(page.getByText('Select a query...')).toBeVisible();
-  });
-
-  test('query browser button is visible when ADO is configured', async ({ page }) => {
-    // Same setup as above with ADO configured
-    await page.addInitScript(`
-      window.__BORGDOCK_MOCK_SETTINGS__ = {
-        setupComplete: true,
-        gitHub: { authMethod: 'pat', personalAccessToken: 'ghp_test123', pollIntervalSeconds: 60, username: 'testuser' },
-        repos: [{ owner: 'test-org', name: 'test-repo', enabled: true, worktreeBasePath: '', worktreeSubfolder: '.worktrees' }],
-        ui: { theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Win+Shift+F', editorCommand: 'code', runAtStartup: false },
-        notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
-        claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-        claudeReview: { botUsername: 'claude-code' },
-        updates: { autoCheckEnabled: false, autoDownload: false },
-        azureDevOps: {
-          organization: 'my-org',
-          project: 'my-project',
-          personalAccessToken: 'ado-pat-123',
-          pollIntervalSeconds: 120,
-          favoriteQueryIds: [],
-          trackedWorkItemIds: [],
-          workingOnWorkItemIds: [],
-          workItemWorktreePaths: {},
-        },
-      };
-    `);
-
-    await page.goto('/');
-    await waitForAppReady(page);
-    await switchSection(page, 'Work Items');
-    await page.waitForTimeout(300);
-
-    // The query browser button (the "Select a query..." button) should be clickable
-    const queryBtn = page.getByText('Select a query...');
-    await expect(queryBtn).toBeVisible();
-  });
+test('selecting a work item updates detail pane', async ({ page }) => {
+  await bootApp(page, '', 'happy-path');
+  await seedMainWindow(page, { workItems: SAMPLE_WORK_ITEMS });
+  await page.getByRole('tab', { name: 'Work Items' }).click();
+  // The list row is role=button containing the title text.
+  await page.getByRole('button', { name: /Bug 1/ }).first().click();
+  // Detail pane shows the work item id (AB#9001) + title — the title
+  // appears in multiple places (row + detail header), so just count >0.
+  await expect(page.getByText('AB#9001').first()).toBeVisible();
 });

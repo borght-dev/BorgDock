@@ -1,11 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
+import { WindowControls } from '@/components/shared/chrome';
+import { Button, TitleBar } from '@/components/shared/primitives';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
-import { WindowControls } from '@/components/shared/chrome';
-import { Button, TitleBar } from '@/components/shared/primitives';
 import { ReleaseAccordion } from './ReleaseAccordion';
 import { useReleasesToShow } from './useReleasesToShow';
 
@@ -36,7 +36,8 @@ export function WhatsNewApp() {
     });
   }, []);
 
-  const initialTarget = (window as unknown as InjectedWindow).__BORGDOCK_WHATS_NEW__?.version ?? null;
+  const initialTarget =
+    (window as unknown as InjectedWindow).__BORGDOCK_WHATS_NEW__?.version ?? null;
 
   const { releases, expandedVersion, countBehind, currentVersion, ready } = useReleasesToShow(
     RELEASES,
@@ -93,6 +94,7 @@ export function WhatsNewApp() {
   return (
     <div
       data-whats-new-app
+      data-app-ready={ready ? 'true' : undefined}
       className="h-screen w-full flex flex-col bg-background text-text-primary font-sans"
     >
       {/* Title bar — mirrors PrDetailPanel's pop-out header so it feels like
@@ -148,9 +150,7 @@ export function WhatsNewApp() {
 
       <div className="flex-1 overflow-y-auto px-6 pb-3.5">
         {!ready ? null : releases.length === 0 ? (
-          <div className="py-10 text-center text-[13px] text-text-muted">
-            No release notes yet.
-          </div>
+          <div className="py-10 text-center text-[13px] text-text-muted">No release notes yet.</div>
         ) : (
           releases.map((release) => (
             <ReleaseAccordion

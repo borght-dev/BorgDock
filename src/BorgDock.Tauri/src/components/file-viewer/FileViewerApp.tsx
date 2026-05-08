@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AppSettings } from '@/types/settings';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
+import type { AppSettings } from '@/types/settings';
 import { FilePaletteCodeView } from '../file-palette/FilePaletteCodeView';
 import { SplitDiffView } from '../pr-detail/diff/SplitDiffView';
 import { UnifiedDiffView } from '../pr-detail/diff/UnifiedDiffView';
@@ -46,6 +46,10 @@ export function FileViewerApp() {
   // don't want that round-trip to immediately re-save the same value.
   const viewModeHydrated = useRef(false);
   const [defaultBranchLabel, setDefaultBranchLabel] = useState<string | null>(null);
+  // Playwright wait-target: flips to true after the initial load_settings
+  // roundtrip resolves (success OR failure — either way the app is mounted
+  // with the right view mode).
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
     invoke<AppSettings>('load_settings')
@@ -58,6 +62,7 @@ export function FileViewerApp() {
       })
       .finally(() => {
         viewModeHydrated.current = true;
+        setAppReady(true);
       });
   }, []);
 
@@ -156,7 +161,12 @@ export function FileViewerApp() {
   );
 
   return (
-    <div className="bd-fv-root" onKeyDown={handleKey} tabIndex={-1}>
+    <div
+      className="bd-fv-root"
+      data-app-ready={appReady ? 'true' : undefined}
+      onKeyDown={handleKey}
+      tabIndex={-1}
+    >
       <FileViewerToolbar
         path={path}
         content={contentState.kind === 'ok' ? contentState.content : null}
@@ -199,7 +209,8 @@ function renderBody(args: RenderBodyArgs) {
 
   if (effectiveMode === 'content') {
     if (contentState.kind === 'loading') return <div className="bd-fv-empty">Loading…</div>;
-    if (contentState.kind === 'error') return <div className="bd-fv-empty">{contentState.message}</div>;
+    if (contentState.kind === 'error')
+      return <div className="bd-fv-empty">{contentState.message}</div>;
     return <FilePaletteCodeView path={path} content={contentState.content} />;
   }
 

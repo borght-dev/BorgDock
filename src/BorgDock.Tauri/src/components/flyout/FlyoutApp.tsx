@@ -317,22 +317,38 @@ export function FlyoutApp() {
     };
   }, [mode.kind, toastQueueLen]);
 
+  // `data-app-ready` is the Playwright wait-target. The flyout reaches its
+  // first paintable state when the reducer leaves `initializing` (the seed
+  // and the real `init-complete` event both trigger this). Each render
+  // branch wraps in a `display: contents` div so layout is unchanged.
+  const appReady = mode.kind !== 'initializing' ? 'true' : undefined;
+
   switch (mode.kind) {
     case 'initializing':
-      return <FlyoutInitializing />;
+      return (
+        <div style={{ display: 'contents' }}>
+          <FlyoutInitializing />
+        </div>
+      );
     case 'idle':
-      return null;
+      return <div hidden data-app-ready={appReady} />;
     case 'glance':
-      return <FlyoutGlance data={data} banner={mode.banner} onClose={handleClose} />;
+      return (
+        <div data-app-ready={appReady} style={{ display: 'contents' }}>
+          <FlyoutGlance data={data} banner={mode.banner} onClose={handleClose} />
+        </div>
+      );
     case 'toast':
       return (
-        <FlyoutToast
-          queue={mode.queue}
-          onHoverEnter={() => dispatch({ type: 'hover-enter' })}
-          onHoverLeave={() => dispatch({ type: 'hover-leave' })}
-          onDismiss={(id) => dispatch({ type: 'dismiss-toast', id })}
-          onActionClick={handleToastAction}
-        />
+        <div data-app-ready={appReady} style={{ display: 'contents' }}>
+          <FlyoutToast
+            queue={mode.queue}
+            onHoverEnter={() => dispatch({ type: 'hover-enter' })}
+            onHoverLeave={() => dispatch({ type: 'hover-leave' })}
+            onDismiss={(id) => dispatch({ type: 'dismiss-toast', id })}
+            onActionClick={handleToastAction}
+          />
+        </div>
       );
   }
 }

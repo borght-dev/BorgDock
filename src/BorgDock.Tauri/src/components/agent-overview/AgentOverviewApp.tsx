@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAgentSessions } from '@/hooks/useAgentSessions';
 import { useInspectorState } from '@/hooks/useInspectorState';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -13,7 +13,7 @@ import { InspectorPopover } from './inspector/InspectorPopover';
 import { RepoGrouped } from './RepoGrouped';
 import { Statusbar } from './Statusbar';
 import { StatusGrouped } from './StatusGrouped';
-import { Titlebar, type Grouping } from './Titlebar';
+import { type Grouping, Titlebar } from './Titlebar';
 import { WorktreeFlat } from './WorktreeFlat';
 import './agent-overview.css';
 
@@ -37,7 +37,11 @@ export function AgentOverviewApp() {
     };
     const resolve = () => {
       const stored = (() => {
-        try { return localStorage.getItem('borgdock-theme'); } catch { return null; }
+        try {
+          return localStorage.getItem('borgdock-theme');
+        } catch {
+          return null;
+        }
       })();
       if (stored === 'dark' || stored === 'light') return stored;
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -91,9 +95,14 @@ export function AgentOverviewApp() {
   return (
     <InspectorContext.Provider value={inspector}>
       <div
+        data-app-ready="true"
         style={{
-          width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column',
-          background: 'var(--color-background)', color: 'var(--color-text-primary)',
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--color-background)',
+          color: 'var(--color-text-primary)',
         }}
       >
         <Titlebar
@@ -105,8 +114,11 @@ export function AgentOverviewApp() {
         />
         <div
           style={{
-            flex: 1, overflow: 'auto', padding: '14px 18px 16px',
-            background: 'var(--color-background)', minHeight: 0,
+            flex: 1,
+            overflow: 'auto',
+            padding: '14px 18px 16px',
+            background: 'var(--color-background)',
+            minHeight: 0,
           }}
         >
           <AwaitingRail agents={awaiting} density={effectiveDensity} />
@@ -132,11 +144,16 @@ function renderGrouping(
   density: ReturnType<typeof pickDensity>,
 ) {
   switch (grouping) {
-    case 'repo':     return <RepoGrouped agents={agents} density={density} />;
-    case 'status':   return <StatusGrouped agents={agents} density={density} />;
-    case 'worktree': return <WorktreeFlat agents={agents} density={density} />;
-    case 'context':  return <ContextGrouped agents={agents} density={density} />;
-    case 'activity': return <ActivityGrouped agents={agents} density={density} />;
+    case 'repo':
+      return <RepoGrouped agents={agents} density={density} />;
+    case 'status':
+      return <StatusGrouped agents={agents} density={density} />;
+    case 'worktree':
+      return <WorktreeFlat agents={agents} density={density} />;
+    case 'context':
+      return <ContextGrouped agents={agents} density={density} />;
+    case 'activity':
+      return <ActivityGrouped agents={agents} density={density} />;
   }
 }
 

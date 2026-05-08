@@ -8,9 +8,9 @@ import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
-import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useCacheInit } from '@/hooks/useCacheInit';
 import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
+import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
@@ -224,7 +224,9 @@ export default function App() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         const fn = await listen('open-settings', () => {
-          void invoke('open_settings_window', {}).catch((err) => console.error('open_settings_window failed', err));
+          void invoke('open_settings_window', {}).catch((err) =>
+            console.error('open_settings_window failed', err),
+          );
         });
         if (cancelled) {
           fn();
@@ -270,28 +272,45 @@ export default function App() {
   // on mount so visual.spec.ts can capture it without simulating a click.
   useEffect(() => {
     const isTest =
-      import.meta.env.DEV ||
-      (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
+      import.meta.env.DEV || (typeof window !== 'undefined' && window.__PLAYWRIGHT__ === true);
     if (!isTest) return;
     if (new URLSearchParams(window.location.search).get('settings') === 'open') {
-      void invoke('open_settings_window', {}).catch((err) => console.error('open_settings_window failed', err));
+      void invoke('open_settings_window', {}).catch((err) =>
+        console.error('open_settings_window failed', err),
+      );
     }
   }, []);
 
+  // `data-app-ready` is a Playwright wait-target. It marks the moment after
+  // settings have hydrated and the app is rendering real UI (wizard, splash
+  // post-hydrate, or main window) — i.e. no longer in pre-mount limbo.
+  // The attribute is rendered on a `display: contents` wrapper so layout is
+  // unchanged in production. `appReady` is `undefined` until `isLoading`
+  // flips to false, which makes the attribute absent until then.
+  const appReady = !isLoading ? 'true' : undefined;
+
   // Show wizard when setup is needed (skip splash)
   if (!isLoading && needsSetup) {
-    return <SetupWizard />;
+    return (
+      <div data-app-ready={appReady} style={{ display: 'contents' }}>
+        <SetupWizard />
+      </div>
+    );
   }
 
   // Show splash screen during init (but never re-show after init completed)
   if (!initCompletedRef.current && (isLoading || !isInitComplete)) {
-    return <SplashScreen />;
+    return (
+      <div data-app-ready={appReady} style={{ display: 'contents' }}>
+        <SplashScreen />
+      </div>
+    );
   }
 
   // Brief fade-out overlay after init completes
   if (fadingOut) {
     return (
-      <>
+      <div data-app-ready={appReady} style={{ display: 'contents' }}>
         {/* style: custom animation keyframe name — no Tailwind utility for splash-fade-out */}
         <div
           className="pointer-events-none fixed inset-0 z-50"
@@ -307,12 +326,12 @@ export default function App() {
         </MainWindow>
         <MergeToast />
         <QuickReviewOverlay />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div data-app-ready={appReady} style={{ display: 'contents' }}>
       <MainWindow>
         {activeSection === 'focus' && <FocusList />}
         {activeSection === 'prs' && <PrList />}
@@ -320,6 +339,6 @@ export default function App() {
       </MainWindow>
       <MergeToast />
       <QuickReviewOverlay />
-    </>
+    </div>
   );
 }

@@ -1,756 +1,221 @@
-import { Page, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { installMockTauri, getInvokeLog, type MockHandlers } from './mock-tauri';
+import { renderSmoke } from './render-smoke';
+import { seedScenario, type Scenario } from './seed';
 
 /**
- * Tauri API mock script injected via addInitScript.
- * Intercepts dynamic imports of @tauri-apps/* modules so the frontend
- * can run inside a plain browser without a real Tauri backend.
+ * Frozen clock for deterministic captures. All tests see this date.
  */
-export const TAURI_MOCK_SCRIPT = `
-  // Mock __TAURI_INTERNALS__ to prevent "not running in Tauri" errors
-  window.__TAURI_INTERNALS__ = {
-    invoke: async (cmd, args) => {
-      // Do NOT log plugin:log|log invocations — the frontend's
-      // attachConsoleBridge (services/logger.ts) patches console.log to
-      // proxy through plugin-log, so logging here would re-enter the
-      // mock and recurse until the page crashes.
-      if (cmd !== 'plugin:log|log') {
-        console.log('[mock] invoke', cmd, args);
-      }
+const FROZEN_CLOCK_ISO = '2026-05-08T10:00:00Z';
 
-      switch (cmd) {
-        case 'plugin:log|log':
-          // Drop plugin-log calls on the floor; they are fire-and-forget
-          // in real Tauri and have no return value.
-          return null;
-        case 'load_settings':
-          return window.__BORGDOCK_MOCK_SETTINGS__ || {
-            setupComplete: false,
-            gitHub: { authMethod: 'ghCli', pollIntervalSeconds: 60, username: '' },
-            repos: [],
-            ui: {
-              theme: 'dark', globalHotkey: 'Ctrl+Shift+P', flyoutHotkey: 'Ctrl+Shift+F',
-              editorCommand: 'code', runAtStartup: false,
-            },
-            notifications: { toastOnCheckStatusChange: true, toastOnNewPR: true, toastOnReviewUpdate: true },
-            claudeApi: { apiKey: '' },
-            claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-            claudeReview: { botUsername: 'claude-code' },
-            updates: { autoCheckEnabled: false, autoDownload: false },
-            azureDevOps: {
-              organization: '', project: '', pollIntervalSeconds: 120,
-              favoriteQueryIds: [], trackedWorkItemIds: [], workingOnWorkItemIds: [],
-              workItemWorktreePaths: {},
-            },
-          };
-
-        case 'save_settings':
-          window.__BORGDOCK_MOCK_SETTINGS__ = args?.settings;
-          return null;
-
-        case 'register_user_hotkeys':
-        case 'unregister_hotkey':
-        case 'show_or_focus_main':
-        case 'init_cache':
-          return null;
-
-        case 'open_pr_detail_window':
-          // In real Tauri this opens a separate WebviewWindow. The Playwright
-          // mock can't create a Tauri window, so we emit a real browser popup
-          // (page.waitForEvent('popup') consumes this) using the Vite-served
-          // pr-detail.html so the URL assertion holds.
-          try {
-            const url = '/pr-detail.html?owner=' + encodeURIComponent(args?.owner ?? '') +
-              '&repo=' + encodeURIComponent(args?.repo ?? '') +
-              '&number=' + (args?.number ?? '');
-            window.open(url, '_blank');
-          } catch {
-            // popup blockers etc. - swallow; the spec tolerates "no popup"
-          }
-          return null;
-
-        case 'check_github_auth':
-          return 'testuser';
-
-        case 'plugin:app|version':
-          // Used by @tauri-apps/api/app's getVersion(). Returning the latest
-          // RELEASES entry's version unblocks WhatsNewApp's "ready" gate so
-          // the release accordion mounts.
-          return '1.1.0';
-
-        case 'plugin:event|listen':
-        case 'plugin:event|unlisten':
-          // onMoved() / listen() callers guard the returned unlisten fn with
-          // unlisten?.() so returning null is safe (see WorkItemPaletteApp.tsx).
-          return null;
-
-        case 'plugin:window|inner_size':
-          // Real Tauri returns a PhysicalSize { type: 'Physical', width, height }.
-          return { type: 'Physical', width: 800, height: 600 };
-
-        case 'plugin:window|scale_factor':
-          return 1;
-
-        case 'plugin:window|current_monitor':
-          return {
-            name: 'mock-monitor',
-            size: { type: 'Physical', width: 1440, height: 900 },
-            scaleFactor: 1,
-            position: { type: 'Physical', x: 0, y: 0 },
-          };
-
-        case 'plugin:window|set_size':
-          return null;
-
-        case 'plugin:window|close':
-          // Browsers may block window.close() on non-script-opened windows; that's
-          // fine — the test side effect is "command was invoked", not "window
-          // actually closed".
-          return null;
-
-        case 'plugin:window|start_dragging':
-          return null;
-
-        case 'palette_ready':
-        case 'window_ready':
-        case 'open_in_terminal':
-        case 'open_in_editor':
-        case 'open_file_viewer_window':
-          return null;
-
-        case 'list_root_files':
-          // FileIndexState / use-file-index.ts: { entries: FileEntry[], truncated: boolean }
-          // FileEntry fields are not camelCase-renamed in the Rust struct, so rel_path stays as-is.
-          return {
-            entries: [
-              { rel_path: 'src/quote/footer.tsx', size: 120 },
-              { rel_path: 'src/App.tsx', size: 840 },
-              { rel_path: 'src/main.ts', size: 200 },
-            ],
-            truncated: false,
-          };
-
-        case 'read_text_file':
-          // FileViewerApp.tsx: invoke<string>('read_text_file', { path })
-          // The Rust command returns Result<String, ReadFileError>; on success Tauri
-          // serialises that as the bare string (not wrapped in { kind, content }).
-          // Use \\n (double-escaped) so the TS template literal emits literal \\n
-          // into the injected JS, where it is interpreted as a newline escape.
-          return "import * as React from 'react';\\nexport function Footer() {\\n  return <footer>\\u00a9 2026</footer>;\\n}\\n";
-
-        case 'git_file_diff':
-          // FileViewerApp.tsx: invoke<DiffOutput>('git_file_diff', { path, baseline })
-          // FileDiffOutput is rename_all = "camelCase": { patch, baselineRef, inRepo }
-          return { patch: '', baselineRef: 'HEAD', inRepo: false };
-
-        case 'search_content':
-          // use-content-search.ts: invoke<ContentFileResult[]>('search_content', { root, pattern, cancel_token })
-          // ContentFileResult fields are NOT camelCase-renamed: rel_path, match_count, matches
-          return [];
-
-        case 'git_changed_files':
-          // ChangesSection.tsx: invoke<ChangedFilesOutput>('git_changed_files', { root })
-          // ChangedFilesOutput is rename_all = "camelCase": { local, vsBase, baseRef, inRepo }
-          return { local: [], vsBase: [], baseRef: 'HEAD', inRepo: false };
-
-        case 'execute_sql_query':
-          // Synthetic result so sql.spec.ts's "results table renders after mock
-          // run" can assert on the [data-sql-results-table] tbody.
-          return {
-            resultSets: [
-              {
-                columns: ['id', 'name'],
-                rows: [['1', 'alice'], ['2', 'bob']],
-                rowCount: 2,
-                truncated: false,
-              },
-            ],
-            executionTimeMs: 1,
-            totalRowCount: 2,
-          };
-
-        case 'discover_repos':
-          return [
-            { owner: 'test-org', name: 'test-repo', localPath: '/home/user/repos/test-repo', isSelected: true, worktreeSubfolder: '.worktrees' },
-            { owner: 'test-org', name: 'other-repo', localPath: '/home/user/repos/other-repo', isSelected: false, worktreeSubfolder: '.worktrees' },
-          ];
-
-        case 'git_fetch':
-        case 'git_checkout':
-          return null;
-
-        case 'get_cached_prs':
-          return [];
-
-        case 'list_worktrees_bare':
-          return [
-            { path: '/home/user/repos/test-repo/.worktrees/feat-x', branchName: 'feat-x', isMainWorktree: false },
-            { path: '/home/user/repos/test-repo', branchName: 'main', isMainWorktree: true },
-          ];
-
-        case 'list_worktree_changes':
-          return {
-            vsHead: [
-              { path: 'src/a.ts', previousPath: null, status: 'modified', additions: 3, deletions: 1, isBinary: false, isSubmodule: false },
-              { path: 'src/new.ts', previousPath: null, status: 'added', additions: 12, deletions: 0, isBinary: false, isSubmodule: false },
-            ],
-            vsBase: [
-              { path: 'README.md', previousPath: null, status: 'modified', additions: 1, deletions: 1, isBinary: false, isSubmodule: false },
-            ],
-            baseBranch: 'main',
-            baseBranchSource: 'origin-head',
-            detachedHead: false,
-            mergeBaseUnavailable: false,
-          };
-
-        case 'diff_worktree_vs_head':
-        case 'diff_worktree_vs_base':
-          return {
-            filePath: args?.filePath ?? 'src/a.ts',
-            previousPath: null,
-            hunks: [{
-              header: '@@ -1 +1,2 @@', oldStart: 1, oldCount: 1, newStart: 1, newCount: 2,
-              lines: [
-                { kind: 'context', content: 'a', oldLineNumber: 1, newLineNumber: 1 },
-                { kind: 'add', content: 'b', oldLineNumber: null, newLineNumber: 2 },
-              ],
-            }],
-            binary: null, isSubmodule: false,
-          };
-
-        default:
-          console.warn('[mock] unhandled invoke:', cmd);
-          return null;
-      }
-    },
-    transformCallback: () => 0,
-  };
-
-  // Prevent Tauri event listeners from throwing
-  window.__TAURI_INTERNALS__.metadata = { currentWindow: { label: 'main' }, currentWebview: { label: 'main' }, windows: [] };
-
-  // Intercept fetch to api.github.com so the init flow ('auth' → 'discover-repos' →
-  // 'fetch-prs' → 'fetch-checks') doesn't 401 against real GitHub. Without this
-  // the splash screen stalls on "GitHub API authentication failed (401)" and
-  // every spec fails at waitForAppReady. Routes return synthetic empty lists so
-  // the main sidebar renders; seedPrStore can override after init completes.
-  (function mockGitHubFetch() {
-    const realFetch = window.fetch.bind(window);
-    const jsonOk = (body) =>
-      new Response(JSON.stringify(body), {
-        status: 200,
-        statusText: 'OK',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-RateLimit-Remaining': '4999',
-          'X-RateLimit-Limit': '5000',
-          'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + 3600),
-        },
-      });
-    window.fetch = async (input, init) => {
-      const url = typeof input === 'string' ? input : input.url || String(input);
-      if (/^https:\\/\\/api\\.github\\.com\\//.test(url)) {
-        if (/\\/graphql\\b/.test(url)) return jsonOk({ data: {} });
-        // Specific fixtures for PR #714 used by diff-viewer.spec.ts.
-        // The PR object is shared between the list (pulls?state=open) and the
-        // detail (pulls/714) endpoints — both need the same shape so that
-        // PRDetailApp can find the PR in the list and then hydrate its details.
-        // These routes only activate when __BORGDOCK_PR_DETAIL__ is seeded so
-        // other specs (pr-list, pr-detail, etc.) that hit the same endpoints
-        // keep receiving the existing empty-list behaviour.
-        const pr714Detail = (window).__BORGDOCK_PR_DETAIL__;
-        if (pr714Detail) {
-          const pr714 = {
-            number: 714, state: 'open', title: 'Add quote footer',
-            user: { login: 'testuser', avatar_url: '' },
-            head: { ref: 'feat/footer', sha: 'abc1234' },
-            base: { ref: 'main' },
-            body: 'Adds the footer component.',
-            html_url: 'https://github.com/test-org/test-repo/pull/714',
-            additions: 5, deletions: 2, changed_files: 2, commits: 1,
-            comments: 0, review_comments: 0,
-            mergeable: true, mergeable_state: 'clean', draft: false,
-            labels: [], requested_reviewers: [],
-            created_at: '2026-04-20T10:00:00Z',
-            updated_at: '2026-04-25T14:00:00Z',
-            closed_at: null, merged_at: null,
-          };
-          if (/\\/pulls\\/714\\/files/.test(url)) {
-            // The patch for footer.tsx has 30+ context lines between the two hunks
-            // so the content overflows the viewport and the "Next hunk" scroll is
-            // actually observable (scrollIntoView moves the diff pane container).
-            const footerPatch = '@@ -1,3 +1,5 @@\\n' +
-              ' import * as React from "react";\\n' +
-              '+\\n' +
-              '+const YEAR = 2026;\\n' +
-              ' export function Footer() {\\n' +
-              '-  return <footer>\\u00a9 2025</footer>;\\n' +
-              '+  return <footer>\\u00a9 {YEAR}</footer>;\\n' +
-              ' }\\n' +
-              ' // context line 1\\n' +
-              ' // context line 2\\n' +
-              ' // context line 3\\n' +
-              ' // context line 4\\n' +
-              ' // context line 5\\n' +
-              ' // context line 6\\n' +
-              ' // context line 7\\n' +
-              ' // context line 8\\n' +
-              ' // context line 9\\n' +
-              ' // context line 10\\n' +
-              ' // context line 11\\n' +
-              ' // context line 12\\n' +
-              ' // context line 13\\n' +
-              ' // context line 14\\n' +
-              ' // context line 15\\n' +
-              ' // context line 16\\n' +
-              ' // context line 17\\n' +
-              ' // context line 18\\n' +
-              ' // context line 19\\n' +
-              ' // context line 20\\n' +
-              ' // context line 21\\n' +
-              ' // context line 22\\n' +
-              ' // context line 23\\n' +
-              ' // context line 24\\n' +
-              ' // context line 25\\n' +
-              '@@ -40,3 +42,4 @@\\n' +
-              ' // second hunk context\\n' +
-              '-const OLD = true;\\n' +
-              '+const NEW = true;\\n' +
-              '+const EXTRA = false;\\n';
-            return jsonOk([
-              {
-                filename: 'src/quote/footer.tsx', status: 'modified',
-                additions: 4, deletions: 2, changes: 6,
-                patch: footerPatch,
-              },
-              {
-                filename: 'src/quote/header.tsx', status: 'modified',
-                additions: 2, deletions: 1, changes: 3,
-                patch: '@@ -1,2 +1,3 @@\\n+// New comment\\n export function Header() {\\n-  return <header>Quote</header>;\\n+  return <header>Quote 2026</header>;\\n }\\n',
-              },
-            ]);
-          }
-          if (/\\/pulls\\/714\\/commits/.test(url)) {
-            return jsonOk([
-              {
-                sha: 'abc1234',
-                commit: {
-                  author: { name: 'testuser', email: 'testuser@example.com', date: '2026-04-20T10:00:00Z' },
-                  message: 'Add quote footer',
-                },
-                author: { login: 'testuser', avatar_url: '' },
-              },
-            ]);
-          }
-          // /pulls/714 exact detail (NOT sub-resources like /reviews, /comments)
-          if (/\\/pulls\\/714$/.test(url)) {
-            return jsonOk(pr714);
-          }
-          // List endpoint: /repos/.../pulls?state=open — return [pr714] so
-          // PRDetailApp.getOpenPRs() finds PR #714 in the list.
-          if (/\\/pulls\\?/.test(url)) {
-            return jsonOk([pr714]);
-          }
+/**
+ * Inject Date / performance.now overrides at page-init time.
+ */
+export async function freezeClock(
+  page: Page,
+  iso: string = FROZEN_CLOCK_ISO,
+): Promise<void> {
+  const ms = new Date(iso).getTime();
+  await page.addInitScript((frozenMs: number) => {
+    const OriginalDate = Date;
+    class FrozenDate extends OriginalDate {
+      constructor(...args: unknown[]) {
+        if (args.length === 0) {
+          super(frozenMs);
+        } else {
+          // @ts-expect-error -- delegating to OriginalDate constructor
+          super(...args);
         }
-        // /repos/:owner/:repo/pulls, /issues, /commits, /files, /reviews, etc.
-        if (/\\/(pulls|issues|commits|files|reviews|check-runs|check-suites|comments)\\b/.test(url))
-          return jsonOk([]);
-        // /repos/:owner/:repo  (repo metadata)
-        return jsonOk({});
       }
-      return realFetch(input, init);
-    };
-  })();
-`;
-
-/**
- * Complete mock settings object that marks setup as complete.
- */
-export function completedSettings() {
-  return {
-    setupComplete: true,
-    gitHub: {
-      authMethod: 'pat',
-      personalAccessToken: 'ghp_test123',
-      pollIntervalSeconds: 60,
-      username: 'testuser',
-    },
-    repos: [
-      {
-        owner: 'test-org',
-        name: 'test-repo',
-        enabled: true,
-        worktreeBasePath: '/home/user/repos/test-repo',
-        worktreeSubfolder: '.worktrees',
-      },
-    ],
-    ui: {
-      theme: 'dark',
-      globalHotkey: 'Ctrl+Shift+P',
-      flyoutHotkey: 'Ctrl+Shift+F',
-      editorCommand: 'code',
-      runAtStartup: false,
-    },
-    notifications: {
-      toastOnCheckStatusChange: true,
-      toastOnNewPR: true,
-      toastOnReviewUpdate: true,
-    },
-    claudeApi: { apiKey: '' },
-    claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-    claudeReview: { botUsername: 'claude-code' },
-    updates: { autoCheckEnabled: false, autoDownload: false },
-    azureDevOps: {
-      organization: '',
-      project: '',
-      pollIntervalSeconds: 120,
-      favoriteQueryIds: [],
-      trackedWorkItemIds: [],
-      workingOnWorkItemIds: [],
-      workItemWorktreePaths: {},
-    },
-    sql: {
-      connections: [
-        {
-          name: 'test-db',
-          server: 'localhost',
-          port: 1433,
-          database: 'test',
-          authentication: 'sql',
-          username: 'sa',
-          password: 'pw',
-          trustServerCertificate: true,
-        },
-      ],
-      lastUsedConnection: 'test-db',
-    },
-  };
+      static now(): number {
+        return frozenMs;
+      }
+    }
+    (window as unknown as { Date: unknown }).Date = FrozenDate;
+    const originalPerfNow = performance.now.bind(performance);
+    let perfStart = originalPerfNow();
+    performance.now = () => originalPerfNow() - perfStart;
+    perfStart = 0;
+  }, ms);
 }
 
 /**
- * Inject Tauri mocks before the page loads. Must be called before page.goto().
+ * Disable all CSS animations & transitions globally for stability.
  */
-export async function injectTauriMocks(page: Page) {
-  await page.addInitScript(TAURI_MOCK_SCRIPT);
-}
-
-/**
- * Inject Tauri mocks with completed settings so the wizard is skipped.
- */
-export async function injectCompletedSetup(page: Page) {
-  const settings = completedSettings();
-  await page.addInitScript(`
-    ${TAURI_MOCK_SCRIPT}
-    window.__BORGDOCK_MOCK_SETTINGS__ = ${JSON.stringify(settings)};
-    window.__PLAYWRIGHT__ = true;
-  `);
-}
-
-/**
- * Wait for the app to fully load (past loading spinner).
- */
-export async function waitForAppReady(page: Page) {
-  // Wait for the loading spinner to disappear
-  await page
-    .waitForSelector('[class*="animate-spin"]', { state: 'detached', timeout: 10_000 })
-    .catch(() => {});
-  // Wait for the app root to mount. Cover three shapes:
-  //   - main sidebar: <header>
-  //   - setup wizard / splash overlay: .fixed.inset-0
-  //   - chromeless windows (sql / whats-new / pr-detail / work-item): drag region titlebar
-  await page.waitForSelector('header, [class*="fixed inset-0"], [data-tauri-drag-region]', {
-    timeout: 10_000,
+export async function disableAnimations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      *, *::before, *::after {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+      }
+    `;
+    // Insert ASAP — DOM may not exist yet.
+    if (document.head) {
+      document.head.appendChild(style);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => document.head.appendChild(style));
+    }
   });
 }
 
 /**
- * Inject mock PR data into the Zustand pr-store via page.evaluate().
- * Call this after the page has loaded.
- */
-export async function injectMockPrs(page: Page) {
-  await page.evaluate(() => {
-    // Access the Zustand store directly from the window (exposed in dev via React internals)
-    // We use a more reliable approach: dispatch a custom event that our test helper catches
-    const mockPrs = [
-      {
-        pullRequest: {
-          number: 42,
-          title: 'Fix login button alignment',
-          headRef: 'fix/login-btn',
-          baseRef: 'main',
-          authorLogin: 'testuser',
-          authorAvatarUrl: 'https://github.com/testuser.png',
-          state: 'open',
-          createdAt: '2026-03-15T10:00:00Z',
-          updatedAt: '2026-03-16T14:00:00Z',
-          isDraft: false,
-          mergeable: true,
-          htmlUrl: 'https://github.com/test-org/test-repo/pull/42',
-          body: 'Fixes the login button alignment on mobile',
-          repoOwner: 'test-org',
-          repoName: 'test-repo',
-          reviewStatus: 'approved',
-          commentCount: 3,
-          labels: ['bug', 'frontend'],
-          additions: 12,
-          deletions: 5,
-          changedFiles: 2,
-          commitCount: 1,
-          mergedAt: undefined,
-          closedAt: undefined,
-        },
-        checks: [
-          {
-            id: 1,
-            name: 'CI / Build',
-            status: 'completed',
-            conclusion: 'success',
-            htmlUrl: 'https://github.com/test-org/test-repo/actions/runs/1',
-            checkSuiteId: 100,
-          },
-        ],
-        overallStatus: 'green',
-        failedCheckNames: [],
-        pendingCheckNames: [],
-        passedCount: 1,
-        skippedCount: 0,
-      },
-      {
-        pullRequest: {
-          number: 43,
-          title: 'Add dark mode support',
-          headRef: 'feat/dark-mode',
-          baseRef: 'main',
-          authorLogin: 'teammate',
-          authorAvatarUrl: 'https://github.com/teammate.png',
-          state: 'open',
-          createdAt: '2026-03-14T08:00:00Z',
-          updatedAt: '2026-03-16T12:00:00Z',
-          isDraft: false,
-          mergeable: true,
-          htmlUrl: 'https://github.com/test-org/test-repo/pull/43',
-          body: 'Adds full dark mode theme',
-          repoOwner: 'test-org',
-          repoName: 'test-repo',
-          reviewStatus: 'pending',
-          commentCount: 1,
-          labels: ['enhancement'],
-          additions: 200,
-          deletions: 50,
-          changedFiles: 15,
-          commitCount: 5,
-          mergedAt: undefined,
-          closedAt: undefined,
-        },
-        checks: [
-          {
-            id: 2,
-            name: 'CI / Build',
-            status: 'completed',
-            conclusion: 'failure',
-            htmlUrl: 'https://github.com/test-org/test-repo/actions/runs/2',
-            checkSuiteId: 101,
-          },
-          {
-            id: 3,
-            name: 'CI / Lint',
-            status: 'completed',
-            conclusion: 'success',
-            htmlUrl: 'https://github.com/test-org/test-repo/actions/runs/3',
-            checkSuiteId: 101,
-          },
-        ],
-        overallStatus: 'red',
-        failedCheckNames: ['CI / Build'],
-        pendingCheckNames: [],
-        passedCount: 1,
-        skippedCount: 0,
-      },
-      {
-        pullRequest: {
-          number: 44,
-          title: 'Update dependencies',
-          headRef: 'chore/deps',
-          baseRef: 'main',
-          authorLogin: 'testuser',
-          authorAvatarUrl: 'https://github.com/testuser.png',
-          state: 'open',
-          createdAt: '2026-03-13T12:00:00Z',
-          updatedAt: '2026-03-16T10:00:00Z',
-          isDraft: true,
-          mergeable: undefined,
-          htmlUrl: 'https://github.com/test-org/test-repo/pull/44',
-          body: 'Routine dependency updates',
-          repoOwner: 'test-org',
-          repoName: 'test-repo',
-          reviewStatus: 'none',
-          commentCount: 0,
-          labels: ['chore'],
-          additions: 500,
-          deletions: 300,
-          changedFiles: 3,
-          commitCount: 1,
-          mergedAt: undefined,
-          closedAt: undefined,
-        },
-        checks: [],
-        overallStatus: 'gray',
-        failedCheckNames: [],
-        pendingCheckNames: [],
-        passedCount: 0,
-        skippedCount: 0,
-      },
-    ];
-
-    // Dispatch custom event to inject PRs
-    window.dispatchEvent(
-      new CustomEvent('__borgdock_test_inject_prs', { detail: mockPrs })
-    );
-  });
-
-  // Give React a tick to process the state update
-  await page.waitForTimeout(100);
-}
-
-/**
- * Inject PRs by directly accessing the Zustand store through React fiber internals.
- * This is more reliable than custom events since we manipulate the store directly.
- */
-export async function injectPrsViaStore(page: Page) {
-  await page.evaluate(() => {
-    const mockPrs = [
-      {
-        pullRequest: {
-          number: 42,
-          title: 'Fix login button alignment',
-          headRef: 'fix/login-btn',
-          baseRef: 'main',
-          authorLogin: 'testuser',
-          authorAvatarUrl: '',
-          state: 'open',
-          createdAt: '2026-03-15T10:00:00Z',
-          updatedAt: '2026-03-16T14:00:00Z',
-          isDraft: false,
-          mergeable: true,
-          htmlUrl: 'https://github.com/test-org/test-repo/pull/42',
-          body: 'Fixes the login button alignment on mobile',
-          repoOwner: 'test-org',
-          repoName: 'test-repo',
-          reviewStatus: 'approved',
-          commentCount: 3,
-          labels: ['bug', 'frontend'],
-          additions: 12,
-          deletions: 5,
-          changedFiles: 2,
-          commitCount: 1,
-        },
-        checks: [
-          { id: 1, name: 'CI / Build', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 100 },
-        ],
-        overallStatus: 'green',
-        failedCheckNames: [],
-        pendingCheckNames: [],
-        passedCount: 1,
-        skippedCount: 0,
-      },
-      {
-        pullRequest: {
-          number: 43,
-          title: 'Add dark mode support',
-          headRef: 'feat/dark-mode',
-          baseRef: 'main',
-          authorLogin: 'teammate',
-          authorAvatarUrl: '',
-          state: 'open',
-          createdAt: '2026-03-14T08:00:00Z',
-          updatedAt: '2026-03-16T12:00:00Z',
-          isDraft: false,
-          mergeable: true,
-          htmlUrl: 'https://github.com/test-org/test-repo/pull/43',
-          body: 'Adds full dark mode theme',
-          repoOwner: 'test-org',
-          repoName: 'test-repo',
-          reviewStatus: 'pending',
-          commentCount: 1,
-          labels: ['enhancement'],
-          additions: 200,
-          deletions: 50,
-          changedFiles: 15,
-          commitCount: 5,
-        },
-        checks: [
-          { id: 2, name: 'CI / Build', status: 'completed', conclusion: 'failure', htmlUrl: '', checkSuiteId: 101 },
-          { id: 3, name: 'CI / Lint', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 101 },
-        ],
-        overallStatus: 'red',
-        failedCheckNames: ['CI / Build'],
-        pendingCheckNames: [],
-        passedCount: 1,
-        skippedCount: 0,
-      },
-      {
-        pullRequest: {
-          number: 44,
-          title: 'Update dependencies',
-          headRef: 'chore/deps',
-          baseRef: 'main',
-          authorLogin: 'testuser',
-          authorAvatarUrl: '',
-          state: 'open',
-          createdAt: '2026-03-13T12:00:00Z',
-          updatedAt: '2026-03-16T10:00:00Z',
-          isDraft: true,
-          mergeable: undefined,
-          htmlUrl: 'https://github.com/test-org/test-repo/pull/44',
-          body: 'Routine dependency updates',
-          repoOwner: 'test-org',
-          repoName: 'test-repo',
-          reviewStatus: 'none',
-          commentCount: 0,
-          labels: ['chore'],
-          additions: 500,
-          deletions: 300,
-          changedFiles: 3,
-          commitCount: 1,
-        },
-        checks: [],
-        overallStatus: 'gray',
-        failedCheckNames: [],
-        pendingCheckNames: [],
-        passedCount: 0,
-        skippedCount: 0,
-      },
-    ];
-
-    // Access Zustand store via the internal API exposed on the module scope
-    // The stores are created as singletons, so we can find them through the React tree
-    // Simpler approach: use the window.__ZUSTAND_STORES__ if available,
-    // or directly manipulate the DOM to trigger store changes
-    (window as any).__BORGDOCK_MOCK_PRS__ = mockPrs;
-  });
-}
-
-/**
- * Get all visible PR cards on the page.
- */
-export async function getPrCards(page: Page) {
-  return page.locator('[data-pr-card]').all();
-}
-
-/**
- * Click a section tab in the header.
+ * Compose the standard boot sequence: install mocks (with scenario
+ * overrides), freeze clock, disable animations, navigate to the
+ * window's HTML entry, run renderSmoke. Every spec calls this.
  *
- * The Header section switcher uses the Tabs primitive which renders
- * `role="tab"` on the underlying buttons. Querying `getByRole('button', …)`
- * does not match an element whose explicit `role` overrides the implicit
- * one, so we must use `role="tab"`.
+ * @param page  Playwright page
+ * @param entry HTML entry path (without leading slash) — '' for the main window
+ * @param scenario Named state scenario (default 'happy-path')
+ * @param extraHandlers Per-test handler overrides merged on top of scenario
  */
-export async function switchSection(page: Page, section: 'PRs' | 'Work Items' | 'Focus') {
-  await page.getByRole('tab', { name: section }).click();
+export async function bootApp(
+  page: Page,
+  entry: string = '',
+  scenario: Scenario = 'happy-path',
+  extraHandlers: MockHandlers = {},
+): Promise<void> {
+  const handlers = { ...seedScenario(scenario), ...extraHandlers };
+  await freezeClock(page);
+  await disableAnimations(page);
+  // Block real network egress to api.github.com / dev.azure.com — tests
+  // that need PR data seed via mock IPC (cache_load_prs). Returning an
+  // empty list keeps callers like getOpenPRs from blowing up, and the
+  // background API refresh just no-ops.
+  await page.route(
+    /(api\.github\.com|dev\.azure\.com|vsaex\.dev\.azure\.com)/,
+    (route) => {
+      const url = route.request().url();
+      // /user is hit for username detection — return a user object so the
+      // optional `.login` read doesn't 401-error in the console.
+      if (url.endsWith('/user')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ login: 'test-user' }),
+        });
+      }
+      // Default: empty list (most GitHub endpoints expect arrays).
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+    },
+  );
+  await installMockTauri(page, handlers);
+  const path = entry === '' ? '/' : `/${entry}`;
+  await page.goto(path);
+
+  // Some windows wait on a Tauri event (e.g. flyout's `init-complete`) that
+  // never fires in a pure-Vite test. Each such window exposes a test-seed
+  // function on `window.__borgdock_test_*_seed` from a DEV-only useEffect;
+  // we call it after the effect has had a tick to run so the reducer leaves
+  // its initializing state and `data-app-ready` flips to true.
+  if (entry === 'flyout.html') {
+    await page.waitForFunction(
+      () =>
+        typeof (window as unknown as { __borgdock_test_flyout_seed?: unknown })
+          .__borgdock_test_flyout_seed === 'function',
+      { timeout: 5_000 },
+    );
+    await page.evaluate(() => {
+      (
+        window as unknown as {
+          __borgdock_test_flyout_seed: (p: { mode: 'glance' }) => void;
+        }
+      ).__borgdock_test_flyout_seed({ mode: 'glance' });
+    });
+  }
+
+  await renderSmoke(page);
 }
 
 /**
- * Open the settings flyout.
+ * Push fixtures directly into the main window's Zustand stores via the
+ * dev-only `window.__borgdock_test_seed` hook (see `src/test-support/test-seed.ts`).
+ *
+ * The init sequence's background API refresh would otherwise overwrite the
+ * mock IPC's `cache_load_prs` payload with whatever the routed network mock
+ * returns, so anything that needs PRs visible after boot has to seed via
+ * this side-channel.
  */
-export async function openSettings(page: Page) {
-  await page.getByRole('button', { name: 'Settings' }).click();
+export async function seedMainWindow(
+  page: Page,
+  payload: {
+    prs?: unknown[];
+    workItems?: unknown[];
+    settings?: Record<string, unknown>;
+  },
+): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      typeof (window as unknown as { __borgdock_test_seed?: unknown })
+        .__borgdock_test_seed === 'function',
+    { timeout: 5_000 },
+  );
+  await page.evaluate(
+    (p) => {
+      (
+        window as unknown as {
+          __borgdock_test_seed: (p: unknown) => void;
+        }
+      ).__borgdock_test_seed(p);
+    },
+    payload,
+  );
+}
+
+/**
+ * Synthesize a hotkey press. Translates 'Mod' to Meta on darwin,
+ * Control elsewhere — CI runs Linux so it gets Control.
+ */
+export async function pressHotkey(page: Page, combo: string): Promise<void> {
+  const isMac = process.platform === 'darwin';
+  const translated = combo.replace(/\bMod\b/g, isMac ? 'Meta' : 'Control');
+  await page.keyboard.press(translated);
+}
+
+/**
+ * Wait for a specific invoke command to appear in the mock log.
+ * Polls every 50ms up to timeout.
+ */
+export async function waitForInvoke(
+  page: Page,
+  cmd: string,
+  timeout: number = 5000,
+): Promise<{ cmd: string; args: unknown }> {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const log = await getInvokeLog(page);
+    const found = log.find((e) => e.cmd === cmd);
+    if (found) return found;
+    await page.waitForTimeout(50);
+  }
+  throw new Error(`waitForInvoke: "${cmd}" not seen within ${timeout}ms`);
+}
+
+/**
+ * Assert a specific invoke command was called (with optional args predicate).
+ */
+export async function expectInvoked(
+  page: Page,
+  cmd: string,
+  argsPredicate?: (args: unknown) => boolean,
+): Promise<void> {
+  const log = await getInvokeLog(page);
+  const matches = log.filter((e) => e.cmd === cmd);
+  if (matches.length === 0) {
+    throw new Error(
+      `expectInvoked: "${cmd}" not in invokeLog. Log: ${JSON.stringify(log.map((e) => e.cmd))}`,
+    );
+  }
+  if (argsPredicate && !matches.some((m) => argsPredicate(m.args))) {
+    throw new Error(
+      `expectInvoked: "${cmd}" was called but args predicate failed. Args: ${JSON.stringify(matches.map((m) => m.args))}`,
+    );
+  }
 }

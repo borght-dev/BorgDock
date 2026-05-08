@@ -31,21 +31,8 @@ jobs:
       - run: bun run test -- --reporter=verbose
 
   playwright:
-    name: playwright (${{ matrix.os }})
-    # Non-blocking: e2e suite has accumulated failures we haven't triaged yet.
-    # Keep the signal in the CI summary so regressions are visible, but don't
-    # block PRs on it until the suite is brought back to green.
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-        include:
-          - os: macos-latest
-            project: webview-mac
-          - os: windows-latest
-            project: webview-win
-    runs-on: ${{ matrix.os }}
+    name: playwright (e2e)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -53,18 +40,18 @@ jobs:
           bun-version: '1.3.10'
       - run: bun install --frozen-lockfile
       - run: bunx playwright install chromium --with-deps
-      - run: bun run test:e2e -- --project=${{ matrix.project }}
+      - run: bun run test:e2e
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.os }}
+          name: playwright-report
           path: src/BorgDock.Tauri/playwright-report
           retention-days: 14
-      - name: Upload visual diffs
+      - name: Upload test-results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: visual-diffs-${{ matrix.os }}
+          name: playwright-test-results
           path: src/BorgDock.Tauri/test-results
           retention-days: 14

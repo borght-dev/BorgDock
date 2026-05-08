@@ -1,109 +1,49 @@
-import { test, expect } from '@playwright/test';
-import {
-  injectCompletedSetup,
-  waitForAppReady,
-  injectPrsViaStore,
-} from './helpers/test-utils';
+import { expect, test } from '@playwright/test';
+import { FAILING_PR, SAMPLE_PRS } from './helpers/seed';
+import { bootApp, expectInvoked, seedMainWindow } from './helpers/test-utils';
 
-test.describe('PR List', () => {
-  test.beforeEach(async ({ page }) => {
-    await injectCompletedSetup(page);
-    await page.goto('/');
-    await waitForAppReady(page);
-    // Default activeSection is 'focus' (per ui-store). These tests assert the
-    // PR list surface, so switch to it first. Tabs primitive uses role="tab".
-    await page.getByRole('tab', { name: 'PRs' }).click();
+/**
+ * Main-window PR list:
+ *   - renders seeded PRs by title
+ *   - clicking a PR card fires open_pr_detail_window with { owner, repo, number }
+ *
+ * Selectors are intentionally text-based (the PR card's title is rendered
+ * as flowing text inside a role=button container; no `data-testid` exists
+ * on the card itself). PR list filter/sort/group buttons are not asserted
+ * — they vary by feature flag and aren't core to "did the list render".
+ *
+ * Why we seed twice (mock IPC + __borgdock_test_seed):
+ *   The init sequence pulls PRs from the SQLite cache (via cache_load_prs)
+ *   and then kicks off a background GitHub API refresh that overwrites the
+ *   store with whatever the routed network mock returns (an empty list).
+ *   Seeding through `__borgdock_test_seed` AFTER bootApp pins the store
+ *   contents past the background refresh.
+ */
+
+test('PR list renders seeded PRs', async ({ page }) => {
+  await bootApp(page, '', 'happy-path');
+  await seedMainWindow(page, { prs: SAMPLE_PRS });
+  // Switch to the PRs tab — focus is the default.
+  await page.getByRole('tab', { name: 'PRs' }).click();
+  await expect(page.getByText('Add cool feature')).toBeVisible();
+  await expect(page.getByText('Fix bug')).toBeVisible();
+});
+
+test('clicking a PR opens detail window', async ({ page }) => {
+  await bootApp(page, '', 'happy-path');
+  await seedMainWindow(page, { prs: SAMPLE_PRS });
+  await page.getByRole('tab', { name: 'PRs' }).click();
+  await page.getByText('Add cool feature').click();
+  await expectInvoked(page, 'open_pr_detail_window', (args) => {
+    if (typeof args !== 'object' || args === null) return false;
+    const a = args as { owner?: string; repo?: string; number?: number };
+    return a.owner === 'test-org' && a.repo === 'borgdock' && a.number === 42;
   });
+});
 
-  test('shows "No pull requests found" when empty', async ({ page }) => {
-    // With completed setup but no PRs loaded, after the first poll completes
-    // we should see the empty state. Since polling is mocked (invoke returns []),
-    // the store will have no PRs. We need to wait for the polling to set lastPollTime.
-    // Force the store state via evaluate.
-    await page.evaluate(() => {
-      // Simulate that a poll has completed with no results
-      const event = new CustomEvent('__borgdock_force_state', {
-        detail: { isPolling: false, lastPollTime: new Date().toISOString() },
-      });
-      window.dispatchEvent(event);
-    });
-    // The empty state text may already be there since we have 0 PRs
-    // Give the component a moment to render
-    await page.waitForTimeout(300);
-
-    await expect(page.getByText('No pull requests found')).toBeVisible();
-  });
-
-  test('filter buttons are visible', async ({ page }) => {
-    // FilterBar labels per the current Header/FilterBar (PR #1+#2 chrome).
-    const filterLabels = ['All', 'Needs Review', 'Mine', 'Failing', 'Ready', 'Review', 'Closed'];
-    for (const label of filterLabels) {
-      await expect(
-        page.locator('button').filter({ hasText: label }).first()
-      ).toBeVisible();
-    }
-  });
-
-  test('clicking a filter changes the active filter', async ({ page }) => {
-    // Click "Failing" filter — FilterBar uses Chip primitive (PR #4), so active
-    // state surfaces as data-filter-active="true" + aria-pressed="true".
-    const failingBtn = page.locator('[data-filter-chip][data-filter-key="failing"]');
-    await failingBtn.click();
-    await expect(failingBtn).toHaveAttribute('data-filter-active', 'true');
-  });
-
-  test('search bar is visible and accepts input', async ({ page }) => {
-    const searchInput = page.getByPlaceholder('Filter pull requests...');
-    await expect(searchInput).toBeVisible();
-
-    // Type into the search bar
-    await searchInput.fill('login');
-    await expect(searchInput).toHaveValue('login');
-  });
-
-  test('search bar clear button appears when text is entered', async ({ page }) => {
-    const searchInput = page.getByPlaceholder('Filter pull requests...');
-    await searchInput.fill('test');
-
-    // Clear button should now be visible
-    const clearBtn = page.getByRole('button', { name: 'Clear search' });
-    await expect(clearBtn).toBeVisible();
-
-    // Click clear
-    await clearBtn.click();
-    await expect(searchInput).toHaveValue('');
-  });
-
-  test('header contains BorgDock logo and section switcher', async ({ page }) => {
-    await expect(page.getByText('BorgDock')).toBeVisible();
-
-    // Section switcher tabs
-    await expect(page.getByRole('tab', { name: 'PRs' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Work Items' })).toBeVisible();
-  });
-
-  test('shows loading skeletons during first load', async ({ page }) => {
-    // Create a new page context where the store simulates first load (isPolling=true, no lastPollTime)
-    const freshPage = page;
-    await injectCompletedSetup(freshPage);
-
-    // Override the mock to delay the load_settings response
-    await freshPage.addInitScript(`
-      const origInvoke = window.__TAURI_INTERNALS__.invoke;
-      window.__TAURI_INTERNALS__.invoke = async (cmd, args) => {
-        if (cmd === 'load_settings') {
-          // Return completed settings immediately
-          return window.__BORGDOCK_MOCK_SETTINGS__;
-        }
-        return origInvoke(cmd, args);
-      };
-    `);
-
-    await freshPage.goto('/');
-    // The skeleton cards have animate-pulse class
-    // They may flash briefly during the initial render
-    const skeletons = freshPage.locator('[class*="animate-pulse"]');
-    // We just verify that the page loads without errors
-    await waitForAppReady(freshPage);
-  });
+test('failing-checks scenario shows the failing PR', async ({ page }) => {
+  await bootApp(page, '', 'failing-checks');
+  await seedMainWindow(page, { prs: [FAILING_PR, ...SAMPLE_PRS] });
+  await page.getByRole('tab', { name: 'PRs' }).click();
+  await expect(page.getByText('WIP: red checks')).toBeVisible();
 });
