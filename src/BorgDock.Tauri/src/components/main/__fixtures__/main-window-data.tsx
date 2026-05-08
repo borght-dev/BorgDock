@@ -252,6 +252,51 @@ export const PRS_MERGE_CONFLICTS: PullRequestWithChecks[] = [
 
 export const PRS_EMPTY: PullRequestWithChecks[] = [];
 
+// PRs designed to populate the Focus list. computePriorityScores in
+// services/priority-scoring.ts gives a non-zero score (and therefore
+// inclusion in usePrStore.focusPrs) when at least one of:
+//   - own PR + green + approved + mergeable + !draft  → readyToMerge (45)
+//   - own PR + red checks                              → myPrRedChecks (20)
+//   - own PR + changesRequested                        → myPrChangesRequested (15)
+//   - own PR + (red OR changesRequested) + stale >24h  → myPrStale (10)
+//   - reviewer requested by username                   → reviewRequested (15)
+//   - any PR + updated >24h ago                        → staleness (2-10)
+//   - others' PR + red                                 → othersRedChecks (5)
+// Stories using PRS_FOCUS_DEMO must also seed `gitHub.username` so the
+// `isMine` check fires.
+export const PRS_FOCUS_DEMO: PullRequestWithChecks[] = [
+  // (1) Own PR ready to merge — readyToMerge (45)
+  makePr({
+    pullRequest: {
+      number: 43,
+      title: 'fix: rate-limit banner copy',
+      reviewStatus: 'approved',
+      authorLogin: 'borght-dev',
+    },
+  }),
+  // (2) Own PR with failing checks + stale — myPrRedChecks (20) + myPrStale (10) + staleness
+  makePr({
+    pullRequest: {
+      number: 50,
+      title: 'feat: triggers a flaky test on Windows',
+      authorLogin: 'borght-dev',
+      updatedAt: '2026-05-04T09:00:00Z',
+    },
+    overallStatus: 'red',
+    failedCheckNames: ['CI / test'],
+  }),
+  // (3) Reviewer requested — reviewRequested (15)
+  makePr({
+    pullRequest: {
+      number: 51,
+      title: 'feat: refactor legacy auth middleware',
+      authorLogin: 'someone-else',
+      requestedReviewers: ['borght-dev'],
+      updatedAt: '2026-05-06T09:00:00Z',
+    },
+  }),
+];
+
 // ── Check fixtures ────────────────────────────────────────────
 
 const BASE_CHECKS: CheckRun[] = [

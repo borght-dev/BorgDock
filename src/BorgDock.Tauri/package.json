@@ -17,9 +17,9 @@
     "format": "biome format --write src",
     "tauri": "tauri",
     "validate-release": "bun scripts/changelog/validate-release.ts",
-    "screenshot-heroes": "node scripts/screenshot-heroes.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "capture-screenshots": "node scripts/capture-screenshots.mjs",
     "test:storybook": "vitest run --project=storybook"
   },
   "dependencies": {
@@ -78,6 +78,7 @@
     "http-server": "^14.1.1",
     "jsdom": "^29.1.1",
     "playwright": "^1.59.1",
+    "serve-handler": "^6.1.7",
     "storybook": "^10.3.6",
     "tailwindcss": "^4.2.4",
     "tree-sitter-cli": "^0.26.8",

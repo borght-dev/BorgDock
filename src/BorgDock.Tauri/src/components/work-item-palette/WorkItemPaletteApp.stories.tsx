@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import { fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { getControl, type WorkItemPaletteScenario } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   canonicalSettings,
   emptyBrowseScenario,
@@ -79,11 +80,20 @@ export const LoadingBrowse: Story = story({
   workingOnWorkItemIds: workingOnIds,
 });
 
-export const BrowseFullSections: Story = story({
-  scenario: fullBrowseScenario(),
-  recentWorkItemIds: recentIds,
-  workingOnWorkItemIds: workingOnIds,
-});
+export const BrowseFullSections: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/work-item-palette.png',
+    width: 720,
+    height: 600,
+  }),
+  args: {
+    params: {
+      scenario: fullBrowseScenario(),
+      recentWorkItemIds: recentIds,
+      workingOnWorkItemIds: workingOnIds,
+    },
+  },
+};
 
 export const BrowsePartialSections: Story = story({
   scenario: fullBrowseScenario(),

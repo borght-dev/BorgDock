@@ -1,0 +1,181 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+
+interface Capture {
+  slug: string;
+  src: string;
+  caption: string;
+  blurb: string;
+}
+
+const captures: Capture[] = [
+  {
+    slug: 'flyout',
+    src: '/screenshots/flyout.png',
+    caption: 'Flyout',
+    blurb:
+      'The sidebar overlay — quick PR triage from anywhere via the global hotkey.',
+  },
+  {
+    slug: 'whats-new',
+    src: '/screenshots/whats-new.png',
+    caption: "What's new",
+    blurb: 'Per-release changelog with hero banners.',
+  },
+  {
+    slug: 'pr-detail',
+    src: '/screenshots/pr-detail.png',
+    caption: 'PR detail',
+    blurb: 'Tabs for overview, files, checks, commits, discussion. Merge-readiness checklist on top.',
+  },
+  {
+    slug: 'settings',
+    src: '/screenshots/settings.png',
+    caption: 'Settings',
+    blurb: 'GitHub auth, Azure DevOps connection, work-item linking, AI integration.',
+  },
+  {
+    slug: 'agent-overview',
+    src: '/screenshots/agent-overview.png',
+    caption: 'Agent overview',
+    blurb: 'Live status of Claude Code sessions across worktrees.',
+  },
+  {
+    slug: 'work-item-detail',
+    src: '/screenshots/work-item-detail.png',
+    caption: 'Work item detail',
+    blurb: 'ADO work items inline — title, state, assignee, comments.',
+  },
+  {
+    slug: 'work-item-palette',
+    src: '/screenshots/work-item-palette.png',
+    caption: 'Work item palette',
+    blurb: 'Browse / search / mine sections, ⌘K-driven jump.',
+  },
+  {
+    slug: 'sql',
+    src: '/screenshots/sql.png',
+    caption: 'SQL',
+    blurb: 'Connect to a SQL Server instance, browse schema, run queries.',
+  },
+  {
+    slug: 'file-viewer',
+    src: '/screenshots/file-viewer.png',
+    caption: 'File viewer',
+    blurb: 'Tree-sitter syntax highlighting, vs-HEAD diff overlay.',
+  },
+  {
+    slug: 'file-palette',
+    src: '/screenshots/file-palette.png',
+    caption: 'File palette',
+    blurb: 'Repo-wide fuzzy file search with preview pane.',
+  },
+  {
+    slug: 'worktree-palette',
+    src: '/screenshots/worktree-palette.png',
+    caption: 'Worktree palette',
+    blurb: 'Every checked-out worktree across configured repos. Enter to open in terminal.',
+  },
+];
+---
+
+<Layout
+  title="Captures — BorgDock"
+  description="Real screenshots from the BorgDock app, generated from Storybook stories."
+>
+  <SiteNav current="captures" />
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 64px 24px 24px;">
+    <div
+      style="font-size: 11px; font-family: var(--font-code); color: var(--color-text-muted); letter-spacing: 0.04em; margin-bottom: 14px;"
+    >
+      CAPTURES · story-driven screenshots
+    </div>
+    <h1
+      class="prdock-display"
+      style="font-size: clamp(36px, 5vw, 64px); line-height: 1.05; margin: 0; letter-spacing: -0.025em; max-width: 900px;"
+    >
+      Generated from Storybook,
+      <em style="color: var(--color-text-tertiary); font-style: normal; font-weight: 400;">not stylized.</em>
+    </h1>
+    <p style="font-size: 15px; color: var(--color-text-secondary); max-width: 640px; margin-top: 16px; line-height: 1.6;">
+      Every image here is a Playwright capture of an actual production component
+      rendered inside Storybook with mock data. They re-generate from a single
+      <code>bun run capture-screenshots</code> as the UI evolves.
+    </p>
+  </section>
+
+  <section class="captures-grid">
+    {
+      captures.map((c) => (
+        <article class="capture-card">
+          <p class="capture-caption">{c.caption}</p>
+          <p class="capture-blurb">{c.blurb}</p>
+          <div class="capture-frame">
+            <img src={c.src} alt={c.caption} loading="lazy" />
+          </div>
+        </article>
+      ))
+    }
+  </section>
+
+  <SiteFooter />
+</Layout>
+
+<style>
+  .captures-grid {
+    max-width: 1320px;
+    margin: 24px auto 64px;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+    gap: 36px 28px;
+  }
+
+  .capture-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .capture-caption {
+    font-size: 11px;
+    font-family: var(--font-code);
+    color: var(--color-text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .capture-blurb {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+    min-height: 2.6em;
+  }
+
+  .capture-frame {
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--color-surface, #1a1a1a);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+
+  .capture-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  @media (max-width: 640px) {
+    .captures-grid {
+      gap: 28px 0;
+      padding: 0 16px;
+    }
+  }
+</style>

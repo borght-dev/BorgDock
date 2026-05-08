@@ -11,6 +11,7 @@
 // own frame.
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { screenshot } from '../.storybook/screenshot';
 import App from './App';
 import {
   CHECKS_FOR_REF,
@@ -18,6 +19,7 @@ import {
   HeroCompositionFrame,
   MainWindowFrame,
   PRS_CANONICAL,
+  PRS_FOCUS_DEMO,
   reposSettings,
   SETTINGS_BASELINE,
   WORK_ITEMS_CANONICAL,
@@ -60,6 +62,11 @@ type Story = StoryObj<typeof App>;
 //     reveal effect resolves silently.
 
 export const Hero_ReadmeMain: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/readme-main.png',
+    width: 1600,
+    height: 1000,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
@@ -98,12 +105,20 @@ export const Hero_ReadmeMain: Story = {
 // PRS_CANONICAL so usePriorities has PRs to sort.
 
 export const Hero_DocFocusList: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/doc-focus-list.png',
+    width: 480,
+    height: 800,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
       ui: { activeSection: 'focus' },
-      pullRequests: PRS_CANONICAL,
-      settings: reposSettings(),
+      pullRequests: PRS_FOCUS_DEMO,
+      settings: {
+        ...reposSettings(),
+        gitHub: { username: 'borght-dev' },
+      },
     }),
     (Story) => (
       <MainWindowFrame>
@@ -119,6 +134,11 @@ export const Hero_DocFocusList: Story = {
 // Same PRS_CANONICAL seed as the focus section so the list is populated.
 
 export const Hero_DocPrsList: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/doc-prs-list.png',
+    width: 480,
+    height: 800,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({
@@ -134,12 +154,46 @@ export const Hero_DocPrsList: Story = {
   ],
 };
 
+// ── Hero_GalleryMainPrs ───────────────────────────────────────
+//
+// Wider PRs-section shot for the marketing site gallery. Same data as
+// Hero_DocPrsList but at a width where the filter pills sit on a single
+// row instead of wrapping. Output goes directly into site/public/, so
+// the gallery page can <img src="/screenshots/main-prs.png"> without a
+// separate copy step.
+
+export const Hero_GalleryMainPrs: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/main-prs.png',
+    width: 720,
+    height: 900,
+  }),
+  decorators: [
+    freezeAnimations,
+    withMainWindow({
+      ui: { activeSection: 'prs' },
+      pullRequests: PRS_CANONICAL,
+      settings: reposSettings(),
+    }),
+    (Story) => (
+      <MainWindowFrame width={720} height={900}>
+        <Story />
+      </MainWindowFrame>
+    ),
+  ],
+};
+
 // ── Hero_DocWorkItems ─────────────────────────────────────────
 //
 // Single-window shot of the work items section. Drives useWorkItemsStore
 // with WORK_ITEMS_CANONICAL (three ADO tasks spanning Active / New / Resolved).
 
 export const Hero_DocWorkItems: Story = {
+  parameters: screenshot({
+    output: 'docs/hero/doc-work-items.png',
+    width: 480,
+    height: 800,
+  }),
   decorators: [
     freezeAnimations,
     withMainWindow({

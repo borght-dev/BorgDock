@@ -2,13 +2,14 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
-import { SettingsApp } from './SettingsApp';
+import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   configuredSettings,
   firstLaunchSettings,
   withSettings,
 } from './__fixtures__/settings-data';
-import { getControl } from '../../../.storybook/mocks/control';
+import { SettingsApp } from './SettingsApp';
 
 const meta: Meta<typeof SettingsApp> = {
   title: 'Settings/SettingsApp',
@@ -21,6 +22,11 @@ type Story = StoryObj<typeof SettingsApp>;
 const githubAuthOk = { authenticated: true, login: 'borght-dev' };
 
 export const Default: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/settings.png',
+    width: 800,
+    height: 900,
+  }),
   decorators: [
     withSettings(configuredSettings, {
       invokeResponses: {
@@ -67,7 +73,10 @@ function WithSearch({ query }: { query: string }) {
     // by simulating a user typing: focus + dispatch input event.
     const el = document.querySelector<HTMLInputElement>('input[placeholder*="Search" i]');
     if (el) {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value',
+      )?.set;
       setter?.call(el, query);
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }

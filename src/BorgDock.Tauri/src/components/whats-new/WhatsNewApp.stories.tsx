@@ -1,10 +1,11 @@
 // src/components/whats-new/WhatsNewApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import type { Release } from '@/types/whats-new';
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   dateSpreadHistory,
   deepHistory,
@@ -24,6 +25,7 @@ import {
   releaseSingleHighlight,
   shapeStoryHistory,
 } from './__fixtures__/whats-new-data';
+import { HeroBanner } from './HeroBanner';
 import { WhatsNewApp } from './WhatsNewApp';
 
 interface PluginStoreSeed {
@@ -116,12 +118,21 @@ export const FirstTimeUser = story({
   appVersion: '1.2.0',
 });
 
-export const UpToDate = story({
-  pluginStoreSeed: {
-    'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+export const UpToDate: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/whats-new.png',
+    width: 600,
+    height: 800,
+  }),
+  args: {
+    params: {
+      pluginStoreSeed: {
+        'whats-new-state.json': { lastSeenVersion: '1.2.0', autoOpenDisabled: false },
+      },
+      appVersion: '1.2.0',
+    },
   },
-  appVersion: '1.2.0',
-});
+};
 
 export const OneVersionBehind = story({
   // 1.1.0 is the version directly before 1.2.0 in the real RELEASES array.
@@ -377,3 +388,24 @@ export const StoreHydrationFailed = story({
   storeBehavior: 'reject',
   appVersion: '1.2.0',
 });
+
+// ---------------------------------------------------------------------------
+// Hero_WhatsNewTemplate
+//
+// Template story used as the baseline for per-release whatsnew banner shots.
+// Per-release stories (added in release PRs) copy this template and add their
+// own parameters.screenshot pointing at the release-specific PNG asset.
+//
+// HeroBanner signature: { hero: { src: string; alt: string } | null; kind: Kind }
+// When hero=null the component renders the gradient + icon fallback at 74px height.
+// ---------------------------------------------------------------------------
+
+export const Hero_WhatsNewTemplate: StoryObj = {
+  // No parameters.screenshot here — this is the *template*. Per-release
+  // stories copy this story and add their own parameters.screenshot.
+  render: () => (
+    <div style={{ width: 450, height: 74, padding: 0 }}>
+      <HeroBanner hero={null} kind="new" />
+    </div>
+  ),
+};

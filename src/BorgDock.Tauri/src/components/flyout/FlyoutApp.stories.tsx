@@ -3,6 +3,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   draftPrs,
   failingPrs,
@@ -151,18 +152,27 @@ export const GlanceAllFailing = story({
   },
 });
 
-export const GlanceMixed = story({
-  seed: {
-    mode: 'glance',
-    data: makeFlyoutData({
-      pullRequests: mixedPrs,
-      failingCount: 1,
-      pendingCount: 1,
-      passingCount: 1,
-      totalCount: mixedPrs.length,
-    }),
+export const GlanceMixed: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/flyout.png',
+    width: 360,
+    height: 600,
+  }),
+  args: {
+    params: {
+      seed: {
+        mode: 'glance',
+        data: makeFlyoutData({
+          pullRequests: mixedPrs,
+          failingCount: 1,
+          pendingCount: 1,
+          passingCount: 1,
+          totalCount: mixedPrs.length,
+        }),
+      },
+    },
   },
-});
+};
 
 export const GlanceFocusOnly = story({
   seed: {

@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { AppSettings } from '@/types/settings';
 import { getControl } from '../../../.storybook/mocks/control';
+import { screenshot } from '../../../.storybook/screenshot';
 import {
   DIFF_IN_REPO_NO_CHANGES,
   DIFF_NOT_IN_REPO,
@@ -145,11 +146,20 @@ export const NoPathProvided = story({
   diffResponse: () => Promise.reject(new Error('should not be called')),
 });
 
-export const PathTSXFile = story({
-  path: 'src/components/Counter.tsx',
-  contentResponse: TSX_SAMPLE,
-  diffResponse: DIFF_NOT_IN_REPO,
-});
+export const PathTSXFile: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/file-viewer.png',
+    width: 1000,
+    height: 700,
+  }),
+  args: {
+    params: {
+      path: 'src/components/Counter.tsx',
+      contentResponse: TSX_SAMPLE,
+      diffResponse: DIFF_NOT_IN_REPO,
+    },
+  },
+};
 
 export const LongPath = story({
   path:
