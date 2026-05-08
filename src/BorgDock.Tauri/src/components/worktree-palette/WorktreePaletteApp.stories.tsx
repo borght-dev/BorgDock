@@ -3,7 +3,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
-import { screenshot } from '../../../.storybook/screenshot';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import {
   fiveRepos,
   makeRepo,
@@ -439,5 +439,40 @@ export const PaletteReshown: Story = {
         ctrl.invocations.filter((i) => i.command === 'load_settings').length,
       ).toBeGreaterThanOrEqual(2);
     });
+  },
+};
+
+// ── Animation: arrow-down + Enter to launch terminal ─────────────────
+//
+// Opens the palette with two repos, navigates down two rows with arrow keys,
+// then presses Enter to trigger open_in_terminal on the highlighted worktree.
+// 5s @ 12fps = ~60 frames.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const Anim_EnterLaunchesTerminal: Story = {
+  parameters: animation({
+    output: 'site/public/anim/worktree-palette-enter.gif',
+    width: 720,
+    height: 600,
+    fps: 12,
+    duration: 5000,
+  }),
+  args: {
+    params: {
+      settings: settingsFromHistory(twoReposBalanced),
+      listResponses: buildRepoListResponses(twoReposBalanced),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = await canvas.findByPlaceholderText(/filter by branch/i);
+    await pause(700);
+    input.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    await pause(400);
+    await userEvent.keyboard('{ArrowDown}');
+    await pause(700);
+    await userEvent.keyboard('{Enter}');
+    await pause(800);
   },
 };

@@ -4,16 +4,21 @@
 // including the QuickReview overlay and MergeToast global trigger.
 
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { getControl } from '../../../.storybook/mocks/control';
+import { animation } from '../../../.storybook/screenshot';
 import App from '../../App';
 import {
   MainWindowFrame,
   PRS_CANONICAL,
   PRS_EMPTY,
+  PRS_FOCUS_DEMO,
   reposSettings,
   withMainWindow,
 } from '../main/__fixtures__/main-window-data';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const frame: Decorator = (Story) => (
   <MainWindowFrame>
@@ -116,5 +121,89 @@ export const FocusWithMergeToast: Story = {
       }
     ).__borgdockQueueMerge;
     if (fn) fn('borght-dev', 'BorgDock', 42);
+  },
+};
+
+// ── Animation: Start Quick Review ──────────────────────────────────────
+//
+// Loads the focus section with PRS_FOCUS_DEMO + username seeded so the
+// priority list populates. Clicks the "Start Quick Review" button to open
+// the QuickReview overlay.
+// 5.5s @ 12fps = ~66 frames.
+export const Anim_StartQuickReview: Story = {
+  parameters: animation({
+    output: 'site/public/anim/focus-quick-review.gif',
+    width: 480,
+    height: 800,
+    fps: 12,
+    duration: 5500,
+  }),
+  decorators: [
+    withMainWindow({
+      ui: { activeSection: 'focus' },
+      pullRequests: PRS_FOCUS_DEMO,
+      settings: {
+        ...reposSettings(),
+        gitHub: { username: 'borght-dev' },
+      },
+    }),
+    (Story) => (
+      <MainWindowFrame>
+        <Story />
+      </MainWindowFrame>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await pause(800);
+    const btn = await canvas.findByRole('button', { name: /start quick review/i });
+    await userEvent.click(btn);
+    await pause(1800);
+  },
+};
+
+// ── Animation: Merge toast countdown ──────────────────────────────────
+//
+// Uses FocusWithMergeToast's setup pattern (prActionResponses.mergePr seeded,
+// MergeToast's __borgdockQueueMerge installed on mount). Triggers the toast,
+// then waits 3.5s for the auto-merge timer to fire and the toast to disappear.
+// 5s @ 12fps = ~60 frames.
+export const Anim_MergeToastCountdown: Story = {
+  parameters: animation({
+    output: 'site/public/anim/merge-toast-countdown.gif',
+    width: 480,
+    height: 800,
+    fps: 12,
+    duration: 5000,
+  }),
+  decorators: [
+    (Story) => {
+      const ctrl = getControl();
+      ctrl.prActionResponses.mergePr = () => Promise.resolve(true);
+      return <Story />;
+    },
+    withMainWindow({
+      ui: { activeSection: 'focus' },
+      pullRequests: PRS_CANONICAL,
+      settings: reposSettings(),
+    }),
+    (Story) => (
+      <MainWindowFrame>
+        <Story />
+      </MainWindowFrame>
+    ),
+  ],
+  play: async () => {
+    await pause(700);
+    // Wait one tick for MergeToast's useEffect to install __borgdockQueueMerge.
+    await new Promise<void>((r) => setTimeout(r, 0));
+    const fn = (
+      window as unknown as {
+        __borgdockQueueMerge?: (owner: string, repo: string, prNumber: number) => void;
+      }
+    ).__borgdockQueueMerge;
+    if (fn) fn('borght-dev', 'BorgDock', 42);
+    // Wait for the 3-second countdown + fire + toast dismiss.
+    await pause(3500);
   },
 };

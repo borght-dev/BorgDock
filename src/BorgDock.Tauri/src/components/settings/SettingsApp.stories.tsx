@@ -2,14 +2,17 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
-import { screenshot } from '../../../.storybook/screenshot';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import {
   configuredSettings,
   firstLaunchSettings,
   withSettings,
 } from './__fixtures__/settings-data';
 import { SettingsApp } from './SettingsApp';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const meta: Meta<typeof SettingsApp> = {
   title: 'Settings/SettingsApp',
@@ -130,5 +133,44 @@ export const DeepLinkArrival: Story = {
     // Wait one frame for the listener registration in SettingsApp's useEffect.
     await new Promise((r) => requestAnimationFrame(() => r(undefined)));
     getControl().emit('settings:deep-link', 'ado');
+  },
+};
+
+// ── Animation: click through sidebar sections ─────────────────────────
+//
+// Starts on the default GitHub section, clicks Appearance, then
+// Notifications, then Claude Code — pausing on each so the content
+// transition reads as deliberate.
+// 6.5s @ 12fps = ~78 frames.
+export const Anim_SectionSwitch: Story = {
+  parameters: animation({
+    output: 'site/public/anim/settings-section-switch.gif',
+    width: 800,
+    height: 900,
+    fps: 12,
+    duration: 6500,
+  }),
+  decorators: [
+    withSettings(configuredSettings, {
+      invokeResponses: {
+        check_github_auth: githubAuthOk,
+        az_cli_available: true,
+        get_cache_size: 1024 * 1024 * 24,
+        agent_overview_status: { enabled: false },
+      },
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await pause(700);
+    const appearance = await canvas.findByRole('button', { name: /appearance/i });
+    await userEvent.click(appearance);
+    await pause(900);
+    const notif = await canvas.findByRole('button', { name: /notifications/i });
+    await userEvent.click(notif);
+    await pause(900);
+    const claude = await canvas.findByRole('button', { name: /^claude code$/i });
+    await userEvent.click(claude);
+    await pause(900);
   },
 };

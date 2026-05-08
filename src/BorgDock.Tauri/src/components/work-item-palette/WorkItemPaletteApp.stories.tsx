@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import { fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { getControl, type WorkItemPaletteScenario } from '../../../.storybook/mocks/control';
-import { screenshot } from '../../../.storybook/screenshot';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import {
   canonicalSettings,
   emptyBrowseScenario,
@@ -521,3 +521,41 @@ export const PaletteShownEventResetsState: Story = story(
     },
   },
 );
+
+// ── Animation: search input tour ──────────────────────────────────────
+//
+// Opens the palette fully loaded, types "auth" into the search input,
+// pauses to show results, clears, then types "12" to show ID search.
+// 6.5s @ 12fps = ~78 frames.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const Anim_SectionTour: Story = {
+  parameters: animation({
+    output: 'site/public/anim/work-item-palette-tour.gif',
+    width: 720,
+    height: 600,
+    fps: 12,
+    duration: 6500,
+  }),
+  args: {
+    params: {
+      scenario: fullBrowseScenario(),
+      recentWorkItemIds: recentIds,
+      workingOnWorkItemIds: workingOnIds,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = (await canvas.findByPlaceholderText(
+      'Search ID, title, @assignee, state:active, type:bug…',
+    )) as HTMLInputElement;
+    await pause(700);
+    await userEvent.click(input);
+    await userEvent.type(input, 'auth', { delay: 120 });
+    await pause(900);
+    await userEvent.clear(input);
+    await pause(400);
+    await userEvent.type(input, '12', { delay: 120 });
+    await pause(900);
+  },
+};
