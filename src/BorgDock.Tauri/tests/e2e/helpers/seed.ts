@@ -26,7 +26,15 @@ const HAPPY_SETTINGS = {
     username: 'test-user',
     personalAccessToken: 'ghp_test_token',
   },
-  repos: [],
+  repos: [
+    {
+      owner: 'test-org',
+      name: 'borgdock',
+      enabled: true,
+      worktreeBasePath: '/tmp/worktrees',
+      worktreeSubfolder: '',
+    },
+  ],
   ui: {
     theme: 'light',
     globalHotkey: 'Ctrl+Win+Shift+G',
@@ -99,56 +107,72 @@ const EMPTY_SETTINGS = {
   },
 };
 
-const SAMPLE_PRS = [
-  {
-    id: 1001,
-    number: 42,
-    title: 'Add cool feature',
-    state: 'open',
-    repo: 'test-org/borgdock',
-    headRef: 'feature/cool',
+/** Helper: build a `PullRequestWithChecks` shape — what cache_load_prs returns. */
+function makePr(overrides: {
+  number: number;
+  title: string;
+  state?: string;
+  isDraft?: boolean;
+  overallStatus?: 'red' | 'yellow' | 'green' | 'gray';
+  mergedAt?: string;
+}): unknown {
+  const base = {
+    number: overrides.number,
+    title: overrides.title,
+    headRef: `feature/${overrides.number}`,
+    headSha: `sha${overrides.number}`,
     baseRef: 'master',
-    author: 'test-user',
-    isDraft: false,
-    mergeable: true,
-    checksConclusion: 'success',
+    authorLogin: 'test-user',
+    authorAvatarUrl: '',
+    state: overrides.state ?? 'open',
+    createdAt: '2026-05-08T08:00:00Z',
     updatedAt: '2026-05-08T09:00:00Z',
-  },
-  {
-    id: 1002,
-    number: 43,
-    title: 'Fix bug',
-    state: 'open',
-    repo: 'test-org/borgdock',
-    headRef: 'fix/bug',
-    baseRef: 'master',
-    author: 'test-user',
-    isDraft: true,
+    isDraft: overrides.isDraft ?? false,
     mergeable: true,
-    checksConclusion: 'pending',
-    updatedAt: '2026-05-08T08:00:00Z',
-  },
+    htmlUrl: `https://github.com/test-org/borgdock/pull/${overrides.number}`,
+    body: '',
+    repoOwner: 'test-org',
+    repoName: 'borgdock',
+    reviewStatus: 'none',
+    commentCount: 0,
+    labels: [],
+    additions: 10,
+    deletions: 5,
+    changedFiles: 2,
+    commitCount: 1,
+    mergedAt: overrides.mergedAt,
+    requestedReviewers: [],
+  };
+  return {
+    pullRequest: base,
+    checks: [],
+    overallStatus: overrides.overallStatus ?? 'green',
+    failedCheckNames: overrides.overallStatus === 'red' ? ['ci'] : [],
+    pendingCheckNames: [],
+    passedCount: 1,
+    skippedCount: 0,
+  };
+}
+
+export const SAMPLE_PRS = [
+  makePr({ number: 42, title: 'Add cool feature' }),
+  makePr({ number: 43, title: 'Fix bug', isDraft: true, overallStatus: 'yellow' }),
 ];
 
-const FAILING_PR = {
-  ...SAMPLE_PRS[0],
-  id: 1003,
+export const FAILING_PR = makePr({
   number: 44,
   title: 'WIP: red checks',
-  checksConclusion: 'failure',
-};
+  overallStatus: 'red',
+});
 
-const MERGED_PR = {
-  ...SAMPLE_PRS[0],
-  id: 1004,
+export const MERGED_PR = makePr({
   number: 45,
   title: 'Just merged',
   state: 'closed',
-  merged: true,
   mergedAt: '2026-05-08T09:30:00Z',
-};
+});
 
-const SAMPLE_WORK_ITEMS = [
+export const SAMPLE_WORK_ITEMS = [
   { id: 9001, title: 'Bug 1', state: 'Active', type: 'Bug' },
   { id: 9002, title: 'Task 2', state: 'New', type: 'Task' },
 ];
@@ -174,6 +198,8 @@ export function seedScenario(scenario: Scenario): MockHandlers {
           }
           return null;
         },
+        // cache_load_prs is called per-repo with { repoOwner, repoName }; the
+        // mock ignores the args and returns the sample list regardless.
         cache_load_prs: SAMPLE_PRS,
         get_flyout_data: { prs: SAMPLE_PRS, workItems: SAMPLE_WORK_ITEMS },
       };

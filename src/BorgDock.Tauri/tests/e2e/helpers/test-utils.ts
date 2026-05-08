@@ -81,6 +81,31 @@ export async function bootApp(
   const handlers = { ...seedScenario(scenario), ...extraHandlers };
   await freezeClock(page);
   await disableAnimations(page);
+  // Block real network egress to api.github.com / dev.azure.com — tests
+  // that need PR data seed via mock IPC (cache_load_prs). Returning an
+  // empty list keeps callers like getOpenPRs from blowing up, and the
+  // background API refresh just no-ops.
+  await page.route(
+    /(api\.github\.com|dev\.azure\.com|vsaex\.dev\.azure\.com)/,
+    (route) => {
+      const url = route.request().url();
+      // /user is hit for username detection — return a user object so the
+      // optional `.login` read doesn't 401-error in the console.
+      if (url.endsWith('/user')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ login: 'test-user' }),
+        });
+      }
+      // Default: empty list (most GitHub endpoints expect arrays).
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+    },
+  );
   await installMockTauri(page, handlers);
   const path = entry === '' ? '/' : `/${entry}`;
   await page.goto(path);
@@ -107,6 +132,41 @@ export async function bootApp(
   }
 
   await renderSmoke(page);
+}
+
+/**
+ * Push fixtures directly into the main window's Zustand stores via the
+ * dev-only `window.__borgdock_test_seed` hook (see `src/test-support/test-seed.ts`).
+ *
+ * The init sequence's background API refresh would otherwise overwrite the
+ * mock IPC's `cache_load_prs` payload with whatever the routed network mock
+ * returns, so anything that needs PRs visible after boot has to seed via
+ * this side-channel.
+ */
+export async function seedMainWindow(
+  page: Page,
+  payload: {
+    prs?: unknown[];
+    workItems?: unknown[];
+    settings?: Record<string, unknown>;
+  },
+): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      typeof (window as unknown as { __borgdock_test_seed?: unknown })
+        .__borgdock_test_seed === 'function',
+    { timeout: 5_000 },
+  );
+  await page.evaluate(
+    (p) => {
+      (
+        window as unknown as {
+          __borgdock_test_seed: (p: unknown) => void;
+        }
+      ).__borgdock_test_seed(p);
+    },
+    payload,
+  );
 }
 
 /**
