@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
 import { userEvent, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
-import { screenshot } from '../../../.storybook/screenshot';
+import { animation, screenshot } from '../../../.storybook/screenshot';
 import {
   binaryError,
   canonicalSettings,
@@ -26,6 +26,8 @@ import {
   wtMainFsp,
 } from './__fixtures__/file-palette-data';
 import { FilePaletteApp } from './FilePaletteApp';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface FilePaletteStoryParams {
   /** Static or function-form invokeResponses to seed before mount. */
@@ -430,5 +432,33 @@ export const EnterOpensViewer: Story = {
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-00');
     await userEvent.keyboard('{Enter}');
+  },
+};
+
+// ── Animation: fuzzy search typing ────────────────────────────
+//
+// Opens loaded palette, types a search query character-by-character,
+// then clears and types a different one to show the live filtering.
+// 6s @ 12fps = ~72 frames.
+export const Anim_FuzzySearch: Story = {
+  parameters: animation({
+    output: 'site/public/anim/file-palette-search.gif',
+    width: 720,
+    height: 600,
+    fps: 12,
+    duration: 6500,
+  }),
+  args: { params: { invokeResponses: loadedPalette() } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = await canvas.findByPlaceholderText(/search/i);
+    await pause(700);
+    await userEvent.click(input);
+    await userEvent.type(input, 'app', { delay: 140 });
+    await pause(700);
+    await userEvent.clear(input);
+    await pause(300);
+    await userEvent.type(input, 'config', { delay: 140 });
+    await pause(700);
   },
 };
