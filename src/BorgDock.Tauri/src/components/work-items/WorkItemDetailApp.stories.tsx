@@ -154,7 +154,12 @@ export const LoadedClean: Story = {
   }),
   args: {
     params: {
-      scenario: loadedScenario(userStoryFreshlyLoaded),
+      // Use the richer fixture so the captured shot exercises the panel's
+      // rendering of description, acceptance criteria, AND a populated
+      // comments thread. The minimal `userStoryFreshlyLoaded` makes the
+      // panel look anemic — the production filter strips empty fields,
+      // so a sparse fixture renders as nearly nothing.
+      scenario: loadedScenario(userStoryWithRichBody, commentsManyAuthors),
     },
   },
 };

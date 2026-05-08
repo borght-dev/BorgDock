@@ -19,6 +19,7 @@ import {
   HeroCompositionFrame,
   MainWindowFrame,
   PRS_CANONICAL,
+  PRS_FOCUS_DEMO,
   reposSettings,
   SETTINGS_BASELINE,
   WORK_ITEMS_CANONICAL,
@@ -113,8 +114,11 @@ export const Hero_DocFocusList: Story = {
     freezeAnimations,
     withMainWindow({
       ui: { activeSection: 'focus' },
-      pullRequests: PRS_CANONICAL,
-      settings: reposSettings(),
+      pullRequests: PRS_FOCUS_DEMO,
+      settings: {
+        ...reposSettings(),
+        gitHub: { username: 'borght-dev' },
+      },
     }),
     (Story) => (
       <MainWindowFrame>
@@ -144,6 +148,35 @@ export const Hero_DocPrsList: Story = {
     }),
     (Story) => (
       <MainWindowFrame>
+        <Story />
+      </MainWindowFrame>
+    ),
+  ],
+};
+
+// ── Hero_GalleryMainPrs ───────────────────────────────────────
+//
+// Wider PRs-section shot for the marketing site gallery. Same data as
+// Hero_DocPrsList but at a width where the filter pills sit on a single
+// row instead of wrapping. Output goes directly into site/public/, so
+// the gallery page can <img src="/screenshots/main-prs.png"> without a
+// separate copy step.
+
+export const Hero_GalleryMainPrs: Story = {
+  parameters: screenshot({
+    output: 'site/public/screenshots/main-prs.png',
+    width: 720,
+    height: 900,
+  }),
+  decorators: [
+    freezeAnimations,
+    withMainWindow({
+      ui: { activeSection: 'prs' },
+      pullRequests: PRS_CANONICAL,
+      settings: reposSettings(),
+    }),
+    (Story) => (
+      <MainWindowFrame width={720} height={900}>
         <Story />
       </MainWindowFrame>
     ),
