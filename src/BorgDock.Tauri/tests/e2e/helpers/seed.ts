@@ -172,9 +172,34 @@ export const MERGED_PR = makePr({
   mergedAt: '2026-05-08T09:30:00Z',
 });
 
+/**
+ * Mirror of the ADO `WorkItem` shape (src/types/work-item.ts) with the
+ * standard System.* / Microsoft.VSTS.* fields the components read.
+ */
+function makeWorkItem(id: number, title: string, type: string, state: string): unknown {
+  return {
+    id,
+    rev: 1,
+    url: `https://dev.azure.com/test-org/_apis/wit/workItems/${id}`,
+    htmlUrl: `https://dev.azure.com/test-org/_workitems/edit/${id}`,
+    relations: [],
+    fields: {
+      'System.Title': title,
+      'System.State': state,
+      'System.WorkItemType': type,
+      'System.AssignedTo': { displayName: 'test-user', uniqueName: 'test-user@borgdock.test' },
+      'System.AreaPath': 'test-org',
+      'System.IterationPath': 'test-org',
+      'System.CreatedDate': '2026-05-01T00:00:00Z',
+      'System.ChangedDate': '2026-05-08T00:00:00Z',
+      'Microsoft.VSTS.Common.Priority': 2,
+    },
+  };
+}
+
 export const SAMPLE_WORK_ITEMS = [
-  { id: 9001, title: 'Bug 1', state: 'Active', type: 'Bug' },
-  { id: 9002, title: 'Task 2', state: 'New', type: 'Task' },
+  makeWorkItem(9001, 'Bug 1', 'Bug', 'Active'),
+  makeWorkItem(9002, 'Task 2', 'Task', 'New'),
 ];
 
 export function seedScenario(scenario: Scenario): MockHandlers {
