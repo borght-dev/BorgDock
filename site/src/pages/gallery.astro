@@ -276,6 +276,54 @@ import SiteFooter from '~/components/SiteFooter.astro';
         <img src="/anim/agent-overview-states.gif" alt="Agent overview — state progression" loading="lazy" />
       </div>
     </article>
+
+    <article>
+      <p class="gallery-caption">PR detail · animated</p>
+      <h2 class="gallery-title">Checkout panel <em>slides in.</em></h2>
+      <p class="gallery-lede">
+        Click the Checkout button in the action bar — the panel animates in below,
+        ready to run the checkout command from inside the app.
+      </p>
+      <div class="gallery-shelf gallery-shelf--wide">
+        <img src="/anim/pr-detail-checkout.gif" alt="PR detail — Checkout panel opens" loading="lazy" />
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">File viewer · animated</p>
+      <h2 class="gallery-title">Diff overlay, <em>then plain file.</em></h2>
+      <p class="gallery-lede">
+        File opens in diff mode when changes exist vs HEAD. Scroll through the hunks,
+        then switch to plain file view with the File chip — same syntax highlighting, no overlay.
+      </p>
+      <div class="gallery-shelf gallery-shelf--wide">
+        <img src="/anim/file-viewer-diff.gif" alt="File viewer — diff overlay and scroll" loading="lazy" />
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Checks tab · animated</p>
+      <h2 class="gallery-title">Failed check, <em>Fix with Claude.</em></h2>
+      <p class="gallery-lede">
+        Hover a failed check row and the Fix button appears inline — one click
+        hands the check name to Claude Code to investigate the failure.
+      </p>
+      <div class="gallery-shelf gallery-shelf--wide">
+        <img src="/anim/checks-expand.gif" alt="Checks tab — hover failed check, Fix button" loading="lazy" />
+      </div>
+    </article>
+
+    <article>
+      <p class="gallery-caption">Main window · PRs · animated</p>
+      <h2 class="gallery-title">Hover a card, <em>actions appear.</em></h2>
+      <p class="gallery-lede">
+        Move the cursor over any PR card and a compact pill bar fades in —
+        primary action, checkout, review, more — without cluttering the list at rest.
+      </p>
+      <div class="gallery-shelf">
+        <img src="/anim/pr-card-hover.gif" alt="PR card — hover reveals action pill bar" loading="lazy" />
+      </div>
+    </article>
   </section>
 
   <SiteFooter />

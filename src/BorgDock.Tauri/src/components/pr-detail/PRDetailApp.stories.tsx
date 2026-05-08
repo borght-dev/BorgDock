@@ -95,6 +95,37 @@ export const LoadSettingsRejects: Story = {
   ],
 };
 
+// ── Animation: open checkout panel ───────────────────────────
+//
+// Clicks the "Checkout" button in the ActionBar to slide open the
+// checkout panel. Pauses 2500ms after the click so the panel transition
+// and content render are fully visible in the GIF.
+export const Anim_OpenCheckoutPanel: Story = {
+  parameters: animation({
+    output: 'site/public/anim/pr-detail-checkout.gif',
+    width: 800,
+    height: 900,
+    fps: 12,
+    duration: 5500,
+  }),
+  decorators: [
+    withPrDetail(openPr, {
+      invokeResponses: baseInvokes,
+      githubResponses: {
+        getOpenPRs: [openPr.pullRequest],
+        getCheckRunsForRef: openPr.checks,
+      },
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement);
+    await pause(700);
+    const checkoutBtn = await c.findByRole('button', { name: /checkout/i });
+    await userEvent.click(checkoutBtn);
+    await pause(2500);
+  },
+};
+
 // ── Animation: tab carousel ───────────────────────────────────
 //
 // Cycles through Overview → Files → Checks → Discussion. Pauses 900ms
