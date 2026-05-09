@@ -2,6 +2,7 @@
 
 import type { Decorator } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -145,6 +146,131 @@ export function HeroCompositionFrame({ children }: { children: ReactNode }) {
         {children}
       </div>
     </div>
+  );
+}
+
+// Animated composition frame: first window on the left, second window
+// slides in from the right when `open` flips to true.
+export interface SlideInCompositionFrameProps {
+  /** The primary window (left column). */
+  children: ReactNode;
+  /** The secondary window — starts off-screen, slides in when `open` is true. */
+  slideIn: ReactNode;
+  /** Left-column width in px. Default 480. */
+  leftWidth?: number;
+  /** Frame height in px. Default 1000. */
+  height?: number;
+  /** Total frame width in px (left + right). Default 1600. */
+  totalWidth?: number;
+  /** When true, the slide-in column translates to 0 (visible). Default false. */
+  open?: boolean;
+}
+
+// Subtle desktop-style gradient — reads as "this is happening on a desktop"
+// without the harsh black bars the previous solid-dark backdrop produced.
+const GALLERY_BACKDROP =
+  'radial-gradient(ellipse at 30% 0%, #5b3aa0 0%, #2a1f54 35%, #14132a 100%)';
+
+export function SlideInCompositionFrame({
+  children,
+  slideIn,
+  leftWidth = 480,
+  height = 1000,
+  totalWidth = 1600,
+  open = false,
+}: SlideInCompositionFrameProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '32px',
+        background: GALLERY_BACKDROP,
+      }}
+    >
+      <style>{FRAME_STYLE}</style>
+      <div
+        className="storybook-main-frame"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `${leftWidth}px 1fr`,
+          gap: '24px',
+          width: `${totalWidth}px`,
+          height: `${height}px`,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            overflow: 'hidden',
+            borderRadius: 12,
+            boxShadow: '0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+          }}
+        >
+          {children}
+        </div>
+        <div
+          data-slide-in=""
+          style={{
+            height: '100%',
+            overflow: 'hidden',
+            borderRadius: 12,
+            boxShadow: '0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+            transform: open ? 'translateX(0)' : 'translateX(110%)',
+            transition: 'transform 700ms cubic-bezier(0.22, 0.7, 0.18, 1)',
+          }}
+        >
+          {slideIn}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// CrossWindowDecorator wires a SlideInCompositionFrame to a callback on
+// window so the story play function (or an intercepted invoke) can open it.
+//
+// Usage in a decorator:
+//   (Story) => <CrossWindowShell left={<Story />} right={<PrDetailApp />} ... />
+//
+// The play function calls `window.__BORGDOCK_SLIDE_OPEN__()` to trigger.
+export function CrossWindowShell({
+  left,
+  right,
+  leftWidth = 480,
+  height = 1000,
+  totalWidth = 1600,
+}: {
+  left: ReactNode;
+  right: ReactNode;
+  leftWidth?: number;
+  height?: number;
+  totalWidth?: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__ = () => setOpen(true);
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__;
+    };
+  }, []);
+
+  return (
+    <SlideInCompositionFrame
+      open={open}
+      slideIn={right}
+      leftWidth={leftWidth}
+      height={height}
+      totalWidth={totalWidth}
+    >
+      {left}
+    </SlideInCompositionFrame>
   );
 }
 

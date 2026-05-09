@@ -1,20 +1,21 @@
 // src/App.hero.stories.tsx
 //
-// Screenshot-targeted hero stories for the main window. These story bodies
-// are the Phase 12 deliverable; parameters.screenshot annotations land in
-// the separate screenshot-pipeline PR that follows.
+// Screenshot-targeted hero stories + cross-window animation stories for the
+// main window.
 //
-// Meta uses no shared decorator because the four stories split between two
-// frame types (HeroCompositionFrame for Hero_ReadmeMain, MainWindowFrame for
-// the three Hero_Doc* single-window shots). Per-story decorators keep the
-// meta-level decorator out of the picture so each story fully controls its
-// own frame.
+// Meta uses no shared decorator because the stories split between multiple
+// frame types. Per-story decorators keep the meta-level decorator out of the
+// picture so each story fully controls its own frame.
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { screenshot } from '../.storybook/screenshot';
+import { useMemo } from 'react';
+import { useSettingsStore } from '@/stores/settings-store';
+import { clickRipple, installCursor, moveCursorTo } from '../.storybook/anim-cursor';
+import { animation, screenshot } from '../.storybook/screenshot';
 import App from './App';
 import {
   CHECKS_FOR_REF,
+  CrossWindowShell,
   freezeAnimations,
   HeroCompositionFrame,
   MainWindowFrame,
@@ -25,7 +26,38 @@ import {
   WORK_ITEMS_CANONICAL,
   withMainWindow,
 } from './components/main/__fixtures__/main-window-data';
+
+// load_settings invoke handler that returns whatever the seed currently put
+// into the settings store. Production App.tsx fires loadSettings on mount,
+// which calls invoke('load_settings') and replaces the store contents — so
+// without this, the decorator's seeded settings get overwritten by whatever
+// the static SETTINGS_BASELINE returns (which lacks setupComplete=true and
+// triggers the setup wizard).
+const liveLoadSettings = () => useSettingsStore.getState().settings;
+
 import { PrDetailApp } from './components/pr-detail/PRDetailApp';
+import {
+  connBorgDockDev,
+  makeSettings,
+  resultSmallSelect,
+  sampleSelectQuery,
+  schemaSmall,
+} from './components/sql/__fixtures__/sql-data';
+import { SqlApp } from './components/sql/SqlApp';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// SQL localStorage keys — cleared before the SQL cross-window story mounts
+// so SqlApp starts from a clean slate (no leftover rail / position / query).
+const SQL_LOCALSTORAGE_KEYS = [
+  'borgdock-sql-position',
+  'borgdock-sql-last-query',
+  'borgdock.sql.railWidth',
+  'borgdock.sql.railCollapsed',
+  'borgdock.sql.editorHeight',
+  'borgdock.sql.activeSnippet',
+  'borgdock.sql.snippets',
+];
 
 const meta: Meta<typeof App> = {
   title: 'Main Window/App/Screenshots',
@@ -207,4 +239,193 @@ export const Hero_DocWorkItems: Story = {
       </MainWindowFrame>
     ),
   ],
+};
+
+// ── Anim_OpenPrDetailWindow ───────────────────────────────────
+//
+// Cross-window composition: sidebar (App, PRs section) + PR Detail panel.
+// PR Detail starts off-screen; when the user clicks PR card #42, the
+// production invoke('open_pr_detail_window') path fires. The decorator
+// intercepts that invoke and calls window.__BORGDOCK_SLIDE_OPEN__() which
+// flips the CrossWindowShell state → slide-in transition plays.
+//
+// Store seeding mirrors Hero_ReadmeMain so the PR Detail panel has coherent
+// data. The invokeResponse handler is installed AFTER withMainWindow seeds
+// the default invokes so it wins over the DEFAULT_INVOKES no-op.
+
+// Slide-open invoke callback: reads window.__BORGDOCK_SLIDE_OPEN__ at
+// call time (not setup time) so CrossWindowShell's useEffect has already
+// registered it by the time the PR card click fires. Defined at module
+// scope so it can be passed by reference into invokeResponses (which is
+// evaluated at decorator setup time inside withMainWindow).
+function slideOpenInvokeResponse() {
+  const fn = (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__;
+  if (typeof fn === 'function') (fn as () => void)();
+  return undefined;
+}
+
+export const Anim_OpenPrDetailWindow: Story = {
+  parameters: animation({
+    output: 'site/public/anim/cross-pr-detail-open.gif',
+    width: 1600,
+    height: 1000,
+    fps: 12,
+    duration: 6500,
+  }),
+  decorators: [
+    withMainWindow({
+      ui: { activeSection: 'prs' },
+      pullRequests: PRS_CANONICAL,
+      settings: reposSettings(),
+      invokeResponses: {
+        load_settings: liveLoadSettings,
+        window_ready: undefined,
+        // Intercept the production open_pr_detail_window invoke and trigger
+        // the slide-in animation. The callback is late-bound via
+        // window.__BORGDOCK_SLIDE_OPEN__ so CrossWindowShell's useEffect has
+        // already registered it by the time the PR card click fires.
+        open_pr_detail_window: slideOpenInvokeResponse,
+      },
+      githubResponses: {
+        getOpenPRs: PRS_CANONICAL.map((p) => p.pullRequest),
+        getCheckRunsForRef: CHECKS_FOR_REF.default,
+      },
+    }),
+    (Story) => {
+      // Set the PR Detail params so PrDetailApp hydrates PR #42 on mount.
+      (window as unknown as Record<string, unknown>).__BORGDOCK_PR_DETAIL__ = {
+        owner: 'borght-dev',
+        repo: 'BorgDock',
+        number: 42,
+      };
+
+      return (
+        <CrossWindowShell
+          left={<Story />}
+          right={<PrDetailApp />}
+          leftWidth={480}
+          height={1000}
+          totalWidth={1600}
+        />
+      );
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    // Park the cursor in the upper-right of the sidebar so the GIF starts
+    // with the cursor visible, not floating off-screen.
+    installCursor(280, 90);
+    await pause(900);
+
+    // Poll for the PR list to render — the rendered tree includes hover
+    // tooltips and ARIA labels that double-up text matches, so we don't
+    // use findByText. PrCardContainer wraps each card in a [data-pr-card]
+    // div that owns the click handler.
+    let cards: NodeListOf<HTMLElement> = canvasElement.querySelectorAll('[data-pr-card]');
+    for (let i = 0; cards.length < 2 && i < 40; i++) {
+      await pause(100);
+      cards = canvasElement.querySelectorAll('[data-pr-card]');
+    }
+    if (cards.length < 2) throw new Error(`expected ≥2 PR cards, got ${cards.length}`);
+    const card = cards[1] as HTMLElement; // PR #42 (second in PRS_CANONICAL)
+    await moveCursorTo(card, 700);
+    clickRipple(card);
+    card.click();
+    await pause(180);
+
+    // Driving the slide via the open_pr_detail_window invoke handler is
+    // unreliable (timing race between React's commit and the invoke
+    // promise's resolution); calling __BORGDOCK_SLIDE_OPEN__() directly
+    // after the click yields a deterministic transition.
+    const slideOpen = (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__;
+    if (typeof slideOpen === 'function') (slideOpen as () => void)();
+
+    // Hold on the post-slide state long enough that the GIF lands on a
+    // clean still showing both windows side-by-side.
+    await pause(2400);
+  },
+};
+
+// ── Anim_OpenSqlWindowHotkey ──────────────────────────────────
+//
+// Cross-window composition: sidebar (App, PRs section) + SQL window.
+// In production, Ctrl+F10 is a system hotkey handled by Tauri's hotkey
+// module — it doesn't propagate to the browser/Storybook layer. Here we
+// drive the slide directly from the play function via the
+// window.__BORGDOCK_SLIDE_OPEN__ escape hatch, which visually represents
+// "the SQL window just appeared" without needing the OS hotkey path.
+//
+// SqlApp is seeded with one connection (connBorgDockDev) + a small schema
+// so the right column renders a real SQL editor rather than an empty state.
+
+export const Anim_OpenSqlWindowHotkey: Story = {
+  parameters: animation({
+    output: 'site/public/anim/cross-sql-hotkey.gif',
+    width: 1600,
+    height: 950,
+    fps: 12,
+    duration: 5500,
+  }),
+  decorators: [
+    // All invokes go through withMainWindow so the clear+assign cycle is the
+    // single source of truth. SQL localStorage is cleaned in the frame decorator
+    // via useMemo BEFORE withMainWindow reruns — that's fine because localStorage
+    // is not wiped by withMainWindow.
+    withMainWindow({
+      ui: { activeSection: 'prs' },
+      pullRequests: PRS_CANONICAL,
+      // load_settings must satisfy BOTH App (needs repos/gitHub/ui) AND SqlApp
+      // (needs sql.connections). makeSettings includes all required App fields.
+      settings: reposSettings(),
+      invokeResponses: {
+        // SqlApp invoke responses — all passed here so withMainWindow's single
+        // clear+assign cycle seats them correctly before any component mounts.
+        load_settings: makeSettings([connBorgDockDev]),
+        window_ready: undefined,
+        fetch_sql_schema: schemaSmall,
+        cache_load_sql_schema: null,
+        cache_save_sql_schema: undefined,
+        execute_sql_query: resultSmallSelect,
+        sql_snippets_list: [],
+        sql_snippets_save: undefined,
+        sql_snippets_delete: undefined,
+      },
+    }),
+    (Story) => {
+      // Clear SqlApp localStorage before mount so the editor starts clean.
+      // useMemo here is fine — localStorage is unaffected by withMainWindow.
+      useMemo(() => {
+        for (const key of SQL_LOCALSTORAGE_KEYS) {
+          try {
+            localStorage.removeItem(key);
+          } catch {
+            /* ignore */
+          }
+        }
+        // Pre-populate a query so the editor looks active on first render
+        try {
+          localStorage.setItem('borgdock-sql-last-query', sampleSelectQuery);
+        } catch {
+          /* ignore */
+        }
+      }, []);
+
+      return (
+        <CrossWindowShell
+          left={<Story />}
+          right={<SqlApp />}
+          leftWidth={480}
+          height={950}
+          totalWidth={1600}
+        />
+      );
+    },
+  ],
+  play: async () => {
+    // Wait for both sides to render, then trigger the slide-in directly.
+    // (Ctrl+F10 is a system hotkey and won't propagate through Storybook.)
+    await pause(1200);
+    const fn = (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__;
+    if (typeof fn === 'function') (fn as () => void)();
+    await pause(2500);
+  },
 };
