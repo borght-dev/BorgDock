@@ -272,8 +272,13 @@ async function main() {
   );
 
   const browser = await chromium.launch();
-  const context = await browser.newContext({ deviceScaleFactor: 2 });
-  const page = await context.newPage();
+  // Default context uses DSF=2 for crisp static captures. Animations may
+  // override per-story via parameters.animation.deviceScaleFactor — we
+  // create a separate context for those (recreating mid-run is the only
+  // way Playwright honors a different DSF).
+  const staticContext = await browser.newContext({ deviceScaleFactor: 2 });
+  const page = await staticContext.newPage();
+  let context = staticContext;
 
   // First pass: visit each story and collect parameters.screenshot AND
   // parameters.animation. We probe both together to avoid double-navigation
@@ -338,18 +343,37 @@ async function main() {
   }
 
   // Animation pass — slower (frame loop + ffmpeg encode per story).
+  // Animations are large and benefit more from frame rate than from DSF —
+  // a fresh context with deviceScaleFactor=1 cuts each page.screenshot()
+  // by ~4x and gets us closer to the declared fps. Stories can opt back
+  // into 2x via parameters.animation.deviceScaleFactor.
+  let animContext = context;
+  let animPage = page;
+  if (taggedAnimated.length > 0) {
+    animContext = await browser.newContext({ deviceScaleFactor: 1 });
+    animPage = await animContext.newPage();
+    context = animContext;
+  }
   for (const { story, ap } of taggedAnimated) {
     try {
-      await page.setViewportSize({ width: ap.width, height: ap.height });
-      await page.goto(`${url}/iframe.html?id=${story.id}&viewMode=story`, {
+      const dsf = ap.deviceScaleFactor ?? 1;
+      // Recreate context only if this story wants a non-default DSF.
+      let ctxPage = animPage;
+      let ctxScoped = null;
+      if (dsf !== 1) {
+        ctxScoped = await browser.newContext({ deviceScaleFactor: dsf });
+        ctxPage = await ctxScoped.newPage();
+      }
+      await ctxPage.setViewportSize({ width: ap.width, height: ap.height });
+      await ctxPage.goto(`${url}/iframe.html?id=${story.id}&viewMode=story`, {
         waitUntil: 'domcontentloaded',
       });
-      // Wait for story params to be populated before starting the frame loop.
-      await page.waitForFunction(
+      await ctxPage.waitForFunction(
         () => window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters !== undefined,
         { timeout: 15000 },
       );
-      await captureAnimation(page, ap, story.id);
+      await captureAnimation(ctxPage, ap, story.id);
+      if (ctxScoped) await ctxScoped.close();
       count++;
     } catch (err) {
       console.error(

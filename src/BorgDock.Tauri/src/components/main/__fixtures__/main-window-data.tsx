@@ -166,6 +166,11 @@ export interface SlideInCompositionFrameProps {
   open?: boolean;
 }
 
+// Subtle desktop-style gradient — reads as "this is happening on a desktop"
+// without the harsh black bars the previous solid-dark backdrop produced.
+const GALLERY_BACKDROP =
+  'radial-gradient(ellipse at 30% 0%, #5b3aa0 0%, #2a1f54 35%, #14132a 100%)';
+
 export function SlideInCompositionFrame({
   children,
   slideIn,
@@ -181,8 +186,8 @@ export function SlideInCompositionFrame({
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        padding: '24px',
-        background: 'var(--color-app-background, #1a1a1a)',
+        padding: '32px',
+        background: GALLERY_BACKDROP,
       }}
     >
       <style>{FRAME_STYLE}</style>
@@ -191,7 +196,7 @@ export function SlideInCompositionFrame({
         style={{
           display: 'grid',
           gridTemplateColumns: `${leftWidth}px 1fr`,
-          gap: '16px',
+          gap: '24px',
           width: `${totalWidth}px`,
           height: `${height}px`,
           maxWidth: '100%',
@@ -199,14 +204,25 @@ export function SlideInCompositionFrame({
           overflow: 'hidden',
         }}
       >
-        <div style={{ height: '100%', overflow: 'hidden' }}>{children}</div>
+        <div
+          style={{
+            height: '100%',
+            overflow: 'hidden',
+            borderRadius: 12,
+            boxShadow: '0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+          }}
+        >
+          {children}
+        </div>
         <div
           data-slide-in=""
           style={{
             height: '100%',
             overflow: 'hidden',
-            transform: open ? 'translateX(0)' : 'translateX(105%)',
-            transition: 'transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+            borderRadius: 12,
+            boxShadow: '0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+            transform: open ? 'translateX(0)' : 'translateX(110%)',
+            transition: 'transform 700ms cubic-bezier(0.22, 0.7, 0.18, 1)',
           }}
         >
           {slideIn}

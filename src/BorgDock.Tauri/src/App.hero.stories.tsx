@@ -9,8 +9,8 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { userEvent, within } from 'storybook/test';
 import { useSettingsStore } from '@/stores/settings-store';
+import { clickRipple, installCursor, moveCursorTo } from '../.storybook/anim-cursor';
 import { animation, screenshot } from '../.storybook/screenshot';
 import App from './App';
 import {
@@ -311,12 +311,37 @@ export const Anim_OpenPrDetailWindow: Story = {
     },
   ],
   play: async ({ canvasElement }) => {
-    const c = within(canvasElement);
-    await pause(1000);
-    // Click the PR #42 card by its title text
-    const card = await c.findByText(/storybook phase 12/i);
-    await userEvent.click(card);
-    await pause(2800);
+    // Park the cursor in the upper-right of the sidebar so the GIF starts
+    // with the cursor visible, not floating off-screen.
+    installCursor(280, 90);
+    await pause(900);
+
+    // Poll for the PR list to render — the rendered tree includes hover
+    // tooltips and ARIA labels that double-up text matches, so we don't
+    // use findByText. PrCardContainer wraps each card in a [data-pr-card]
+    // div that owns the click handler.
+    let cards: NodeListOf<HTMLElement> = canvasElement.querySelectorAll('[data-pr-card]');
+    for (let i = 0; cards.length < 2 && i < 40; i++) {
+      await pause(100);
+      cards = canvasElement.querySelectorAll('[data-pr-card]');
+    }
+    if (cards.length < 2) throw new Error(`expected ≥2 PR cards, got ${cards.length}`);
+    const card = cards[1] as HTMLElement; // PR #42 (second in PRS_CANONICAL)
+    await moveCursorTo(card, 700);
+    clickRipple(card);
+    card.click();
+    await pause(180);
+
+    // Driving the slide via the open_pr_detail_window invoke handler is
+    // unreliable (timing race between React's commit and the invoke
+    // promise's resolution); calling __BORGDOCK_SLIDE_OPEN__() directly
+    // after the click yields a deterministic transition.
+    const slideOpen = (window as unknown as Record<string, unknown>).__BORGDOCK_SLIDE_OPEN__;
+    if (typeof slideOpen === 'function') (slideOpen as () => void)();
+
+    // Hold on the post-slide state long enough that the GIF lands on a
+    // clean still showing both windows side-by-side.
+    await pause(2400);
   },
 };
 
