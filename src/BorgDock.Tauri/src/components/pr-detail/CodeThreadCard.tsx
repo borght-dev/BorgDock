@@ -1,9 +1,6 @@
 import clsx from 'clsx';
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 import { Avatar, Button, Card, Pill } from '@/components/shared/primitives';
 import type { ReviewThread, ReviewThreadSnippetLine } from '@/types';
 
@@ -33,7 +30,10 @@ function relative(createdAt: string): string {
 }
 
 function initials(login: string): string {
-  return login.replace(/\[bot\]$/, '').slice(0, 2).toUpperCase();
+  return login
+    .replace(/\[bot\]$/, '')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function fileShort(path: string): string {
@@ -42,37 +42,82 @@ function fileShort(path: string): string {
 }
 
 const FileIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M9 2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6L9 2z" />
     <path d="M9 2v4h4" />
   </svg>
 );
 
 const Check = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="m4 8 3 3 5-6" />
   </svg>
 );
 
 const ChevronDown = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
     <path d="m4 6 4 4 4-4" />
   </svg>
 );
 
 const ArrowRight = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M3 8h10" /><path d="m9 4 4 4-4 4" />
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3 8h10" />
+    <path d="m9 4 4 4-4 4" />
   </svg>
 );
 
 const Speech = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M3 4h10v6H7l-3 3v-3H3z" />
   </svg>
 );
@@ -108,8 +153,10 @@ function SnippetLine({ line }: { line: ReviewThreadSnippetLine }) {
       <span style={{ color: markerColor }} className="text-center font-semibold">
         {line.marker}
       </span>
-      <span className="overflow-hidden whitespace-pre pr-3 text-ellipsis"
-            style={{ fontFamily: 'var(--font-code)' }}>
+      <span
+        className="overflow-hidden whitespace-pre pr-3 text-ellipsis"
+        style={{ fontFamily: 'var(--font-code)' }}
+      >
         {line.text}
       </span>
     </div>
@@ -147,10 +194,14 @@ export function CodeThreadCard({
         data-thread-resolved="true"
         className="bd-card flex cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-[var(--color-text-tertiary)] !border-dashed"
       >
-        <span className="text-[var(--color-status-green)] inline-flex"><Check /></span>
+        <span className="text-[var(--color-status-green)] inline-flex">
+          <Check />
+        </span>
         <span className="text-[11.5px] font-medium">Resolved</span>
-        <span className="text-[11px] text-[var(--color-text-muted)]"
-              style={{ fontFamily: 'var(--font-code)' }}>
+        <span
+          className="text-[11px] text-[var(--color-text-muted)]"
+          style={{ fontFamily: 'var(--font-code)' }}
+        >
           {short}:{thread.line}
         </span>
         {first && (
@@ -167,20 +218,34 @@ export function CodeThreadCard({
   }
 
   return (
-    <Card padding="sm" className="!p-0 overflow-hidden" data-discussion-item="code" data-thread-id={thread.id}>
+    <Card
+      padding="sm"
+      className="!p-0 overflow-hidden"
+      data-discussion-item="code"
+      data-thread-id={thread.id}
+    >
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[var(--color-subtle-border)] bg-[var(--color-surface-hover)] px-3 py-2">
-        <span className="text-[var(--color-accent)] inline-flex"><FileIcon /></span>
+        <span className="text-[var(--color-accent)] inline-flex">
+          <FileIcon />
+        </span>
         <button
           type="button"
-          onClick={() => onJumpToFile({ filePath: thread.filePath, line: thread.line, threadId: thread.id })}
+          onClick={() =>
+            onJumpToFile({ filePath: thread.filePath, line: thread.line, threadId: thread.id })
+          }
           className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--color-accent)]"
           style={{ fontFamily: 'var(--font-code)' }}
           title="View in Files"
         >
-          {short}<span className="opacity-60">:{thread.line}</span>
+          {short}
+          <span className="opacity-60">:{thread.line}</span>
         </button>
-        {thread.isResolved && <Pill tone="success" icon={<Check />}>resolved</Pill>}
+        {thread.isResolved && (
+          <Pill tone="success" icon={<Check />}>
+            resolved
+          </Pill>
+        )}
         <span className="flex-1" />
         <span className="text-[11px] text-[var(--color-text-muted)]">
           {replyCount} {replyCount === 1 ? 'comment' : 'comments'}
@@ -232,7 +297,15 @@ export function CodeThreadCard({
                 </span>
                 {c.authorIsBot && <Pill tone="neutral">bot</Pill>}
                 {c.severity && (
-                  <Pill tone={c.severity === 'critical' ? 'error' : c.severity === 'praise' ? 'success' : 'warning'}>
+                  <Pill
+                    tone={
+                      c.severity === 'critical'
+                        ? 'error'
+                        : c.severity === 'praise'
+                          ? 'success'
+                          : 'warning'
+                    }
+                  >
                     {c.severity}
                   </Pill>
                 )}
@@ -242,9 +315,7 @@ export function CodeThreadCard({
                 </span>
               </div>
               <div className="markdown-body text-[12.5px] leading-[1.55] text-[var(--color-text-secondary)]">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                  {c.body}
-                </ReactMarkdown>
+                <Markdown>{c.body}</Markdown>
               </div>
             </div>
           </div>
@@ -296,7 +367,14 @@ export function CodeThreadCard({
               className="block min-h-[56px] w-full resize-y rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] p-2 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
             />
             <div className="flex items-center justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setReplying(false); setReplyBody(''); }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setReplying(false);
+                  setReplyBody('');
+                }}
+              >
                 Cancel
               </Button>
               <Button

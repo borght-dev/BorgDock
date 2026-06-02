@@ -1,9 +1,6 @@
 import { useCallback, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
+import { Markdown } from '@/components/shared/Markdown';
 import { Button, Card } from '@/components/shared/primitives';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import { useOnboardingStore } from '@/stores/onboarding-store';
@@ -90,12 +87,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
             <Card padding="sm" variant="default">
               <div className="text-xs text-[var(--color-error-badge-fg)]">
                 {summaryError}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGenerateSummary}
-                  className="ml-2"
-                >
+                <Button variant="ghost" size="sm" onClick={handleGenerateSummary} className="ml-2">
                   Retry
                 </Button>
               </div>
@@ -124,12 +116,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
               {summaryExpanded && (
                 <div className="mt-2 border-t border-[var(--color-separator)] pt-2">
                   <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeRaw, rehypeSanitize]}
-                    >
-                      {cachedSummary}
-                    </ReactMarkdown>
+                    <Markdown>{cachedSummary}</Markdown>
                   </div>
                   <Button
                     variant="ghost"
@@ -175,12 +162,9 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       {/* Description */}
       {p.body && (
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-            {p.body}
-          </ReactMarkdown>
+          <Markdown>{p.body}</Markdown>
         </div>
       )}
-
     </div>
   );
 }
