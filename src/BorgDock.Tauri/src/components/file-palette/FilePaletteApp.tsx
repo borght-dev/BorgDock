@@ -6,6 +6,7 @@ import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
 import { Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings } from '@/types/settings';
+import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
 import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
 import { FilePalettePreviewPane } from './FilePalettePreviewPane';
@@ -51,6 +52,8 @@ export function FilePaletteApp() {
   const [scope, setScope] = useState<'all' | 'changes' | 'filename' | 'content' | 'symbol'>('all');
   const [changesVisibleRows, setChangesVisibleRows] = useState<VisibleRow[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  const copiedTimerRef = useRef<number | null>(null);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
 
   const fileIndex = useFileIndex(activeRoot);
@@ -433,6 +436,23 @@ export function FilePaletteApp() {
     [activeRoot, changesVisibleRows, results],
   );
 
+  // Copy a repo-relative path (e.g. "src/components/Foo.tsx") so it can be pasted
+  // straight into a Claude prompt as a file reference. Briefly flashes a status hint.
+  const copyRelPath = useCallback(async (relPath: string) => {
+    const ok = await copyToClipboard(relPath);
+    if (!ok) return;
+    setCopiedPath(relPath);
+    if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = window.setTimeout(() => setCopiedPath(null), 1500);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current);
+    },
+    [],
+  );
+
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Tab' && !e.shiftKey) {
@@ -447,6 +467,26 @@ export function FilePaletteApp() {
         // Hide rather than close: keeps the WebView2 alive across opens so
         // in-flight IPC responses don't PostMessage to a dead HWND.
         else getCurrentWindow().hide();
+        return;
+      }
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.key === 'c' || e.key === 'C')
+      ) {
+        // Don't hijack a genuine text selection in the search input — let the OS
+        // copy that. Otherwise copy the selected file's repo-relative path.
+        const el = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+        const hasTextSelection =
+          !!el &&
+          (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
+          el.selectionStart != null &&
+          el.selectionEnd != null &&
+          el.selectionStart !== el.selectionEnd;
+        if (hasTextSelection || !selection) return;
+        e.preventDefault();
+        void copyRelPath(selection.path);
         return;
       }
       if (e.key === 'ArrowDown') {
@@ -464,7 +504,7 @@ export function FilePaletteApp() {
         openResult(selectedIndex);
       }
     },
-    [query, totalFlatLength, selectedIndex, openResult],
+    [query, totalFlatLength, selectedIndex, openResult, selection, copyRelPath],
   );
 
   const jumpToSymbol = useCallback((word: string) => {
@@ -587,6 +627,7 @@ export function FilePaletteApp() {
                 selectedIndex={selectedIndex - changesVisibleRows.length}
                 onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
                 onOpen={(i) => openResult(i + changesVisibleRows.length)}
+                onCopyPath={copyRelPath}
                 rowRef={(el, i) => {
                   rowRefs.current.set(i + changesVisibleRows.length, el);
                 }}
@@ -631,10 +672,16 @@ export function FilePaletteApp() {
           </span>
         }
         right={
-          <span className="bd-mono">
-            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Ctrl+/</Kbd> diff
-            view · <Kbd>Esc</Kbd>
-          </span>
+          copiedPath ? (
+            <span className="bd-mono" style={{ color: 'var(--color-status-green)' }}>
+              ✓ Copied relative path
+            </span>
+          ) : (
+            <span className="bd-mono">
+              <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Ctrl+C</Kbd> copy path · <Kbd>Tab</Kbd>{' '}
+              roots · <Kbd>Ctrl+/</Kbd> diff · <Kbd>Esc</Kbd>
+            </span>
+          )
         }
       />
     </div>
