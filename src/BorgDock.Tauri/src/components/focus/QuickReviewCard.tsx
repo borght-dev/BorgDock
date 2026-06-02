@@ -1,7 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 import { Card, Pill } from '@/components/shared/primitives';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -70,9 +67,7 @@ export function QuickReviewCard({ pr }: QuickReviewCardProps) {
       {p.body && (
         <Card padding="sm" className="max-h-[200px] overflow-y-auto">
           <div className="markdown-body text-xs text-[var(--color-text-secondary)]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-              {p.body}
-            </ReactMarkdown>
+            <Markdown>{p.body}</Markdown>
           </div>
         </Card>
       )}

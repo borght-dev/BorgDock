@@ -1,7 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 import { Dot, type DotTone } from '@/components/shared/primitives';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
 
@@ -37,9 +34,7 @@ export function ReviewCommentCard({ comment }: ReviewCommentCardProps) {
 
         {/* Body */}
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-            {comment.body}
-          </ReactMarkdown>
+          <Markdown>{comment.body}</Markdown>
         </div>
       </div>
     </div>

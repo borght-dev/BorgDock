@@ -1,6 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 
 interface AssistantMarkdownProps {
   text: string;
@@ -14,9 +12,7 @@ interface AssistantMarkdownProps {
 export function AssistantMarkdown({ text }: AssistantMarkdownProps) {
   return (
     <div className="ag-assistant-md">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-        {text}
-      </ReactMarkdown>
+      <Markdown allowRawHtml={false}>{text}</Markdown>
     </div>
   );
 }
