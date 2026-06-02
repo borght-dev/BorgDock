@@ -1,9 +1,6 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 import { Avatar, Card, Pill, type PillTone } from '@/components/shared/primitives';
 import type { ReviewVerdict } from '@/types';
 
@@ -27,26 +24,55 @@ function relative(createdAt: string): string {
 }
 
 function initials(login: string): string {
-  return login.replace(/\[bot\]$/, '').slice(0, 2).toUpperCase();
+  return login
+    .replace(/\[bot\]$/, '')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 const Check = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="m4 8 3 3 5-6" />
   </svg>
 );
 const Alert = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
     <circle cx="8" cy="8" r="6.5" />
     <path d="M8 5v3.5" />
     <circle cx="8" cy="11" r="0.6" fill="currentColor" stroke="none" />
   </svg>
 );
 const Speech = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M3 4h10v6H7l-3 3v-3H3z" />
   </svg>
 );
@@ -58,7 +84,11 @@ function VerdictPill({ v }: { v: ReviewVerdict }) {
     commented: { tone: 'neutral', icon: <Speech />, label: 'commented' },
   };
   const m = map[v];
-  return <Pill tone={m.tone} icon={m.icon}>{m.label}</Pill>;
+  return (
+    <Pill tone={m.tone} icon={m.icon}>
+      {m.label}
+    </Pill>
+  );
 }
 
 /**
@@ -108,9 +138,7 @@ export function ReviewItem({ author, authorIsBot, verdict, body, createdAt }: Re
         <span className="text-[11px] text-[var(--color-text-muted)]">{relative(createdAt)}</span>
       </div>
       <div className="markdown-body text-[12.5px] leading-[1.55] text-[var(--color-text-secondary)]">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-          {body}
-        </ReactMarkdown>
+        <Markdown>{body}</Markdown>
       </div>
     </Card>
   );

@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 import { Avatar, Button, Pill } from '@/components/shared/primitives';
 import type { ReviewThread } from '@/types';
 
@@ -15,22 +12,48 @@ interface InlineThreadProps {
 }
 
 const Check = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="m4 8 3 3 5-6" />
   </svg>
 );
 
 const Close = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
     <path d="m4 4 8 8M12 4 4 12" />
   </svg>
 );
 
 const Speech = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M3 4h10v6H7l-3 3v-3H3z" />
   </svg>
 );
@@ -47,7 +70,10 @@ function relative(createdAt: string): string {
 }
 
 function initials(login: string): string {
-  return login.replace(/\[bot\]$/, '').slice(0, 2).toUpperCase();
+  return login
+    .replace(/\[bot\]$/, '')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 /**
@@ -71,13 +97,20 @@ export function InlineThread({
       className="my-1 rounded-md border border-[var(--color-purple-border)] border-l-[3px] border-l-[var(--color-accent)] bg-[var(--color-surface)]"
     >
       <div className="flex items-center gap-2 border-b border-[var(--color-subtle-border)] bg-[var(--color-accent-subtle)] px-3 py-1.5">
-        <span className="text-[var(--color-accent)] inline-flex"><Speech /></span>
+        <span className="text-[var(--color-accent)] inline-flex">
+          <Speech />
+        </span>
         <span className="text-[11px] font-semibold text-[var(--color-accent)]">
           Thread · {thread.comments.length} {thread.comments.length === 1 ? 'comment' : 'comments'}
         </span>
         <span className="flex-1" />
         {!thread.isResolved && onResolve && (
-          <Button variant="ghost" size="sm" leading={<Check />} onClick={() => onResolve(thread.id)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            leading={<Check />}
+            onClick={() => onResolve(thread.id)}
+          >
             Resolve
           </Button>
         )}
@@ -114,7 +147,15 @@ export function InlineThread({
                 </span>
                 {c.authorIsBot && <Pill tone="neutral">bot</Pill>}
                 {c.severity && (
-                  <Pill tone={c.severity === 'critical' ? 'error' : c.severity === 'praise' ? 'success' : 'warning'}>
+                  <Pill
+                    tone={
+                      c.severity === 'critical'
+                        ? 'error'
+                        : c.severity === 'praise'
+                          ? 'success'
+                          : 'warning'
+                    }
+                  >
                     {c.severity}
                   </Pill>
                 )}
@@ -124,9 +165,7 @@ export function InlineThread({
                 </span>
               </div>
               <div className="markdown-body text-[12px] leading-[1.5] text-[var(--color-text-secondary)]">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                  {c.body}
-                </ReactMarkdown>
+                <Markdown>{c.body}</Markdown>
               </div>
             </div>
           </div>
@@ -148,7 +187,14 @@ export function InlineThread({
               className="block min-h-[50px] w-full resize-y rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] p-2 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
             />
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setReplying(false); setReplyBody(''); }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setReplying(false);
+                  setReplyBody('');
+                }}
+              >
                 Cancel
               </Button>
               <Button

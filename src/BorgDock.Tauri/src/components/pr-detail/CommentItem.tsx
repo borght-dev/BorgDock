@@ -1,7 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/shared/Markdown';
 import { Avatar, Card, Pill } from '@/components/shared/primitives';
 
 interface CommentItemProps {
@@ -23,7 +20,10 @@ function relative(createdAt: string): string {
 }
 
 function initials(login: string): string {
-  return login.replace(/\[bot\]$/, '').slice(0, 2).toUpperCase();
+  return login
+    .replace(/\[bot\]$/, '')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 /** Generic top-level (issue) comment. */
@@ -38,9 +38,7 @@ export function CommentItem({ author, authorIsBot, body, createdAt }: CommentIte
         <span className="text-[11px] text-[var(--color-text-muted)]">{relative(createdAt)}</span>
       </div>
       <div className="markdown-body text-[12.5px] leading-[1.55] text-[var(--color-text-secondary)]">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-          {body}
-        </ReactMarkdown>
+        <Markdown>{body}</Markdown>
       </div>
     </Card>
   );
