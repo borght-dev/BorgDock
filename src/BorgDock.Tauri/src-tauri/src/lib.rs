@@ -107,11 +107,19 @@ pub fn run() {
 
     tauri::Builder::default()
         .on_window_event(|window, event| {
-            if window.label() == "main" {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
                     api.prevent_close();
                     let _ = window.hide();
                 }
+                // Once a window is truly gone, forget its first-reveal flag so
+                // a future window reusing the same label (e.g. a reopened
+                // pr-detail / settings) reveals again instead of staying
+                // hidden. See platform::window::revealed().
+                tauri::WindowEvent::Destroyed => {
+                    crate::platform::window::mark_window_destroyed(window.label());
+                }
+                _ => {}
             }
         })
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
