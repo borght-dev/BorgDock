@@ -3116,6 +3116,11 @@ body.sql-resizing-v .sql-resize-handle {
     flex: 1;
     display: grid;
     grid-template-columns: 220px minmax(440px, 1.2fr) 2fr;
+    /* A single implicit `auto` row would size to its tallest item's content
+       (a long file in the preview pane), so the columns' `height: 100%` /
+       overflow:auto chains never bound and nothing scrolls. A definite,
+       shrinkable row track keeps each column bounded to the viewport. */
+    grid-template-rows: minmax(0, 1fr);
     min-height: 0;
     transition: grid-template-columns 180ms ease;
   }
