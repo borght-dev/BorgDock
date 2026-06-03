@@ -29,7 +29,9 @@ describe('FilePaletteApp', () => {
         });
       }
       if (cmd === 'list_worktrees_bare') {
-        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+        return Promise.resolve([
+          { path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true },
+        ]);
       }
       if (cmd === 'list_root_files') {
         return Promise.resolve({
@@ -42,8 +44,11 @@ describe('FilePaletteApp', () => {
       }
       if (cmd === 'save_settings') return Promise.resolve(null);
       if (cmd === 'read_text_file') return Promise.resolve('// preview stub');
-      if (cmd === 'git_changed_files') return Promise.resolve({ local: [], vsBase: [], baseRef: '', inRepo: false });
+      if (cmd === 'git_changed_files')
+        return Promise.resolve({ local: [], vsBase: [], baseRef: '', inRepo: false });
       if (cmd === 'window_ready') return Promise.resolve(null);
+      if (cmd === 'reveal_in_file_manager') return Promise.resolve(null);
+      if (cmd === 'open_file_viewer_window') return Promise.resolve(null);
       return Promise.reject(new Error(`unexpected ${cmd}`));
     });
     const { open } = await import('@tauri-apps/plugin-dialog');
@@ -58,15 +63,56 @@ describe('FilePaletteApp', () => {
 
   it('arrow-down moves selection', async () => {
     render(<FilePaletteApp />);
-    await waitFor(() => expect(screen.getAllByText('src/auth/login.tsx').length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(screen.getAllByText('src/auth/login.tsx').length).toBeGreaterThan(0),
+    );
     const root = document.querySelector('.bd-fp-root')!;
     await act(async () => {
       fireEvent.keyDown(root, { key: 'ArrowDown' });
     });
-    const second = screen.getAllByText('src/auth/login.tsx').find(
-      (el) => el.closest('[data-file-result]') !== null,
-    );
+    const second = screen
+      .getAllByText('src/auth/login.tsx')
+      .find((el) => el.closest('[data-file-result]') !== null);
     expect(second?.closest('[data-file-result]')?.getAttribute('data-selected')).toBe('true');
+  });
+
+  it('double-clicking a result opens it in a viewer window', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getAllByText('src/app.ts').length).toBeGreaterThan(0));
+
+    const row = screen.getAllByText('src/app.ts').find((el) => el.closest('[data-file-result]'));
+    await act(async () => {
+      fireEvent.doubleClick(row!);
+    });
+
+    const opens = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'open_file_viewer_window',
+    );
+    expect(opens.length).toBe(1);
+  });
+
+  it('right-click → "Open containing folder" reveals the file\'s parent directory', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    render(<FilePaletteApp />);
+    await waitFor(() => expect(screen.getAllByText('src/app.ts').length).toBeGreaterThan(0));
+
+    const row = screen.getAllByText('src/app.ts').find((el) => el.closest('[data-file-result]'));
+    await act(async () => {
+      fireEvent.contextMenu(row!, { clientX: 20, clientY: 30 });
+    });
+
+    const item = await screen.findByText('Open containing folder');
+    await act(async () => {
+      fireEvent.click(item);
+    });
+
+    const reveals = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([cmd]) => cmd === 'reveal_in_file_manager',
+    );
+    expect(reveals.length).toBe(1);
+    // Parent dir of "src/app.ts" — the file itself is not passed.
+    expect((reveals[0]![1] as { path: string }).path).toMatch(/\/src$/);
   });
 
   it('typing filters the file list', async () => {
@@ -151,7 +197,9 @@ describe('FilePaletteApp', () => {
         });
       }
       if (cmd === 'list_worktrees_bare') {
-        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+        return Promise.resolve([
+          { path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true },
+        ]);
       }
       if (cmd === 'list_root_files') return Promise.resolve({ entries: [], truncated: false });
       if (cmd === 'save_settings') return Promise.resolve(null);
@@ -215,7 +263,9 @@ describe('FilePaletteApp', () => {
         });
       }
       if (cmd === 'list_worktrees_bare') {
-        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+        return Promise.resolve([
+          { path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true },
+        ]);
       }
       if (cmd === 'list_root_files') return Promise.resolve({ entries: [], truncated: false });
       if (cmd === 'save_settings') return Promise.resolve(null);
@@ -233,7 +283,9 @@ describe('FilePaletteApp', () => {
       const saves = (invoke as ReturnType<typeof vi.fn>).mock.calls.filter(
         ([cmd, a]) =>
           cmd === 'save_settings' &&
-          Array.isArray((a as { settings?: { filePaletteRoots?: unknown } }).settings?.filePaletteRoots),
+          Array.isArray(
+            (a as { settings?: { filePaletteRoots?: unknown } }).settings?.filePaletteRoots,
+          ),
       );
       expect(saves.length).toBeGreaterThanOrEqual(1);
       const last = saves[saves.length - 1]![1];
@@ -252,7 +304,9 @@ describe('FilePaletteApp', () => {
         });
       }
       if (cmd === 'list_worktrees_bare') {
-        return Promise.resolve([{ path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true }]);
+        return Promise.resolve([
+          { path: '/repo/.worktrees/wt1', branchName: 'main', isMainWorktree: true },
+        ]);
       }
       if (cmd === 'list_root_files') return Promise.resolve({ entries: [], truncated: false });
       if (cmd === 'save_settings') return Promise.resolve(null);

@@ -13,10 +13,14 @@ export interface ResultEntry {
 interface Props {
   results: ResultEntry[];
   selectedIndex: number;
+  /** Select the row (single click / hover) — drives the preview pane. */
   onHover: (i: number) => void;
+  /** Open the row in a separate window (double click). */
   onOpen: (i: number) => void;
   /** Copy the row's repo-relative path to the clipboard. */
   onCopyPath: (relPath: string) => void;
+  /** Right-click: anchor a context menu at the cursor for this row. */
+  onContextMenu?: (i: number, relPath: string, x: number, y: number) => void;
   rowRef: (el: HTMLButtonElement | null, i: number) => void;
 }
 
@@ -26,6 +30,7 @@ export function FilePaletteResultsList({
   onHover,
   onOpen,
   onCopyPath,
+  onContextMenu,
   rowRef,
 }: Props) {
   // Which row just flashed a checkmark. Index-keyed; cleared after a short delay.
@@ -46,12 +51,18 @@ export function FilePaletteResultsList({
             data-selected={selected ? 'true' : 'false'}
             className={clsx('bd-fp-result-row-wrap', selected && 'bd-fp-result-row-wrap--selected')}
             onMouseEnter={() => onHover(i)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              onContextMenu?.(i, r.rel_path, e.clientX, e.clientY);
+            }}
           >
             <button
               type="button"
               className="bd-fp-result-row"
               ref={(el) => rowRef(el, i)}
-              onClick={() => onOpen(i)}
+              // Single click selects (previews); double click opens a window.
+              onClick={() => onHover(i)}
+              onDoubleClick={() => onOpen(i)}
             >
               <span className="bd-fp-result-path">{r.rel_path}</span>
               {r.match_count !== undefined && (

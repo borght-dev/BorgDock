@@ -27,9 +27,12 @@ export interface FilePaletteFilePaletteChangesSectionProps {
   selectedGlobalIndex: number;
   /** Flat-nav starting index for this section's rows. */
   baseIndex: number;
+  /** Open a row in a separate window (double click). */
   onOpen: (file: ChangedFileEntry, group: ChangedGroup) => void;
-  /** Called when the user hovers a row; payload is the global nav index. */
+  /** Select a row (single click / hover); payload is the global nav index. */
   onHover: (globalIndex: number) => void;
+  /** Right-click: anchor a context menu at the cursor for this row. */
+  onContextMenu?: (globalIndex: number, relPath: string, x: number, y: number) => void;
   /** When true the entire section body is hidden. */
   collapsed: boolean;
   /** Controls which sub-group(s) are shown: head=local only, base=vsBase only, both=all. */
@@ -81,6 +84,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
     baseIndex,
     onOpen,
     onHover,
+    onContextMenu,
     collapsed,
     mode,
     onToggleCollapse,
@@ -131,8 +135,10 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
   const visibleRows = useMemo<VisibleRow[]>(() => {
     if (!data || !data.inRepo || collapsed) return [];
     const rows: VisibleRow[] = [];
-    if (mode === 'head' || mode === 'both') for (const f of filteredLocal) rows.push({ group: 'local', file: f });
-    if (mode === 'base' || mode === 'both') for (const f of filteredVsBase) rows.push({ group: 'vsBase', file: f });
+    if (mode === 'head' || mode === 'both')
+      for (const f of filteredLocal) rows.push({ group: 'local', file: f });
+    if (mode === 'base' || mode === 'both')
+      for (const f of filteredVsBase) rows.push({ group: 'vsBase', file: f });
     return rows;
   }, [data, filteredLocal, filteredVsBase, mode, collapsed]);
 
@@ -142,7 +148,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
 
   // Compute visible totals for the header.
   const visibleLocal = !collapsed && (mode === 'head' || mode === 'both') ? filteredLocal : [];
-  const visibleBase  = !collapsed && (mode === 'base' || mode === 'both') ? filteredVsBase : [];
+  const visibleBase = !collapsed && (mode === 'base' || mode === 'both') ? filteredVsBase : [];
   const visibleCount = visibleLocal.length + visibleBase.length;
   const visibleAdd = [...visibleLocal, ...visibleBase].reduce((s, f) => s + f.additions, 0);
   const visibleDel = [...visibleLocal, ...visibleBase].reduce((s, f) => s + f.deletions, 0);
@@ -163,9 +169,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
       </button>
       <span style={{ fontSize: 11 }}>●</span>
       <span className="bd-fp-changes-title">CHANGES</span>
-      {visibleCount > 0 && (
-        <span className="bd-fp-changes-count bd-mono">· {visibleCount}</span>
-      )}
+      {visibleCount > 0 && <span className="bd-fp-changes-count bd-mono">· {visibleCount}</span>}
       {(visibleAdd > 0 || visibleDel > 0) && (
         <span className="bd-fp-changes-stats">
           <span style={{ color: 'var(--color-status-green)' }}>+{visibleAdd}</span>
@@ -198,11 +202,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
   }
 
   if (loading && !data) {
-    return (
-      <div className="bd-fp-changes">
-        {header}
-      </div>
-    );
+    return <div className="bd-fp-changes">{header}</div>;
   }
 
   if (!data) return null;
@@ -218,11 +218,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
   }
 
   if (collapsed) {
-    return (
-      <div className="bd-fp-changes">
-        {header}
-      </div>
-    );
+    return <div className="bd-fp-changes">{header}</div>;
   }
 
   // Compute each row's global nav index based on visibleRows order.
@@ -242,7 +238,13 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
         ref={(el) => rowRef?.(el, globalIdx)}
         className={`bd-fp-changes-row${selected ? ' bd-fp-changes-row--selected' : ''}`}
         onMouseEnter={() => onHover(globalIdx)}
-        onClick={() => onOpen(file, group)}
+        // Single click selects (previews the diff); double click opens a window.
+        onClick={() => onHover(globalIdx)}
+        onDoubleClick={() => onOpen(file, group)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onContextMenu?.(globalIdx, file.path, e.clientX, e.clientY);
+        }}
       >
         <span
           className="bd-fp-changes-status"
@@ -252,8 +254,18 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
           {file.status}
         </span>
         <span className="bd-fp-changes-path">{label}</span>
-        <span className="bd-fp-changes-row__add bd-mono" style={{ color: 'var(--color-status-green)' }}>+{file.additions}</span>
-        <span className="bd-fp-changes-row__del bd-mono" style={{ color: 'var(--color-status-red)' }}>−{file.deletions}</span>
+        <span
+          className="bd-fp-changes-row__add bd-mono"
+          style={{ color: 'var(--color-status-green)' }}
+        >
+          +{file.additions}
+        </span>
+        <span
+          className="bd-fp-changes-row__del bd-mono"
+          style={{ color: 'var(--color-status-red)' }}
+        >
+          −{file.deletions}
+        </span>
       </button>
     );
   };
