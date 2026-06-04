@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
+import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { createLogger } from '@/services/logger';
+import type { CheckRun, PullRequest, PullRequestWithChecks } from '@/types';
 
 const log = createLogger('cache');
 
@@ -100,9 +102,27 @@ export async function saveCachedEtags(entries: CachedEtagEntry[]): Promise<void>
 // PR list cache (wires up existing but unused commands)
 // ---------------------------------------------------------------------------
 
+/**
+ * Cached PR entries written before the GraphQL polling migration carry a raw
+ * `checks` array and lack `totalCheckCount` / `failedCheckSuiteIds`. Reading
+ * such an entry crashes consumers (`failedCheckSuiteIds[0]`), so re-derive the
+ * current shape from the legacy checks via the same aggregator that produced
+ * the old entry. Current-shape entries pass through untouched.
+ */
+function normalizeCachedPr(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const entry = raw as Partial<PullRequestWithChecks> & { checks?: CheckRun[] };
+  if (!entry.pullRequest) return raw;
+  if (entry.totalCheckCount !== undefined && entry.failedCheckSuiteIds !== undefined) {
+    return raw;
+  }
+  return aggregatePrWithChecks(entry.pullRequest as PullRequest, entry.checks ?? []);
+}
+
 export async function loadCachedPRs(repoOwner: string, repoName: string): Promise<unknown[]> {
   try {
-    return await invoke<unknown[]>('cache_load_prs', { repoOwner, repoName });
+    const prs = await invoke<unknown[]>('cache_load_prs', { repoOwner, repoName });
+    return prs.map(normalizeCachedPr);
   } catch (err) {
     log.warn('loadCachedPRs failed (returning empty)', { repoOwner, repoName, error: String(err) });
     return [];
