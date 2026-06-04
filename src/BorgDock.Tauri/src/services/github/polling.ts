@@ -210,19 +210,22 @@ export async function pollOpenPrsAggregate(
   repo: string,
 ): Promise<PullRequestWithChecks[]> {
   const data = await client.graphql<PollResponse>(POLL_OPEN_PRS_QUERY, { owner, repo });
-  const repository = data.repository;
-  if (!repository) {
-    log.warn('repository null in poll response', { owner, repo });
+  // `repository` is null when the repo is inaccessible; the optional chain also
+  // tolerates malformed 200 bodies (e.g. stubbed network in tests) so a poll
+  // cycle degrades to "no data" instead of TypeError-ing.
+  const pullRequests = data?.repository?.pullRequests;
+  if (!pullRequests) {
+    log.warn('poll response missing repository.pullRequests', { owner, repo });
     return [];
   }
-  if (repository.pullRequests.totalCount > 100) {
+  if (pullRequests.totalCount > 100) {
     log.warn('PR list truncated to 100', {
       owner,
       repo,
-      totalCount: repository.pullRequests.totalCount,
+      totalCount: pullRequests.totalCount,
     });
   }
-  return repository.pullRequests.nodes.map((node) => mapNode(node, owner, repo));
+  return (pullRequests.nodes ?? []).map((node) => mapNode(node, owner, repo));
 }
 
 function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithChecks {

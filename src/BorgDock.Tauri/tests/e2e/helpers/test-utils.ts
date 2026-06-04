@@ -98,7 +98,22 @@ export async function bootApp(
           body: JSON.stringify({ login: 'test-user' }),
         });
       }
-      // Default: empty list (most GitHub endpoints expect arrays).
+      // The polling loop POSTs one PollOpenPrs GraphQL query per repo per
+      // cycle — answer with a well-formed empty repository so cycles no-op
+      // (PR data is seeded via mock IPC / test-seed, not the network).
+      if (url.endsWith('/graphql')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              repository: { pullRequests: { totalCount: 0, nodes: [] } },
+              rateLimit: { remaining: 5000, limit: 5000, resetAt: '2026-01-01T00:00:00Z', cost: 1 },
+            },
+          }),
+        });
+      }
+      // Default: empty list (most GitHub REST endpoints expect arrays).
       return route.fulfill({
         status: 200,
         contentType: 'application/json',

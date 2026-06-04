@@ -112,6 +112,31 @@ describe('pollOpenPrsAggregate', () => {
     expect(result).toEqual([]);
   });
 
+  it('returns empty array when the response data is undefined (malformed 200)', async () => {
+    const client = new GitHubClient(vi.fn().mockResolvedValue('t'));
+    vi.spyOn(client, 'graphql').mockResolvedValue(undefined);
+
+    const result = await pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when the response body is not an object (stubbed network)', async () => {
+    // e2e harnesses answer api.github.com with `[]` — `[].repository` must not throw.
+    const client = new GitHubClient(vi.fn().mockResolvedValue('t'));
+    vi.spyOn(client, 'graphql').mockResolvedValue([]);
+
+    const result = await pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when repository.pullRequests is missing', async () => {
+    const client = new GitHubClient(vi.fn().mockResolvedValue('t'));
+    vi.spyOn(client, 'graphql').mockResolvedValue({ repository: {} });
+
+    const result = await pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    expect(result).toEqual([]);
+  });
+
   it('caps the result at 100 PRs and does not throw when more exist', async () => {
     const nodes = Array.from({ length: 100 }, (_, i) => makeNode({ number: i + 1 }));
     const client = makeClient(nodes, 250);
