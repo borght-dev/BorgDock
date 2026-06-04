@@ -20,7 +20,10 @@ const log = createLogger('github');
 export class GitHubClient {
   private readonly getToken: () => Promise<string>;
   private readonly etagCache = new Map<string, ETagEntry>();
-  private rateLimit: RateLimit = { remaining: -1, total: -1, reset: null };
+  // REST and GraphQL draw from separate 5000/h pools — track them separately
+  // so neither poisons the other's reading (the polling loop is GraphQL-only).
+  private restRateLimit: RateLimit = { remaining: -1, total: -1, reset: null };
+  private graphqlRateLimit: RateLimit = { remaining: -1, total: -1, reset: null };
   private _freshCount = 0;
   private _pollStartCount = 0;
 
@@ -38,12 +41,21 @@ export class GitHubClient {
     return this._freshCount > this._pollStartCount;
   }
 
+  /** REST (core) pool. */
   getRateLimit(): RateLimit {
-    return { ...this.rateLimit };
+    return { ...this.restRateLimit };
   }
 
+  /** GraphQL pool — populated by graphql() from headers and the inline rateLimit field. */
+  getGraphqlRateLimit(): RateLimit {
+    return { ...this.graphqlRateLimit };
+  }
+
+  /** True when either pool is running low — adaptive polling doubles its interval. */
   get isRateLimitLow(): boolean {
-    return this.rateLimit.remaining >= 0 && this.rateLimit.remaining < 500;
+    const rest = this.restRateLimit.remaining;
+    const graphql = this.graphqlRateLimit.remaining;
+    return (rest >= 0 && rest < 500) || (graphql >= 0 && graphql < 500);
   }
 
   /** Populate the in-memory ETag cache from persisted entries (call on startup). */
@@ -78,7 +90,7 @@ export class GitHubClient {
       log.warn('GET 304 with no cached entry', { path, durationMs });
       this.etagCache.delete(url);
       const retryResponse = await this.fetchWithRetry(url);
-      this.parseRateLimitHeaders(retryResponse);
+      this.parseRestRateLimitHeaders(retryResponse);
       if (!retryResponse.ok) {
         throw new GitHubApiError(
           `GitHub API error: ${retryResponse.status} ${retryResponse.statusText}`,
@@ -125,7 +137,7 @@ export class GitHubClient {
       path,
       status: response.status,
       durationMs,
-      rateLimitRemaining: this.rateLimit.remaining,
+      rateLimitRemaining: this.restRateLimit.remaining,
       cached: !!etag,
     });
 
@@ -165,7 +177,7 @@ export class GitHubClient {
       body: JSON.stringify(body),
     });
 
-    this.parseRateLimitHeaders(response);
+    this.parseRestRateLimitHeaders(response);
     this.checkResponseForAuthErrors(response, 'POST', path);
 
     if (!response.ok) {
@@ -193,7 +205,7 @@ export class GitHubClient {
       body: JSON.stringify(body),
     });
 
-    this.parseRateLimitHeaders(response);
+    this.parseRestRateLimitHeaders(response);
     this.checkResponseForAuthErrors(response, 'PUT', path);
 
     if (!response.ok) {
@@ -225,7 +237,7 @@ export class GitHubClient {
       body: JSON.stringify(body),
     });
 
-    this.parseRateLimitHeaders(response);
+    this.parseRestRateLimitHeaders(response);
     this.checkResponseForAuthErrors(response, 'PATCH', path);
 
     if (!response.ok) {
@@ -239,6 +251,9 @@ export class GitHubClient {
   }
 
   async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+    const start = performance.now();
+    const queryName = query.match(/(?:query|mutation)\s+(\w+)/)?.[1] ?? 'anonymous';
+    log.info('graphql start', { query: queryName });
     const token = await this.getToken();
 
     const response = await this.fetchWithTimeout('https://api.github.com/graphql', {
@@ -251,9 +266,21 @@ export class GitHubClient {
       body: JSON.stringify({ query, variables }),
     });
 
-    this.parseRateLimitHeaders(response);
+    this.parseGraphqlRateLimitFromHeaders(response);
+    const durationMs = Math.round(performance.now() - start);
 
     if (!response.ok) {
+      log.error('graphql failed', { query: queryName, status: response.status, durationMs });
+      if (response.status === 403 && this.graphqlRateLimit.remaining === 0) {
+        throw new GitHubRateLimitError(
+          `GitHub API rate limit exceeded. Resets at ${this.graphqlRateLimit.reset?.toISOString() ?? 'unknown'}.`,
+          this.graphqlRateLimit.reset,
+        );
+      }
+      if (response.status === 401 || response.status === 403) {
+        invalidateGitHubTokenCache();
+        throw new GitHubAuthError(`GitHub API authentication failed (${response.status}).`);
+      }
       throw new GitHubApiError(
         `GitHub GraphQL error: ${response.status} ${response.statusText}`,
         response.status,
@@ -262,17 +289,27 @@ export class GitHubClient {
 
     const result = await response.json();
     if (result.errors?.length > 0) {
+      log.error('graphql errors', { query: queryName, errors: result.errors, durationMs });
       throw new GitHubApiError(`GraphQL error: ${result.errors[0].message}`, 422);
     }
+    // Body rateLimit (when the query requests it) is the authoritative point
+    // count — parse it after headers so it wins.
+    const cost = this.parseGraphqlRateLimitFromBody(result.data);
+    log.info('graphql ok', {
+      query: queryName,
+      durationMs,
+      cost,
+      rateLimitRemaining: this.graphqlRateLimit.remaining,
+    });
 
     return result.data as T;
   }
 
   private checkResponseForAuthErrors(response: Response, _method: string, _path: string): void {
-    if (response.status === 403 && this.rateLimit.remaining === 0) {
+    if (response.status === 403 && this.restRateLimit.remaining === 0) {
       throw new GitHubRateLimitError(
-        `GitHub API rate limit exceeded. Resets at ${this.rateLimit.reset?.toISOString() ?? 'unknown'}.`,
-        this.rateLimit.reset,
+        `GitHub API rate limit exceeded. Resets at ${this.restRateLimit.reset?.toISOString() ?? 'unknown'}.`,
+        this.restRateLimit.reset,
       );
     }
     if (response.status === 401 || response.status === 403) {
@@ -305,11 +342,11 @@ export class GitHubClient {
         }
 
         const response = await this.fetchWithTimeout(url, { headers });
-        this.parseRateLimitHeaders(response);
+        this.parseRestRateLimitHeaders(response);
 
         // Handle rate limit exhaustion
-        if (response.status === 403 && this.rateLimit.remaining === 0) {
-          const resetTime = this.rateLimit.reset;
+        if (response.status === 403 && this.restRateLimit.remaining === 0) {
+          const resetTime = this.restRateLimit.reset;
           if (resetTime && attempt < maxRetries) {
             const waitMs = Math.max(0, resetTime.getTime() - Date.now());
             const cappedWait = Math.min(waitMs, 120_000);
@@ -385,24 +422,67 @@ export class GitHubClient {
     }
   }
 
-  private parseRateLimitHeaders(response: Response): void {
+  private parseRestRateLimitHeaders(response: Response): void {
     const remaining = response.headers.get('X-RateLimit-Remaining');
     if (remaining) {
       const val = parseInt(remaining, 10);
-      if (!Number.isNaN(val)) this.rateLimit.remaining = val;
+      if (!Number.isNaN(val)) this.restRateLimit.remaining = val;
     }
 
     const limit = response.headers.get('X-RateLimit-Limit');
     if (limit) {
       const val = parseInt(limit, 10);
-      if (!Number.isNaN(val)) this.rateLimit.total = val;
+      if (!Number.isNaN(val)) this.restRateLimit.total = val;
     }
 
     const reset = response.headers.get('X-RateLimit-Reset');
     if (reset) {
       const val = parseInt(reset, 10);
-      if (!Number.isNaN(val)) this.rateLimit.reset = new Date(val * 1000);
+      if (!Number.isNaN(val)) this.restRateLimit.reset = new Date(val * 1000);
     }
+  }
+
+  /** GraphQL responses carry the same X-RateLimit-* headers, but for the GraphQL pool. */
+  private parseGraphqlRateLimitFromHeaders(response: Response): void {
+    const remaining = response.headers.get('X-RateLimit-Remaining');
+    if (remaining) {
+      const val = parseInt(remaining, 10);
+      if (!Number.isNaN(val)) this.graphqlRateLimit.remaining = val;
+    }
+
+    const limit = response.headers.get('X-RateLimit-Limit');
+    if (limit) {
+      const val = parseInt(limit, 10);
+      if (!Number.isNaN(val)) this.graphqlRateLimit.total = val;
+    }
+
+    const reset = response.headers.get('X-RateLimit-Reset');
+    if (reset) {
+      const val = parseInt(reset, 10);
+      if (!Number.isNaN(val)) this.graphqlRateLimit.reset = new Date(val * 1000);
+    }
+  }
+
+  /**
+   * Parse the inline `rateLimit { remaining limit resetAt cost }` field that
+   * queries may request at the root. Returns the reported query cost (points)
+   * for logging, if present.
+   */
+  private parseGraphqlRateLimitFromBody(data: unknown): number | undefined {
+    if (!data || typeof data !== 'object') return undefined;
+    const rl = (
+      data as {
+        rateLimit?: { remaining?: number; limit?: number; resetAt?: string; cost?: number };
+      }
+    ).rateLimit;
+    if (!rl) return undefined;
+    if (typeof rl.remaining === 'number') this.graphqlRateLimit.remaining = rl.remaining;
+    if (typeof rl.limit === 'number') this.graphqlRateLimit.total = rl.limit;
+    if (typeof rl.resetAt === 'string') {
+      const d = new Date(rl.resetAt);
+      if (!Number.isNaN(d.getTime())) this.graphqlRateLimit.reset = d;
+    }
+    return typeof rl.cost === 'number' ? rl.cost : undefined;
   }
 }
 

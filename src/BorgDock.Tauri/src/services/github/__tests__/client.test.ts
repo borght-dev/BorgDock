@@ -1,5 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GitHubApiError, GitHubAuthError, GitHubClient } from '../client';
+import { GitHubApiError, GitHubAuthError, GitHubClient, GitHubRateLimitError } from '../client';
+
+// Spy on the structured logger so graphql start/ok/failed lines can be asserted.
+const logSpies = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('@/services/logger', () => ({
+  createLogger: () => ({
+    ...logSpies,
+    time: async (_label: string, fn: () => Promise<unknown>) => fn(),
+    child: () => ({ ...logSpies }),
+  }),
+}));
 
 function createClient(token = 'test-token') {
   return new GitHubClient(vi.fn().mockResolvedValue(token));
@@ -372,6 +387,122 @@ describe('GitHubClient', () => {
       const body = JSON.parse(fetchSpy.mock.calls[0]![1].body);
       expect(body.query).toBe('query { viewer { login } }');
       expect(body.variables).toBeUndefined();
+    });
+
+    it('throws GitHubAuthError on 401', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(mockResponse(401));
+
+      await expect(client.graphql('query { viewer { login } }')).rejects.toThrow(GitHubAuthError);
+    });
+
+    it('throws GitHubRateLimitError on 403 when the GraphQL pool is exhausted', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse(403, {}, { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1750000000' }),
+      );
+
+      await expect(client.graphql('query { viewer { login } }')).rejects.toThrow(
+        GitHubRateLimitError,
+      );
+    });
+
+    it('logs a named graphql ok line per successful call', async () => {
+      logSpies.info.mockClear();
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, { data: { ok: true } }));
+
+      await client.graphql('query PollOpenPrs($owner: String!) { __typename }');
+
+      const lines = logSpies.info.mock.calls.map((c) => JSON.stringify(c));
+      expect(lines.some((l) => l.includes('graphql start') && l.includes('PollOpenPrs'))).toBe(
+        true,
+      );
+      expect(lines.some((l) => l.includes('graphql ok') && l.includes('PollOpenPrs'))).toBe(true);
+    });
+  });
+
+  describe('rate-limit pools', () => {
+    it('REST get does not affect the GraphQL pool', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse(200, [], { 'X-RateLimit-Remaining': '4000', 'X-RateLimit-Limit': '5000' }),
+      );
+
+      await client.get('repos/x/y/pulls?state=open');
+
+      expect(client.getRateLimit().remaining).toBe(4000);
+      expect(client.getGraphqlRateLimit().remaining).toBe(-1);
+    });
+
+    it('graphql call updates the GraphQL pool from response headers, not the REST pool', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse(
+          200,
+          { data: { ok: true } },
+          { 'X-RateLimit-Remaining': '4900', 'X-RateLimit-Limit': '5000' },
+        ),
+      );
+
+      await client.graphql('query { __typename }');
+
+      expect(client.getRateLimit().remaining).toBe(-1);
+      expect(client.getGraphqlRateLimit().remaining).toBe(4900);
+      expect(client.getGraphqlRateLimit().total).toBe(5000);
+    });
+
+    it('inline body rateLimit wins over headers for the GraphQL pool', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse(
+          200,
+          {
+            data: {
+              repository: { id: '1' },
+              rateLimit: { remaining: 4500, limit: 5000, resetAt: '2026-05-07T12:00:00Z', cost: 3 },
+            },
+          },
+          { 'X-RateLimit-Remaining': '4998' },
+        ),
+      );
+
+      await client.graphql('query PollOpenPrs { __typename }');
+
+      const rl = client.getGraphqlRateLimit();
+      expect(rl.remaining).toBe(4500);
+      expect(rl.total).toBe(5000);
+      expect(rl.reset?.toISOString()).toBe('2026-05-07T12:00:00.000Z');
+      expect(client.getRateLimit().remaining).toBe(-1);
+    });
+
+    it('isRateLimitLow is true when only the GraphQL pool is low', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse(200, {
+          data: { rateLimit: { remaining: 100, limit: 5000, resetAt: '2026-05-07T12:00:00Z' } },
+        }),
+      );
+
+      await client.graphql('query { __typename }');
+
+      expect(client.getRateLimit().remaining).toBe(-1);
+      expect(client.isRateLimitLow).toBe(true);
+    });
+
+    it('isRateLimitLow is false when both pools are healthy', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, [], { 'X-RateLimit-Remaining': '4000' }));
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse(200, {
+          data: { rateLimit: { remaining: 4999, limit: 5000, resetAt: '2026-05-07T12:00:00Z' } },
+        }),
+      );
+
+      await client.get('repos/x/y');
+      await client.graphql('query { __typename }');
+
+      expect(client.isRateLimitLow).toBe(false);
     });
   });
 
