@@ -1,12 +1,24 @@
 // .storybook/main.ts
 
-import type { StorybookConfig } from '@storybook/react-vite';
+import { createRequire } from 'node:module';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import type { StorybookConfig } from '@storybook/react-vite';
 import tailwindcss from '@tailwindcss/vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+const require = createRequire(import.meta.url);
+// Resolve web-tree-sitter from wherever the package manager actually
+// installed it (npm: nested in src/BorgDock.Tauri/node_modules, bun
+// workspace: hoisted to repo root) — same trick as vite.config.ts.
+// Forward slashes only: vite-plugin-static-copy hands `src` to fast-glob,
+// which treats Windows backslashes as escape characters.
+const webTreeSitterWasm = join(
+  dirname(require.resolve('web-tree-sitter')),
+  'web-tree-sitter.wasm',
+).replace(/\\/g, '/');
 
 const config: StorybookConfig = {
   framework: {
@@ -31,7 +43,7 @@ const config: StorybookConfig = {
       viteStaticCopy({
         targets: [
           {
-            src: 'node_modules/web-tree-sitter/web-tree-sitter.wasm',
+            src: webTreeSitterWasm,
             dest: '.',
             rename: { stripBase: true },
           },
@@ -67,25 +79,71 @@ const config: StorybookConfig = {
       { find: '@tauri-apps/api/core', replacement: resolve(here, 'mocks/tauri-core.ts') },
       { find: '@tauri-apps/api/event', replacement: resolve(here, 'mocks/tauri-event.ts') },
       { find: '@tauri-apps/api/window', replacement: resolve(here, 'mocks/tauri-api-window.ts') },
-      { find: '@tauri-apps/api/webviewWindow', replacement: resolve(here, 'mocks/tauri-api-webviewWindow.ts') },
+      {
+        find: '@tauri-apps/api/webviewWindow',
+        replacement: resolve(here, 'mocks/tauri-api-webviewWindow.ts'),
+      },
       { find: '@tauri-apps/api/app', replacement: resolve(here, 'mocks/tauri-api-app.ts') },
       { find: '@tauri-apps/api/dpi', replacement: resolve(here, 'mocks/tauri-api-dpi.ts') },
-      { find: '@tauri-apps/plugin-opener', replacement: resolve(here, 'mocks/tauri-plugin-opener.ts') },
-      { find: '@tauri-apps/plugin-store', replacement: resolve(here, 'mocks/tauri-plugin-store.ts') },
-      { find: '@tauri-apps/plugin-clipboard-manager', replacement: resolve(here, 'mocks/tauri-plugin-clipboard-manager.ts') },
-      { find: '@tauri-apps/plugin-dialog', replacement: resolve(here, 'mocks/tauri-plugin-dialog.ts') },
+      {
+        find: '@tauri-apps/plugin-opener',
+        replacement: resolve(here, 'mocks/tauri-plugin-opener.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-store',
+        replacement: resolve(here, 'mocks/tauri-plugin-store.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-clipboard-manager',
+        replacement: resolve(here, 'mocks/tauri-plugin-clipboard-manager.ts'),
+      },
+      {
+        find: '@tauri-apps/plugin-dialog',
+        replacement: resolve(here, 'mocks/tauri-plugin-dialog.ts'),
+      },
       { find: '@tauri-apps/plugin-fs', replacement: resolve(here, 'mocks/tauri-plugin-fs.ts') },
-      { find: '@tauri-apps/plugin-autostart', replacement: resolve(here, 'mocks/tauri-plugin-autostart.ts') },
+      {
+        find: '@tauri-apps/plugin-autostart',
+        replacement: resolve(here, 'mocks/tauri-plugin-autostart.ts'),
+      },
       { find: '@/services/windows', replacement: resolve(here, 'mocks/services-windows.ts') },
-      { find: '@/services/ado/workitems', replacement: resolve(here, 'mocks/services-ado-workitems.ts') },
-      { find: '@/services/github/pulls', replacement: resolve(here, 'mocks/services-github-pulls.ts') },
-      { find: '@/services/github/checks', replacement: resolve(here, 'mocks/services-github-checks.ts') },
-      { find: '@/services/github/auth', replacement: resolve(here, 'mocks/services-github-auth.ts') },
-      { find: '@/services/github/reviewThreads', replacement: resolve(here, 'mocks/services-github-reviewThreads.ts') },
-      { find: '@/services/github/singleton', replacement: resolve(here, 'mocks/services-github-singleton.ts') },
-      { find: '@/services/github/mutations', replacement: resolve(here, 'mocks/services-github-mutations.ts') },
+      {
+        find: '@/services/ado/workitems',
+        replacement: resolve(here, 'mocks/services-ado-workitems.ts'),
+      },
+      {
+        find: '@/services/github/pulls',
+        replacement: resolve(here, 'mocks/services-github-pulls.ts'),
+      },
+      {
+        find: '@/services/github/checks',
+        replacement: resolve(here, 'mocks/services-github-checks.ts'),
+      },
+      {
+        find: '@/services/github/polling',
+        replacement: resolve(here, 'mocks/services-github-polling.ts'),
+      },
+      {
+        find: '@/services/github/auth',
+        replacement: resolve(here, 'mocks/services-github-auth.ts'),
+      },
+      {
+        find: '@/services/github/reviewThreads',
+        replacement: resolve(here, 'mocks/services-github-reviewThreads.ts'),
+      },
+      {
+        find: '@/services/github/singleton',
+        replacement: resolve(here, 'mocks/services-github-singleton.ts'),
+      },
+      {
+        find: '@/services/github/mutations',
+        replacement: resolve(here, 'mocks/services-github-mutations.ts'),
+      },
       // Anchored regex: matches ONLY the exact bare barrel import, not sub-modules.
-      { find: /^@\/services\/github$/, replacement: resolve(here, 'mocks/services-github-barrel.ts') },
+      {
+        find: /^@\/services\/github$/,
+        replacement: resolve(here, 'mocks/services-github-barrel.ts'),
+      },
       { find: '@/services/pr-actions', replacement: resolve(here, 'mocks/services-pr-actions.ts') },
       { find: '@/generated/changelog', replacement: resolve(here, 'mocks/generated-changelog.ts') },
       // Bare '@' catch-all goes last so specific mocks above take priority.

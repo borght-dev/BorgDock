@@ -9,9 +9,10 @@
 // the production index.ts, which re-exports via relative paths — and
 // those relative paths bypass our sub-path aliases.
 
-export * from './services-github-pulls';
-export * from './services-github-checks';
 export * from './services-github-auth';
-export * from './services-github-reviewThreads';
+export * from './services-github-checks';
+export * from './services-github-polling';
+export * from './services-github-pulls';
 export * from './services-github-reviews';
+export * from './services-github-reviewThreads';
 export * from './services-github-singleton';

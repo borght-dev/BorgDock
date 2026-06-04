@@ -3,12 +3,17 @@
 // Singleton control surface used by the Tauri mocks and by story decorators.
 // Lives on window so dynamic-imported mocks and the React tree can both reach it.
 
+import type { CheckRun } from '../../src/types/check-run';
+import type { ClaudeReviewComment } from '../../src/types/claude-review';
+import type {
+  PullRequest,
+  PullRequestCommit,
+  PullRequestFileChange,
+  PullRequestWithChecks,
+} from '../../src/types/pull-request';
+import type { ReviewThread } from '../../src/types/review-thread';
 import type { Release } from '../../src/types/whats-new';
 import type { WorkItem, WorkItemComment } from '../../src/types/work-item';
-import type { PullRequest, PullRequestCommit, PullRequestFileChange } from '../../src/types/pull-request';
-import type { CheckRun } from '../../src/types/check-run';
-import type { ReviewThread } from '../../src/types/review-thread';
-import type { ClaudeReviewComment } from '../../src/types/claude-review';
 
 export interface InvokeRecord {
   command: string;
@@ -93,23 +98,41 @@ export interface RawReview {
 export type GithubResponses = {
   getOpenPRs?:
     | PullRequest[]
-    | ((args: { owner: string; repo: string }) => PullRequest[] | Promise<PullRequest[]> | Promise<never>);
+    | ((args: {
+        owner: string;
+        repo: string;
+      }) => PullRequest[] | Promise<PullRequest[]> | Promise<never>);
   getCheckRunsForRef?:
     | CheckRun[]
     | ((args: { ref: string }) => CheckRun[] | Promise<CheckRun[]> | Promise<never>);
+  pollOpenPrsAggregate?:
+    | PullRequestWithChecks[]
+    | ((args: {
+        owner: string;
+        repo: string;
+      }) => PullRequestWithChecks[] | Promise<PullRequestWithChecks[]> | Promise<never>);
   tokenGetter?: () => string | Promise<string>;
   // Phase 11 / FilesTab additions
-  getPRFiles?: PullRequestFileChange[] | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
-  getCommitFiles?: PullRequestFileChange[] | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
+  getPRFiles?:
+    | PullRequestFileChange[]
+    | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
+  getCommitFiles?:
+    | PullRequestFileChange[]
+    | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
   getPRCommits?: PullRequestCommit[] | (() => PullRequestCommit[] | Promise<PullRequestCommit[]>);
   getReviewThreads?: ReviewThread[] | (() => ReviewThread[] | Promise<ReviewThread[]>);
   // DiscussionTab additions
   getReviews?: RawReview[] | (() => RawReview[] | Promise<RawReview[]>);
-  getAllComments?: ClaudeReviewComment[] | (() => ClaudeReviewComment[] | Promise<ClaudeReviewComment[]>);
+  getAllComments?:
+    | ClaudeReviewComment[]
+    | (() => ClaudeReviewComment[] | Promise<ClaudeReviewComment[]>);
 };
 
 // Phase 11 — pr-actions overrides
-export type PrActionResponses = Record<string, '__throw__' | '__fail__' | ((args: unknown) => unknown)>;
+export type PrActionResponses = Record<
+  string,
+  '__throw__' | '__fail__' | ((args: unknown) => unknown)
+>;
 
 export interface StorybookTauriControl {
   channels: Map<string, Set<ChannelListener>>;
