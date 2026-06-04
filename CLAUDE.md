@@ -25,6 +25,12 @@ bun run site:build              # Astro marketing site build
 
 **npm CLI is also required** (alongside bun) for one specific case: `scripts/build-grammars.sh` and `scripts/build-sql-grammar.sh` use `npm pack` to fetch grammar tarballs from the npm registry. Bun has no equivalent registry-fetch command yet (`bun pm pack` only packs the local package).
 
+## Fresh worktrees: CRLF checkout vs biome's LF requirement
+
+The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` checks every file out with CRLF line endings** — while biome (which the lefthook pre-commit runs on staged files) requires LF. The main checkout's files are LF on disk only because they predate the autocrlf setting; a new worktree is CRLF everywhere, so the very first commit touching any file fails the format check with whole-file `␍`-removal diffs. Fix: after editing in a fresh worktree, run `bunx biome check --write <files you touched>` before committing (committed blobs are LF either way — only the working-tree bytes are wrong). Don't mass-format untouched files: that surfaces unrelated pre-existing lint fixes as spurious diffs.
+
+Two other fresh-worktree facts: run `bun install` at the worktree root before anything else (node_modules is per-worktree), and Playwright e2e (`bun run test:e2e`) reuses any server already listening on :1420 (`reuseExistingServer`) — if the main checkout's dev server is running, e2e silently tests the *main checkout's* code, not the worktree's. Stop it first or the results are meaningless.
+
 ## React Compiler escape hatch
 
 The React Compiler (`babel-plugin-react-compiler`, wired into `@vitejs/plugin-react` in `vite.config.ts`) auto-memoizes function components and hooks at build time. If a specific component breaks under compilation — usually because it relied on referential identity for a side effect — opt it out file-locally with the `"use no memo"` directive at the very top of the file:
