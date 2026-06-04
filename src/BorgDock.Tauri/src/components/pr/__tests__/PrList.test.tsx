@@ -97,7 +97,6 @@ function makePr(number: number, repo = 'test/repo'): PullRequestWithChecks {
       commitCount: 1,
       requestedReviewers: [],
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

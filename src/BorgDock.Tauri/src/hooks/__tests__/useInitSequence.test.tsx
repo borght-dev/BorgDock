@@ -148,7 +148,6 @@ describe('useInitSequence', () => {
     mockGetOpenPRs.mockResolvedValue([makePr()]);
     mockAggregatePrWithChecks.mockImplementation((pr: PullRequest) => ({
       pullRequest: pr,
-      checks: [],
       overallStatus: 'gray',
       failedCheckNames: [],
       failedCheckSuiteIds: [],

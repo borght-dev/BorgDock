@@ -41,7 +41,6 @@ function makePrWithChecks(
 ): PullRequestWithChecks {
   return {
     pullRequest: makePr(prOverrides),
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

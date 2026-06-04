@@ -69,7 +69,6 @@ function makePr(number: number): PullRequestWithChecks {
       commitCount: 1,
       requestedReviewers: ['testuser'],
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

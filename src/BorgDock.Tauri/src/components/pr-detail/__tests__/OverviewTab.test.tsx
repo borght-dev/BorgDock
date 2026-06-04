@@ -78,7 +78,6 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       commitCount: 3,
       requestedReviewers: [],
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

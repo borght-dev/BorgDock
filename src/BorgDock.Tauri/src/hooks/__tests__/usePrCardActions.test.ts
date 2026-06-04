@@ -83,7 +83,6 @@ function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
 function makePrWithChecks(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
   return {
     pullRequest: makePr(),
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

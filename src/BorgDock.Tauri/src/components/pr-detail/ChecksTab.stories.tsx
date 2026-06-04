@@ -99,37 +99,38 @@ const allFailed: CheckRun[] = ['build', 'test', 'lint', 'typecheck', 'e2e', 'doc
 );
 
 const allPendingPr = makePr({
-  checks: allPending,
   overallStatus: 'yellow',
   pendingCheckNames: allPending.map((c) => c.name),
   passedCount: 0,
+  totalCheckCount: allPending.length,
 });
 
 const allGreenPr = makePr({
-  checks: allGreen,
   overallStatus: 'green',
   passedCount: allGreen.length,
   pendingCheckNames: [],
+  totalCheckCount: allGreen.length,
 });
 
 const mixedPr = makePr({
-  checks: mixed,
   overallStatus: 'red',
   passedCount: mixed.filter((c) => c.conclusion === 'success').length,
   failedCheckNames: mixed.filter((c) => c.conclusion === 'failure').map((c) => c.name),
+  failedCheckSuiteIds: mixed.filter((c) => c.conclusion === 'failure').map((c) => c.checkSuiteId),
   pendingCheckNames: [],
+  totalCheckCount: mixed.length,
 });
 
 const allFailedPr = makePr({
-  checks: allFailed,
   overallStatus: 'red',
   passedCount: 0,
   failedCheckNames: allFailed.map((c) => c.name),
+  failedCheckSuiteIds: allFailed.map((c) => c.checkSuiteId),
   pendingCheckNames: [],
+  totalCheckCount: allFailed.length,
 });
 
 const noChecksPr = makePr({
-  checks: [],
   overallStatus: 'gray',
   failedCheckSuiteIds: [],
   passedCount: 0,

@@ -92,6 +92,7 @@ interface FakePrOptions {
   passedCount?: number;
   failedCheckNames?: string[];
   skippedCount?: number;
+  checks?: CheckRun[];
 }
 
 function makePr(
@@ -102,6 +103,7 @@ function makePr(
     passedCount = 0,
     failedCheckNames = [],
     skippedCount = 0,
+    checks: checksOverride,
     ...rest
   } = overrides;
 
@@ -120,7 +122,7 @@ function makePr(
     return { ...stubCheck, id: i + 1, name };
   });
 
-  const finalChecks = rest.checks ?? checks;
+  const finalChecks = checksOverride ?? checks;
 
   return {
     pullRequest: {
@@ -151,11 +153,10 @@ function makePr(
     },
     overallStatus: 'green',
     ...rest,
-    checks: finalChecks,
     failedCheckNames,
     failedCheckSuiteIds: finalChecks
-      .filter((c) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
-      .map((c) => c.checkSuiteId),
+      .filter((c: CheckRun) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
+      .map((c: CheckRun) => c.checkSuiteId),
     pendingCheckNames,
     passedCount,
     skippedCount,

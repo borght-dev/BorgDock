@@ -62,7 +62,6 @@ function fakePr(
       requestedReviewers: [],
       ...overrides,
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

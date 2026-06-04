@@ -40,7 +40,6 @@ export function makePr(number: number, overrides: MakePrOverrides = {}): PullReq
       commitCount: 1,
       requestedReviewers,
     },
-    checks: [],
     overallStatus,
     failedCheckNames: overallStatus === 'red' ? ['build'] : [],
     failedCheckSuiteIds: overallStatus === 'red' ? [1] : [],

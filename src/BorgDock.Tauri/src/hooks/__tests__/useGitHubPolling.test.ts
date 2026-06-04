@@ -155,7 +155,6 @@ function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
 function makePrw(overrides: Partial<PullRequest> = {}): PullRequestWithChecks {
   return {
     pullRequest: makePr(overrides),
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],
@@ -190,7 +189,6 @@ describe('useGitHubPolling', () => {
     mockGetClosedPRs.mockResolvedValue([]);
     mockAggregatePrWithChecks.mockImplementation((pr: PullRequest, checks: unknown[]) => ({
       pullRequest: pr,
-      checks,
       overallStatus: 'green',
       failedCheckNames: [],
       failedCheckSuiteIds: [],

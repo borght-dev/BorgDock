@@ -26,7 +26,6 @@ export function aggregatePrWithChecks(
 
   return {
     pullRequest: pr,
-    checks: checkRuns,
     overallStatus,
     failedCheckNames,
     failedCheckSuiteIds,

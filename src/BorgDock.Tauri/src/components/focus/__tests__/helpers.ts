@@ -34,7 +34,6 @@ export function makePr(
       requestedReviewers: [],
       ...overrides,
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

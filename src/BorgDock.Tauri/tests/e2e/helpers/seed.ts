@@ -145,7 +145,6 @@ function makePr(overrides: {
   };
   return {
     pullRequest: base,
-    checks: [],
     overallStatus: overrides.overallStatus ?? 'green',
     failedCheckNames: overrides.overallStatus === 'red' ? ['ci'] : [],
     failedCheckSuiteIds: overrides.overallStatus === 'red' ? [1] : [],

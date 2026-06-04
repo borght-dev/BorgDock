@@ -101,7 +101,6 @@ function makePr(): PullRequestWithChecks {
       commitCount: 1,
       requestedReviewers: [],
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

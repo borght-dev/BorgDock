@@ -73,9 +73,12 @@ const BASE_CHECKS: CheckRun[] = [
   },
 ];
 
+// Exposed so stories can mock the REST check-run fetch (getCheckRunsForRef)
+// for the open PR — the type no longer carries raw checks inline.
+export const openPrChecks: CheckRun[] = BASE_CHECKS;
+
 const BASE: PullRequestWithChecks = {
   pullRequest: BASE_PR,
-  checks: BASE_CHECKS,
   overallStatus: 'yellow',
   failedCheckNames: [],
   failedCheckSuiteIds: [],
@@ -101,9 +104,38 @@ export const draftPr: PullRequestWithChecks = makePr({
   },
   overallStatus: 'gray',
   pendingCheckNames: [],
-  checks: [],
   totalCheckCount: 0,
 });
+
+const APPROVED_CHECKS: CheckRun[] = [
+  {
+    id: 2001,
+    name: 'CI / build',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9001,
+  },
+  {
+    id: 2002,
+    name: 'CI / test',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9001,
+  },
+  {
+    id: 2003,
+    name: 'CI / lint',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9001,
+  },
+];
+
+// Exposed so stories can mock the REST check-run fetch for the approved PR.
+export const approvedPrChecks: CheckRun[] = APPROVED_CHECKS;
 
 const APPROVED_REVIEW_PR: PullRequestWithChecks = {
   pullRequest: {
@@ -111,32 +143,6 @@ const APPROVED_REVIEW_PR: PullRequestWithChecks = {
     reviewStatus: 'approved',
     commentCount: 4,
   },
-  checks: [
-    {
-      id: 2001,
-      name: 'CI / build',
-      status: 'completed',
-      conclusion: 'success',
-      htmlUrl: '#',
-      checkSuiteId: 9001,
-    },
-    {
-      id: 2002,
-      name: 'CI / test',
-      status: 'completed',
-      conclusion: 'success',
-      htmlUrl: '#',
-      checkSuiteId: 9001,
-    },
-    {
-      id: 2003,
-      name: 'CI / lint',
-      status: 'completed',
-      conclusion: 'success',
-      htmlUrl: '#',
-      checkSuiteId: 9001,
-    },
-  ],
   overallStatus: 'green',
   failedCheckNames: [],
   failedCheckSuiteIds: [],
@@ -165,7 +171,6 @@ export const mergedPr: PullRequestWithChecks = makePr({
   overallStatus: 'green',
   passedCount: 3,
   pendingCheckNames: [],
-  checks: APPROVED_REVIEW_PR.checks,
   totalCheckCount: 3,
 });
 
@@ -184,7 +189,6 @@ export const mergeConflictPr: PullRequestWithChecks = makePr({
     reviewStatus: 'approved',
   },
   overallStatus: 'green',
-  checks: APPROVED_REVIEW_PR.checks,
   passedCount: 3,
   pendingCheckNames: [],
   totalCheckCount: 3,

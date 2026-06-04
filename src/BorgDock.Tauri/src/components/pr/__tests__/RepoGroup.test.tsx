@@ -95,7 +95,6 @@ function makePr(
       commitCount: 1,
       requestedReviewers: [],
     },
-    checks: [],
     overallStatus: status,
     failedCheckNames: [],
     failedCheckSuiteIds: [],

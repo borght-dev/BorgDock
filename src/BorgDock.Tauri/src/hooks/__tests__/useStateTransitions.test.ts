@@ -59,7 +59,6 @@ function makePrWithChecks(
   const { pr, ...rest } = overrides;
   return {
     pullRequest: makePr(pr),
-    checks: [],
     overallStatus: 'gray',
     failedCheckNames: [],
     failedCheckSuiteIds: [],

@@ -1,12 +1,15 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { PullRequestWithChecks } from '@/types';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { MultiSignalIndicator } from '../MultiSignalIndicator';
 
 afterEach(cleanup);
 
-function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
-  const checks = overrides.checks ?? [];
+function makePr(
+  overrides: Partial<PullRequestWithChecks> & { checks?: CheckRun[] } = {},
+): PullRequestWithChecks {
+  const { checks: checksOverride, ...rest } = overrides;
+  const checks = checksOverride ?? [];
   return {
     pullRequest: {
       number: 1,
@@ -32,20 +35,19 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       changedFiles: 2,
       commitCount: 1,
       requestedReviewers: [],
-      ...overrides.pullRequest,
+      ...rest.pullRequest,
     },
-    checks,
-    overallStatus: overrides.overallStatus ?? 'green',
-    failedCheckNames: overrides.failedCheckNames ?? [],
+    overallStatus: rest.overallStatus ?? 'green',
+    failedCheckNames: rest.failedCheckNames ?? [],
     failedCheckSuiteIds:
-      overrides.failedCheckSuiteIds ??
+      rest.failedCheckSuiteIds ??
       checks
-        .filter((c) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
-        .map((c) => c.checkSuiteId),
-    pendingCheckNames: overrides.pendingCheckNames ?? [],
-    passedCount: overrides.passedCount ?? 0,
-    skippedCount: overrides.skippedCount ?? 0,
-    totalCheckCount: overrides.totalCheckCount ?? checks.length,
+        .filter((c: CheckRun) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
+        .map((c: CheckRun) => c.checkSuiteId),
+    pendingCheckNames: rest.pendingCheckNames ?? [],
+    passedCount: rest.passedCount ?? 0,
+    skippedCount: rest.skippedCount ?? 0,
+    totalCheckCount: rest.totalCheckCount ?? checks.length,
   };
 }
 

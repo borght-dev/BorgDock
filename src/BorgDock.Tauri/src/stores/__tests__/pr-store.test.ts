@@ -44,7 +44,6 @@ function makePr(overrides: {
       commitCount: 1,
       requestedReviewers: [],
     },
-    checks: [],
     overallStatus: overrides.overallStatus ?? 'green',
     failedCheckNames: overrides.overallStatus === 'red' ? ['ci'] : [],
     failedCheckSuiteIds: overrides.overallStatus === 'red' ? [1] : [],

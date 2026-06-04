@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PullRequestWithChecks } from '@/types';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { PrCardContainer } from '../PrCardContainer';
 
 afterEach(cleanup);
@@ -98,8 +98,11 @@ vi.mock('@/components/pr-detail/LinkedWorkItemBadge', () => ({
   ),
 }));
 
-function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
-  const checks = overrides.checks ?? [
+function makePr(
+  overrides: Partial<PullRequestWithChecks> & { checks?: CheckRun[] } = {},
+): PullRequestWithChecks {
+  const { checks: checksOverride, ...rest } = overrides;
+  const checks = checksOverride ?? [
     {
       id: 1,
       name: 'build',
@@ -134,20 +137,19 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       changedFiles: 5,
       commitCount: 3,
       requestedReviewers: [],
-      ...overrides.pullRequest,
+      ...rest.pullRequest,
     },
-    checks,
-    overallStatus: overrides.overallStatus ?? 'green',
-    failedCheckNames: overrides.failedCheckNames ?? [],
+    overallStatus: rest.overallStatus ?? 'green',
+    failedCheckNames: rest.failedCheckNames ?? [],
     failedCheckSuiteIds:
-      overrides.failedCheckSuiteIds ??
+      rest.failedCheckSuiteIds ??
       checks
-        .filter((c) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
-        .map((c) => c.checkSuiteId),
-    pendingCheckNames: overrides.pendingCheckNames ?? [],
-    passedCount: overrides.passedCount ?? 1,
-    skippedCount: overrides.skippedCount ?? 0,
-    totalCheckCount: overrides.totalCheckCount ?? checks.length,
+        .filter((c: CheckRun) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
+        .map((c: CheckRun) => c.checkSuiteId),
+    pendingCheckNames: rest.pendingCheckNames ?? [],
+    passedCount: rest.passedCount ?? 1,
+    skippedCount: rest.skippedCount ?? 0,
+    totalCheckCount: rest.totalCheckCount ?? checks.length,
   };
 }
 

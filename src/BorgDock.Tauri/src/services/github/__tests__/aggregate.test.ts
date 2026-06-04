@@ -165,14 +165,13 @@ describe('aggregatePrWithChecks', () => {
     expect(result.skippedCount).toBe(2);
   });
 
-  it('includes the PR and checks in the result', () => {
+  it('includes the PR in the result', () => {
     const pr = makePullRequest({ number: 99, title: 'My PR' });
     const checks = [makeCheckRun({ name: 'build', conclusion: 'success' })];
 
     const result = aggregatePrWithChecks(pr, checks);
 
     expect(result.pullRequest).toBe(pr);
-    expect(result.checks).toBe(checks);
   });
 
   it('handles empty checks array', () => {

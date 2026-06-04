@@ -37,9 +37,8 @@ vi.mock('@/components/shared/WindowTitleBar', () => ({
 }));
 
 vi.mock('@/services/github/aggregate', () => ({
-  aggregatePrWithChecks: (pr: unknown, checks: unknown) => ({
+  aggregatePrWithChecks: (pr: unknown, _checks: unknown) => ({
     pullRequest: pr,
-    checks,
     overallStatus: 'green',
     failedCheckNames: [],
     failedCheckSuiteIds: [],
