@@ -20,11 +20,16 @@ bootLog.info('main.tsx loaded', {
   userAgent: navigator.userAgent,
 });
 
-// Redundant focus call (Rust setup already calls set_focus after show) kept as
-// a belt-and-suspenders safeguard — Windows requires the window to have received
-// focus at least once before onFocusChanged / WM_KILLFOCUS will fire.
-getCurrentWindow()
-  .setFocus()
+// Re-assert focus only if the window is actually visible. The main window is
+// built hidden (visible:false) and lives in the tray until the user summons it;
+// calling setFocus() on the hidden window at boot pulls the foreground onto
+// BorgDock and steals focus from whatever the user is typing in — very
+// noticeable on a `tauri dev` hot-reload restart (and on autostart launches).
+// When the window is later shown, Rust's set_focus on the show path satisfies
+// the Windows "must-have-been-focused-once" requirement for WM_KILLFOCUS.
+void getCurrentWindow()
+  .isVisible()
+  .then((visible) => (visible ? getCurrentWindow().setFocus() : undefined))
   .catch((err) => bootLog.error('setFocus failed', err));
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

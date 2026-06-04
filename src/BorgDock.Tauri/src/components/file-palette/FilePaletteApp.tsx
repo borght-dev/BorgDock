@@ -6,8 +6,10 @@ import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
 import { Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings } from '@/types/settings';
+import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
 import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
+import { FilePaletteContextMenu } from './FilePaletteContextMenu';
 import { FilePalettePreviewPane } from './FilePalettePreviewPane';
 import { FilePaletteResultsList, type ResultEntry } from './FilePaletteResultsList';
 import { buildRootEntries, FilePaletteRootsColumn, type RootEntry } from './FilePaletteRootsColumn';
@@ -51,6 +53,14 @@ export function FilePaletteApp() {
   const [scope, setScope] = useState<'all' | 'changes' | 'filename' | 'content' | 'symbol'>('all');
   const [changesVisibleRows, setChangesVisibleRows] = useState<VisibleRow[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  // Right-click context menu for a file row. Captures the target's global nav
+  // index + rel path so its actions stay correct even if the selection later
+  // drifts (e.g. keyboard nav while the menu is open).
+  const [menu, setMenu] = useState<{ x: number; y: number; relPath: string; index: number } | null>(
+    null,
+  );
+  const copiedTimerRef = useRef<number | null>(null);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
 
   const fileIndex = useFileIndex(activeRoot);
@@ -433,6 +443,47 @@ export function FilePaletteApp() {
     [activeRoot, changesVisibleRows, results],
   );
 
+  // Copy a repo-relative path (e.g. "src/components/Foo.tsx") so it can be pasted
+  // straight into a Claude prompt as a file reference. Briefly flashes a status hint.
+  const copyRelPath = useCallback(async (relPath: string) => {
+    const ok = await copyToClipboard(relPath);
+    if (!ok) return;
+    setCopiedPath(relPath);
+    if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = window.setTimeout(() => setCopiedPath(null), 1500);
+  }, []);
+
+  // Right-click a row: select it (so the preview follows) and open the menu.
+  const openContextMenu = useCallback(
+    (globalIndex: number, relPath: string, x: number, y: number) => {
+      setSelectedIndex(globalIndex);
+      setMenu({ x, y, relPath, index: globalIndex });
+    },
+    [],
+  );
+
+  // Open the folder that contains the file in the OS file manager. The reveal
+  // command opens a directory directly (same as the worktree palette's
+  // "Open folder"), so pass the parent dir, not the file itself.
+  const openContainingFolder = useCallback(
+    (relPath: string) => {
+      if (!activeRoot) return;
+      const abs = joinRootAndRel(activeRoot, relPath);
+      const dir = abs.slice(0, abs.lastIndexOf('/')) || abs;
+      invoke('reveal_in_file_manager', { path: dir }).catch((e) =>
+        console.error('reveal_in_file_manager failed', e),
+      );
+    },
+    [activeRoot],
+  );
+
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current);
+    },
+    [],
+  );
+
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Tab' && !e.shiftKey) {
@@ -443,10 +494,33 @@ export function FilePaletteApp() {
       }
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (query) setQuery('');
+        // A right-click menu swallows the first Escape so it doesn't also clear
+        // the query / hide the window.
+        if (menu) setMenu(null);
+        else if (query) setQuery('');
         // Hide rather than close: keeps the WebView2 alive across opens so
         // in-flight IPC responses don't PostMessage to a dead HWND.
         else getCurrentWindow().hide();
+        return;
+      }
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.key === 'c' || e.key === 'C')
+      ) {
+        // Don't hijack a genuine text selection in the search input — let the OS
+        // copy that. Otherwise copy the selected file's repo-relative path.
+        const el = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+        const hasTextSelection =
+          !!el &&
+          (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
+          el.selectionStart != null &&
+          el.selectionEnd != null &&
+          el.selectionStart !== el.selectionEnd;
+        if (hasTextSelection || !selection) return;
+        e.preventDefault();
+        void copyRelPath(selection.path);
         return;
       }
       if (e.key === 'ArrowDown') {
@@ -464,7 +538,7 @@ export function FilePaletteApp() {
         openResult(selectedIndex);
       }
     },
-    [query, totalFlatLength, selectedIndex, openResult],
+    [query, totalFlatLength, selectedIndex, openResult, selection, copyRelPath, menu],
   );
 
   const jumpToSymbol = useCallback((word: string) => {
@@ -540,6 +614,7 @@ export function FilePaletteApp() {
                 }).catch((e) => console.error('open_file_viewer_window failed', e));
               }}
               onHover={setSelectedIndex}
+              onContextMenu={openContextMenu}
               collapsed={changesCollapsed}
               mode={changesMode}
               onToggleCollapse={toggleChangesCollapse}
@@ -587,6 +662,10 @@ export function FilePaletteApp() {
                 selectedIndex={selectedIndex - changesVisibleRows.length}
                 onHover={(i) => setSelectedIndex(i + changesVisibleRows.length)}
                 onOpen={(i) => openResult(i + changesVisibleRows.length)}
+                onCopyPath={copyRelPath}
+                onContextMenu={(i, relPath, x, y) =>
+                  openContextMenu(i + changesVisibleRows.length, relPath, x, y)
+                }
                 rowRef={(el, i) => {
                   rowRefs.current.set(i + changesVisibleRows.length, el);
                 }}
@@ -631,12 +710,28 @@ export function FilePaletteApp() {
           </span>
         }
         right={
-          <span className="bd-mono">
-            <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Tab</Kbd> roots · <Kbd>Ctrl+/</Kbd> diff
-            view · <Kbd>Esc</Kbd>
-          </span>
+          copiedPath ? (
+            <span className="bd-mono" style={{ color: 'var(--color-status-green)' }}>
+              ✓ Copied relative path
+            </span>
+          ) : (
+            <span className="bd-mono">
+              <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Ctrl+C</Kbd> copy path · <Kbd>Tab</Kbd>{' '}
+              roots · <Kbd>Ctrl+/</Kbd> diff · <Kbd>Esc</Kbd>
+            </span>
+          )
         }
       />
+      {menu && (
+        <FilePaletteContextMenu
+          position={{ x: menu.x, y: menu.y }}
+          relPath={menu.relPath}
+          onClose={() => setMenu(null)}
+          onOpenInWindow={() => openResult(menu.index)}
+          onOpenContainingFolder={() => openContainingFolder(menu.relPath)}
+          onCopyPath={() => copyRelPath(menu.relPath)}
+        />
+      )}
     </div>
   );
 }

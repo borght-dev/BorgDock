@@ -3116,6 +3116,11 @@ body.sql-resizing-v .sql-resize-handle {
     flex: 1;
     display: grid;
     grid-template-columns: 220px minmax(440px, 1.2fr) 2fr;
+    /* A single implicit `auto` row would size to its tallest item's content
+       (a long file in the preview pane), so the columns' `height: 100%` /
+       overflow:auto chains never bound and nothing scrolls. A definite,
+       shrinkable row track keeps each column bounded to the viewport. */
+    grid-template-rows: minmax(0, 1fr);
     min-height: 0;
     transition: grid-template-columns 180ms ease;
   }
@@ -3346,12 +3351,20 @@ body.sql-resizing-v .sql-resize-handle {
     overflow-y: auto;
     padding: 4px 0;
   }
+  .bd-fp-result-row-wrap {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+  }
+  .bd-fp-result-row-wrap:hover,
+  .bd-fp-result-row-wrap--selected { background: var(--color-accent-subtle); }
   .bd-fp-result-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     padding: 6px 10px;
     background: transparent;
     border: none;
@@ -3361,8 +3374,23 @@ body.sql-resizing-v .sql-resize-handle {
     text-align: left;
     font-family: var(--font-code);
   }
-  .bd-fp-result-row:hover,
-  .bd-fp-result-row--selected { background: var(--color-accent-subtle); }
+  .bd-fp-result-copy {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+  }
+  .bd-fp-result-row-wrap:hover .bd-fp-result-copy,
+  .bd-fp-result-row-wrap--selected .bd-fp-result-copy { opacity: 0.55; }
+  .bd-fp-result-copy:hover { opacity: 1; }
+  .bd-fp-result-copy--copied { opacity: 1 !important; color: var(--color-status-green); }
   .bd-fp-result-path {
     flex: 1;
     min-width: 0;

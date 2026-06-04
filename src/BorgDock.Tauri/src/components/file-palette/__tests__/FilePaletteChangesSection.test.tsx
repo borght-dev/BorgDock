@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FilePaletteChangesSection } from '../FilePaletteChangesSection';
 
@@ -47,9 +47,7 @@ describe('FilePaletteChangesSection', () => {
     expect(screen.getByText(/Local · uncommitted/)).toBeTruthy();
     // Scope to the group label's sub-text — "vs master" also appears in the
     // header mode-switcher button, which would otherwise match too.
-    expect(
-      screen.getByText(/vs master/, { selector: '.bd-fp-changes-group-sub' }),
-    ).toBeTruthy();
+    expect(screen.getByText(/vs master/, { selector: '.bd-fp-changes-group-sub' })).toBeTruthy();
   });
 
   it('filters rows by filename query (case-insensitive substring)', async () => {
@@ -70,9 +68,7 @@ describe('FilePaletteChangesSection', () => {
   });
 
   it('shows "Not a git repo" when inRepo is false', async () => {
-    await setInvoke(() =>
-      Promise.resolve({ local: [], vsBase: [], baseRef: '', inRepo: false }),
-    );
+    await setInvoke(() => Promise.resolve({ local: [], vsBase: [], baseRef: '', inRepo: false }));
     render(<FilePaletteChangesSection {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByText(/Not a git repo/)).toBeTruthy());
   });
@@ -85,7 +81,7 @@ describe('FilePaletteChangesSection', () => {
     await waitFor(() => expect(screen.getByText(/No changes on this branch/)).toBeTruthy());
   });
 
-  it('calls onOpen with the correct group when a row is clicked', async () => {
+  it('calls onOpen with the correct group when a row is double-clicked', async () => {
     await setInvoke(() =>
       Promise.resolve({
         local: [{ path: 'src/foo.ts', status: 'M', oldPath: null }],
@@ -97,16 +93,50 @@ describe('FilePaletteChangesSection', () => {
     const onOpen = vi.fn();
     render(<FilePaletteChangesSection {...BASE_PROPS} onOpen={onOpen} />);
     await waitFor(() => expect(screen.getByText('src/foo.ts')).toBeTruthy());
-    fireEvent.click(screen.getByText('src/foo.ts'));
+    fireEvent.doubleClick(screen.getByText('src/foo.ts'));
     expect(onOpen).toHaveBeenCalledWith(
       { path: 'src/foo.ts', status: 'M', oldPath: null },
       'local',
     );
-    fireEvent.click(screen.getByText('src/bar.ts'));
+    fireEvent.doubleClick(screen.getByText('src/bar.ts'));
     expect(onOpen).toHaveBeenCalledWith(
       { path: 'src/bar.ts', status: 'A', oldPath: null },
       'vsBase',
     );
+  });
+
+  it('single click selects the row (onHover) and does not open a window', async () => {
+    await setInvoke(() =>
+      Promise.resolve({
+        local: [{ path: 'src/foo.ts', status: 'M', oldPath: null }],
+        vsBase: [],
+        baseRef: 'master',
+        inRepo: true,
+      }),
+    );
+    const onOpen = vi.fn();
+    const onHover = vi.fn();
+    render(<FilePaletteChangesSection {...BASE_PROPS} onOpen={onOpen} onHover={onHover} />);
+    await waitFor(() => expect(screen.getByText('src/foo.ts')).toBeTruthy());
+    fireEvent.click(screen.getByText('src/foo.ts'));
+    expect(onHover).toHaveBeenCalledWith(0);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('right-click fires onContextMenu with the row path and cursor coords', async () => {
+    await setInvoke(() =>
+      Promise.resolve({
+        local: [{ path: 'src/foo.ts', status: 'M', oldPath: null }],
+        vsBase: [],
+        baseRef: 'master',
+        inRepo: true,
+      }),
+    );
+    const onContextMenu = vi.fn();
+    render(<FilePaletteChangesSection {...BASE_PROPS} onContextMenu={onContextMenu} />);
+    await waitFor(() => expect(screen.getByText('src/foo.ts')).toBeTruthy());
+    fireEvent.contextMenu(screen.getByText('src/foo.ts'), { clientX: 12, clientY: 34 });
+    expect(onContextMenu).toHaveBeenCalledWith(0, 'src/foo.ts', 12, 34);
   });
 
   it('refetches when refreshTick changes', async () => {
@@ -173,13 +203,9 @@ describe('FilePaletteChangesSection bd-fp-* class contract', () => {
     // one file, so totals match the row). Scope to the per-row class so the
     // assertion verifies the row stats specifically.
     await waitFor(() =>
-      expect(
-        screen.getByText('+14', { selector: '.bd-fp-changes-row__add' }),
-      ).toBeInTheDocument(),
+      expect(screen.getByText('+14', { selector: '.bd-fp-changes-row__add' })).toBeInTheDocument(),
     );
-    expect(
-      screen.getByText('−6', { selector: '.bd-fp-changes-row__del' }),
-    ).toBeInTheDocument();
+    expect(screen.getByText('−6', { selector: '.bd-fp-changes-row__del' })).toBeInTheDocument();
   });
 
   it('hides rows when collapsed=true but keeps the section header', async () => {

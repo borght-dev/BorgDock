@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::sync::{Mutex, OnceLock};
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
 
 // ---------------------------------------------------------------------------
@@ -49,17 +51,55 @@ pub(crate) fn build_flyout_window(app: &tauri::AppHandle) -> Result<WebviewWindo
     }
 
     // Pre-warm WebView2: WebView2's renderer lazy-initializes on the first
-    // `show()`. Without this, the first user-triggered hotkey press shows
-    // a blank/unpainted window — the user sees nothing happen, presses
-    // again (which hides), presses a third time before content actually
-    // renders. The show()/hide() pair forces WebView2 to start its render
+    // show. Without this, the first user-triggered hotkey press shows a
+    // blank/unpainted window — the user sees nothing happen, presses again
+    // (which hides), presses a third time before content actually renders.
+    // Making the window briefly visible forces WebView2 to start its render
     // pipeline now; subsequent toggle_flyout shows paint immediately.
-    // Imperceptible at runtime — the window is transparent, shadowless,
-    // and skip-taskbar, so even the few-frames flash is invisible.
-    let _ = win.show();
-    let _ = win.hide();
+    //
+    // On Windows we MUST NOT use the normal `show()` here: SW_SHOW activates
+    // the window, stealing foreground focus from whatever the user is typing
+    // in — very visible on a `tauri dev` hot-reload restart (and on a normal
+    // autostart launch). `SW_SHOWNOACTIVATE` makes the window visible enough
+    // to kick off rendering without activating it. Other platforms keep the
+    // plain show()/hide() (transparent, shadowless, skip-taskbar, so the
+    // few-frames flash is invisible).
+    #[cfg(windows)]
+    prewarm_webview_no_activate(&win);
+    #[cfg(not(windows))]
+    {
+        let _ = win.show();
+        let _ = win.hide();
+    }
 
     Ok(win)
+}
+
+/// Briefly show then hide `win` to warm up WebView2's renderer **without**
+/// activating it (i.e. without stealing foreground focus). Uses
+/// `SW_SHOWNOACTIVATE` rather than Tauri's `show()`, which maps to SW_SHOW and
+/// grabs the foreground. Tauri's cached visibility state is unaffected because
+/// it was built `.visible(false)` and `is_visible()` queries the live HWND,
+/// which `SW_HIDE` leaves hidden — so `toggle_flyout`'s first show still works.
+#[cfg(windows)]
+fn prewarm_webview_no_activate(win: &WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE, SW_SHOWNOACTIVATE};
+    match win.hwnd() {
+        Ok(h) => {
+            // Round-trip through the raw handle so we use *our* `windows`-crate
+            // HWND type, mirroring click_outside.rs (avoids any version skew
+            // with the HWND Tauri returns).
+            let hwnd = HWND(h.0 as *mut _);
+            // SAFETY: `hwnd` is the handle of the window we just built; it
+            // outlives these two synchronous calls.
+            unsafe {
+                let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+                let _ = ShowWindow(hwnd, SW_HIDE);
+            }
+        }
+        Err(e) => log::warn!("flyout prewarm: hwnd() unavailable, skipping: {e}"),
+    }
 }
 
 /// Position the flyout's bottom-right (Windows) or top-right (macOS/Linux)
@@ -159,6 +199,43 @@ fn force_repaint(win: &WebviewWindow) {
 }
 
 // ---------------------------------------------------------------------------
+// First-reveal tracking
+// ---------------------------------------------------------------------------
+
+/// Labels whose window has already been revealed once via `window_ready`.
+///
+/// Pop-out windows are built `.visible(false)` and reveal themselves from a
+/// React mount effect that calls `window_ready`. In dev, Vite HMR does
+/// full-page reloads that remount the React app and re-fire `window_ready`;
+/// without gating, every pop-out the user had dismissed (hidden, not closed —
+/// e.g. the palettes and SQL workbench) would re-show and steal focus on each
+/// reload. Entries are removed on `WindowEvent::Destroyed` (wired in `lib.rs`)
+/// so a genuinely closed-then-reopened window reveals normally.
+fn revealed() -> &'static Mutex<HashSet<String>> {
+    static REVEALED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    REVEALED.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+/// Record + report whether this is the first reveal for `label`. Returns
+/// `true` exactly once per (re)created window; later calls return `false`. A
+/// poisoned lock degrades to "reveal" (true) — showing a window is the safe
+/// failure mode.
+fn claim_first_reveal(label: &str) -> bool {
+    revealed()
+        .lock()
+        .map(|mut set| set.insert(label.to_string()))
+        .unwrap_or(true)
+}
+
+/// Forget `label` so its next `window_ready` reveals again. Called from the
+/// global window-event handler on `Destroyed`.
+pub(crate) fn mark_window_destroyed(label: &str) {
+    if let Ok(mut set) = revealed().lock() {
+        set.remove(label);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Existing commands
 // ---------------------------------------------------------------------------
 
@@ -182,11 +259,18 @@ pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Resul
         log::info!("window_ready[{label_for_log}]: on main thread");
         let result = (|| -> Result<(), String> {
             if let Some(win) = app_for_run.get_webview_window(&label_for_log) {
-                log::info!("window_ready[{label_for_log}]: calling show()");
-                win.show().map_err(|e| e.to_string())?;
-                log::info!("window_ready[{label_for_log}]: show ok, calling set_focus()");
-                win.set_focus().map_err(|e| e.to_string())?;
-                log::info!("window_ready[{label_for_log}]: set_focus ok");
+                // Reveal only on the first window_ready for this window
+                // instance. A Vite HMR full-page reload (dev) remounts React
+                // and re-fires window_ready — re-showing would resurrect every
+                // dismissed pop-out and fight over focus on each reload.
+                if claim_first_reveal(&label_for_log) {
+                    log::info!("window_ready[{label_for_log}]: first reveal — show() + set_focus()");
+                    win.show().map_err(|e| e.to_string())?;
+                    win.set_focus().map_err(|e| e.to_string())?;
+                    log::info!("window_ready[{label_for_log}]: set_focus ok");
+                } else {
+                    log::info!("window_ready[{label_for_log}]: already revealed (HMR reload?) — leaving visibility as-is");
+                }
             } else {
                 log::warn!("window_ready[{label_for_log}]: window not found");
             }
