@@ -113,7 +113,7 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
       log.info('poll cycle done', {
         totalPrs: allPrs.length,
         durationMs: Math.round(performance.now() - pollStart),
-        rateLimitRemaining: c.getRateLimit().remaining,
+        rateLimitRemaining: c.getGraphqlRateLimit().remaining,
       });
 
       return allPrs;
@@ -128,7 +128,14 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
       usePrStore.getState().setPullRequests(results);
       usePrStore.getState().setPollingState(false, new Date());
 
-      const rl = client.getRateLimit();
+      // REST and GraphQL are separate pools — surface whichever is tighter
+      // (polling spends GraphQL points; cold paths still spend REST).
+      const rest = client.getRateLimit();
+      const graphql = client.getGraphqlRateLimit();
+      const rl =
+        rest.remaining >= 0 && (graphql.remaining < 0 || rest.remaining < graphql.remaining)
+          ? rest
+          : graphql;
       if (rl.remaining >= 0) {
         usePrStore.getState().setRateLimit({
           remaining: rl.remaining,

@@ -34,6 +34,7 @@ const mockClientInstance = {
   hadFreshData: true,
   isRateLimitLow: false,
   getRateLimit: vi.fn().mockReturnValue({ remaining: 5000, total: 5000, reset: new Date() }),
+  getGraphqlRateLimit: vi.fn().mockReturnValue({ remaining: 5000, total: 5000, reset: new Date() }),
   getEtagEntries: vi.fn().mockReturnValue([]),
 };
 
@@ -200,6 +201,11 @@ describe('useGitHubPolling', () => {
     mockClientInstance.hadFreshData = true;
     mockClientInstance.isRateLimitLow = false;
     mockClientInstance.getRateLimit.mockReturnValue({
+      remaining: 5000,
+      total: 5000,
+      reset: new Date(),
+    });
+    mockClientInstance.getGraphqlRateLimit.mockReturnValue({
       remaining: 5000,
       total: 5000,
       reset: new Date(),
@@ -371,10 +377,15 @@ describe('useGitHubPolling', () => {
     });
   });
 
-  it('sets rate limit in store after successful poll', async () => {
+  it('sets rate limit in store from the tighter of the two pools', async () => {
     mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockClientInstance.getRateLimit.mockReturnValue({
       remaining: 4500,
+      total: 5000,
+      reset: new Date('2024-01-01T01:00:00Z'),
+    });
+    mockClientInstance.getGraphqlRateLimit.mockReturnValue({
+      remaining: 4900,
       total: 5000,
       reset: new Date('2024-01-01T01:00:00Z'),
     });
@@ -393,9 +404,40 @@ describe('useGitHubPolling', () => {
     });
   });
 
-  it('skips rate limit update when remaining is negative', async () => {
+  it('uses the GraphQL pool when the REST pool has no data yet', async () => {
     mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockClientInstance.getRateLimit.mockReturnValue({
+      remaining: -1,
+      total: -1,
+      reset: null,
+    });
+    mockClientInstance.getGraphqlRateLimit.mockReturnValue({
+      remaining: 4800,
+      total: 5000,
+      reset: new Date('2024-01-01T01:00:00Z'),
+    });
+
+    renderHook(() => useGitHubPolling(makeSettings()));
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+
+    await vi.waitFor(() => {
+      const rl = usePrStore.getState().rateLimit;
+      expect(rl).toBeDefined();
+      expect(rl!.remaining).toBe(4800);
+    });
+  });
+
+  it('skips rate limit update when both pools are unknown', async () => {
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
+    mockClientInstance.getRateLimit.mockReturnValue({
+      remaining: -1,
+      total: -1,
+      reset: null,
+    });
+    mockClientInstance.getGraphqlRateLimit.mockReturnValue({
       remaining: -1,
       total: -1,
       reset: null,

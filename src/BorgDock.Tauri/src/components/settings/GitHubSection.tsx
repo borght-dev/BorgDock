@@ -1,17 +1,44 @@
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { Card, Button, LinearProgress } from '@/components/shared/primitives';
-import { Field, SectionHeader, Seg2, Slider, TextInput } from '@/components/shared/primitives';
+import {
+  Button,
+  Card,
+  Field,
+  LinearProgress,
+  SectionHeader,
+  Seg2,
+  Slider,
+  TextInput,
+} from '@/components/shared/primitives';
 import { useGitHubRateLimit } from '@/services/github/rate-limit';
 import type { GitHubSettings } from '@/types/settings';
 
-interface Props { github: GitHubSettings; onChange: (g: GitHubSettings) => void }
+interface Props {
+  github: GitHubSettings;
+  onChange: (g: GitHubSettings) => void;
+}
+
+function RateLimitRow({ label, pool }: { label: string; pool?: { used: number; limit: number } }) {
+  const pct = pool ? (pool.used / pool.limit) * 100 : 0;
+  const tone: 'success' | 'warning' | 'error' =
+    pct >= 95 ? 'error' : pct >= 80 ? 'warning' : 'success';
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-[56px] shrink-0 text-[11px] text-[var(--color-text-tertiary)]">
+        {label}
+      </span>
+      <div className="flex-1">
+        <LinearProgress value={pct} tone={tone} />
+      </div>
+      <span className="font-mono text-[11px] text-[var(--color-text-tertiary)] min-w-[110px] text-right">
+        {pool ? `${pool.used.toLocaleString()} / ${pool.limit.toLocaleString()}` : '—'}
+      </span>
+    </div>
+  );
+}
 
 export function GitHubSection({ github, onChange }: Props) {
   const rl = useGitHubRateLimit();
-  const pct = rl ? (rl.used / rl.limit) * 100 : 0;
-  const tone: 'success' | 'warning' | 'error' =
-    pct >= 95 ? 'error' : pct >= 80 ? 'warning' : 'success';
 
   return (
     <>
@@ -20,7 +47,9 @@ export function GitHubSection({ github, onChange }: Props) {
         subtitle="How BorgDock authenticates with github.com and how often it polls for new pull requests."
       />
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Authentication</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Authentication
+        </h3>
 
         <Field label="Auth method" anchorId="auth-method">
           <Seg2
@@ -43,7 +72,11 @@ export function GitHubSection({ github, onChange }: Props) {
             </span>
             <span className="text-xs font-semibold">{github.username || '—'}</span>
             <span className="flex-1" />
-            <Button variant="secondary" size="sm" onClick={() => invoke('check_github_auth', { method: 'ghCli' }).catch(console.error)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => invoke('check_github_auth', { method: 'ghCli' }).catch(console.error)}
+            >
               Re-authenticate
             </Button>
           </div>
@@ -85,22 +118,35 @@ export function GitHubSection({ github, onChange }: Props) {
           />
         </Field>
 
-        <Field label="Rate limit" hint="REST API quota for the authenticated token." anchorId="rate-limit">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <LinearProgress value={pct} tone={tone} />
-            </div>
-            <span className="font-mono text-[11px] text-[var(--color-text-tertiary)] min-w-[110px] text-right">
-              {rl ? `${rl.used.toLocaleString()} / ${rl.limit.toLocaleString()}` : '—'}
-            </span>
+        <Field
+          label="Rate limit"
+          hint="REST and GraphQL API quotas for the authenticated token — GitHub tracks them as separate pools; polling spends GraphQL points."
+          anchorId="rate-limit"
+        >
+          <div className="flex flex-col gap-2">
+            <RateLimitRow label="REST" pool={rl?.rest} />
+            <RateLimitRow label="GraphQL" pool={rl?.graphql} />
           </div>
         </Field>
 
         <div className="flex gap-2 pt-1">
-          <Button variant="secondary" size="sm" onClick={() => invoke('check_github_auth', { method: github.authMethod, pat: github.personalAccessToken }).catch(console.error)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() =>
+              invoke('check_github_auth', {
+                method: github.authMethod,
+                pat: github.personalAccessToken,
+              }).catch(console.error)
+            }
+          >
             Test connection
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => openUrl('https://github.com').catch(console.error)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openUrl('https://github.com').catch(console.error)}
+          >
             Open on github.com
           </Button>
         </div>

@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitHubSettings } from '@/types';
 import { GitHubSection } from '../GitHubSection';
 
+const mockRateLimit = vi.fn<() => unknown>(() => null);
 vi.mock('@/services/github/rate-limit', () => ({
-  useGitHubRateLimit: () => null,
+  useGitHubRateLimit: () => mockRateLimit(),
 }));
 
 vi.mock('@tauri-apps/plugin-opener', () => ({
@@ -96,6 +97,20 @@ describe('GitHubSection', () => {
   it('renders Test connection button', () => {
     render(<GitHubSection github={makeGitHub()} onChange={onChange} />);
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDefined();
+  });
+
+  it('renders both REST and GraphQL rate-limit rows', () => {
+    mockRateLimit.mockReturnValue({
+      rest: { used: 120, limit: 5000, resetAt: 0 },
+      graphql: { used: 45, limit: 5000, resetAt: 0 },
+    });
+    render(<GitHubSection github={makeGitHub()} onChange={onChange} />);
+
+    expect(screen.getByText('REST')).toBeDefined();
+    expect(screen.getByText('GraphQL')).toBeDefined();
+    expect(screen.getByText('120 / 5,000')).toBeDefined();
+    expect(screen.getByText('45 / 5,000')).toBeDefined();
+    mockRateLimit.mockReturnValue(null);
   });
 
   it('preserves existing settings when updating a single field', () => {
