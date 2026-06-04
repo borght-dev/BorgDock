@@ -1,13 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AppSettings, PullRequest } from '@/types';
+import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 
 // --- Mock all external dependencies ---
 
 const mockGetGitHubToken = vi.fn();
-const mockGetOpenPRs = vi.fn();
+const mockPollOpenPrsAggregate = vi.fn();
 const mockGetClosedPRs = vi.fn();
-const mockGetCheckRunsForRef = vi.fn();
 const mockAggregatePrWithChecks = vi.fn();
 const mockInitClient = vi.fn();
 const mockGetClient = vi.fn();
@@ -16,13 +15,12 @@ vi.mock('@/services/github/auth', () => ({
   getGitHubToken: (...args: unknown[]) => mockGetGitHubToken(...args),
 }));
 
-vi.mock('@/services/github/pulls', () => ({
-  getOpenPRs: (...args: unknown[]) => mockGetOpenPRs(...args),
-  getClosedPRs: (...args: unknown[]) => mockGetClosedPRs(...args),
+vi.mock('@/services/github/polling', () => ({
+  pollOpenPrsAggregate: (...args: unknown[]) => mockPollOpenPrsAggregate(...args),
 }));
 
-vi.mock('@/services/github/checks', () => ({
-  getCheckRunsForRef: (...args: unknown[]) => mockGetCheckRunsForRef(...args),
+vi.mock('@/services/github/pulls', () => ({
+  getClosedPRs: (...args: unknown[]) => mockGetClosedPRs(...args),
 }));
 
 vi.mock('@/services/github/aggregate', () => ({
@@ -153,6 +151,21 @@ function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
   };
 }
 
+/** Fully-aggregated shape, as pollOpenPrsAggregate returns it. */
+function makePrw(overrides: Partial<PullRequest> = {}): PullRequestWithChecks {
+  return {
+    pullRequest: makePr(overrides),
+    checks: [],
+    overallStatus: 'green',
+    failedCheckNames: [],
+    failedCheckSuiteIds: [],
+    pendingCheckNames: [],
+    passedCount: 1,
+    skippedCount: 0,
+    totalCheckCount: 1,
+  };
+}
+
 describe('useGitHubPolling', () => {
   let originalFetch: typeof globalThis.fetch;
 
@@ -173,9 +186,8 @@ describe('useGitHubPolling', () => {
     // Default mock behaviors
     mockGetGitHubToken.mockResolvedValue('ghp_test123');
     mockGetClient.mockReturnValue(mockClientInstance);
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockGetClosedPRs.mockResolvedValue([]);
-    mockGetCheckRunsForRef.mockResolvedValue([]);
     mockAggregatePrWithChecks.mockImplementation((pr: PullRequest, checks: unknown[]) => ({
       pullRequest: pr,
       checks,
@@ -224,13 +236,13 @@ describe('useGitHubPolling', () => {
       });
 
       expect(mockInitClient).not.toHaveBeenCalled();
-      expect(mockGetOpenPRs).not.toHaveBeenCalled();
+      expect(mockPollOpenPrsAggregate).not.toHaveBeenCalled();
       expect(mockFetchFn).not.toHaveBeenCalled();
       expect(usePrStore.getState().isPolling).toBe(false);
     });
 
     it('starts polling immediately when enabled flips from false to true', async () => {
-      mockGetOpenPRs.mockResolvedValue([makePr()]);
+      mockPollOpenPrsAggregate.mockResolvedValue([makePrw()]);
 
       const { rerender } = renderHook(
         ({ enabled }: { enabled: boolean }) => useGitHubPolling(makeSettings(), enabled),
@@ -248,7 +260,7 @@ describe('useGitHubPolling', () => {
 
       await vi.waitFor(() => {
         expect(mockInitClient).toHaveBeenCalledTimes(1);
-        expect(mockGetOpenPRs).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
+        expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
       });
     });
   });
@@ -308,9 +320,8 @@ describe('useGitHubPolling', () => {
     expect(typeof result.current.pollNow).toBe('function');
   });
 
-  it('starts polling and fetches open PRs', async () => {
-    const pr = makePr();
-    mockGetOpenPRs.mockResolvedValue([pr]);
+  it('starts polling and fetches open PRs via one aggregate call per repo', async () => {
+    mockPollOpenPrsAggregate.mockResolvedValue([makePrw()]);
 
     renderHook(() => useGitHubPolling(makeSettings()));
 
@@ -320,51 +331,12 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
-    });
-  });
-
-  it('fetches check runs for each PR', async () => {
-    const pr = makePr({ headRef: 'my-branch' });
-    mockGetOpenPRs.mockResolvedValue([pr]);
-    mockGetCheckRunsForRef.mockResolvedValue([{ id: 1, name: 'build', status: 'completed' }]);
-
-    renderHook(() => useGitHubPolling(makeSettings()));
-
-    await act(async () => {
-      vi.advanceTimersByTime(0);
-    });
-
-    await vi.waitFor(() => {
-      expect(mockGetCheckRunsForRef).toHaveBeenCalledWith(
-        mockClientInstance,
-        'test',
-        'repo',
-        'my-branch',
-      );
-    });
-  });
-
-  it('aggregates PR with checks results', async () => {
-    const pr = makePr();
-    const checks = [{ id: 1, name: 'build' }];
-    mockGetOpenPRs.mockResolvedValue([pr]);
-    mockGetCheckRunsForRef.mockResolvedValue(checks);
-
-    renderHook(() => useGitHubPolling(makeSettings()));
-
-    await act(async () => {
-      vi.advanceTimersByTime(0);
-    });
-
-    await vi.waitFor(() => {
-      expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(pr, checks);
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
     });
   });
 
   it('updates PR store with results when data is fresh', async () => {
-    const pr = makePr();
-    mockGetOpenPRs.mockResolvedValue([pr]);
+    mockPollOpenPrsAggregate.mockResolvedValue([makePrw()]);
     mockClientInstance.hadFreshData = true;
 
     renderHook(() => useGitHubPolling(makeSettings()));
@@ -379,8 +351,7 @@ describe('useGitHubPolling', () => {
   });
 
   it('still updates PR store even when data is not fresh (304 — onResult always fires)', async () => {
-    const pr = makePr();
-    mockGetOpenPRs.mockResolvedValue([pr]);
+    mockPollOpenPrsAggregate.mockResolvedValue([makePrw()]);
     mockClientInstance.hadFreshData = false;
 
     usePrStore.getState().setPullRequests([]);
@@ -392,7 +363,7 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalled();
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalled();
     });
 
     // onResult always fires regardless of hadFreshData — the ETag cache
@@ -403,7 +374,7 @@ describe('useGitHubPolling', () => {
   });
 
   it('sets rate limit in store after successful poll', async () => {
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockClientInstance.getRateLimit.mockReturnValue({
       remaining: 4500,
       total: 5000,
@@ -425,7 +396,7 @@ describe('useGitHubPolling', () => {
   });
 
   it('skips rate limit update when remaining is negative', async () => {
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockClientInstance.getRateLimit.mockReturnValue({
       remaining: -1,
       total: -1,
@@ -439,16 +410,18 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalled();
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalled();
     });
 
     expect(usePrStore.getState().rateLimit).toBeNull();
   });
 
-  it('handles getCheckRunsForRef failure gracefully (no prior state)', async () => {
-    const pr = makePr();
-    mockGetOpenPRs.mockResolvedValue([pr]);
-    mockGetCheckRunsForRef.mockRejectedValue(new Error('check fetch failed'));
+  it('keeps last-known PRs for a repo when its poll fails', async () => {
+    // Seed the store as if the previous cycle had succeeded.
+    const prior = makePrw({ number: 7, title: 'Survivor' });
+    usePrStore.setState({ pullRequests: [prior] });
+
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('graphql boom'));
 
     renderHook(() => useGitHubPolling(makeSettings()));
 
@@ -457,53 +430,51 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      // With no prior state for this PR, fall back to empty checks.
-      expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(pr, []);
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalled();
+    });
+
+    // The failed repo's PRs survive the cycle instead of vanishing (which
+    // would fire spurious "new PR" notifications when they reappear).
+    await vi.waitFor(() => {
+      const prs = usePrStore.getState().pullRequests;
+      expect(prs).toHaveLength(1);
+      expect(prs[0]).toBe(prior);
     });
   });
 
-  it('reuses prior checks when getCheckRunsForRef fails (avoids spurious gray→green transition)', async () => {
-    const pr = makePr();
-    const priorChecks = [
-      {
-        id: 42,
-        name: 'build',
-        status: 'completed',
-        conclusion: 'success',
-        htmlUrl: '',
-        checkSuiteId: 1,
-      },
-    ];
-
-    // Seed the store with a previous aggregation for this PR, as if the last
-    // successful poll had reported green.
-    usePrStore.setState({
-      pullRequests: [
-        {
-          pullRequest: pr,
-          checks: priorChecks,
-          overallStatus: 'green',
-          failedCheckNames: [],
-          failedCheckSuiteIds: [],
-          pendingCheckNames: [],
-          passedCount: 1,
-          skippedCount: 0,
-          totalCheckCount: 1,
-        },
+  it("does not resurrect another repo's PRs when one repo fails", async () => {
+    const settings = makeSettings({
+      repos: [
+        { owner: 'o1', name: 'r1', enabled: true, worktreeBasePath: '', worktreeSubfolder: '' },
+        { owner: 'o2', name: 'r2', enabled: true, worktreeBasePath: '', worktreeSubfolder: '' },
       ],
     });
 
-    mockGetOpenPRs.mockResolvedValue([pr]);
-    mockGetCheckRunsForRef.mockRejectedValue(new Error('check fetch failed'));
+    const r1Prior = makePrw({ number: 1, repoOwner: 'o1', repoName: 'r1' });
+    const r2Prior = makePrw({ number: 2, repoOwner: 'o2', repoName: 'r2' });
+    usePrStore.setState({ pullRequests: [r1Prior, r2Prior] });
 
-    renderHook(() => useGitHubPolling(makeSettings()));
+    const r2Fresh = makePrw({ number: 2, repoOwner: 'o2', repoName: 'r2', title: 'fresh' });
+    mockPollOpenPrsAggregate.mockImplementation((_c: unknown, owner: string) => {
+      if (owner === 'o1') return Promise.reject(new Error('boom'));
+      return Promise.resolve([r2Fresh]);
+    });
+
+    renderHook(() => useGitHubPolling(settings));
 
     await act(async () => {
       vi.advanceTimersByTime(0);
     });
+    // Second repo runs after the 500ms stagger.
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
 
     await vi.waitFor(() => {
-      expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(pr, priorChecks);
+      const prs = usePrStore.getState().pullRequests;
+      expect(prs).toHaveLength(2);
+      expect(prs).toContain(r1Prior); // failed repo: last-known entry kept
+      expect(prs).toContain(r2Fresh); // healthy repo: fresh result used
     });
   });
 
@@ -527,7 +498,7 @@ describe('useGitHubPolling', () => {
       ],
     });
 
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
 
     renderHook(() => useGitHubPolling(settings));
 
@@ -536,8 +507,12 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo1');
-      expect(mockGetOpenPRs).not.toHaveBeenCalledWith(mockClientInstance, 'test', 'repo2');
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo1');
+      expect(mockPollOpenPrsAggregate).not.toHaveBeenCalledWith(
+        mockClientInstance,
+        'test',
+        'repo2',
+      );
     });
   });
 
@@ -564,11 +539,11 @@ describe('useGitHubPolling', () => {
       expect(mockGetClient).toHaveBeenCalled();
     });
 
-    expect(mockGetOpenPRs).not.toHaveBeenCalled();
+    expect(mockPollOpenPrsAggregate).not.toHaveBeenCalled();
   });
 
-  it('handles getOpenPRs failure for a repo gracefully', async () => {
-    mockGetOpenPRs.mockRejectedValue(new Error('API error'));
+  it('completes the poll cycle when a repo fetch fails', async () => {
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('API error'));
 
     renderHook(() => useGitHubPolling(makeSettings()));
 
@@ -579,7 +554,11 @@ describe('useGitHubPolling', () => {
     // The poll cycle should complete despite the error (structured logger
     // captures it; the error doesn't propagate to the caller).
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalled();
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalled();
+    });
+
+    await vi.waitFor(() => {
+      expect(usePrStore.getState().lastPollTime).not.toBeNull();
     });
   });
 
@@ -612,24 +591,24 @@ describe('useGitHubPolling', () => {
   });
 
   it('stops polling on unmount', async () => {
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
 
     const { unmount } = renderHook(() => useGitHubPolling(makeSettings()));
 
     unmount();
 
-    const callCountAfterUnmount = mockGetOpenPRs.mock.calls.length;
+    const callCountAfterUnmount = mockPollOpenPrsAggregate.mock.calls.length;
 
     // Advance timers significantly — should not trigger more polls
     await act(async () => {
       vi.advanceTimersByTime(300_000);
     });
 
-    expect(mockGetOpenPRs.mock.calls.length).toBe(callCountAfterUnmount);
+    expect(mockPollOpenPrsAggregate.mock.calls.length).toBe(callCountAfterUnmount);
   });
 
   it('pollNow triggers an immediate poll', async () => {
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
 
     const { result } = renderHook(() => useGitHubPolling(makeSettings()));
 
@@ -639,20 +618,20 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalled();
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalled();
     });
 
-    const initialCallCount = mockGetOpenPRs.mock.calls.length;
+    const initialCallCount = mockPollOpenPrsAggregate.mock.calls.length;
 
     await act(async () => {
       await result.current.pollNow();
     });
 
-    expect(mockGetOpenPRs.mock.calls.length).toBeGreaterThan(initialCallCount);
+    expect(mockPollOpenPrsAggregate.mock.calls.length).toBeGreaterThan(initialCallCount);
   });
 
   it('pollNow sets polling state', async () => {
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
 
     const { result } = renderHook(() => useGitHubPolling(makeSettings()));
 
@@ -661,7 +640,7 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalled();
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalled();
     });
 
     // pollNow should set isPolling to true
@@ -749,7 +728,7 @@ describe('useGitHubPolling', () => {
       ],
     });
 
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
 
     renderHook(() => useGitHubPolling(settings));
 
@@ -759,7 +738,7 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalledWith(mockClientInstance, 'o1', 'r1');
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'o1', 'r1');
     });
 
     // Second repo is called after 500ms stagger
@@ -768,12 +747,12 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetOpenPRs).toHaveBeenCalledWith(mockClientInstance, 'o2', 'r2');
+      expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'o2', 'r2');
     });
   });
 
   it('marks poll start on client before fetching', async () => {
-    mockGetOpenPRs.mockResolvedValue([]);
+    mockPollOpenPrsAggregate.mockResolvedValue([]);
 
     renderHook(() => useGitHubPolling(makeSettings()));
 
