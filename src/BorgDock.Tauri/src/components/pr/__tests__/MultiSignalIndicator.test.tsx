@@ -6,6 +6,7 @@ import { MultiSignalIndicator } from '../MultiSignalIndicator';
 afterEach(cleanup);
 
 function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
+  const checks = overrides.checks ?? [];
   return {
     pullRequest: {
       number: 1,
@@ -33,12 +34,18 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       requestedReviewers: [],
       ...overrides.pullRequest,
     },
-    checks: overrides.checks ?? [],
+    checks,
     overallStatus: overrides.overallStatus ?? 'green',
     failedCheckNames: overrides.failedCheckNames ?? [],
+    failedCheckSuiteIds:
+      overrides.failedCheckSuiteIds ??
+      checks
+        .filter((c) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
+        .map((c) => c.checkSuiteId),
     pendingCheckNames: overrides.pendingCheckNames ?? [],
     passedCount: overrides.passedCount ?? 0,
     skippedCount: overrides.skippedCount ?? 0,
+    totalCheckCount: overrides.totalCheckCount ?? checks.length,
   };
 }
 

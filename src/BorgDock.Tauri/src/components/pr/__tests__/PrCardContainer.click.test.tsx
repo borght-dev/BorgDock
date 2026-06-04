@@ -52,7 +52,9 @@ vi.mock('@/stores/ui-store', () => {
 });
 
 vi.mock('@/stores/pr-store', () => {
-  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & { getState: ReturnType<typeof vi.fn> };
+  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & {
+    getState: ReturnType<typeof vi.fn>;
+  };
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
     selector({ username: 'testuser' }),
   );
@@ -102,9 +104,11 @@ function makePr(): PullRequestWithChecks {
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   };
 }
 
@@ -134,10 +138,7 @@ describe('PrCardContainer card-click → pop-out detail', () => {
     const moreBtn = container.querySelector('[data-pr-action="more"]') as HTMLElement;
     expect(moreBtn).toBeInTheDocument();
     fireEvent.click(moreBtn);
-    expect(invokeMock).not.toHaveBeenCalledWith(
-      'open_pr_detail_window',
-      expect.anything(),
-    );
+    expect(invokeMock).not.toHaveBeenCalledWith('open_pr_detail_window', expect.anything());
   });
 
   it('clicking the title also opens the pop-out', () => {

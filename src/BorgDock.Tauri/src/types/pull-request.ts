@@ -38,9 +38,12 @@ export interface PullRequestWithChecks {
   checks: CheckRun[];
   overallStatus: OverallStatus;
   failedCheckNames: string[];
+  /** Check-suite ids parallel to failedCheckNames (suite-less entries dropped) — used for rerun actions. */
+  failedCheckSuiteIds: number[];
   pendingCheckNames: string[];
   passedCount: number;
   skippedCount: number;
+  totalCheckCount: number;
 }
 
 export interface PullRequestCommit {

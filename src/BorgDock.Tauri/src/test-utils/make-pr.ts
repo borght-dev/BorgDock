@@ -43,8 +43,10 @@ export function makePr(number: number, overrides: MakePrOverrides = {}): PullReq
     checks: [],
     overallStatus,
     failedCheckNames: overallStatus === 'red' ? ['build'] : [],
+    failedCheckSuiteIds: overallStatus === 'red' ? [1] : [],
     pendingCheckNames: [],
     passedCount: overallStatus === 'green' ? 1 : 0,
     skippedCount: 0,
+    totalCheckCount: overallStatus === 'green' || overallStatus === 'red' ? 1 : 0,
   };
 }

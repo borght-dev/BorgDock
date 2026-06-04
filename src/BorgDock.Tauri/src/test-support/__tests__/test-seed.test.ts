@@ -38,9 +38,11 @@ const DESIGN_PRS: PullRequestWithChecks[] = [
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   },
   {
     pullRequest: {
@@ -70,9 +72,11 @@ const DESIGN_PRS: PullRequestWithChecks[] = [
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   },
 ];
 

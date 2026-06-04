@@ -33,9 +33,11 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
     ...overrides,
   };
 }
@@ -75,6 +77,7 @@ describe('MergeReadinessChecklist', () => {
       checks: [makeCheck()],
       passedCount: 1,
       skippedCount: 0,
+      totalCheckCount: 1,
       pullRequest: {
         ...makePr().pullRequest,
         reviewStatus: 'approved',
@@ -102,6 +105,7 @@ describe('MergeReadinessChecklist', () => {
     const pr = makePr({
       checks: [makeCheck({ id: 1 }), makeCheck({ id: 2 })],
       passedCount: 2,
+      totalCheckCount: 2,
     });
     render(<MergeReadinessChecklist pr={pr} />);
     expect(screen.getByText('2/2 checks passed')).toBeTruthy();
@@ -112,6 +116,7 @@ describe('MergeReadinessChecklist', () => {
       checks: [makeCheck({ id: 1 }), makeCheck({ id: 2, conclusion: 'skipped' })],
       passedCount: 1,
       skippedCount: 1,
+      totalCheckCount: 2,
     });
     render(<MergeReadinessChecklist pr={pr} />);
     expect(screen.getByText('1/1 passed (1 skipped)')).toBeTruthy();
@@ -193,6 +198,8 @@ describe('MergeReadinessChecklist', () => {
       checks: [makeCheck({ id: 1, conclusion: 'failure' })],
       passedCount: 0,
       failedCheckNames: ['build'],
+      failedCheckSuiteIds: [100],
+      totalCheckCount: 1,
       pullRequest: {
         ...makePr().pullRequest,
         reviewStatus: 'approved',
@@ -209,6 +216,8 @@ describe('MergeReadinessChecklist', () => {
       checks: [makeCheck({ id: 1, conclusion: 'failure' })],
       passedCount: 0,
       failedCheckNames: ['build'],
+      failedCheckSuiteIds: [100],
+      totalCheckCount: 1,
       pullRequest: {
         ...makePr().pullRequest,
         reviewStatus: 'none',

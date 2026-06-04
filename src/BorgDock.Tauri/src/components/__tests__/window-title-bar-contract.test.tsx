@@ -136,9 +136,11 @@ function makePr(): PullRequestWithChecks {
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   };
 }
 
@@ -301,7 +303,10 @@ describe('Pop-out window title bars — drag region clickability', () => {
   it('PrDetailPanel: WindowControls cluster carries bd-wc-group (no-drag escape hatch)', () => {
     const { container } = render(<PrDetailPanel pr={makePr()} popOutWindow={true} />);
     const cluster = container.querySelector('.bd-wc-group');
-    expect(cluster, 'PrDetailPanel: cluster missing — buttons would not be clickable').not.toBeNull();
+    expect(
+      cluster,
+      'PrDetailPanel: cluster missing — buttons would not be clickable',
+    ).not.toBeNull();
   });
 
   it('WhatsNewApp: WindowControls cluster carries bd-wc-group', () => {

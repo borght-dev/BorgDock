@@ -2,17 +2,19 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { CheckRun } from '@/types';
+import { makePr, PanelFrame, withPrDetail } from './__fixtures__/pr-detail-data';
 import { ChecksTab } from './ChecksTab';
-import {
-  makePr,
-  PanelFrame,
-  withPrDetail,
-} from './__fixtures__/pr-detail-data';
 
 const meta: Meta<typeof ChecksTab> = {
   title: 'PR Detail/ChecksTab',
   component: ChecksTab,
-  decorators: [(Story) => <PanelFrame><Story /></PanelFrame>],
+  decorators: [
+    (Story) => (
+      <PanelFrame>
+        <Story />
+      </PanelFrame>
+    ),
+  ],
 };
 export default meta;
 type Story = StoryObj<typeof ChecksTab>;
@@ -35,12 +37,54 @@ const allGreen: CheckRun[] = ['build', 'test', 'lint'].map((name, i) => ({
 }));
 
 const mixed: CheckRun[] = [
-  { id: 5001, name: 'CI / build', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5002, name: 'CI / test', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5003, name: 'CI / lint', status: 'completed', conclusion: 'failure', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5004, name: 'CI / typecheck', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5005, name: 'CI / e2e', status: 'completed', conclusion: 'failure', htmlUrl: '#', checkSuiteId: 9102 },
-  { id: 5006, name: 'CI / docs', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9102 },
+  {
+    id: 5001,
+    name: 'CI / build',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5002,
+    name: 'CI / test',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5003,
+    name: 'CI / lint',
+    status: 'completed',
+    conclusion: 'failure',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5004,
+    name: 'CI / typecheck',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5005,
+    name: 'CI / e2e',
+    status: 'completed',
+    conclusion: 'failure',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
+  {
+    id: 5006,
+    name: 'CI / docs',
+    status: 'completed',
+    conclusion: 'success',
+    htmlUrl: '#',
+    checkSuiteId: 9102,
+  },
 ];
 
 const allFailed: CheckRun[] = ['build', 'test', 'lint', 'typecheck', 'e2e', 'docs'].map(
@@ -87,8 +131,10 @@ const allFailedPr = makePr({
 const noChecksPr = makePr({
   checks: [],
   overallStatus: 'gray',
+  failedCheckSuiteIds: [],
   passedCount: 0,
   pendingCheckNames: [],
+  totalCheckCount: 0,
 });
 
 export const AllPending: Story = {

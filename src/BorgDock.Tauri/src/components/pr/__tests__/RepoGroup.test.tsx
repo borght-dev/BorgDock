@@ -32,7 +32,9 @@ vi.mock('@/stores/ui-store', () => {
 });
 
 vi.mock('@/stores/pr-store', () => {
-  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & { getState: ReturnType<typeof vi.fn> };
+  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & {
+    getState: ReturnType<typeof vi.fn>;
+  };
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
     return selector({ username: 'testuser' });
   });
@@ -96,9 +98,11 @@ function makePr(
     checks: [],
     overallStatus: status,
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   };
 }
 

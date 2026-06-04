@@ -1,27 +1,20 @@
 // src/components/pr-detail/__fixtures__/pr-detail-data.tsx
 
-import type { ReactNode } from 'react';
 import type { Decorator } from '@storybook/react-vite';
+import type { ReactNode } from 'react';
+import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
-import type {
-  AppSettings,
-  CheckRun,
-  PullRequest,
-  PullRequestWithChecks,
-} from '@/types';
+import type { AppSettings, CheckRun, PullRequest, PullRequestWithChecks } from '@/types';
 import {
-  getControl,
   type GithubResponses,
+  getControl,
   type PrActionResponses,
 } from '../../../../.storybook/mocks/control';
 
 // ── Deep-merge helper ─────────────────────────────────────────
 
-type DeepPartial<T> = T extends object
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : T;
+type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 function deepMerge<T>(base: T, over: DeepPartial<T> | undefined): T {
   if (!over) return base;
@@ -85,14 +78,14 @@ const BASE: PullRequestWithChecks = {
   checks: BASE_CHECKS,
   overallStatus: 'yellow',
   failedCheckNames: [],
+  failedCheckSuiteIds: [],
   pendingCheckNames: ['CI / build', 'CI / test'],
   passedCount: 0,
   skippedCount: 0,
+  totalCheckCount: 2,
 };
 
-export function makePr(
-  overrides?: DeepPartial<PullRequestWithChecks>,
-): PullRequestWithChecks {
+export function makePr(overrides?: DeepPartial<PullRequestWithChecks>): PullRequestWithChecks {
   return deepMerge(BASE, overrides);
 }
 
@@ -109,6 +102,7 @@ export const draftPr: PullRequestWithChecks = makePr({
   overallStatus: 'gray',
   pendingCheckNames: [],
   checks: [],
+  totalCheckCount: 0,
 });
 
 const APPROVED_REVIEW_PR: PullRequestWithChecks = {
@@ -118,15 +112,38 @@ const APPROVED_REVIEW_PR: PullRequestWithChecks = {
     commentCount: 4,
   },
   checks: [
-    { id: 2001, name: 'CI / build', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9001 },
-    { id: 2002, name: 'CI / test', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9001 },
-    { id: 2003, name: 'CI / lint', status: 'completed', conclusion: 'success', htmlUrl: '#', checkSuiteId: 9001 },
+    {
+      id: 2001,
+      name: 'CI / build',
+      status: 'completed',
+      conclusion: 'success',
+      htmlUrl: '#',
+      checkSuiteId: 9001,
+    },
+    {
+      id: 2002,
+      name: 'CI / test',
+      status: 'completed',
+      conclusion: 'success',
+      htmlUrl: '#',
+      checkSuiteId: 9001,
+    },
+    {
+      id: 2003,
+      name: 'CI / lint',
+      status: 'completed',
+      conclusion: 'success',
+      htmlUrl: '#',
+      checkSuiteId: 9001,
+    },
   ],
   overallStatus: 'green',
   failedCheckNames: [],
+  failedCheckSuiteIds: [],
   pendingCheckNames: [],
   passedCount: 3,
   skippedCount: 0,
+  totalCheckCount: 3,
 };
 export const approvedPr: PullRequestWithChecks = APPROVED_REVIEW_PR;
 
@@ -149,6 +166,7 @@ export const mergedPr: PullRequestWithChecks = makePr({
   passedCount: 3,
   pendingCheckNames: [],
   checks: APPROVED_REVIEW_PR.checks,
+  totalCheckCount: 3,
 });
 
 export const closedPr: PullRequestWithChecks = makePr({
@@ -169,6 +187,7 @@ export const mergeConflictPr: PullRequestWithChecks = makePr({
   checks: APPROVED_REVIEW_PR.checks,
   passedCount: 3,
   pendingCheckNames: [],
+  totalCheckCount: 3,
 });
 
 export const staleChecksPr: PullRequestWithChecks = makePr({
@@ -219,8 +238,7 @@ export interface WithPrDetailOptions {
 // fall back to an empty object cast as AppSettings (the section/tab
 // stories will rarely depend on settings beyond `repos`).
 export const SETTINGS_BASELINE: AppSettings =
-  (useSettingsStore.getState().settings as AppSettings | undefined) ??
-  ({} as AppSettings);
+  (useSettingsStore.getState().settings as AppSettings | undefined) ?? ({} as AppSettings);
 const UI_BASELINE = useUiStore.getState();
 const JUMP_BASELINE = usePrDetailJumpStore.getState();
 
@@ -240,7 +258,11 @@ export function withPrDetail(
       const params =
         options.injectedPrParams ??
         (pr
-          ? { owner: pr.pullRequest.repoOwner, repo: pr.pullRequest.repoName, number: pr.pullRequest.number }
+          ? {
+              owner: pr.pullRequest.repoOwner,
+              repo: pr.pullRequest.repoName,
+              number: pr.pullRequest.number,
+            }
           : { owner: 'borght-dev', repo: 'BorgDock', number: 1 });
       (window as unknown as Record<string, unknown>).__BORGDOCK_PR_DETAIL__ = params;
     }

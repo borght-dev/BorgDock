@@ -50,9 +50,11 @@ function makePrWithChecks(
     checks: [],
     overallStatus: 'gray',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
     ...rest,
   };
 }

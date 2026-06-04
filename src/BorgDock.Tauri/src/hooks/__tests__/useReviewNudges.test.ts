@@ -31,8 +31,7 @@ vi.mock('@/services/notification', async () => {
     await vi.importActual<typeof import('@/services/notification')>('@/services/notification');
   return {
     ...actual,
-    buildReviewNudgeNotification: (...args: unknown[]) =>
-      mockBuildReviewNudgeNotification(...args),
+    buildReviewNudgeNotification: (...args: unknown[]) => mockBuildReviewNudgeNotification(...args),
     sendOsNotification: mockSendOs,
   };
 });
@@ -73,9 +72,11 @@ function makePr(number: number): PullRequestWithChecks {
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 1,
     skippedCount: 0,
+    totalCheckCount: 1,
   };
 }
 
@@ -119,7 +120,14 @@ function makeSettings(
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
     claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+    claudeApi: {
+      model: 'claude-sonnet-4-20250514',
+      maxTokens: 4096,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
+    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {

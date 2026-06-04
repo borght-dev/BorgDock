@@ -62,7 +62,14 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
     claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+    claudeApi: {
+      model: 'claude-sonnet-4-20250514',
+      maxTokens: 4096,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
+    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {
@@ -144,9 +151,11 @@ describe('useInitSequence', () => {
       checks: [],
       overallStatus: 'gray',
       failedCheckNames: [],
+      failedCheckSuiteIds: [],
       pendingCheckNames: [],
       passedCount: 0,
       skippedCount: 0,
+      totalCheckCount: 0,
     }));
 
     vi.stubGlobal(

@@ -58,7 +58,9 @@ vi.mock('@/services/github/singleton', () => ({
 let mockStoreState: Record<string, unknown> = {};
 
 vi.mock('@/stores/pr-store', () => {
-  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & { getState: ReturnType<typeof vi.fn> };
+  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & {
+    getState: ReturnType<typeof vi.fn>;
+  };
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
     return selector(mockStoreState);
   });
@@ -98,9 +100,11 @@ function makePr(number: number, repo = 'test/repo'): PullRequestWithChecks {
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   };
 }
 

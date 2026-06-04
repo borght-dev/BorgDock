@@ -94,7 +94,14 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
     claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+    claudeApi: {
+      model: 'claude-sonnet-4-20250514',
+      maxTokens: 4096,
+      prSummaryEnabled: true,
+      diffExplanationsEnabled: true,
+      reviewNudgePhrasingEnabled: false,
+      commitMessageSuggestionsEnabled: false,
+    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {
@@ -174,9 +181,11 @@ describe('useGitHubPolling', () => {
       checks,
       overallStatus: 'green',
       failedCheckNames: [],
+      failedCheckSuiteIds: [],
       pendingCheckNames: [],
       passedCount: 0,
       skippedCount: 0,
+      totalCheckCount: checks.length,
     }));
     mockClientInstance.hadFreshData = true;
     mockClientInstance.isRateLimitLow = false;
@@ -475,9 +484,11 @@ describe('useGitHubPolling', () => {
           checks: priorChecks,
           overallStatus: 'green',
           failedCheckNames: [],
+          failedCheckSuiteIds: [],
           pendingCheckNames: [],
           passedCount: 1,
           skippedCount: 0,
+          totalCheckCount: 1,
         },
       ],
     });

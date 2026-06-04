@@ -63,7 +63,9 @@ vi.mock('@/stores/ui-store', () => {
 });
 
 vi.mock('@/stores/pr-store', () => {
-  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & { getState: ReturnType<typeof vi.fn> };
+  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & {
+    getState: ReturnType<typeof vi.fn>;
+  };
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
     return selector({ username: 'testuser' });
   });
@@ -97,6 +99,16 @@ vi.mock('@/components/pr-detail/LinkedWorkItemBadge', () => ({
 }));
 
 function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
+  const checks = overrides.checks ?? [
+    {
+      id: 1,
+      name: 'build',
+      status: 'completed',
+      conclusion: 'success',
+      htmlUrl: '',
+      checkSuiteId: 1,
+    },
+  ];
   return {
     pullRequest: {
       number: 42,
@@ -124,21 +136,18 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       requestedReviewers: [],
       ...overrides.pullRequest,
     },
-    checks: overrides.checks ?? [
-      {
-        id: 1,
-        name: 'build',
-        status: 'completed',
-        conclusion: 'success',
-        htmlUrl: '',
-        checkSuiteId: 1,
-      },
-    ],
+    checks,
     overallStatus: overrides.overallStatus ?? 'green',
     failedCheckNames: overrides.failedCheckNames ?? [],
+    failedCheckSuiteIds:
+      overrides.failedCheckSuiteIds ??
+      checks
+        .filter((c) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
+        .map((c) => c.checkSuiteId),
     pendingCheckNames: overrides.pendingCheckNames ?? [],
     passedCount: overrides.passedCount ?? 1,
     skippedCount: overrides.skippedCount ?? 0,
+    totalCheckCount: overrides.totalCheckCount ?? checks.length,
   };
 }
 
@@ -376,9 +385,7 @@ describe('PrCardContainer', () => {
           })}
         />,
       );
-      expect(
-        container.querySelector('[data-pr-primary-action="rerun"]'),
-      ).toBeInTheDocument();
+      expect(container.querySelector('[data-pr-primary-action="rerun"]')).toBeInTheDocument();
     });
 
     it('chooses "merge" as primary when PR is approved and owned by current user', () => {
@@ -394,9 +401,7 @@ describe('PrCardContainer', () => {
           })}
         />,
       );
-      expect(
-        container.querySelector('[data-pr-primary-action="merge"]'),
-      ).toBeInTheDocument();
+      expect(container.querySelector('[data-pr-primary-action="merge"]')).toBeInTheDocument();
     });
 
     it('chooses "checkout" as primary when PR is owned but not yet approved', () => {
@@ -410,9 +415,7 @@ describe('PrCardContainer', () => {
           })}
         />,
       );
-      expect(
-        container.querySelector('[data-pr-primary-action="checkout"]'),
-      ).toBeInTheDocument();
+      expect(container.querySelector('[data-pr-primary-action="checkout"]')).toBeInTheDocument();
     });
 
     it('renders Checkout secondary button when primary is not checkout', () => {

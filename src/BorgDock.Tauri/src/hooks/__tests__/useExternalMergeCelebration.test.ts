@@ -28,7 +28,9 @@ const mockGitHub = { username: 'alice' };
 
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: {
-    getState: () => ({ settings: { notifications: mockSettings.notifications, gitHub: mockGitHub } }),
+    getState: () => ({
+      settings: { notifications: mockSettings.notifications, gitHub: mockGitHub },
+    }),
   },
 }));
 
@@ -65,9 +67,11 @@ function makePr(overrides: Partial<PullRequest> = {}): PullRequestWithChecks {
     checks: [],
     overallStatus: 'gray',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   };
 }
 
@@ -101,9 +105,7 @@ describe('useExternalMergeCelebration', () => {
     act(() => {
       usePrStore.setState({
         pullRequests: [],
-        closedPullRequests: [
-          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
-        ],
+        closedPullRequests: [makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' })],
       });
     });
 
@@ -120,9 +122,7 @@ describe('useExternalMergeCelebration', () => {
     act(() => {
       usePrStore.setState({
         pullRequests: [],
-        closedPullRequests: [
-          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
-        ],
+        closedPullRequests: [makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' })],
       });
     });
 
@@ -140,9 +140,7 @@ describe('useExternalMergeCelebration', () => {
     act(() => {
       usePrStore.setState({
         pullRequests: [],
-        closedPullRequests: [
-          makePr({ state: 'closed', closedAt: '2026-04-30T10:00:00Z' }),
-        ],
+        closedPullRequests: [makePr({ state: 'closed', closedAt: '2026-04-30T10:00:00Z' })],
       });
     });
 
@@ -158,9 +156,7 @@ describe('useExternalMergeCelebration', () => {
     act(() => {
       usePrStore.setState({
         pullRequests: [],
-        closedPullRequests: [
-          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
-        ],
+        closedPullRequests: [makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' })],
       });
     });
 
@@ -212,9 +208,7 @@ describe('useExternalMergeCelebration', () => {
     act(() => {
       usePrStore.setState({
         pullRequests: [],
-        closedPullRequests: [
-          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
-        ],
+        closedPullRequests: [makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' })],
       });
     });
     expect(mockCelebrate).toHaveBeenCalledTimes(1);
@@ -228,9 +222,7 @@ describe('useExternalMergeCelebration', () => {
     act(() => {
       usePrStore.setState({
         pullRequests: [],
-        closedPullRequests: [
-          makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' }),
-        ],
+        closedPullRequests: [makePr({ state: 'closed', mergedAt: '2026-04-30T10:00:00Z' })],
       });
     });
 

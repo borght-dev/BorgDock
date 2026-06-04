@@ -86,14 +86,19 @@ function makePrWithChecks(overrides: Partial<PullRequestWithChecks> = {}): PullR
     checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
     ...overrides,
   };
 }
 
-const fakeMouseEvent = { stopPropagation: () => {}, preventDefault: () => {} } as unknown as React.MouseEvent;
+const fakeMouseEvent = {
+  stopPropagation: () => {},
+  preventDefault: () => {},
+} as unknown as React.MouseEvent;
 
 // --- Tests ---
 
@@ -119,7 +124,12 @@ describe('usePrCardActions', () => {
       await Promise.resolve();
     });
     expect(mockMergePr).toHaveBeenCalledWith(
-      expect.objectContaining({ number: 42, repoOwner: 'owner', repoName: 'repo', title: 'Add feature X' }),
+      expect.objectContaining({
+        number: 42,
+        repoOwner: 'owner',
+        repoName: 'repo',
+        title: 'Add feature X',
+      }),
     );
   });
 
