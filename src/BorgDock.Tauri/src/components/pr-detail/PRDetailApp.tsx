@@ -21,6 +21,9 @@ const XIcon = () => (
 
 export function PrDetailApp() {
   const [pr, setPr] = useState<PullRequestWithChecks | null>(null);
+  // Raw check runs for the Checks tab — fetched here (REST cold path) and
+  // refreshed via PR_REFRESHED_EVENT; the PR type itself only carries counts.
+  const [localChecks, setLocalChecks] = useState<CheckRun[]>([]);
   const prRef = useRef<PullRequestWithChecks | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +146,7 @@ export function PrDetailApp() {
         if (cancelled) return;
         const prWithChecks = aggregatePrWithChecks(targetPr, checks);
         setPr(prWithChecks);
+        setLocalChecks(checks);
 
         // Update window title
         getCurrentWindow()
@@ -176,6 +180,8 @@ export function PrDetailApp() {
       }
       if (detail.pr) {
         setPr(detail.pr);
+        // Optimistic refreshes (e.g. mark-merged) carry no checks — keep ours.
+        if (detail.checks) setLocalChecks(detail.checks);
         getCurrentWindow()
           .setTitle(`PR #${number} - ${detail.pr.pullRequest.title}`)
           .catch(console.debug); /* fire-and-forget */
@@ -249,7 +255,7 @@ export function PrDetailApp() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-background)]" data-app-ready={appReady}>
       <div className="relative flex-1 overflow-y-auto">
-        <PrDetailPanel pr={pr} popOutWindow />
+        <PrDetailPanel pr={pr} checks={localChecks} popOutWindow />
       </div>
     </div>
   );

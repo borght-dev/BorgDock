@@ -1,15 +1,15 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
-import { createLogger } from '@/services/logger';
-import { WindowControls } from '@/components/shared/chrome';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
+import { WindowControls } from '@/components/shared/chrome';
 import type { TabDef } from '@/components/shared/primitives';
+import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
+import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
 import { openPrDetail } from '@/services/windows';
-import { useUiStore } from '@/stores/ui-store';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
-import type { PullRequestWithChecks } from '@/types';
+import { useUiStore } from '@/stores/ui-store';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { ActionBar } from './ActionBar';
 import { ActivityStrip } from './ActivityStrip';
 import { CheckoutPanel } from './CheckoutPanel';
@@ -92,7 +92,6 @@ const BorgDockLogo = () => (
   </svg>
 );
 
-
 const BranchIcon = () => (
   <svg
     width="12"
@@ -131,8 +130,14 @@ const ArrowRightIcon = () => (
 );
 
 const HeaderSpinnerIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="animate-spin"
-       aria-hidden="true">
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 16 16"
+    fill="none"
+    className="animate-spin"
+    aria-hidden="true"
+  >
     <circle cx="8" cy="8" r="6" stroke="currentColor" opacity="0.3" strokeWidth="1.6" />
     <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
@@ -157,7 +162,9 @@ function formatAge(iso: string): string {
   return `${days}d`;
 }
 
-function reviewStatusLabel(status: PullRequestWithChecks['pullRequest']['reviewStatus']): string | null {
+function reviewStatusLabel(
+  status: PullRequestWithChecks['pullRequest']['reviewStatus'],
+): string | null {
   switch (status) {
     case 'approved':
       return 'approved';
@@ -187,6 +194,9 @@ type Tab = (typeof tabs)[number];
 
 interface PrDetailPanelProps {
   pr: PullRequestWithChecks;
+  /** Raw check runs for the Checks tab. The pop-out window fetches these via
+   *  the REST cold path; polled PRs no longer carry them. Defaults to []. */
+  checks?: CheckRun[];
   /** Pop-out mode: the panel is hosting the entire PR detail window.
    *  Makes the header the window drag region, hides the pop-out button,
    *  shows native-style min/max/close controls, and routes the × button
@@ -194,7 +204,7 @@ interface PrDetailPanelProps {
   popOutWindow?: boolean;
 }
 
-export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
+export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelProps) {
   const selectPr = useUiStore((s) => s.selectPr);
   const handleClose = useCallback(() => {
     if (popOutWindow) {
@@ -269,7 +279,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
   const score = computeMergeScore(pr);
   const reviewLabel = reviewStatusLabel(p.reviewStatus);
   const passedCount = pr.passedCount;
-  const totalChecks = pr.checks.length - pr.skippedCount;
+  const totalChecks = pr.totalCheckCount - pr.skippedCount;
 
   const tabDefs: TabDef[] = [
     { id: 'Overview', label: 'Overview' },
@@ -341,12 +351,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
 
         <div className="flex items-start gap-3.5">
           {/* Merge readiness gauge */}
-          <Ring
-            value={score}
-            size={44}
-            stroke={3}
-            data-pr-header-score={score}
-          />
+          <Ring value={score} size={44} stroke={3} data-pr-header-score={score} />
 
           <div className="min-w-0 flex-1">
             {/* Status pills row */}
@@ -358,11 +363,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
               {!isMerged && p.state === 'closed' && <Pill tone="neutral">Closed</Pill>}
               {!isTerminal && p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
               {!isTerminal && p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
-              {!isTerminal && totalChecks > 0 && (
-                <Pill tone="success">
-                  {passedCount} passed
-                </Pill>
-              )}
+              {!isTerminal && totalChecks > 0 && <Pill tone="success">{passedCount} passed</Pill>}
               {!isTerminal && pr.pendingCheckNames.length > 0 && (
                 <Pill tone="warning" icon={<HeaderSpinnerIcon />}>
                   {pr.pendingCheckNames.length} running
@@ -380,17 +381,23 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
             {/* Author + date + branches */}
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--color-text-tertiary)]">
               <Avatar initials={initialsFor(p.authorLogin)} size="sm" />
-              <span className="font-medium text-[var(--color-text-secondary)]">{p.authorLogin}</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">
+                {p.authorLogin}
+              </span>
               <span aria-hidden>·</span>
               <span>{formatDate(p.createdAt)}</span>
               <span aria-hidden>·</span>
-              <span title="Age" className="text-[var(--color-text-muted)]">{formatAge(p.createdAt)} old</span>
+              <span title="Age" className="text-[var(--color-text-muted)]">
+                {formatAge(p.createdAt)} old
+              </span>
               <span aria-hidden>·</span>
               <span className="inline-flex items-center gap-1">
                 <BranchIcon />
                 <span className="font-mono text-[11px]">{p.headRef}</span>
                 <ArrowRightIcon />
-                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">{p.baseRef}</span>
+                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                  {p.baseRef}
+                </span>
               </span>
             </div>
 
@@ -398,15 +405,21 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
             <div className="mt-2.5 flex items-center gap-2.5 text-[11px] text-[var(--color-text-tertiary)]">
               <span className="font-medium text-[var(--color-status-green)]">+{p.additions}</span>
               <span className="font-medium text-[var(--color-status-red)]">−{p.deletions}</span>
-              <span aria-hidden className="text-[var(--color-text-faint)]">·</span>
+              <span aria-hidden className="text-[var(--color-text-faint)]">
+                ·
+              </span>
               <span>
                 {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
               </span>
-              <span aria-hidden className="text-[var(--color-text-faint)]">·</span>
+              <span aria-hidden className="text-[var(--color-text-faint)]">
+                ·
+              </span>
               <span>
                 {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
               </span>
-              <span aria-hidden className="text-[var(--color-text-faint)]">·</span>
+              <span aria-hidden className="text-[var(--color-text-faint)]">
+                ·
+              </span>
               <span>
                 {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
               </span>
@@ -427,15 +440,10 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
       </div>
 
       {/* Action bar — sticky, all PR actions */}
-      <ActionBar
-        actions={actions}
-        prState={p.state}
-        isDraft={p.isDraft}
-        mergeable={p.mergeable}
-      />
+      <ActionBar actions={actions} prState={p.state} isDraft={p.isDraft} mergeable={p.mergeable} />
 
       {/* Activity strip — persistent checks summary, click-to-jump */}
-      {pr.checks.length > 0 && (
+      {pr.totalCheckCount > 0 && (
         <div className="border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-2.5">
           <ActivityStrip
             passed={pr.passedCount}
@@ -449,11 +457,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
 
       {/* Tab bar — sits on the same surface card as the header */}
       <div className="bg-[var(--color-surface)] border-b border-[var(--color-subtle-border)] px-[22px]">
-        <Tabs
-          value={activeTab}
-          onChange={(id) => setActiveTab(id as Tab)}
-          tabs={tabDefs}
-        />
+        <Tabs value={activeTab} onChange={(id) => setActiveTab(id as Tab)} tabs={tabDefs} />
       </div>
 
       {/* Tab content — tabs mount lazily on first activation, cached afterwards */}
@@ -484,7 +488,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
         )}
         {mountedTabs.has('Checks') && (
           <div className={activeTab === 'Checks' ? '' : 'hidden'}>
-            <ChecksTab checks={pr.checks} pr={pr} />
+            <ChecksTab checks={checks} pr={pr} />
           </div>
         )}
         {mountedTabs.has('Discussion') && (
@@ -495,9 +499,7 @@ export function PrDetailPanel({ pr, popOutWindow }: PrDetailPanelProps) {
               repoName={pr.pullRequest.repoName}
               prUpdatedAt={pr.pullRequest.updatedAt}
               onJumpToFile={(target) => {
-                usePrDetailJumpStore
-                  .getState()
-                  .setJumpTarget({ ...target, ts: Date.now() });
+                usePrDetailJumpStore.getState().setJumpTarget({ ...target, ts: Date.now() });
                 setActiveTab('Files');
               }}
             />

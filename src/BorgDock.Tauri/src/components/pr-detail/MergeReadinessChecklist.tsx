@@ -44,7 +44,7 @@ function scoreTone(score: number): 'success' | 'warning' | 'error' {
 function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
   // 1. Checks passed
   let checksStatus: CheckStatus;
-  if (pr.checks.length === 0) {
+  if (pr.totalCheckCount === 0) {
     checksStatus = 'none';
   } else if (pr.failedCheckNames.length > 0) {
     checksStatus = 'fail';
@@ -55,11 +55,11 @@ function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
   }
 
   const checksDesc =
-    pr.checks.length === 0
+    pr.totalCheckCount === 0
       ? 'No CI checks configured'
       : pr.skippedCount > 0
-        ? `${pr.passedCount}/${pr.checks.length - pr.skippedCount} passed (${pr.skippedCount} skipped)`
-        : `${pr.passedCount}/${pr.checks.length} checks passed`;
+        ? `${pr.passedCount}/${pr.totalCheckCount - pr.skippedCount} passed (${pr.skippedCount} skipped)`
+        : `${pr.passedCount}/${pr.totalCheckCount} checks passed`;
 
   // 2. Approved
   let reviewStatus: CheckStatus;
@@ -132,12 +132,7 @@ const CheckGlyph = () => (
 );
 const XGlyph = () => (
   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path
-      d="M5 5l6 6M11 5l-6 6"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
+    <path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 const ClockGlyph = () => (
@@ -229,9 +224,7 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
             key={item.label}
             className={
               'flex items-center gap-2.5 px-3.5 py-2' +
-              (idx < items.length - 1
-                ? ' border-b border-[var(--color-subtle-border)]'
-                : '')
+              (idx < items.length - 1 ? ' border-b border-[var(--color-subtle-border)]' : '')
             }
             data-merge-check={item.label}
           >

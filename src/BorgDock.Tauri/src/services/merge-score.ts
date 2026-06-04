@@ -2,7 +2,7 @@ import type { PullRequestWithChecks } from '@/types';
 
 export function computeMergeScore(pr: PullRequestWithChecks): number {
   let score = 0;
-  const relevant = pr.checks.length - pr.skippedCount;
+  const relevant = pr.totalCheckCount - pr.skippedCount;
 
   // CI checks (25%)
   if (relevant > 0) {

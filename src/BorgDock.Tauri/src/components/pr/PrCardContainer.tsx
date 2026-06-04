@@ -3,11 +3,7 @@ import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { computeMergeScore } from '@/services/merge-score';
-import {
-  type PrActionId,
-  primaryFor,
-  shapeFromPrWithChecks,
-} from '@/services/pr-action-resolver';
+import { type PrActionId, primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
 import type { PriorityFactor } from '@/services/priority-scoring';
 import { openPrDetail } from '@/services/windows';
 import { detectWorkItemIds } from '@/services/work-item-linker';
@@ -16,7 +12,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { HoverActionPillBar } from './HoverActionPillBar';
-import { PrCardView, type PrCardData } from './PrCardView';
+import { type PrCardData, PrCardView } from './PrCardView';
 import { PrContextMenu } from './PrContextMenu';
 
 interface PrCardContainerProps {
@@ -34,7 +30,7 @@ function mapToPrCardData(
   const pr = prw.pullRequest;
   const failedCount = prw.failedCheckNames.length;
   const pendingCount = prw.pendingCheckNames.length;
-  const totalChecks = prw.checks.length;
+  const totalChecks = prw.totalCheckCount;
   const relevant = totalChecks - prw.skippedCount;
   const statusLabel =
     failedCount > 0

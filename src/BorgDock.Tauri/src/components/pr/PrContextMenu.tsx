@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { sendOsNotification } from '@/services/notification';
-import {
-  checkoutPrBranch,
-  mergePr,
-  openPrInBrowser,
-  rerunChecks,
-} from '@/services/pr-actions';
+import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { openPrDetail } from '@/services/windows';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -109,10 +104,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const canMerge =
     !pullRequest.isDraft && overallStatus === 'green' && pullRequest.state === 'open';
 
-  // Find a failed check's run ID for rerun (pick the first failed check's suite)
-  const failedCheck = pr.checks.find(
-    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
-  );
+  // Pick the first failed check's suite for rerun.
+  const failedSuiteId: number | undefined = pr.failedCheckSuiteIds[0];
 
   const handleAction = useCallback(
     (action: () => Promise<void>, errorTitle?: string) => {
@@ -166,8 +159,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, [onClose, onConfirmAction]);
 
   const handleRerunFailed = handleAction(async () => {
-    if (!failedCheck) return;
-    await rerunChecks({ repoOwner: owner, repoName: repo, checkSuiteId: failedCheck.checkSuiteId });
+    if (failedSuiteId === undefined) return;
+    await rerunChecks({ repoOwner: owner, repoName: repo, checkSuiteId: failedSuiteId });
   }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
@@ -261,7 +254,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       <MenuItem
         label="Rerun failed checks"
         onClick={handleRerunFailed}
-        disabled={!hasFailingChecks || !failedCheck}
+        disabled={!hasFailingChecks || failedSuiteId === undefined}
       />
       <MenuItem label="Fix with Claude" onClick={handleFixWithClaude} />
       <MenuItem label="Monitor with Claude" onClick={handleMonitorWithClaude} />
