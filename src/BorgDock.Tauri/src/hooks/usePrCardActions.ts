@@ -23,7 +23,7 @@ import { parseError } from '@/utils/parse-error';
  * (confirmAction, contextMenu) and the React event glue.
  */
 export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
-  const { pullRequest: pr, checks, failedCheckNames } = prWithChecks;
+  const { pullRequest: pr, failedCheckNames } = prWithChecks;
   const { fixWithClaude, monitorPr, resolveConflicts } = useClaudeActions();
   const settings = useSettingsStore((s) => s.settings);
 
@@ -33,9 +33,8 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const repoConfig = findRepoConfig(settings.repos, pr.repoOwner, pr.repoName);
   const repoPath = repoConfig?.worktreeBasePath || '';
 
-  const failedCheck = checks.find(
-    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
-  );
+  // First failed check's suite — what the rerun action targets.
+  const failedSuiteId: number | undefined = prWithChecks.failedCheckSuiteIds[0];
 
   const showError = useCallback((title: string, err: unknown) => {
     void sendOsNotification({
@@ -53,14 +52,14 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleRerun = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!failedCheck) return;
+      if (failedSuiteId === undefined) return;
       void rerunChecks({
         repoOwner: pr.repoOwner,
         repoName: pr.repoName,
-        checkSuiteId: failedCheck.checkSuiteId,
+        checkSuiteId: failedSuiteId,
       });
     },
-    [failedCheck, pr.repoOwner, pr.repoName],
+    [failedSuiteId, pr.repoOwner, pr.repoName],
   );
 
   const handleFix = useCallback(
@@ -216,7 +215,7 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     confirmAction,
     setConfirmAction,
     repoPath,
-    failedCheck,
+    failedSuiteId,
 
     // Handlers
     handleContextMenu,

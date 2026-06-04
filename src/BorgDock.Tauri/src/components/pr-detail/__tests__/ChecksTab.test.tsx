@@ -235,9 +235,7 @@ describe('ChecksTab', () => {
       makeCheck({ id: 2, name: 'ci/test', conclusion: 'failure', checkSuiteId: 100 }),
     ];
     const { container } = render(<ChecksTab checks={checks} />);
-    expect(
-      container.querySelector('[data-check-row][data-check-state="failed"]'),
-    ).toBeTruthy();
+    expect(container.querySelector('[data-check-row][data-check-state="failed"]')).toBeTruthy();
   });
 
   it('renders LinearProgress in the summary', () => {
@@ -313,15 +311,15 @@ describe('ChecksTab', () => {
       checks: [],
       overallStatus: 'red',
       failedCheckNames: ['ci/test'],
+      failedCheckSuiteIds: [],
       pendingCheckNames: [],
       passedCount: 1,
       skippedCount: 0,
+      totalCheckCount: 2,
     };
     // biome-ignore lint/suspicious/noExplicitAny: fixture-only any cast for narrow type
     const { container } = render(<ChecksTab checks={checks} pr={pr as any} />);
-    const failedRow = container.querySelector(
-      '[data-check-row][data-check-state="failed"]',
-    );
+    const failedRow = container.querySelector('[data-check-row][data-check-state="failed"]');
     expect(failedRow).toBeTruthy();
     expect(failedRow?.querySelector('.bd-btn')).toBeTruthy();
   });

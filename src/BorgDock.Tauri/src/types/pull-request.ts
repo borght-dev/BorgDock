@@ -1,5 +1,3 @@
-import type { CheckRun } from './check-run';
-
 export type ReviewStatus = 'none' | 'pending' | 'commented' | 'approved' | 'changesRequested';
 
 export type OverallStatus = 'red' | 'yellow' | 'green' | 'gray';
@@ -35,12 +33,14 @@ export interface PullRequest {
 
 export interface PullRequestWithChecks {
   pullRequest: PullRequest;
-  checks: CheckRun[];
   overallStatus: OverallStatus;
   failedCheckNames: string[];
+  /** Check-suite ids parallel to failedCheckNames (suite-less entries dropped) — used for rerun actions. */
+  failedCheckSuiteIds: number[];
   pendingCheckNames: string[];
   passedCount: number;
   skippedCount: number;
+  totalCheckCount: number;
 }
 
 export interface PullRequestCommit {

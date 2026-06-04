@@ -30,7 +30,7 @@ function arcPath(cx: number, cy: number, r: number, startAngle: number, endAngle
 }
 
 function computeCiColor(pr: PullRequestWithChecks): SignalColor {
-  if (pr.checks.length === 0) return 'gray';
+  if (pr.totalCheckCount === 0) return 'gray';
   if (pr.failedCheckNames.length > 0) return 'red';
   if (pr.pendingCheckNames.length > 0) return 'yellow';
   return 'green';

@@ -6,9 +6,13 @@ export function aggregatePrWithChecks(
 ): PullRequestWithChecks {
   const overallStatus = computeOverallStatus(checkRuns);
 
-  const failedCheckNames = checkRuns
-    .filter((c) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
-    .map((c) => c.name);
+  const failedRuns = checkRuns.filter(
+    (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
+  );
+  const failedCheckNames = failedRuns.map((c) => c.name);
+  const failedCheckSuiteIds = failedRuns
+    .map((c) => c.checkSuiteId)
+    .filter((id): id is number => typeof id === 'number' && id > 0);
 
   const pendingCheckNames = checkRuns
     .filter((c) => c.status === 'in_progress' || c.status === 'queued')
@@ -22,12 +26,13 @@ export function aggregatePrWithChecks(
 
   return {
     pullRequest: pr,
-    checks: checkRuns,
     overallStatus,
     failedCheckNames,
+    failedCheckSuiteIds,
     pendingCheckNames,
     passedCount,
     skippedCount,
+    totalCheckCount: checkRuns.length,
   };
 }
 

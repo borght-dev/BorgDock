@@ -37,14 +37,15 @@ vi.mock('@/components/shared/WindowTitleBar', () => ({
 }));
 
 vi.mock('@/services/github/aggregate', () => ({
-  aggregatePrWithChecks: (pr: unknown, checks: unknown) => ({
+  aggregatePrWithChecks: (pr: unknown, _checks: unknown) => ({
     pullRequest: pr,
-    checks,
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   }),
 }));
 
@@ -234,9 +235,7 @@ describe('PrDetailApp', () => {
 
     // wait a tick for any pending setState
     await new Promise((r) => setTimeout(r, 50));
-    expect(consoleErrSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining('not wrapped in act'),
-    );
+    expect(consoleErrSpy).not.toHaveBeenCalledWith(expect.stringContaining('not wrapped in act'));
     consoleErrSpy.mockRestore();
   });
 

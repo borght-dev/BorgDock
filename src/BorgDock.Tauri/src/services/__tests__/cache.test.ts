@@ -129,17 +129,80 @@ describe('cache service', () => {
   });
 
   describe('loadCachedPRs', () => {
-    it('returns cached PR data', async () => {
-      const prs = [{ pullRequest: { number: 1 } }];
-      mockInvoke.mockResolvedValue(prs);
+    it('passes current-shape entries through untouched', async () => {
+      const entry = {
+        pullRequest: { number: 1 },
+        overallStatus: 'green',
+        failedCheckNames: [],
+        failedCheckSuiteIds: [],
+        pendingCheckNames: [],
+        passedCount: 1,
+        skippedCount: 0,
+        totalCheckCount: 1,
+      };
+      mockInvoke.mockResolvedValue([entry]);
 
       const result = await loadCachedPRs('owner', 'repo');
 
-      expect(result).toEqual(prs);
+      expect(result[0]).toBe(entry);
       expect(mockInvoke).toHaveBeenCalledWith('cache_load_prs', {
         repoOwner: 'owner',
         repoName: 'repo',
       });
+    });
+
+    it('migrates pre-GraphQL entries by re-deriving summary fields from legacy checks', async () => {
+      // Shape written by versions that stored the raw checks array and had no
+      // totalCheckCount / failedCheckSuiteIds. Reading failedCheckSuiteIds[0]
+      // off such an entry crashed PrCardContainer at boot.
+      const legacy = {
+        pullRequest: { number: 7 },
+        checks: [
+          {
+            id: 1,
+            name: 'build',
+            status: 'completed',
+            conclusion: 'failure',
+            htmlUrl: '',
+            checkSuiteId: 11,
+          },
+          {
+            id: 2,
+            name: 'test',
+            status: 'completed',
+            conclusion: 'success',
+            htmlUrl: '',
+            checkSuiteId: 22,
+          },
+        ],
+        overallStatus: 'red',
+        failedCheckNames: ['build'],
+        pendingCheckNames: [],
+        passedCount: 1,
+        skippedCount: 0,
+      };
+      mockInvoke.mockResolvedValue([legacy]);
+
+      const [pr] = (await loadCachedPRs('owner', 'repo')) as Array<Record<string, unknown>>;
+
+      expect(pr!.pullRequest).toEqual({ number: 7 });
+      expect(pr!.totalCheckCount).toBe(2);
+      expect(pr!.failedCheckSuiteIds).toEqual([11]);
+      expect(pr!.failedCheckNames).toEqual(['build']);
+      expect(pr!.overallStatus).toBe('red');
+      expect(pr!.passedCount).toBe(1);
+      expect(pr!.checks).toBeUndefined();
+    });
+
+    it('migrates legacy entries without a checks array to zero counts', async () => {
+      const legacy = { pullRequest: { number: 3 }, overallStatus: 'gray' };
+      mockInvoke.mockResolvedValue([legacy]);
+
+      const [pr] = (await loadCachedPRs('owner', 'repo')) as Array<Record<string, unknown>>;
+
+      expect(pr!.totalCheckCount).toBe(0);
+      expect(pr!.failedCheckSuiteIds).toEqual([]);
+      expect(pr!.overallStatus).toBe('gray');
     });
 
     it('returns empty array on error', async () => {

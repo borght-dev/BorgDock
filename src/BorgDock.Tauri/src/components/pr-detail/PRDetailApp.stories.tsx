@@ -1,18 +1,25 @@
 // src/components/pr-detail/PRDetailApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { PrDetailApp } from './PRDetailApp';
 import {
   openPr,
+  openPrChecks,
   PanelFrame,
   SETTINGS_BASELINE,
   withPrDetail,
 } from './__fixtures__/pr-detail-data';
+import { PrDetailApp } from './PRDetailApp';
 
 const meta: Meta<typeof PrDetailApp> = {
   title: 'PR Detail/PRDetailApp',
   component: PrDetailApp,
-  decorators: [(Story) => <PanelFrame><Story /></PanelFrame>],
+  decorators: [
+    (Story) => (
+      <PanelFrame>
+        <Story />
+      </PanelFrame>
+    ),
+  ],
 };
 export default meta;
 type Story = StoryObj<typeof PrDetailApp>;
@@ -29,7 +36,7 @@ export const Default: Story = {
       invokeResponses: baseInvokes,
       githubResponses: {
         getOpenPRs: [openPr.pullRequest],
-        getCheckRunsForRef: openPr.checks,
+        getCheckRunsForRef: openPrChecks,
       },
     }),
   ],
@@ -53,7 +60,7 @@ export const MissingParams: Story = {
       injectedPrParams: null,
       githubResponses: {
         getOpenPRs: [openPr.pullRequest],
-        getCheckRunsForRef: openPr.checks,
+        getCheckRunsForRef: openPrChecks,
       },
     }),
   ],
@@ -79,7 +86,7 @@ export const LoadSettingsRejects: Story = {
       },
       githubResponses: {
         getOpenPRs: [openPr.pullRequest],
-        getCheckRunsForRef: openPr.checks,
+        getCheckRunsForRef: openPrChecks,
       },
     }),
   ],

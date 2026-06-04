@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { saveCachedEtags, saveCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
-import { getCheckRunsForRef } from '@/services/github/checks';
-import { getClosedPRs, getOpenPRs } from '@/services/github/pulls';
+import { pollOpenPrsAggregate } from '@/services/github/polling';
+import { getClosedPRs } from '@/services/github/pulls';
 import { getClient, initClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { PollingManager } from '@/services/polling';
@@ -66,10 +66,10 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
         return [];
       }
 
-      // Snapshot prior state so a transient check-runs fetch failure can fall
-      // back to the PR's last-known checks instead of resetting overallStatus
-      // to 'gray'. Otherwise the next successful poll looks like a gray→green
-      // transition and fires a spurious "All checks passed" notification.
+      // Snapshot prior state so a transient repo-level fetch failure keeps the
+      // repo's last-known PRs in the list instead of dropping them for a cycle.
+      // Otherwise they "reappear" on the next successful poll and fire spurious
+      // new-PR / status-transition notifications.
       const priorByKey = new Map<string, PullRequestWithChecks>();
       for (const prior of usePrStore.getState().pullRequests) {
         const p = prior.pullRequest;
@@ -89,50 +89,31 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
         const repoLabel = `${repo.owner}/${repo.name}`;
         try {
           const repoStart = performance.now();
-          const prs = await getOpenPRs(c, repo.owner, repo.name);
-
-          // Fetch check runs for all PRs in parallel
-          const results = await Promise.allSettled(
-            prs.map(async (pr) => {
-              const checks = await getCheckRunsForRef(c, repo.owner, repo.name, pr.headRef);
-              return aggregatePrWithChecks(pr, checks);
-            }),
-          );
-
-          let failedCheckFetches = 0;
-          for (let j = 0; j < results.length; j++) {
-            const result = results[j]!;
-            if (result.status === 'fulfilled') {
-              allPrs.push(result.value);
-            } else {
-              failedCheckFetches++;
-              const failedPr = prs[j]!;
-              log.warn('poll: check-runs fetch failed for PR', {
-                repo: repoLabel,
-                pr: failedPr.number,
-                ref: failedPr.headRef,
-                error: String(result.reason),
-              });
-              const prior = priorByKey.get(`${repo.owner}/${repo.name}#${failedPr.number}`);
-              allPrs.push(aggregatePrWithChecks(failedPr, prior?.checks ?? []));
-            }
+          const prs = await pollOpenPrsAggregate(c, repo.owner, repo.name);
+          for (const pr of prs) {
+            allPrs.push(pr);
           }
 
           log.debug('poll: repo fetched', {
             repo: repoLabel,
             prs: prs.length,
-            failedCheckFetches,
             durationMs: Math.round(performance.now() - repoStart),
           });
         } catch (err) {
-          log.error('poll: repo failed', err, { repo: repoLabel });
+          log.error('poll: repo failed — keeping last-known PRs', err, { repo: repoLabel });
+          for (const prior of priorByKey.values()) {
+            const p = prior.pullRequest;
+            if (p.repoOwner === repo.owner && p.repoName === repo.name) {
+              allPrs.push(prior);
+            }
+          }
         }
       }
 
       log.info('poll cycle done', {
         totalPrs: allPrs.length,
         durationMs: Math.round(performance.now() - pollStart),
-        rateLimitRemaining: c.getRateLimit().remaining,
+        rateLimitRemaining: c.getGraphqlRateLimit().remaining,
       });
 
       return allPrs;
@@ -147,7 +128,14 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
       usePrStore.getState().setPullRequests(results);
       usePrStore.getState().setPollingState(false, new Date());
 
-      const rl = client.getRateLimit();
+      // REST and GraphQL are separate pools — surface whichever is tighter
+      // (polling spends GraphQL points; cold paths still spend REST).
+      const rest = client.getRateLimit();
+      const graphql = client.getGraphqlRateLimit();
+      const rl =
+        rest.remaining >= 0 && (graphql.remaining < 0 || rest.remaining < graphql.remaining)
+          ? rest
+          : graphql;
       if (rl.remaining >= 0) {
         usePrStore.getState().setRateLimit({
           remaining: rl.remaining,

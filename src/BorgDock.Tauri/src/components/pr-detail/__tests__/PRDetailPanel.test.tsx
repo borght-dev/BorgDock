@@ -92,14 +92,18 @@ interface FakePrOptions {
   passedCount?: number;
   failedCheckNames?: string[];
   skippedCount?: number;
+  checks?: CheckRun[];
 }
 
-function makePr(overrides: Partial<PullRequestWithChecks> & FakePrOptions = {}): PullRequestWithChecks {
+function makePr(
+  overrides: Partial<PullRequestWithChecks> & FakePrOptions = {},
+): PullRequestWithChecks {
   const {
     pendingCheckNames = [],
     passedCount = 0,
     failedCheckNames = [],
     skippedCount = 0,
+    checks: checksOverride,
     ...rest
   } = overrides;
 
@@ -117,6 +121,8 @@ function makePr(overrides: Partial<PullRequestWithChecks> & FakePrOptions = {}):
     }
     return { ...stubCheck, id: i + 1, name };
   });
+
+  const finalChecks = checksOverride ?? checks;
 
   return {
     pullRequest: {
@@ -147,11 +153,14 @@ function makePr(overrides: Partial<PullRequestWithChecks> & FakePrOptions = {}):
     },
     overallStatus: 'green',
     ...rest,
-    checks: rest.checks ?? checks,
     failedCheckNames,
+    failedCheckSuiteIds: finalChecks
+      .filter((c: CheckRun) => c.conclusion === 'failure' || c.conclusion === 'timed_out')
+      .map((c: CheckRun) => c.checkSuiteId),
     pendingCheckNames,
     passedCount,
     skippedCount,
+    totalCheckCount: finalChecks.length,
   };
 }
 
@@ -294,26 +303,66 @@ describe('PrDetailPanel', () => {
 
   describe('terminal state pills', () => {
     it('renders a Merged pill when mergedAt is set', () => {
-      render(<PrDetailPanel pr={makePr({ pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' } })} />);
+      render(
+        <PrDetailPanel
+          pr={makePr({
+            pullRequest: {
+              ...makePr().pullRequest,
+              state: 'closed',
+              mergedAt: '2026-05-06T12:00:00Z',
+            },
+          })}
+        />,
+      );
       const pill = screen.getByText('Merged');
       expect(pill.classList.contains('bd-pill--merged')).toBe(true);
     });
 
     it('renders a Closed pill when state is closed and not merged', () => {
-      render(<PrDetailPanel pr={makePr({ pullRequest: { ...makePr().pullRequest, state: 'closed', closedAt: '2026-05-06T12:00:00Z' } })} />);
+      render(
+        <PrDetailPanel
+          pr={makePr({
+            pullRequest: {
+              ...makePr().pullRequest,
+              state: 'closed',
+              closedAt: '2026-05-06T12:00:00Z',
+            },
+          })}
+        />,
+      );
       const pill = screen.getByText('Closed');
       expect(pill.classList.contains('bd-pill--neutral')).toBe(true);
     });
 
     it('suppresses the Mergeable pill in terminal state', () => {
-      render(<PrDetailPanel pr={makePr({ pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z', mergeable: true } })} />);
+      render(
+        <PrDetailPanel
+          pr={makePr({
+            pullRequest: {
+              ...makePr().pullRequest,
+              state: 'closed',
+              mergedAt: '2026-05-06T12:00:00Z',
+              mergeable: true,
+            },
+          })}
+        />,
+      );
       expect(screen.queryByText('Mergeable')).toBeNull();
     });
 
     it('suppresses the passed-count pill in terminal state', () => {
       const merged = makePr({
         pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' },
-        checks: [{ id: 1, name: 'ci', status: 'completed', conclusion: 'success', htmlUrl: '', checkSuiteId: 1 }],
+        checks: [
+          {
+            id: 1,
+            name: 'ci',
+            status: 'completed',
+            conclusion: 'success',
+            htmlUrl: '',
+            checkSuiteId: 1,
+          },
+        ],
         passedCount: 1,
       });
       render(<PrDetailPanel pr={merged} />);

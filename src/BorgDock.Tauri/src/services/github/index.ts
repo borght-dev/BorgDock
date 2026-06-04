@@ -9,6 +9,7 @@ export {
 export type { RateLimit } from './client';
 export { GitHubApiError, GitHubAuthError, GitHubClient, GitHubRateLimitError } from './client';
 export { mergePullRequest, postComment, submitReview, toggleDraft } from './mutations';
+export { POLL_OPEN_PRS_QUERY, pollOpenPrsAggregate } from './polling';
 export {
   aggregateReviewStatus,
   getClosedPRs,

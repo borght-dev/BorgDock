@@ -8,7 +8,7 @@ import {
   sortByPriority,
 } from '@/services/priority-scoring';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
-import type { PullRequestWithChecks } from '@/types';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 
 const log = createLogger('pr-store');
 
@@ -21,6 +21,9 @@ export interface PrRefreshedDetail {
   repo: string;
   number: number;
   pr: PullRequestWithChecks | null; // null = no longer accessible / removed
+  /** Raw check runs from the refresh fetch. Absent on optimistic updates
+   *  (e.g. mark-merged) — listeners keep their current runs in that case. */
+  checks?: CheckRun[];
 }
 
 export type PrFilter =
@@ -94,11 +97,7 @@ interface PrState extends DerivedCache {
    *  matching entry in {@link pullRequests}; closed/merged PRs are moved to
    *  {@link closedPullRequests}. Also broadcasts a `borgdock-pr-refreshed`
    *  DOM event for any window-local listeners (e.g. pop-out detail panels). */
-  refreshPr: (
-    owner: string,
-    repo: string,
-    number: number,
-  ) => Promise<PullRequestWithChecks | null>;
+  refreshPr: (owner: string, repo: string, number: number) => Promise<PullRequestWithChecks | null>;
   /** Synchronously mark a PR as merged in the local store and dispatch
    *  PR_REFRESHED_EVENT, without round-tripping through GitHub. Used by
    *  pr-actions to give the PR detail window an instant visual update
@@ -487,8 +486,11 @@ export const usePrStore = create<PrState>()((set, get) => ({
     if (!client) return null;
 
     let fresh: PullRequestWithChecks;
+    let freshChecks: CheckRun[];
     try {
-      fresh = await getPRWithChecks(client, owner, repo, number);
+      const result = await getPRWithChecks(client, owner, repo, number);
+      fresh = result.pr;
+      freshChecks = result.checks;
     } catch (err) {
       log.warn('refreshPr fetch failed', { error: String(err), owner, repo, number });
       return null;
@@ -541,7 +543,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
     });
 
     if (typeof document !== 'undefined') {
-      const detail: PrRefreshedDetail = { owner, repo, number, pr: fresh };
+      const detail: PrRefreshedDetail = { owner, repo, number, pr: fresh, checks: freshChecks };
       document.dispatchEvent(new CustomEvent<PrRefreshedDetail>(PR_REFRESHED_EVENT, { detail }));
     }
     return fresh;

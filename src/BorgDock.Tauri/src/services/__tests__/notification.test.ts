@@ -47,12 +47,13 @@ function makePrWithChecks(
   const { pr, ...rest } = overrides;
   return {
     pullRequest: makePr(pr),
-    checks: [],
     overallStatus: 'gray',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
     ...rest,
   };
 }

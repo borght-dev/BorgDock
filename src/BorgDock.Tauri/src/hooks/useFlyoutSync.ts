@@ -1,16 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { computeMergeScore } from '@/services/merge-score';
-import type { PrActionId } from '@/services/pr-action-resolver';
-import {
-  checkoutPrBranch,
-  mergePr,
-  openPrInBrowser,
-  rerunChecks,
-} from '@/services/pr-actions';
-import { usePrStore } from '@/stores/pr-store';
 import { sendOsNotification } from '@/services/notification';
+import type { PrActionId } from '@/services/pr-action-resolver';
+import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { openPrDetail } from '@/services/windows';
+import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -64,7 +59,7 @@ function buildFlyoutPayload(
       failedCheckNames: pr.failedCheckNames,
       pendingCount: pr.pendingCheckNames.length,
       passedCount: pr.passedCount,
-      totalChecks: pr.checks.length,
+      totalChecks: pr.totalCheckCount,
       commentCount: pr.pullRequest.commentCount,
       isMine: lowerUser ? pr.pullRequest.authorLogin.toLowerCase() === lowerUser : false,
       // Included so the flyout's context menu can copy locally without
@@ -441,14 +436,12 @@ export function useFlyoutSync() {
           // identically regardless of which surface fired the event.
           switch (action) {
             case 'rerun': {
-              const failedCheck = prw.checks.find(
-                (c) => c.conclusion === 'failure' || c.conclusion === 'timed_out',
-              );
-              if (failedCheck) {
+              const failedSuiteId = prw.failedCheckSuiteIds[0];
+              if (failedSuiteId !== undefined) {
                 void rerunChecks({
                   repoOwner: pr.repoOwner,
                   repoName: pr.repoName,
-                  checkSuiteId: failedCheck.checkSuiteId,
+                  checkSuiteId: failedSuiteId,
                 });
               }
               break;

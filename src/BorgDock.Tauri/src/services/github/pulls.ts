@@ -137,16 +137,18 @@ export async function getOpenPRs(
 /**
  * Targeted single-PR refetch — fetches detail + reviews + checks for one PR
  * and returns the same {@link PullRequestWithChecks} shape the polling loop
- * produces. Used by mutation handlers (merge / bypass / close / toggle draft /
- * submit review) to reflect server-truth immediately instead of waiting for
- * the next poll cycle.
+ * produces, plus the raw check runs (the PR shape only carries derived
+ * counts; the detail window's Checks tab needs the full runs). Used by
+ * mutation handlers (merge / bypass / close / toggle draft / submit review)
+ * to reflect server-truth immediately instead of waiting for the next poll
+ * cycle.
  */
 export async function getPRWithChecks(
   client: GitHubClient,
   owner: string,
   repo: string,
   number: number,
-): Promise<PullRequestWithChecks> {
+): Promise<{ pr: PullRequestWithChecks; checks: CheckRun[] }> {
   const [detail, reviews] = await Promise.all([
     client.get<GitHubPullRequestDto>(`repos/${owner}/${repo}/pulls/${number}`),
     client.get<GitHubReviewDto[]>(`repos/${owner}/${repo}/pulls/${number}/reviews`),
@@ -167,7 +169,7 @@ export async function getPRWithChecks(
     });
   }
 
-  return aggregatePrWithChecks(pr, checks);
+  return { pr: aggregatePrWithChecks(pr, checks), checks };
 }
 
 export async function getClosedPRs(

@@ -78,12 +78,13 @@ function makePr(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWith
       commitCount: 3,
       requestedReviewers: [],
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
     ...overrides,
   };
 }
@@ -98,7 +99,14 @@ describe('OverviewTab', () => {
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
-        claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+        claudeApi: {
+          model: 'claude-sonnet-4-6',
+          maxTokens: 1024,
+          prSummaryEnabled: true,
+          diffExplanationsEnabled: true,
+          reviewNudgePhrasingEnabled: false,
+          commitMessageSuggestionsEnabled: false,
+        },
       },
     });
   });
@@ -137,7 +145,14 @@ describe('OverviewTab', () => {
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
-        claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+        claudeApi: {
+          model: 'claude-sonnet-4-6',
+          maxTokens: 1024,
+          prSummaryEnabled: true,
+          diffExplanationsEnabled: true,
+          reviewNudgePhrasingEnabled: false,
+          commitMessageSuggestionsEnabled: false,
+        },
       },
     });
     render(<OverviewTab pr={makePr()} />);
@@ -150,7 +165,15 @@ describe('OverviewTab', () => {
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
-        claudeApi: { apiKey: 'sk-test', model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+        claudeApi: {
+          apiKey: 'sk-test',
+          model: 'claude-sonnet-4-6',
+          maxTokens: 1024,
+          prSummaryEnabled: true,
+          diffExplanationsEnabled: true,
+          reviewNudgePhrasingEnabled: false,
+          commitMessageSuggestionsEnabled: false,
+        },
       },
     });
     render(<OverviewTab pr={makePr()} />);
@@ -161,7 +184,15 @@ describe('OverviewTab', () => {
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
-        claudeApi: { apiKey: 'sk-test', model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
+        claudeApi: {
+          apiKey: 'sk-test',
+          model: 'claude-sonnet-4-6',
+          maxTokens: 1024,
+          prSummaryEnabled: true,
+          diffExplanationsEnabled: true,
+          reviewNudgePhrasingEnabled: false,
+          commitMessageSuggestionsEnabled: false,
+        },
       },
     });
 

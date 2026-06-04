@@ -1,8 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-
-import { usePrActions } from '../usePrActions';
 import type { PullRequestWithChecks } from '@/types';
+import { usePrActions } from '../usePrActions';
 
 vi.mock('@/services/pr-actions', () => ({
   mergePr: vi.fn(async () => true),
@@ -34,7 +33,9 @@ vi.mock('@/stores/settings-store', () => ({
   ),
 }));
 
-function fakePr(overrides: Partial<PullRequestWithChecks['pullRequest']> = {}): PullRequestWithChecks {
+function fakePr(
+  overrides: Partial<PullRequestWithChecks['pullRequest']> = {},
+): PullRequestWithChecks {
   return {
     pullRequest: {
       number: 1,
@@ -61,12 +62,13 @@ function fakePr(overrides: Partial<PullRequestWithChecks['pullRequest']> = {}): 
       requestedReviewers: [],
       ...overrides,
     },
-    checks: [],
     overallStatus: 'green',
     failedCheckNames: [],
+    failedCheckSuiteIds: [],
     pendingCheckNames: [],
     passedCount: 0,
     skippedCount: 0,
+    totalCheckCount: 0,
   };
 }
 
@@ -80,9 +82,7 @@ describe('usePrActions', () => {
   });
 
   it('isReady=true for green + approved + non-draft + mergeable', () => {
-    const { result } = renderHook(() =>
-      usePrActions(fakePr({ mergeable: true })),
-    );
+    const { result } = renderHook(() => usePrActions(fakePr({ mergeable: true })));
     expect(result.current.isReady).toBe(true);
   });
 

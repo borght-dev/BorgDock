@@ -165,14 +165,13 @@ describe('aggregatePrWithChecks', () => {
     expect(result.skippedCount).toBe(2);
   });
 
-  it('includes the PR and checks in the result', () => {
+  it('includes the PR in the result', () => {
     const pr = makePullRequest({ number: 99, title: 'My PR' });
     const checks = [makeCheckRun({ name: 'build', conclusion: 'success' })];
 
     const result = aggregatePrWithChecks(pr, checks);
 
     expect(result.pullRequest).toBe(pr);
-    expect(result.checks).toBe(checks);
   });
 
   it('handles empty checks array', () => {
@@ -182,8 +181,48 @@ describe('aggregatePrWithChecks', () => {
 
     expect(result.overallStatus).toBe('gray');
     expect(result.failedCheckNames).toEqual([]);
+    expect(result.failedCheckSuiteIds).toEqual([]);
     expect(result.pendingCheckNames).toEqual([]);
     expect(result.passedCount).toBe(0);
     expect(result.skippedCount).toBe(0);
+    expect(result.totalCheckCount).toBe(0);
+  });
+
+  it('returns failedCheckSuiteIds parallel to failedCheckNames', () => {
+    const pr = makePullRequest();
+    const checks = [
+      makeCheckRun({ name: 'build', conclusion: 'failure', checkSuiteId: 11 }),
+      makeCheckRun({ id: 2, name: 'test', conclusion: 'success', checkSuiteId: 22 }),
+      makeCheckRun({ id: 3, name: 'deploy', conclusion: 'timed_out', checkSuiteId: 33 }),
+    ];
+
+    const result = aggregatePrWithChecks(pr, checks);
+
+    expect(result.failedCheckNames).toEqual(['build', 'deploy']);
+    expect(result.failedCheckSuiteIds).toEqual([11, 33]);
+  });
+
+  it('drops failedCheckSuiteIds entries with non-positive suite id', () => {
+    const pr = makePullRequest();
+    const checks = [
+      makeCheckRun({ name: 'orphan', conclusion: 'failure', checkSuiteId: 0 }),
+      makeCheckRun({ id: 2, name: 'real', conclusion: 'failure', checkSuiteId: 99 }),
+    ];
+
+    const result = aggregatePrWithChecks(pr, checks);
+
+    expect(result.failedCheckNames).toEqual(['orphan', 'real']);
+    expect(result.failedCheckSuiteIds).toEqual([99]);
+  });
+
+  it('returns totalCheckCount equal to the input length', () => {
+    const pr = makePullRequest();
+    const checks = [
+      makeCheckRun({ name: 'a', conclusion: 'success' }),
+      makeCheckRun({ id: 2, name: 'b', conclusion: 'failure' }),
+      makeCheckRun({ id: 3, name: 'c', conclusion: 'skipped' }),
+    ];
+
+    expect(aggregatePrWithChecks(pr, checks).totalCheckCount).toBe(3);
   });
 });
