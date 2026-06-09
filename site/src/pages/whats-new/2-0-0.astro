@@ -1,0 +1,337 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import { SectionHeading } from '~/components/SectionHeading';
+
+// Hero screenshots are captured from Storybook into the app repo and copied to
+// this site's public/ dir. See scripts/screenshot-stories.mjs in the app.
+const img = (slug: string) => `/whats-new/2.0.0/${slug}.png`;
+
+const toc = [
+  { id: 'agent-overview', label: 'Agent Overview' },
+  { id: 'main-window', label: 'From sidebar to a real window' },
+  { id: 'settings', label: 'Settings, reimagined' },
+  { id: 'pr-detail', label: 'A better PR detail' },
+  { id: 'work-items', label: 'Work Items, a real workspace' },
+  { id: 'sql', label: 'Faster, honest SQL' },
+  { id: 'notifications', label: 'Notifications you can act on' },
+  { id: 'other', label: 'Other noteworthy changes' },
+  { id: 'breaking', label: 'Breaking changes' },
+];
+
+const figStyle =
+  'width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--color-subtle-border, rgba(128,128,128,0.22));box-shadow:0 18px 50px -24px rgba(0,0,0,0.55);';
+const capStyle =
+  'margin-top:10px;font-size:13px;color:var(--color-text-muted);text-align:center;';
+const figWrap = 'margin:28px 0 36px;';
+const h2Style =
+  'font-size:26px;font-weight:650;letter-spacing:-0.01em;color:var(--color-text-primary);margin:0 0 6px;scroll-margin-top:90px;';
+const eyebrowStyle =
+  'font-family:var(--font-mono,monospace);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--color-accent);margin-bottom:8px;';
+const pStyle =
+  'font-size:16px;line-height:1.7;color:var(--color-text-secondary);margin:0 0 16px;';
+const liStyle = 'font-size:15px;line-height:1.6;color:var(--color-text-secondary);margin:0 0 8px;';
+const sectionWrap = 'max-width:820px;margin:0 auto;padding:8px 0 18px;';
+---
+
+<Layout title="BorgDock 2.0 — From sidebar to command center">
+  <SiteNav current="changelog" />
+
+  <section class="section section--first" style="max-width:820px;">
+    <SectionHeading
+      eyebrow="Release · June 9, 2026"
+      title={{ lead: 'BorgDock ', em: '2.0' }}
+      lede="The biggest release yet. The docked sidebar grew up into a real window, a brand-new Agent Overview keeps an eye on every Claude Code session you run, and just about every screen — Settings, PR detail, Work Items, SQL — got rebuilt. Here's the tour."
+    />
+    <p style={`${pStyle}margin-top:24px;`}>
+      If you've been running a handful of Claude Code agents at once, juggling pull requests,
+      and bouncing between Azure DevOps and SQL all day — this one's for you. We pulled BorgDock
+      out of the corner of your screen, gave it a proper home, and taught it to watch your agents
+      so you don't have to. Let's dig in.
+    </p>
+
+    <nav
+      style="margin:28px 0 0;padding:18px 20px;border-radius:14px;border:1px solid var(--color-subtle-border, rgba(128,128,128,0.22));"
+    >
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--color-text-muted);margin-bottom:10px;">
+        In this release
+      </div>
+      <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;">
+        {
+          toc.map((t) => (
+            <li>
+              <a href={`#${t.id}`} style="font-size:14px;color:var(--color-accent);text-decoration:none;">
+                {t.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </section>
+
+  {/* ── Agent Overview ─────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>✨ The big one</div>
+    <h2 id="agent-overview" style={h2Style}>Agent Overview</h2>
+    <p style={pStyle}>
+      Run more than one Claude Code session at a time and you know the problem: a dozen terminals,
+      and you can never remember which one is mid-task, which one finished, and which one is quietly
+      waiting for you to answer a question. <strong>Agent Overview</strong> is a brand-new window
+      that turns all of that into one live dashboard. Every session is a card that tells you what
+      it's doing right now — <em>"Editing AgentCard.tsx"</em>, <em>"Running npm test"</em> — whether
+      it's working, running a tool, just finished, idle, or waiting on you, and how much of its
+      context window it has used. Open it from the tray, press <code>Ctrl+Win+Shift+A</code>, or have
+      it pop up automatically when BorgDock starts.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('agent-overview')} alt="The Agent Overview dashboard" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Every Claude Code session, grouped by repo — working, finished, idle, and waiting on you.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      The part we use most: sessions that are <strong>waiting on you</strong> float to the top in a
+      yellow alert rail, and the title bar shows an age that turns amber after three minutes and red
+      after ten. Step away and BorgDock sends a desktop notification — "Claude needs your input" —
+      with a button that raises the actual terminal running that session. No more hunting.
+    </p>
+    <p style={pStyle}>
+      Click any session and the <strong>Inspector</strong> opens, showing exactly what that agent
+      touched this turn: the files it edited, wrote, or read, each with a diffstat and an expandable
+      inline diff, plus its last question and your last reply. From there it's one click to focus the
+      terminal, snooze the card for five minutes, or mark it seen.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('agent-overview-inspector')} alt="The session Inspector showing per-turn file diffs" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        The Inspector: what the agent changed this turn, its last message, and one-click actions.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      Turning it on takes a single checkbox in Settings → Agent Overview. BorgDock wires a small
+      OpenTelemetry block into your <code>~/.claude/settings.json</code> (backing up the original
+      first) so Claude Code streams events over loopback — <strong>nothing ever leaves your
+      machine</strong> — and removes only what it added when you switch it off.
+    </p>
+  </section>
+
+  {/* ── Main window ────────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>🪟 A real window</div>
+    <h2 id="main-window" style={h2Style}>From sidebar to a real window</h2>
+    <p style={pStyle}>
+      BorgDock no longer clamps itself to the edge of your screen and slides away the moment you click
+      elsewhere. It's a normal window now — drag it anywhere, resize it, minimize and maximize it, drop
+      it on a second monitor — and it remembers exactly where and how you left it. Summon it from
+      anywhere with <code>Ctrl+Win+Shift+G</code> (one key shows, focuses, or hides it), and closing the
+      window tucks it to the tray so polling keeps running in the background.
+    </p>
+    <p style={pStyle}>
+      Inside, the single scrolling list became three tabs right in the title bar: <strong>Focus</strong>,
+      <strong> PRs</strong>, and <strong>Work Items</strong>.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('main-window-prs')} alt="The main BorgDock window on the PRs tab" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        A real, resizable window. The PRs tab keeps your review queue pinned and groups the rest by repo.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      The new <strong>Focus</strong> tab is the one that earns its keep. It opens with
+      "N pull requests need your attention," ranked by readiness, CI state, and review signals, with a
+      one-click Start Quick Review to blast through your queue. Each PR is a clean ranked row — its
+      position, a score ring, why it surfaced, and a live status — and when nothing needs you, you get
+      calm instead of noise.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('main-window-focus')} alt="The Focus tab ranking the PRs that need attention" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        The Focus tab tells you what to look at next — ranked, with one-click Quick Review.
+      </figcaption>
+    </figure>
+  </section>
+
+  {/* ── Settings ───────────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>⚙️ Reimagined</div>
+    <h2 id="settings" style={h2Style}>Settings, reimagined</h2>
+    <p style={pStyle}>
+      Settings moved out of the cramped flyout into a roomy, resizable window with a navigation rail
+      grouped into Data sources, Application, AI, and System — and a breadcrumb that always tells you
+      where you are. Every section was rewritten on a fresh set of controls.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('settings-window')} alt="The dedicated Settings window" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        A dedicated Settings window with a grouped rail and live GitHub rate-limit gauges.
+      </figcaption>
+    </figure>
+    <ul style="margin:0 0 16px;padding-left:20px;">
+      <li style={liStyle}><strong>Search every setting</strong> — press <code>Ctrl+K</code>, type, and jump straight to the field with a highlight pulse.</li>
+      <li style={liStyle}><strong>Maintenance &amp; diagnostics</strong> — clear the cache, prune merged worktrees, or run a one-click self-test of your GitHub auth, Azure CLI, and cache.</li>
+      <li style={liStyle}><strong>Scan a folder for repos</strong> — point BorgDock at a parent folder and it discovers every git repo and reads its remote automatically.</li>
+      <li style={liStyle}><strong>See your GitHub API budget</strong> — separate live gauges for the REST and GraphQL pools, so you know your poll interval is sustainable.</li>
+    </ul>
+    <figure style={figWrap}>
+      <img src={img('settings-search')} alt="Searching settings with Ctrl+K" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Search across every field by label, hint, and keyword — then jump right to it.
+      </figcaption>
+    </figure>
+  </section>
+
+  {/* ── PR detail ──────────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>🔀 Pull requests</div>
+    <h2 id="pr-detail" style={h2Style}>A better PR detail</h2>
+    <p style={pStyle}>
+      The PR detail window got a top-to-bottom redesign. A <strong>sticky action bar</strong> keeps
+      Merge, Open in Browser, Copy Branch, Checkout, Mark Draft, Bypass, and Close PR available from
+      any tab, and a persistent checks strip shows whether your builds are running, failing, or green —
+      with a tap to jump to the Checks tab.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('pr-detail')} alt="PR detail with the sticky action bar and checks strip" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Every PR action in one always-visible toolbar, with a live checks summary above the tabs.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      Reviews, comments, and code-anchored threads now live together in one chronological
+      <strong> Discussion</strong> timeline, with filter chips to narrow to just reviews, comments, or
+      on-code threads — and one-click resolve. You can write and submit a review (Approve, Comment, or
+      Request changes) without leaving the window, right next to the diff, and code threads appear
+      inline beneath the exact line they're about.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('pr-discussion')} alt="The unified Discussion tab" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        One Discussion timeline — reviews, comments, and code threads, with resolve built in.
+      </figcaption>
+    </figure>
+  </section>
+
+  {/* ── Work Items ─────────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>📋 Azure DevOps</div>
+    <h2 id="work-items" style={h2Style}>Work Items, a real workspace</h2>
+    <p style={pStyle}>
+      The Work Items tab is now a full three-pane workspace: your queries on the left, matching items
+      in the middle, and the full work item on the right. Click the title to rename it, click any chip
+      to change state, priority, assignee, or iteration — and your edits save themselves a moment later
+      with a quiet "Saved." No Save button, no modal.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('main-window-workitems')} alt="The three-pane Work Items workspace" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Queries, list, and an auto-saving editor — triage ADO work the way you triage PRs.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      And the <code>Ctrl+F9</code> palette became a proper power-user surface: type naturally —
+      <code>@koen</code>, <code>state:active</code>, <code>type:bug</code> — and each operator turns
+      into a live chip while the list narrows. Filter chips and group-by buttons slice a long query in
+      a second, and every row is packed with signal.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('workitem-palette')} alt="The dense, filterable Work Item palette" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Chip-based filtering and grouping, with dense rows that show priority, state, and assignee.
+      </figcaption>
+    </figure>
+  </section>
+
+  {/* ── SQL ────────────────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>🗄️ SQL</div>
+    <h2 id="sql" style={h2Style}>Faster, honest SQL</h2>
+    <p style={pStyle}>
+      The results grid is now virtualized, so a query that returns ten thousand rows opens, scrolls,
+      and clicks as snappily as one that returns ten — and the old 30-second query cap is gone, so slow
+      reports finally get the time they need.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('sql-results')} alt="Virtualized SQL results grid" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Virtualized results — huge result sets scroll and click instantly.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      Run a write — an <code>UPDATE</code>, <code>INSERT</code>, <code>DELETE</code>, <code>MERGE</code>,
+      or DDL — and BorgDock now tells you plainly how many rows it changed instead of showing an empty
+      grid: a green "42 affected" pill and "42 rows affected · 18 ms."
+    </p>
+    <figure style={figWrap}>
+      <img src={img('sql-rows-affected')} alt="Rows-affected feedback for a SQL write" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Honest row counts for writes — instant confirmation your statement did what you expected.
+      </figcaption>
+    </figure>
+  </section>
+
+  {/* ── Notifications ──────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>🔔 Notifications</div>
+    <h2 id="notifications" style={h2Style}>Notifications you can act on</h2>
+    <p style={pStyle}>
+      Every alert now arrives as one polished toast near the tray, with a severity stripe, a clear
+      title and body, and one-tap actions — Open PR, Fix with Claude, Merge, Start review. Click the
+      card to jump to the PR, hover to pause the auto-hide, dismiss with the X. Up to three stack at
+      once.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('notify-toasts')} alt="Interactive notification toasts" loading="lazy" style={figStyle} />
+      <figcaption style={capStyle}>
+        Toasts you can act on — Fix with Claude, Start review, Merge — right from the corner.
+      </figcaption>
+    </figure>
+    <p style={pStyle}>
+      And when one of your PRs lands, BorgDock celebrates with you: a gold "Merged" toast with a
+      shimmer, a glow, and a little rocket — plus an optional tada sound you can toggle in Settings.
+    </p>
+    <figure style={figWrap}>
+      <img src={img('notify-merge-celebration')} alt="The merge celebration toast" loading="lazy" style="width:100%;max-width:520px;height:auto;display:block;margin:0 auto;border-radius:14px;border:1px solid var(--color-subtle-border, rgba(128,128,128,0.22));box-shadow:0 18px 50px -24px rgba(0,0,0,0.55);" />
+      <figcaption style={capStyle}>A little celebration when your work ships.</figcaption>
+    </figure>
+  </section>
+
+  {/* ── Other changes ──────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>✅ Also in 2.0</div>
+    <h2 id="other" style={h2Style}>Other noteworthy changes</h2>
+    <ul style="margin:0 0 16px;padding-left:20px;">
+      <li style={liStyle}>Pop-out windows open clean (no flash of a blank window) and reopen at the size and position you left them.</li>
+      <li style={liStyle}>A refreshed BorgDock app icon — a sharper purple-gradient pulse-waveform mark.</li>
+      <li style={liStyle}>The tray opens the main window on left-click and gained a direct Agent Overview entry.</li>
+      <li style={liStyle}>Smarter palette and SQL hotkeys (<code>Ctrl+F7</code>/<code>F8</code>/<code>F9</code>/<code>F10</code>) that hide, raise, or open without wiping your input — and open faster.</li>
+      <li style={liStyle}>Markdown links in a PR open in your OS browser, not the in-app webview.</li>
+      <li style={liStyle}>Cancelled CI checks no longer drag a PR red, and an "In progress" group is pinned to the top of the Checks tab.</li>
+      <li style={liStyle}>Run-at-startup actually registers with the OS now, and a Test notification button confirms toasts work.</li>
+    </ul>
+    <p style={`${pStyle}font-size:14px;`}>
+      Under the hood, the whole frontend moved to a single bun workspace, picked up the React Compiler,
+      and updated to Vite 8, Vitest 4, Storybook 10, and TypeScript 6 — and every window now has a full
+      Storybook catalog, which is exactly how the screenshots on this page were captured.
+    </p>
+  </section>
+
+  {/* ── Breaking ───────────────────────────────────────────────────── */}
+  <section class="section" style={sectionWrap}>
+    <div style={eyebrowStyle}>⚠️ Heads-up</div>
+    <h2 id="breaking" style={h2Style}>Breaking changes</h2>
+    <p style={pStyle}>
+      BorgDock 2.0 replaces the docked, auto-hiding sidebar with a regular window you summon with a
+      hotkey (<code>Ctrl+Win+Shift+G</code> by default). The old <em>sidebar edge / mode / width</em>
+      settings are gone — everything they did is now handled by normal window management. There's
+      nothing to migrate; just press the hotkey and BorgDock appears.
+    </p>
+    <div style="margin-top:32px;display:flex;gap:14px;flex-wrap:wrap;">
+      <a href="/download" class="site-nav__cta" style="text-decoration:none;">Download BorgDock 2.0</a>
+      <a href="/changelog" style="align-self:center;font-size:14px;color:var(--color-accent);text-decoration:none;">See the full changelog →</a>
+    </div>
+  </section>
+
+  <SiteFooter />
+</Layout>

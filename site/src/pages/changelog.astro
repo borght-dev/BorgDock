@@ -1,4 +1,6 @@
 ---
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -8,79 +10,79 @@ type Kind = 'new' | 'improved' | 'fixed';
 
 interface Release {
   v: string;
-  date: string;
+  date: string; // raw ISO "YYYY-MM-DD"
   groups: Partial<Record<Kind, string[]>>;
 }
 
-const releases: Release[] = [
-  {
-    v: '0.14.0',
-    date: 'Apr 18, 2026',
-    groups: {
-      new: [
-        'File Palette now searches across every cloned repo under ~/src',
-        'Cross-repo results preview with full syntax highlighting',
-      ],
-      improved: [
-        'Fuzzy ranking weights path segments over basename by 1.4×',
-        'Palette opens in <16ms on 20k-file corpora',
-      ],
-    },
-  },
-  {
-    v: '0.13.2',
-    date: 'Apr 04, 2026',
-    groups: {
-      improved: [
-        'Priority scoring: eight-signal model replaces the old 5-signal one',
-        '40% fewer false-urgent PRs on queues >30',
-      ],
-      fixed: ['Sidebar no longer loses position after display-sleep on multi-monitor macOS'],
-    },
-  },
-  {
-    v: '0.13.0',
-    date: 'Mar 22, 2026',
-    groups: {
-      new: ['Quick Review mode — one keybinding to approve / request-changes / skip a queue'],
-      improved: ['Status bar shows sync lag when polling stalls'],
-    },
-  },
-  {
-    v: '0.12.1',
-    date: 'Mar 08, 2026',
-    groups: {
-      fixed: [
-        'CI log parser: surface the FIRST TypeScript error, not the last (it was dropping root causes)',
-        'Windows: tray icon resets to default on theme switch',
-      ],
-    },
-  },
-  {
-    v: '0.12.0',
-    date: 'Feb 24, 2026',
-    groups: {
-      new: [
-        'Azure DevOps work-item browser',
-        'Auto-link PRs to work items by commit message or branch prefix',
-      ],
-    },
-  },
-  {
-    v: '0.11.0',
-    date: 'Feb 10, 2026',
-    groups: {
-      new: ['SQL Server query window with saved connections'],
-      improved: ['Floating badge: five selectable styles'],
-    },
-  },
-];
+// Sourced from the real /CHANGELOG.md (the single source of truth that also
+// feeds the in-app "What's new?" window) — no more hand-maintained fiction.
+const KIND_MAP: Record<string, Kind> = {
+  'New Features': 'new',
+  Improvements: 'improved',
+  'Bug Fixes': 'fixed',
+};
 
+function stripInline(s: string): string {
+  return s
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
+    .replace(/`([^`]+)`/g, '$1') // inline code
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseChangelog(md: string): Release[] {
+  const lines = md.split(/\r?\n/);
+  const releases: Release[] = [];
+  let cur: Release | null = null;
+  let kind: Kind | null = null;
+
+  for (const line of lines) {
+    const v = line.match(/^##\s+(\d+\.\d+\.\d+)\s+—\s+(\d{4}-\d{2}-\d{2})/);
+    if (v) {
+      cur = { v: v[1], date: v[2], groups: {} };
+      releases.push(cur);
+      kind = null;
+      continue;
+    }
+    const s = line.match(/^###\s+(.+?)\s*$/);
+    if (s) {
+      kind = KIND_MAP[s[1]] ?? null;
+      continue;
+    }
+    if (!cur || !kind) continue;
+    // Bold-title bullet → just the title; plain bullet → the (stripped) text.
+    const t = line.match(/^-\s+\*\*(.+?)\*\*\s*—\s+/);
+    const p = line.match(/^-\s+(.+)$/);
+    if (t) {
+      (cur.groups[kind] ||= []).push(stripInline(t[1]));
+    } else if (p) {
+      (cur.groups[kind] ||= []).push(stripInline(p[1]));
+    }
+  }
+  return releases;
+}
+
+const changelogPath = fileURLToPath(new URL('../../../CHANGELOG.md', import.meta.url));
+const releases = parseChangelog(fs.readFileSync(changelogPath, 'utf8'));
+const latest = releases[0];
+
+// Releases that have a dedicated, screenshot-rich write-up.
+const FEATURED: Record<string, string> = { '2.0.0': '/whats-new/2-0-0' };
+
+function fmtDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[m - 1]} ${String(d).padStart(2, '0')}, ${y}`;
+}
+
+const MAX_PER_KIND = 8;
 const kindColor: Record<Kind, { fg: string; bg: string }> = {
   new: { fg: 'var(--color-accent)', bg: 'var(--color-accent-subtle)' },
   improved: { fg: 'var(--color-status-green)', bg: 'var(--color-success-badge-bg)' },
   fixed: { fg: 'var(--color-status-yellow)', bg: 'var(--color-warning-badge-bg)' },
 };
+const kindOrder: Kind[] = ['new', 'improved', 'fixed'];
 ---
 
 <Layout title="Changelog — BorgDock">
@@ -90,11 +92,41 @@ const kindColor: Record<Kind, { fg: string; bg: string }> = {
     <SectionHeading
       eyebrow="Changelog"
       title={{ lead: 'Everything, ', em: 'with a changelog.' }}
-      lede="New release every two weeks, on average. RSS available at the bottom of the page."
+      lede="Every user-facing change, straight from the release notes that ship inside the app."
     />
   </section>
 
-  <section class="section" style="max-width: 820px; margin: 56px auto 0;">
+  {/* Featured latest release with a dedicated write-up. */}
+  {
+    latest && FEATURED[latest.v] && (
+      <section class="section" style="max-width: 820px; margin: 40px auto 0;">
+        <a
+          href={FEATURED[latest.v]}
+          style="display:block;text-decoration:none;border-radius:16px;overflow:hidden;border:1px solid var(--color-subtle-border, rgba(128,128,128,0.22));"
+        >
+          <img
+            src="/whats-new/2.0.0/agent-overview.png"
+            alt="BorgDock 2.0"
+            loading="lazy"
+            style="width:100%;height:auto;display:block;border-bottom:1px solid var(--color-subtle-border, rgba(128,128,128,0.22));"
+          />
+          <div style="padding:18px 20px;">
+            <div style="font-family:var(--font-mono,monospace);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--color-accent);margin-bottom:6px;">
+              Latest release · v{latest.v}
+            </div>
+            <div style="font-size:20px;font-weight:650;color:var(--color-text-primary);margin-bottom:4px;">
+              BorgDock 2.0 — From sidebar to command center
+            </div>
+            <div style="font-size:14px;color:var(--color-text-muted);">
+              Read the full release post with screenshots →
+            </div>
+          </div>
+        </a>
+      </section>
+    )
+  }
+
+  <section class="section" style="max-width: 820px; margin: 48px auto 0;">
     {
       releases.map((r) => (
         <div class="changelog-row">
@@ -103,31 +135,42 @@ const kindColor: Record<Kind, { fg: string; bg: string }> = {
               v{r.v}
             </div>
             <div style="font-size: 11px; color: var(--color-text-muted); margin-top: 4px;">
-              {r.date}
+              {fmtDate(r.date)}
             </div>
+            {FEATURED[r.v] && (
+              <a href={FEATURED[r.v]} style="display:inline-block;margin-top:8px;font-size:12px;color:var(--color-accent);text-decoration:none;">
+                Read more →
+              </a>
+            )}
           </div>
           <div>
-            {
-              (Object.entries(r.groups) as [Kind, string[]][]).map(([kind, items]) => {
+            {kindOrder
+              .filter((kind) => (r.groups[kind]?.length ?? 0) > 0)
+              .map((kind) => {
+                const items = r.groups[kind] ?? [];
+                const shown = items.slice(0, MAX_PER_KIND);
+                const extra = items.length - shown.length;
                 const { fg, bg } = kindColor[kind];
                 return (
                   <div style="margin-bottom: 20px;">
-                    <div
-                      style={`display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; color: ${fg}; background: ${bg}; border: 1px solid ${fg}33; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px;`}
-                    >
+                    <div style={`display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; color: ${fg}; background: ${bg}; border: 1px solid ${fg}33; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px;`}>
                       {kind}
                     </div>
                     <ul style="margin: 0; padding-left: 18px; display: grid; gap: 6px;">
-                      {items.map((it) => (
+                      {shown.map((it) => (
                         <li style="font-size: 14px; line-height: 1.55; color: var(--color-text-secondary);">
                           {it}
                         </li>
                       ))}
+                      {extra > 0 && (
+                        <li style="font-size: 13px; line-height: 1.55; color: var(--color-text-muted); list-style: none; margin-left: -18px;">
+                          + {extra} more
+                        </li>
+                      )}
                     </ul>
                   </div>
                 );
-              })
-            }
+              })}
           </div>
         </div>
       ))
