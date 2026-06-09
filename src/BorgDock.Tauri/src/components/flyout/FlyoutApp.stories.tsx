@@ -367,6 +367,35 @@ export const ToastSeverityError = story(
   toastFromIdle([makeToast({ id: 'sev-err', severity: 'error', title: 'Build failed' })]),
 );
 
+// 'merged' is a first-class severity with bespoke gold/celebration styling.
+export const ToastMerged = story(
+  toastFromIdle([
+    makeToast({
+      id: 'merged-1',
+      severity: 'merged',
+      title: 'Pull request merged',
+      body: 'Agent Overview: live Claude Code session dashboard landed on main.',
+      prOwner: 'borght-dev',
+      prRepo: 'BorgDock',
+      prNumber: 482,
+      actions: [{ label: 'View on GitHub', action: 'open-url' }],
+    }),
+  ]),
+);
+
+// Agent "needs you" toast with the focus-pane action (raises the terminal).
+export const ToastAgentNeedsInput = story(
+  toastFromIdle([
+    makeToast({
+      id: 'agent-1',
+      severity: 'info',
+      title: 'Claude needs your input',
+      body: 'BorgDock/agent-overview has been waiting 34s for your response.',
+      actions: [{ label: 'Focus pane', action: 'focus-pane' }],
+    }),
+  ]),
+);
+
 // ---------------------------------------------------------------------------
 // Toast — per-action variant
 // ---------------------------------------------------------------------------

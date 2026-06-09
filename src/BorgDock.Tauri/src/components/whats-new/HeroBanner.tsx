@@ -67,12 +67,17 @@ interface Props {
 export function HeroBanner({ hero, kind }: Props) {
   const [errored, setErrored] = useState(false);
   if (hero && !errored) {
+    // Heroes are now full screenshots captured from Storybook (≈16:10), not the
+    // old 450×74 banner strips. Render them at their natural ratio, full card
+    // width, capped in height so a tall capture can't dominate the card. Legacy
+    // wide banner images (≈6:1) still look right under the same `h-auto` rule.
     return (
-      <div className="h-[74px] overflow-hidden rounded-md border border-[var(--color-subtle-border)] mb-2.5">
+      <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] shadow-sm">
         <img
           src={hero.src}
           alt={hero.alt}
-          className="h-full w-full object-cover"
+          loading="lazy"
+          className="block h-auto max-h-[460px] w-full object-contain"
           onError={() => flushSync(() => setErrored(true))}
         />
       </div>

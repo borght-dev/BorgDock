@@ -1,0 +1,48 @@
+[
+  { "slug": "agent-overview", "storyId": "agent-overview-agentoverviewapp--all-states", "viewport": { "width": 1320, "height": 880 }, "delay": 1100 },
+  { "slug": "agent-overview-awaiting", "storyId": "agent-overview-agentoverviewapp--awaiting-across-repos", "viewport": { "width": 1320, "height": 760 }, "delay": 1100 },
+  { "slug": "agent-overview-inspector", "storyId": "agent-overview-agentoverviewapp--inspector-pinned", "viewport": { "width": 940, "height": 560 }, "delay": 3500 },
+  { "slug": "agent-overview-grouping", "storyId": "agent-overview-agentoverviewapp--heavy-load-many-sessions", "viewport": { "width": 1320, "height": 880 }, "delay": 1100 },
+  { "slug": "agent-telemetry-setup", "storyId": "settings-agentoverviewsection--enabled-running", "viewport": { "width": 1000, "height": 720 }, "delay": 700 },
+
+  { "slug": "main-window-prs", "storyId": "main-window-mainwindow--prs-tab", "viewport": { "width": 1400, "height": 900 }, "delay": 900 },
+  { "slug": "main-window-focus", "storyId": "main-window-mainwindow--focus-tab", "viewport": { "width": 1400, "height": 660 }, "delay": 900 },
+  { "slug": "main-window-workitems", "storyId": "main-window-mainwindow--work-items-tab", "viewport": { "width": 1400, "height": 900 }, "delay": 1300 },
+
+  { "slug": "settings-window", "storyId": "settings-settingsapp--default", "viewport": { "width": 1120, "height": 800 }, "delay": 900 },
+  { "slug": "settings-search", "storyId": "settings-settingsapp--rail-search-active", "viewport": { "width": 1120, "height": 800 }, "delay": 1000 },
+  { "slug": "settings-maintenance", "storyId": "settings-maintenancesection--self-test-completed", "viewport": { "width": 1000, "height": 780 }, "delay": 800 },
+  { "slug": "settings-rate-limit", "storyId": "settings-githubsection--authenticated", "viewport": { "width": 1000, "height": 760 }, "delay": 800 },
+  { "slug": "settings-repo-scan", "storyId": "settings-reposection--scan-results-with-candidates", "viewport": { "width": 1000, "height": 780 }, "delay": 800 },
+  { "slug": "settings-updates", "storyId": "settings-updatesection--update-available", "viewport": { "width": 1000, "height": 760 }, "delay": 800 },
+  { "slug": "settings-sql-connection", "storyId": "settings-dialogs-connectioneditordialog--edit-existing", "viewport": { "width": 1000, "height": 760 }, "delay": 800 },
+
+  { "slug": "pr-detail", "storyId": "pr-detail-prdetailpanel--default", "viewport": { "width": 940, "height": 980 }, "delay": 900 },
+  { "slug": "pr-discussion", "storyId": "pr-detail-discussiontab--mixed-threads-resolved-and-open", "viewport": { "width": 940, "height": 980 }, "delay": 900 },
+  { "slug": "pr-composer", "storyId": "pr-detail-reviewcomposer--request-changes", "viewport": { "width": 940, "height": 760 }, "delay": 800 },
+  { "slug": "pr-inline-thread", "storyId": "pr-detail-filestab--with-inline-thread", "viewport": { "width": 940, "height": 980 }, "delay": 1000 },
+  { "slug": "pr-merged", "storyId": "pr-detail-prdetailpanel--merged", "viewport": { "width": 940, "height": 980 }, "delay": 900 },
+
+  { "slug": "workitem-palette", "storyId": "windows-workitempaletteapp--browse-full-sections", "viewport": { "width": 1000, "height": 760 }, "delay": 900 },
+
+  { "slug": "sql-results", "storyId": "sql-sqlapp--result-truncated", "viewport": { "width": 1240, "height": 820 }, "delay": 1000 },
+  { "slug": "sql-rows-affected", "storyId": "sql-sqlapp--result-success-update", "viewport": { "width": 1240, "height": 820 }, "delay": 1000 },
+
+  { "slug": "file-palette", "storyId": "file-palette-filepaletteapp--filename-search-active", "viewport": { "width": 1320, "height": 820 }, "delay": 1000 },
+  { "slug": "file-palette-preview", "storyId": "file-palette-filepaletteapp--preview-file-ok", "viewport": { "width": 1320, "height": 820 }, "delay": 1000 },
+
+  { "slug": "notify-toasts", "storyId": "flyout-flyoutapp--initializing", "viewport": { "width": 620, "height": 760 }, "delay": 300, "seedIdle": true, "emitSettle": 900,
+    "selector": "div:has(> [data-testid^=\"flyout-toast-card-\"])",
+    "emit": [
+      { "channel": "flyout-toast", "payload": { "id": "t-red", "severity": "error", "title": "Build failed", "body": "ci/test failed on borght-dev/BorgDock #471.", "prOwner": "borght-dev", "prRepo": "BorgDock", "prNumber": 471, "actions": [{ "label": "Fix with Claude", "action": "fix-pr" }, { "label": "Open PR", "action": "open-pr" }] } },
+      { "channel": "flyout-toast", "payload": { "id": "t-amber", "severity": "warning", "title": "Review requested", "body": "mira asked you to review GraphQL polling — one call per repo.", "prOwner": "borght-dev", "prRepo": "BorgDock", "prNumber": 479, "actions": [{ "label": "Start review", "action": "start-review" }] } },
+      { "channel": "flyout-toast", "payload": { "id": "t-green", "severity": "success", "title": "All checks passed", "body": "Agent Overview dashboard is green and ready to merge.", "prOwner": "borght-dev", "prRepo": "BorgDock", "prNumber": 482, "actions": [{ "label": "Merge", "action": "merge-pr" }] } }
+    ] },
+  { "slug": "notify-merge-celebration", "storyId": "flyout-flyoutapp--initializing", "viewport": { "width": 620, "height": 520 }, "delay": 300, "seedIdle": true, "emitSettle": 1000,
+    "selector": "div:has(> [data-testid^=\"flyout-toast-card-\"])",
+    "emit": { "channel": "flyout-toast", "payload": { "id": "merged-1", "severity": "merged", "title": "Pull request merged", "body": "Agent Overview: live Claude Code session dashboard landed on main.", "prOwner": "borght-dev", "prRepo": "BorgDock", "prNumber": 482, "actions": [{ "label": "View on GitHub", "action": "open-url" }] } } },
+  { "slug": "notify-agent-toast", "storyId": "flyout-flyoutapp--initializing", "viewport": { "width": 620, "height": 480 }, "delay": 300, "seedIdle": true, "emitSettle": 800,
+    "selector": "div:has(> [data-testid^=\"flyout-toast-card-\"])",
+    "emit": { "channel": "flyout-toast", "payload": { "id": "agent-1", "severity": "info", "title": "Claude needs your input", "body": "BorgDock/agent-overview has been waiting 34s for your response.", "actions": [{ "label": "Focus pane", "action": "focus-pane" }] } } },
+  { "slug": "notify-glance-banner", "storyId": "flyout-flyoutapp--glance-banner-success", "viewport": { "width": 540, "height": 600 }, "delay": 900 }
+]
