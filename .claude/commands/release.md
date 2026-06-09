@@ -32,9 +32,13 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
    **Why all three?** The Tauri build uses `tauri.conf.json` to name the installer (e.g. `BorgDock_1.0.11_x64-setup.exe`). The CI generates `latest.json` from the git tag. If the tag says `v1.0.11` but `tauri.conf.json` says `1.0.10`, the installer is named `1.0.10` but `latest.json` points to `1.0.11` — causing a 404 and breaking auto-updates.
 
 4. **Attach hero images** for any `### New Features`, `### Improvements`, or bulletted `### Bug Fixes` entries that start with `**Bold Title**`:
-   - Drop each hero into `docs/whats-new/<VERSION>/<slug>.png` (or jpg/gif/webp).
-   - Reference it from the bullet: `- **Bold Title** — Description. ![alt](whats-new/<VERSION>/<slug>.png)`.
+   - Heroes are **real screenshots captured from Storybook** (large, ~16:10 — not hand-mocked banners). To produce them:
+     1. Author `design/whats-new/<VERSION>.heroes.json` — an array of `{ slug, storyId, viewport?, theme?, delay?, selector?, seedIdle?, emit? }`. Get story ids from `http://localhost:6006/index.json` while Storybook runs. Every window/section has a story catalog; the main window (Focus/PRs/Work Items) is `src/components/layout/MainWindow.stories.tsx`.
+     2. Start Storybook: `cd src/BorgDock.Tauri && node_modules/.bin/storybook dev -p 6006 --no-open`.
+     3. Capture: `cd src/BorgDock.Tauri && node scripts/screenshot-stories.mjs <VERSION>` → writes `docs/whats-new/<VERSION>/<slug>.png` at 2× in dark theme (the script forces dark so windows that self-bootstrap their theme stay consistent).
+   - Reference each from the bullet: `- **Bold Title** — Description. ![alt](whats-new/<VERSION>/<slug>.png)`.
    - To demote a bullet that has no image ready, strip the `**Bold Title** — ` prefix so the bullet joins the compact "Also fixed" list and requires no image.
+   - Voice: emulate the Home Assistant release blog — warm, benefit-first ("you can now…"), per-feature, not root-cause engineering prose.
 
 5. **Validate** the release note by running the strict validator:
    ```
@@ -42,11 +46,17 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
    ```
    If any highlight is missing a hero image, the validator prints `file:line` with a remediation hint and exits non-zero. Fix and re-run until it prints `OK`.
 
-6. **Commit** the version bump and changelog:
+6. **Commit** the version bump, changelog, hero images, and the regenerated module:
    ```
-   git add src/BorgDock.Tauri/src-tauri/tauri.conf.json src/BorgDock.Tauri/package.json src/BorgDock.Tauri/src-tauri/Cargo.toml CHANGELOG.md
+   git add CHANGELOG.md \
+     src/BorgDock.Tauri/src-tauri/tauri.conf.json \
+     src/BorgDock.Tauri/package.json \
+     src/BorgDock.Tauri/src-tauri/Cargo.toml \
+     src/BorgDock.Tauri/src/generated/changelog.ts \
+     docs/whats-new/<VERSION>
    git commit -m "chore: release <VERSION>"
    ```
+   The hero PNGs under `docs/whats-new/<VERSION>/` are the committed **source** and **must** be in this commit — the CI build's changelog plugin (`syncImages`) errors out (`references missing image`) and the whole build fails if `CHANGELOG.md` references an image that isn't committed. The plugin regenerates `src/generated/changelog.ts` and copies the heroes into `public/whats-new/` (which is **gitignored**), so don't stage `public/whats-new/`; committing `changelog.ts` just keeps local diffs clean.
 
 7. **Tag and push**:
    ```

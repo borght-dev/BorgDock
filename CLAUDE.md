@@ -164,6 +164,17 @@ If a similar thing exists but doesn't quite fit, the right move is usually to ex
 
 When in doubt, grep first, then ask the user "I saw X already does Y — should I extend it or build a separate thing?" before writing code.
 
+## Release notes, What's New, and hero screenshots
+
+`/CHANGELOG.md` (repo root) is the single source of truth. The Vite changelog plugin (`scripts/changelog/`) parses it on `bun run dev`/`build` and generates `src/generated/changelog.ts`, which feeds the in-app **What's new?** window. Format: `## X.Y.Z — YYYY-MM-DD`, then `### New Features` / `### Improvements` / `### Bug Fixes`. A `- **Title** — desc` bullet becomes a highlight (and **must** have a hero image — `bun scripts/changelog/validate-release.ts <version>` fails otherwise); a plain `- ` bullet under Bug Fixes becomes an "Also fixed" line.
+
+Hero images are **real screenshots captured from Storybook**, written large (not the old 74px banner). To produce a release's heroes:
+1. Author `design/whats-new/<version>.heroes.json` — `[{ slug, storyId, viewport?, theme?, delay?, selector?, seedIdle?, emit? }]`. Get story ids from `http://localhost:6006/index.json`.
+2. `node_modules/.bin/storybook dev -p 6006 --no-open`, then `node scripts/screenshot-stories.mjs <version>` → `docs/whats-new/<version>/<slug>.png` (2×, forced dark theme). Reference them as `![alt](whats-new/<version>/<slug>.png)`.
+3. `bun run build` regenerates `changelog.ts` and copies `docs/whats-new/*` → `public/whats-new/*`.
+
+Voice: emulate the Home Assistant release blog — benefit-first, "you", per-feature, not root-cause engineering prose. The marketing site's `site/src/pages/changelog.astro` now parses `/CHANGELOG.md` at build time, and `site/src/pages/whats-new/<v>.astro` is the long-form post. The main window (Focus / PRs / Work Items) Storybook catalog is `src/components/layout/MainWindow.stories.tsx`.
+
 ## Self-Improvement
 
 Whenever you learn something new that is important to remember, run into the same issue twice, or encounter an issue that might happen again — update this CLAUDE.md so the next session avoids the same pitfalls.
