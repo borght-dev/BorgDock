@@ -32,6 +32,35 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      - name: Generate release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Extract this version's section: everything between its
+          # "## <version> — <date>" heading and the next "## " version heading.
+          awk -v ver="## $version " '
+            index($0, ver) == 1 { found=1; next }   # skip the version heading itself
+            found && /^## / { exit }                 # stop at the next version
+            found { print }
+          ' CHANGELOG.md > section.md
+          # Hero screenshots live on the website; strip the image markdown so the
+          # GitHub release body stays text + links.
+          sed -i -E 's/!\[[^]]*\]\([^)]*\)//g' section.md
+          {
+            echo "👉 **[Full release notes & screenshots](https://borgdock.koenvdborght.nl/changelog/)**"
+            echo
+            cat section.md
+            echo
+            echo "---"
+            echo "**Install:** download \`BorgDock_${version}_x64-setup.exe\` below. Existing installs update automatically."
+          } > body.md
+          {
+            echo 'body<<__BODY_EOF__'
+            cat body.md
+            echo '__BODY_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build, sign, and publish release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -42,7 +71,7 @@ jobs:
           projectPath: src/BorgDock.Tauri
           tagName: ${{ github.ref_name }}
           releaseName: "BorgDock ${{ github.ref_name }}"
-          releaseBody: "See the assets to download and install this version."
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: --bundles nsis

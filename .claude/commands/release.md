@@ -64,7 +64,7 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
    git push && git push origin v<VERSION>
    ```
 
-8. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress.
+8. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress. The GitHub **release body is auto-generated** by the workflow from this version's `CHANGELOG.md` section (hero image markdown stripped, a changelog link + install line added) — no manual editing needed.
 
 9. **Verify signing key**: The `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub secrets must exist on the repo. Without them, the CI emits `latest.json` with an empty signature and the Tauri updater rejects the update. The public key is committed in `src/BorgDock.Tauri/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
 
