@@ -4,6 +4,298 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.0.0",
+    "date": "2026-06-09",
+    "summary": "Agent Overview, Never miss an agent that's waiting on you, Peek at what an agent changed — the Inspector, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Agent Overview",
+        "description": "Keep tabs on every Claude Code session you have running, across every repo and worktree, from one live dashboard. Each session is a card that tells you whether it's working, running a tool, just finished, idle, or waiting on you — what it's doing right now (\"Editing AgentCard.tsx\", \"Running npm test\") and how much of its context window it has burned through. No more alt-tabbing through a dozen terminals to find the one that needs a nudge. Open it from the tray, press `Ctrl+Win+Shift+A`, or have it pop up automatically when BorgDock starts.",
+        "hero": {
+          "src": "/whats-new/2.0.0/agent-overview.png",
+          "alt": "Agent Overview dashboard"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Never miss an agent that's waiting on you",
+        "description": "When a session finishes its turn and sits idle waiting for your answer, it floats to the top in a dedicated alert rail, and the title bar carries an age that turns amber after 3 minutes and red after 10. If you've stepped away, BorgDock sends you a desktop notification — \"Claude needs your input\" — with a one-click button that raises the actual terminal running that session.",
+        "hero": {
+          "src": "/whats-new/2.0.0/agent-overview-awaiting.png",
+          "alt": "Sessions waiting on you"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Peek at what an agent changed — the Inspector",
+        "description": "Click any session and an Inspector opens showing exactly what that agent touched this turn: the files it edited, wrote, or read, each with a +/− diffstat and an expandable inline diff, plus its last question and your last reply in full. One click to focus the terminal pane, snooze the card for 5 minutes, or mark it seen — and the whole thing is keyboard-drivable.",
+        "hero": {
+          "src": "/whats-new/2.0.0/agent-overview-inspector.png",
+          "alt": "Session Inspector with file diffs"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Turn agent telemetry on with one checkbox",
+        "description": "Flip \"Enable telemetry collection\" in Settings → Agent Overview and BorgDock wires the small OpenTelemetry block into your `~/.claude/settings.json` (backing up the original first) so Claude Code streams events to BorgDock over loopback — nothing ever leaves your machine. A live health row shows whether the endpoint is up and how long ago the last event arrived; switch it off and BorgDock removes only the keys it added.",
+        "hero": {
+          "src": "/whats-new/2.0.0/agent-telemetry-setup.png",
+          "alt": "One-click telemetry setup"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Group your agents the way you think about them",
+        "description": "Group sessions by repo, status, worktree, or context use — so you can spot which agents are about to run out of room — or sort by most-recent activity. The layout tightens as the sessions pile up, quiet ones drop into a collapsed Idle rail, and anything untouched for 24 hours tucks itself away behind an \"archived\" link so the view stays focused on what's live.",
+        "hero": {
+          "src": "/whats-new/2.0.0/agent-overview-grouping.png",
+          "alt": "Grouped agent dashboard"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "A Focus tab that tells you what to look at next",
+        "description": "The new Focus tab leads with \"N pull requests need your attention,\" ranked by readiness, CI state, and review signals, plus a one-click Start Quick Review to blast through your queue. Each PR is a clean ranked row — its position, a score ring, why it surfaced, and a live status — and when nothing needs you, you get calm instead of noise.",
+        "hero": {
+          "src": "/whats-new/2.0.0/main-window-focus.png",
+          "alt": "Focus tab"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Work Items, now a real 3-pane workspace",
+        "description": "Triage Azure DevOps work the way you triage PRs, right in the main window: your favourite and personal queries on the left, the matching items in the middle, and the full work item on the right. Click the title to rename it, click any chip to change state, priority, assignee, or iteration, and your edits save themselves a moment later with a quiet \"Saved\" (and a Retry button if a save ever fails) — no Save button to hunt for, no modal.",
+        "hero": {
+          "src": "/whats-new/2.0.0/main-window-workitems.png",
+          "alt": "Work Items 3-pane workspace"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "A dense, filterable Work Item palette",
+        "description": "Press `Ctrl+F9` and the palette is a proper power-user surface: type naturally — `@koen`, `state:active`, `type:bug`, `iter:R5` — and each operator turns into a live chip while the list narrows instantly. One-click filter chips and group-by buttons slice a long query in a second, and every row is packed with at-a-glance signal: priority bars, a type glyph, comment count, a coloured state pill, and the assignee's avatar.",
+        "hero": {
+          "src": "/whats-new/2.0.0/workitem-palette.png",
+          "alt": "Work Item palette"
+        },
+        "keyboard": "Ctrl+F9"
+      },
+      {
+        "kind": "new",
+        "title": "Every PR action, one click away",
+        "description": "A sticky action bar pinned just under the header keeps Merge, Open in Browser, Copy Branch, Checkout, Mark Draft/Ready, Bypass Merge, and Close PR available from any tab — no more scrolling back to the Overview to act on a PR. A persistent checks strip sits right above the tabs and shows, at a glance, whether your builds are still running, failing, or all green, with a tap to jump straight to the Checks tab.",
+        "hero": {
+          "src": "/whats-new/2.0.0/pr-detail.png",
+          "alt": "Sticky PR action bar and checks strip"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "One Discussion timeline for every PR",
+        "description": "Reviews, plain comments, and code-anchored conversations now live together in a single chronological Discussion tab, replacing the old separate Reviews and Comments tabs. Filter chips narrow to just reviews, just comments, or just on-code threads; each code thread shows the exact `file:line` snippet it's attached to; and you can resolve or unresolve a thread right from the card.",
+        "hero": {
+          "src": "/whats-new/2.0.0/pr-discussion.png",
+          "alt": "Unified Discussion tab"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Review without leaving the PR",
+        "description": "A single composer lets you leave a plain comment or submit a full review as Approve, Comment, or Request changes, and it opens both from the Discussion tab and right inside the Files diff toolbar — so you can react to the exact code you're looking at. No more bouncing out to the browser just to drop an approval.",
+        "hero": {
+          "src": "/whats-new/2.0.0/pr-composer.png",
+          "alt": "Inline review composer"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Code threads, right in the diff",
+        "description": "Review conversations now appear inline beneath the exact diff line they comment on in the Files tab. Jump to a thread from the Discussion timeline and the Files tab scrolls to the file, highlights the line, and expands the thread for you — read the full reply chain, resolve, or reply without losing your place.",
+        "hero": {
+          "src": "/whats-new/2.0.0/pr-inline-thread.png",
+          "alt": "Code thread anchored in the diff"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "A finished PR finally reads as done",
+        "description": "When a PR is merged or closed, the window celebrates it in place: a card at the top of the Overview with the branch arrow and how long ago it happened, a Merged or Closed pill in the header, and the open-only Merge / Bypass / Draft buttons quietly disappear. No more staring at a Merge button on a PR that already shipped.",
+        "hero": {
+          "src": "/whats-new/2.0.0/pr-merged.png",
+          "alt": "In-panel merged state"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Settings has its own window now",
+        "description": "Your settings open in a roomy, resizable window with a navigation rail grouped into Data sources, Application, AI, and System, a breadcrumb across the top that always tells you where you are, and far more room to actually read and change things. It remembers the last section you had open, and links from elsewhere in the app jump you straight to the right place.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-window.png",
+          "alt": "Dedicated Settings window"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Search every setting",
+        "description": "Stop hunting through sections for one toggle. Press `Ctrl+K`, type what you're after, and BorgDock searches across every field by label, hint, and keywords. Pick a result and it takes you straight to that section, scrolls the exact field into view, and gives it a brief highlight pulse so you can't miss it.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-search.png",
+          "alt": "Settings search"
+        },
+        "keyboard": "Ctrl+K"
+      },
+      {
+        "kind": "new",
+        "title": "Maintenance & diagnostics, all in one place",
+        "description": "A new Maintenance section gathers the housekeeping: clear the cache (it shows you how much space it's using), prune worktrees whose PRs already merged, replay the welcome wizard, or reset everything to defaults. When something feels off, run a one-click self-test that checks your GitHub auth, Azure CLI, and cache and shows a pass/fail breakdown, copy a diagnostics blob, or jump straight to the log folder.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-maintenance.png",
+          "alt": "Maintenance and self-test"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Add repos by scanning a folder",
+        "description": "Adding repos no longer means typing `owner/name` by hand. Point BorgDock at a parent folder and it walks the directory tree to discover every git repo, reads each origin remote to figure out owner/name automatically, and shows you a checklist of what it found with the repos you already track filtered out — tick the new ones and add them all at once.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-repo-scan.png",
+          "alt": "Scan a folder for repos"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Notifications you can act on",
+        "description": "Every BorgDock alert now arrives as one polished toast near the tray, with a coloured severity stripe and icon, a clear title and body, and one-tap action buttons — Open PR, Fix with Claude, Merge, Start review. Click the card to jump to the PR, hover to pause the auto-hide so a card never vanishes while you're reading, and dismiss any single card with the X. Up to three stack at once.",
+        "hero": {
+          "src": "/whats-new/2.0.0/notify-toasts.png",
+          "alt": "Interactive notification toasts"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Merge celebrations",
+        "description": "When one of your PRs lands, BorgDock celebrates with you: a gold \"Merged\" toast with a shimmer sweep, a pulsing glow, and a little rocket — plus an optional tada sound you can toggle under Settings → Notifications. An easy, satisfying signal that your work just shipped.",
+        "hero": {
+          "src": "/whats-new/2.0.0/notify-merge-celebration.png",
+          "alt": "Merge celebration toast"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Copy a file path straight into your Claude prompt",
+        "description": "Hover or select any row in the file palette and a copy button puts that file's repo-relative path on your clipboard; prefer the keyboard? `Ctrl+C` does the same, with a green \"Copied relative path\" in the status bar. Right-click any row for Open in new window, Open containing folder, and Copy relative path.",
+        "hero": {
+          "src": "/whats-new/2.0.0/file-palette.png",
+          "alt": "Copy path from the file palette"
+        },
+        "keyboard": "Ctrl+C"
+      },
+      {
+        "kind": "improved",
+        "title": "A real, resizable window — the docked sidebar is gone",
+        "description": "BorgDock no longer clamps itself to the edge of your screen and slides away the moment you click elsewhere. It's a normal window you can drag anywhere, resize, minimize, and maximize, and it remembers its size and position between launches. Summon it from anywhere with `Ctrl+Win+Shift+G` — one key shows it, focuses it, or hides it — and closing the window tucks it to the tray so polling keeps running in the background.",
+        "hero": {
+          "src": "/whats-new/2.0.0/main-window-prs.png",
+          "alt": "The main BorgDock window"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Lighter, faster GitHub polling — and you can watch the budget",
+        "description": "Each polling cycle used to fan out roughly twenty-two REST requests per repo; now it's a single GraphQL call that pulls every open PR, its check rollup, the latest reviews, and the counts all at once. Settings → GitHub shows your REST and GraphQL quotas as separate live gauges (GitHub tracks them as independent pools) that shift green → amber → red, so you can tell at a glance whether your poll interval is sustainable.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-rate-limit.png",
+          "alt": "GitHub rate-limit gauges"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "SQL: instant results, even for huge queries",
+        "description": "The results grid is now virtualized, so a query that returns ten thousand rows opens, scrolls, and responds to clicks just as snappily as one that returns ten. The old hard 30-second query cap is gone too, so your slow reports and heavy aggregations finally get the time they need.",
+        "hero": {
+          "src": "/whats-new/2.0.0/sql-results.png",
+          "alt": "Virtualized SQL results"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "SQL: honest row counts for writes",
+        "description": "Run an `UPDATE`, `INSERT`, `DELETE`, `MERGE`, or DDL statement (or select part of your query and hit `Ctrl+Enter`) and BorgDock now tells you plainly how many rows it affected — a green \"42 affected\" pill and \"42 rows affected · 18 ms\" — instead of the confusing empty grid you used to get.",
+        "hero": {
+          "src": "/whats-new/2.0.0/sql-rows-affected.png",
+          "alt": "Rows-affected in the SQL window"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "A clearer SQL connection editor",
+        "description": "Each saved connection shows its server, database, and auth mode at a glance with a status pill, and the Add/Edit dialog lets you test the connection right there before saving, with a clear Connected or error result. Windows and SQL Server auth switch the form for you, and you can show or hide the password while typing.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-sql-connection.png",
+          "alt": "SQL connection editor"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Recent releases in Settings → Updates",
+        "description": "The Updates section now shows your three most recent releases inline — each with its version, a one-line summary, and date — and clearly marks the one you currently have installed, alongside a live current-version badge and quick links to the release notes and the GitHub releases page.",
+        "hero": {
+          "src": "/whats-new/2.0.0/settings-updates.png",
+          "alt": "Recent releases in Updates"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Single-click to preview, double-click to open",
+        "description": "Browsing the file palette is calmer now: a single click selects a row and shows its contents (or diff) right in the preview pane instead of spawning a separate window, and a double-click opens the dedicated viewer when you want one. Long files scroll properly in the preview pane, too. Reach the palette any time with `Ctrl+F8`.",
+        "hero": {
+          "src": "/whats-new/2.0.0/file-palette-preview.png",
+          "alt": "Inline file preview"
+        },
+        "keyboard": "Ctrl+F8"
+      }
+    ],
+    "alsoFixed": [
+      "Pop-out windows (PR detail, work item, SQL, Agent Overview, Settings) now stay hidden until their content has painted — no more split-second flash of a blank, wrongly-sized window — and reopen at the exact size and position you left them, on the right monitor even on a multi-display, high-DPI setup.",
+      "Refreshed BorgDock app icon — a sharper purple-gradient pulse-waveform mark across the taskbar, Alt+Tab switcher, and tray.",
+      "The system tray now opens the main window on left-click (it used to toggle the flyout, which surprised people), and the right-click menu gained a direct Agent Overview entry.",
+      "Smarter palette and SQL hotkeys (`Ctrl+F7`/`F8`/`F9`/`F10`): one press hides a focused palette, raises a buried one to the front without wiping what you typed, or opens it fresh — and they open faster because the window is no longer rebuilt each time.",
+      "Markdown links inside a PR (description, comments, reviews) now open in your OS browser instead of hijacking the in-app webview.",
+      "Cancelled CI checks are treated as non-blocking and shown with their own count instead of dragging a PR's status red, and the Checks tab pins an \"In progress\" group at the top so running checks are easy to spot.",
+      "GitHub's still-computing \"unknown\" mergeable state is no longer treated as a conflict, so PRs stop briefly flashing a false merge-conflict indicator right after an update.",
+      "Adaptive polling and the low-rate-limit warning now watch both your REST and GraphQL quotas, so BorgDock backs off if either pool runs low.",
+      "Notifications no longer appear twice (a StrictMode double-listener race), and the flyout reliably closes when it loses focus, including when it's hidden externally.",
+      "The Run-at-startup toggle now actually registers and unregisters BorgDock with the OS, and a Test notification button in Settings fires a real toast so you can confirm notifications work.",
+      "Theme is respected consistently across every window — including Agent Overview — and follows your OS preference live when it changes.",
+      "The toggle-switch knob is visible again in its on-state and properly centred, and long session labels, titles, and branch names truncate cleanly so cards never overflow."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "1.2.0",
     "date": "2026-04-30",
     "summary": "",
