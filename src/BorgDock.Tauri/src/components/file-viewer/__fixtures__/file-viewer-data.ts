@@ -35,15 +35,6 @@ export function makeSettings(uiOverrides?: Partial<AppSettings['ui']>): AppSetti
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: false, sound: false, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-6',
-      maxTokens: 8192,
-      prSummaryEnabled: false,
-      diffExplanationsEnabled: false,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: 'claude[bot]' },
     updates: { autoCheckEnabled: false, autoDownload: false },
     azureDevOps: {
@@ -66,7 +57,6 @@ export function makeSettings(uiOverrides?: Partial<AppSettings['ui']>): AppSetti
       readOnlyByDefault: false,
       confirmDestructiveWithoutWhere: true,
     },
-    repoPriority: {},
   };
 }
 
@@ -99,9 +89,11 @@ Quick start:
   npm run dev
 `;
 
-export const LARGE_TS_SAMPLE = Array.from({ length: 80 }, (_, i) =>
-  `export const item${i} = { id: ${i}, label: 'item-${i}' };`,
-).join('\n') + '\n';
+export const LARGE_TS_SAMPLE =
+  Array.from(
+    { length: 80 },
+    (_, i) => `export const item${i} = { id: ${i}, label: 'item-${i}' };`,
+  ).join('\n') + '\n';
 
 // ---------------------------------------------------------------------------
 // Patch samples (unified diff format from git_file_diff)

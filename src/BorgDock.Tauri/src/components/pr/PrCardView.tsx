@@ -1,14 +1,7 @@
 import clsx from 'clsx';
 import type { CSSProperties, HTMLAttributes, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import {
-  Avatar,
-  Card,
-  Dot,
-  Pill,
-  Ring,
-  type PillTone,
-} from '@/components/shared/primitives';
+import { Avatar, Card, Dot, Pill, type PillTone, Ring } from '@/components/shared/primitives';
 import type { OverallStatus } from '@/types';
 
 function StatusGlyph({ status }: { status: OverallStatus }) {
@@ -293,9 +286,7 @@ export function PrCardView({
             text={pr.title}
             className="text-[12px] font-medium text-[var(--color-text-primary)]"
           />
-          <div
-            className="mt-1 flex items-center gap-2 text-[10.5px] text-[var(--color-text-tertiary)]"
-          >
+          <div className="mt-1 flex items-center gap-2 text-[10.5px] text-[var(--color-text-tertiary)]">
             {showRepo && (
               <>
                 <span className="font-normal">
@@ -305,6 +296,8 @@ export function PrCardView({
               </>
             )}
             <span className="font-normal">#{pr.number}</span>
+            <span aria-hidden>·</span>
+            <span className="font-normal">{pr.authorLogin}</span>
             <span aria-hidden>·</span>
             <span className={clsx('inline-flex items-center gap-1', STATUS_TEXT_CLASS[pr.status])}>
               <StatusGlyph status={pr.status} />
@@ -329,10 +322,7 @@ export function PrCardView({
       onClick={onClick}
       onContextMenu={onContextMenu}
       {...dataAttrs}
-      className={clsx(
-        'bd-pr-card',
-        isFocused && 'ring-2 ring-[var(--color-accent)] ring-offset-1',
-      )}
+      className={clsx('bd-pr-card', isFocused && 'ring-2 ring-[var(--color-accent)] ring-offset-1')}
     >
       <div className="flex items-start gap-3">
         <Avatar
@@ -342,9 +332,7 @@ export function PrCardView({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span
-              className="truncate text-[13px] font-semibold text-[var(--color-text-primary)]"
-            >
+            <span className="truncate text-[13px] font-semibold text-[var(--color-text-primary)]">
               {pr.title}
             </span>
             {review && (
@@ -353,14 +341,14 @@ export function PrCardView({
               </Pill>
             )}
           </div>
-          <div
-            className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-tertiary)]"
-          >
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-tertiary)]">
             <span className="font-mono">
               {pr.repoOwner}/{pr.repoName}
             </span>
             <span aria-hidden>·</span>
             <span className="font-mono">#{pr.number}</span>
+            <span aria-hidden>·</span>
+            <span>{pr.authorLogin}</span>
             <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
               <Dot tone={statusDotTone(pr.status)} pulse={pr.status === 'yellow'} />
@@ -374,9 +362,7 @@ export function PrCardView({
           {(pr.branch ||
             pr.additions !== undefined ||
             (pr.commentCount !== undefined && pr.commentCount > 0)) && (
-            <div
-              className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-secondary)]"
-            >
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-secondary)]">
               {pr.branch && <span className="font-mono">{pr.branch}</span>}
               {pr.baseBranch && (
                 <>
@@ -395,9 +381,7 @@ export function PrCardView({
                   {pr.deletions.toLocaleString()}
                 </span>
               )}
-              {pr.commitCount !== undefined && pr.commitCount > 0 && (
-                <span>{pr.commitCount}c</span>
-              )}
+              {pr.commitCount !== undefined && pr.commitCount > 0 && <span>{pr.commitCount}c</span>}
               {pr.changedFiles !== undefined && pr.changedFiles > 0 && (
                 <span>{pr.changedFiles} files</span>
               )}
@@ -425,11 +409,7 @@ export function PrCardView({
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <span
-            className="font-mono text-[11px] text-[var(--color-text-muted)]"
-          >
-            #{pr.number}
-          </span>
+          <span className="font-mono text-[11px] text-[var(--color-text-muted)]">#{pr.number}</span>
           {score !== undefined && <Ring value={score} size={32} label />}
           {trailing}
         </div>

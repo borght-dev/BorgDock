@@ -1,22 +1,20 @@
 import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
-import { Pill } from '@/components/shared/primitives';
+import { Avatar, Pill } from '@/components/shared/primitives';
+import type { PrGroup } from '@/services/pr-grouping';
 import { useUiStore } from '@/stores/ui-store';
-import type { PullRequestWithChecks } from '@/types';
 import { PrCardContainer } from './PrCardContainer';
 
 interface RepoGroupProps {
-  repoKey: string;
-  prs: PullRequestWithChecks[];
+  group: PrGroup;
 }
 
-function countFailing(prs: PullRequestWithChecks[]): number {
-  return prs.filter((p) => p.overallStatus === 'red').length;
-}
-
-export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
+export function RepoGroup({ group }: RepoGroupProps) {
   const expandedRepoGroups = useUiStore((s) => s.expandedRepoGroups);
   const toggleRepoGroup = useUiStore((s) => s.toggleRepoGroup);
+  const density = useUiStore((s) => s.prDensity);
+  const repoKey = group.key;
+  const prs = group.prs;
   const isExpanded = !expandedRepoGroups.has(repoKey); // default expanded; set = collapsed
   const contentRef = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState<string>(isExpanded ? 'none' : '0px');
@@ -40,7 +38,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
     }
   }, [isExpanded]);
 
-  const failing = countFailing(prs);
+  const failing = group.stats.failing;
 
   return (
     <div className="mb-0.5 bd-repo-group">
@@ -48,10 +46,7 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
           Wrapper stays a single <button> so the entire row is clickable as one
           target (matches keyboard-nav expectations). The inner chevron / hr are
           decorative, not separate buttons. */}
-      <button
-        onClick={() => toggleRepoGroup(repoKey)}
-        className="bd-repo-group__header"
-      >
+      <button onClick={() => toggleRepoGroup(repoKey)} className="bd-repo-group__header">
         <svg
           width="13"
           height="13"
@@ -61,20 +56,21 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={clsx(
-            'bd-repo-group__chevron',
-            isExpanded ? 'rotate-90' : 'rotate-0',
-          )}
+          className={clsx('bd-repo-group__chevron', isExpanded ? 'rotate-90' : 'rotate-0')}
         >
           <path d="m6 4 4 4-4 4" />
         </svg>
-        <span className="bd-section-label">{repoKey}</span>
+        {group.author && (
+          <Avatar initials={group.author.login.slice(0, 2).toUpperCase()} size="sm" />
+        )}
+        <span className="bd-section-label">
+          {group.label}
+          {group.author?.isMe ? ' (you)' : ''}
+        </span>
         <span className="bd-repo-group__hr" aria-hidden />
         <span className="bd-repo-group__count">
           {failing > 0 && (
-            <span
-              className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]"
-            >
+            <span className="rounded-full px-1.5 text-[9px] font-semibold leading-[16px] tabular-nums bg-[var(--color-action-danger-bg)] text-[var(--color-status-red)]">
               {failing}
               {'\u2716'}
             </span>
@@ -94,7 +90,11 @@ export function RepoGroup({ repoKey, prs }: RepoGroupProps) {
       >
         <div className="flex flex-col gap-1 pt-0.5 pb-0.5">
           {prs.map((pr) => (
-            <PrCardContainer key={pr.pullRequest.number} prWithChecks={pr} />
+            <PrCardContainer
+              key={`${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`}
+              prWithChecks={pr}
+              density={density}
+            />
           ))}
         </div>
       </div>

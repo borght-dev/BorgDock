@@ -25,9 +25,7 @@ pub fn cache_flyout_data(
 /// Retrieve the cached flyout payload. Returns the JSON string or null.
 /// Called from the flyout window on mount.
 #[tauri::command]
-pub fn get_flyout_data(
-    state: tauri::State<'_, FlyoutCache>,
-) -> Result<Option<String>, String> {
+pub fn get_flyout_data(state: tauri::State<'_, FlyoutCache>) -> Result<Option<String>, String> {
     let data = state.data.lock().map_err(|e| e.to_string())?;
     Ok(data.clone())
 }

@@ -20,6 +20,7 @@ vi.mock('@/services/github/pulls', () => ({
 
 vi.mock('@/services/github/singleton', () => ({
   initClient: (...args: unknown[]) => mockInitClient(...args),
+  bindRepoClient: vi.fn(),
 }));
 
 vi.mock('@/services/github/aggregate', () => ({
@@ -61,15 +62,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-20250514',
-      maxTokens: 4096,
-      prSummaryEnabled: true,
-      diffExplanationsEnabled: true,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {
@@ -88,7 +80,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       updatePrStatusWhenWiDone: false,
     },
     sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
-    repoPriority: {},
     ...overrides,
   };
 }

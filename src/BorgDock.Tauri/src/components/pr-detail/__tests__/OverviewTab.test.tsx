@@ -99,14 +99,7 @@ describe('OverviewTab', () => {
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
-        claudeApi: {
-          model: 'claude-sonnet-4-6',
-          maxTokens: 1024,
-          prSummaryEnabled: true,
-          diffExplanationsEnabled: true,
-          reviewNudgePhrasingEnabled: false,
-          commitMessageSuggestionsEnabled: false,
-        },
+        summaries: { enabled: true, provider: 'claude', model: 'sonnet' },
       },
     });
   });
@@ -141,63 +134,31 @@ describe('OverviewTab', () => {
     expect(screen.queryByRole('button', { name: /^close pr$/i })).toBeNull();
   });
 
-  it('shows API key message when no Claude API key configured', () => {
+  it('shows the CLI summary action without requiring an API key', () => {
+    render(<OverviewTab pr={makePr()} />);
+    expect(screen.getByText('Summarize with AI')).toBeTruthy();
+    expect(screen.queryByText(/API key/i)).toBeNull();
+  });
+
+  it('shows a settings hint when CLI summaries are disabled', () => {
     useSettingsStore.setState({
       settings: {
         ...useSettingsStore.getState().settings,
-        claudeApi: {
-          model: 'claude-sonnet-4-6',
-          maxTokens: 1024,
-          prSummaryEnabled: true,
-          diffExplanationsEnabled: true,
-          reviewNudgePhrasingEnabled: false,
-          commitMessageSuggestionsEnabled: false,
-        },
+        summaries: { enabled: false, provider: 'claude', model: 'sonnet' },
       },
     });
     render(<OverviewTab pr={makePr()} />);
-    expect(
-      screen.getByText('Configure an API key in Settings to enable AI summaries'),
-    ).toBeTruthy();
+    expect(screen.getByText('Enable CLI summaries in Settings → Agents')).toBeTruthy();
   });
 
-  it('shows "Summarize with AI" button when API key is set', () => {
-    useSettingsStore.setState({
-      settings: {
-        ...useSettingsStore.getState().settings,
-        claudeApi: {
-          apiKey: 'sk-test',
-          model: 'claude-sonnet-4-6',
-          maxTokens: 1024,
-          prSummaryEnabled: true,
-          diffExplanationsEnabled: true,
-          reviewNudgePhrasingEnabled: false,
-          commitMessageSuggestionsEnabled: false,
-        },
-      },
-    });
+  it('shows "Summarize with AI" when CLI summaries are enabled', () => {
     render(<OverviewTab pr={makePr()} />);
     expect(screen.getByText('Summarize with AI')).toBeTruthy();
   });
 
-  it('shows "Summarize with AI" button when API key is configured and can be clicked', () => {
-    useSettingsStore.setState({
-      settings: {
-        ...useSettingsStore.getState().settings,
-        claudeApi: {
-          apiKey: 'sk-test',
-          model: 'claude-sonnet-4-6',
-          maxTokens: 1024,
-          prSummaryEnabled: true,
-          diffExplanationsEnabled: true,
-          reviewNudgePhrasingEnabled: false,
-          commitMessageSuggestionsEnabled: false,
-        },
-      },
-    });
-
+  it('renders the enabled summary action as a button', () => {
     render(<OverviewTab pr={makePr()} />);
-    const btn = screen.getByText('Summarize with AI');
+    const btn = screen.getByRole('button', { name: /Summarize with AI/i });
     expect(btn).toBeTruthy();
   });
 

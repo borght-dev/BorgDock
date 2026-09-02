@@ -1,8 +1,8 @@
 import { createLogger } from '@/services/logger';
-import type { CheckRun, PullRequest, PullRequestWithChecks } from '@/types';
+import type { CheckRun, PrReview, PullRequest, PullRequestWithChecks } from '@/types';
 import { aggregatePrWithChecks } from './aggregate';
 import type { GitHubClient } from './client';
-import { aggregateReviewStatus } from './pulls';
+import { aggregateReviewStatus, mapReviewState } from './pulls';
 
 const log = createLogger('github:polling');
 
@@ -10,6 +10,12 @@ const log = createLogger('github:polling');
  * Single-query replacement for the REST polling fan-out: open PRs, their
  * check rollups, latest reviews per user, and counts — one request per repo
  * per poll cycle instead of ~22.
+ *
+ * Page sizes are deliberately small (40 check contexts, 25 latest reviews):
+ * they dominate the response size and GraphQL cost. `body` stays in the hot
+ * query because two card-level consumers need it without a detail fetch —
+ * `detectWorkItemIds` (AB#123 links live in PR descriptions) and the Quick
+ * Review card.
  *
  * `rateLimit` sits at the query root (it is a Query field, not a Repository
  * field) so `GitHubClient.graphql` can read the GraphQL pool from the body.
@@ -55,6 +61,7 @@ export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
                 }
                 ... on Team {
                   name
+                  slug
                 }
               }
             }
@@ -65,7 +72,7 @@ export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
               commit {
                 statusCheckRollup {
                   state
-                  contexts(first: 100) {
+                  contexts(first: 40) {
                     pageInfo {
                       hasNextPage
                     }
@@ -89,9 +96,10 @@ export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
               }
             }
           }
-          latestReviews(first: 50) {
+          latestReviews(first: 25) {
             nodes {
               state
+              submittedAt
               author {
                 login
               }
@@ -122,15 +130,17 @@ interface GqlActor {
   avatarUrl: string;
 }
 
-/** User exposes `login`, Team exposes `name`; other reviewer types come back bare. */
+/** User exposes `login`, Team exposes `name` + `slug`; other reviewer types come back bare. */
 interface GqlRequestedReviewer {
   __typename: string;
   login?: string;
   name?: string;
+  slug?: string;
 }
 
 interface GqlReview {
   state: string;
+  submittedAt?: string | null;
   author: { login: string } | null;
 }
 
@@ -231,7 +241,7 @@ export async function pollOpenPrsAggregate(
 function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithChecks {
   const rollup = node.commits.nodes[0]?.commit.statusCheckRollup ?? null;
   if (rollup?.contexts.pageInfo?.hasNextPage) {
-    log.warn('check contexts truncated to 100 — counts may be low', {
+    log.warn('check contexts truncated to 40 — counts may be low', {
       owner,
       repo,
       pr: node.number,
@@ -239,16 +249,38 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
   }
   const checkRuns = (rollup?.contexts.nodes ?? []).map(contextToCheckRunLite);
 
-  const requestedReviewers = (node.reviewRequests?.nodes ?? [])
-    .map((rr) => rr.requestedReviewer?.login ?? rr.requestedReviewer?.name ?? '')
-    .filter((s) => s.length > 0);
+  // Users and teams are kept apart: a team request is matched against the
+  // viewer's team memberships by the scorer, never against the login.
+  const requestedReviewers: string[] = [];
+  const requestedTeams: string[] = [];
+  for (const rr of node.reviewRequests?.nodes ?? []) {
+    const r = rr.requestedReviewer;
+    if (!r) continue;
+    if (r.__typename === 'Team') {
+      const slug = r.slug ?? r.name ?? '';
+      if (slug) requestedTeams.push(slug);
+    } else if (r.login) {
+      requestedReviewers.push(r.login);
+    }
+  }
 
+  const reviewNodes = node.latestReviews?.nodes ?? [];
   const reviewStatus = aggregateReviewStatus(
-    (node.latestReviews?.nodes ?? []).map((r) => ({
+    reviewNodes.map((r) => ({
       state: r.state,
       user: r.author ? { login: r.author.login, avatar_url: '' } : null,
     })),
   );
+  const latestReviews: PrReview[] = [];
+  for (const r of reviewNodes) {
+    const state = mapReviewState(r.state);
+    if (!r.author || !state) continue;
+    latestReviews.push({
+      authorLogin: r.author.login,
+      state,
+      submittedAt: r.submittedAt ?? undefined,
+    });
+  }
 
   const pr: PullRequest = {
     number: node.number,
@@ -277,6 +309,8 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
     mergedAt: node.mergedAt ?? undefined,
     closedAt: node.closedAt ?? undefined,
     requestedReviewers,
+    requestedTeams,
+    latestReviews,
   };
 
   return aggregatePrWithChecks(pr, checkRuns);

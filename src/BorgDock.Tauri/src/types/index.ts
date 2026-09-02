@@ -27,6 +27,8 @@ export type {
 } from './notification';
 export type {
   OverallStatus,
+  PrReview,
+  PrReviewState,
   PullRequest,
   PullRequestCommit,
   PullRequestFileChange,
@@ -34,21 +36,26 @@ export type {
   ReviewStatus,
 } from './pull-request';
 export type {
+  ReviewThread,
+  ReviewThreadComment,
+  ReviewThreadSnippetLine,
+  ReviewVerdict,
+} from './review-thread';
+export type {
   AdoAuthMethod,
-  AgentOverviewSettings,
+  AgentProvider,
+  AgentSettings,
   AppSettings,
   AuthMethod,
   AzureDevOpsSettings,
-  ClaudeApiSettings,
-  ClaudeCodeSettings,
   ClaudeReviewSettings,
   GitHubSettings,
   NotificationSettings,
   PostFixAction,
-  RepoPriority,
   RepoSettings,
   SqlServerConnection,
   SqlSettings,
+  SummarySettings,
   ThemeMode,
   UiSettings,
   UpdateSettings,
@@ -68,9 +75,3 @@ export type {
   WorkItemRelation,
 } from './work-item';
 export type { WorktreeInfo } from './worktree';
-export type {
-  ReviewVerdict,
-  ReviewThread,
-  ReviewThreadComment,
-  ReviewThreadSnippetLine,
-} from './review-thread';

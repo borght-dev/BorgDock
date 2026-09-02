@@ -17,11 +17,16 @@ pub fn get_log_folder() -> Result<String, String> {
 /// Open the log folder in the OS file manager (Explorer on Windows, Finder
 /// on macOS, xdg-open on Linux).
 #[tauri::command]
-pub fn open_log_folder() -> Result<(), String> {
+pub async fn open_log_folder() -> Result<(), String> {
+    tokio::task::spawn_blocking(open_log_folder_blocking)
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn open_log_folder_blocking() -> Result<(), String> {
     let path = log_folder();
     if !path.exists() {
-        std::fs::create_dir_all(&path)
-            .map_err(|e| format!("Failed to create log folder: {e}"))?;
+        std::fs::create_dir_all(&path).map_err(|e| format!("Failed to create log folder: {e}"))?;
     }
 
     #[cfg(target_os = "windows")]

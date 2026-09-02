@@ -59,21 +59,18 @@ pub async fn open_file_viewer_window(
                 return Ok(());
             }
             let url = format!("file-viewer.html?path={encoded}{baseline_qs}");
-            let win = WebviewWindowBuilder::new(
-                &app_for_run,
-                &label,
-                tauri::WebviewUrl::App(url.into()),
-            )
-            .title("BorgDock File Viewer")
-            .inner_size(1280.0, 760.0)
-            .decorations(false)
-            .always_on_top(false)
-            .resizable(true)
-            .skip_taskbar(false)
-            .center()
-            .focused(true)
-            .build()
-            .map_err(|e| format!("failed to build viewer window: {e}"))?;
+            let win =
+                WebviewWindowBuilder::new(&app_for_run, &label, tauri::WebviewUrl::App(url.into()))
+                    .title("BorgDock File Viewer")
+                    .inner_size(1280.0, 760.0)
+                    .decorations(false)
+                    .always_on_top(false)
+                    .resizable(true)
+                    .skip_taskbar(false)
+                    .center()
+                    .focused(true)
+                    .build()
+                    .map_err(|e| format!("failed to build viewer window: {e}"))?;
             crate::platform::window_geometry::persist_window_geometry(&app_for_run, &win, &label);
             bring_to_front(&win);
             Ok(())
@@ -81,7 +78,7 @@ pub async fn open_file_viewer_window(
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    crate::platform::window::main_thread_result(rx).await
 }
 
 #[cfg(test)]

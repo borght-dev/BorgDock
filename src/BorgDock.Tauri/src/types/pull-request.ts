@@ -28,7 +28,20 @@ export interface PullRequest {
   commitCount: number;
   mergedAt?: string;
   closedAt?: string;
+  /** Individual users still pending as requested reviewers (logins). */
   requestedReviewers: string[];
+  /** Team slugs still pending as requested reviewers (e.g. `platform`). */
+  requestedTeams?: string[];
+  /** Latest review per reviewer, when the fetch path provides them. */
+  latestReviews?: PrReview[];
+}
+
+export type PrReviewState = 'approved' | 'changesRequested' | 'commented' | 'dismissed' | 'pending';
+
+export interface PrReview {
+  authorLogin: string;
+  state: PrReviewState;
+  submittedAt?: string;
 }
 
 export interface PullRequestWithChecks {

@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use super::{hidden_command, run_git_step, GitStep};
+use super::{git_command, hidden_command, output_with_timeout, run_git_step, GitStep, GIT_TIMEOUT};
+
+/// Upper bound on concurrent git processes during the heavy per-worktree scan.
+const SCAN_CONCURRENCY: usize = 8;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -23,12 +26,12 @@ pub struct WorktreeInfo {
     pub commit_sha: String,
 }
 
-fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
-    let output = hidden_command("git")
-        .args(args)
-        .current_dir(working_dir)
-        .output()
-        .map_err(|e| format!("Failed to run git: {e}"))?;
+pub(crate) fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
+    let output = output_with_timeout(
+        git_command().args(args).current_dir(working_dir),
+        GIT_TIMEOUT,
+    )
+    .map_err(|e| format!("Failed to run git: {e}"))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -44,7 +47,13 @@ fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
 }
 
 fn get_worktree_status(worktree_path: &str) -> (WorktreeStatus, u32) {
-    let output = run_git(worktree_path, &["status", "--porcelain=v1"]);
+    // --no-optional-locks: don't refresh/rewrite the index as a side effect.
+    // Without it every scan cycle takes the index lock in every worktree,
+    // which fights with the user's own git/IDE and thrashes the disk.
+    let output = run_git(
+        worktree_path,
+        &["--no-optional-locks", "status", "--porcelain=v1"],
+    );
     match output {
         Ok(text) => {
             let lines: Vec<&str> = text.lines().filter(|l| !l.is_empty()).collect();
@@ -136,10 +145,70 @@ fn parse_worktree_list(output: &str) -> Vec<(String, String, bool)> {
         is_first = false;
     }
 
+    sort_worktree_tuples(&mut result);
     result
 }
 
-#[derive(Debug, Clone, Serialize)]
+/// Deterministic order: main worktree first, then natural (numeric-aware,
+/// case-insensitive) order of the path so `worktree2` sorts before `worktree10`.
+fn sort_worktree_tuples(entries: &mut [(String, String, bool)]) {
+    entries.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| natural_cmp(&a.0, &b.0)));
+}
+
+/// Case-insensitive comparison that treats digit runs as numbers, so
+/// `a2` < `a10` and `Foo` sorts next to `foo`. Equal numeric values with
+/// different zero-padding and exact-case ties are broken deterministically so
+/// the ordering stays total.
+pub fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    let (mut i, mut j) = (0usize, 0usize);
+    while i < a.len() && j < b.len() {
+        let (ca, cb) = (a[i], b[j]);
+        if ca.is_ascii_digit() && cb.is_ascii_digit() {
+            let si = i;
+            while i < a.len() && a[i].is_ascii_digit() {
+                i += 1;
+            }
+            let sj = j;
+            while j < b.len() && b[j].is_ascii_digit() {
+                j += 1;
+            }
+            let da = &a[si..i];
+            let db = &b[sj..j];
+            // Strip leading zeros, compare by length then lexically.
+            let ta = da
+                .iter()
+                .position(|&c| c != b'0')
+                .map_or(&da[da.len()..], |p| &da[p..]);
+            let tb = db
+                .iter()
+                .position(|&c| c != b'0')
+                .map_or(&db[db.len()..], |p| &db[p..]);
+            let ord = ta.len().cmp(&tb.len()).then_with(|| ta.cmp(tb));
+            if ord != Ordering::Equal {
+                return ord;
+            }
+            // Same numeric value: fewer leading zeros first.
+            let ord = da.len().cmp(&db.len());
+            if ord != Ordering::Equal {
+                return ord;
+            }
+            continue;
+        }
+        let la = ca.to_ascii_lowercase();
+        let lb = cb.to_ascii_lowercase();
+        if la != lb {
+            return la.cmp(&lb);
+        }
+        i += 1;
+        j += 1;
+    }
+    (a.len() - i).cmp(&(b.len() - j)).then_with(|| a.cmp(b))
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorktreeEntry {
     pub path: String,
@@ -147,67 +216,108 @@ pub struct WorktreeEntry {
     pub is_main_worktree: bool,
 }
 
+/// Blocking: `git worktree list --porcelain` parsed into sorted entries.
+/// ~0.2 s per repo. Shared by `list_worktrees_bare`, the heavy scan and the
+/// worktree cache.
+pub(crate) fn list_worktrees_bare_sync(base_path: &str) -> Result<Vec<WorktreeEntry>, String> {
+    let output = run_git(base_path, &["worktree", "list", "--porcelain"])?;
+    Ok(parse_worktree_list(&output)
+        .into_iter()
+        .map(|(path, branch_name, is_main)| WorktreeEntry {
+            path,
+            branch_name,
+            is_main_worktree: is_main,
+        })
+        .collect())
+}
+
 /// Lightweight worktree list — only path + branch, no per-worktree git status/ahead-behind/sha.
 /// Use this when you only need to find a worktree by branch name (e.g. before launching Claude).
 #[tauri::command]
 pub async fn list_worktrees_bare(base_path: String) -> Result<Vec<WorktreeEntry>, String> {
+    tokio::task::spawn_blocking(move || list_worktrees_bare_sync(&base_path))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+}
+
+/// Heavy per-worktree scan (status + ahead/behind + sha). The three git calls
+/// per worktree run on a small scoped thread pool (`SCAN_CONCURRENCY` wide)
+/// instead of sequentially — 14 worktrees went from ~24 s to a few seconds.
+#[tauri::command]
+pub async fn list_worktrees(base_path: String) -> Result<Vec<WorktreeInfo>, String> {
     tokio::task::spawn_blocking(move || {
-        let output = run_git(&base_path, &["worktree", "list", "--porcelain"])?;
-        let entries = parse_worktree_list(&output);
-        Ok(entries
-            .into_iter()
-            .map(|(path, branch_name, is_main)| WorktreeEntry {
-                path,
-                branch_name,
-                is_main_worktree: is_main,
-            })
-            .collect())
+        let entries = list_worktrees_bare_sync(&base_path)?;
+        Ok(scan_worktrees_parallel(entries))
     })
     .await
     .map_err(|e| format!("Task join error: {e}"))?
 }
 
-#[tauri::command]
-pub async fn list_worktrees(base_path: String) -> Result<Vec<WorktreeInfo>, String> {
-    tokio::task::spawn_blocking(move || {
-        let output = run_git(&base_path, &["worktree", "list", "--porcelain"])?;
-        let entries = parse_worktree_list(&output);
+fn scan_worktree(entry: WorktreeEntry) -> WorktreeInfo {
+    let (status, uncommitted_count) = get_worktree_status(&entry.path);
+    let (ahead, behind) = get_ahead_behind(&entry.path);
+    let commit_sha = get_head_sha(&entry.path);
+    WorktreeInfo {
+        path: entry.path,
+        branch_name: entry.branch_name,
+        is_main_worktree: entry.is_main_worktree,
+        status,
+        uncommitted_count,
+        ahead,
+        behind,
+        commit_sha,
+    }
+}
 
-        let worktrees: Vec<WorktreeInfo> = entries
-            .into_iter()
-            .map(|(path, branch_name, is_main)| {
-                let (status, uncommitted_count) = get_worktree_status(&path);
-                let (ahead, behind) = get_ahead_behind(&path);
-                let commit_sha = get_head_sha(&path);
+/// Fan the per-worktree git calls out over at most `SCAN_CONCURRENCY` scoped
+/// threads, preserving the input order in the result.
+fn scan_worktrees_parallel(entries: Vec<WorktreeEntry>) -> Vec<WorktreeInfo> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Mutex;
 
-                WorktreeInfo {
-                    path,
-                    branch_name,
-                    is_main_worktree: is_main,
-                    status,
-                    uncommitted_count,
-                    ahead,
-                    behind,
-                    commit_sha,
+    if entries.is_empty() {
+        return Vec::new();
+    }
+    let workers = SCAN_CONCURRENCY.min(entries.len());
+    let next = AtomicUsize::new(0);
+    let slots: Mutex<Vec<Option<WorktreeInfo>>> =
+        Mutex::new((0..entries.len()).map(|_| None).collect());
+    let entries = &entries;
+
+    std::thread::scope(|scope| {
+        for _ in 0..workers {
+            scope.spawn(|| loop {
+                let idx = next.fetch_add(1, Ordering::Relaxed);
+                let Some(entry) = entries.get(idx) else { break };
+                let info = scan_worktree(entry.clone());
+                if let Ok(mut s) = slots.lock() {
+                    s[idx] = Some(info);
                 }
-            })
-            .collect();
+            });
+        }
+    });
 
-        Ok(worktrees)
-    })
-    .await
-    .map_err(|e| format!("Task join error: {e}"))?
+    slots
+        .into_inner()
+        .unwrap_or_default()
+        .into_iter()
+        .flatten()
+        .collect()
 }
 
 #[tauri::command]
 pub async fn create_worktree(
+    app: tauri::AppHandle,
     base_path: String,
     subfolder: String,
     branch_name: String,
 ) -> Result<String, String> {
-    tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         // Fetch only the specific branch tip (skip tags for speed)
-        let _ = run_git(&base_path, &["fetch", "--no-tags", "--depth", "1", "origin", &branch_name]);
+        let _ = run_git(
+            &base_path,
+            &["fetch", "--no-tags", "--depth", "1", "origin", &branch_name],
+        );
 
         let worktree_dir = std::path::Path::new(&base_path).join(&subfolder);
         std::fs::create_dir_all(&worktree_dir)
@@ -248,7 +358,9 @@ pub async fn create_worktree(
         Ok(worktree_path_str)
     })
     .await
-    .map_err(|e| format!("Task join error: {e}"))?
+    .map_err(|e| format!("Task join error: {e}"))?;
+    super::worktree_cache::refresh_in_background(&app);
+    result
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -267,13 +379,14 @@ pub struct CheckoutPrResult {
 /// so the UI can render the full transcript.
 #[tauri::command]
 pub async fn checkout_pr(
+    app: tauri::AppHandle,
     base_repo_path: String,
     branch_name: String,
     existing_worktree_path: Option<String>,
     new_worktree_subfolder: Option<String>,
     new_worktree_name: Option<String>,
 ) -> Result<CheckoutPrResult, String> {
-    tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         if base_repo_path.is_empty() {
             return Err("Repo base path is not configured. Set it in Settings.".to_string());
         }
@@ -314,9 +427,8 @@ pub async fn checkout_pr(
             let name = sanitize_branch_name(&name);
 
             let worktree_dir = std::path::Path::new(&base_repo_path).join(&subfolder);
-            std::fs::create_dir_all(&worktree_dir).map_err(|e| {
-                format!("Failed to create worktree parent directory: {e}")
-            })?;
+            std::fs::create_dir_all(&worktree_dir)
+                .map_err(|e| format!("Failed to create worktree parent directory: {e}"))?;
             let worktree_path = worktree_dir.join(&name);
             let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
@@ -357,7 +469,9 @@ pub async fn checkout_pr(
         }
     })
     .await
-    .map_err(|e| format!("Task join error: {e}"))?
+    .map_err(|e| format!("Task join error: {e}"))?;
+    super::worktree_cache::refresh_in_background(&app);
+    result
 }
 
 fn format_step_failure(steps: &[GitStep]) -> String {
@@ -375,13 +489,19 @@ fn format_step_failure(steps: &[GitStep]) -> String {
 }
 
 #[tauri::command]
-pub async fn remove_worktree(base_path: String, worktree_path: String) -> Result<(), String> {
-    tokio::task::spawn_blocking(move || {
+pub async fn remove_worktree(
+    app: tauri::AppHandle,
+    base_path: String,
+    worktree_path: String,
+) -> Result<(), String> {
+    let result = tokio::task::spawn_blocking(move || {
         run_git(&base_path, &["worktree", "remove", &worktree_path])?;
         Ok(())
     })
     .await
-    .map_err(|e| format!("Task join error: {e}"))?
+    .map_err(|e| format!("Task join error: {e}"))?;
+    super::worktree_cache::refresh_in_background(&app);
+    result
 }
 
 #[tauri::command]
@@ -510,35 +630,69 @@ pub async fn launch_claude_in_terminal(
             let mut launches: Vec<Vec<String>> = Vec::new();
             if let Some(name) = default_profile.as_deref() {
                 launches.push(vec![
-                    "-w".into(), "new".into(),
+                    "-w".into(),
+                    "new".into(),
                     "new-tab".into(),
-                    "-p".into(), name.to_string(),
-                    "--title".into(), "Claude".into(),
-                    "-d".into(), path.clone(),
-                    "pwsh".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+                    "-p".into(),
+                    name.to_string(),
+                    "--title".into(),
+                    "Claude".into(),
+                    "-d".into(),
+                    path.clone(),
+                    "pwsh".into(),
+                    "-NoLogo".into(),
+                    "-NoProfile".into(),
+                    "-NoExit".into(),
+                    "-Command".into(),
+                    ps_command.into(),
                 ]);
                 launches.push(vec![
-                    "-w".into(), "new".into(),
+                    "-w".into(),
+                    "new".into(),
                     "new-tab".into(),
-                    "-p".into(), name.to_string(),
-                    "--title".into(), "Claude".into(),
-                    "-d".into(), path.clone(),
-                    "powershell".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+                    "-p".into(),
+                    name.to_string(),
+                    "--title".into(),
+                    "Claude".into(),
+                    "-d".into(),
+                    path.clone(),
+                    "powershell".into(),
+                    "-NoLogo".into(),
+                    "-NoProfile".into(),
+                    "-NoExit".into(),
+                    "-Command".into(),
+                    ps_command.into(),
                 ]);
             }
             launches.push(vec![
-                "-w".into(), "new".into(),
+                "-w".into(),
+                "new".into(),
                 "new-tab".into(),
-                "--title".into(), "Claude".into(),
-                "-d".into(), path.clone(),
-                "pwsh".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+                "--title".into(),
+                "Claude".into(),
+                "-d".into(),
+                path.clone(),
+                "pwsh".into(),
+                "-NoLogo".into(),
+                "-NoProfile".into(),
+                "-NoExit".into(),
+                "-Command".into(),
+                ps_command.into(),
             ]);
             launches.push(vec![
-                "-w".into(), "new".into(),
+                "-w".into(),
+                "new".into(),
                 "new-tab".into(),
-                "--title".into(), "Claude".into(),
-                "-d".into(), path.clone(),
-                "powershell".into(), "-NoLogo".into(), "-NoProfile".into(), "-NoExit".into(), "-Command".into(), ps_command.into(),
+                "--title".into(),
+                "Claude".into(),
+                "-d".into(),
+                path.clone(),
+                "powershell".into(),
+                "-NoLogo".into(),
+                "-NoProfile".into(),
+                "-NoExit".into(),
+                "-Command".into(),
+                ps_command.into(),
             ]);
 
             let mut last_err: Option<std::io::Error> = None;
@@ -557,7 +711,10 @@ pub async fn launch_claude_in_terminal(
                 // Last resort: cmd window that cd's in and runs claude.
                 hidden_command("cmd")
                     .args([
-                        "/c", "start", "cmd", "/k",
+                        "/c",
+                        "start",
+                        "cmd",
+                        "/k",
                         &format!("cd /d \"{path}\" && claude --dangerously-skip-permissions"),
                     ])
                     .spawn()
@@ -618,11 +775,15 @@ fn compute_wt_default_profile_name() -> Option<String> {
             .join("Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe")
             .join("LocalState")
             .join("settings.json"),
-        lad.join("Microsoft").join("Windows Terminal").join("settings.json"),
+        lad.join("Microsoft")
+            .join("Windows Terminal")
+            .join("settings.json"),
     ];
 
     for path in candidates {
-        let Ok(raw) = std::fs::read_to_string(&path) else { continue };
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            continue;
+        };
         let stripped = strip_jsonc_comments(&raw);
         let Ok(v) = serde_json::from_str::<serde_json::Value>(&stripped) else {
             log::debug!("wt settings.json at {path:?} failed to parse even after comment strip");
@@ -712,4 +873,51 @@ fn sanitize_branch_name(name: &str) -> String {
         s = s.replace("--", "-");
     }
     s.trim_matches(|c| c == '-' || c == '.').to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cmp::Ordering;
+
+    #[test]
+    fn natural_cmp_orders_digit_runs_numerically() {
+        assert_eq!(natural_cmp("worktree2", "worktree10"), Ordering::Less);
+        assert_eq!(natural_cmp("worktree10", "worktree2"), Ordering::Greater);
+        assert_eq!(natural_cmp("worktree1", "worktree1"), Ordering::Equal);
+        assert_eq!(natural_cmp("Worktree1", "worktree2"), Ordering::Less);
+        assert_eq!(natural_cmp("a", "ab"), Ordering::Less);
+        let mut v = vec!["worktree10", "worktree2", "worktree1", "feature-x"];
+        v.sort_by(|a, b| natural_cmp(a, b));
+        assert_eq!(v, vec!["feature-x", "worktree1", "worktree2", "worktree10"]);
+    }
+
+    #[test]
+    fn parse_worktree_list_pins_main_then_natural_order() {
+        let out = "worktree D:/repo\nHEAD abc\nbranch refs/heads/main\n\n\
+                   worktree D:/repo/.worktrees/worktree10\nHEAD abc\nbranch refs/heads/b10\n\n\
+                   worktree D:/repo/.worktrees/worktree2\nHEAD abc\nbranch refs/heads/b2\n\n\
+                   worktree D:/repo/.worktrees/worktree1\nHEAD abc\nbranch refs/heads/b1\n";
+        let parsed = parse_worktree_list(out);
+        let paths: Vec<&str> = parsed.iter().map(|(p, _, _)| p.as_str()).collect();
+        assert_eq!(
+            paths,
+            vec![
+                "D:/repo",
+                "D:/repo/.worktrees/worktree1",
+                "D:/repo/.worktrees/worktree2",
+                "D:/repo/.worktrees/worktree10",
+            ]
+        );
+        assert!(parsed[0].2);
+        assert!(!parsed[1].2);
+    }
+
+    #[test]
+    fn parse_worktree_list_skips_bare() {
+        let out = "worktree D:/repo.git\nbare\n\nworktree D:/repo/.worktrees/a\nHEAD abc\nbranch refs/heads/a\n";
+        let parsed = parse_worktree_list(out);
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].0, "D:/repo/.worktrees/a");
+    }
 }

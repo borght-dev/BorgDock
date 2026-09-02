@@ -4,9 +4,10 @@ import { useShallow } from 'zustand/react/shallow';
 import { Card } from '@/components/shared/primitives';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
+import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { PrCardContainer } from './PrCardContainer';
-import { PrToolbar, type PrFilterCounts } from './PrToolbar';
+import { type PrFilterCounts, PrToolbar } from './PrToolbar';
 import { RepoGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { TeamReviewLoad } from './TeamReviewLoad';
@@ -48,13 +49,17 @@ export function PrList() {
   );
 
   const needsMyReview = usePrStore((s) => s.needsMyReview);
-  const groupedByRepo = usePrStore((s) => s.groupedByRepo);
+  const groupedPrs = usePrStore((s) => s.groupedPrs);
   const filteredPrs = usePrStore((s) => s.filteredPrs);
   const counts = usePrStore((s) => s.counts);
+  const authorLoad = usePrStore((s) => s.authorLoad);
+  const groupBy = useUiStore((s) => s.prGroupBy);
+  const density = useUiStore((s) => s.prDensity);
 
-  const groups = groupedByRepo();
+  const groups = groupedPrs(groupBy);
   const prs = filteredPrs();
   const reviewQueue = needsMyReview();
+  const authors = authorLoad();
   const isFirstLoad = !lastPollTime && isPolling;
 
   // Map the store's PrFilter-keyed counts onto the PrToolbar's UI-keyed counts.
@@ -121,14 +126,32 @@ export function PrList() {
   return (
     <div className="flex flex-col gap-0.5">
       <PrToolbar counts={prFilterCounts} />
+      {filter !== 'closed' && authors.length > 0 && (
+        <div
+          className="flex items-center gap-2 overflow-x-auto px-3 py-2"
+          aria-label="Pull requests by author"
+        >
+          {authors.map((author) => (
+            <span
+              key={author.login.toLowerCase()}
+              className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-raised)] px-2 py-1 text-[10px]"
+            >
+              <span>
+                {author.login}
+                {author.isMe ? ' (you)' : ''}
+              </span>
+              <span className="bd-mono">{author.count}</span>
+              {author.failing > 0 && (
+                <span className="text-[var(--color-status-red)]">{author.failing} failing</span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
       {showReviewQueue && (
         <>
-          <div
-            className="flex items-center gap-2 px-3 pt-2 pb-1 border-[var(--color-separator)]"
-          >
-            <span
-              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-status-yellow)]"
-            >
+          <div className="flex items-center gap-2 px-3 pt-2 pb-1 border-[var(--color-separator)]">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-status-yellow)]">
               Needs Your Review
             </span>
             <span className="h-px flex-1 bg-[var(--color-separator)]" />
@@ -154,7 +177,7 @@ export function PrList() {
                   <div className="absolute right-3 top-3 z-10">
                     <ReviewSlaIndicator tier={tier} waitTime={waitTime} />
                   </div>
-                  <PrCardContainer prWithChecks={pr} />
+                  <PrCardContainer prWithChecks={pr} density={density} />
                 </div>
               );
             })}
@@ -163,26 +186,20 @@ export function PrList() {
         </>
       )}
 
-      {[...groups.entries()].map(([repoKey, repoPrs]) => (
-        <RepoGroup key={repoKey} repoKey={repoKey} prs={repoPrs} />
+      {groups.map((group) => (
+        <RepoGroup key={group.key} group={group} />
       ))}
 
       {filter !== 'closed' && <TeamReviewLoad />}
 
       {showRecentlyClosed && (
         <>
-          <div
-            className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1 border-[var(--color-separator)]"
-          >
-            <span
-              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]"
-            >
+          <div className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1 border-[var(--color-separator)]">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
               Recently Closed
             </span>
             <span className="h-px flex-1 bg-[var(--color-separator)]" />
-            <span
-              className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]"
-            >
+            <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]">
               {closedPullRequests.length}
             </span>
           </div>

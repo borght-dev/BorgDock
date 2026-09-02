@@ -14,9 +14,9 @@ use tauri::{AppHandle, Manager};
 use windows::Win32::{
     Foundation::{HINSTANCE, LPARAM, LRESULT, POINT, RECT, WPARAM},
     UI::WindowsAndMessaging::{
-        CallNextHookEx, GetWindowRect, SetWindowsHookExW, UnhookWindowsHookEx,
-        HHOOK, MSLLHOOKSTRUCT, WH_MOUSE_LL, WM_LBUTTONDOWN, WM_MBUTTONDOWN,
-        WM_NCLBUTTONDOWN, WM_NCMBUTTONDOWN, WM_NCRBUTTONDOWN, WM_RBUTTONDOWN,
+        CallNextHookEx, GetWindowRect, SetWindowsHookExW, UnhookWindowsHookEx, HHOOK,
+        MSLLHOOKSTRUCT, WH_MOUSE_LL, WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN,
+        WM_NCMBUTTONDOWN, WM_NCRBUTTONDOWN, WM_RBUTTONDOWN,
     },
 };
 
@@ -50,11 +50,7 @@ pub fn millis_since_outside_hide() -> u64 {
     now_ms().saturating_sub(LAST_OUTSIDE_HIDE_MS.load(Ordering::Relaxed))
 }
 
-unsafe extern "system" fn mouse_proc(
-    n_code: i32,
-    w_param: WPARAM,
-    l_param: LPARAM,
-) -> LRESULT {
+unsafe extern "system" fn mouse_proc(n_code: i32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     if n_code >= 0 {
         let msg = w_param.0 as u32;
         if matches!(
@@ -77,7 +73,9 @@ fn handle_click(pt: POINT) {
     let (hwnd_val, app) = {
         let Ok(state) = HOOK_STATE.lock() else { return };
         let Some(h) = state.flyout_hwnd else { return };
-        let Some(a) = state.app_handle.clone() else { return };
+        let Some(a) = state.app_handle.clone() else {
+            return;
+        };
         (h, a)
     };
 
@@ -87,10 +85,7 @@ fn handle_click(pt: POINT) {
         return;
     }
 
-    let inside = pt.x >= rect.left
-        && pt.x < rect.right
-        && pt.y >= rect.top
-        && pt.y < rect.bottom;
+    let inside = pt.x >= rect.left && pt.x < rect.right && pt.y >= rect.top && pt.y < rect.bottom;
     if inside {
         return;
     }
@@ -129,7 +124,9 @@ pub fn install_hook(app: AppHandle, flyout_hwnd: isize) -> Result<(), String> {
 
 /// Remove the mouse hook. Called when the flyout is hidden.
 pub fn uninstall_hook() {
-    let Ok(mut state) = HOOK_STATE.lock() else { return };
+    let Ok(mut state) = HOOK_STATE.lock() else {
+        return;
+    };
     if let Some(hook_val) = state.hook.take() {
         let hook = HHOOK(hook_val as *mut _);
         let _ = unsafe { UnhookWindowsHookEx(hook) };

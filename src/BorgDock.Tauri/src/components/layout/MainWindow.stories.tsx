@@ -94,7 +94,7 @@ function pr(spec: PrSpec): PullRequestWithChecks {
 const OPEN_PRS: PullRequestWithChecks[] = [
   pr({
     number: 482,
-    title: 'Agent Overview: live Claude Code session dashboard',
+    title: 'T3 Code: live agent sessions on pull requests',
     repoName: 'BorgDock',
     author: ME,
     status: 'green',
@@ -283,13 +283,21 @@ function SectionBody() {
   return <PrList />;
 }
 
-function Harness({ section }: { section: ActiveSection }) {
+function Harness({
+  section,
+  groupBy = 'repo',
+  density = 'normal',
+}: {
+  section: ActiveSection;
+  groupBy?: 'repo' | 'author' | 'status';
+  density?: 'normal' | 'compact';
+}) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
-    useUiStore.setState({ activeSection: section });
+    useUiStore.setState({ activeSection: section, prGroupBy: groupBy, prDensity: density });
     return null;
   });
   return (
@@ -310,6 +318,12 @@ type Story = StoryObj<typeof Harness>;
 
 /** The PRs tab — grouped list, "Needs Your Review" queue, toolbar, recently closed. */
 export const PrsTab: Story = { args: { section: 'prs' } };
+
+/** The PR tab grouped by author, with the current user first. */
+export const PrsByAuthor: Story = { args: { section: 'prs', groupBy: 'author' } };
+
+/** Compact PR rows for high-volume review queues. */
+export const PrsCompact: Story = { args: { section: 'prs', density: 'compact' } };
 
 /** The Focus tab — ranked "what needs you" queue with the Quick Review CTA. */
 export const FocusTab: Story = { args: { section: 'focus' } };

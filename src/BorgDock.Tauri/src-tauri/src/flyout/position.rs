@@ -42,18 +42,16 @@ mod tests {
 
     #[test]
     fn bottom_right_places_flyout_above_taskbar() {
-        let (x, y) = compute_flyout_position(
-            0, 0, 1920, 1080, 412, 512, FlyoutAnchor::BottomRight, 48,
-        );
+        let (x, y) =
+            compute_flyout_position(0, 0, 1920, 1080, 412, 512, FlyoutAnchor::BottomRight, 48);
         assert_eq!(x, 1920 - 412);
         assert_eq!(y, 1080 - 48 - 512);
     }
 
     #[test]
     fn top_right_places_flyout_below_menu_bar() {
-        let (x, y) = compute_flyout_position(
-            0, 0, 1920, 1080, 412, 512, FlyoutAnchor::TopRight, 28,
-        );
+        let (x, y) =
+            compute_flyout_position(0, 0, 1920, 1080, 412, 512, FlyoutAnchor::TopRight, 28);
         assert_eq!(x, 1920 - 412);
         assert_eq!(y, 28);
     }
@@ -61,7 +59,14 @@ mod tests {
     #[test]
     fn bottom_right_respects_nonzero_work_origin() {
         let (x, y) = compute_flyout_position(
-            -1920, 0, 1920, 1080, 412, 512, FlyoutAnchor::BottomRight, 48,
+            -1920,
+            0,
+            1920,
+            1080,
+            412,
+            512,
+            FlyoutAnchor::BottomRight,
+            48,
         );
         assert_eq!(x, -412);
         assert_eq!(y, 1080 - 48 - 512);

@@ -1,8 +1,30 @@
 import { getReviewSlaTier } from '@/services/review-sla';
-import type { PullRequestWithChecks, RepoPriority } from '@/types';
+import { matchedTeams } from '@/services/team-membership';
+import type { PrReview, PullRequestWithChecks } from '@/types';
+
+/**
+ * Every rule the Focus scorer can fire. Points are additive; a PR is "in
+ * Focus" when its total is > 0. The rules encode one idea: *things that need
+ * me to act* — failing builds on mine, reviews I owe (personal or via a team),
+ * feedback on mine I have not answered, and my PRs nobody has looked at.
+ */
+export type PriorityFactorType =
+  | 'readyToMerge'
+  | 'myPrRedChecks'
+  | 'myPrChangesRequested'
+  | 'myPrStale'
+  | 'myPrUnreviewed'
+  | 'myPrCommented'
+  | 'myReviewFollowUp'
+  | 'reviewRequested'
+  | 'teamReviewRequested'
+  | 'reviewAging'
+  | 'reviewStale'
+  | 'staleness'
+  | 'othersRedChecks';
 
 export interface PriorityFactor {
-  type: string;
+  type: PriorityFactorType;
   points: number;
   label: string;
 }
@@ -13,23 +35,51 @@ export interface PriorityScore {
   primaryReason: string;
 }
 
+/** Scores are keyed by `owner/repo#number` so numbers never collide across repos. */
+export function prScoreKey(pr: { repoOwner: string; repoName: string; number: number }): string {
+  return `${pr.repoOwner}/${pr.repoName}#${pr.number}`;
+}
+
+/** Key under which the store remembers when a *user* review request was first seen. */
+export function reviewRequestKey(
+  pr: { repoOwner: string; repoName: string; number: number },
+  login: string,
+): string {
+  return `${prScoreKey(pr)}:${login.toLowerCase()}`;
+}
+
+/** Key under which the store remembers when a *team* review request was first seen. */
+export function teamReviewRequestKey(
+  pr: { repoOwner: string; repoName: string; number: number },
+  slug: string,
+): string {
+  return `${prScoreKey(pr)}:team:${slug.toLowerCase()}`;
+}
+
+const UNREVIEWED_AFTER_HOURS = 8;
+const UNREVIEWED_LONG_AFTER_HOURS = 24;
+/** Slack when comparing a review timestamp against `updatedAt`, which GitHub
+ *  bumps for the review itself a few hundred ms later. */
+const ACTIVITY_SLACK_MS = 60 * 1000;
+
 export function computePriorityScores(
   prs: PullRequestWithChecks[],
   username: string,
   reviewRequestTimestamps: Record<string, string>,
-  contributorWeights?: Map<string, number>,
-  repoPriority?: Record<string, RepoPriority>,
-): Map<number, PriorityScore> {
-  const scores = new Map<number, PriorityScore>();
+  teams: readonly string[] = [],
+): Map<string, PriorityScore> {
+  const scores = new Map<string, PriorityScore>();
+  const me = username.toLowerCase();
 
   for (const pr of prs) {
     const p = pr.pullRequest;
-    const isMine = username !== '' && p.authorLogin.toLowerCase() === username.toLowerCase();
+    const isMine = me !== '' && p.authorLogin.toLowerCase() === me;
 
     // Others' drafts: excluded entirely
     if (p.isDraft && !isMine) continue;
 
     const factors: PriorityFactor[] = [];
+    const updatedMs = new Date(p.updatedAt).getTime();
 
     // readyToMerge (0-45)
     if (
@@ -57,26 +107,67 @@ export function computePriorityScores(
       ) {
         factors.push({ type: 'myPrStale', points: 10, label: `Stale ${daysAgo(p.updatedAt)}d` });
       }
+
+      // myPrUnreviewed (10-15): nobody has looked at it since it was opened
+      if (!p.isDraft && p.reviewStatus === 'none' && (p.latestReviews?.length ?? 0) === 0) {
+        const openHours = hoursAgo(p.createdAt);
+        if (openHours > UNREVIEWED_LONG_AFTER_HOURS) {
+          factors.push({
+            type: 'myPrUnreviewed',
+            points: 15,
+            label: `Unreviewed ${daysAgo(p.createdAt)}d`,
+          });
+        } else if (openHours > UNREVIEWED_AFTER_HOURS) {
+          factors.push({
+            type: 'myPrUnreviewed',
+            points: 10,
+            label: `Unreviewed ${Math.floor(openHours)}h`,
+          });
+        }
+      }
+
+      // myPrCommented (12): someone left comments and I have not responded
+      if (
+        !p.isDraft &&
+        p.reviewStatus === 'commented' &&
+        awaitingMyReply(p.latestReviews, me, updatedMs)
+      ) {
+        factors.push({ type: 'myPrCommented', points: 12, label: 'Comments to answer' });
+      }
     }
 
-    // reviewRequested (0-30)
-    if (username) {
-      const isRequested = p.requestedReviewers.some(
-        (r) => r.toLowerCase() === username.toLowerCase(),
-      );
+    // reviewRequested (0-30) — directly, or via one of my teams
+    let requested = false;
+    if (me) {
+      const isRequested = p.requestedReviewers.some((r) => r.toLowerCase() === me);
       if (isRequested) {
-        const tsKey = `${p.repoOwner}/${p.repoName}#${p.number}:${username.toLowerCase()}`;
-        const requestedAt = reviewRequestTimestamps[tsKey];
+        requested = true;
         factors.push({ type: 'reviewRequested', points: 15, label: 'Review requested' });
-
-        if (requestedAt) {
-          const tier = getReviewSlaTier(requestedAt);
-          if (tier === 'aging') {
-            factors.push({ type: 'reviewAging', points: 7, label: 'Review aging' });
-          } else if (tier === 'stale') {
-            factors.push({ type: 'reviewStale', points: 8, label: 'Review overdue' });
-          }
+        pushAgingFactors(factors, reviewRequestTimestamps[reviewRequestKey(p, me)]);
+      } else {
+        const viaTeams = isMine ? [] : matchedTeams(p.requestedTeams, teams);
+        if (viaTeams.length > 0) {
+          requested = true;
+          factors.push({
+            type: 'teamReviewRequested',
+            points: 15,
+            label: `Team review: ${viaTeams[0]}`,
+          });
+          const requestedAt = viaTeams
+            .map((slug) => reviewRequestTimestamps[teamReviewRequestKey(p, slug)])
+            .filter((ts): ts is string => !!ts)
+            .sort()[0];
+          pushAgingFactors(factors, requestedAt);
         }
+      }
+    }
+
+    // myReviewFollowUp (8): I reviewed, the author pushed / replied since
+    if (!isMine && me && !requested) {
+      const myReview = p.latestReviews?.find((r) => r.authorLogin.toLowerCase() === me);
+      const reviewedMs = myReview?.submittedAt ? new Date(myReview.submittedAt).getTime() : NaN;
+      if (!Number.isNaN(reviewedMs) && updatedMs > reviewedMs + ACTIVITY_SLACK_MS) {
+        factors.push({ type: 'myReviewFollowUp', points: 8, label: 'Updated since your review' });
       }
     }
 
@@ -96,46 +187,57 @@ export function computePriorityScores(
       factors.push({ type: 'othersRedChecks', points: 5, label: 'Build failing' });
     }
 
-    // Sum base score
-    let total = factors.reduce((sum, f) => sum + f.points, 0);
-
-    // repoWeight multiplier
-    const repoKey = `${p.repoOwner}/${p.repoName}`;
-    let multiplier = 1.0;
-
-    // Manual override takes precedence
-    const manualPriority = repoPriority?.[repoKey];
-    if (manualPriority === 'high') {
-      multiplier = 1.2;
-    } else if (manualPriority === 'low') {
-      multiplier = 0.5;
-    } else if (contributorWeights) {
-      // Activity-based weight
-      const weight = contributorWeights.get(repoKey) ?? 1.0;
-      multiplier = weight < 0.1 ? 0.7 : 1.0;
-    }
-
-    total = Math.round(total * multiplier);
+    const total = factors.reduce((sum, f) => sum + f.points, 0);
 
     // Build primary reason from highest-point factor
     const sorted = [...factors].sort((a, b) => b.points - a.points);
-    const primaryReason = sorted.map((f) => f.label).join(' \u00b7 ') || 'Open PR';
+    const primaryReason = sorted.map((f) => f.label).join(' · ') || 'Open PR';
 
-    scores.set(p.number, { total, factors, primaryReason });
+    scores.set(prScoreKey(p), { total, factors: sorted, primaryReason });
   }
 
   return scores;
 }
 
+/**
+ * "Someone commented on my PR and I have not answered." With review
+ * timestamps we check whether the newest comment by someone else is the last
+ * thing that happened to the PR (`updatedAt` moves on every push/comment).
+ * Without timestamps (older cache entries) any non-approved review counts.
+ */
+function awaitingMyReply(reviews: PrReview[] | undefined, me: string, updatedMs: number): boolean {
+  if (!reviews || reviews.length === 0) return true;
+  const others = reviews.filter(
+    (r) =>
+      r.authorLogin.toLowerCase() !== me &&
+      (r.state === 'commented' || r.state === 'changesRequested'),
+  );
+  if (others.length === 0) return false;
+  const stamped = others.map((r) => (r.submittedAt ? new Date(r.submittedAt).getTime() : NaN));
+  if (stamped.some((ms) => Number.isNaN(ms))) return true;
+  const newestReview = Math.max(...stamped);
+  return newestReview + ACTIVITY_SLACK_MS >= updatedMs;
+}
+
+function pushAgingFactors(factors: PriorityFactor[], requestedAt: string | undefined): void {
+  if (!requestedAt) return;
+  const tier = getReviewSlaTier(requestedAt);
+  if (tier === 'aging') {
+    factors.push({ type: 'reviewAging', points: 7, label: 'Review aging' });
+  } else if (tier === 'stale') {
+    factors.push({ type: 'reviewStale', points: 8, label: 'Review overdue' });
+  }
+}
+
 export function sortByPriority(
   prs: PullRequestWithChecks[],
-  scores: Map<number, PriorityScore>,
+  scores: Map<string, PriorityScore>,
 ): PullRequestWithChecks[] {
   return [...prs]
-    .filter((pr) => scores.has(pr.pullRequest.number))
+    .filter((pr) => scores.has(prScoreKey(pr.pullRequest)))
     .sort((a, b) => {
-      const sa = scores.get(a.pullRequest.number)!;
-      const sb = scores.get(b.pullRequest.number)!;
+      const sa = scores.get(prScoreKey(a.pullRequest))!;
+      const sb = scores.get(prScoreKey(b.pullRequest))!;
 
       // Descending by score
       if (sb.total !== sa.total) return sb.total - sa.total;

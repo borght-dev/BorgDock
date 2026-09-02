@@ -19,6 +19,8 @@ const log = createLogger('github');
 
 export class GitHubClient {
   private readonly getToken: () => Promise<string>;
+  readonly account: string;
+  private readonly persistedEtagPrefix: string;
   private readonly etagCache = new Map<string, ETagEntry>();
   // REST and GraphQL draw from separate 5000/h pools — track them separately
   // so neither poisons the other's reading (the polling loop is GraphQL-only).
@@ -27,8 +29,10 @@ export class GitHubClient {
   private _freshCount = 0;
   private _pollStartCount = 0;
 
-  constructor(getToken: () => Promise<string>) {
+  constructor(getToken: () => Promise<string>, account = '') {
     this.getToken = getToken;
+    this.account = account;
+    this.persistedEtagPrefix = account ? `github-account:${account.toLowerCase()}:` : '';
   }
 
   /** Call before starting a poll cycle to track whether any fresh data arrives. */
@@ -61,7 +65,15 @@ export class GitHubClient {
   /** Populate the in-memory ETag cache from persisted entries (call on startup). */
   seedEtagCache(entries: Array<{ url: string; etag: string; data: unknown }>): void {
     for (const entry of entries) {
-      this.etagCache.set(entry.url, { etag: entry.etag, data: entry.data });
+      if (this.persistedEtagPrefix) {
+        if (!entry.url.startsWith(this.persistedEtagPrefix)) continue;
+        this.etagCache.set(entry.url.slice(this.persistedEtagPrefix.length), {
+          etag: entry.etag,
+          data: entry.data,
+        });
+      } else if (!entry.url.startsWith('github-account:')) {
+        this.etagCache.set(entry.url, { etag: entry.etag, data: entry.data });
+      }
     }
   }
 
@@ -69,7 +81,11 @@ export class GitHubClient {
   getEtagEntries(): Array<{ url: string; etag: string; jsonData: unknown }> {
     const entries: Array<{ url: string; etag: string; jsonData: unknown }> = [];
     for (const [url, entry] of this.etagCache) {
-      entries.push({ url, etag: entry.etag, jsonData: entry.data });
+      entries.push({
+        url: `${this.persistedEtagPrefix}${url}`,
+        etag: entry.etag,
+        jsonData: entry.data,
+      });
     }
     return entries;
   }

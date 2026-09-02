@@ -53,6 +53,9 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const [resolvedPos, setResolvedPos] = useState(position);
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
+  const defaultProvider = settings.agents?.defaultProvider ?? 'claude';
+  const providerLabel =
+    defaultProvider === 't3' ? 'T3' : defaultProvider === 'codex' ? 'Codex' : 'Claude';
 
   // Close on click outside
   useEffect(() => {
@@ -177,6 +180,10 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     await monitorPr(pr);
   }, 'Monitor with Claude failed');
 
+  const otherProviders = (['t3', 'claude', 'codex'] as const).filter(
+    (provider) => provider !== defaultProvider,
+  );
+
   const handleCopyMonitorPrompt = handleAction(async () => {
     const prompt = getMonitorPrompt(pr);
     if (!prompt) throw new Error('Repo not configured in settings');
@@ -256,8 +263,29 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
         onClick={handleRerunFailed}
         disabled={!hasFailingChecks || failedSuiteId === undefined}
       />
-      <MenuItem label="Fix with Claude" onClick={handleFixWithClaude} />
-      <MenuItem label="Monitor with Claude" onClick={handleMonitorWithClaude} />
+      <MenuItem label={`Fix with ${providerLabel}`} onClick={handleFixWithClaude} />
+      <MenuItem label={`Monitor with ${providerLabel}`} onClick={handleMonitorWithClaude} />
+      {otherProviders.map((provider) => {
+        const label = provider === 't3' ? 'T3' : provider === 'codex' ? 'Codex' : 'Claude';
+        return (
+          <MenuItem
+            key={`fix-${provider}`}
+            label={`Fix with ${label}`}
+            onClick={handleAction(
+              () =>
+                fixWithClaude(
+                  pr,
+                  failedCheckNames.length > 0 ? failedCheckNames : ['unknown'],
+                  [],
+                  [],
+                  '',
+                  provider,
+                ),
+              `Fix with ${label} failed`,
+            )}
+          />
+        );
+      })}
 
       <Separator />
 

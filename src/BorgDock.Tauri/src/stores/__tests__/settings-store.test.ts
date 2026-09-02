@@ -38,17 +38,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
-    claudeCode: {
-      defaultPostFixAction: 'commitAndNotify',
-    },
-    claudeApi: {
-      model: 'claude-sonnet-4-6',
-      maxTokens: 1024,
-      prSummaryEnabled: true,
-      diffExplanationsEnabled: true,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: {
       botUsername: 'claude[bot]',
     },
@@ -76,7 +65,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       readOnlyByDefault: true,
       confirmDestructiveWithoutWhere: true,
     },
-    repoPriority: {},
     ...overrides,
   };
 }
@@ -242,8 +230,6 @@ describe('settings-store ADO auth migration', () => {
           repos: [],
           ui: {},
           notifications: {},
-          claudeCode: {},
-          claudeApi: { model: '', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
           claudeReview: { botUsername: '' },
           updates: { autoCheckEnabled: true, autoDownload: true },
           azureDevOps: {
@@ -259,7 +245,6 @@ describe('settings-store ADO auth migration', () => {
             recentWorkItemIds: [],
           },
           sql: { connections: [] },
-          repoPriority: {},
         };
       }
       if (cmd === 'get_credential') {
@@ -288,8 +273,6 @@ describe('settings-store ADO auth migration', () => {
           repos: [],
           ui: {},
           notifications: {},
-          claudeCode: {},
-          claudeApi: { model: '', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
           claudeReview: { botUsername: '' },
           updates: { autoCheckEnabled: true, autoDownload: true },
           azureDevOps: {
@@ -305,7 +288,6 @@ describe('settings-store ADO auth migration', () => {
             recentWorkItemIds: [],
           },
           sql: { connections: [] },
-          repoPriority: {},
         };
       }
       return null;

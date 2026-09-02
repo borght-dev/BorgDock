@@ -1,6 +1,5 @@
 import { getVersion } from '@tauri-apps/api/app';
 import { useEffect, useRef } from 'react';
-import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { openWhatsNew as openWhatsNewWindow } from '@/services/windows';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
@@ -50,6 +49,9 @@ export function useWhatsNew(): void {
         return;
       }
 
+      // The generated changelog (with every release's hero metadata) is ~47 KB;
+      // load it only once we know we may need to compare versions.
+      const { RELEASES } = await import('@/generated/changelog');
       const missed = RELEASES.filter(
         (r) => semverGt(r.version, lastSeenVersion) && semverLte(r.version, currentVersion),
       );

@@ -35,7 +35,9 @@ fn settings_file_path() -> Result<PathBuf, String> {
 }
 
 fn dir_size(p: &Path) -> u64 {
-    let Ok(rd) = std::fs::read_dir(p) else { return 0 };
+    let Ok(rd) = std::fs::read_dir(p) else {
+        return 0;
+    };
     let mut total = 0u64;
     for entry in rd.flatten() {
         let m = match entry.metadata() {
@@ -60,42 +62,52 @@ pub struct CacheClearResult {
 }
 
 #[tauri::command]
-pub fn clear_cache(state: State<'_, PrCache>) -> Result<CacheClearResult, String> {
-    let path = cache_db_path()?;
-    let bytes = if path.exists() {
-        std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
-    } else {
-        0
-    };
+pub async fn clear_cache(state: State<'_, PrCache>) -> Result<CacheClearResult, String> {
+    let conn_handle = state.conn.clone();
+    tokio::task::spawn_blocking(move || {
+        let path = cache_db_path()?;
+        let bytes = if path.exists() {
+            std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+        } else {
+            0
+        };
 
-    // Drop the open SQLite connection so the file isn't locked on Windows.
-    if let Ok(mut lock) = state.conn.lock() {
-        *lock = None;
-    }
+        // Drop the open SQLite connection so the file isn't locked on Windows.
+        {
+            let mut lock = conn_handle.lock().unwrap_or_else(|p| p.into_inner());
+            *lock = None;
+        }
 
-    if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| format!("Failed to remove cache: {e}"))?;
-    }
-    // Also clear WAL/SHM siblings that live alongside the main DB
-    if let Some(parent) = path.parent() {
-        for sibling in &["prcache.db-wal", "prcache.db-shm"] {
-            let sp = parent.join(sibling);
-            if sp.exists() {
-                let _ = std::fs::remove_file(&sp);
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| format!("Failed to remove cache: {e}"))?;
+        }
+        // Also clear WAL/SHM siblings that live alongside the main DB
+        if let Some(parent) = path.parent() {
+            for sibling in &["prcache.db-wal", "prcache.db-shm"] {
+                let sp = parent.join(sibling);
+                if sp.exists() {
+                    let _ = std::fs::remove_file(&sp);
+                }
             }
         }
-    }
-    Ok(CacheClearResult { bytes_freed: bytes })
+        Ok(CacheClearResult { bytes_freed: bytes })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
-pub fn get_cache_size() -> Result<u64, String> {
-    let path = cache_db_path()?;
-    Ok(if path.exists() {
-        std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
-    } else {
-        0
+pub async fn get_cache_size() -> Result<u64, String> {
+    tokio::task::spawn_blocking(|| {
+        let path = cache_db_path()?;
+        Ok(if path.exists() {
+            std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+        } else {
+            0
+        })
     })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 // ─── reset_all_settings ───────────────────────────────────────────────────
@@ -104,29 +116,35 @@ pub fn get_cache_size() -> Result<u64, String> {
 pub async fn reset_all_settings(app: tauri::AppHandle) -> Result<(), String> {
     let svc = "borgdock";
 
-    // Wipe all known credential entries
-    let mut users: Vec<String> = vec![
-        "borgdock:github".to_string(),
-        "borgdock:azure_devops".to_string(),
-        "borgdock:claude_api".to_string(),
-    ];
-    if let Ok(s) = crate::settings::load_settings_internal() {
-        for c in &s.sql.connections {
-            users.push(format!("borgdock:sql:{}", c.name));
+    // Keychain + file I/O off the async runtime threads.
+    tokio::task::spawn_blocking(move || {
+        // Wipe all known credential entries
+        let mut users: Vec<String> = vec![
+            "borgdock:github".to_string(),
+            "borgdock:azure_devops".to_string(),
+            "borgdock:claude_api".to_string(),
+        ];
+        if let Ok(s) = crate::settings::load_settings_internal() {
+            for c in &s.sql.connections {
+                users.push(format!("borgdock:sql:{}", c.name));
+            }
         }
-    }
-    for user in &users {
-        if let Ok(entry) = keyring::Entry::new(svc, user) {
-            let _ = entry.delete_credential();
+        for user in &users {
+            if let Ok(entry) = keyring::Entry::new(svc, user) {
+                let _ = entry.delete_credential();
+            }
         }
-    }
 
-    // Drop settings file
-    let settings_path = settings_file_path()?;
-    if settings_path.exists() {
-        std::fs::remove_file(&settings_path)
-            .map_err(|e| format!("Failed to remove settings: {e}"))?;
-    }
+        // Drop settings file
+        let settings_path = settings_file_path()?;
+        if settings_path.exists() {
+            std::fs::remove_file(&settings_path)
+                .map_err(|e| format!("Failed to remove settings: {e}"))?;
+        }
+        Ok::<(), String>(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))??;
 
     // Restart so onboarding flow runs
     app.restart();
@@ -176,7 +194,8 @@ pub async fn run_self_test() -> Result<Vec<SelfTestResult>, String> {
 
     // GitHub: try gh CLI token, then validate it.
     let gh_result = (|| async {
-        let token = crate::auth::gh_cli_token()
+        let token = crate::auth::gh_cli_token(None)
+            .await
             .map_err(|e| format!("gh CLI not available: {e}"))?;
         crate::auth::validate_pat(token).await?;
         Ok::<_, String>(())
@@ -195,8 +214,8 @@ pub async fn run_self_test() -> Result<Vec<SelfTestResult>, String> {
         },
     });
 
-    // Azure DevOps: check whether az CLI is available (sync fn).
-    let ado_available = crate::auth::ado::az_cli_available();
+    // Azure DevOps: check whether az CLI is available (subprocess, off-thread).
+    let ado_available = crate::auth::ado::az_cli_available().await;
     out.push(SelfTestResult {
         service: "Azure DevOps".into(),
         ok: ado_available,

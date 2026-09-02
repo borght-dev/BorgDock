@@ -133,9 +133,7 @@ pub fn list_worktree_changes_inner(worktree_path: &str) -> Result<WorktreeChange
             FileChangeStatus::Deleted
         } else if s.is_wt_renamed() || s.is_index_renamed() {
             if let Some(diff) = head_to_index.as_ref().or(index_to_workdir.as_ref()) {
-                if let (Some(old), Some(new)) =
-                    (diff.old_file().path(), diff.new_file().path())
-                {
+                if let (Some(old), Some(new)) = (diff.old_file().path(), diff.new_file().path()) {
                     let old_s = old.to_string_lossy().to_string();
                     let new_s = new.to_string_lossy().to_string();
                     if old_s != new_s {
@@ -152,8 +150,10 @@ pub fn list_worktree_changes_inner(worktree_path: &str) -> Result<WorktreeChange
         let is_submodule = head_to_index
             .as_ref()
             .or(index_to_workdir.as_ref())
-            .map(|d| d.new_file().mode() == git2::FileMode::Commit
-                || d.old_file().mode() == git2::FileMode::Commit)
+            .map(|d| {
+                d.new_file().mode() == git2::FileMode::Commit
+                    || d.old_file().mode() == git2::FileMode::Commit
+            })
             .unwrap_or(false);
 
         // Status-entry delta flags aren't reliable for binary detection because
@@ -251,12 +251,20 @@ pub fn resolve_base_branch(repo: &Repository) -> Result<(String, BaseBranchSourc
         }
     }
 
-    // 2. repo-level `init.defaultBranch`.
+    // 2. repo/worktree-level `init.defaultBranch`. `Repository::config()`
+    // includes the user's global config as well, so inspect the entry level;
+    // otherwise every repository on a machine with global `main` configured
+    // is incorrectly reported as having an explicit local override.
     if let Ok(cfg) = repo.config() {
-        if let Ok(name) = cfg.get_string("init.defaultBranch") {
-            let trimmed = name.trim();
-            if !trimmed.is_empty() {
-                return Ok((trimmed.to_string(), BaseBranchSource::InitDefault));
+        if let Ok(entry) = cfg.get_entry("init.defaultBranch") {
+            if matches!(
+                entry.level(),
+                git2::ConfigLevel::Local | git2::ConfigLevel::Worktree
+            ) {
+                let trimmed = entry.value().unwrap_or_default().trim();
+                if !trimmed.is_empty() {
+                    return Ok((trimmed.to_string(), BaseBranchSource::InitDefault));
+                }
             }
         }
     }
@@ -312,7 +320,8 @@ fn compute_vs_base(repo: &Repository, base_branch: &str) -> (Vec<FileChange>, bo
     // Diff merge-base tree → HEAD tree (commits ahead of base).
     let mut opts = git2::DiffOptions::new();
     opts.context_lines(3);
-    let mut diff = match repo.diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts)) {
+    let mut diff = match repo.diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts))
+    {
         Ok(d) => d,
         Err(_) => return (Vec::new(), false),
     };
@@ -446,8 +455,14 @@ fn unified_diff_from_diff(diff: &git2::Diff, file_path: &str) -> UnifiedDiff {
             {
                 *is_submodule.borrow_mut() = true;
             }
-            let old_p = delta.old_file().path().map(|p| p.to_string_lossy().to_string());
-            let new_p = delta.new_file().path().map(|p| p.to_string_lossy().to_string());
+            let old_p = delta
+                .old_file()
+                .path()
+                .map(|p| p.to_string_lossy().to_string());
+            let new_p = delta
+                .new_file()
+                .path()
+                .map(|p| p.to_string_lossy().to_string());
             if let (Some(o), Some(n)) = (old_p.as_ref(), new_p.as_ref()) {
                 if o != n {
                     *previous_path.borrow_mut() = Some(o.clone());
@@ -586,7 +601,8 @@ mod tests {
             "init",
             &tree,
             &[],
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     #[test]
@@ -603,7 +619,10 @@ mod tests {
     fn base_branch_uses_init_default_branch_when_set() {
         let tmp = TempDir::new().unwrap();
         let repo = init_bare_repo(&tmp);
-        repo.config().unwrap().set_str("init.defaultBranch", "trunk").unwrap();
+        repo.config()
+            .unwrap()
+            .set_str("init.defaultBranch", "trunk")
+            .unwrap();
         let (name, source) = resolve_base_branch(&repo).unwrap();
         assert_eq!(name, "trunk");
         assert!(matches!(source, BaseBranchSource::InitDefault));
@@ -613,14 +632,18 @@ mod tests {
     fn base_branch_prefers_origin_head_over_init_default() {
         let tmp = TempDir::new().unwrap();
         let repo = init_bare_repo(&tmp);
-        repo.config().unwrap().set_str("init.defaultBranch", "trunk").unwrap();
+        repo.config()
+            .unwrap()
+            .set_str("init.defaultBranch", "trunk")
+            .unwrap();
         // Simulate `origin/HEAD -> origin/develop` by writing the symbolic ref directly.
         repo.reference_symbolic(
             "refs/remotes/origin/HEAD",
             "refs/remotes/origin/develop",
             true,
             "test setup",
-        ).unwrap();
+        )
+        .unwrap();
         let (name, source) = resolve_base_branch(&repo).unwrap();
         assert_eq!(name, "develop");
         assert!(matches!(source, BaseBranchSource::OriginHead));
@@ -647,7 +670,10 @@ mod tests {
         assert!(result.vs_head.is_empty());
         assert!(result.vs_base.is_empty());
         assert_eq!(result.base_branch, "main");
-        assert!(matches!(result.base_branch_source, BaseBranchSource::FallbackMain));
+        assert!(matches!(
+            result.base_branch_source,
+            BaseBranchSource::FallbackMain
+        ));
     }
 
     #[test]
@@ -672,10 +698,8 @@ mod tests {
         create_orphan_branch(&repo, "main");
         drop(repo);
 
-        let result = diff_worktree_vs_head_inner(
-            tmp.path().to_str().unwrap(),
-            "nonexistent.rs",
-        ).unwrap();
+        let result =
+            diff_worktree_vs_head_inner(tmp.path().to_str().unwrap(), "nonexistent.rs").unwrap();
         assert!(result.hunks.is_empty());
         assert!(result.binary.is_none());
         assert_eq!(result.file_path, "nonexistent.rs");

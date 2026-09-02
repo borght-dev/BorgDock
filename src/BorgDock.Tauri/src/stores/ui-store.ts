@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
+import type { PrGroupBy } from '@/services/pr-grouping';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 export type ActiveSection = 'prs' | 'focus' | 'workitems';
+export type PrDensity = 'compact' | 'normal';
 
 interface UiState {
   activeSection: ActiveSection;
@@ -13,6 +15,8 @@ interface UiState {
   pendingWorkItemId: number | null;
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
+  prGroupBy: PrGroupBy;
+  prDensity: PrDensity;
   _hasUserNavigated: boolean;
 
   setActiveSection: (section: ActiveSection) => void;
@@ -23,6 +27,8 @@ interface UiState {
   setDragging: (dragging: boolean) => void;
   setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
+  setPrGroupBy: (groupBy: PrGroupBy) => void;
+  setPrDensity: (density: PrDensity) => void;
   restorePersistedSection: () => void;
 }
 
@@ -34,6 +40,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   isDragging: false,
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
+  prGroupBy: 'author',
+  prDensity: 'compact',
   _hasUserNavigated: false,
 
   setActiveSection: (section) => {
@@ -66,15 +74,37 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 
+  setPrGroupBy: (prGroupBy) => {
+    set({ prGroupBy });
+    persistToTauriStore('ui-state.json', 'prGroupBy', prGroupBy).catch(() => {});
+  },
+
+  setPrDensity: (prDensity) => {
+    set({ prDensity });
+    persistToTauriStore('ui-state.json', 'prDensity', prDensity).catch(() => {});
+  },
+
   restorePersistedSection: () => {
     if (get()._hasUserNavigated) return;
-    readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection')
-      .then((section) => {
+    Promise.all([
+      readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection'),
+      readFromTauriStore<PrGroupBy>('ui-state.json', 'prGroupBy'),
+      readFromTauriStore<PrDensity>('ui-state.json', 'prDensity'),
+    ])
+      .then(([section, groupBy, density]) => {
         if (get()._hasUserNavigated) return;
+        const preferences: Partial<UiState> = {};
         if (section && (section === 'prs' || section === 'focus' || section === 'workitems')) {
-          set({ activeSection: section });
+          preferences.activeSection = section;
         }
+        if (groupBy && (groupBy === 'repo' || groupBy === 'author' || groupBy === 'status')) {
+          preferences.prGroupBy = groupBy;
+        }
+        if (density && (density === 'normal' || density === 'compact')) {
+          preferences.prDensity = density;
+        }
+        set(preferences);
       })
-      .catch((err) => console.warn('Failed to restore persisted section:', err));
+      .catch((err) => console.warn('Failed to restore persisted UI preferences:', err));
   },
 }));

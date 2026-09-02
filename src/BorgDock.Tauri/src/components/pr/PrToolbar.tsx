@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Chip, Kbd } from '@/components/shared/primitives';
 import { type PrFilter, usePrStore } from '@/stores/pr-store';
+import { useUiStore } from '@/stores/ui-store';
 
-export type PrFilterCountKey =
-  | 'all'
-  | 'needs'
-  | 'mine'
-  | 'failing'
-  | 'ready'
-  | 'review'
-  | 'closed';
+export type PrFilterCountKey = 'all' | 'needs' | 'mine' | 'failing' | 'ready' | 'review' | 'closed';
 
 export interface PrFilterCounts {
   all: number;
@@ -59,6 +53,12 @@ export function PrToolbar({ counts }: Props) {
   const setFilter = usePrStore((s) => s.setFilter);
   const setSearchQuery = usePrStore((s) => s.setSearchQuery);
   const storedSearch = usePrStore((s) => s.searchQuery);
+  const sortBy = usePrStore((s) => s.sortBy);
+  const setSortBy = usePrStore((s) => s.setSortBy);
+  const groupBy = useUiStore((s) => s.prGroupBy);
+  const setGroupBy = useUiStore((s) => s.setPrGroupBy);
+  const density = useUiStore((s) => s.prDensity);
+  const setDensity = useUiStore((s) => s.setPrDensity);
 
   const [search, setSearch] = useState(storedSearch);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,6 +107,29 @@ export function PrToolbar({ counts }: Props) {
         ))}
       </div>
       <span className="bd-spacer" />
+      <label className="bd-pr-toolbar__view-control">
+        <span>Group</span>
+        <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}>
+          <option value="author">Author</option>
+          <option value="repo">Repository</option>
+          <option value="status">Status</option>
+        </select>
+      </label>
+      <label className="bd-pr-toolbar__view-control">
+        <span>Density</span>
+        <select value={density} onChange={(e) => setDensity(e.target.value as typeof density)}>
+          <option value="compact">Compact</option>
+          <option value="normal">Comfortable</option>
+        </select>
+      </label>
+      <label className="bd-pr-toolbar__view-control">
+        <span>Sort</span>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
+          <option value="updated">Updated</option>
+          <option value="created">Created</option>
+          <option value="title">Title</option>
+        </select>
+      </label>
       <div className="bd-pr-toolbar__search">
         <SearchIcon />
         <input

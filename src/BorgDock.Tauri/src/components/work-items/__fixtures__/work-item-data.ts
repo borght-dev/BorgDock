@@ -38,15 +38,6 @@ export function canonicalSettings(overrides: Partial<AppSettings> = {}): AppSett
       deduplicationWindowSeconds: 60,
       channels: { tray: false, system: false, sound: false, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-7',
-      maxTokens: 4096,
-      prSummaryEnabled: false,
-      diffExplanationsEnabled: false,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: false, autoDownload: false },
     azureDevOps: {
@@ -70,7 +61,6 @@ export function canonicalSettings(overrides: Partial<AppSettings> = {}): AppSett
       readOnlyByDefault: true,
       confirmDestructiveWithoutWhere: true,
     },
-    repoPriority: {},
     ...overrides,
   };
 }

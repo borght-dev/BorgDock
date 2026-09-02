@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { groupPrs } from '@/services/pr-grouping';
 import type { PullRequestWithChecks } from '@/types';
 import { PrList } from '../PrList';
 
@@ -29,6 +30,8 @@ vi.mock('@/stores/ui-store', () => {
       expandedRepoGroups: new Set<string>(),
       toggleRepoGroup: vi.fn(),
       worktreeBranchMap: new Map(),
+      prGroupBy: 'repo',
+      prDensity: 'comfortable',
     });
   });
   return { useUiStore: fn };
@@ -122,17 +125,9 @@ function setupStoreState(overrides: Partial<Record<string, unknown>> = {}) {
     username: 'testuser',
     reviewRequestTimestamps: {},
     needsMyReview: overrides.needsMyReview ?? (() => []),
-    groupedByRepo: () => {
-      const groups = new Map<string, PullRequestWithChecks[]>();
-      for (const pr of prs) {
-        const key = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}`;
-        const existing = groups.get(key) || [];
-        existing.push(pr);
-        groups.set(key, existing);
-      }
-      return groups;
-    },
+    groupedPrs: () => groupPrs(prs, 'repo', 'testuser'),
     filteredPrs: () => prs,
+    authorLoad: () => [],
     teamReviewLoad: () => [],
     counts: () => ({
       all: prs.length,

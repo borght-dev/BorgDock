@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
-use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, PhysicalPosition, PhysicalSize};
+use tauri::{
+    Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
+};
 
 // ---------------------------------------------------------------------------
 // Flyout window (replaces the old floating badge)
@@ -23,83 +26,28 @@ fn chrome_offset_for_os() -> i32 {
     }
 }
 
-/// Build the flyout window invisibly. Called once, from Tauri `setup`.
+/// Build the flyout window invisibly on its first explicit use.
 /// Position is computed from the current primary monitor.
 pub(crate) fn build_flyout_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
-    let win = WebviewWindowBuilder::new(
-        app,
-        "flyout",
-        WebviewUrl::App("flyout.html".into()),
-    )
-    .title("BorgDock")
-    .inner_size(FLYOUT_GLANCE_W, FLYOUT_GLANCE_H)
-    .decorations(false)
-    .transparent(true)
-    .always_on_top(true)
-    .resizable(false)
-    .skip_taskbar(true)
-    .shadow(false)
-    .visible(false)
-    .focused(false)
-    .build()
-    .map_err(|e| e.to_string())?;
+    let win = WebviewWindowBuilder::new(app, "flyout", WebviewUrl::App("flyout.html".into()))
+        .title("BorgDock")
+        .inner_size(FLYOUT_GLANCE_W, FLYOUT_GLANCE_H)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .resizable(false)
+        .skip_taskbar(true)
+        .shadow(false)
+        .visible(false)
+        .focused(false)
+        .build()
+        .map_err(|e| e.to_string())?;
 
-    // Position before pre-warm so the brief show happens at the final
-    // (corner-of-screen) location, not at Tauri's default centered position.
     if let Err(e) = position_flyout_near_tray(&win, FLYOUT_GLANCE_W, FLYOUT_GLANCE_H) {
         log::warn!("initial flyout positioning failed: {e}");
     }
 
-    // Pre-warm WebView2: WebView2's renderer lazy-initializes on the first
-    // show. Without this, the first user-triggered hotkey press shows a
-    // blank/unpainted window — the user sees nothing happen, presses again
-    // (which hides), presses a third time before content actually renders.
-    // Making the window briefly visible forces WebView2 to start its render
-    // pipeline now; subsequent toggle_flyout shows paint immediately.
-    //
-    // On Windows we MUST NOT use the normal `show()` here: SW_SHOW activates
-    // the window, stealing foreground focus from whatever the user is typing
-    // in — very visible on a `tauri dev` hot-reload restart (and on a normal
-    // autostart launch). `SW_SHOWNOACTIVATE` makes the window visible enough
-    // to kick off rendering without activating it. Other platforms keep the
-    // plain show()/hide() (transparent, shadowless, skip-taskbar, so the
-    // few-frames flash is invisible).
-    #[cfg(windows)]
-    prewarm_webview_no_activate(&win);
-    #[cfg(not(windows))]
-    {
-        let _ = win.show();
-        let _ = win.hide();
-    }
-
     Ok(win)
-}
-
-/// Briefly show then hide `win` to warm up WebView2's renderer **without**
-/// activating it (i.e. without stealing foreground focus). Uses
-/// `SW_SHOWNOACTIVATE` rather than Tauri's `show()`, which maps to SW_SHOW and
-/// grabs the foreground. Tauri's cached visibility state is unaffected because
-/// it was built `.visible(false)` and `is_visible()` queries the live HWND,
-/// which `SW_HIDE` leaves hidden — so `toggle_flyout`'s first show still works.
-#[cfg(windows)]
-fn prewarm_webview_no_activate(win: &WebviewWindow) {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE, SW_SHOWNOACTIVATE};
-    match win.hwnd() {
-        Ok(h) => {
-            // Round-trip through the raw handle so we use *our* `windows`-crate
-            // HWND type, mirroring click_outside.rs (avoids any version skew
-            // with the HWND Tauri returns).
-            let hwnd = HWND(h.0 as *mut _);
-            // SAFETY: `hwnd` is the handle of the window we just built; it
-            // outlives these two synchronous calls.
-            unsafe {
-                let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-                let _ = ShowWindow(hwnd, SW_HIDE);
-            }
-        }
-        Err(e) => log::warn!("flyout prewarm: hwnd() unavailable, skipping: {e}"),
-    }
 }
 
 /// Position the flyout's bottom-right (Windows) or top-right (macOS/Linux)
@@ -125,8 +73,14 @@ pub(crate) fn position_flyout_near_tray(
 
     let chrome = (chrome_offset_for_os() as f64 * scale) as i32;
     let (x, y) = compute_flyout_position(
-        wp.x, wp.y, ws.width as i32, ws.height as i32,
-        w, h, default_anchor_for_os(), chrome,
+        wp.x,
+        wp.y,
+        ws.width as i32,
+        ws.height as i32,
+        w,
+        h,
+        default_anchor_for_os(),
+        chrome,
     );
 
     win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
@@ -149,9 +103,10 @@ pub(crate) fn toggle_flyout(app: &tauri::AppHandle) -> Result<(), String> {
         }
     }
 
-    let win = app
-        .get_webview_window("flyout")
-        .ok_or_else(|| "flyout window not built yet".to_string())?;
+    let win = match app.get_webview_window("flyout") {
+        Some(win) => win,
+        None => build_flyout_window(app)?,
+    };
     let visible = win.is_visible().unwrap_or(false);
     if visible {
         log::info!("toggle_flyout: hiding");
@@ -300,7 +255,7 @@ pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Resul
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    let r = rx.await.map_err(|e| e.to_string())?;
+    let r = main_thread_result(rx).await;
     log::info!("window_ready[{label}]: returning ok={}", r.is_ok());
     r
 }
@@ -320,11 +275,7 @@ pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
 /// bottom edge stays fixed relative to the taskbar; on macOS/Linux
 /// (TopRight) the top edge stays fixed relative to the menu bar.
 #[tauri::command]
-pub async fn resize_flyout(
-    app: tauri::AppHandle,
-    width: u32,
-    height: u32,
-) -> Result<(), String> {
+pub async fn resize_flyout(app: tauri::AppHandle, width: u32, height: u32) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
 
@@ -340,7 +291,7 @@ pub async fn resize_flyout(
     })
     .map_err(|e| e.to_string())?;
 
-    rx.await.map_err(|e| e.to_string())?
+    main_thread_result(rx).await
 }
 
 /// Show + focus the main window so it can host the setup wizard. The wizard
@@ -380,22 +331,39 @@ pub async fn open_pr_detail_window(
     // Sanitize label: replace characters that aren't valid in Tauri window
     // labels (e.g. '.', '/') so things like "user.name/repo" don't break the
     // get_webview_window lookup.
-    let safe = |s: &str| s.replace(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_', "_");
+    let safe = |s: &str| {
+        s.replace(
+            |c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_',
+            "_",
+        )
+    };
     let label = format!("pr-detail-{}-{}-{}", safe(&owner), safe(&repo), number);
-    log::info!("open_pr_detail_window: entry label={label}, owner={owner}, repo={repo}, number={number}");
+    log::info!(
+        "open_pr_detail_window: entry label={label}, owner={owner}, repo={repo}, number={number}"
+    );
 
-    // If the window already exists, just show and focus it
+    // If the window already exists, just show and focus it — on the main
+    // thread, like every other window op (show/set_focus marshal to the UI
+    // thread and can deadlock against it when called from a worker).
     if let Some(existing) = app.get_webview_window(&label) {
         log::info!("open_pr_detail_window: reusing existing window {label}");
-        existing.show().map_err(|e| {
-            log::error!("open_pr_detail_window: existing.show() failed: {e}");
-            e.to_string()
-        })?;
-        existing.set_focus().map_err(|e| {
-            log::error!("open_pr_detail_window: existing.set_focus() failed: {e}");
-            e.to_string()
-        })?;
-        return Ok(());
+        let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+        app.run_on_main_thread(move || {
+            let result = (|| -> Result<(), String> {
+                existing.show().map_err(|e| {
+                    log::error!("open_pr_detail_window: existing.show() failed: {e}");
+                    e.to_string()
+                })?;
+                existing.set_focus().map_err(|e| {
+                    log::error!("open_pr_detail_window: existing.set_focus() failed: {e}");
+                    e.to_string()
+                })?;
+                Ok(())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+        return main_thread_result(rx).await;
     }
 
     // We avoid putting params in the URL query string because Tauri routes
@@ -418,6 +386,7 @@ pub async fn open_pr_detail_window(
     // run_on_main_thread + a oneshot channel lets us wait for the real result.
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_build = app.clone();
+    let app_for_repaint = app.clone();
     let label_for_build = label.clone();
     let title = format!("PR #{} - {}/{}", number, owner, repo);
 
@@ -461,13 +430,21 @@ pub async fn open_pr_detail_window(
 
                 // Schedule a delayed repaint so the window doesn't render blank
                 // on Windows if another window held focus at creation time.
+                // The wait happens on the async runtime and the window ops
+                // are marshalled back to the main thread: a detached OS
+                // thread calling `set_focus()` / `outer_size()` from off the
+                // UI thread is the exact pattern hotkey.rs documents as
+                // having saturated WebView2's message queue and crashed.
                 let win_repaint = win.clone();
                 let label_repaint = label_for_build.clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(250));
-                    let _ = win_repaint.set_focus();
-                    force_repaint(&win_repaint);
-                    log::debug!("open_pr_detail_window: post-show repaint done for {label_repaint}");
+                let app_repaint = app_for_repaint.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                    let _ = app_repaint.run_on_main_thread(move || {
+                        let _ = win_repaint.set_focus();
+                        force_repaint(&win_repaint);
+                        log::debug!("open_pr_detail_window: post-show repaint done for {label_repaint}");
+                    });
                 });
                 Ok(())
             }
@@ -486,16 +463,12 @@ pub async fn open_pr_detail_window(
         e.to_string()
     })?;
 
-    match rx.await {
-        Ok(inner) => {
-            log::info!("open_pr_detail_window: command returning for {label}, ok={}", inner.is_ok());
-            inner
-        }
-        Err(e) => {
-            log::error!("open_pr_detail_window: oneshot recv failed for {label}: {e}");
-            Err(format!("main-thread build channel closed: {e}"))
-        }
+    let inner = main_thread_result(rx).await;
+    match &inner {
+        Ok(()) => log::info!("open_pr_detail_window: command returning for {label}, ok=true"),
+        Err(e) => log::error!("open_pr_detail_window: failed for {label}: {e}"),
     }
+    inner
 }
 
 #[tauri::command]
@@ -508,16 +481,30 @@ pub async fn open_whats_new_window(
 
     if let Some(existing) = app.get_webview_window(label) {
         log::info!("open_whats_new_window: reusing existing window");
-        if let Some(ref v) = version {
-            let v_json = serde_json::to_string(v).map_err(|e| e.to_string())?;
-            let _ = existing.eval(&format!(
-                "window.dispatchEvent(new CustomEvent('whats-new:navigate', {{ detail: {} }}))",
-                v_json
-            ));
-        }
-        existing.show().map_err(|e| e.to_string())?;
-        existing.set_focus().map_err(|e| e.to_string())?;
-        return Ok(());
+        let navigate_js = match &version {
+            Some(v) => {
+                let v_json = serde_json::to_string(v).map_err(|e| e.to_string())?;
+                Some(format!(
+                    "window.dispatchEvent(new CustomEvent('whats-new:navigate', {{ detail: {} }}))",
+                    v_json
+                ))
+            }
+            None => None,
+        };
+        let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+        app.run_on_main_thread(move || {
+            let result = (|| -> Result<(), String> {
+                if let Some(js) = navigate_js {
+                    let _ = existing.eval(&js);
+                }
+                existing.show().map_err(|e| e.to_string())?;
+                existing.set_focus().map_err(|e| e.to_string())?;
+                Ok(())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+        return main_thread_result(rx).await;
     }
 
     let version_json = match &version {
@@ -570,7 +557,7 @@ pub async fn open_whats_new_window(
     })
     .map_err(|e| e.to_string())?;
 
-    rx.await.map_err(|e| e.to_string())?
+    main_thread_result(rx).await
 }
 
 /// Show the main window if hidden, focus it if shown-but-unfocused, or hide it
@@ -600,7 +587,7 @@ pub async fn show_or_focus_main(app: tauri::AppHandle) -> Result<(), String> {
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    main_thread_result(rx).await
 }
 
 /// Synchronous variant for use inside tray callbacks (already on main thread).

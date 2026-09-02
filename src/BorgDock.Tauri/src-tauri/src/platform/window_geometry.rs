@@ -154,9 +154,9 @@ pub type MonitorBounds = (i32, i32, u32, u32);
 /// the next monitor over, not this one).
 pub fn is_position_on_screen(pos: (i32, i32), monitors: &[MonitorBounds]) -> bool {
     let (x, y) = pos;
-    monitors.iter().any(|&(mx, my, mw, mh)| {
-        x >= mx && x < mx + mw as i32 && y >= my && y < my + mh as i32
-    })
+    monitors
+        .iter()
+        .any(|&(mx, my, mw, mh)| x >= mx && x < mx + mw as i32 && y >= my && y < my + mh as i32)
 }
 
 /// Apply any saved geometry to `win`, then attach a listener that captures
@@ -223,7 +223,9 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
                 Err(e) => {
                     log::error!(
                         "persist_window_geometry[{label}]: set_size(logical {}x{}) failed: {}",
-                        width as u32, height as u32, e
+                        width as u32,
+                        height as u32,
+                        e
                     );
                 }
             }
@@ -278,7 +280,13 @@ fn capture(win: &WebviewWindow) -> Option<Geometry> {
     let width = ((phys.width as f64) / scale).round() as u32;
     let height = ((phys.height as f64) / scale).round() as u32;
     let maximized = win.is_maximized().unwrap_or(false);
-    Some(Geometry { x: pos.x, y: pos.y, width, height, maximized })
+    Some(Geometry {
+        x: pos.x,
+        y: pos.y,
+        width,
+        height,
+        maximized,
+    })
 }
 
 #[cfg(test)]
@@ -295,7 +303,10 @@ mod tests {
 
     #[test]
     fn kind_of_dynamic_labels_collapse() {
-        assert_eq!(kind_of("pr-detail-Gomocha-FSP-fsp-horizon-1571"), "pr-detail");
+        assert_eq!(
+            kind_of("pr-detail-Gomocha-FSP-fsp-horizon-1571"),
+            "pr-detail"
+        );
         assert_eq!(kind_of("file-viewer-abc123def456"), "file-viewer");
         assert_eq!(kind_of("workitem-detail-7777"), "workitem-detail");
     }
@@ -338,11 +349,23 @@ mod tests {
         let mut map = GeometryMap::new();
         map.insert(
             "main".to_string(),
-            Geometry { x: 100, y: 200, width: 800, height: 600, maximized: false },
+            Geometry {
+                x: 100,
+                y: 200,
+                width: 800,
+                height: 600,
+                maximized: false,
+            },
         );
         map.insert(
             "sql".to_string(),
-            Geometry { x: -50, y: 300, width: 1200, height: 800, maximized: true },
+            Geometry {
+                x: -50,
+                y: 300,
+                width: 1200,
+                height: 800,
+                maximized: true,
+            },
         );
 
         write_atomic(&path, &map).unwrap();

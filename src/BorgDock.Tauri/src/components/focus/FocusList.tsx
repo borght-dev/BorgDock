@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { FeatureBadge, FirstRunOverlay, InlineHint } from '@/components/onboarding';
 import { Avatar, Button, Pill, Ring } from '@/components/shared/primitives';
+import { formatFocusHeadline, summarizeFocus } from '@/services/focus-summary';
+import { prScoreKey } from '@/services/priority-scoring';
 import { openPrDetail } from '@/services/windows';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -40,6 +43,13 @@ function openPrDetailFor(prw: PullRequestWithChecks): void {
 }
 
 export function FocusList() {
+  const { pullRequests, username, teams } = usePrStore(
+    useShallow((s) => ({
+      pullRequests: s.pullRequests,
+      username: s.username,
+      teams: s.teams,
+    })),
+  );
   const focusPrs = usePrStore((s) => s.focusPrs)();
   const priorityScores = usePrStore((s) => s.priorityScores)();
   const needsMyReview = usePrStore((s) => s.needsMyReview)();
@@ -47,6 +57,7 @@ export function FocusList() {
   const hasSeenFocusOverlay = useOnboardingStore((s) => s.hasSeenFocusOverlay);
   const markFocusOverlaySeen = useOnboardingStore((s) => s.markFocusOverlaySeen);
   const dismissBadge = useOnboardingStore((s) => s.dismissBadge);
+  const summary = summarizeFocus(pullRequests, priorityScores, username, teams);
 
   // Auto-dismiss Focus badge when tab is viewed
   useEffect(() => {
@@ -63,17 +74,35 @@ export function FocusList() {
       <div className="bd-focus-hero">
         <span className="bd-focus-hero__icon" aria-hidden>
           {/* Zap / lightning icon */}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
           </svg>
         </span>
         <div className="bd-focus-hero__text">
-          <div className="bd-focus-hero__title">
-            {focusPrs.length} pull request{focusPrs.length !== 1 ? 's' : ''} need your attention
-          </div>
+          <div className="bd-focus-hero__title">{formatFocusHeadline(summary)}</div>
           <div className="bd-focus-hero__sub">
-            Ranked by readiness, CI state, and review signals
+            These need you to act. The remaining {summary.total - summary.shown} stay in Pull
+            Requests.
           </div>
+          {summary.excluded.length > 0 && (
+            <details className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+              <summary className="cursor-pointer">Why not the others?</summary>
+              <ul className="mt-1">
+                {summary.excluded.map((item) => (
+                  <li key={item.reason}>
+                    {item.count} {item.reason.toLowerCase()}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
         <Button
           variant="primary"
@@ -106,7 +135,7 @@ export function FocusList() {
       {/* ── Focus rows ───────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-0 px-2 pb-2 pt-1">
         {focusPrs.map((pr, index) => {
-          const score = priorityScores.get(pr.pullRequest.number);
+          const score = priorityScores.get(prScoreKey(pr.pullRequest));
           const rank = index + 1;
           const scoreValue = score?.total ?? 0;
           const tone = statusToneFor(pr.overallStatus);
@@ -115,7 +144,7 @@ export function FocusList() {
 
           return (
             <div
-              key={pr.pullRequest.number}
+              key={prScoreKey(pr.pullRequest)}
               data-focus-item=""
               className="animate-[fadeSlideIn_0.2s_ease-out]"
             >
@@ -134,9 +163,7 @@ export function FocusList() {
                     ) : (
                       <Pill tone="neutral">In focus</Pill>
                     )}
-                    {score && (
-                      <span className="bd-mono bd-focus-row__points">+{score.total}</span>
-                    )}
+                    {score && <span className="bd-mono bd-focus-row__points">+{score.total}</span>}
                   </div>
                   <div className="bd-focus-row__title">{pr.pullRequest.title}</div>
                   <div className="bd-meta bd-focus-row__meta">
@@ -148,19 +175,16 @@ export function FocusList() {
                 </div>
 
                 {/* Status label */}
-                <div className="bd-focus-row__status" data-tone={tone}>{label}</div>
+                <div className="bd-focus-row__status" data-tone={tone}>
+                  {label}
+                </div>
 
                 {/* Open button — pops out the PR detail window (the inline
                     detail panel was removed in the main-window rewrite). */}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => openPrDetailFor(pr)}
-                >
+                <Button variant="secondary" size="sm" onClick={() => openPrDetailFor(pr)}>
                   Open
                 </Button>
               </div>
-
             </div>
           );
         })}

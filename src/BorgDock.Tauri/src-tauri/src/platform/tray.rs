@@ -18,7 +18,6 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItemBuilder::with_id("show", "Show BorgDock").build(app)?;
     let settings = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
     let whats_new = MenuItemBuilder::with_id("whats_new", "What's new…").build(app)?;
-    let agent_overview = MenuItemBuilder::with_id("open_agent_overview", "Agent Overview").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
@@ -26,11 +25,9 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .item(&show_flyout)
         .item(&show)
         .item(&settings)
-        .item(&whats_new)
-        .item(&agent_overview)
-        .item(&separator)
-        .item(&quit)
-        .build()?;
+        .item(&whats_new);
+
+    let menu = menu.item(&separator).item(&quit).build()?;
 
     // Start with the initializing brand icon (no badge)
     let dark = app
@@ -81,14 +78,6 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                             log::error!("tray whats_new open failed: {e}");
                         }
                     });
-                });
-            }
-            "open_agent_overview" => {
-                let app_handle = app.app_handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = crate::agent_overview::window::open_agent_overview_window(app_handle).await {
-                        log::error!("open_agent_overview_window failed: {e}");
-                    }
                 });
             }
             "quit" => {
@@ -190,8 +179,7 @@ pub fn update_tray_icon(
     }
 
     // Skip if state hasn't changed
-    let packed =
-        (count as u64) | ((worst_state.as_u8() as u64) << 8) | ((dark as u64) << 16);
+    let packed = (count as u64) | ((worst_state.as_u8() as u64) << 8) | ((dark as u64) << 16);
     if LAST_ICON_STATE.swap(packed, Ordering::Relaxed) == packed {
         return Ok(());
     }
@@ -206,7 +194,8 @@ pub fn update_tray_icon(
 #[tauri::command]
 pub fn update_tray_tooltip(app: tauri::AppHandle, tooltip: String) -> Result<(), String> {
     if let Some(tray) = app.tray_by_id("main") {
-        tray.set_tooltip(Some(&tooltip)).map_err(|e| e.to_string())?;
+        tray.set_tooltip(Some(&tooltip))
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -233,11 +222,7 @@ const BRAND_WAVE: &[(f32, f32)] = &[
 /// BorgDock. When there are open PRs, the background switches to a status-colored
 /// gradient (red / amber / green) for at-a-glance urgency, the waveform shrinks
 /// to a top strip, and the count is rendered large below it.
-fn render_tray_icon(
-    count: u8,
-    worst: TrayWorstState,
-    dark: bool,
-) -> tauri::image::Image<'static> {
+fn render_tray_icon(count: u8, worst: TrayWorstState, dark: bool) -> tauri::image::Image<'static> {
     const SIZE: u32 = 64;
     let mut buf = vec![0u8; (SIZE * SIZE * 4) as usize];
 
@@ -336,7 +321,7 @@ pub(crate) fn render_initializing_icon(dark: bool, phase: f32) -> tauri::image::
             let px = sq_off + x;
             let py = sq_off + y;
             let i = ((py * SIZE + px) * 4) as usize;
-            buf[i]     = lerp_u8(c1b[0], c2b[0], t);
+            buf[i] = lerp_u8(c1b[0], c2b[0], t);
             buf[i + 1] = lerp_u8(c1b[1], c2b[1], t);
             buf[i + 2] = lerp_u8(c1b[2], c2b[2], t);
             buf[i + 3] = 255;
@@ -507,17 +492,72 @@ fn glyph_width(glyphs: &std::collections::HashMap<char, [u8; 7]>, ch: char) -> i
 fn get_glyph_data() -> std::collections::HashMap<char, [u8; 7]> {
     let mut m = std::collections::HashMap::new();
     // Each row is 5 bits wide, MSB = leftmost pixel
-    m.insert('0', [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110]);
-    m.insert('1', [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110]);
-    m.insert('2', [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111]);
-    m.insert('3', [0b01110, 0b10001, 0b00001, 0b00110, 0b00001, 0b10001, 0b01110]);
-    m.insert('4', [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010]);
-    m.insert('5', [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110]);
-    m.insert('6', [0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110]);
-    m.insert('7', [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000]);
-    m.insert('8', [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110]);
-    m.insert('9', [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100]);
-    m.insert('+', [0b00000, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0b00000]);
+    m.insert(
+        '0',
+        [
+            0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110,
+        ],
+    );
+    m.insert(
+        '1',
+        [
+            0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110,
+        ],
+    );
+    m.insert(
+        '2',
+        [
+            0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111,
+        ],
+    );
+    m.insert(
+        '3',
+        [
+            0b01110, 0b10001, 0b00001, 0b00110, 0b00001, 0b10001, 0b01110,
+        ],
+    );
+    m.insert(
+        '4',
+        [
+            0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010,
+        ],
+    );
+    m.insert(
+        '5',
+        [
+            0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110,
+        ],
+    );
+    m.insert(
+        '6',
+        [
+            0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110,
+        ],
+    );
+    m.insert(
+        '7',
+        [
+            0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000,
+        ],
+    );
+    m.insert(
+        '8',
+        [
+            0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110,
+        ],
+    );
+    m.insert(
+        '9',
+        [
+            0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100,
+        ],
+    );
+    m.insert(
+        '+',
+        [
+            0b00000, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0b00000,
+        ],
+    );
     m
 }
 
@@ -560,11 +600,22 @@ fn blend_pixel(dst: &mut [u8], src: &[u8; 4], alpha: u8) {
 }
 
 /// Bresenham-style thick line drawing
-fn draw_line(buf: &mut [u8], stride: u32, x1: f32, y1: f32, x2: f32, y2: f32, color: &[u8; 4], thickness: f32) {
+fn draw_line(
+    buf: &mut [u8],
+    stride: u32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+    color: &[u8; 4],
+    thickness: f32,
+) {
     let dx = x2 - x1;
     let dy = y2 - y1;
     let len = (dx * dx + dy * dy).sqrt();
-    if len < 0.001 { return; }
+    if len < 0.001 {
+        return;
+    }
     let steps = (len * 2.0) as i32;
     let half_t = thickness / 2.0;
 

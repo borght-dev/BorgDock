@@ -5,14 +5,67 @@ import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
 import type { GitHubClient } from '@/services/github/client';
 import { getOpenPRs } from '@/services/github/pulls';
-import { initClient } from '@/services/github/singleton';
+import { bindRepoClient, initClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 
 const log = createLogger('init');
 const FETCH_PRS_TIMEOUT_MS = 20_000;
+
+/**
+ * Seed the client's ETag cache from SQLite. Off the critical path: the first
+ * API calls simply miss the 304 fast-path if this hasn't resolved yet.
+ */
+function seedEtagCacheInBackground(client: GitHubClient): void {
+  loadCachedEtags()
+    .then((etagEntries) => {
+      if (etagEntries.length === 0) return;
+      client.seedEtagCache(
+        etagEntries.map((e) => ({
+          url: e.url,
+          etag: e.etag,
+          data: e.jsonData,
+        })),
+      );
+      log.info('seeded etag cache from SQLite', { count: etagEntries.length });
+    })
+    .catch((err) => {
+      log.warn('failed to seed etag cache (continuing)', { error: String(err) });
+    });
+}
+
+/**
+ * Resolve the viewer login (best-effort, off the critical path) and persist
+ * it to settings so the next launch has it before any network call.
+ */
+async function detectViewerLogin(token: string): Promise<void> {
+  try {
+    const resp = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'BorgDock' },
+    });
+    if (!resp.ok) {
+      log.warn('username detection returned non-ok', { status: resp.status });
+      return;
+    }
+    const data = await resp.json();
+    const login: unknown = data?.login;
+    if (typeof login !== 'string' || login.length === 0) return;
+    usePrStore.getState().setUsername(login);
+    log.info('detected GitHub username', { login });
+
+    const settingsStore = useSettingsStore.getState();
+    const current = settingsStore.settings.gitHub;
+    if (current.username !== login) {
+      settingsStore.updateSettings({ gitHub: { ...current, username: login } });
+      log.info('persisted GitHub username to settings', { login });
+    }
+  } catch (err) {
+    log.warn('username detection failed (best-effort)', { error: String(err) });
+  }
+}
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -31,7 +84,9 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: s
 export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
   const runIdRef = useRef(0);
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
   const runToken = useInitStore((s) => s.runToken);
 
   useEffect(() => {
@@ -66,48 +121,43 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
       log.info('step=auth start');
       const authStart = performance.now();
       let client: GitHubClient;
+      const repoClients = new Map<string, GitHubClient>();
       try {
         const pat = currentSettings.gitHub.personalAccessToken;
         const tokenGetter = () => getGitHubToken(pat);
         client = initClient(tokenGetter);
-
-        // Seed ETag cache from SQLite so first API calls can get 304s
-        try {
-          const etagEntries = await loadCachedEtags();
-          if (etagEntries.length > 0) {
-            client.seedEtagCache(
-              etagEntries.map((e) => ({
-                url: e.url,
-                etag: e.etag,
-                data: e.jsonData,
-              })),
-            );
-            log.info('seeded etag cache from SQLite', { count: etagEntries.length });
+        const clientsByAccount = new Map<string, GitHubClient>([['', client]]);
+        for (const repo of currentSettings.repos) {
+          const account = repo.githubAccount?.trim() || undefined;
+          const accountKey = account?.toLowerCase() ?? '';
+          let repoClient = clientsByAccount.get(accountKey);
+          if (!repoClient) {
+            repoClient = initClient(() => getGitHubToken(pat, account), account);
+            clientsByAccount.set(accountKey, repoClient);
           }
-        } catch (err) {
-          log.warn('failed to seed etag cache (continuing)', { error: String(err) });
+          bindRepoClient(repo.owner, repo.name, account);
+          repoClients.set(`${repo.owner}/${repo.name}`.toLowerCase(), repoClient);
+        }
+
+        // Username from settings first — "my PRs" / focus scoring work on the
+        // very first render; the viewer lookup below refreshes it in the background.
+        const savedUsername = currentSettings.gitHub.username?.trim() ?? '';
+        if (savedUsername) {
+          usePrStore.getState().setUsername(savedUsername);
+          log.info('username seeded from settings', { login: savedUsername });
+        }
+
+        // Fire-and-forget: 500 rows with bodies — never block the splash on it.
+        seedEtagCacheInBackground(client);
+        for (const repoClient of new Set(repoClients.values())) {
+          if (repoClient !== client) seedEtagCacheInBackground(repoClient);
         }
 
         const token = await log.time('getGitHubToken', () => tokenGetter());
         log.debug('obtained GitHub token', { tokenLength: token.length });
 
-        // Detect username (best-effort, mirrors useGitHubPolling)
-        try {
-          const resp = await fetch('https://api.github.com/user', {
-            headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'BorgDock' },
-          });
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data.login) {
-              usePrStore.getState().setUsername(data.login);
-              log.info('detected GitHub username', { login: data.login });
-            }
-          } else {
-            log.warn('username detection returned non-ok', { status: resp.status });
-          }
-        } catch (err) {
-          log.warn('username detection failed (best-effort)', { error: String(err) });
-        }
+        // Fire-and-forget: the viewer lookup used to cost ~1.5 s of splash time.
+        void detectViewerLogin(token);
 
         if (cancelled()) {
           log.debug('auth cancelled after success', { runId });
@@ -161,13 +211,10 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
       // Try loading from SQLite cache first
       let usedCache = false;
       try {
-        const cachedPrs: PullRequestWithChecks[] = [];
-        for (const repo of enabledRepos) {
-          const cached = await loadCachedPRs(repo.owner, repo.name);
-          for (const raw of cached) {
-            cachedPrs.push(raw as PullRequestWithChecks);
-          }
-        }
+        const perRepo = await Promise.all(
+          enabledRepos.map((repo) => loadCachedPRs(repo.owner, repo.name)),
+        );
+        const cachedPrs = perRepo.flat() as PullRequestWithChecks[];
         if (cachedPrs.length > 0 && !cancelled()) {
           usePrStore.getState().setPullRequests(cachedPrs);
           usePrStore.getState().setPollingState(false, new Date());
@@ -185,19 +232,23 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
       // Fetch fresh from API (blocking if no cache, background if cache was used)
       const rawPrs: { pr: PullRequest; owner: string; name: string }[] = [];
       const apiFetch = async () => {
-        client.markPollStart();
-        for (const repo of enabledRepos) {
-          const prs = await log.time(`getOpenPRs ${repo.owner}/${repo.name}`, () =>
-            getOpenPRs(client, repo.owner, repo.name, { hydrateDetails: false }),
-          );
-          log.debug('fetched PRs for repo', {
-            repo: `${repo.owner}/${repo.name}`,
-            count: prs.length,
-          });
-          for (const pr of prs) {
-            rawPrs.push({ pr, owner: repo.owner, name: repo.name });
-          }
-        }
+        await Promise.all(
+          enabledRepos.map(async (repo) => {
+            const repoClient =
+              repoClients.get(`${repo.owner}/${repo.name}`.toLowerCase()) ?? client;
+            repoClient.markPollStart();
+            const prs = await log.time(`getOpenPRs ${repo.owner}/${repo.name}`, () =>
+              getOpenPRs(repoClient, repo.owner, repo.name, { hydrateDetails: false }),
+            );
+            log.debug('fetched PRs for repo', {
+              repo: `${repo.owner}/${repo.name}`,
+              count: prs.length,
+            });
+            for (const pr of prs) {
+              rawPrs.push({ pr, owner: repo.owner, name: repo.name });
+            }
+          }),
+        );
       };
 
       if (usedCache) {

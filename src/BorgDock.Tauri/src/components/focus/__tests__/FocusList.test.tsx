@@ -23,12 +23,8 @@ vi.mock('@/components/shared/primitives', async () => {
   const actual = await import('@/components/shared/primitives');
   return {
     ...actual,
-    Ring: ({ value }: { value: number }) => (
-      <div data-testid="ring" data-value={value} />
-    ),
-    Avatar: ({ initials }: { initials: string }) => (
-      <span data-testid="avatar">{initials}</span>
-    ),
+    Ring: ({ value }: { value: number }) => <div data-testid="ring" data-value={value} />,
+    Avatar: ({ initials }: { initials: string }) => <span data-testid="avatar">{initials}</span>,
   };
 });
 
@@ -130,7 +126,7 @@ describe('FocusList', () => {
     const pr2 = makePr({ title: 'Add feature', authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr1, pr2] });
     render(<FocusList />);
-    expect(screen.getByText(/2 pull requests need your attention/)).toBeDefined();
+    expect(screen.getByText(/Showing 2 of 2/)).toBeDefined();
   });
 
   it('renders PR titles in focus rows', () => {
@@ -200,7 +196,7 @@ describe('FocusList', () => {
     const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr] });
     render(<FocusList />);
-    expect(screen.getByText(/1 pull request need your attention/)).toBeDefined();
+    expect(screen.getByText(/Showing 1 of 1/)).toBeDefined();
   });
 
   it('shows FirstRunOverlay when not yet seen', () => {

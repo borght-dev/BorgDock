@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { InlineHint } from '@/components/onboarding';
 import { Button, IconButton } from '@/components/shared/primitives';
 import { submitReview } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
+import { getClientForRepo } from '@/services/github/singleton';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { parseError } from '@/utils/parse-error';
 import { QuickReviewCard } from './QuickReviewCard';
@@ -12,12 +12,7 @@ import { QuickReviewSummary } from './QuickReviewSummary';
 function CloseIcon() {
   return (
     <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-      <path
-        d="m4 4 8 8M12 4 4 12"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+      <path d="m4 4 8 8M12 4 4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -42,11 +37,11 @@ export function QuickReviewOverlay() {
 
   const handleApprove = useCallback(async () => {
     if (!currentPr) return;
-    const client = getClient();
+    const p = currentPr.pullRequest;
+    const client = getClientForRepo(p.repoOwner, p.repoName);
     if (!client) return;
     setSubmitting();
     try {
-      const p = currentPr.pullRequest;
       await submitReview(client, p.repoOwner, p.repoName, p.number, 'APPROVE');
       advance('approved');
     } catch (err) {
@@ -56,11 +51,11 @@ export function QuickReviewOverlay() {
 
   const handleSubmitComment = useCallback(async () => {
     if (!currentPr || !commentBody.trim()) return;
-    const client = getClient();
+    const p = currentPr.pullRequest;
+    const client = getClientForRepo(p.repoOwner, p.repoName);
     if (!client) return;
     setSubmitting();
     try {
-      const p = currentPr.pullRequest;
       const event = commentMode === 'changes' ? 'REQUEST_CHANGES' : 'COMMENT';
       await submitReview(client, p.repoOwner, p.repoName, p.number, event, commentBody);
       setCommentBody('');
@@ -89,7 +84,12 @@ export function QuickReviewOverlay() {
     >
       <div>
         {/* Backdrop */}
-        <div className="fixed inset-0 z-[80] bg-[var(--color-overlay-bg)]" onClick={endSession} />
+        <button
+          type="button"
+          aria-label="Close Quick Review"
+          className="fixed inset-0 z-[80] border-0 bg-[var(--color-overlay-bg)] p-0"
+          onClick={endSession}
+        />
 
         {/* Overlay panel */}
         <div

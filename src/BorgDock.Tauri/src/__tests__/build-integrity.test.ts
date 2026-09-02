@@ -18,7 +18,11 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const ENTRY_POINTS = [
   { key: 'main', html: 'index.html', script: '/src/main.tsx' },
   { key: 'flyout', html: 'flyout.html', script: '/src/flyout-main.tsx' },
-  { key: 'work-item-palette', html: 'work-item-palette.html', script: '/src/work-item-palette-main.tsx' },
+  {
+    key: 'work-item-palette',
+    html: 'work-item-palette.html',
+    script: '/src/work-item-palette-main.tsx',
+  },
   { key: 'pr-detail', html: 'pr-detail.html', script: '/src/pr-detail-main.tsx' },
   { key: 'sql', html: 'sql.html', script: '/src/sql-main.tsx' },
   { key: 'worktree', html: 'worktree.html', script: '/src/worktree-main.tsx' },
@@ -26,7 +30,6 @@ const ENTRY_POINTS = [
   { key: 'whats-new', html: 'whats-new.html', script: '/src/whats-new-main.tsx' },
   { key: 'filepalette', html: 'file-palette.html', script: '/src/file-palette-main.tsx' },
   { key: 'fileviewer', html: 'file-viewer.html', script: '/src/file-viewer-main.tsx' },
-  { key: 'agent-overview', html: 'agent-overview.html', script: '/src/main-agent-overview.tsx' },
   { key: 'settings', html: 'settings.html', script: '/src/settings-main.tsx' },
 ];
 

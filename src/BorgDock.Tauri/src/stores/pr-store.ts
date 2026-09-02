@@ -1,14 +1,33 @@
 import { create } from 'zustand';
 import { getPRWithChecks } from '@/services/github/pulls';
-import { getClient } from '@/services/github/singleton';
+import { getClient, getClientForRepo } from '@/services/github/singleton';
+import { syncViewerTeams } from '@/services/github/teams';
 import { createLogger } from '@/services/logger';
+import {
+  type AuthorLoad,
+  computeAuthorLoad,
+  groupPrs,
+  isFailing,
+  isMyPr,
+  isReady,
+  isReviewing,
+  isWaitingOnMe,
+  type PrGroup,
+  type PrGroupBy,
+} from '@/services/pr-grouping';
 import {
   computePriorityScores,
   type PriorityScore,
+  prScoreKey,
+  reviewRequestKey,
   sortByPriority,
+  teamReviewRequestKey,
 } from '@/services/priority-scoring';
+import { mergeTeamLists } from '@/services/team-membership';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
+import { persistToTauriStore } from '@/utils/tauri-persist';
 
 const log = createLogger('pr-store');
 
@@ -36,24 +55,49 @@ export type PrFilter =
   | 'closed';
 export type SortBy = 'updated' | 'created' | 'title';
 
+/** Tauri-store key under which the PR sort order is remembered across launches. */
+export const PR_SORT_STORE_KEY = 'prSortBy';
+
 interface RateLimit {
   remaining: number;
   limit: number;
   resetAt: Date;
+  /** Which GitHub pool this reading came from (REST core vs GraphQL). */
+  pool?: 'rest' | 'graphql';
+  /** GitHub CLI login whose quota is shown. */
+  login?: string;
+}
+
+/**
+ * Inputs the data-level selectors depend on. Every setter that changes one of
+ * them assigns a *new* reference, so cache validity is four `===` checks — no
+ * per-render fingerprint string over the whole PR list.
+ */
+interface DataDeps {
+  prs: PullRequestWithChecks[];
+  username: string;
+  timestamps: Record<string, string>;
+  teams: string[];
+}
+
+interface ViewDeps extends DataDeps {
+  closed: PullRequestWithChecks[];
+  filter: PrFilter;
+  searchQuery: string;
+  sortBy: SortBy;
 }
 
 interface DerivedCache {
-  /** Cache key: changes when pullRequests, username, or reviewRequestTimestamps change */
-  _cacheKey: string;
-  _cachedPriorityScores: Map<number, PriorityScore> | null;
+  _dataDeps: DataDeps | null;
+  _cachedPriorityScores: Map<string, PriorityScore> | null;
   _cachedTeamReviewLoad: ReviewerLoad[] | null;
   _cachedCounts: Record<PrFilter, number> | null;
-  /** Cache key for view-dependent selectors (filter, search, sort) */
-  _viewCacheKey: string;
-  _cachedFilteredPrs: PullRequestWithChecks[] | null;
-  _cachedGroupedByRepo: Map<string, PullRequestWithChecks[]> | null;
   _cachedNeedsMyReview: PullRequestWithChecks[] | null;
   _cachedFocusPrs: PullRequestWithChecks[] | null;
+  _cachedAuthorLoad: AuthorLoad[] | null;
+  _viewDeps: ViewDeps | null;
+  _cachedFilteredPrs: PullRequestWithChecks[] | null;
+  _cachedGroups: { groupBy: PrGroupBy; source: PullRequestWithChecks[]; groups: PrGroup[] } | null;
 }
 
 interface PrState extends DerivedCache {
@@ -63,23 +107,30 @@ interface PrState extends DerivedCache {
   searchQuery: string;
   sortBy: SortBy;
   username: string;
+  /** Effective team memberships (manual settings list ∪ auto-detected). */
+  teams: string[];
+  _manualTeams: string[];
+  _detectedTeams: string[];
   isPolling: boolean;
   lastPollTime: Date | null;
   rateLimit: RateLimit | null;
-  /** Maps "owner/repo#number:reviewerLogin" → ISO timestamp of first detection */
+  /** Maps "owner/repo#number:reviewerLogin" (or ":team:slug") → ISO timestamp of first detection */
   reviewRequestTimestamps: Record<string, string>;
 
   filteredPrs: () => PullRequestWithChecks[];
-  groupedByRepo: () => Map<string, PullRequestWithChecks[]>;
+  /** Filtered + sorted PRs bucketed for the PR tab. */
+  groupedPrs: (groupBy: PrGroupBy) => PrGroup[];
   counts: () => Record<PrFilter, number>;
-  /** PRs where the current user is a requested reviewer, sorted longest-waiting first */
+  /** PRs waiting on the current user's review (directly or via a team), longest-waiting first */
   needsMyReview: () => PullRequestWithChecks[];
   /** Get the review request timestamp for a specific PR + reviewer */
   getReviewRequestedAt: (prKey: string, reviewer: string) => string | undefined;
   /** Team review load — aggregate pending reviews per reviewer */
   teamReviewLoad: () => ReviewerLoad[];
-  /** Priority scores for Focus Mode */
-  priorityScores: () => Map<number, PriorityScore>;
+  /** Per-author roll-up for the PR tab summary strip */
+  authorLoad: () => AuthorLoad[];
+  /** Priority scores for Focus Mode, keyed by `owner/repo#number` */
+  priorityScores: () => Map<string, PriorityScore>;
   /** PRs sorted by priority for Focus Mode */
   focusPrs: () => PullRequestWithChecks[];
   /** Count of non-zero-score PRs for Focus badge */
@@ -91,6 +142,10 @@ interface PrState extends DerivedCache {
   setSearchQuery: (query: string) => void;
   setSortBy: (sort: SortBy) => void;
   setUsername: (username: string) => void;
+  /** Team list typed in Settings → GitHub. */
+  setManualTeams: (teams: string[]) => void;
+  /** Team list detected from `GET /user/teams`. */
+  setDetectedTeams: (teams: string[]) => void;
   setPollingState: (isPolling: boolean, lastPollTime?: Date) => void;
   setRateLimit: (rateLimit: RateLimit | null) => void;
   /** Re-fetch a single PR and merge it into the store. Open PRs replace the
@@ -120,38 +175,12 @@ function matchesSearch(pr: PullRequestWithChecks, query: string): boolean {
   );
 }
 
-function isMyPr(pr: PullRequestWithChecks, username: string): boolean {
-  return username !== '' && pr.pullRequest.authorLogin.toLowerCase() === username.toLowerCase();
-}
-
-function isFailing(pr: PullRequestWithChecks): boolean {
-  return pr.overallStatus === 'red';
-}
-
-function isReady(pr: PullRequestWithChecks): boolean {
-  return (
-    pr.overallStatus === 'green' &&
-    !pr.pullRequest.isDraft &&
-    pr.pullRequest.mergeable !== false &&
-    pr.pullRequest.reviewStatus === 'approved'
-  );
-}
-
-function isReviewing(pr: PullRequestWithChecks): boolean {
-  const status = pr.pullRequest.reviewStatus;
-  return status !== 'none' && status !== 'approved';
-}
-
-function needsReviewFrom(pr: PullRequestWithChecks, username: string): boolean {
-  if (!username) return false;
-  return pr.pullRequest.requestedReviewers.some((r) => r.toLowerCase() === username.toLowerCase());
-}
-
 function applyFilter(
   prs: PullRequestWithChecks[],
   closedPrs: PullRequestWithChecks[],
   filter: PrFilter,
   username: string,
+  teams: string[],
 ): PullRequestWithChecks[] {
   switch (filter) {
     case 'all':
@@ -165,7 +194,7 @@ function applyFilter(
     case 'reviewing':
       return prs.filter(isReviewing);
     case 'needsReview':
-      return prs.filter((pr) => needsReviewFrom(pr, username));
+      return prs.filter((pr) => isWaitingOnMe(pr, username, teams));
     case 'closed':
       return closedPrs;
   }
@@ -204,64 +233,74 @@ function sortPrs(
   });
 }
 
-function groupByRepo(
+function sameDataDeps(a: DataDeps | null, b: DataDeps): a is DataDeps {
+  return (
+    a !== null &&
+    a.prs === b.prs &&
+    a.username === b.username &&
+    a.timestamps === b.timestamps &&
+    a.teams === b.teams
+  );
+}
+
+function sameViewDeps(a: ViewDeps | null, b: ViewDeps): boolean {
+  return (
+    sameDataDeps(a, b) &&
+    a.closed === b.closed &&
+    a.filter === b.filter &&
+    a.searchQuery === b.searchQuery &&
+    a.sortBy === b.sortBy
+  );
+}
+
+/** Drop every data-level memo when one of its inputs was swapped. Mutates the
+ *  state object in place (selectors are called during render; no `set`). */
+function ensureDataCache(state: PrState): DataDeps {
+  const deps: DataDeps = {
+    prs: state.pullRequests,
+    username: state.username,
+    timestamps: state.reviewRequestTimestamps,
+    teams: state.teams,
+  };
+  if (sameDataDeps(state._dataDeps, deps)) return state._dataDeps;
+  state._dataDeps = deps;
+  state._cachedPriorityScores = null;
+  state._cachedTeamReviewLoad = null;
+  state._cachedCounts = null;
+  state._cachedNeedsMyReview = null;
+  state._cachedFocusPrs = null;
+  state._cachedAuthorLoad = null;
+  return deps;
+}
+
+/** Timestamps of first detection for every pending user/team review request. */
+function nextReviewRequestTimestamps(
+  prev: Record<string, string>,
   prs: PullRequestWithChecks[],
-  username: string,
-): Map<string, PullRequestWithChecks[]> {
-  const groups = new Map<string, PullRequestWithChecks[]>();
+): Record<string, string> {
+  const next = { ...prev };
+  const activeKeys = new Set<string>();
+  const now = new Date().toISOString();
 
   for (const pr of prs) {
-    const key = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}`;
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(pr);
-    } else {
-      groups.set(key, [pr]);
+    const p = pr.pullRequest;
+    for (const reviewer of p.requestedReviewers) {
+      const key = reviewRequestKey(p, reviewer);
+      activeKeys.add(key);
+      if (!next[key]) next[key] = now;
+    }
+    for (const team of p.requestedTeams ?? []) {
+      const key = teamReviewRequestKey(p, team);
+      activeKeys.add(key);
+      if (!next[key]) next[key] = now;
     }
   }
 
-  // Sort groups: repos with user's PRs first, then alphabetically
-  const sortedEntries = [...groups.entries()].sort(([keyA, prsA], [keyB, prsB]) => {
-    const aHasMine = prsA.some((pr) => isMyPr(pr, username)) ? 0 : 1;
-    const bHasMine = prsB.some((pr) => isMyPr(pr, username)) ? 0 : 1;
-    if (aHasMine !== bHasMine) return aHasMine - bHasMine;
-    return keyA.localeCompare(keyB);
-  });
-
-  return new Map(sortedEntries);
-}
-
-function prKey(pr: { repoOwner: string; repoName: string; number: number }): string {
-  return `${pr.repoOwner}/${pr.repoName}#${pr.number}`;
-}
-
-function reviewKey(
-  pr: { repoOwner: string; repoName: string; number: number },
-  reviewer: string,
-): string {
-  return `${prKey(pr)}:${reviewer.toLowerCase()}`;
-}
-
-function makeCacheKey(
-  prs: PullRequestWithChecks[],
-  username: string,
-  timestamps: Record<string, string>,
-): string {
-  const prFingerprint = prs
-    .map((p) => `${p.pullRequest.number}:${p.overallStatus}:${p.pullRequest.reviewStatus}`)
-    .join(',');
-  const tsKeys = Object.keys(timestamps).sort().join(',');
-  return `${prFingerprint}|${username}|${tsKeys}`;
-}
-
-function makeViewCacheKey(
-  dataCacheKey: string,
-  filter: PrFilter,
-  searchQuery: string,
-  sortBy: SortBy,
-  closedCount: number,
-): string {
-  return `${dataCacheKey}|${filter}|${searchQuery}|${sortBy}|${closedCount}`;
+  // Clean up timestamps for reviewers no longer requested
+  for (const key of Object.keys(next)) {
+    if (!activeKeys.has(key)) delete next[key];
+  }
+  return next;
 }
 
 export const usePrStore = create<PrState>()((set, get) => ({
@@ -269,21 +308,25 @@ export const usePrStore = create<PrState>()((set, get) => ({
   pullRequests: [],
   closedPullRequests: [],
   username: '',
+  teams: [],
+  _manualTeams: [],
+  _detectedTeams: [],
   isPolling: false,
   lastPollTime: null,
   rateLimit: null,
   reviewRequestTimestamps: {},
 
   // ── Derived cache ──
-  _cacheKey: '',
+  _dataDeps: null,
   _cachedPriorityScores: null,
   _cachedTeamReviewLoad: null,
   _cachedCounts: null,
-  _viewCacheKey: '',
-  _cachedFilteredPrs: null,
-  _cachedGroupedByRepo: null,
   _cachedNeedsMyReview: null,
   _cachedFocusPrs: null,
+  _cachedAuthorLoad: null,
+  _viewDeps: null,
+  _cachedFilteredPrs: null,
+  _cachedGroups: null,
 
   // ── View slice ──
   filter: 'all',
@@ -293,47 +336,48 @@ export const usePrStore = create<PrState>()((set, get) => ({
   // ── Computed selectors ──
   filteredPrs: () => {
     const state = get();
-    const { pullRequests, closedPullRequests, filter, searchQuery, sortBy, username } = state;
-    const viewKey = makeViewCacheKey(
-      state._cacheKey,
-      filter,
-      searchQuery,
-      sortBy,
-      closedPullRequests.length,
-    );
-    if (state._cachedFilteredPrs && state._viewCacheKey === viewKey)
+    const deps: ViewDeps = {
+      ...ensureDataCache(state),
+      closed: state.closedPullRequests,
+      filter: state.filter,
+      searchQuery: state.searchQuery,
+      sortBy: state.sortBy,
+    };
+    if (state._cachedFilteredPrs && sameViewDeps(state._viewDeps, deps)) {
       return state._cachedFilteredPrs;
-    const filtered = applyFilter(pullRequests, closedPullRequests, filter, username);
-    const searched = filtered.filter((pr) => matchesSearch(pr, searchQuery));
-    const result = sortPrs(searched, sortBy, username);
+    }
+    const filtered = applyFilter(deps.prs, deps.closed, deps.filter, deps.username, deps.teams);
+    const searched = filtered.filter((pr) => matchesSearch(pr, deps.searchQuery));
+    const result = sortPrs(searched, deps.sortBy, deps.username);
     state._cachedFilteredPrs = result;
-    state._viewCacheKey = viewKey;
-    state._cachedGroupedByRepo = null;
+    state._viewDeps = deps;
+    state._cachedGroups = null;
     return result;
   },
 
-  groupedByRepo: () => {
+  groupedPrs: (groupBy) => {
     const state = get();
-    if (state._cachedGroupedByRepo && state._cachedFilteredPrs) return state._cachedGroupedByRepo;
-    const prs = get().filteredPrs();
-    const result = groupByRepo(prs, state.username);
-    state._cachedGroupedByRepo = result;
-    return result;
+    const prs = state.filteredPrs();
+    const cached = state._cachedGroups;
+    if (cached && cached.groupBy === groupBy && cached.source === prs) return cached.groups;
+    const groups = groupPrs(prs, groupBy, state.username, state.teams);
+    state._cachedGroups = { groupBy, source: prs, groups };
+    return groups;
   },
 
   counts: () => {
     const state = get();
-    const { pullRequests, closedPullRequests, username } = state;
-    const key = makeCacheKey(pullRequests, username, state.reviewRequestTimestamps);
-    if (state._cachedCounts && state._cacheKey === key) return state._cachedCounts;
+    const deps = ensureDataCache(state);
+    if (state._cachedCounts) return state._cachedCounts;
+    const { prs, username, teams } = deps;
     const counts = {
-      all: pullRequests.length,
-      mine: pullRequests.filter((pr) => isMyPr(pr, username)).length,
-      failing: pullRequests.filter(isFailing).length,
-      ready: pullRequests.filter(isReady).length,
-      reviewing: pullRequests.filter(isReviewing).length,
-      needsReview: pullRequests.filter((pr) => needsReviewFrom(pr, username)).length,
-      closed: closedPullRequests.length,
+      all: prs.length,
+      mine: prs.filter((pr) => isMyPr(pr, username)).length,
+      failing: prs.filter(isFailing).length,
+      ready: prs.filter(isReady).length,
+      reviewing: prs.filter(isReviewing).length,
+      needsReview: prs.filter((pr) => isWaitingOnMe(pr, username, teams)).length,
+      closed: state.closedPullRequests.length,
     };
     state._cachedCounts = counts;
     return counts;
@@ -341,20 +385,26 @@ export const usePrStore = create<PrState>()((set, get) => ({
 
   needsMyReview: () => {
     const state = get();
-    const { pullRequests, username, reviewRequestTimestamps } = state;
-    if (!username) return [];
-    const key = makeCacheKey(pullRequests, username, reviewRequestTimestamps);
-    if (state._cachedNeedsMyReview && state._cacheKey === key) return state._cachedNeedsMyReview;
-    const result = pullRequests
-      .filter((pr) => needsReviewFrom(pr, username))
-      .sort((a, b) => {
-        const aKey = reviewKey(a.pullRequest, username);
-        const bKey = reviewKey(b.pullRequest, username);
-        const aTime = reviewRequestTimestamps[aKey] ?? a.pullRequest.updatedAt;
-        const bTime = reviewRequestTimestamps[bKey] ?? b.pullRequest.updatedAt;
+    const deps = ensureDataCache(state);
+    if (!deps.username) return [];
+    if (state._cachedNeedsMyReview) return state._cachedNeedsMyReview;
+    const { prs, username, timestamps, teams } = deps;
+    const requestedAt = (pr: PullRequestWithChecks): string => {
+      const p = pr.pullRequest;
+      const direct = timestamps[reviewRequestKey(p, username)];
+      if (direct) return direct;
+      const viaTeam = (p.requestedTeams ?? [])
+        .map((t) => timestamps[teamReviewRequestKey(p, t)])
+        .filter((ts): ts is string => !!ts)
+        .sort()[0];
+      return viaTeam ?? p.updatedAt;
+    };
+    const result = prs
+      .filter((pr) => isWaitingOnMe(pr, username, teams))
+      .sort(
         // Longest waiting first
-        return new Date(aTime).getTime() - new Date(bTime).getTime();
-      });
+        (a, b) => new Date(requestedAt(a)).getTime() - new Date(requestedAt(b)).getTime(),
+      );
     state._cachedNeedsMyReview = result;
     return result;
   },
@@ -366,32 +416,38 @@ export const usePrStore = create<PrState>()((set, get) => ({
 
   teamReviewLoad: () => {
     const state = get();
-    const { pullRequests, reviewRequestTimestamps, username } = state;
-    const key = makeCacheKey(pullRequests, username, reviewRequestTimestamps);
-    if (state._cachedTeamReviewLoad && state._cacheKey === key) return state._cachedTeamReviewLoad;
-    const result = computeTeamReviewLoad(pullRequests, reviewRequestTimestamps);
+    const deps = ensureDataCache(state);
+    if (state._cachedTeamReviewLoad) return state._cachedTeamReviewLoad;
+    const result = computeTeamReviewLoad(deps.prs, deps.timestamps);
     state._cachedTeamReviewLoad = result;
+    return result;
+  },
+
+  authorLoad: () => {
+    const state = get();
+    const deps = ensureDataCache(state);
+    if (state._cachedAuthorLoad) return state._cachedAuthorLoad;
+    const result = computeAuthorLoad(deps.prs, deps.username);
+    state._cachedAuthorLoad = result;
     return result;
   },
 
   priorityScores: () => {
     const state = get();
-    const { pullRequests, username, reviewRequestTimestamps } = state;
-    const key = makeCacheKey(pullRequests, username, reviewRequestTimestamps);
-    if (state._cachedPriorityScores && state._cacheKey === key) return state._cachedPriorityScores;
-    const scores = computePriorityScores(pullRequests, username, reviewRequestTimestamps);
+    const deps = ensureDataCache(state);
+    if (state._cachedPriorityScores) return state._cachedPriorityScores;
+    const scores = computePriorityScores(deps.prs, deps.username, deps.timestamps, deps.teams);
     state._cachedPriorityScores = scores;
     return scores;
   },
 
   focusPrs: () => {
     const state = get();
-    const { pullRequests } = state;
-    const key = makeCacheKey(pullRequests, state.username, state.reviewRequestTimestamps);
-    if (state._cachedFocusPrs && state._cacheKey === key) return state._cachedFocusPrs;
-    const scores = get().priorityScores();
-    const result = sortByPriority(pullRequests, scores).filter(
-      (pr) => (scores.get(pr.pullRequest.number)?.total ?? 0) > 0,
+    const deps = ensureDataCache(state);
+    if (state._cachedFocusPrs) return state._cachedFocusPrs;
+    const scores = state.priorityScores();
+    const result = sortByPriority(deps.prs, scores).filter(
+      (pr) => (scores.get(prScoreKey(pr.pullRequest))?.total ?? 0) > 0,
     );
     state._cachedFocusPrs = result;
     return result;
@@ -407,82 +463,43 @@ export const usePrStore = create<PrState>()((set, get) => ({
   },
 
   setPullRequests: (prs) => {
-    const prev = get().reviewRequestTimestamps;
-    const next = { ...prev };
-    const activeKeys = new Set<string>();
-
-    for (const pr of prs) {
-      for (const reviewer of pr.pullRequest.requestedReviewers) {
-        const key = reviewKey(pr.pullRequest, reviewer);
-        activeKeys.add(key);
-        if (!next[key]) {
-          next[key] = new Date().toISOString();
-        }
-      }
-    }
-
-    // Clean up timestamps for reviewers no longer requested
-    for (const key of Object.keys(next)) {
-      if (!activeKeys.has(key)) {
-        delete next[key];
-      }
-    }
-
-    const newKey = makeCacheKey(prs, get().username, next);
     set({
       pullRequests: prs,
-      reviewRequestTimestamps: next,
-      _cacheKey: newKey,
-      _cachedPriorityScores: null,
-      _cachedTeamReviewLoad: null,
-      _cachedCounts: null,
-      _cachedFilteredPrs: null,
-      _cachedGroupedByRepo: null,
-      _cachedNeedsMyReview: null,
-      _cachedFocusPrs: null,
-      _viewCacheKey: '',
+      reviewRequestTimestamps: nextReviewRequestTimestamps(get().reviewRequestTimestamps, prs),
     });
   },
-  setClosedPullRequests: (prs) =>
-    set({
-      closedPullRequests: prs,
-      _cachedCounts: null,
-      _cachedFilteredPrs: null,
-      _cachedGroupedByRepo: null,
-      _viewCacheKey: '',
-    }),
-  setFilter: (filter) =>
-    set({ filter, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
-  setSearchQuery: (query) =>
-    set({
-      searchQuery: query,
-      _cachedFilteredPrs: null,
-      _cachedGroupedByRepo: null,
-      _viewCacheKey: '',
-    }),
-  setSortBy: (sort) =>
-    set({ sortBy: sort, _cachedFilteredPrs: null, _cachedGroupedByRepo: null, _viewCacheKey: '' }),
+  setClosedPullRequests: (prs) => set({ closedPullRequests: prs, _cachedCounts: null }),
+  setFilter: (filter) => set({ filter }),
+  setSearchQuery: (query) => set({ searchQuery: query }),
+  setSortBy: (sort) => {
+    set({ sortBy: sort });
+    persistToTauriStore('ui-state.json', PR_SORT_STORE_KEY, sort).catch((err) =>
+      log.debug('failed to persist sortBy', { error: String(err) }),
+    );
+  },
   setUsername: (username) => {
-    const state = get();
-    const newKey = makeCacheKey(state.pullRequests, username, state.reviewRequestTimestamps);
-    set({
-      username,
-      _cacheKey: newKey,
-      _cachedPriorityScores: null,
-      _cachedTeamReviewLoad: null,
-      _cachedCounts: null,
-      _cachedFilteredPrs: null,
-      _cachedGroupedByRepo: null,
-      _cachedNeedsMyReview: null,
-      _cachedFocusPrs: null,
-      _viewCacheKey: '',
-    });
+    set({ username });
+    // Team memberships make "review requested from @org/team" count as
+    // waiting on me. Best-effort and off the critical path: applies the
+    // cached list first, refreshes from the API once per session.
+    const client = username ? getClient() : null;
+    if (client) syncViewerTeams(client, (teams) => get().setDetectedTeams(teams));
   },
+  setManualTeams: (teams) =>
+    set((state) => ({
+      _manualTeams: teams,
+      teams: mergeTeamLists(teams, state._detectedTeams),
+    })),
+  setDetectedTeams: (teams) =>
+    set((state) => ({
+      _detectedTeams: teams,
+      teams: mergeTeamLists(state._manualTeams, teams),
+    })),
   setPollingState: (isPolling, lastPollTime) =>
     set({ isPolling, ...(lastPollTime ? { lastPollTime } : {}) }),
   setRateLimit: (rateLimit) => set({ rateLimit }),
   refreshPr: async (owner, repo, number) => {
-    const client = getClient();
+    const client = getClientForRepo(owner, repo) ?? getClient();
     if (!client) return null;
 
     let fresh: PullRequestWithChecks;
@@ -526,19 +543,13 @@ export const usePrStore = create<PrState>()((set, get) => ({
         closedPullRequests = [fresh, ...closedPullRequests.filter((p) => !matches(p))];
       }
 
-      const newCacheKey = makeCacheKey(pullRequests, state.username, state.reviewRequestTimestamps);
       return {
         pullRequests,
         closedPullRequests,
-        _cacheKey: newCacheKey,
-        _cachedPriorityScores: null,
-        _cachedTeamReviewLoad: null,
-        _cachedCounts: null,
-        _cachedFilteredPrs: null,
-        _cachedGroupedByRepo: null,
-        _cachedNeedsMyReview: null,
-        _cachedFocusPrs: null,
-        _viewCacheKey: '',
+        reviewRequestTimestamps: nextReviewRequestTimestamps(
+          state.reviewRequestTimestamps,
+          pullRequests,
+        ),
       };
     });
 
@@ -571,20 +582,14 @@ export const usePrStore = create<PrState>()((set, get) => ({
 
     const pullRequests = state.pullRequests.filter((_, i) => i !== idx);
     const closedPullRequests = [merged, ...state.closedPullRequests.filter((p) => !matches(p))];
-    const newCacheKey = makeCacheKey(pullRequests, state.username, state.reviewRequestTimestamps);
 
     set({
       pullRequests,
       closedPullRequests,
-      _cacheKey: newCacheKey,
-      _cachedPriorityScores: null,
-      _cachedTeamReviewLoad: null,
-      _cachedCounts: null,
-      _cachedFilteredPrs: null,
-      _cachedGroupedByRepo: null,
-      _cachedNeedsMyReview: null,
-      _cachedFocusPrs: null,
-      _viewCacheKey: '',
+      reviewRequestTimestamps: nextReviewRequestTimestamps(
+        state.reviewRequestTimestamps,
+        pullRequests,
+      ),
     });
 
     if (typeof document !== 'undefined') {
@@ -593,3 +598,17 @@ export const usePrStore = create<PrState>()((set, get) => ({
     }
   },
 }));
+
+// The manual team list lives in settings (Settings → GitHub → Teams). Mirror
+// it into the store so every selector sees one effective list. Guarded because
+// some component tests stub the settings store with a bare selector function.
+if (typeof useSettingsStore.subscribe === 'function') {
+  const applyManual = (teams: string[] | undefined) =>
+    usePrStore.getState().setManualTeams(teams ?? []);
+  applyManual(useSettingsStore.getState?.().settings.gitHub.teams);
+  useSettingsStore.subscribe((s, prev) => {
+    if (s.settings.gitHub.teams !== prev.settings.gitHub.teams) {
+      applyManual(s.settings.gitHub.teams);
+    }
+  });
+}

@@ -298,10 +298,10 @@ describe('pr-store', () => {
           makePr({ number: 2, repoOwner: 'acme', repoName: 'web' }),
           makePr({ number: 3, repoOwner: 'acme', repoName: 'api' }),
         ]);
-      const groups = usePrStore.getState().groupedByRepo();
-      expect(groups.size).toBe(2);
-      expect(groups.get('acme/api')).toHaveLength(2);
-      expect(groups.get('acme/web')).toHaveLength(1);
+      const groups = usePrStore.getState().groupedPrs('repo');
+      expect(groups).toHaveLength(2);
+      expect(groups.find((group) => group.label === 'acme/api')?.prs).toHaveLength(2);
+      expect(groups.find((group) => group.label === 'acme/web')?.prs).toHaveLength(1);
     });
 
     it('sorts groups with user PRs first', () => {
@@ -312,10 +312,9 @@ describe('pr-store', () => {
           makePr({ number: 1, repoOwner: 'a', repoName: 'first', authorLogin: 'other' }),
           makePr({ number: 2, repoOwner: 'z', repoName: 'last', authorLogin: 'me' }),
         ]);
-      const groups = usePrStore.getState().groupedByRepo();
-      const keys = [...groups.keys()];
-      expect(keys[0]).toBe('z/last');
-      expect(keys[1]).toBe('a/first');
+      const groups = usePrStore.getState().groupedPrs('repo');
+      expect(groups[0]?.label).toBe('z/last');
+      expect(groups[1]?.label).toBe('a/first');
     });
   });
 

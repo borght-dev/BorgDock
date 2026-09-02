@@ -1,10 +1,11 @@
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Card, Pill } from '@/components/shared/primitives';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getCommitFiles, getPRCommits, getPRFiles, getReviewThreads } from '@/services/github';
 import { submitReview } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
+import { getClientForRepo } from '@/services/github/singleton';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { usePrStore } from '@/stores/pr-store';
 import type {
@@ -15,7 +16,6 @@ import type {
   PullRequestFileChange,
   ReviewThread,
 } from '@/types';
-import { Button, Card, Pill } from '@/components/shared/primitives';
 import { DiffFileSection } from './diff/DiffFileSection';
 import { DiffFileTree } from './diff/DiffFileTree';
 import { DiffToolbar } from './diff/DiffToolbar';
@@ -112,7 +112,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
 
   // Cached fetch for PR-level files
   const fetchPrFiles = useCallback(async () => {
-    const client = getClient();
+    const client = getClientForRepo(repoOwner, repoName);
     if (!client) throw new Error('GitHub client not initialized');
     const result = await getPRFiles(client, repoOwner, repoName, prNumber);
     return result.map(toDiffFile);
@@ -146,7 +146,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
 
     (async () => {
       try {
-        const client = getClient();
+        const client = getClientForRepo(repoOwner, repoName);
         if (!client) throw new Error('GitHub client not initialized');
         const result = await getCommitFiles(client, repoOwner, repoName, selectedCommit);
         if (!cancelled) {
@@ -169,7 +169,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
     let cancelled = false;
     (async () => {
       try {
-        const client = getClient();
+        const client = getClientForRepo(repoOwner, repoName);
         if (!client) return;
         const result = await getPRCommits(client, repoOwner, repoName, prNumber);
         if (!cancelled) setCommits(result);
@@ -190,7 +190,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const client = getClient();
+      const client = getClientForRepo(repoOwner, repoName);
       if (!client) return;
       const patches = new Map<string, string | undefined>();
       for (const f of files) patches.set(f.filename, f.patch);
@@ -430,7 +430,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
                 request: 'REQUEST_CHANGES',
               };
               const event = eventMap[payload.decision];
-              const client = getClient();
+              const client = getClientForRepo(repoOwner, repoName);
               if (!client || !event) return;
               try {
                 await submitReview(
@@ -465,9 +465,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       <div className="flex flex-1 min-h-0">
         {/* File tree sidebar */}
         {showFileTree && (
-          <div
-            className="shrink-0 w-[220px] min-w-[160px] max-w-[320px]"
-          >
+          <div className="shrink-0 w-[220px] min-w-[160px] max-w-[320px]">
             <DiffFileTree
               files={files}
               activeFile={activeFile}
@@ -482,9 +480,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
           {filteredFiles.map((file) => {
             const fileThreads = threads.filter((t) => t.filePath === file.filename);
             const fileHighlightLine =
-              highlightLine && highlightLine.filePath === file.filename
-                ? highlightLine.line
-                : null;
+              highlightLine && highlightLine.filePath === file.filename ? highlightLine.line : null;
             return (
               <DiffFileSection
                 key={`${file.filename}-${expandKey}`}
@@ -511,7 +507,6 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
               />
             );
           })}
-
         </div>
       </div>
     </div>

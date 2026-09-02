@@ -28,14 +28,6 @@ fn migrate_credentials_to_keychain(settings: &mut AppSettings) {
         migrated = true;
     }
 
-    if let Some(ref key) = settings.claude_api.api_key {
-        if let Ok(entry) = keyring::Entry::new("borgdock", "borgdock:claude_api") {
-            let _ = entry.set_password(key);
-        }
-        settings.claude_api.api_key = None;
-        migrated = true;
-    }
-
     for conn in &mut settings.sql.connections {
         if let Some(ref pw) = conn.password {
             let service = format!("borgdock:sql:{}", conn.name);
@@ -119,7 +111,7 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
 /// Current settings schema version. Bump together with a new arm in
 /// [`migrate`]. Migrations are one-off, in-memory rewrites that run on load
 /// and are written straight back so they never run twice.
-pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 
 /// Apply one-off migrations for settings written by older versions. Returns
 /// `true` when anything changed (the caller persists in that case).
@@ -134,9 +126,19 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
         // reveal path now honours. Reset both so nobody's launch behaviour
         // silently changes: the window keeps appearing at startup, and the
         // Agent Overview stops opening a third WebView2 every boot.
-        settings.agent_overview.enabled = false;
-        settings.agent_overview.auto_open_on_startup = false;
         settings.ui.start_minimized_to_tray = false;
+    }
+    if from < 2 {
+        // Direct Anthropic API access was retired in favour of the user's
+        // authenticated Claude/Codex CLI. Remove the obsolete credential.
+        // Keep the migration pure in unit tests: keyring access would otherwise
+        // mutate the developer's real Windows credential store.
+        #[cfg(not(test))]
+        {
+            if let Ok(entry) = keyring::Entry::new("borgdock", "borgdock:claude_api") {
+                let _ = entry.delete_credential();
+            }
+        }
     }
     settings.schema_version = CURRENT_SCHEMA_VERSION;
     log::info!("settings: migrated schema {from} -> {CURRENT_SCHEMA_VERSION}");
@@ -177,11 +179,18 @@ pub fn load_settings_internal() -> Result<AppSettings, String> {
     Ok(settings)
 }
 
+/// File read + parse + (on first run) Credential Manager writes — all
+/// blocking, so this runs on a blocking thread, never inline on the GUI
+/// thread the way a sync command would.
 #[tauri::command]
-pub fn load_settings() -> Result<AppSettings, String> {
-    let mut settings = load_settings_internal()?;
-    migrate_credentials_to_keychain(&mut settings);
-    Ok(settings)
+pub async fn load_settings() -> Result<AppSettings, String> {
+    tokio::task::spawn_blocking(|| {
+        let mut settings = load_settings_internal()?;
+        migrate_credentials_to_keychain(&mut settings);
+        Ok(settings)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[cfg(test)]
@@ -258,6 +267,8 @@ pub fn save_settings_internal(settings: &AppSettings) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn save_settings(settings: AppSettings) -> Result<(), String> {
-    save_settings_internal(&settings)
+pub async fn save_settings(settings: AppSettings) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || save_settings_internal(&settings))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
 }

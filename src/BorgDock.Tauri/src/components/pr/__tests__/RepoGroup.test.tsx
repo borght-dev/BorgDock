@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { summarizePrGroup } from '@/services/pr-grouping';
 import type { PullRequestWithChecks } from '@/types';
 import { RepoGroup } from '../RepoGroup';
 
@@ -105,6 +106,20 @@ function makePr(
   };
 }
 
+function renderRepoGroup(prs: PullRequestWithChecks[]) {
+  return render(
+    <RepoGroup
+      group={{
+        key: 'repo:test/repo',
+        kind: 'repo',
+        label: 'test/repo',
+        prs,
+        stats: summarizePrGroup(prs, 'testuser'),
+      }}
+    />,
+  );
+}
+
 describe('RepoGroup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -112,30 +127,25 @@ describe('RepoGroup', () => {
   });
 
   it('renders the repo key in the header', () => {
-    const { container } = render(<RepoGroup repoKey="test/repo" prs={[makePr(1)]} />);
+    const { container } = renderRepoGroup([makePr(1)]);
     // The header is the only <button> at this layer; PR cards use a div interactively.
     const header = container.querySelector('button');
     expect(header?.textContent).toContain('test/repo');
   });
 
   it('shows the PR count badge', () => {
-    render(<RepoGroup repoKey="test/repo" prs={[makePr(1), makePr(2)]} />);
+    renderRepoGroup([makePr(1), makePr(2)]);
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('renders PR cards for each PR', () => {
-    render(<RepoGroup repoKey="test/repo" prs={[makePr(1), makePr(2)]} />);
+    renderRepoGroup([makePr(1), makePr(2)]);
     expect(screen.getByText('PR #1')).toBeInTheDocument();
     expect(screen.getByText('PR #2')).toBeInTheDocument();
   });
 
   it('shows failing count badge when PRs are failing', () => {
-    const { container } = render(
-      <RepoGroup
-        repoKey="test/repo"
-        prs={[makePr(1, 'red'), makePr(2, 'red'), makePr(3, 'green')]}
-      />,
-    );
+    const { container } = renderRepoGroup([makePr(1, 'red'), makePr(2, 'red'), makePr(3, 'green')]);
     const headerButton = container.querySelector('button')!;
     const badges = headerButton.querySelectorAll('[class*="tabular-nums"]');
     // Should have 2 badges in header: failing count and total count
@@ -143,7 +153,7 @@ describe('RepoGroup', () => {
   });
 
   it('does not show failing badge when no PRs are failing', () => {
-    const { container } = render(<RepoGroup repoKey="test/repo" prs={[makePr(1, 'green')]} />);
+    const { container } = renderRepoGroup([makePr(1, 'green')]);
     // Only one badge: the count Pill. No failing badge.
     const headerButton = container.querySelector('button')!;
     const badges = headerButton.querySelectorAll('[class*="tabular-nums"]');
@@ -151,7 +161,7 @@ describe('RepoGroup', () => {
   });
 
   it('has a clickable header button', () => {
-    const { container } = render(<RepoGroup repoKey="test/repo" prs={[makePr(1)]} />);
+    const { container } = renderRepoGroup([makePr(1)]);
     const header = container.querySelector('button');
     expect(header).toBeInTheDocument();
     // Click should not throw

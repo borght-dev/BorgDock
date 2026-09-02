@@ -8,7 +8,7 @@ import {
   toggleDraft,
 } from '@/services/github/mutations';
 import type { MergeMethod } from '@/services/github/repo';
-import { getClient } from '@/services/github/singleton';
+import { getClientForRepo } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { celebrateMerge } from '@/services/merge-celebration';
 import { sendOsNotification } from '@/services/notification';
@@ -97,7 +97,7 @@ function scheduleTerminalRefresh(repoOwner: string, repoName: string, number: nu
 // ── PR mutations ─────────────────────────────────────────────────────────
 
 export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
-  const client = getClient();
+  const client = getClientForRepo(pr.repoOwner, pr.repoName);
   if (!client) return false;
   try {
     await mergePullRequest(client, pr.repoOwner, pr.repoName, pr.number, opts?.method);
@@ -131,7 +131,7 @@ export interface ClosePrInput {
 }
 
 export async function closePr(pr: ClosePrInput, opts?: ActionOpts): Promise<boolean> {
-  const client = getClient();
+  const client = getClientForRepo(pr.repoOwner, pr.repoName);
   if (!client) return false;
   try {
     await closePullRequest(client, pr.repoOwner, pr.repoName, pr.number);
@@ -151,11 +151,8 @@ export interface ToggleDraftInput {
   isDraft: boolean;
 }
 
-export async function toggleDraftPr(
-  pr: ToggleDraftInput,
-  opts?: ActionOpts,
-): Promise<boolean> {
-  const client = getClient();
+export async function toggleDraftPr(pr: ToggleDraftInput, opts?: ActionOpts): Promise<boolean> {
+  const client = getClientForRepo(pr.repoOwner, pr.repoName);
   if (!client) return false;
   try {
     await toggleDraft(client, pr.repoOwner, pr.repoName, pr.number, !pr.isDraft);
@@ -176,11 +173,8 @@ export interface RerunChecksInput {
   checkSuiteId: number;
 }
 
-export async function rerunChecks(
-  input: RerunChecksInput,
-  opts?: ActionOpts,
-): Promise<boolean> {
-  const client = getClient();
+export async function rerunChecks(input: RerunChecksInput, opts?: ActionOpts): Promise<boolean> {
+  const client = getClientForRepo(input.repoOwner, input.repoName);
   if (!client) return false;
   try {
     await rerunWorkflow(client, input.repoOwner, input.repoName, input.checkSuiteId);

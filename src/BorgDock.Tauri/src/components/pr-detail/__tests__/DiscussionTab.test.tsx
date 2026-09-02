@@ -7,7 +7,13 @@ vi.mock('@/hooks/useCachedTabData', () => ({
     if (dataType === 'reviews') {
       return {
         data: [
-          { id: 1, state: 'APPROVED', body: null, submitted_at: '2026-05-01T01:00:00Z', user: { login: 'kvb' } },
+          {
+            id: 1,
+            state: 'APPROVED',
+            body: null,
+            submitted_at: '2026-05-01T01:00:00Z',
+            user: { login: 'kvb' },
+          },
         ],
         isLoading: false,
         isRefreshing: false,
@@ -16,7 +22,14 @@ vi.mock('@/hooks/useCachedTabData', () => ({
     if (dataType === 'comments') {
       return {
         data: [
-          { id: '1', author: 'sg', body: 'opening for review', severity: 'unknown', createdAt: '2026-05-01T00:00:00Z', htmlUrl: '' },
+          {
+            id: '1',
+            author: 'sg',
+            body: 'opening for review',
+            severity: 'unknown',
+            createdAt: '2026-05-01T00:00:00Z',
+            htmlUrl: '',
+          },
         ],
         isLoading: false,
         isRefreshing: false,
@@ -69,7 +82,7 @@ vi.mock('@/hooks/useCachedTabData', () => ({
 }));
 
 vi.mock('@/services/github/singleton', () => ({
-  getClient: () => ({}),
+  getClientForRepo: () => ({}),
 }));
 
 vi.mock('@/services/github/pulls', () => ({

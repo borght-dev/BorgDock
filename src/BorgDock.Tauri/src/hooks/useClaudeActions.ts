@@ -4,7 +4,7 @@ import {
   buildConflictPrompt,
   buildFixPrompt,
   buildMonitorPrompt,
-  launchClaude,
+  launchAgentSession,
   writePromptFile,
 } from '@/services/claude-launcher';
 import { sendOsNotification } from '@/services/notification';
@@ -25,6 +25,42 @@ function notifyLaunching(prNumber: number, headRef: string): void {
 
 export function useClaudeActions() {
   const settings = useSettingsStore((s) => s.settings);
+  const agentSettings = settings.agents ?? {
+    defaultProvider: 'claude' as const,
+    fallbackProvider: 'claude' as const,
+    defaultPostFixAction: 'commitAndNotify' as const,
+    t3Model: 'claude-fable-5',
+    t3ModelInstance: 'claudeAgent',
+  };
+
+  const launch = useCallback(
+    (
+      worktreePath: string,
+      promptFile: string,
+      prompt: string,
+      title: string,
+      branch: string,
+      action: 'fix' | 'resolve' | 'monitor',
+      provider = agentSettings.defaultProvider,
+    ) =>
+      launchAgentSession({
+        provider,
+        fallbackProvider: agentSettings.fallbackProvider,
+        worktreePath,
+        promptFile,
+        prompt,
+        title,
+        branch,
+        action,
+        claudePath: agentSettings.claudePath,
+        codexPath: agentSettings.codexPath,
+        codexModel: agentSettings.codexModel,
+        t3Path: agentSettings.t3Path,
+        t3Model: agentSettings.t3Model,
+        t3ModelInstance: agentSettings.t3ModelInstance,
+      }),
+    [agentSettings],
+  );
 
   const findRepoSettings = useCallback(
     (owner: string, name: string) => findRepoConfig(settings.repos, owner, name),
@@ -74,6 +110,7 @@ export function useClaudeActions() {
       errors: ParsedError[],
       changedFiles: string[],
       rawLog: string,
+      provider?: 'claude' | 'codex' | 't3',
     ) => {
       const p = pr.pullRequest;
       log('fixWithClaude', `PR #${p.number} checks=${failedCheckNames.join(', ')}`);
@@ -93,14 +130,22 @@ export function useClaudeActions() {
         failedCheckNames.length === 1
           ? failedCheckNames[0]
           : `${failedCheckNames.length} failing checks`;
-      await launchClaude(worktreePath, promptFile, `Fix ${checksLabel}`);
+      await launch(
+        worktreePath,
+        promptFile,
+        prompt,
+        `Fix ${checksLabel}`,
+        p.headRef,
+        'fix',
+        provider,
+      );
       log('claude launched');
     },
-    [findRepoSettings, getOrCreateWorktree],
+    [findRepoSettings, getOrCreateWorktree, launch],
   );
 
   const resolveConflicts = useCallback(
-    async (pr: PullRequestWithChecks) => {
+    async (pr: PullRequestWithChecks, provider?: 'claude' | 'codex' | 't3') => {
       const p = pr.pullRequest;
       log('resolveConflicts', `PR #${p.number}`);
 
@@ -108,14 +153,22 @@ export function useClaudeActions() {
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       const prompt = buildConflictPrompt(pr);
       const promptFile = await writePromptFile(prompt);
-      await launchClaude(worktreePath, promptFile, 'Resolve merge conflicts');
+      await launch(
+        worktreePath,
+        promptFile,
+        prompt,
+        'Resolve merge conflicts',
+        p.headRef,
+        'resolve',
+        provider,
+      );
       log('claude launched for conflict resolution');
     },
-    [getOrCreateWorktree],
+    [getOrCreateWorktree, launch],
   );
 
   const monitorPr = useCallback(
-    async (pr: PullRequestWithChecks) => {
+    async (pr: PullRequestWithChecks, provider?: 'claude' | 'codex' | 't3') => {
       const p = pr.pullRequest;
       log('monitorPr', `PR #${p.number} branch=${p.headRef}`);
 
@@ -130,10 +183,18 @@ export function useClaudeActions() {
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
       log('launching claude');
-      await launchClaude(worktreePath, promptFile, `Monitor PR #${p.number}`);
+      await launch(
+        worktreePath,
+        promptFile,
+        prompt,
+        `Monitor PR #${p.number}`,
+        p.headRef,
+        'monitor',
+        provider,
+      );
       log('claude launched');
     },
-    [findRepoSettings, getOrCreateWorktree],
+    [findRepoSettings, getOrCreateWorktree, launch],
   );
 
   const getMonitorPrompt = useCallback(

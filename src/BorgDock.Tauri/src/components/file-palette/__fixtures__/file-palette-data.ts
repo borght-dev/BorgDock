@@ -6,8 +6,8 @@
 // only inputs.
 
 import type { AppSettings, RepoSettings } from '@/types/settings';
-import type { ContentFileResult } from '../use-content-search';
 import type { ChangedFileEntry } from '../FilePaletteChangesSection';
+import type { ContentFileResult } from '../use-content-search';
 import type { FileEntry } from '../use-file-index';
 
 // Mirrors the local interface inside FilePaletteApp.tsx (non-exported).
@@ -56,15 +56,6 @@ export function canonicalSettings(overrides: Partial<AppSettings> = {}): AppSett
       deduplicationWindowSeconds: 60,
       channels: { tray: false, system: false, sound: false, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-7',
-      maxTokens: 4096,
-      prSummaryEnabled: false,
-      diffExplanationsEnabled: false,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: false, autoDownload: false },
     azureDevOps: {
@@ -83,7 +74,6 @@ export function canonicalSettings(overrides: Partial<AppSettings> = {}): AppSett
       updatePrStatusWhenWiDone: false,
     },
     sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
-    repoPriority: {},
     ...overrides,
   };
 }

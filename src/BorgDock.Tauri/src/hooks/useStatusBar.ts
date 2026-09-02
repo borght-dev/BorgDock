@@ -35,7 +35,10 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
         right: 'Press R for Quick Review',
       };
     case 'prs': {
-      const ratePart = rate ? ` · rate ${rate.remaining}/${rate.limit}` : '';
+      // REST and GraphQL are separate 5000/h pools — say which one this is.
+      const poolPart = rate?.pool ? ` (${rate.pool})` : '';
+      const loginPart = rate?.login ? ` ${rate.login}` : '';
+      const ratePart = rate ? ` · rate${loginPart} ${rate.remaining}/${rate.limit}${poolPart}` : '';
       return {
         left: `synced ${ago(lastPollTime)}${ratePart}`,
         right: 'Ctrl+F7 worktrees · Ctrl+F8 files · Ctrl+F9 ADO',

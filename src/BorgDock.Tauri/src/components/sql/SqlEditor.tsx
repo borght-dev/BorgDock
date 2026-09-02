@@ -252,8 +252,10 @@ export const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function Sq
   // Tracks the latest doc text the editor has emitted (or accepted from a `value` prop sync).
   // Lets the value-sync effect compare against this in O(1) instead of stringifying the whole doc.
   const lastValueRef = useRef(value);
-  onChangeRef.current = onChange;
-  onRunQueryRef.current = onRunQuery;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onRunQueryRef.current = onRunQuery;
+  }, [onChange, onRunQuery]);
 
   // Mount-only initialiser — value/schema seed the initial editor state;
   // subsequent changes are handled by the dedicated effects below, not by

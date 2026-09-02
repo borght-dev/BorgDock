@@ -62,8 +62,6 @@ function makeSettings(
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
     claudeReview: { botUsername: '' },
     updates: {
       autoCheckEnabled: overrides.autoCheckEnabled ?? true,
@@ -85,7 +83,6 @@ function makeSettings(
       updatePrStatusWhenWiDone: false,
     },
     sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
-    repoPriority: {},
   };
 }
 

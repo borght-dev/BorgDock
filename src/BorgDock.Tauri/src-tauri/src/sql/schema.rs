@@ -65,7 +65,10 @@ pub fn stitch_schema(
         by_table
             .entry((c.schema, c.table))
             .or_default()
-            .push(SqlColumn { name: c.name, data_type: c.data_type });
+            .push(SqlColumn {
+                name: c.name,
+                data_type: c.data_type,
+            });
     }
 
     let stitched = tables
@@ -102,16 +105,44 @@ mod tests {
     #[test]
     fn stitch_pairs_columns_with_their_table() {
         let tables = vec![
-            RawTableRow { schema: "dbo".into(), name: "Users".into(), table_type: "BASE TABLE".into() },
-            RawTableRow { schema: "dbo".into(), name: "ActiveUsers".into(), table_type: "VIEW".into() },
+            RawTableRow {
+                schema: "dbo".into(),
+                name: "Users".into(),
+                table_type: "BASE TABLE".into(),
+            },
+            RawTableRow {
+                schema: "dbo".into(),
+                name: "ActiveUsers".into(),
+                table_type: "VIEW".into(),
+            },
         ];
         let columns = vec![
-            RawColumnRow { schema: "dbo".into(), table: "Users".into(), name: "id".into(), data_type: "int".into() },
-            RawColumnRow { schema: "dbo".into(), table: "Users".into(), name: "email".into(), data_type: "nvarchar".into() },
-            RawColumnRow { schema: "dbo".into(), table: "ActiveUsers".into(), name: "id".into(), data_type: "int".into() },
+            RawColumnRow {
+                schema: "dbo".into(),
+                table: "Users".into(),
+                name: "id".into(),
+                data_type: "int".into(),
+            },
+            RawColumnRow {
+                schema: "dbo".into(),
+                table: "Users".into(),
+                name: "email".into(),
+                data_type: "nvarchar".into(),
+            },
+            RawColumnRow {
+                schema: "dbo".into(),
+                table: "ActiveUsers".into(),
+                name: "id".into(),
+                data_type: "int".into(),
+            },
         ];
 
-        let payload = stitch_schema("AppDb".into(), "2026-04-28T00:00:00Z".into(), tables, columns);
+        let payload = stitch_schema(
+            "AppDb".into(),
+            "2026-04-28T00:00:00Z".into(),
+            tables,
+            columns,
+        );
 
         assert_eq!(payload.database, "AppDb");
         assert_eq!(payload.tables.len(), 2);
@@ -130,9 +161,11 @@ mod tests {
 
     #[test]
     fn stitch_keeps_tables_with_no_columns() {
-        let tables = vec![
-            RawTableRow { schema: "dbo".into(), name: "Empty".into(), table_type: "BASE TABLE".into() },
-        ];
+        let tables = vec![RawTableRow {
+            schema: "dbo".into(),
+            name: "Empty".into(),
+            table_type: "BASE TABLE".into(),
+        }];
         let columns: Vec<RawColumnRow> = vec![];
 
         let payload = stitch_schema("AppDb".into(), "ts".into(), tables, columns);

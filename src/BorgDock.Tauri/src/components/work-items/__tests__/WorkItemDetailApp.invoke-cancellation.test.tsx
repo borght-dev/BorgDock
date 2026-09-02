@@ -103,8 +103,6 @@ describe('WorkItemDetailApp invoke() cancellation', () => {
         reviewNudgeEscalation: true,
         deduplicationWindowSeconds: 60,
       },
-      claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-      claudeApi: { model: 'claude-sonnet-4-6', maxTokens: 1024, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
       claudeReview: { botUsername: 'claude[bot]' },
       updates: { autoCheckEnabled: true, autoDownload: true },
       azureDevOps: {
@@ -121,13 +119,10 @@ describe('WorkItemDetailApp invoke() cancellation', () => {
         recentWorkItemIds: [],
       },
       sql: { connections: [] },
-      repoPriority: {},
     });
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(consoleErrSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining('not wrapped in act'),
-    );
+    expect(consoleErrSpy).not.toHaveBeenCalledWith(expect.stringContaining('not wrapped in act'));
     consoleErrSpy.mockRestore();
   });
 });

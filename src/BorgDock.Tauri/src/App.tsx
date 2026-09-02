@@ -18,6 +18,7 @@ import { useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
+import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useTheme } from '@/hooks/useTheme';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
@@ -57,7 +58,9 @@ export default function App() {
   // Latch: once init has completed, never show the splash again
   // (guards against window hide/show resetting transient state)
   const initCompletedRef = useRef(false);
-  if (isInitComplete) initCompletedRef.current = true;
+  useEffect(() => {
+    if (isInitComplete) initCompletedRef.current = true;
+  }, [isInitComplete]);
 
   // Apply theme from settings
   useTheme(settings.ui.theme);
@@ -196,6 +199,7 @@ export default function App() {
 
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);
+  useT3Sessions(pollingEnabled);
 
   // Auto-update
   useAutoUpdate(settings);

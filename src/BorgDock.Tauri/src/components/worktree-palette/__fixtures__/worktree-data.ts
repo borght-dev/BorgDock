@@ -69,15 +69,6 @@ export function makeSettings(repos: RepoSettings[], ui?: Partial<UiSettings>): A
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: false, sound: false, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-6',
-      maxTokens: 8192,
-      prSummaryEnabled: false,
-      diffExplanationsEnabled: false,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: 'claude[bot]' },
     updates: { autoCheckEnabled: false, autoDownload: false },
     azureDevOps: {
@@ -100,7 +91,6 @@ export function makeSettings(repos: RepoSettings[], ui?: Partial<UiSettings>): A
       readOnlyByDefault: true,
       confirmDestructiveWithoutWhere: true,
     },
-    repoPriority: {},
   };
 }
 
@@ -167,7 +157,8 @@ export const wtDetached: WorktreeEntry = makeWorktree({
 
 export const wtLongBranch: WorktreeEntry = makeWorktree({
   path: '/Users/dev/worktrees/borgdock/long-branch',
-  branchName: 'feature/an-extremely-long-branch-name-that-tests-overflow-and-truncation-behavior-in-the-row',
+  branchName:
+    'feature/an-extremely-long-branch-name-that-tests-overflow-and-truncation-behavior-in-the-row',
 });
 
 export const wtLongPath: WorktreeEntry = makeWorktree({
