@@ -267,6 +267,7 @@ export function PrCardView({
           'border-b border-[var(--color-subtle-border)] last:border-b-0',
           'cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)]',
           active && 'bg-[var(--color-surface-hover)]',
+          isFocused && 'ring-2 ring-[var(--color-accent)] ring-inset',
         )}
         // style: grid layout requires exact 24px avatar column — no Tailwind grid-cols preset covers this
         style={{ gridTemplateColumns: '24px 1fr auto' }}

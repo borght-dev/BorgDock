@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { MERGED_PR, SAMPLE_PRS } from './helpers/seed';
+import { MERGED_PR, SAMPLE_PRS, seedScenario } from './helpers/seed';
 import { bootApp } from './helpers/test-utils';
 
 /**
@@ -16,6 +16,21 @@ test('detail renders the seeded PR title', async ({ page }) => {
   await bootApp(page, `pr-detail.html${PR_DETAIL_QUERY}`, 'happy-path', {
     cache_load_prs: SAMPLE_PRS,
   });
+  await expect(page.getByText('Add cool feature')).toBeVisible();
+});
+
+test('detail supports settings saved before agent settings were added', async ({ page }) => {
+  const legacySettings = {
+    ...(seedScenario('happy-path').load_settings as Record<string, unknown>),
+  };
+  delete legacySettings.agents;
+  delete legacySettings.summaries;
+
+  await bootApp(page, `pr-detail.html${PR_DETAIL_QUERY}`, 'happy-path', {
+    load_settings: legacySettings,
+    cache_load_prs: SAMPLE_PRS,
+  });
+
   await expect(page.getByText('Add cool feature')).toBeVisible();
 });
 

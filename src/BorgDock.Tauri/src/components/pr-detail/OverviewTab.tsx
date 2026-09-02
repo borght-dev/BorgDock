@@ -19,26 +19,29 @@ interface OverviewTabProps {
   pr: PullRequestWithChecks;
 }
 
+const DEFAULT_SUMMARY_SETTINGS = {
+  enabled: true,
+  provider: 'claude' as const,
+  model: 'sonnet',
+};
+
+const DEFAULT_AGENT_SETTINGS = {
+  defaultProvider: 't3' as const,
+  fallbackProvider: 'claude' as const,
+  defaultPostFixAction: 'commitAndNotify' as const,
+  t3Model: 'claude-fable-5',
+  t3ModelInstance: 'claudeAgent',
+  claudePath: undefined,
+  codexPath: undefined,
+};
+
 export function OverviewTab({ pr }: OverviewTabProps) {
   useT3Sessions();
   const p = pr.pullRequest;
   const isOpen = p.state === 'open';
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
-  const summarySettings = useSettingsStore(
-    (s) => s.settings.summaries ?? { enabled: true, provider: 'claude', model: 'sonnet' },
-  );
-  const agentSettings = useSettingsStore(
-    (s) =>
-      s.settings.agents ?? {
-        defaultProvider: 't3',
-        fallbackProvider: 'claude',
-        defaultPostFixAction: 'commitAndNotify',
-        t3Model: 'claude-fable-5',
-        t3ModelInstance: 'claudeAgent',
-        claudePath: undefined,
-        codexPath: undefined,
-      },
-  );
+  const summarySettings = useSettingsStore((s) => s.settings.summaries ?? DEFAULT_SUMMARY_SETTINGS);
+  const agentSettings = useSettingsStore((s) => s.settings.agents ?? DEFAULT_AGENT_SETTINGS);
   const repoPath = useSettingsStore(
     (s) =>
       s.settings.repos.find(
@@ -113,16 +116,18 @@ export function OverviewTab({ pr }: OverviewTabProps) {
                 hintId="pr-summary-generate"
                 text="Generate a quick AI summary of this PR"
               />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleGenerateSummary}
-                data-overview-action="summarize"
-                className="w-full"
-              >
-                Summarize with AI
+              <div className="flex items-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  data-overview-action="summarize"
+                  className="flex-1"
+                >
+                  Summarize with AI
+                </Button>
                 <FeatureBadge badgeId="pr-summary" />
-              </Button>
+              </div>
             </>
           )}
           {summaryLoading && (
