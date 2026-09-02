@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.1.0 — 2026-09-02
+
+### New Features
+
+- **Choose the right coding agent for every PR** — Set T3 Code, Claude Code, or Codex as your default, keep a terminal fallback, and pair BorgDock with T3 so Fix, Resolve, and Monitor open in the correct worktree. Linked T3 sessions show their live status on PR cards, while summaries use your existing Claude or Codex login with no separate API key. ![Agent provider settings](whats-new/2.1.0/agent-providers.png)
+- **Use a different GitHub account per repository** — Assign or automatically detect the authenticated GitHub account that can access each repository. Personal and enterprise repositories can now update together without switching the active `gh` account. ![Repository account selection](whats-new/2.1.0/repository-accounts.png)
+
+### Improvements
+
+- **A Focus queue that explains itself** — Focus now tells you how many pull requests it selected, how many are failing, waiting on you, or stale, and why the remaining pull requests stayed out. Team review requests, unanswered feedback, and updates made since your review now rank correctly. ![Focus queue summary](whats-new/2.1.0/focus-queue.png)
+- Cached pull requests appear before GitHub authentication and background cache work completes, making warm starts substantially faster.
+- Repository polling now runs in parallel, transfers less data, slows down while BorgDock is hidden, and keeps the last known state when one repository fails.
+- Worktree discovery uses a shared cache instead of repeatedly running expensive Git commands for every view.
+- Markdown, changelog content, and secondary windows load only when needed, reducing startup work and the main JavaScript bundle.
+- The old Claude-only Agent Overview and its local telemetry configuration have been retired. PR-linked T3 sessions now put agent status beside the work they belong to.
+
+### Bug Fixes
+
+- File, Git, cache, settings, SQL, and authentication operations no longer block the desktop UI thread. Window operations also use bounded waits, preventing a stalled WebView from freezing BorgDock indefinitely.
+- The main window no longer shrinks to setup-wizard dimensions during normal startup. Saved geometry is restored safely across mixed-DPI displays, and Start minimized to tray works again.
+- Packaged builds use Tauri's faster IPC route instead of falling back to `postMessage` for every command.
+- The SQL editor keeps its proper CodeMirror layout under the packaged app's content security policy.
+- An expired Azure DevOps session now asks you to sign in again instead of repeatedly reporting JSON parsing errors.
+- PR details remain stable with settings saved by older BorgDock versions, summary controls no longer contain invalid nested buttons, and keyboard focus is visible on compact PR rows.
+
 ## 2.0.0 — 2026-06-09
 
 ### New Features

@@ -4,6 +4,52 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.1.0",
+    "date": "2026-09-02",
+    "summary": "Choose the right coding agent for every PR, Use a different GitHub account per repository, and A Focus queue that explains itself.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Choose the right coding agent for every PR",
+        "description": "Set T3 Code, Claude Code, or Codex as your default, keep a terminal fallback, and pair BorgDock with T3 so Fix, Resolve, and Monitor open in the correct worktree. Linked T3 sessions show their live status on PR cards, while summaries use your existing Claude or Codex login with no separate API key.",
+        "hero": {
+          "src": "/whats-new/2.1.0/agent-providers.png",
+          "alt": "Agent provider settings"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Use a different GitHub account per repository",
+        "description": "Assign or automatically detect the authenticated GitHub account that can access each repository. Personal and enterprise repositories can now update together without switching the active `gh` account.",
+        "hero": {
+          "src": "/whats-new/2.1.0/repository-accounts.png",
+          "alt": "Repository account selection"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "A Focus queue that explains itself",
+        "description": "Focus now tells you how many pull requests it selected, how many are failing, waiting on you, or stale, and why the remaining pull requests stayed out. Team review requests, unanswered feedback, and updates made since your review now rank correctly.",
+        "hero": {
+          "src": "/whats-new/2.1.0/focus-queue.png",
+          "alt": "Focus queue summary"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "File, Git, cache, settings, SQL, and authentication operations no longer block the desktop UI thread. Window operations also use bounded waits, preventing a stalled WebView from freezing BorgDock indefinitely.",
+      "The main window no longer shrinks to setup-wizard dimensions during normal startup. Saved geometry is restored safely across mixed-DPI displays, and Start minimized to tray works again.",
+      "Packaged builds use Tauri's faster IPC route instead of falling back to `postMessage` for every command.",
+      "The SQL editor keeps its proper CodeMirror layout under the packaged app's content security policy.",
+      "An expired Azure DevOps session now asks you to sign in again instead of repeatedly reporting JSON parsing errors.",
+      "PR details remain stable with settings saved by older BorgDock versions, summary controls no longer contain invalid nested buttons, and keyboard focus is visible on compact PR rows."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "2.0.0",
     "date": "2026-06-09",
     "summary": "Agent Overview, Never miss an agent that's waiting on you, Peek at what an agent changed — the Inspector, and more.",

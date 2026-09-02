@@ -2,13 +2,13 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
-import { SettingsApp } from './SettingsApp';
+import { getControl } from '../../../.storybook/mocks/control';
 import {
   configuredSettings,
   firstLaunchSettings,
   withSettings,
 } from './__fixtures__/settings-data';
-import { getControl } from '../../../.storybook/mocks/control';
+import { SettingsApp } from './SettingsApp';
 
 const meta: Meta<typeof SettingsApp> = {
   title: 'Settings/SettingsApp',
@@ -27,7 +27,12 @@ export const Default: Story = {
         check_github_auth: githubAuthOk,
         az_cli_available: true,
         get_cache_size: 1024 * 1024 * 24,
-        agent_overview_status: { enabled: false },
+        agent_provider_availability: { claude: true, codex: true },
+        t3_probe: { running: true, paired: true },
+        gh_cli_accounts: [
+          { login: 'borght-dev', active: true },
+          { login: 'koenvdb-work', active: false },
+        ],
       },
     }),
   ],
@@ -67,7 +72,10 @@ function WithSearch({ query }: { query: string }) {
     // by simulating a user typing: focus + dispatch input event.
     const el = document.querySelector<HTMLInputElement>('input[placeholder*="Search" i]');
     if (el) {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value',
+      )?.set;
       setter?.call(el, query);
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }

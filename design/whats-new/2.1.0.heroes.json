@@ -1,0 +1,22 @@
+[
+  {
+    "slug": "agent-providers",
+    "storyId": "settings-settingsapp--default",
+    "viewport": { "width": 1120, "height": 900 },
+    "delay": 900,
+    "emit": { "channel": "settings:deep-link", "payload": "agents" },
+    "emitSettle": 800
+  },
+  {
+    "slug": "repository-accounts",
+    "storyId": "settings-reposection--many-repos",
+    "viewport": { "width": 1120, "height": 900 },
+    "delay": 900
+  },
+  {
+    "slug": "focus-queue",
+    "storyId": "main-window-mainwindow--focus-tab",
+    "viewport": { "width": 1400, "height": 720 },
+    "delay": 900
+  }
+]
