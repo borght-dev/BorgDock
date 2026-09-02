@@ -90,18 +90,16 @@ pub fn run() {
     // Rust logs. Release builds: Info level and NO webview target — every
     // webview log line is an IPC round-trip into the renderer, which at
     // Debug level meant dozens of hops per poll cycle and per git call.
-    let mut log_targets = vec![
+    let log_targets = vec![
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
             path: log_dir(),
             file_name: Some("borgdock".into()),
         }),
         // Stream to stdout so `cargo tauri dev` shows live logs.
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+        #[cfg(debug_assertions)]
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
     ];
-    #[cfg(debug_assertions)]
-    log_targets.push(tauri_plugin_log::Target::new(
-        tauri_plugin_log::TargetKind::Webview,
-    ));
     #[cfg(debug_assertions)]
     let log_level = log::LevelFilter::Debug;
     #[cfg(not(debug_assertions))]
