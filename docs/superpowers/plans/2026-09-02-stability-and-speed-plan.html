@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BorgDock — Stability &amp; Speed Plan (2026-09-02)</title>
+<style>
+  :root { --ink:#1b1f27; --muted:#5b6472; --line:#e3e6ea; --bg:#fff; --soft:#f6f7f9; --accent:#5b4bdb; --red:#c0392b; --amber:#b9770e; --green:#1e8449; --code:#f1f2f6; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#e6e8ee; --muted:#9aa3b2; --line:#2a2f3a; --bg:#0f1218; --soft:#161a22; --accent:#9d8cff; --red:#ff6b5b; --amber:#f0b24a; --green:#4cd28a; --code:#1b2029; } }
+  body { font: 15px/1.55 system-ui, -apple-system, Segoe UI, sans-serif; color:var(--ink); background:var(--bg); margin:0; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 28px 80px; }
+  h1 { font-size: 30px; margin: 0 0 4px; }
+  h2 { font-size: 22px; margin: 44px 0 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+  h3 { font-size: 17px; margin: 26px 0 8px; }
+  h4 { font-size: 15px; margin: 18px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  p, li { max-width: 80ch; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  code { font: 13px/1.4 Cascadia Code, Consolas, ui-monospace, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow:auto; font-size: 12.5px; line-height:1.45; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; }
+  .tag { display:inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); margin-right: 4px; white-space: nowrap; }
+  .p0 { color:#fff; background: var(--red); border-color: var(--red); }
+  .p1 { color:#fff; background: var(--amber); border-color: var(--amber); }
+  .p2 { color:#fff; background: var(--green); border-color: var(--green); }
+  .verified { color: var(--green); }
+  .callout { border-left: 4px solid var(--accent); background: var(--soft); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .callout.warn { border-color: var(--red); }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { border:1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--soft); }
+  .card h3 { margin-top: 0; }
+  .toc { columns: 2; column-gap: 28px; font-size: 14px; }
+  .toc li { break-inside: avoid; }
+  ul.checks li { list-style: none; margin-left: -18px; }
+  ul.checks li::before { content: "☐ "; color: var(--muted); }
+  small { color: var(--muted); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>BorgDock — Stability &amp; Speed Plan</h1>
+<p class="sub">2026-09-02 · target: master @ <code>88f4e69c</code> (2.0.0) · scope: the seven complaints that make BorgDock unused today, plus the account, provider and T3 Code extensions added the same day (sections H–K)</p>
+
+<div class="callout">
+<strong>One-paragraph summary.</strong> Almost every complaint traces to a small number of structural mistakes rather than many small bugs:
+(1) about 35 Rust commands are <em>synchronous</em> and therefore run on the GUI thread, including SQLite writes of multi-megabyte ETag blobs every poll cycle and subprocess spawns;
+(2) the Agent Overview feature bootstraps, binds a port, opens a third WebView2 window and writes into your repos on every launch, and in some states re-reads whole Claude transcripts once per second;
+(3) the main window polls the heavy worktree scan every 30 s, which on this machine is ~24 s of sequential git per cycle;
+(4) the setup-wizard command shrinks the main window to 520×640 on every boot because its effect fires before settings hydrate;
+(5) the SQL window's CodeMirror styles are blocked by Tauri's CSP nonce injection;
+(6) the Focus scorer gives zero points to "commented" reviews and to your own green PRs.
+Fixing these is roughly eight PR-sized changes, ordered below so the crash/hang fixes land first. Four more PRs (9–12) cover the additions from later the same day: a GitHub account per repo, replacing the Claude API section with headless <code>claude -p</code> / <code>codex exec</code>, a provider abstraction that adds Codex, and launching sessions into T3 Code instead of a terminal.
+</div>
+
+<h2 id="toc">Contents</h2>
+<ol class="toc">
+  <li><a href="#summary">Issue → root cause → fix</a></li>
+  <li><a href="#evidence">Evidence from this machine</a></li>
+  <li><a href="#a">A. Hangs and crashes</a></li>
+  <li><a href="#b">B. Agent Overview (unused, expensive)</a></li>
+  <li><a href="#c">C. Speed: startup, polling, bundle, rendering</a></li>
+  <li><a href="#d">D. Wrong window size until you drag an edge</a></li>
+  <li><a href="#e">E. SQL editor line numbers stacked / wrong font</a></li>
+  <li><a href="#f">F. Worktree overview: slow, unsorted, cold</a></li>
+  <li><a href="#g">G. Focus shows 2 of 22, no author overview</a></li>
+  <li><a href="#h">H. Two GitHub accounts on one machine</a></li>
+  <li><a href="#i">I. Replace the Claude API section with headless CLI</a></li>
+  <li><a href="#j">J. Codex as a second provider</a></li>
+  <li><a href="#k">K. T3 Code as the session launcher</a></li>
+  <li><a href="#plan">Implementation plan (12 PRs)</a></li>
+  <li><a href="#today">Things you can change today without code</a></li>
+  <li><a href="#decisions">Decisions needed from you</a></li>
+  <li><a href="#verify">Verification checklist</a></li>
+</ol>
+
+<h2 id="summary">1. Issue → root cause → fix</h2>
+<table>
+<tr><th style="width:18%">Complaint</th><th style="width:40%">Root cause (verified unless marked)</th><th>Fix</th><th style="width:8%">PR</th></tr>
+<tr><td>Hangs / crashes</td>
+    <td>Sync <code>#[tauri::command]</code>s run on the GUI thread (verified in Tauri 2.11.5 source; CLAUDE.md says the opposite). <code>cache_save_etags</code> rewrites up to 500 full API response bodies to SQLite on that thread every poll. Every main-thread round-trip is an untimed <code>rx.recv()</code>, so one stall freezes all IPC. Plus a detached repaint thread pattern already known to hard-crash, and a wry null-pointer panic (older build).</td>
+    <td>Make all I/O commands async + <code>spawn_blocking</code>; stop persisting response bodies; add timeouts on every main-thread oneshot and init invoke; remove the detached thread.</td>
+    <td><span class="tag p0">PR1</span></td></tr>
+<tr><td>Agent overview unused</td>
+    <td>Enabled + auto-open by default. Bootstrap runs even when disabled. OTLP bind, repo <code>.claude/settings.json</code> writes with <code>.bak.&lt;epoch&gt;</code> litter, 1 Hz transcript re-read loop, third WebView2 window.</td>
+    <td>Default off, gate everything behind <code>enabled</code>, fix the tick loop, feature-flag the module. Optionally delete later.</td>
+    <td><span class="tag p0">PR2</span></td></tr>
+<tr><td>Fast AF</td>
+    <td><code>useWorktreeMap</code> calls heavy <code>list_worktrees</code> every 30 s (~24 s of git per cycle here). IPC custom protocol fails at boot (CSP lacks <code>ipc:</code>), so every invoke uses the slower postMessage path. 330 KB of react-markdown in the main entry for an invisible overlay. Init awaits a live <code>GET /user</code> and a full ETag load. Debug-level logging round-trips into the webview. All PR cards re-render every 30 s.</td>
+    <td>Bare worktree list + shared Rust cache; add IPC origins to CSP; lazy-load markdown/changelog; reorder init; drop webview log target in release; diff-before-set on worktree map.</td>
+    <td><span class="tag p1">PR3, PR4</span></td></tr>
+<tr><td>Window opens too small</td>
+    <td><code>App.tsx</code> fires <code>show_setup_wizard</code> while settings are still defaults (<code>needsSetup</code> true during load); that command resizes <em>main</em> to 520×640 and shows it. Nothing resizes back. Dragging triggers the OS min-size (1200×720 logical = 1800×1080 physical at 150 %).</td>
+    <td>Gate the effect on hydration; add a proper reveal path for main; restore geometry when wizard completes.</td>
+    <td><span class="tag p0">PR5</span></td></tr>
+<tr><td>SQL editor layout</td>
+    <td>Tauri injects a nonce into the inline <code>&lt;style&gt;</code> in <code>sql.html</code> and appends <code>'nonce-…'</code> to <code>style-src</code>, which makes <code>'unsafe-inline'</code> ignored. CodeMirror's runtime-injected stylesheet (flex layout + monospace) is blocked in packaged builds only.</td>
+    <td>Pass the nonce to CodeMirror via <code>EditorView.cspNonce</code> and move inline styles from all 12 HTML entries into CSS.</td>
+    <td><span class="tag p0">PR6</span></td></tr>
+<tr><td>Worktree overview slow, unsorted</td>
+    <td>Window reveals only after settings + git resolve; first open builds a new WebView2; palette's own git contends with the 30 s storm above. Sort key is branch name with favorites hoisted, no numeric collation.</td>
+    <td>Rust-side worktree cache filled at startup, palette renders from cache then revalidates; sort by folder name with numeric collation; optional pre-created hidden window.</td>
+    <td><span class="tag p1">PR3, PR7</span></td></tr>
+<tr><td>Focus 2/22, no author overview</td>
+    <td>Focus = PRs with priority score &gt; 0. "commented" reviews and own green PRs score 0; team review requests are stored by team name so "Needs Review" never matches you; scores keyed by PR number only (collides across repos). Author is initials-only; compact density and sort control exist but are unwired.</td>
+    <td>Rework scorer + explain the badge; author name + "by author" grouping + compact density toggle; wire sort.</td>
+    <td><span class="tag p1">PR8</span></td></tr>
+<tr><td>Personal repo fails under enterprise token</td>
+    <td>One token for all repos (<code>gh auth token</code>, active account only). Your enterprise login is an EMU-style account and cannot be added to <code>borght-dev/BorgDock</code>; the personal account cannot see <code>Gomocha-FSP</code>. <code>gh</code> already holds both logins and <code>gh auth token --user &lt;login&gt;</code> returns each one (verified).</td>
+    <td>Per-repo GitHub account; one client per account; rate limit per account. Today: fix the owner string, and it will still 404 until PR9.</td>
+    <td><span class="tag p1">PR9</span></td></tr>
+<tr><td>Claude API section outdated</td>
+    <td>Hardcoded model list (Sonnet 4.6, Haiku 4.5, Opus 4.6), separate API key, direct <code>api.anthropic.com</code> call. Only "PR summary" is implemented; the other three toggles have no code behind them.</td>
+    <td>Delete the section and Rust module; route summaries through <code>claude -p</code> with alias models (no version numbers), or through Codex.</td>
+    <td><span class="tag p1">PR10</span></td></tr>
+<tr><td>Codex not supported</td>
+    <td>Launcher is Claude-only (<code>launch_claude_code</code> via <code>wt.exe</code>). <code>codex</code> 0.152 is installed with <code>codex exec --json</code> headless mode.</td>
+    <td>Provider abstraction: Claude Code, Codex, T3 Code. Headless and interactive per provider.</td>
+    <td><span class="tag p1">PR10, PR11</span></td></tr>
+<tr><td>Launch into T3 Code instead of a terminal</td>
+    <td>T3 Code runs a local server (port 3773) with an HTTP dispatch endpoint and an RPC that already knows how to prepare a PR thread in a worktree. It stores threads with branch, worktree path and linked PR in a local SQLite we can read.</td>
+    <td>Pair BorgDock once as a T3 client; "Fix / Resolve / Monitor" create a T3 thread with the prompt as first turn; show T3 threads per PR in BorgDock. Retire the terminal launcher and the Agent Overview.</td>
+    <td><span class="tag p1">PR11, PR12</span></td></tr>
+</table>
+
+<h2 id="evidence">2. Evidence from this machine</h2>
+<p>Sources: <code>%APPDATA%\BorgDock\logs\borgdock.log</code> (2.9 MB, 2026-06-30 → today), <code>borgdock-panic.log</code>, <code>%APPDATA%\BorgDock\settings.json</code>, <code>%APPDATA%\com.borgdock.app\window-geometry.json</code>, live process list.</p>
+
+<table>
+<tr><th>Observation</th><th>Meaning</th></tr>
+<tr><td>921 × <code>poll: repo failed — Could not resolve to a Repository with the name 'git@github-borghtdev:borght-dev/BorgDock'</code></td>
+    <td>Repo #1 in settings has owner <code>git@github-borghtdev:borght-dev</code> (an SSH alias). Every 60 s poll wastes a request and logs an error. Cosmetic today, but the failing repo also blocks nothing and hides nothing; fix in settings now.</td></tr>
+<tr><td>399 × <code>ADO polling error: Unexpected token '&lt;'</code></td>
+    <td>Azure DevOps returned an HTML sign-in page; the client parses JSON unconditionally. Needs a content-type check and a re-auth path instead of a spammy error.</td></tr>
+<tr><td>27 × <code>IPC custom protocol failed, Tauri will now use the postMessage interface instead — TypeError: Failed to fetch</code>, three per window at boot</td>
+    <td>CSP <code>connect-src</code> does not list <code>ipc: http://ipc.localhost</code>. Tauri does <em>not</em> add it automatically (checked tauri-utils 2.9.3 docs and tauri 2.11.5 source). Every invoke in every window uses the slower fallback.</td></tr>
+<tr><td><code>graphql ok { query=PollOpenPrs, durationMs=6857, cost=5 }</code>; histogram of 922 cycles: 830 in 1–3 s, 89 in 3–6 s, 2 &gt; 6 s; today's cycles are 5–7 s</td>
+    <td>One request per repo is right, but the query asks for <code>mergeable</code> (forces GitHub to compute merge state), full <code>body</code>, 100 check contexts and 50 reviews per PR. Latency, not cost, is the issue.</td></tr>
+<tr><td>2026-08-19 relaunch: <code>OTLP listening on 127.0.0.1:4319</code> (4318 taken), <code>Failed to register Ctrl+F7 hotkey: already registered</code>, <code>failed to create webview: 0x80070057</code></td>
+    <td>A previous BorgDock process was still alive during the new launch. The single-instance plugin's callback is empty, so the second instance ran anyway. This is what a "hang then relaunch" looks like from the outside.</td></tr>
+<tr><td><code>persist_window_geometry[main]: clamping saved size 535x649 up to min 1200x720</code> (three separate days)</td>
+    <td>The main window is genuinely at wizard size (520×640 + frame) in normal sessions, and that size gets persisted. Confirms section D.</td></tr>
+<tr><td><code>agent_overview: synced OTel env into D:\FSP-Horizon\.worktrees\worktree3\.claude\settings.json</code> on every start; <code>window_ready[agent-overview]</code> at boot</td>
+    <td>Agent Overview writes into a work repo and opens its window at each launch, for a feature you do not use.</td></tr>
+<tr><td>Panic log (2026-05-05): <code>null pointer dereference</code> in <code>wry-0.54.4 webview2/mod.rs:1251 parent_subclass_proc</code>, thread=main, inside <code>WM_SIZE</code> handling</td>
+    <td>A WebView2 controller pointer was used after the webview was destroyed while the parent HWND still received messages. Lock is now wry 0.55.1; the code path still exists. Related to creating and destroying pop-out windows.</td></tr>
+<tr><td>Live: <code>borgdock.exe</code> 66 MB + 10 WebView2 processes = <strong>1.74 GB</strong> working set; largest renderer 590 MB</td>
+    <td>Three windows at boot (main, flyout prewarm, agent-overview) plus opened palettes. Reducing to one visible window at boot and lazy-creating the rest cuts this substantially.</td></tr>
+</table>
+
+<h2 id="a">A. Hangs and crashes</h2>
+
+<h3>A1. Sync commands execute on the GUI thread <span class="verified">✔ verified in source</span></h3>
+<p>CLAUDE.md line 86 states that Tauri 2 runs sync and async commands on a worker thread. The source says otherwise: <code>tauri-macros/src/command/wrapper.rs:264</code> marks non-async commands as blocking, and <code>tauri-2.11.5/src/ipc/mod.rs:326,371</code> only spawns for the async path. On Windows both wry IPC entry points (<code>WebResourceRequested</code> for the custom protocol and <code>WebMessageReceived</code> for postMessage) fire on the UI thread. Sync commands therefore run inline on the main thread.</p>
+<p>Commands doing blocking work there today:</p>
+<table>
+<tr><th>Command</th><th>File</th><th>Blocking work</th></tr>
+<tr><td><code>cache_save_etags</code> / <code>cache_save_prs</code> / <code>cache_load_etags</code> / <code>cache_load_prs</code> / <code>cache_init</code></td><td><code>src-tauri/src/cache/mod.rs:18–441</code></td><td>SQLite. <code>cache_save_etags</code> runs every poll with up to 500 entries each carrying a full response body (<code>client.ts:66–75</code>, <code>useGitHubPolling.ts:157</code>). No dirty tracking; every row is re-serialised and <code>INSERT OR REPLACE</code>d.</td></tr>
+<tr><td><code>load_settings</code> / <code>save_settings</code></td><td><code>settings/mod.rs:148,228</code></td><td>File read + parse; <code>migrate_credentials_to_keychain</code> touches Windows Credential Manager on every load.</td></tr>
+<tr><td><code>gh_cli_token</code>, <code>az_cli_available</code>, <code>get_system_theme</code>, <code>open_log_folder</code></td><td><code>auth/mod.rs:5</code>, <code>auth/ado.rs:167</code>, <code>platform/theme.rs:1</code>, <code>platform/logs.rs:20</code></td><td>Subprocess spawns (200–3000 ms cold on Windows, per the repo's own comments).</td></tr>
+<tr><td><code>focus_session_pane</code></td><td><code>agent_overview/commands.rs:138</code> → <code>platform/focus_pane.rs:48</code></td><td><code>sysinfo</code> refresh of every process on the machine with cwd, then <code>canonicalize</code> per process. Multi-second hard freeze on click.</td></tr>
+<tr><td><code>get_credential</code> / <code>set_credential</code></td><td><code>keychain.rs:8–41</code></td><td>Credential Manager; called up to 4+ times per settings save.</td></tr>
+</table>
+<p>Because every <code>run_on_main_thread</code> + oneshot in this repo, every tauri <code>getter!</code> (<code>outer_size</code>, <code>theme</code>, …) and <code>tray.set_icon</code> are untimed waits on the main thread, one stalled sync command turns into "every invoke hangs, splash never progresses".</p>
+
+<h3>A2. Detached repaint thread with a blocking getter</h3>
+<p><code>platform/window.rs:451–456</code> spawns an OS thread, sleeps 250 ms, calls <code>set_focus()</code> and <code>force_repaint</code>, which calls <code>outer_size()</code> (a blocking getter) from a non-UI thread. <code>hotkey.rs:313–319</code> documents that this exact pattern "saturated WebView2's PostMessage queue and hard-crashed the process" and removed it from <code>palette_ready</code>. It survives in <code>open_pr_detail_window</code>.</p>
+
+<h3>A3. wry null-pointer panic in <code>parent_subclass_proc</code></h3>
+<p>The May panic dereferenced a destroyed <code>ICoreWebView2Controller</code> during <code>WM_SIZE</code>. wry 0.55.1 still has the same subclass proc. Mitigations on our side: never destroy and recreate pop-out windows with the same label in quick succession, prefer hide/show for palettes (already done for worktree palette, not for pr-detail/settings/whats-new), and pin to the newest wry once its fix lands. Also make the panic hook safe: <code>lib.rs:75</code> logs via the Webview target inside the hook, which can re-enter and abort.</p>
+
+<h3>A4. Zombie process on relaunch</h3>
+<p><code>tauri_plugin_single_instance::init(|_app, _args, _cwd| {})</code> is a no-op; the second instance proceeds, fails to bind the port and hotkeys, and fails to create a webview. Wire the callback to <code>show_or_focus_main</code> and make the new instance exit. Separately add a clean-exit path: uninstall the mouse hook (<code>click_outside.rs</code> is never uninstalled at exit if the flyout is visible), flush geometry, stop the OTLP server.</p>
+
+<h3>A5. Panics reachable in normal use</h3>
+<ul>
+<li><code>agent_overview/settings_merge.rs:195,199</code> <code>.expect("settings root must be an object")</code> and <code>.unwrap()</code> on <code>env</code> — runs at startup against every active repo's <code>.claude/settings.json</code>.</li>
+<li>Poisoned-mutex <code>.lock().unwrap()</code> in <code>file_palette/cache.rs:111,120</code>, <code>file_palette/content_search.rs</code>, <code>git/diff.rs</code> — one panic permanently breaks the file palette for the session.</li>
+<li><code>WH_MOUSE_LL</code> hook proc in <code>click_outside.rs:53–107</code> takes a mutex and does work; Windows silently unhooks after 300 ms.</li>
+</ul>
+
+<h3>A6. Things that are fine</h3>
+<p>All <code>git/*</code>, <code>file_palette/*</code> and SQL commands already use <code>spawn_blocking</code>; SQL isolates tiberius panics; <code>PollingManager</code> is a clean timeout chain; all <code>listen()</code>s and intervals have cleanups; no lock is held across an <code>.await</code>; no <code>block_on</code>.</p>
+
+<h2 id="b">B. Agent Overview (unused, expensive)</h2>
+<p>Footprint: ~3,990 LOC Rust + ~4,280 LOC TS, exclusive deps <code>axum</code>, <code>glob</code>, <code>sysinfo</code> (and <code>tower</code> is already dead). Default settings are <code>enabled: true, auto_open_on_startup: true</code> (<code>settings/models.rs:530–539</code>), and your settings file has both on.</p>
+<h4>What it does on every launch</h4>
+<ol>
+<li><code>bootstrap_known_sessions</code> + <code>bootstrap_from_jsonl</code> glob <code>~/.claude/projects/*/*.jsonl</code> and <code>read_to_string</code> every recent transcript to inspect 30 lines (<code>bootstrap.rs:187</code>). This runs <em>before</em> the <code>enabled</code> check (<code>lib.rs:216–255</code>).</li>
+<li>Binds TCP 4318 (falls through to 4327).</li>
+<li><code>sync_active_project_settings</code> rewrites <code>&lt;repo&gt;/.claude/settings.json</code> in your worktrees and drops a <code>.bak.&lt;epoch&gt;</code> file each time (<code>settings_merge.rs:174–184</code>).</li>
+<li>Opens a third WebView2 window (~60–120 MB).</li>
+<li>Starts a 1 Hz tick that, for any session in Awaiting/Finished whose last message could not be extracted, re-reads and fully JSON-parses the whole transcript every second forever (<code>lib.rs:354–368</code>, <code>cwd_resolver.rs:194–199</code>). Blocking fs on the shared tokio runtime, so it adds latency to unrelated async commands.</li>
+</ol>
+<h4>Plan</h4>
+<ul>
+<li>Flip defaults to off; gate bootstrap, OTLP, settings sync, tick loop, hotkey <code>Ctrl+Super+Shift+A</code>, tray item and auto-open on <code>enabled</code>.</li>
+<li>Fix the tick loop regardless (sentinel for "no text", bounded tail read, <code>spawn_blocking</code>).</li>
+<li>Put the module behind a Cargo feature <code>agent-overview</code> (default off) and a Vite entry toggle, so it can be removed cleanly later without touching the rest. Stop writing into repos entirely; if the feature is on, write only <code>~/.claude/settings.json</code> and only when the values changed.</li>
+</ul>
+
+<h2 id="c">C. Speed: startup, polling, bundle, rendering</h2>
+
+<h3>C1. Startup critical path today</h3>
+<pre><code>Rust setup:  tray → flyout WebView2 (prewarm) → geometry → file index sqlite → agent-overview bootstrap (globs, reads, bind, repo writes) → agent-overview WebView2 → hotkeys
+React:       load_settings → cache_init → [useInitSequence: initClient → await cache_load_etags (500 rows + bodies) → gh auth token → await GET api.github.com/user → sequential cache_load_prs per repo → markComplete]
+Parallel:    useWorktreeMap (heavy list_worktrees per repo, then every 30 s), useAdoPolling, useWhatsNew (getVersion), useAutoUpdate, 3 × listen()</code></pre>
+<p>Measured on 2026-09-02: init sequence 2.05 s, of which auth 2.04 s (gh token 0.5 s + <code>GET /user</code>). The PR list is seeded from cache in 14 ms, so everything before it is avoidable latency.</p>
+
+<h3>C2. Concrete wins (ranked by effect ÷ effort)</h3>
+<table>
+<tr><th>#</th><th>Change</th><th>Where</th><th>Effect</th></tr>
+<tr><td>1</td><td><code>useWorktreeMap</code> → bare list, diff before set, no 30 s timer (refresh on worktree mutation events + palette open)</td><td><code>src/hooks/useWorktreeMap.ts:31,51,56</code></td><td>Removes ~24 s of git per 30 s on this machine; stops every PR card re-rendering every 30 s.</td></tr>
+<tr><td>2</td><td>Add <code>ipc: http://ipc.localhost</code> to <code>connect-src</code></td><td><code>src-tauri/tauri.conf.json:32</code></td><td>Every invoke in every window uses the binary custom-protocol path instead of JSON-over-postMessage.</td></tr>
+<tr><td>3</td><td>Agent overview off + gated (section B)</td><td><code>lib.rs</code>, <code>models.rs</code></td><td>−1 WebView2, −globs/reads/bind/writes at boot, −1 Hz loop.</td></tr>
+<tr><td>4</td><td>Stop persisting ETag bodies every poll; persist only url+etag, debounced, off the UI thread</td><td><code>client.ts:66–75</code>, <code>useGitHubPolling.ts:157</code>, <code>cache/mod.rs:276</code></td><td>Removes the 60 s jank tick and multi-MB IPC.</td></tr>
+<tr><td>5</td><td>Init: fire-and-forget <code>cache_load_etags</code> and <code>GET /user</code>; persist login in settings; <code>Promise.all</code> the per-repo cache loads; dedupe the second <code>GET /user</code> in <code>useGitHubPolling</code></td><td><code>useInitSequence.ts:76,96,165</code></td><td>Splash → list in &lt; 500 ms on warm start.</td></tr>
+<tr><td>6</td><td>Lazy-load <code>QuickReviewOverlay</code>/<code>Markdown</code> and the changelog blob; set <code>build.target: 'esnext'</code>; add <code>manualChunks</code></td><td><code>App.tsx:3</code>, <code>useWhatsNew.ts:5</code>, <code>vite.config.ts</code></td><td>−330 KB (37 %) and −47 KB from the main entry graph.</td></tr>
+<tr><td>7</td><td>Release logging: level Info, drop <code>Target::Webview</code>, drop per-request <code>log.info</code> in <code>client.ts:81,130</code>, stop logging full git stdout/stderr</td><td><code>lib.rs:96–100</code>, <code>git/mod.rs:64–70</code></td><td>Removes dozens of IPC round-trips per poll and per init.</td></tr>
+<tr><td>8</td><td>GraphQL poll: drop <code>body</code> from the list query (fetch on demand), <code>contexts(first:30)</code>, <code>latestReviews(first:20)</code>; consider dropping <code>mergeable</code> from the hot query and fetching it only for PRs whose <code>updatedAt</code> changed</td><td><code>services/github/polling.ts:17–116</code></td><td>Cycle from 5–7 s to ~1 s; less data to diff and cache.</td></tr>
+<tr><td>9</td><td>Poll gating: skip cycles while main is hidden and flyout closed (poll once on reveal), keep notifications by polling at ÷4 cadence when hidden</td><td><code>services/polling.ts</code></td><td>Most of the day the app is in the tray.</td></tr>
+<tr><td>10</td><td><code>makeCacheKey</code> O(N) string fingerprint ×4 per render → <code>dataVersion</code> counter; selector on <code>useSettingsStore()</code> in <code>App.tsx:48</code></td><td><code>pr-store.ts:245–255</code></td><td>Cheaper renders, fewer cascades.</td></tr>
+<tr><td>11</td><td>Flyout prewarm: build lazily on first hotkey (keep prewarm behind a setting if you rely on it)</td><td><code>lib.rs:161</code></td><td>−1 WebView2 at boot.</td></tr>
+<tr><td>12</td><td>Housekeeping: remove <code>tower</code>; check whether <code>reqwest/blocking</code> is still needed; <code>[profile.dev.package."*"] opt-level = 2</code></td><td><code>Cargo.toml</code></td><td>Smaller binary, faster dev builds.</td></tr>
+</table>
+
+<h3>C3. PR detail window drains REST quota</h3>
+<p><code>PRDetailApp.tsx:125</code> calls <code>getOpenPRs</code> with hydration on, which is 1 + 2N REST calls (45 for 22 PRs) plus check runs, to find one PR the store already has. Pass <code>{ hydrateDetails: false }</code> and hydrate only the target PR. Also label the status-bar rate number with the pool it reports (<code>useStatusBar.ts:38</code> picks the tighter of REST/GraphQL without saying which).</p>
+
+<h2 id="d">D. Wrong window size until you drag an edge</h2>
+<p><strong>Root cause, verified in code.</strong> <code>src/App.tsx:83–108</code>:</p>
+<pre><code>const needsSetup = forceWizardFromUrl || !settings.setupComplete || settings.repos.length === 0 || (...pat...);
+useEffect(() =&gt; { if (needsSetup) invoke('show_setup_wizard'); }, [needsSetup]);   // not gated on !isLoading</code></pre>
+<p>On mount, settings are still defaults (<code>setupComplete: false</code>), so <code>needsSetup</code> is true and the effect fires every launch. <code>platform/window.rs:328–356</code> then resizes <em>the main window</em> to 520×640 logical (780×960 physical at your 150 %) and shows it. When settings hydrate, <code>needsSetup</code> flips to false but the effect body only acts when true. The render path <em>is</em> gated (<code>App.tsx:293</code>), so you see the real UI squeezed into a wizard-sized window. Dragging an edge makes tao apply <code>min_inner_size</code> 1200×720 logical = 1800×1080 physical, the "snap". The <code>Resized</code> listener also persists the wizard size, which is why the log shows 535×649 being clamped up every launch.</p>
+<p>Two adjacent facts: nothing in the main entry calls <code>window_ready</code> (the comment at <code>lib.rs:420–423</code> is stale), so <code>show_setup_wizard</code> is currently the only thing that shows main at startup; and <code>ui.startMinimizedToTray</code> is declared and toggled but read by nothing.</p>
+<h4>Fix</h4>
+<ol>
+<li>Gate the effect on <code>!isLoading</code> (and on a <code>hasLoaded</code> flag from the settings store).</li>
+<li>Add an explicit reveal: main calls <code>window_ready</code> after settings hydrate; <code>window_ready</code> honours <code>startMinimizedToTray</code>.</li>
+<li><code>show_setup_wizard</code> should not resize main. Open the wizard in its own window (pattern exists: settings window) or restore saved geometry on completion.</li>
+<li>In <code>window_geometry.rs</code> set position before size so a mixed-DPI move does not misconvert, and do not persist sizes below the kind's minimum.</li>
+</ol>
+
+<h2 id="e">E. SQL editor line numbers stacked / wrong font</h2>
+<p><strong>Root cause, verified.</strong> The editor is CodeMirror 6 (<code>src/components/sql/SqlEditor.tsx:249–303</code>); its base theme (flex row of gutter + content, monospace, line-height) is injected at runtime by <code>style-mod</code> as a nonce-less <code>&lt;style&gt;</code>. <code>sql.html</code> contains an inline <code>&lt;style&gt;</code>; tauri-utils <code>inject_nonce_token</code> adds a nonce to it and Tauri appends <code>'nonce-…'</code> to <code>style-src</code>. Per CSP3, a nonce in the directive makes <code>'unsafe-inline'</code> ignored, so CodeMirror's injected sheet is refused. Packaged builds only; dev server and Storybook have no CSP, which is why no test caught it. <code>SqlApp.test.tsx</code> mocks the editor out entirely.</p>
+<h4>Fix</h4>
+<ol>
+<li>In <code>SqlEditor.tsx</code> read the nonce from the injected inline style tag (<code>document.querySelector('style[nonce]')?.nonce</code>) and pass <code>EditorView.cspNonce.of(nonce)</code>.</li>
+<li>Move the <code>html, body, #root</code> rules from all 12 HTML entries into <code>src/styles/index.css</code> so no inline styles remain to nonce (index.html's inline splash markup can keep its CSS as a class in the stylesheet).</li>
+<li>Add a Playwright e2e that runs against the packaged build (or at least a vitest asserting <code>.cm-scroller</code> computed <code>display: flex</code> with a simulated CSP) so it cannot regress silently.</li>
+<li>Drop the redundant inline pixel <code>height</code> in <code>SqlEditor.tsx:332</code>; the parent already sizes it.</li>
+</ol>
+
+<h2 id="f">F. Worktree overview: slow, unsorted, cold</h2>
+<h4>Why it is slow</h4>
+<ul>
+<li><code>useWorktreeMap</code> (main window) runs heavy <code>list_worktrees</code> every 30 s: 1 + 3N sequential git processes (<code>status</code>, <code>rev-list</code>, <code>rev-parse</code> per worktree) — measured 24.1 s for the 14 FSP-Horizon worktrees. It uses only path + branch, which the bare command returns in ~0.2 s. <code>git status</code> without <code>--no-optional-locks</code> also writes the index in every worktree each cycle.</li>
+<li>The palette stays invisible until <code>load_settings</code> (sync, main thread) → per-repo <code>list_worktrees_bare</code> → 50 ms timer → <code>window_ready</code> round-trip (<code>WorktreePaletteApp.tsx:264–336</code>). Then it auto-resizes after reveal (visible jump).</li>
+<li>First Ctrl+F7 builds a new WebView2 (~350–520 ms in the log) plus ~240 KB JS + 134 KB CSS.</li>
+<li>No cache anywhere; second opens only feel faster because stale rows are not cleared.</li>
+<li>Git is resolved via PATH on every spawn; no timeouts on <code>.output()</code>.</li>
+</ul>
+<h4>Why it is unsorted</h4>
+<p><code>WorktreePaletteApp.tsx:409–419</code> sorts repo → main first → favorites first → <em>branch name</em>. The visible secondary line is the folder name (<code>worktree1…worktree9</code>), 11 favorites are hoisted, and <code>localeCompare</code> without <code>numeric</code> puts <code>worktree10</code> before <code>worktree2</code>.</p>
+<h4>Plan</h4>
+<ol>
+<li>New <code>src-tauri/src/git/worktree_cache.rs</code> modelled on <code>platform/flyout_cache.rs</code>: Tauri-managed state, <code>worktree_cache_get_all</code> (instant) and <code>worktree_cache_refresh</code> (per-repo concurrent <code>spawn_blocking</code>, sorted, emits <code>worktrees-updated</code> to all windows). Refresh at startup, on palette open, on create/remove/prune, and on a slow timer (5 min).</li>
+<li>Palette: render from cache on mount, reveal immediately (skeleton if empty), revalidate in the background; settings (favorites) load in parallel and only gate the star, not the list.</li>
+<li>Main window's <code>useWorktreeMap</code> subscribes to the same cache/event. No timer.</li>
+<li>Sort: repo → main pinned → folder name with <code>{ numeric: true, sensitivity: 'base' }</code>; favorites shown as a star, not hoisted (or an explicit "favorites first" toggle).</li>
+<li>Harden <code>git/worktree.rs</code>: parallelise the heavy variant (for the checkout panel that does need it), <code>--no-optional-locks</code>, cache the resolved <code>git.exe</code> path in a <code>OnceLock</code>, add a wall-clock timeout.</li>
+<li>Optional: pre-create the palette hidden at startup behind <code>ui.prewarmWorktreePalette</code>; <code>open_or_toggle_palette</code> already handles the exists-but-hidden path.</li>
+</ol>
+
+<h2 id="g">G. Focus shows 2 of 22, no author overview</h2>
+<h3>G1. Focus predicate</h3>
+<p><code>pr-store.ts:387–407</code>: Focus list and badge are PRs whose <code>computePriorityScores</code> total is &gt; 0. Scoring rules (<code>services/priority-scoring.ts:16–128</code>): drafts by others excluded; mine + green + approved + mergeable +45; mine + red +20; mine + changes requested +15 (+10 if stale); requested from me +15 (+7/+8 aging); anyone's PR untouched &gt; 24 h +2…+10; others' red +5. A "commented" review scores 0 anywhere. My own green PR waiting on review scores 0. With Needs Review = 0 (see below) and an active repo where most PRs were touched within 24 h, the only PRs left are the 2 failing ones. The badge is "correct" by its own rule; the rule is wrong for how you work.</p>
+<p>Why "Needs Review" is 0 while "Review" is 9: the chips measure different axes. "Review" = any reviewer's latest review is commented/changes-requested/pending. "Needs Review" = you are still a pending requested reviewer. Two causes make yours 0: team review requests are mapped to the team <em>name</em> (<code>polling.ts:242–244</code>) and compared against your login; and GitHub removes you from requested reviewers once you submit any review, including a comment.</p>
+<p>Latent bugs: scores keyed by PR number only (<code>priority-scoring.ts:124</code>) so numbers collide across repos; cache key omits <code>updatedAt</code> so the &gt; 24 h rule does not re-fire; <code>FocusList.tsx:127</code> feeds raw totals up to ~113 into a 0–100 ring; <code>settings.gitHub.username</code> (manual) and the viewer login are two unreconciled sources of "me", and review nudges silently do nothing when the manual one is blank.</p>
+<h3>G2. Existing but unwired overview machinery</h3>
+<ul>
+<li><code>PrCardDensity = 'compact'</code> is fully implemented and tested (<code>PrCardView.tsx:247–322</code>), used only by the flyout; main window hardcodes <code>normal</code> (<code>PrCardContainer.tsx:151</code>).</li>
+<li><code>sortBy</code> store state with three modes exists; <code>setSortBy</code> has zero UI call sites.</li>
+<li>Author login is in <code>PrCardData</code> but never rendered as text; avatar URL is fetched and unused (initials only).</li>
+<li><code>TeamReviewLoad.tsx</code> is a per-person summary with click-to-filter, for reviewers. An author-side twin is ~30 lines. Free-text search already matches author login.</li>
+<li><code>contributor-stats.ts</code> and <code>settings.repoPriority</code> are dead: computed/stored, never passed to the scorer.</li>
+</ul>
+<h3>G3. Plan</h3>
+<ol>
+<li><strong>Scorer.</strong> Add: my PR with no review yet after N hours (+10, escalating); my PR with a "commented" review I have not responded to since (+12); PR where I commented and the author pushed since (+8); team review request matched against my team memberships (fetch <code>viewer.organizations.teams</code> once, cache in settings). Key scores by <code>owner/repo#number</code>. Include <code>updatedAt</code> in the cache key. Clamp ring input.</li>
+<li><strong>Explain it.</strong> Focus tab header line: "Showing 5 of 22 — 2 failing, 2 waiting on you, 1 stale" with a "why not the others?" popover listing the top zero-score reasons. Makes the number trustworthy.</li>
+<li><strong>PR tab overview.</strong> Toolbar gets Group (Repo / Author / Status) + Density (Comfortable / Compact) + Sort (Updated / Created / Title). Group-by-author renders an author header with avatar, name, count, +/−, and a mini status strip; compact rows show avatar + login text. Reuse <code>agent-overview.ts</code>'s group/density helpers by extracting them into <code>src/services/grouping.ts</code>.</li>
+<li><strong>Author summary strip</strong> at the top of the PR tab (author-side twin of <code>TeamReviewLoad</code>): click filters to that author.</li>
+<li>Rename chips: "Needs Review" → "Waiting on me"; "Review" → "In review". Fix the team-name mapping.</li>
+<li>Delete <code>contributor-stats.ts</code> and <code>repoPriority</code> or wire them; do not leave a third source of truth.</li>
+</ol>
+
+<h2 id="h">H. Two GitHub accounts on one machine</h2>
+<p><strong>Situation.</strong> <code>gh auth status</code> on this laptop shows two logins on github.com: <code>KvanderBorght_gomocha</code> (active) and <code>borght-dev</code>. BorgDock's <code>gh_cli_token</code> (<code>src-tauri/src/auth/mod.rs:5</code>) runs plain <code>gh auth token</code>, which returns only the active account's token. <code>borght-dev/BorgDock</code> is public, but the enterprise token still cannot resolve it through GraphQL because the enterprise account lives in a managed enterprise (EMU-style login with the <code>_gomocha</code> suffix), which is walled off from repos outside the enterprise. Adding the enterprise login as a collaborator on your personal repo is therefore not possible, and the personal token cannot see <code>Gomocha-FSP</code>.</p>
+<p><strong>Can it be solved on the machine alone?</strong> Only partially. Switching the active gh account fixes one repo and breaks the other. What <em>does</em> work locally, verified today, is <code>gh auth token --user borght-dev</code> and <code>gh auth token --user KvanderBorght_gomocha</code>: both return a 40-character token without switching the active account. BorgDock just needs to ask for the right one per repo.</p>
+<h4>Design</h4>
+<ul>
+<li><code>RepoSettings</code> (<code>src/types/settings.ts:15</code>) gets <code>githubAccount?: string</code> (a login). Empty means "active gh account" for backwards compatibility.</li>
+<li><code>gh_cli_token</code> takes an optional <code>user</code> and passes <code>--user &lt;login&gt;</code>. The settings UI lists accounts by parsing <code>gh auth status</code> (or <code>gh api user</code> per token) and shows an account picker per repo, with a "Detect" button that tries each account against the repo and picks the one that resolves it.</li>
+<li>Frontend: <code>getGitHubToken</code> becomes keyed by account; <code>GitHubClient</code> becomes one instance per account (<code>Map&lt;login, GitHubClient&gt;</code>), with polling, ETags and rate limits tracked per client. The status bar shows the tighter of the per-account pools with its login.</li>
+<li>Repo owner validation in the settings form: reject anything that is not <code>[A-Za-z0-9-]+</code>, and offer to parse <code>git remote get-url origin</code> (including SSH aliases such as <code>git@github-borghtdev:borght-dev/BorgDock</code>) into owner/name. That is how the current bad owner got in.</li>
+<li>PAT mode: allow a PAT per repo the same way (stored under a per-account keychain entry).</li>
+</ul>
+
+<h2 id="i">I. Replace the Claude API section with headless CLI</h2>
+<p><strong>What exists.</strong> <code>ClaudeApiSection.tsx</code> hardcodes <code>claude-sonnet-4-6</code>, <code>claude-haiku-4-5-20251001</code>, <code>claude-opus-4-6</code>. The only implemented feature is <code>generate_pr_summary</code> (<code>src-tauri/src/claude_api.rs:38</code>, called from <code>OverviewTab.tsx:36</code>), which POSTs to <code>api.anthropic.com</code> with a separate API key. The toggles for diff explanations, review-nudge phrasing and commit-message suggestions have no code behind them. The list will always be stale because model ids are baked into the UI.</p>
+<p><strong>Plan.</strong> Delete the section, the Rust module, the API key and the four toggles. Add a provider-agnostic headless runner and a "Summaries" setting with a provider + model alias.</p>
+<pre><code># Claude Code 2.1 — aliases resolve to the latest model, so no version numbers in BorgDock
+claude -p --bare --output-format json --model sonnet &lt; prompt.md
+#   --bare skips hooks/LSP/plugins (faster, no side effects); --json-schema &lt;schema&gt; for structured output
+
+# Codex 0.152 — headless, sandboxed, no repo checks, writes the final message to a file
+codex exec --json --ephemeral --skip-git-repo-check -s read-only -C &lt;cwd&gt; -o out.md "&lt;prompt&gt;"
+#   -m &lt;model&gt; optional; default comes from ~/.codex/config.toml (currently gpt-5.6-sol)</code></pre>
+<ul>
+<li>New Rust command <code>run_headless_prompt { provider, cwd?, prompt, schema?, timeoutSecs }</code> → <code>{ text, provider, model, durationMs }</code>. Async + <code>spawn_blocking</code>, hidden window, hard timeout, stdin for the prompt (avoids Windows argument length and quoting problems), stdout parsed per provider (<code>claude</code> JSON result / Codex JSONL last message or <code>-o</code> file).</li>
+<li>Model setting is an alias picker for Claude (<code>fable</code>, <code>opus</code>, <code>sonnet</code>, <code>haiku</code>, or "CLI default") and free text for Codex with "CLI default" as default. No model ids are stored unless the user types one.</li>
+<li>Consumers: PR summary (existing), and, since they are now nearly free to add, "explain this diff hunk" in the file viewer and "suggest a commit message" in the checkout panel. Ship summary first; the other two are follow-ups with their own toggles only when implemented.</li>
+<li>Both CLIs use the user's existing login (<code>claude auth login</code>, <code>codex login</code>). No key management in BorgDock.</li>
+<li>Migration: drop <code>claudeApi</code> from settings on load; delete the keychain entry for the API key.</li>
+</ul>
+
+<h2 id="j">J. Codex as a second provider</h2>
+<p>Today's launcher is Claude-only: <code>launch_claude_code</code> (<code>src-tauri/src/git/process.rs:48</code>) opens Windows Terminal with <code>claude</code> in a worktree and a prompt file, from <code>useClaudeActions.ts</code> (Fix checks, Resolve conflicts, Monitor PR). Prompts are built in <code>services/claude-launcher.ts</code> and are provider-neutral markdown.</p>
+<h4>Design: one <code>AgentProvider</code> abstraction</h4>
+<table>
+<tr><th>Capability</th><th>Claude Code</th><th>Codex</th><th>T3 Code</th></tr>
+<tr><td>Headless one-shot (summaries)</td><td><code>claude -p --bare</code></td><td><code>codex exec --json</code></td><td>n/a (delegates to its provider)</td></tr>
+<tr><td>Interactive session in a worktree with an initial prompt</td><td><code>wt.exe … claude "$(cat prompt)"</code> (existing)</td><td><code>wt.exe … codex -C &lt;wt&gt; "&lt;prompt&gt;"</code></td><td><code>thread.create</code> + <code>thread.turn.start</code> (section K)</td></tr>
+<tr><td>Session discovery / status</td><td>Agent Overview transcript parsing (to be removed)</td><td>none</td><td>local SQLite projection + RPC subscription</td></tr>
+<tr><td>Availability check</td><td><code>claude --version</code></td><td><code>codex --version</code></td><td><code>~/.t3/userdata/server-runtime.json</code> + <code>GET /api/auth/session</code></td></tr>
+</table>
+<ul>
+<li><code>settings.agents = { defaultProvider: 'claude' | 'codex' | 't3', claude: { path? }, codex: { path?, model? }, t3: { … } }</code>. <code>claudeCode.defaultPostFixAction</code> moves under <code>agents</code>.</li>
+<li><code>useClaudeActions</code> → <code>useAgentActions</code>; every "Fix with Claude" button becomes "Fix with ‹provider›" with a split-button to pick another provider for this run. Prompts stay as they are; the Claude-specific bits (mentions of <code>claude</code>, hook names) move into per-provider prompt footers.</li>
+<li>Rust: <code>launch_agent_session { provider, worktreePath, promptFile, title }</code> replaces <code>launch_claude_code</code>; <code>hidden_command</code> for the spawn (the current <code>Command::new("wt.exe")</code> in <code>process.rs:71</code> flashes a console).</li>
+</ul>
+
+<h2 id="k">K. T3 Code as the session launcher</h2>
+<p><strong>What was verified on this machine.</strong> T3 Code (Alpha) 0.0.38 is installed via winget and running. Its server listens on <code>http://127.0.0.1:3773</code>, published in <code>~/.t3/userdata/server-runtime.json</code>. Clients use Effect RPC over WebSocket at <code>/ws</code>, but there is also a plain HTTP surface: <code>POST /api/orchestration/dispatch</code> (a <code>ClientOrchestrationCommand</code>), <code>GET /api/orchestration/threads/:threadId</code>, and auth routes <code>POST /oauth/token</code> (RFC 8693 token exchange of a one-time pairing credential for a Bearer access token), <code>POST /api/auth/websocket-ticket</code>, <code>POST /api/auth/pairing-token</code>. Scopes include <code>orchestration:read</code> and <code>orchestration:operate</code>. The CLI (<code>npx t3</code>) has <code>project add &lt;path&gt;</code>, <code>pair</code>, <code>serve</code>, <code>auth</code> but no thread subcommand. The desktop app registers the <code>t3code://</code> scheme but only <code>t3code://app</code> is used; its activation contract is <code>open-workspace { workspaceRoot }</code> → <code>{ projectId, threadId }</code>, which is what launching the executable with a folder does.</p>
+<p>Command payloads (from <code>packages/contracts/src/orchestration.ts</code> on main; the local install's <code>thread.created</code> events match):</p>
+<pre><code>project.create      { type, commandId, projectId, title, workspaceRoot, createWorkspaceRootIfMissing?, createdAt }
+thread.create       { type, commandId, threadId, projectId, title, modelSelection: { instanceId, model, options? },
+                      runtimeMode: "approval-required"|"auto-accept-edits"|"auto"|"full-access",
+                      interactionMode: "default"|"plan", branch: string|null, worktreePath: string|null, createdAt }
+thread.turn.start   { type, commandId, threadId, message: { messageId, role: "user", text, attachments: [] },
+                      modelSelection?, titleSeed?, runtimeMode, interactionMode, createdAt }
+RPC only:           git.preparePullRequestThread { cwd, reference, mode: "local"|"worktree", threadId? }
+                    → { pullRequest, branch, worktreePath }</code></pre>
+<p>Provider instances configured in your T3 settings: <code>codex</code>, <code>claudeAgent</code> ("Claude Gomocha"), <code>claudeAgent_outlook</code> (personal Claude home). Your T3 projects already include <code>E:\BorgDock\src\BorgDock.Tauri</code> and several <code>D:\FSP-Horizon\.worktrees\worktreeN</code> folders. The local database <code>~/.t3/userdata/state.sqlite</code> has <code>projection_threads</code> with <code>project_id, title, branch, worktree_path, model_selection_json, linked_pull_request_json, pending_approval_count, pending_user_input_count, settled_at, unsettled_at</code>, and <code>projection_projects</code> with <code>workspace_root</code>. Reading it in <code>mode=ro</code> while T3 runs is safe (WAL).</p>
+
+<h4>Integration design, three tiers</h4>
+<ol>
+<li><strong>Tier 1, no auth, ships first.</strong> "Open in T3 Code": <code>t3 project add &lt;worktree&gt;</code> if the workspace root is unknown (check the projection table), then launch <code>"T3 Code (Alpha).exe" &lt;worktree&gt;</code>, which activates <code>open-workspace</code> and lands you in a new thread for that project. The prompt goes to the clipboard and a toast says "prompt copied, paste to start". Ugly but works today and needs nothing from T3.</li>
+<li><strong>Tier 2, paired client, the target.</strong> One-time pairing: BorgDock runs <code>npx t3 pair --ttl 5m</code> (or the user pastes a pairing token), exchanges it at <code>POST /oauth/token</code> with <code>grant_type=urn:ietf:params:oauth:grant-type:token-exchange</code> and <code>subject_token_type=urn:t3:params:oauth:token-type:environment-bootstrap</code>, stores the Bearer token in the keychain, and re-pairs when <code>GET /api/auth/session</code> says expired. Then "Fix with T3" is: ensure project (dispatch <code>project.create</code> with our worktree as <code>workspaceRoot</code>, or reuse the existing project id from the projection), dispatch <code>thread.create</code> with <code>branch</code> and <code>worktreePath</code> set to the PR branch and worktree BorgDock created, <code>modelSelection</code> from a BorgDock setting mirroring T3's instance ids, <code>runtimeMode</code> from a setting (default <code>auto-accept-edits</code>), then dispatch <code>thread.turn.start</code> with the prompt as <code>message.text</code> and the PR title as <code>titleSeed</code>. Finally bring T3 to front. The desktop app updates live through its own subscription, so the thread appears immediately.</li>
+<li><strong>Tier 3, replace Agent Overview.</strong> A "Sessions" strip on each PR card and in the PR detail Overview tab lists T3 threads whose <code>worktree_path</code> or <code>branch</code> matches, with status (running, waiting for approval, waiting for input, settled) from the projection tables, polled cheaply from SQLite (or via <code>orchestration.subscribeShell</code> over the WebSocket once the client exists). Clicking focuses that thread in T3 (Tier 1 activation plus thread id, or the RPC equivalent). This gives you the "who is waiting on me" signal the Agent Overview tried to provide, without OTLP, transcript parsing or repo writes.</li>
+</ol>
+<h4>Risks and mitigations</h4>
+<ul>
+<li>T3 is alpha; contracts change. Pin the tested T3 version in a constant, probe <code>server.probe</code> / <code>GET /api/auth/session</code> at startup, and degrade to Tier 1 when the dispatch route rejects the payload. Log the server version in our log.</li>
+<li>HTTP dispatch versus WebSocket: dispatch over HTTP is enough for create + first turn. Only Tier 3's live status and <code>git.preparePullRequestThread</code> need the WebSocket client. Reuse T3's own worktree creation (<code>mode: "worktree"</code>) only once the WS client exists; until then BorgDock keeps creating worktrees itself, which it already does.</li>
+<li>Pairing is a manual step once; without it, Tier 1 still works.</li>
+<li>Token storage in the Windows keychain via the existing <code>keychain.rs</code>, async after PR1.</li>
+</ul>
+
+<h2 id="plan">3. Implementation plan</h2>
+<p>Each PR is independently shippable and ordered so the crash/hang class lands first. Estimates assume one focused day ≈ one PR unless noted.</p>
+
+<div class="grid">
+<div class="card"><h3><span class="tag p0">PR1</span> Main-thread hygiene</h3>
+<ul>
+<li>Convert all I/O sync commands (table A1) to <code>async</code> + <code>spawn_blocking</code>; keep window commands on the documented oneshot pattern but add <code>tokio::time::timeout(5s)</code> around every <code>rx.await</code>.</li>
+<li>ETag store: persist url+etag only; debounce; dirty-track.</li>
+<li>Delete the detached repaint thread (<code>window.rs:451</code>); replace with <code>run_on_main_thread</code> after an async sleep.</li>
+<li>Poison-safe locks in file palette / diff; <code>settings_merge</code> unwraps → errors.</li>
+<li>Single-instance callback focuses main; second instance exits. Clean exit uninstalls the mouse hook.</li>
+<li>Panic hook: file write only, no <code>log::error!</code> inside the hook.</li>
+<li>Init-path invokes get a timeout and a visible error state instead of an eternal splash.</li>
+<li>Fix CLAUDE.md line 86 and add the "sync = UI thread" rule.</li>
+</ul>
+<small>Files: <code>cache/mod.rs</code>, <code>settings/mod.rs</code>, <code>auth/*.rs</code>, <code>keychain.rs</code>, <code>platform/window.rs</code>, <code>platform/theme.rs</code>, <code>lib.rs</code>, <code>client.ts</code>, <code>useGitHubPolling.ts</code>, <code>useInitSequence.ts</code>, <code>useCacheInit.ts</code>. ~1.5 days.</small></div>
+
+<div class="card"><h3><span class="tag p0">PR2</span> Agent Overview off and contained</h3>
+<ul>
+<li>Defaults off; gate bootstrap/OTLP/sync/tick/hotkey/tray/auto-open on <code>enabled</code>.</li>
+<li>Tick loop: sentinel + bounded tail read + <code>spawn_blocking</code>; <code>bootstrap.rs:187</code> → <code>BufReader.take(30)</code>.</li>
+<li>Never write into repos; write <code>~/.claude/settings.json</code> only on explicit enable and only when changed; no <code>.bak</code> spam.</li>
+<li>Cargo feature <code>agent-overview</code> (default off) + Vite entry toggle; remove <code>tower</code>.</li>
+<li>Settings migration: leave existing users' <code>enabled</code> as-is but force <code>autoOpenOnStartup=false</code> once.</li>
+</ul>
+<small>Files: <code>lib.rs:204–410</code>, <code>agent_overview/*</code>, <code>settings/models.rs</code>, <code>Cargo.toml</code>, <code>vite.config.ts</code>, <code>hotkey.rs</code>, <code>tray.rs</code>. ~1 day.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR3</span> Worktree cache + git storm</h3>
+<ul>
+<li><code>git/worktree_cache.rs</code> with startup prefetch, events, concurrent refresh.</li>
+<li><code>useWorktreeMap</code> → cache subscriber; diff-before-set; no timer.</li>
+<li><code>git/worktree.rs</code>: parallel heavy scan, <code>--no-optional-locks</code>, cached git path, timeouts, deterministic sort at source.</li>
+</ul>
+<small>~1 day. Unblocks PR7.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR4</span> Startup and poll speed</h3>
+<ul>
+<li>CSP: add <code>ipc: http://ipc.localhost</code> to <code>connect-src</code>.</li>
+<li>Init reorder (C2 #5); persist viewer login; dedupe <code>GET /user</code>.</li>
+<li>Lazy markdown + changelog; <code>build.target esnext</code>; <code>manualChunks</code>.</li>
+<li>Release logging cut; git stdout logging cut.</li>
+<li>GraphQL query slimming (C2 #8); poll gating when hidden (C2 #9).</li>
+<li><code>dataVersion</code> counter; settings selector in <code>App.tsx</code>.</li>
+<li>Flyout prewarm behind a setting, default lazy.</li>
+<li>PR detail: <code>hydrateDetails:false</code> + single-PR hydrate.</li>
+<li>ADO client: content-type check → "sign in again" state instead of 399 JSON errors.</li>
+</ul>
+<small>~1.5 days.</small></div>
+
+<div class="card"><h3><span class="tag p0">PR5</span> Window size on launch</h3>
+<ul>
+<li>Gate the wizard effect on hydration; main calls <code>window_ready</code>; honour <code>startMinimizedToTray</code>.</li>
+<li>Wizard in its own window (reuse settings-window pattern) or restore geometry on completion.</li>
+<li>Geometry: position-then-size; never persist below min.</li>
+<li>e2e: launch → assert inner width ≥ 1200 logical without user input.</li>
+</ul>
+<small>~0.5 day.</small></div>
+
+<div class="card"><h3><span class="tag p0">PR6</span> SQL editor CSP</h3>
+<ul>
+<li><code>EditorView.cspNonce</code> from the injected nonce.</li>
+<li>Move inline <code>&lt;style&gt;</code> out of all 12 HTML entries.</li>
+<li>Test against the packaged build (Playwright on <code>tauri build</code> output or CSP-simulating vitest).</li>
+</ul>
+<small>~0.5 day.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR7</span> Worktree palette UX</h3>
+<ul>
+<li>Render from cache, reveal on mount, background revalidate, no post-reveal resize jump.</li>
+<li>Folder-name numeric sort; favorites as star, not hoist.</li>
+<li>Optional hidden pre-create behind a setting.</li>
+</ul>
+<small>~0.5 day after PR3.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR8</span> Focus and PR overview</h3>
+<ul>
+<li>Scorer rework + repo-qualified keys + explanation header.</li>
+<li>Group / Density / Sort toolbar; author group headers; author text on cards; author summary strip.</li>
+<li>Team review-request matching; chip renames.</li>
+<li>Delete dead <code>contributor-stats</code>/<code>repoPriority</code>.</li>
+<li>Storybook stories for author grouping + compact density (MainWindow catalog).</li>
+</ul>
+<small>~2 days. Needs decision G below.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR9</span> Per-repo GitHub account</h3>
+<ul>
+<li><code>RepoSettings.githubAccount</code>; <code>gh_cli_token(user?)</code> with <code>--user</code>; async + <code>spawn_blocking</code>.</li>
+<li>Client registry per account; polling/ETag/rate-limit per client; status bar shows the login of the pool it reports.</li>
+<li>Settings: account picker from <code>gh auth status</code>, "Detect" per repo, owner validation, parse remote URLs including SSH aliases.</li>
+<li>Migration: repos without an account keep the active-account behaviour.</li>
+</ul>
+<small>Files: <code>auth/mod.rs</code>, <code>services/github/auth.ts</code>, <code>client.ts</code>, <code>useGitHubPolling.ts</code>, <code>useInitSequence.ts</code>, <code>settings/GitHubSection.tsx</code>, <code>RepoScanDialog.tsx</code>. ~1 day.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR10</span> Headless agent runner, Claude API removal</h3>
+<ul>
+<li>Delete <code>claude_api.rs</code>, <code>ClaudeApiSection.tsx</code>, catalog/search-index entries, settings fields, keychain key.</li>
+<li>Add <code>run_headless_prompt</code> with Claude (<code>-p --bare --output-format json --model &lt;alias&gt;</code>) and Codex (<code>exec --json --ephemeral -s read-only</code>) backends; stdin prompt; timeout; hidden window.</li>
+<li>Settings → AI → "Summaries": provider + alias/model; availability probes.</li>
+<li>Rewire PR summary in <code>OverviewTab.tsx</code>; cache summaries per PR head SHA in SQLite so they are not regenerated on every open.</li>
+</ul>
+<small>~1 day.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR11</span> Provider abstraction + Codex + T3 Tier 1</h3>
+<ul>
+<li><code>AgentProvider</code> interface; <code>launch_agent_session</code> replaces <code>launch_claude_code</code>; <code>useClaudeActions</code> → <code>useAgentActions</code>; split-button provider choice.</li>
+<li>Codex interactive launch in the worktree via <code>hidden_command</code> + <code>wt.exe</code>.</li>
+<li>T3 Tier 1: <code>t3 project add</code> + executable activation + clipboard prompt + toast.</li>
+<li>Settings → AI → "Agents": default provider, paths, Codex model, post-fix action moved here.</li>
+</ul>
+<small>~1.5 days.</small></div>
+
+<div class="card"><h3><span class="tag p1">PR12</span> T3 paired client, sessions strip, Agent Overview retired</h3>
+<ul>
+<li>Pairing flow (<code>npx t3 pair</code> or paste token) → <code>POST /oauth/token</code> → keychain; session probe at startup.</li>
+<li>HTTP dispatch: <code>project.create</code> / <code>thread.create</code> / <code>thread.turn.start</code> with branch, worktree path, model selection, runtime mode from settings.</li>
+<li>Read-only SQLite projection reader in Rust (<code>mode=ro</code>), polled on PR list refresh and on window focus → sessions strip on PR cards and PR detail.</li>
+<li>Optional WS client for live status and <code>git.preparePullRequestThread</code>.</li>
+<li>Remove the Agent Overview feature flag and module once the strip covers "waiting on me".</li>
+</ul>
+<small>~2 days. Depends on PR11 and on T3 keeping the dispatch route; verify against the installed version first.</small></div>
+</div>
+
+<h2 id="today">4. Things you can change today without code</h2>
+<ol>
+<li><strong>Fix repo #1</strong> in Settings → GitHub: owner must be <code>borght-dev</code>, not <code>git@github-borghtdev:borght-dev</code>. Until PR9 lands it will still fail with 404 under the enterprise token, so the honest short-term choice is to <em>disable</em> that repo: one fewer failed request and two fewer error lines per minute. Do not switch the active gh account; that would break fsp-horizon instead.</li>
+<li><strong>Settings → Agent Overview:</strong> turn off "Enabled" and "Open on startup". Removes a window, a port bind, repo writes and the transcript loop immediately.</li>
+<li><strong>Re-auth Azure DevOps</strong> (<code>az login</code>) to stop the HTML-instead-of-JSON polling errors.</li>
+<li>If the app appears hung, check Task Manager for a leftover <code>borgdock.exe</code> before relaunching; until PR1 lands, the second instance will not replace it.</li>
+</ol>
+
+<h2 id="decisions">5. Decisions needed from you</h2>
+<table>
+<tr><th>Decision</th><th>Recommendation</th></tr>
+<tr><td>Agent Overview: feature-flag (keep code, off by default) or delete outright?</td><td>Flag now (PR2), delete in a follow-up once you have gone a month without it. Deleting is ~8.4 k LOC plus tray/hotkey/settings/cache touch points; cheap to do later, painful to undo.</td></tr>
+<tr><td>Flyout: keep the boot-time prewarm?</td><td>Lazy by default; setting to prewarm. Saves a WebView2 at boot.</td></tr>
+<tr><td>Setup wizard: own window vs resize-and-restore main?</td><td>Own window. The current approach is the direct cause of D and also poisons persisted geometry.</td></tr>
+<tr><td>PR overview default view</td><td>Group by Author, Compact density, sorted by Updated, with the author strip on top. Repo grouping stays available; with one active repo it adds nothing.</td></tr>
+<tr><td>Focus semantics</td><td>"Things that need <em>me</em> to act": failing mine, changes requested on mine, waiting on my review (incl. team requests), comments on mine I have not answered, my PRs unreviewed &gt; 8 h. Show the rest of the 22 in PRs, not Focus, but say so in the header.</td></tr>
+<tr><td>Poll cadence when hidden</td><td>Every 4th cycle while main is hidden and the flyout is closed; immediate poll on reveal.</td></tr>
+<tr><td>Which account per repo</td><td><code>borght-dev</code> for BorgDock, <code>KvanderBorght_gomocha</code> for fsp-horizon, chosen per repo in settings. Default for new repos: "Detect".</td></tr>
+<tr><td>Summary provider and model</td><td>Claude via <code>claude -p</code> with alias <code>sonnet</code> (cheap, fast, always current). Codex selectable. No API key anywhere.</td></tr>
+<tr><td>Default interactive provider</td><td>T3 Code once PR12 lands; Claude Code in Windows Terminal until then. Codex available on the split-button.</td></tr>
+<tr><td>T3 runtime mode for BorgDock-created threads</td><td><code>auto-accept-edits</code> for Fix/Resolve, <code>approval-required</code> for Monitor. Model selection mirrors your T3 favourites (<code>claude-fable-5</code> on <code>claudeAgent</code>); configurable.</td></tr>
+<tr><td>Agent Overview after T3</td><td>Delete it in PR12. The T3 sessions strip covers the "waiting on me" case with none of the cost.</td></tr>
+</table>
+
+<h2 id="verify">6. Verification checklist</h2>
+<ul class="checks">
+<li>Cold launch on this laptop: PR list visible ≤ 1 s after the splash; no <code>IPC custom protocol failed</code> in the log; main inner size ≥ 1200×720 logical without dragging.</li>
+<li>Poll cycle ≤ 1.5 s; no <code>cache_save_etags</code> larger than 50 KB; no UI stutter at the 60 s tick (measure with the devtools performance panel on the packaged build).</li>
+<li>Working set with main + flyout ≤ 500 MB; only one WebView2 host process at boot beyond main.</li>
+<li>Ctrl+F7: rows visible ≤ 100 ms on second open, ≤ 500 ms on first; order is <code>main, worktree1, worktree2, … worktree10</code>.</li>
+<li>Ctrl+F10 packaged build: gutter beside text, monospace, no CSP refusals in the console.</li>
+<li>Focus badge equals the explanation header; with the current 22 PRs the list shows more than 2 and every entry has a reason chip.</li>
+<li>Kill -9 the app mid-poll and relaunch: new instance starts cleanly, ports and hotkeys register, old one is gone.</li>
+<li>No file under any repo's <code>.claude/</code> is modified by launching BorgDock.</li>
+<li>Panic log stays empty across a week of use.</li>
+<li>Both repos poll successfully with the active gh account left on the enterprise login; log shows zero <code>NOT_FOUND</code> per hour.</li>
+<li>PR summary works with <code>claude</code> and with <code>codex</code> selected, with no API key configured; the settings window has no model version numbers anywhere.</li>
+<li>"Fix with T3" on a failing PR creates a T3 thread in the PR's worktree with the prompt as the first turn, visible in T3 within 2 s; BorgDock's PR card shows the thread and its status.</li>
+<li>With T3 closed, the same button falls back to Claude Code or Codex in a terminal without an error dialog.</li>
+</ul>
+
+<p><small>Method: six parallel read-only code audits (crash paths, window lifecycle, SQL window, worktree pipeline, Focus/PR store, agent overview + startup/bundle), cross-checked against Tauri 2.11.5 / tauri-utils 2.9.3 / wry 0.55.1 sources in the local cargo registry and against this machine's logs, settings, geometry file and live process list. Timings marked "measured" were taken on this laptop on 2026-09-02.</small></p>
+
+</main>
+</body>
+</html>
