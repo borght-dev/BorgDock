@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
+    /// Bumped by `settings::migrate` after each one-off migration has run.
+    /// See `settings::CURRENT_SCHEMA_VERSION`.
+    #[serde(default)]
+    pub schema_version: u32,
     #[serde(default)]
     pub setup_complete: bool,
     #[serde(default)]

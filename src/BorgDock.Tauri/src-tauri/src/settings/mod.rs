@@ -116,6 +116,33 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
     serde_json::from_value(settings_value).map_err(|e| format!("Failed to apply dev overlay: {e}"))
 }
 
+/// Current settings schema version. Bump together with a new arm in
+/// [`migrate`]. Migrations are one-off, in-memory rewrites that run on load
+/// and are written straight back so they never run twice.
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+
+/// Apply one-off migrations for settings written by older versions. Returns
+/// `true` when anything changed (the caller persists in that case).
+pub fn migrate(settings: &mut AppSettings) -> bool {
+    let from = settings.schema_version;
+    if from >= CURRENT_SCHEMA_VERSION {
+        return false;
+    }
+    if from < 1 {
+        // v1 (2.1.0): the Agent Overview used to default to enabled +
+        // auto-open, and `startMinimizedToTray` was a dead toggle that the
+        // reveal path now honours. Reset both so nobody's launch behaviour
+        // silently changes: the window keeps appearing at startup, and the
+        // Agent Overview stops opening a third WebView2 every boot.
+        settings.agent_overview.enabled = false;
+        settings.agent_overview.auto_open_on_startup = false;
+        settings.ui.start_minimized_to_tray = false;
+    }
+    settings.schema_version = CURRENT_SCHEMA_VERSION;
+    log::info!("settings: migrated schema {from} -> {CURRENT_SCHEMA_VERSION}");
+    true
+}
+
 /// Load settings without the `#[tauri::command]` wrapper — callable from other Rust modules.
 pub fn load_settings_internal() -> Result<AppSettings, String> {
     let dir = settings_dir();
@@ -123,7 +150,7 @@ pub fn load_settings_internal() -> Result<AppSettings, String> {
 
     let main_path = settings_path();
 
-    let settings = if main_path.exists() {
+    let mut settings = if main_path.exists() {
         match fs::read_to_string(&main_path) {
             Ok(json) => match serde_json::from_str::<AppSettings>(&json) {
                 Ok(s) => s,
@@ -134,6 +161,12 @@ pub fn load_settings_internal() -> Result<AppSettings, String> {
     } else {
         load_from_backup(&main_path)?
     };
+
+    if migrate(&mut settings) {
+        if let Err(e) = save_settings_internal(&settings) {
+            log::warn!("settings: failed to persist migrated settings: {e}");
+        }
+    }
 
     #[cfg(debug_assertions)]
     {

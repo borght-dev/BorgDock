@@ -144,6 +144,8 @@ export interface PrDetailSettings {
 }
 
 export interface AppSettings {
+  /** Bumped by the Rust side after one-off migrations; see settings::migrate. */
+  schemaVersion?: number;
   setupComplete: boolean;
   gitHub: GitHubSettings;
   repos: RepoSettings[];

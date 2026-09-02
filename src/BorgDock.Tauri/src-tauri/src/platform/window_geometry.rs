@@ -207,6 +207,11 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
                     height = height.max(min_lh);
                 }
             }
+            // Position first, then size: `set_size(Logical)` converts with the
+            // scale factor of the monitor the window is currently on. Moving
+            // it onto the saved monitor first makes the logical→physical
+            // conversion use that monitor's DPI on mixed-DPI setups.
+            let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
             match win.set_size(tauri::Size::Logical(LogicalSize::new(width, height))) {
                 Ok(()) => {
                     let actual = win.inner_size().ok();
@@ -222,7 +227,6 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
                     );
                 }
             }
-            let _ = win.set_position(tauri::Position::Physical(PhysicalPosition::new(g.x, g.y)));
             if g.maximized {
                 let _ = win.maximize();
             }
@@ -241,6 +245,15 @@ pub fn persist_window_geometry(app: &AppHandle, win: &WebviewWindow, label: &str
     win.on_window_event(move |event| match event {
         tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
             if let Some(g) = capture(&win_for_handler) {
+                // Never persist a size below the kind's minimum. A programmatic
+                // `set_size` is not clamped by `min_inner_size` (only user
+                // drags are), so a transient shrink would otherwise poison the
+                // saved geometry for every future launch.
+                if let Some((min_w, min_h)) = min_logical_size_for_kind(&kind_for_handler) {
+                    if (g.width as f64) < min_w || (g.height as f64) < min_h {
+                        return;
+                    }
+                }
                 store_for_handler.put(kind_for_handler.clone(), g);
             }
         }

@@ -235,6 +235,27 @@ pub(crate) fn mark_window_destroyed(label: &str) {
     }
 }
 
+/// Upper bound on how long a command waits for its `run_on_main_thread`
+/// closure to report back. Every such wait used to be unbounded, so a single
+/// stalled main thread turned into "every invoke() hangs forever". With a
+/// bound, the frontend gets an error it can surface instead.
+pub(crate) const MAIN_THREAD_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+
+/// Await the oneshot that a `run_on_main_thread` closure completes, with the
+/// standard timeout. Use this for every `rx.await` in window commands.
+pub(crate) async fn main_thread_result<T>(
+    rx: tokio::sync::oneshot::Receiver<Result<T, String>>,
+) -> Result<T, String> {
+    match tokio::time::timeout(MAIN_THREAD_TIMEOUT, rx).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err("main-thread task dropped before replying".to_string()),
+        Err(_) => Err(format!(
+            "main thread did not respond within {}s (UI thread stalled?)",
+            MAIN_THREAD_TIMEOUT.as_secs()
+        )),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Existing commands
 // ---------------------------------------------------------------------------
@@ -322,8 +343,14 @@ pub async fn resize_flyout(
     rx.await.map_err(|e| e.to_string())?
 }
 
-/// Resize the main window into a centered ~520×640 modal and show it. Used
-/// on first run to host the setup wizard.
+/// Show + focus the main window so it can host the setup wizard. The wizard
+/// renders as a centered card inside the normal-sized main window.
+///
+/// This used to resize main down to ~520×640 physical-ish pixels. Because
+/// the frontend fired it before settings had hydrated, every launch went
+/// through here and the main window stayed at wizard size until the user
+/// dragged an edge (the OS `min_inner_size` then snapped it back up). It no
+/// longer touches size or position; geometry restore in `setup()` owns that.
 #[tauri::command]
 pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
@@ -331,28 +358,16 @@ pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
     app.run_on_main_thread(move || {
         let result = (|| -> Result<(), String> {
             let win = get_main_window(&app_for_run)?;
-            let scale = win.scale_factor().unwrap_or(1.0);
-            let ww = (520.0 * scale) as i32;
-            let wh = (640.0 * scale) as i32;
-            win.set_size(tauri::Size::Physical(PhysicalSize::new(ww as u32, wh as u32)))
-                .map_err(|e| e.to_string())?;
-            if let Ok(Some(monitor)) = win.current_monitor() {
-                let mw = monitor.size().width as i32;
-                let mh = monitor.size().height as i32;
-                let mp = monitor.position();
-                let x = mp.x + (mw - ww) / 2;
-                let y = mp.y + (mh - wh) / 2;
-                win.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
-                    .map_err(|e| e.to_string())?;
-            }
+            claim_first_reveal("main");
             win.show().map_err(|e| e.to_string())?;
+            let _ = win.unminimize();
             let _ = win.set_focus();
             Ok(())
         })();
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    main_thread_result(rx).await
 }
 
 #[tauri::command]
