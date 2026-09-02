@@ -1,0 +1,4 @@
+/* Root reset for pop-out windows whose app fills the viewport with its own
+ * scroll containers (pr-detail, workitem-detail). Served from public/ instead
+ * of an inline <style> so Tauri's CSP nonce injection never kicks in. */
+html, body, #root { margin: 0; padding: 0; height: 100%; }

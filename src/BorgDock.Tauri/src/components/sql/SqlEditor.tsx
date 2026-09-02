@@ -50,6 +50,19 @@ interface SqlEditorProps {
   height: number;
 }
 
+/**
+ * Tauri stamps a per-load nonce onto the inline `<script>`/`<style>` tags it
+ * serves and whitelists it in the CSP. Any stylesheet a library injects at
+ * runtime has to carry the same nonce or the packaged app refuses it.
+ * Returns '' outside Tauri (dev server, Storybook, vitest) where no CSP is
+ * enforced — CodeMirror treats an empty nonce as "none".
+ */
+function readCspNonce(): string {
+  if (typeof document === 'undefined') return '';
+  const el = document.querySelector<HTMLElement>('style[nonce], script[nonce]');
+  return el?.nonce ?? el?.getAttribute('nonce') ?? '';
+}
+
 function readRunText(view: EditorView | null): string | null {
   if (!view) return null;
   const sel = view.state.selection.main;
@@ -254,6 +267,13 @@ export const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function Sq
     const state = EditorState.create({
       doc: value,
       extensions: [
+        // CodeMirror injects its base theme (gutter/content flex layout,
+        // monospace font) as a runtime <style>. In packaged builds Tauri
+        // nonces every inline <style> it serves and adds 'nonce-…' to
+        // style-src, which per CSP3 disables 'unsafe-inline' — so a
+        // nonce-less injected sheet is refused and the editor renders as
+        // stacked block boxes in the UI font. Reuse Tauri's nonce.
+        EditorView.cspNonce.of(readCspNonce()),
         lineNumbers(),
         history(),
         drawSelection(),
