@@ -106,9 +106,16 @@ fn first_sql_keyword(sql: &str) -> String {
 fn is_data_modifying(sql: &str) -> bool {
     matches!(
         first_sql_keyword(sql).as_str(),
-        "UPDATE" | "INSERT" | "DELETE" | "MERGE"
-            | "CREATE" | "ALTER" | "DROP" | "TRUNCATE"
-            | "GRANT" | "REVOKE"
+        "UPDATE"
+            | "INSERT"
+            | "DELETE"
+            | "MERGE"
+            | "CREATE"
+            | "ALTER"
+            | "DROP"
+            | "TRUNCATE"
+            | "GRANT"
+            | "REVOKE"
     )
 }
 
@@ -143,7 +150,9 @@ fn build_config(
             }
             #[cfg(not(windows))]
             {
-                return Err("Windows Integrated authentication is only available on Windows".to_string());
+                return Err(
+                    "Windows Integrated authentication is only available on Windows".to_string(),
+                );
             }
         }
     }
@@ -223,11 +232,7 @@ fn row_to_strings(row: &Row) -> Vec<Option<String>> {
                 return Some(val.format("%H:%M:%S%.3f").to_string());
             }
             if let Some(val) = row.try_get::<&[u8], _>(i).ok().flatten() {
-                return Some(
-                    val.iter()
-                        .map(|b| format!("{b:02X}"))
-                        .collect::<String>(),
-                );
+                return Some(val.iter().map(|b| format!("{b:02X}")).collect::<String>());
             }
             // If all typed attempts fail, the value is NULL
             None
@@ -244,9 +249,13 @@ pub async fn execute_sql_query(
     if window.label() != "sql" {
         return Err("SQL commands can only be executed from the SQL window".to_string());
     }
-    log::info!("SQL query executed on connection '{}': {}", connection_name, query.chars().take(200).collect::<String>());
-    let settings = settings::load_settings_internal()
-        .map_err(|e| format!("Failed to load settings: {e}"))?;
+    log::info!(
+        "SQL query executed on connection '{}': {}",
+        connection_name,
+        query.chars().take(200).collect::<String>()
+    );
+    let settings =
+        settings::load_settings_internal().map_err(|e| format!("Failed to load settings: {e}"))?;
 
     log::info!(
         "execute_sql_query: requested connection '{}'; available: [{}]",
@@ -443,8 +452,8 @@ pub async fn fetch_sql_schema(
     }
     log::info!("fetch_sql_schema: connection '{}'", connection_name);
 
-    let settings = settings::load_settings_internal()
-        .map_err(|e| format!("Failed to load settings: {e}"))?;
+    let settings =
+        settings::load_settings_internal().map_err(|e| format!("Failed to load settings: {e}"))?;
 
     let conn_config = settings
         .sql

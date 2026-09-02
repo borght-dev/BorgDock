@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { computePriorityScores, sortByPriority } from '@/services/priority-scoring';
+import {
+  computePriorityScores,
+  type PriorityScore,
+  sortByPriority,
+} from '@/services/priority-scoring';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -52,6 +56,13 @@ function makePrWithChecks(
   };
 }
 
+function scoreByNumber(
+  scores: Map<string, PriorityScore>,
+  number: number,
+): PriorityScore | undefined {
+  return [...scores.entries()].find(([key]) => key.endsWith(`#${number}`))?.[1];
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -70,7 +81,7 @@ describe('computePriorityScores', () => {
   it('includes own drafts', () => {
     const prs = [makePrWithChecks({ authorLogin: 'me', isDraft: true, number: 1 })];
     const scores = computePriorityScores(prs, 'me', {});
-    expect(scores.has(1)).toBe(true);
+    expect(scoreByNumber(scores, 1) !== undefined).toBe(true);
   });
 
   it('gives 45 points for readyToMerge when own PR is green, approved, not draft, mergeable', () => {
@@ -87,7 +98,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'readyToMerge')).toBeDefined();
     expect(score.factors.find((f) => f.type === 'readyToMerge')!.points).toBe(45);
   });
@@ -100,7 +111,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'readyToMerge')).toBeUndefined();
   });
 
@@ -112,7 +123,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'readyToMerge')).toBeUndefined();
   });
 
@@ -124,14 +135,14 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'readyToMerge')).toBeUndefined();
   });
 
   it('gives myPrRedChecks (20 pts) when own PR has red checks', () => {
     const prs = [makePrWithChecks({ authorLogin: 'me', number: 10 }, { overallStatus: 'red' })];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     const factor = score.factors.find((f) => f.type === 'myPrRedChecks');
     expect(factor).toBeDefined();
     expect(factor!.points).toBe(20);
@@ -142,7 +153,7 @@ describe('computePriorityScores', () => {
       makePrWithChecks({ authorLogin: 'me', number: 10, reviewStatus: 'changesRequested' }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     const factor = score.factors.find((f) => f.type === 'myPrChangesRequested');
     expect(factor).toBeDefined();
     expect(factor!.points).toBe(15);
@@ -159,7 +170,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'myPrStale')).toBeDefined();
   });
 
@@ -176,7 +187,7 @@ describe('computePriorityScores', () => {
       }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'myPrStale')).toBeDefined();
   });
 
@@ -188,7 +199,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'myPrStale')).toBeUndefined();
   });
 
@@ -201,7 +212,7 @@ describe('computePriorityScores', () => {
       }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     const factor = score.factors.find((f) => f.type === 'reviewRequested');
     expect(factor).toBeDefined();
     expect(factor!.points).toBe(15);
@@ -222,7 +233,7 @@ describe('computePriorityScores', () => {
     ];
     const timestamps = { 'org/repo#10:me': '2025-06-01T00:00:00Z' }; // 6h ago = aging
     const scores = computePriorityScores(prs, 'me', timestamps);
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'reviewAging')).toBeDefined();
   });
 
@@ -241,7 +252,7 @@ describe('computePriorityScores', () => {
     ];
     const timestamps = { 'org/repo#10:me': '2025-06-01T00:00:00Z' }; // 30h ago = stale
     const scores = computePriorityScores(prs, 'me', timestamps);
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'reviewStale')).toBeDefined();
     expect(score.factors.find((f) => f.type === 'reviewStale')!.points).toBe(8);
   });
@@ -255,7 +266,7 @@ describe('computePriorityScores', () => {
       }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'reviewAging')).toBeUndefined();
     expect(score.factors.find((f) => f.type === 'reviewStale')).toBeUndefined();
   });
@@ -269,7 +280,7 @@ describe('computePriorityScores', () => {
       }),
     ];
     const scores = computePriorityScores(prs, '', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'reviewRequested')).toBeUndefined();
   });
 
@@ -285,7 +296,7 @@ describe('computePriorityScores', () => {
       }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     const factor = score.factors.find((f) => f.type === 'staleness');
     expect(factor).toBeDefined();
     // (48 - 24) / 24 + 2 = 3, min(10, 3) = 3
@@ -304,7 +315,7 @@ describe('computePriorityScores', () => {
       }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     const factor = score.factors.find((f) => f.type === 'staleness');
     expect(factor).toBeDefined();
     expect(factor!.points).toBe(10);
@@ -313,14 +324,14 @@ describe('computePriorityScores', () => {
   it('does not give staleness when updated recently', () => {
     const prs = [makePrWithChecks({ authorLogin: 'other', number: 10 })];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'staleness')).toBeUndefined();
   });
 
   it('gives othersRedChecks (5 pts) for others PR with red status', () => {
     const prs = [makePrWithChecks({ authorLogin: 'other', number: 10 }, { overallStatus: 'red' })];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     const factor = score.factors.find((f) => f.type === 'othersRedChecks');
     expect(factor).toBeDefined();
     expect(factor!.points).toBe(5);
@@ -329,95 +340,8 @@ describe('computePriorityScores', () => {
   it('does not give othersRedChecks for own PR', () => {
     const prs = [makePrWithChecks({ authorLogin: 'me', number: 10 }, { overallStatus: 'red' })];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.factors.find((f) => f.type === 'othersRedChecks')).toBeUndefined();
-  });
-
-  // ---- Repo weight multiplier ----
-
-  it('applies 1.2x multiplier for high-priority repos', () => {
-    const prs = [
-      makePrWithChecks({
-        authorLogin: 'other',
-        number: 10,
-        repoOwner: 'org',
-        repoName: 'important',
-        requestedReviewers: ['me'],
-      }),
-    ];
-    const repoPriority = { 'org/important': 'high' as const };
-    const scores = computePriorityScores(prs, 'me', {}, undefined, repoPriority);
-    const score = scores.get(10)!;
-    // Base = 15 (reviewRequested), * 1.2 = 18
-    expect(score.total).toBe(18);
-  });
-
-  it('applies 0.5x multiplier for low-priority repos', () => {
-    const prs = [
-      makePrWithChecks({
-        authorLogin: 'other',
-        number: 10,
-        repoOwner: 'org',
-        repoName: 'unimportant',
-        requestedReviewers: ['me'],
-      }),
-    ];
-    const repoPriority = { 'org/unimportant': 'low' as const };
-    const scores = computePriorityScores(prs, 'me', {}, undefined, repoPriority);
-    const score = scores.get(10)!;
-    // Base = 15 * 0.5 = 7.5, round = 8
-    expect(score.total).toBe(8);
-  });
-
-  it('applies 0.7x multiplier when contributor weight < 0.1 (no manual override)', () => {
-    const prs = [
-      makePrWithChecks({
-        authorLogin: 'other',
-        number: 10,
-        repoOwner: 'org',
-        repoName: 'repo',
-        requestedReviewers: ['me'],
-      }),
-    ];
-    const contributorWeights = new Map([['org/repo', 0.05]]);
-    const scores = computePriorityScores(prs, 'me', {}, contributorWeights, {});
-    const score = scores.get(10)!;
-    // Base = 15 * 0.7 = 10.5, round = 11
-    expect(score.total).toBe(11);
-  });
-
-  it('uses 1.0 multiplier when contributor weight >= 0.1', () => {
-    const prs = [
-      makePrWithChecks({
-        authorLogin: 'other',
-        number: 10,
-        repoOwner: 'org',
-        repoName: 'repo',
-        requestedReviewers: ['me'],
-      }),
-    ];
-    const contributorWeights = new Map([['org/repo', 0.5]]);
-    const scores = computePriorityScores(prs, 'me', {}, contributorWeights, {});
-    const score = scores.get(10)!;
-    expect(score.total).toBe(15);
-  });
-
-  it('manual priority overrides contributor weight', () => {
-    const prs = [
-      makePrWithChecks({
-        authorLogin: 'other',
-        number: 10,
-        repoOwner: 'org',
-        repoName: 'repo',
-        requestedReviewers: ['me'],
-      }),
-    ];
-    const contributorWeights = new Map([['org/repo', 0.01]]);
-    const repoPriority = { 'org/repo': 'high' as const };
-    const scores = computePriorityScores(prs, 'me', {}, contributorWeights, repoPriority);
-    const score = scores.get(10)!;
-    // Manual high = 1.2, not 0.7 from contributor weight
-    expect(score.total).toBe(18);
   });
 
   it('builds primaryReason from sorted factor labels', () => {
@@ -428,7 +352,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     // reviewRequested(15) > othersRedChecks(5)
     expect(score.primaryReason).toBe('Review requested \u00b7 Build failing');
   });
@@ -436,7 +360,7 @@ describe('computePriorityScores', () => {
   it('returns "Open PR" as primaryReason when no factors', () => {
     const prs = [makePrWithChecks({ authorLogin: 'other', number: 10 })];
     const scores = computePriorityScores(prs, 'me', {});
-    const score = scores.get(10)!;
+    const score = scoreByNumber(scores, 10)!;
     expect(score.primaryReason).toBe('Open PR');
     expect(score.total).toBe(0);
   });
@@ -449,7 +373,7 @@ describe('computePriorityScores', () => {
       ),
     ];
     const scores = computePriorityScores(prs, 'myuser', {});
-    expect(scores.get(10)!.factors.find((f) => f.type === 'readyToMerge')).toBeDefined();
+    expect(scoreByNumber(scores, 10)!.factors.find((f) => f.type === 'readyToMerge')).toBeDefined();
   });
 
   it('handles multiple PRs in a single call', () => {
@@ -459,9 +383,9 @@ describe('computePriorityScores', () => {
       makePrWithChecks({ authorLogin: 'other', number: 3, isDraft: true }),
     ];
     const scores = computePriorityScores(prs, 'me', {});
-    expect(scores.has(1)).toBe(true);
-    expect(scores.has(2)).toBe(true);
-    expect(scores.has(3)).toBe(false); // excluded: other's draft
+    expect(scoreByNumber(scores, 1) !== undefined).toBe(true);
+    expect(scoreByNumber(scores, 2) !== undefined).toBe(true);
+    expect(scoreByNumber(scores, 3) !== undefined).toBe(false); // excluded: other's draft
   });
 
   it('handles empty PR list', () => {

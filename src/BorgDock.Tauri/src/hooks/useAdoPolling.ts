@@ -21,6 +21,40 @@ function mapQueryToTreeNode(query: AdoQuery, favoriteIds: string[]): AdoQueryTre
 // re-creating the client and firing a 404 on partial org/project values.
 const SETTLE_DELAY_MS = 500;
 
+/**
+ * Duck-typed on purpose (not `instanceof AdoAuthExpiredError`): the client
+ * module is mocked wholesale in tests and the check must survive that.
+ */
+function isAuthExpired(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { name?: unknown }).name === 'AdoAuthExpiredError'
+  );
+}
+
+/**
+ * Route an ADO failure to the right sink. An expired sign-in flips the
+ * store flag once (and warns once) instead of logging a JSON SyntaxError
+ * every poll cycle; anything else is a real error and logs as before.
+ */
+function reportAdoError(context: string, err: unknown): void {
+  if (isAuthExpired(err)) {
+    const store = useWorkItemsStore.getState();
+    if (!store.adoAuthExpired) {
+      store.setAdoAuthExpired(true);
+      console.warn(`${context}: Azure DevOps sign-in expired — run \`az login\` and refresh.`);
+    }
+    return;
+  }
+  console.error(`${context}:`, err);
+}
+
+function clearAuthExpired(): void {
+  const store = useWorkItemsStore.getState();
+  if (store.adoAuthExpired) store.setAdoAuthExpired(false);
+}
+
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -37,7 +71,9 @@ export function useAdoPolling(settings: AppSettings) {
   // Keep settings in a ref so the init effect always reads the latest
   // without re-running when array/object references change.
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   const organization = useDebouncedValue(settings.azureDevOps.organization, SETTLE_DELAY_MS);
   const project = useDebouncedValue(settings.azureDevOps.project, SETTLE_DELAY_MS);
@@ -48,9 +84,7 @@ export function useAdoPolling(settings: AppSettings) {
   const authMethod = settings.azureDevOps.authMethod;
 
   const isConfigured =
-    !!organization &&
-    !!project &&
-    (authMethod === 'azCli' || !!personalAccessToken);
+    !!organization && !!project && (authMethod === 'azCli' || !!personalAccessToken);
 
   // Create/update client when settings change
   useEffect(() => {
@@ -59,24 +93,14 @@ export function useAdoPolling(settings: AppSettings) {
       return;
     }
 
-    clientRef.current = new AdoClient(
-      organization,
-      project,
-      personalAccessToken ?? '',
-      authMethod,
-    );
+    clientRef.current = new AdoClient(organization, project, personalAccessToken ?? '', authMethod);
   }, [isConfigured, organization, project, personalAccessToken, authMethod]);
 
   // On mount: resolve user, load query tree, restore state
   useEffect(() => {
     if (!isConfigured) return;
 
-    const client = new AdoClient(
-      organization,
-      project,
-      personalAccessToken ?? '',
-      authMethod,
-    );
+    const client = new AdoClient(organization, project, personalAccessToken ?? '', authMethod);
     clientRef.current = client;
 
     const store = useWorkItemsStore.getState();
@@ -101,8 +125,9 @@ export function useAdoPolling(settings: AppSettings) {
         const favoriteIds = currentSettings.azureDevOps.favoriteQueryIds;
         const tree: AdoQueryTreeNode[] = rawTree.map((q) => mapQueryToTreeNode(q, favoriteIds));
         useWorkItemsStore.getState().setQueryTree(tree);
+        clearAuthExpired();
       } catch (err) {
-        console.error('Failed to load ADO query tree:', err);
+        reportAdoError('Failed to load ADO query tree', err);
       }
 
       // Set favorite query IDs from settings
@@ -170,9 +195,10 @@ export function useAdoPolling(settings: AppSettings) {
       executeQuery(clientRef.current, queryId)
         .then((items) => {
           useWorkItemsStore.getState().setWorkItems(items);
+          clearAuthExpired();
         })
         .catch((err) => {
-          console.error('Failed to execute ADO query:', err);
+          reportAdoError('Failed to execute ADO query', err);
         })
         .finally(() => {
           useWorkItemsStore.getState().setIsLoading(false);
@@ -198,10 +224,11 @@ export function useAdoPolling(settings: AppSettings) {
 
     manager.onResult = (items) => {
       useWorkItemsStore.getState().setWorkItems(items);
+      clearAuthExpired();
     };
 
     manager.onError = (err) => {
-      console.error('ADO polling error:', err);
+      reportAdoError('ADO polling error', err);
     };
 
     pollingRef.current = manager;

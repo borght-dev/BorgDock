@@ -1,0 +1,3 @@
+/* Root reset for the transparent tray flyout. Served from public/ instead of
+ * an inline <style> so Tauri's CSP nonce injection never kicks in. */
+html, body, #root { background: transparent !important; margin: 0; padding: 0; overflow: hidden; user-select: none; }

@@ -4,12 +4,12 @@
 // Centralizes the AppSettings shape so each story file can override
 // just the slice it cares about.
 
-import type { ReactNode } from 'react';
 import type { Decorator } from '@storybook/react-vite';
-import type { AppSettings } from '@/types/settings';
+import type { ReactNode } from 'react';
 import type { SelfTestResult } from '@/components/settings/SelfTestResultsDialog';
-import { useSettingsStore } from '@/stores/settings-store';
 import { PulseProvider } from '@/components/settings/useFieldPulse';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { AppSettings } from '@/types/settings';
 import { getControl } from '../../../../.storybook/mocks/control';
 
 // Mirrors the defaultSettings literal in src/stores/settings-store.ts.
@@ -45,17 +45,6 @@ const defaultSettings: AppSettings = {
     deduplicationWindowSeconds: 60,
     channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
-  claudeCode: {
-    defaultPostFixAction: 'commitAndNotify',
-  },
-  claudeApi: {
-    model: 'claude-sonnet-4-6',
-    maxTokens: 1024,
-    prSummaryEnabled: true,
-    diffExplanationsEnabled: true,
-    reviewNudgePhrasingEnabled: false,
-    commitMessageSuggestionsEnabled: false,
-  },
   claudeReview: {
     botUsername: 'claude[bot]',
   },
@@ -83,7 +72,6 @@ const defaultSettings: AppSettings = {
     readOnlyByDefault: true,
     confirmDestructiveWithoutWhere: true,
   },
-  repoPriority: {},
 };
 
 /** Build a complete AppSettings, optionally overriding any top-level slice. */
@@ -158,10 +146,7 @@ export interface WithSettingsOptions {
   invokeResponses?: Record<string, unknown>;
 }
 
-export function withSettings(
-  fixture: AppSettings,
-  options: WithSettingsOptions = {},
-): Decorator {
+export function withSettings(fixture: AppSettings, options: WithSettingsOptions = {}): Decorator {
   return (Story) => {
     // The preview decorator already calls getControl().reset() before each
     // story; we run after that, so the seed is fresh on every render.
@@ -189,10 +174,25 @@ export function SectionFrame({ children }: { children: ReactNode }) {
 // ─── Synthetic data for dialog stories ───────────────────────────────────
 
 export const repoCandidates = [
-  { path: '/Users/koenvdb/projects/borgdock', owner: 'borght-dev', name: 'BorgDock', alreadyTracked: false },
-  { path: '/Users/koenvdb/projects/fsp-horizon', owner: 'borght-dev', name: 'fsp-horizon', alreadyTracked: true },
+  {
+    path: '/Users/koenvdb/projects/borgdock',
+    owner: 'borght-dev',
+    name: 'BorgDock',
+    alreadyTracked: false,
+  },
+  {
+    path: '/Users/koenvdb/projects/fsp-horizon',
+    owner: 'borght-dev',
+    name: 'fsp-horizon',
+    alreadyTracked: true,
+  },
   { path: '/Users/koenvdb/projects/pluim', owner: null, name: 'pluim', alreadyTracked: false },
-  { path: '/Users/koenvdb/projects/devcenter', owner: 'borght-dev', name: 'devcenter', alreadyTracked: false },
+  {
+    path: '/Users/koenvdb/projects/devcenter',
+    owner: 'borght-dev',
+    name: 'devcenter',
+    alreadyTracked: false,
+  },
 ];
 
 export const selfTestResults: SelfTestResult[] = [

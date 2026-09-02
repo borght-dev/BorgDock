@@ -5,11 +5,7 @@
 // drift, stories fail to type-check at the call site — caught by
 // `npm run lint` / `npm run test`.
 
-import type {
-  AppSettings,
-  SqlServerConnection,
-  UiSettings,
-} from '@/types/settings';
+import type { AppSettings, SqlServerConnection, UiSettings } from '@/types/settings';
 import type { SqlSchemaPayload, SqlTable } from '@/types/sql-schema';
 import type { SqlSnippet } from '../snippet-types';
 
@@ -31,9 +27,7 @@ export interface QueryResult {
 
 // ── Factories ───────────────────────────────────────────────────────
 
-export function makeConnection(
-  overrides?: Partial<SqlServerConnection>,
-): SqlServerConnection {
+export function makeConnection(overrides?: Partial<SqlServerConnection>): SqlServerConnection {
   return {
     name: 'BorgDock dev',
     server: 'localhost',
@@ -77,9 +71,7 @@ export function makeTable(overrides?: Partial<SqlTable>): SqlTable {
   };
 }
 
-export function makeSchema(
-  overrides?: Partial<SqlSchemaPayload>,
-): SqlSchemaPayload {
+export function makeSchema(overrides?: Partial<SqlSchemaPayload>): SqlSchemaPayload {
   return {
     database: 'BorgDock_Dev',
     fetchedAt: '2026-05-05T12:00:00Z',
@@ -125,15 +117,6 @@ export function makeSettings(
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: false, sound: false, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-6',
-      maxTokens: 8192,
-      prSummaryEnabled: false,
-      diffExplanationsEnabled: false,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: 'claude[bot]' },
     updates: { autoCheckEnabled: false, autoDownload: false },
     azureDevOps: {
@@ -157,7 +140,6 @@ export function makeSettings(
       readOnlyByDefault: false,
       confirmDestructiveWithoutWhere: true,
     },
-    repoPriority: {},
   };
 }
 
@@ -318,13 +300,9 @@ export const snippetsMany: SqlSnippet[] = [
 
 // ── Curated query results ───────────────────────────────────────────
 
-export const resultEmpty: QueryResult = makeQueryResult([
-  makeResultSet(['Id', 'Name'], []),
-]);
+export const resultEmpty: QueryResult = makeQueryResult([makeResultSet(['Id', 'Name'], [])]);
 
-export const resultSingleRow: QueryResult = makeQueryResult([
-  makeResultSet(['Id'], [['1']]),
-]);
+export const resultSingleRow: QueryResult = makeQueryResult([makeResultSet(['Id'], [['1']])]);
 
 export const resultSmallSelect: QueryResult = makeQueryResult(
   [

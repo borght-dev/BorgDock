@@ -15,45 +15,51 @@ interface CachedToken {
   source: 'gh-cli' | 'pat';
 }
 
-let cached: CachedToken | null = null;
+const cached = new Map<string, CachedToken>();
 // Deduplicate concurrent fetches: if two callers ask for a token at the same
 // time and the cache is empty, they should share ONE underlying invoke() call.
-let inflight: Promise<string> | null = null;
+const inflight = new Map<string, Promise<string>>();
 
 /**
  * Gets a GitHub token. Tries the `gh` CLI first via Tauri command,
  * falls back to PAT from settings. Result is cached for ~5 minutes so
  * hot request paths don't re-spawn subprocesses per call.
  */
-export async function getGitHubToken(patFromSettings?: string): Promise<string> {
+export async function getGitHubToken(patFromSettings?: string, account?: string): Promise<string> {
+  const accountKey = account?.trim().toLowerCase() || 'active';
   const now = Date.now();
-  if (cached && cached.expiresAt > now) {
-    return cached.value;
+  const cachedToken = cached.get(accountKey);
+  if (cachedToken && cachedToken.expiresAt > now) {
+    return cachedToken.value;
   }
 
-  if (inflight) {
-    return inflight;
+  const pending = inflight.get(accountKey);
+  if (pending) {
+    return pending;
   }
 
-  inflight = (async () => {
+  const request = (async () => {
     const start = performance.now();
     log.debug('getGitHubToken: cache miss — refreshing');
 
     // Try gh CLI token first
     try {
       log.debug('invoke gh_cli_token start');
-      const token = await invoke<string>('gh_cli_token');
+      const token = account
+        ? await invoke<string>('gh_cli_token', { user: account })
+        : await invoke<string>('gh_cli_token');
       log.debug('invoke gh_cli_token done', {
         durationMs: Math.round(performance.now() - start),
         length: token?.length ?? 0,
       });
       if (token && token.trim().length > 0) {
-        cached = {
+        const entry: CachedToken = {
           value: token.trim(),
           expiresAt: now + TOKEN_CACHE_TTL_MS,
           source: 'gh-cli',
         };
-        return cached.value;
+        cached.set(accountKey, entry);
+        return entry.value;
       }
       log.warn('gh_cli_token returned empty — falling back to PAT');
     } catch (err) {
@@ -65,12 +71,13 @@ export async function getGitHubToken(patFromSettings?: string): Promise<string> 
 
     // Fall back to PAT from settings
     if (patFromSettings && patFromSettings.trim().length > 0) {
-      cached = {
+      const entry: CachedToken = {
         value: patFromSettings.trim(),
         expiresAt: now + TOKEN_CACHE_TTL_MS,
         source: 'pat',
       };
-      return cached.value;
+      cached.set(accountKey, entry);
+      return entry.value;
     }
 
     log.error('getGitHubToken: no token available');
@@ -78,11 +85,12 @@ export async function getGitHubToken(patFromSettings?: string): Promise<string> 
       'No GitHub token available. Configure a Personal Access Token or install the GitHub CLI.',
     );
   })();
+  inflight.set(accountKey, request);
 
   try {
-    return await inflight;
+    return await request;
   } finally {
-    inflight = null;
+    inflight.delete(accountKey);
   }
 }
 
@@ -90,10 +98,15 @@ export async function getGitHubToken(patFromSettings?: string): Promise<string> 
  * Clear the cached token. Call this when an API request returns 401/403 so
  * the next request re-runs `gh auth token` / re-reads the PAT.
  */
-export function invalidateGitHubTokenCache(): void {
-  if (cached) {
-    log.info('token cache invalidated', { source: cached.source });
+export function invalidateGitHubTokenCache(account?: string): void {
+  if (account) {
+    const key = account.trim().toLowerCase();
+    cached.delete(key);
+    inflight.delete(key);
+    log.info('token cache invalidated', { account });
+    return;
   }
-  cached = null;
-  inflight = null;
+  cached.clear();
+  inflight.clear();
+  log.info('token caches invalidated');
 }

@@ -44,6 +44,8 @@ vi.mock('@/services/github/singleton', () => ({
     return mockClientInstance;
   },
   getClient: () => mockGetClient(),
+  getClientForRepo: () => mockClientInstance,
+  bindRepoClient: vi.fn(),
 }));
 
 vi.mock('@/services/cache', () => ({
@@ -92,15 +94,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: {
-      model: 'claude-sonnet-4-20250514',
-      maxTokens: 4096,
-      prSummaryEnabled: true,
-      diffExplanationsEnabled: true,
-      reviewNudgePhrasingEnabled: false,
-      commitMessageSuggestionsEnabled: false,
-    },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {
@@ -119,7 +112,6 @@ function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
       updatePrStatusWhenWiDone: false,
     },
     sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
-    repoPriority: {},
     ...overrides,
   };
 }
@@ -760,7 +752,7 @@ describe('useGitHubPolling', () => {
     });
   });
 
-  it('staggers requests between repos with 500ms delay', async () => {
+  it('polls repositories in parallel without a fixed stagger', async () => {
     const settings = makeSettings({
       repos: [
         { owner: 'o1', name: 'r1', enabled: true, worktreeBasePath: '', worktreeSubfolder: '' },
@@ -779,14 +771,6 @@ describe('useGitHubPolling', () => {
 
     await vi.waitFor(() => {
       expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'o1', 'r1');
-    });
-
-    // Second repo is called after 500ms stagger
-    await act(async () => {
-      vi.advanceTimersByTime(500);
-    });
-
-    await vi.waitFor(() => {
       expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'o2', 'r2');
     });
   });

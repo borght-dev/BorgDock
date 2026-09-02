@@ -83,7 +83,9 @@ If diffs / files show up as plain text with no coloring, check the browser devto
 
 ## Tauri sync commands and main-thread operations
 
-Tauri 2 invokes both sync and async `#[tauri::command]` functions on a **worker thread**, not the main GUI thread. Any operation that touches a `WebviewWindow` — especially `WebviewWindowBuilder::build()`, and often `show()` / `hide()` / `set_position()` — has to run on the main thread, or the cross-thread marshalling deadlocks against itself on Windows (the main thread waits for the worker that's waiting for the main thread).
+Tauri 2 invokes synchronous `#[tauri::command]` functions inline on the **main GUI thread**. Async commands run as tasks. A sync command must never perform file, database, credential-manager, process, or network I/O. Make it `async` and move blocking work into `tokio::task::spawn_blocking`.
+
+Operations that touch a `WebviewWindow`, especially `WebviewWindowBuilder::build()`, `show()`, `hide()`, and `set_position()`, still belong on the main thread. Dispatch them with `run_on_main_thread`, return through a oneshot, and always apply the shared timeout so a stalled GUI thread becomes an error instead of freezing IPC forever.
 
 Symptoms of the deadlock: the command logs its entry but never returns, and subsequent IPC calls from the frontend hang (e.g. `loadSettings` gets stuck on one of its `invoke()` calls, the splash screen never progresses). You'll see a log like `set_badge_visible: show=true` followed by silence.
 
@@ -102,11 +104,11 @@ pub async fn my_window_command(app: tauri::AppHandle, /* args */) -> Result<T, S
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    crate::platform::window::main_thread_result(rx).await
 }
 ```
 
-The command has to be `async` so it can `.await` the oneshot. `toggle_flyout` is the one exception — it's a non-command internal helper called synchronously from the tray event handler, which already runs on the main thread via `run_on_main_thread`.
+The command has to be `async` so it can await the bounded oneshot. `toggle_flyout` is the one exception. It is an internal helper called synchronously from the tray event handler, which already runs on the main thread via `run_on_main_thread`.
 
 ## Tauri capabilities are per-window — plugin permissions don't auto-propagate
 

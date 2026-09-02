@@ -57,58 +57,65 @@ where
 
     let results: Arc<Mutex<Vec<ContentFileResult>>> = Arc::new(Mutex::new(Vec::new()));
 
-    WalkBuilder::new(root).hidden(false).build_parallel().run(|| {
-        let matcher = matcher.clone();
-        let results = Arc::clone(&results);
-        let root = root.to_path_buf();
-        let is_cancelled = is_cancelled.clone();
-        Box::new(move |entry| {
-            if is_cancelled() {
-                return WalkState::Quit;
-            }
-            let entry = match entry {
-                Ok(e) => e,
-                Err(_) => return WalkState::Continue,
-            };
-            if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
-                return WalkState::Continue;
-            }
-            if results.lock().unwrap().len() >= MAX_FILES_WITH_MATCHES {
-                return WalkState::Quit;
-            }
-            let rel = match entry.path().strip_prefix(&root) {
-                Ok(r) => r.to_string_lossy().replace('\\', "/"),
-                Err(_) => return WalkState::Continue,
-            };
-            let mut sink = CollectSink::default();
-            let mut searcher = SearcherBuilder::new()
-                .binary_detection(BinaryDetection::quit(b'\x00'))
-                .build();
-            if searcher.search_path(&matcher, entry.path(), &mut sink).is_err() {
-                return WalkState::Continue;
-            }
-            if sink.match_count == 0 {
-                return WalkState::Continue;
-            }
-            let mut guard = results.lock().unwrap();
-            if guard.len() < MAX_FILES_WITH_MATCHES {
-                guard.push(ContentFileResult {
-                    rel_path: rel,
-                    match_count: sink.match_count,
-                    matches: sink.previews,
-                });
-            }
-            WalkState::Continue
-        })
-    });
+    WalkBuilder::new(root)
+        .hidden(false)
+        .build_parallel()
+        .run(|| {
+            let matcher = matcher.clone();
+            let results = Arc::clone(&results);
+            let root = root.to_path_buf();
+            let is_cancelled = is_cancelled.clone();
+            Box::new(move |entry| {
+                if is_cancelled() {
+                    return WalkState::Quit;
+                }
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => return WalkState::Continue,
+                };
+                if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
+                    return WalkState::Continue;
+                }
+                if results.lock().unwrap_or_else(|p| p.into_inner()).len() >= MAX_FILES_WITH_MATCHES
+                {
+                    return WalkState::Quit;
+                }
+                let rel = match entry.path().strip_prefix(&root) {
+                    Ok(r) => r.to_string_lossy().replace('\\', "/"),
+                    Err(_) => return WalkState::Continue,
+                };
+                let mut sink = CollectSink::default();
+                let mut searcher = SearcherBuilder::new()
+                    .binary_detection(BinaryDetection::quit(b'\x00'))
+                    .build();
+                if searcher
+                    .search_path(&matcher, entry.path(), &mut sink)
+                    .is_err()
+                {
+                    return WalkState::Continue;
+                }
+                if sink.match_count == 0 {
+                    return WalkState::Continue;
+                }
+                let mut guard = results.lock().unwrap_or_else(|p| p.into_inner());
+                if guard.len() < MAX_FILES_WITH_MATCHES {
+                    guard.push(ContentFileResult {
+                        rel_path: rel,
+                        match_count: sink.match_count,
+                        matches: sink.previews,
+                    });
+                }
+                WalkState::Continue
+            })
+        });
 
     if is_cancelled() {
         return Ok(Vec::new());
     }
 
     let mut out = Arc::try_unwrap(results)
-        .map(|m| m.into_inner().unwrap())
-        .unwrap_or_else(|a| a.lock().unwrap().clone());
+        .map(|m| m.into_inner().unwrap_or_else(|p| p.into_inner()))
+        .unwrap_or_else(|a| a.lock().unwrap_or_else(|p| p.into_inner()).clone());
     out.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
     Ok(out)
 }
@@ -160,7 +167,11 @@ mod tests {
     #[test]
     fn finds_matches_and_groups_by_file() {
         let dir = tempdir().unwrap();
-        write(dir.path(), "a.ts", "const x = handleLogin();\nhandleLogin();\n");
+        write(
+            dir.path(),
+            "a.ts",
+            "const x = handleLogin();\nhandleLogin();\n",
+        );
         write(dir.path(), "b.ts", "// unrelated\n");
 
         let results = search(dir.path(), "handleLogin", || false).unwrap();
@@ -183,7 +194,11 @@ mod tests {
     #[test]
     fn smart_case_case_sensitive_when_mixed() {
         let dir = tempdir().unwrap();
-        write(dir.path(), "a.ts", "const MyThing = 1;\nconst mything = 2;\n");
+        write(
+            dir.path(),
+            "a.ts",
+            "const MyThing = 1;\nconst mything = 2;\n",
+        );
         let results = search(dir.path(), "MyThing", || false).unwrap();
         assert_eq!(results[0].match_count, 1);
     }

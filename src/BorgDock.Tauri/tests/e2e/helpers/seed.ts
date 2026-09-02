@@ -58,15 +58,14 @@ const HAPPY_SETTINGS = {
     deduplicationWindowSeconds: 60,
     channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
-  claudeCode: { defaultPostFixAction: 'commitAndNotify' },
-  claudeApi: {
-    model: 'claude-sonnet-4-6',
-    maxTokens: 1024,
-    prSummaryEnabled: true,
-    diffExplanationsEnabled: true,
-    reviewNudgePhrasingEnabled: false,
-    commitMessageSuggestionsEnabled: false,
+  agents: {
+    defaultProvider: 't3',
+    fallbackProvider: 'claude',
+    defaultPostFixAction: 'commitAndNotify',
+    t3Model: 'claude-fable-5',
+    t3ModelInstance: 'claudeAgent',
   },
+  summaries: { enabled: true, provider: 'claude', model: 'sonnet' },
   claudeReview: { botUsername: 'claude[bot]' },
   updates: { autoCheckEnabled: true, autoDownload: true },
   azureDevOps: {
@@ -218,11 +217,42 @@ export function seedScenario(scenario: Scenario): MockHandlers {
         load_settings: HAPPY_SETTINGS,
         check_github_auth: { authenticated: true, login: 'test-user' },
         ado_fetch: (args: Record<string, unknown>) => {
-          // Lightweight ADO mock: any GET returns sample work items
-          if (typeof args.path === 'string' && args.path.includes('workitems')) {
-            return { value: SAMPLE_WORK_ITEMS };
-          }
-          return null;
+          const request = args.request as Record<string, unknown> | undefined;
+          const url = typeof request?.url === 'string' ? request.url : '';
+          const workItemId = Number(url.match(/workitems\/(\d+)/i)?.[1] ?? 9001);
+          const workItem = {
+            id: workItemId,
+            rev: 1,
+            url: `https://dev.azure.com/test-org/_apis/wit/workItems/${workItemId}`,
+            htmlUrl: `https://dev.azure.com/test-org/_workitems/edit/${workItemId}`,
+            relations: [],
+            fields: {
+              'System.Title': workItemId === 9002 ? 'Task 2' : 'Bug 1',
+              'System.State': workItemId === 9002 ? 'New' : 'Active',
+              'System.WorkItemType': workItemId === 9002 ? 'Task' : 'Bug',
+              'System.AssignedTo': {
+                displayName: 'test-user',
+                uniqueName: 'test-user@borgdock.test',
+              },
+              'System.AreaPath': 'test-org',
+              'System.IterationPath': 'test-org',
+              'System.CreatedDate': '2026-05-01T00:00:00Z',
+              'System.ChangedDate': '2026-05-08T00:00:00Z',
+              'Microsoft.VSTS.Common.Priority': 2,
+            },
+          };
+          const body = /workitems\/\d+/i.test(url)
+            ? workItem
+            : url.includes('workitems?ids=')
+              ? { value: [workItem] }
+              : { value: [] };
+          return {
+            status: 200,
+            status_text: 'OK',
+            body: JSON.stringify(body),
+            body_base64: null,
+            headers: { 'content-type': 'application/json' },
+          };
         },
         // cache_load_prs is called per-repo with { repoOwner, repoName }; the
         // mock ignores the args and returns the sample list regardless.

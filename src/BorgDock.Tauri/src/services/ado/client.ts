@@ -235,6 +235,13 @@ export class AdoClient {
       throw new AdoAuthError(`Azure DevOps authentication failed (${response.status}).`);
     }
 
+    // An expired az-cli / cookie session makes dev.azure.com bounce to the
+    // sign-in page: a 302 (when the transport doesn't follow it) or a 200
+    // with an HTML body. Either way there's no JSON to parse.
+    if (REDIRECT_STATUS_CODES.has(response.status)) {
+      throw new AdoAuthExpiredError();
+    }
+
     if (!response.ok) {
       throw new AdoApiError(
         `Azure DevOps API error: ${response.status} ${response.statusText} for ${url}`,
@@ -242,8 +249,58 @@ export class AdoClient {
       );
     }
 
-    return (await response.json()) as T;
+    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+    if (contentType.includes('text/html')) {
+      throw new AdoAuthExpiredError();
+    }
+    if (contentType.includes('application/json')) {
+      return (await response.json()) as T;
+    }
+
+    // No/unknown content-type (some proxies, tests): sniff before parsing so a
+    // login page never surfaces as a bare JSON SyntaxError every poll cycle.
+    const text = await response.text();
+    const trimmed = text.trimStart();
+    if (trimmed.startsWith('<')) {
+      throw new AdoAuthExpiredError();
+    }
+    if (trimmed.length === 0) {
+      return undefined as T;
+    }
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new AdoApiError(
+        `Azure DevOps returned a non-JSON response (${contentType || 'no content-type'}) for ${url}`,
+        response.status,
+      );
+    }
   }
+}
+
+const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
+
+/**
+ * The ADO session behind the auth header is gone (typically an expired
+ * `az login`): the service answers with its sign-in page instead of JSON.
+ * Distinct from {@link AdoAuthError} (a real 401/403) so callers can show
+ * "sign in again" once instead of logging a parse error every cycle.
+ */
+export class AdoAuthExpiredError extends Error {
+  constructor(message = 'Azure DevOps sign-in expired — run `az login` and refresh.') {
+    super(message);
+    this.name = 'AdoAuthExpiredError';
+  }
+}
+
+/** Duck-typed so it works across module mocks and realm boundaries. */
+export function isAdoAuthExpiredError(err: unknown): err is AdoAuthExpiredError {
+  return (
+    err instanceof AdoAuthExpiredError ||
+    (typeof err === 'object' &&
+      err !== null &&
+      (err as { name?: unknown }).name === 'AdoAuthExpiredError')
+  );
 }
 
 export class AdoAuthError extends Error {

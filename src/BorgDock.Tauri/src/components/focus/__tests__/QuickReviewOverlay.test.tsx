@@ -30,7 +30,7 @@ vi.mock('@/services/github/mutations', () => ({
 }));
 
 vi.mock('@/services/github/singleton', () => ({
-  getClient: vi.fn().mockReturnValue({ put: vi.fn(), post: vi.fn() }),
+  getClientForRepo: vi.fn().mockReturnValue({ put: vi.fn(), post: vi.fn() }),
 }));
 
 afterEach(cleanup);

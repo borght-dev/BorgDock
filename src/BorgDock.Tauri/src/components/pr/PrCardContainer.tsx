@@ -12,14 +12,16 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { HoverActionPillBar } from './HoverActionPillBar';
-import { type PrCardData, PrCardView } from './PrCardView';
+import { type PrCardData, type PrCardDensity, PrCardView } from './PrCardView';
 import { PrContextMenu } from './PrContextMenu';
+import { T3SessionStrip } from './T3SessionStrip';
 
 interface PrCardContainerProps {
   prWithChecks: PullRequestWithChecks;
   isFocused?: boolean;
   focusMode?: boolean;
   priorityFactors?: PriorityFactor[];
+  density?: PrCardDensity;
 }
 
 function mapToPrCardData(
@@ -99,6 +101,7 @@ export const PrCardContainer = memo(function PrCardContainer({
   isFocused,
   focusMode,
   priorityFactors,
+  density = 'normal',
 }: PrCardContainerProps) {
   const { pullRequest: pr } = prWithChecks;
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
@@ -148,7 +151,7 @@ export const PrCardContainer = memo(function PrCardContainer({
           </div>
         )}
         <PrCardView
-          density="normal"
+          density={density}
           pr={cardData}
           score={mergeScore}
           onClick={handleCardClick}
@@ -189,6 +192,7 @@ export const PrCardContainer = memo(function PrCardContainer({
             ))}
           </div>
         )}
+        <T3SessionStrip pr={pr} />
       </div>
 
       {/* Context menu */}

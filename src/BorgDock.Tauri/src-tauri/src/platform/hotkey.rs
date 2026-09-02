@@ -123,18 +123,15 @@ fn open_or_toggle_palette(app: &tauri::AppHandle, spec: &PaletteSpec) {
 
     log::info!("palette[{label}]: building new window");
     let t0 = std::time::Instant::now();
-    let mut builder = WebviewWindowBuilder::new(
-        app,
-        label,
-        tauri::WebviewUrl::App(spec.url.into()),
-    )
-    .title(spec.title)
-    .inner_size(spec.inner_size.0, spec.inner_size.1)
-    .decorations(spec.decorations)
-    .resizable(spec.resizable)
-    .center()
-    .visible(false)
-    .focused(true);
+    let mut builder =
+        WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::App(spec.url.into()))
+            .title(spec.title)
+            .inner_size(spec.inner_size.0, spec.inner_size.1)
+            .decorations(spec.decorations)
+            .resizable(spec.resizable)
+            .center()
+            .visible(false)
+            .focused(true);
     if spec.skip_taskbar {
         builder = builder.skip_taskbar(true);
     }
@@ -171,49 +168,31 @@ static FLYOUT_SHORTCUT: Mutex<Option<String>> = Mutex::new(None);
 /// is called on every settings load — each call did `unregister_all()` and
 /// re-registered, briefly leaving palette shortcuts unbound and racing
 /// against in-flight keypresses.
+///
+/// Each shortcut is registered independently: one that is already taken by
+/// another app (or a zombie BorgDock) is logged and skipped, it never
+/// prevents the remaining ones from being bound. Always returns `Ok`.
 pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
     for &(shortcut, spec) in PALETTE_HOTKEYS {
         let app_for_cb = app.clone();
-        app.global_shortcut()
-            .on_shortcut(shortcut, move |_app, _shortcut, event| {
-                if event.state != ShortcutState::Pressed {
-                    return;
-                }
-                log::info!("{shortcut}: shortcut fired");
-                let app_inner = app_for_cb.clone();
-                if let Err(e) = app_for_cb.run_on_main_thread(move || {
-                    open_or_toggle_palette(&app_inner, spec);
-                }) {
-                    log::error!("{shortcut}: run_on_main_thread dispatch failed: {e}");
-                }
-            })
-            .map_err(|e| format!("Failed to register {shortcut} hotkey: {e}"))?;
+        let registered =
+            app.global_shortcut()
+                .on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state != ShortcutState::Pressed {
+                        return;
+                    }
+                    log::info!("{shortcut}: shortcut fired");
+                    let app_inner = app_for_cb.clone();
+                    if let Err(e) = app_for_cb.run_on_main_thread(move || {
+                        open_or_toggle_palette(&app_inner, spec);
+                    }) {
+                        log::error!("{shortcut}: run_on_main_thread dispatch failed: {e}");
+                    }
+                });
+        if let Err(e) = registered {
+            log::error!("Failed to register {shortcut} hotkey: {e}");
+        }
     }
-
-    // Ctrl+Win+Shift+A — Agent Overview window. Acts as a "summon" hotkey:
-    // if the window is open it gets focus; if it was closed (or failed to
-    // launch on startup), it gets created. Without this, a user whose
-    // Agent Overview window crashed has no other way to bring it back
-    // short of restarting BorgDock — the tray menu opens it, but the
-    // tray itself can be flaky when the auto-launch path has gone wrong.
-    //
-    // Kept separate from PALETTE_HOTKEYS because Agent Overview restores
-    // geometry from settings.json (see agent_overview::window) rather than
-    // using a static PaletteSpec.
-    let app_overview = app.clone();
-    app.global_shortcut()
-        .on_shortcut("Ctrl+Super+Shift+A", move |_app, _shortcut, event| {
-            if event.state != ShortcutState::Pressed {
-                return;
-            }
-            let app_cb = app_overview.clone();
-            let _ = app_overview.run_on_main_thread(move || {
-                if let Err(e) = crate::agent_overview::window::show_or_create_agent_overview(&app_cb) {
-                    log::error!("agent overview hotkey: failed to show window: {e}");
-                }
-            });
-        })
-        .map_err(|e| format!("Failed to register agent overview hotkey: {e}"))?;
 
     Ok(())
 }
@@ -318,10 +297,7 @@ pub fn unregister_hotkey(app: tauri::AppHandle) -> Result<(), String> {
 /// thread and, combined with a JS-side 50ms focus retry loop, saturated
 /// WebView2's PostMessage queue and hard-crashed the process.
 #[tauri::command]
-pub async fn palette_ready(
-    app: tauri::AppHandle,
-    window: tauri::Window,
-) -> Result<(), String> {
+pub async fn palette_ready(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     let label = window.label().to_string();
     log::info!("palette_ready[{label}]: entry");
     if !matches!(
@@ -352,7 +328,7 @@ pub async fn palette_ready(
     })
     .map_err(|e| e.to_string())?;
 
-    let r = rx.await.map_err(|e| e.to_string())?;
+    let r = crate::platform::window::main_thread_result(rx).await;
     log::info!("palette_ready[{label}]: returning ok={}", r.is_ok());
     r
 }

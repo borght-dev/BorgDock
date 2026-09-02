@@ -2,18 +2,21 @@ use serde::Serialize;
 use std::path::Path;
 use std::process::Stdio;
 
-use super::hidden_command;
+use super::{git_command, hidden_command, output_with_timeout, GIT_TIMEOUT};
 
 fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
     log::info!("git run: cwd={working_dir} args={:?}", args);
-    let output = hidden_command("git")
-        .args(args)
-        .current_dir(working_dir)
-        .output()
-        .map_err(|e| {
-            log::error!("git spawn failed: cwd={working_dir} args={:?} err={e}", args);
-            format!("Failed to run git: {e}")
-        })?;
+    let output = output_with_timeout(
+        git_command().args(args).current_dir(working_dir),
+        GIT_TIMEOUT,
+    )
+    .map_err(|e| {
+        log::error!(
+            "git spawn failed: cwd={working_dir} args={:?} err={e}",
+            args
+        );
+        format!("Failed to run git: {e}")
+    })?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -117,29 +120,31 @@ fn try_add_repo(path: &Path, repos: &mut Vec<DiscoveredRepo>) {
 }
 
 fn parse_github_remote(url: &str) -> Option<(String, String)> {
-    // Handle HTTPS: https://github.com/owner/repo.git
-    // Handle SSH: git@github.com:owner/repo.git
-    // Handle Azure DevOps and other remotes too
-    let trimmed = url.trim().trim_end_matches(".git");
-
-    if let Some(rest) = trimmed.strip_prefix("https://github.com/") {
-        let parts: Vec<&str> = rest.splitn(2, '/').collect();
-        if parts.len() == 2 {
-            return Some((parts[0].to_string(), parts[1].to_string()));
+    // Accept HTTPS, ssh:// URLs, and SCP-style remotes whose host is an SSH
+    // alias (`git@github-work:owner/repo.git`). The host never belongs in the
+    // owner field; only the last two path segments do.
+    let trimmed = url.trim().trim_end_matches('/').trim_end_matches(".git");
+    let path = if let Some((_, rest)) = trimmed.split_once("://") {
+        rest.split_once('/').map(|(_, path)| path).unwrap_or("")
+    } else if let Some((host, path)) = trimmed.split_once(':') {
+        if host.contains('@') || !host.contains('/') {
+            path
+        } else {
+            trimmed
         }
-    }
+    } else {
+        trimmed
+    };
 
-    if let Some(rest) = trimmed.strip_prefix("git@github.com:") {
-        let parts: Vec<&str> = rest.splitn(2, '/').collect();
-        if parts.len() == 2 {
-            return Some((parts[0].to_string(), parts[1].to_string()));
-        }
-    }
-
-    // Generic: try to extract last two path segments as owner/name
-    let segments: Vec<&str> = trimmed.rsplit('/').take(2).collect();
+    let segments: Vec<&str> = path.split('/').filter(|part| !part.is_empty()).collect();
     if segments.len() == 2 {
-        return Some((segments[1].to_string(), segments[0].to_string()));
+        return Some((segments[0].to_string(), segments[1].to_string()));
+    }
+    if segments.len() > 2 {
+        return Some((
+            segments[segments.len() - 2].to_string(),
+            segments[segments.len() - 1].to_string(),
+        ));
     }
 
     None
@@ -167,14 +172,17 @@ pub async fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
 
 fn run_git_verbose(working_dir: &str, args: &[&str]) -> Result<String, String> {
     log::info!("git run: cwd={working_dir} args={:?}", args);
-    let output = hidden_command("git")
-        .args(args)
-        .current_dir(working_dir)
-        .output()
-        .map_err(|e| {
-            log::error!("git spawn failed: cwd={working_dir} args={:?} err={e}", args);
-            format!("Failed to run git: {e}")
-        })?;
+    let output = output_with_timeout(
+        git_command().args(args).current_dir(working_dir),
+        GIT_TIMEOUT,
+    )
+    .map_err(|e| {
+        log::error!(
+            "git spawn failed: cwd={working_dir} args={:?} err={e}",
+            args
+        );
+        format!("Failed to run git: {e}")
+    })?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -297,13 +305,19 @@ pub async fn scan_repos_under(path: String) -> Result<Vec<RepoCandidate>, String
         let mut found = Vec::new();
         walk_for_repos(&parent, 0, &mut found);
 
-        let tracked: std::collections::HashSet<String> = match crate::settings::load_settings_internal() {
-            Ok(s) => s.repos.iter().map(|r| format!("{}/{}", r.owner, r.name)).collect(),
-            Err(_) => std::collections::HashSet::new(),
-        };
+        let tracked: std::collections::HashSet<String> =
+            match crate::settings::load_settings_internal() {
+                Ok(s) => s
+                    .repos
+                    .iter()
+                    .map(|r| format!("{}/{}", r.owner, r.name))
+                    .collect(),
+                Err(_) => std::collections::HashSet::new(),
+            };
         for c in &mut found {
             let key = format!("{}/{}", c.owner.clone().unwrap_or_default(), c.name);
-            c.already_tracked = !c.owner.as_deref().unwrap_or("").is_empty() && tracked.contains(&key);
+            c.already_tracked =
+                !c.owner.as_deref().unwrap_or("").is_empty() && tracked.contains(&key);
         }
         Ok(found)
     })
@@ -385,5 +399,21 @@ mod scan_tests {
         let mut found = Vec::new();
         walk_for_repos(dir.path(), 0, &mut found);
         assert!(found.is_empty(), "should not find repos beyond depth 4");
+    }
+
+    #[test]
+    fn parses_github_remote_variants_and_ssh_aliases() {
+        for remote in [
+            "https://github.com/acme/widget.git",
+            "git@github.com:acme/widget.git",
+            "git@github-work:acme/widget.git",
+            "ssh://git@github-work/acme/widget.git",
+        ] {
+            assert_eq!(
+                parse_github_remote(remote),
+                Some(("acme".into(), "widget".into())),
+                "remote={remote}"
+            );
+        }
     }
 }

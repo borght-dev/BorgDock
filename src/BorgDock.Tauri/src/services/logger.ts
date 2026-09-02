@@ -105,9 +105,18 @@ export interface Logger {
   child(sub: string): Logger;
 }
 
+/**
+ * Debug records are console-only in production: each backend call is an IPC
+ * round-trip and the per-request GET/GraphQL chatter added dozens per poll.
+ * Dev keeps them so the file log stays useful while iterating.
+ */
+function shouldSendOverIpc(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
+  return level !== 'debug' || !import.meta.env.PROD;
+}
+
 export function createLogger(namespace: string): Logger {
   const emit = (level: 'debug' | 'info' | 'warn' | 'error', line: string) => {
-    backend[level](line);
+    if (shouldSendOverIpc(level)) backend[level](line);
     originalConsole[level](line);
   };
 

@@ -9,19 +9,59 @@ const DEFAULT_LIMIT: usize = 50_000;
 /// Match is case-insensitive.
 const ALLOWED_EXTENSIONS: &[&str] = &[
     // source code
-    "ts", "tsx", "js", "jsx", "mjs", "cjs", "rs", "cs", "fs", "go", "py", "rb",
-    "java", "kt", "swift", "c", "cc", "cpp", "h", "hpp", "m", "mm",
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "mjs",
+    "cjs",
+    "rs",
+    "cs",
+    "fs",
+    "go",
+    "py",
+    "rb",
+    "java",
+    "kt",
+    "swift",
+    "c",
+    "cc",
+    "cpp",
+    "h",
+    "hpp",
+    "m",
+    "mm",
     // config
-    "json", "yaml", "yml", "toml", "ini", "env", "editorconfig", "gitignore",
+    "json",
+    "yaml",
+    "yml",
+    "toml",
+    "ini",
+    "env",
+    "editorconfig",
+    "gitignore",
     "dockerfile",
     // sql / data
-    "sql", "csv", "tsv",
+    "sql",
+    "csv",
+    "tsv",
     // web
-    "html", "css", "scss", "less",
+    "html",
+    "css",
+    "scss",
+    "less",
     // shell
-    "sh", "bash", "zsh", "ps1", "bat", "cmd",
+    "sh",
+    "bash",
+    "zsh",
+    "ps1",
+    "bat",
+    "cmd",
     // docs
-    "md", "mdx", "txt", "rst",
+    "md",
+    "mdx",
+    "txt",
+    "rst",
 ];
 
 #[derive(Debug, Serialize, serde::Deserialize)]
@@ -102,7 +142,10 @@ pub(super) fn walk_root(root: &Path, limit: usize) -> Result<ListFilesResult, St
             };
             let rel_str = rel.to_string_lossy().replace('\\', "/");
             let size = dent.metadata().map(|m| m.len()).unwrap_or(0);
-            entries.push(FileEntry { rel_path: rel_str, size });
+            entries.push(FileEntry {
+                rel_path: rel_str,
+                size,
+            });
             if entries.len() >= limit {
                 truncated = true;
                 break;
@@ -118,7 +161,10 @@ fn is_allowed_extension(path: &Path) -> bool {
     // `Dockerfile`) are also allowed.
     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
         let lower = name.to_ascii_lowercase();
-        if ALLOWED_EXTENSIONS.iter().any(|e| lower == *e || lower == format!(".{e}")) {
+        if ALLOWED_EXTENSIONS
+            .iter()
+            .any(|e| lower == *e || lower == format!(".{e}"))
+        {
             return true;
         }
     }

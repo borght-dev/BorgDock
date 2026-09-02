@@ -4145,6 +4145,22 @@ body.sql-resizing-v .sql-resize-handle {
     gap: 6px;
     flex-wrap: wrap;
   }
+  .bd-pr-toolbar__view-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-pr-toolbar__view-control select {
+    height: 28px;
+    border: 1px solid var(--color-input-border);
+    border-radius: 6px;
+    background: var(--color-input-bg);
+    color: var(--color-text-primary);
+    padding: 0 6px;
+    font-size: 10px;
+  }
   .bd-pr-toolbar__search {
     display: inline-flex;
     align-items: center;

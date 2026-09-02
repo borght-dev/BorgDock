@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
-use super::hidden_command;
-
 /// Cached default-branch lookup keyed by repo toplevel (as returned by
 /// `git rev-parse --show-toplevel`). Filled the first time we ask for the
 /// `mergeBaseDefault` baseline in a given worktree.
@@ -28,11 +26,11 @@ pub struct FileDiffOutput {
 }
 
 fn run_git_raw(working_dir: &Path, args: &[&str]) -> Result<std::process::Output, String> {
-    hidden_command("git")
-        .args(args)
-        .current_dir(working_dir)
-        .output()
-        .map_err(|e| format!("failed to run git: {e}"))
+    super::output_with_timeout(
+        super::git_command().args(args).current_dir(working_dir),
+        super::GIT_TIMEOUT,
+    )
+    .map_err(|e| format!("failed to run git: {e}"))
 }
 
 fn run_git_capture(working_dir: &Path, args: &[&str]) -> Result<String, String> {
@@ -67,7 +65,9 @@ fn repo_toplevel(dir: &Path) -> Option<PathBuf> {
 
 fn resolve_default_branch(toplevel: &Path) -> Result<String, String> {
     {
-        let cache = default_branch_cache().lock().unwrap();
+        let cache = default_branch_cache()
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
         if let Some(branch) = cache.get(toplevel) {
             return Ok(branch.clone());
         }
@@ -138,10 +138,7 @@ fn compute_diff(path: &str, baseline: &str) -> Result<FileDiffOutput, String> {
     };
 
     let abs_str = abs.to_string_lossy().to_string();
-    let output = run_git_raw(
-        &dir,
-        &["diff", "--no-color", &revision, "--", &abs_str],
-    )?;
+    let output = run_git_raw(&dir, &["diff", "--no-color", &revision, "--", &abs_str])?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -204,7 +201,8 @@ pub fn parse_numstat(bytes: &[u8]) -> std::collections::HashMap<String, (u32, u3
             continue;
         }
         let parse_count = |b: &[u8]| -> u32 {
-            std::str::from_utf8(b).ok()
+            std::str::from_utf8(b)
+                .ok()
                 .and_then(|s| s.parse::<u32>().ok())
                 .unwrap_or(0)
         };
@@ -213,7 +211,8 @@ pub fn parse_numstat(bytes: &[u8]) -> std::collections::HashMap<String, (u32, u3
         let trailing = parts[2];
         if trailing.is_empty() {
             // Rename: next two records are old, new.
-            let new_path = records.get(i + 2)
+            let new_path = records
+                .get(i + 2)
                 .map(|b| String::from_utf8_lossy(b).to_string())
                 .unwrap_or_default();
             if !new_path.is_empty() {
@@ -232,10 +231,7 @@ pub fn parse_numstat(bytes: &[u8]) -> std::collections::HashMap<String, (u32, u3
 pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile> {
     let mut out = Vec::new();
     // Split on NUL; trailing NUL produces an empty last element which we skip.
-    let records: Vec<&[u8]> = bytes
-        .split(|b| *b == 0)
-        .filter(|r| !r.is_empty())
-        .collect();
+    let records: Vec<&[u8]> = bytes.split(|b| *b == 0).filter(|r| !r.is_empty()).collect();
 
     let mut i = 0;
     while i < records.len() {
@@ -344,13 +340,16 @@ pub async fn git_changed_files(root: String) -> Result<ChangedFilesOutput, Strin
 }
 
 fn apply_numstat(files: Vec<ChangedFile>, stats: &HashMap<String, (u32, u32)>) -> Vec<ChangedFile> {
-    files.into_iter().map(|mut f| {
-        if let Some(&(a, d)) = stats.get(&f.path) {
-            f.additions = a;
-            f.deletions = d;
-        }
-        f
-    }).collect()
+    files
+        .into_iter()
+        .map(|mut f| {
+            if let Some(&(a, d)) = stats.get(&f.path) {
+                f.additions = a;
+                f.deletions = d;
+            }
+            f
+        })
+        .collect()
 }
 
 fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
@@ -370,10 +369,7 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
     };
 
     // 1. Local: `git status --porcelain=v1 -z`
-    let status_out = run_git_raw(
-        &toplevel,
-        &["status", "--porcelain=v1", "-z"],
-    )?;
+    let status_out = run_git_raw(&toplevel, &["status", "--porcelain=v1", "-z"])?;
     if !status_out.status.success() {
         return Err(format!(
             "git status failed (exit {}): {}",
@@ -386,10 +382,7 @@ fn compute_changed_files(root: &str) -> Result<ChangedFilesOutput, String> {
     // Numstat for local: working tree vs HEAD covers staged + unstaged
     // tracked changes. Untracked files (status "?") have no HEAD baseline
     // so they appear with additions=0, deletions=0 — that's intentional.
-    let local_numstat_out = run_git_raw(
-        &toplevel,
-        &["diff", "--numstat", "-z", "HEAD", "--"],
-    )?;
+    let local_numstat_out = run_git_raw(&toplevel, &["diff", "--numstat", "-z", "HEAD", "--"])?;
     let local_numstat = if local_numstat_out.status.success() {
         parse_numstat(&local_numstat_out.stdout)
     } else {
@@ -486,7 +479,11 @@ mod tests {
         // Set origin/HEAD so resolve_default_branch's first lookup succeeds.
         git_in(
             tmp,
-            &["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"],
+            &[
+                "symbolic-ref",
+                "refs/remotes/origin/HEAD",
+                "refs/remotes/origin/master",
+            ],
         );
     }
 
@@ -629,10 +626,18 @@ mod tests {
         fs::write(tmp.path().join("seed.txt"), "line1\nline2\nline3\nline4\n").unwrap();
         git_in(tmp.path(), &["add", "seed.txt"]);
         git_in(tmp.path(), &["commit", "-qm", "expand seed"]);
-        fs::write(tmp.path().join("seed.txt"), "line1\nline2\nline3\nline4\nline5\n").unwrap();
+        fs::write(
+            tmp.path().join("seed.txt"),
+            "line1\nline2\nline3\nline4\nline5\n",
+        )
+        .unwrap();
 
         let result = compute_changed_files(tmp.path().to_string_lossy().as_ref()).unwrap();
-        let seed = result.local.iter().find(|f| f.path == "seed.txt").expect("seed.txt in local");
+        let seed = result
+            .local
+            .iter()
+            .find(|f| f.path == "seed.txt")
+            .expect("seed.txt in local");
         assert_eq!(seed.additions, 1);
         assert_eq!(seed.deletions, 0);
     }

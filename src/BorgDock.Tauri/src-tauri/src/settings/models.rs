@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
+    /// Bumped by `settings::migrate` after each one-off migration has run.
+    /// See `settings::CURRENT_SCHEMA_VERSION`.
+    #[serde(default)]
+    pub schema_version: u32,
     #[serde(default)]
     pub setup_complete: bool,
     #[serde(default)]
@@ -14,21 +18,19 @@ pub struct AppSettings {
     #[serde(default)]
     pub notifications: NotificationSettings,
     #[serde(default)]
-    pub claude_code: ClaudeCodeSettings,
+    pub agents: AgentSettings,
+    #[serde(default)]
+    pub summaries: SummarySettings,
     #[serde(default)]
     pub claude_review: ClaudeReviewSettings,
     #[serde(default)]
     pub updates: UpdateSettings,
-    #[serde(default)]
-    pub agent_overview: AgentOverviewSettings,
     #[serde(default)]
     pub pr_detail: PrDetailSettings,
     #[serde(default)]
     pub azure_dev_ops: AzureDevOpsSettings,
     #[serde(default)]
     pub sql: SqlSettings,
-    #[serde(default)]
-    pub claude_api: ClaudeApiSettings,
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -91,6 +93,10 @@ pub struct RepoSettings {
     pub fix_prompt_template: Option<String>,
     #[serde(default)]
     pub favorite_worktree_paths: Vec<String>,
+    /// GitHub CLI login used for this repository. Missing/empty preserves the
+    /// historic active-account behaviour.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_account: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -160,7 +166,6 @@ fn default_flyout_hotkey() -> String {
 fn default_editor_command() -> String {
     "code".to_string()
 }
-
 
 impl Default for UiSettings {
     fn default() -> Self {
@@ -249,76 +254,103 @@ impl Default for NotificationSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationChannels {
-    #[serde(default = "default_true")] pub tray: bool,
-    #[serde(default = "default_true")] pub system: bool,
-    #[serde(default = "default_true")] pub sound: bool,
-    #[serde(default)] pub email_digest: bool,
+    #[serde(default = "default_true")]
+    pub tray: bool,
+    #[serde(default = "default_true")]
+    pub system: bool,
+    #[serde(default = "default_true")]
+    pub sound: bool,
+    #[serde(default)]
+    pub email_digest: bool,
 }
 
 impl Default for NotificationChannels {
     fn default() -> Self {
-        Self { tray: true, system: true, sound: true, email_digest: false }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClaudeCodeSettings {
-    #[serde(default = "default_post_fix_action")]
-    pub default_post_fix_action: String,
-    pub claude_code_path: Option<String>,
-}
-
-fn default_post_fix_action() -> String {
-    "commitAndNotify".to_string()
-}
-
-impl Default for ClaudeCodeSettings {
-    fn default() -> Self {
         Self {
-            default_post_fix_action: "commitAndNotify".to_string(),
-            claude_code_path: None,
+            tray: true,
+            system: true,
+            sound: true,
+            email_digest: false,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ClaudeApiSettings {
-    #[serde(skip_serializing)]
-    pub api_key: Option<String>,
-    #[serde(default = "default_claude_model")]
-    pub model: String,
-    #[serde(default = "default_claude_max_tokens")]
-    pub max_tokens: u32,
-    #[serde(default = "default_true")]
-    pub pr_summary_enabled: bool,
-    #[serde(default = "default_true")]
-    pub diff_explanations_enabled: bool,
-    #[serde(default)]
-    pub review_nudge_phrasing_enabled: bool,
-    #[serde(default)]
-    pub commit_message_suggestions_enabled: bool,
+pub struct AgentSettings {
+    #[serde(default = "default_agent_provider")]
+    pub default_provider: String,
+    #[serde(default = "default_fallback_provider")]
+    pub fallback_provider: String,
+    #[serde(default = "default_post_fix_action")]
+    pub default_post_fix_action: String,
+    pub claude_path: Option<String>,
+    pub codex_path: Option<String>,
+    pub codex_model: Option<String>,
+    pub t3_path: Option<String>,
+    #[serde(default = "default_t3_model")]
+    pub t3_model: String,
+    #[serde(default = "default_t3_model_instance")]
+    pub t3_model_instance: String,
 }
 
-fn default_claude_model() -> String {
-    "claude-sonnet-4-6".to_string()
+fn default_agent_provider() -> String {
+    "t3".to_string()
+}
+fn default_fallback_provider() -> String {
+    "claude".to_string()
+}
+fn default_t3_model() -> String {
+    "claude-fable-5".to_string()
+}
+fn default_t3_model_instance() -> String {
+    "claudeAgent".to_string()
 }
 
-fn default_claude_max_tokens() -> u32 {
-    1024
+fn default_post_fix_action() -> String {
+    "commitAndNotify".to_string()
 }
 
-impl Default for ClaudeApiSettings {
+impl Default for AgentSettings {
     fn default() -> Self {
         Self {
-            api_key: None,
-            model: "claude-sonnet-4-6".to_string(),
-            max_tokens: 1024,
-            pr_summary_enabled: true,
-            diff_explanations_enabled: true,
-            review_nudge_phrasing_enabled: false,
-            commit_message_suggestions_enabled: false,
+            default_provider: default_agent_provider(),
+            fallback_provider: default_fallback_provider(),
+            default_post_fix_action: "commitAndNotify".to_string(),
+            claude_path: None,
+            codex_path: None,
+            codex_model: None,
+            t3_path: None,
+            t3_model: default_t3_model(),
+            t3_model_instance: default_t3_model_instance(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SummarySettings {
+    #[serde(default = "default_summary_provider")]
+    pub provider: String,
+    #[serde(default = "default_summary_model")]
+    pub model: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+fn default_summary_provider() -> String {
+    "claude".to_string()
+}
+fn default_summary_model() -> String {
+    "sonnet".to_string()
+}
+
+impl Default for SummarySettings {
+    fn default() -> Self {
+        Self {
+            provider: default_summary_provider(),
+            model: default_summary_model(),
+            enabled: true,
         }
     }
 }
@@ -394,7 +426,9 @@ pub struct AzureDevOpsSettings {
     pub update_pr_status_when_wi_done: bool,
 }
 
-fn default_link_match_by() -> String { "branch".to_string() }
+fn default_link_match_by() -> String {
+    "branch".to_string()
+}
 
 fn default_ado_auth_method() -> String {
     "azCli".to_string()
@@ -495,89 +529,9 @@ impl Default for SqlServerConnection {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentOverviewSettings {
-    #[serde(default)]
-    pub enabled: bool,
-    #[serde(default)]
-    pub auto_open_on_startup: bool,
-    #[serde(default)]
-    pub repo_short_names: std::collections::HashMap<String, String>,
-    #[serde(default = "default_notify_after")]
-    pub awaiting_notify_after_seconds: u32,
-    #[serde(default = "default_notify_escalate")]
-    pub awaiting_notify_escalate_seconds: u32,
-    #[serde(default = "default_idle_threshold")]
-    pub idle_threshold_seconds: u32,
-    #[serde(default = "default_ended_threshold")]
-    pub ended_threshold_seconds: u32,
-    #[serde(default = "default_history_retention")]
-    pub history_retention_seconds: u32,
-    #[serde(default = "default_export_interval")]
-    pub otel_export_interval_ms: u32,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub auto_archive_after_hours: Option<u32>,
-}
-
-fn default_notify_after() -> u32 { 30 }
-fn default_notify_escalate() -> u32 { 120 }
-fn default_idle_threshold() -> u32 { 300 }
-fn default_ended_threshold() -> u32 { 1800 }
-fn default_history_retention() -> u32 { 14_400 }
-fn default_export_interval() -> u32 { 2000 }
-
-impl Default for AgentOverviewSettings {
-    fn default() -> Self {
-        Self {
-            // Default ON for fresh installs. Existing settings.json files
-            // that explicitly set these to false will keep their saved
-            // values — flip them via Settings → Agent Overview.
-            enabled: true,
-            auto_open_on_startup: true,
-            repo_short_names: std::collections::HashMap::new(),
-            awaiting_notify_after_seconds: default_notify_after(),
-            awaiting_notify_escalate_seconds: default_notify_escalate(),
-            idle_threshold_seconds: default_idle_threshold(),
-            ended_threshold_seconds: default_ended_threshold(),
-            history_retention_seconds: default_history_retention(),
-            otel_export_interval_ms: default_export_interval(),
-            auto_archive_after_hours: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrDetailSettings {}
-
-#[cfg(test)]
-mod agent_overview_settings_tests {
-    use super::*;
-
-    #[test]
-    fn defaults_serialize_to_camel_case() {
-        let s: AgentOverviewSettings = Default::default();
-        let json = serde_json::to_value(&s).unwrap();
-        assert_eq!(json["enabled"], true);
-        assert_eq!(json["autoOpenOnStartup"], true);
-        assert_eq!(json["awaitingNotifyAfterSeconds"], 30);
-        assert_eq!(json["historyRetentionSeconds"], 14400);
-    }
-
-    #[test]
-    fn round_trips_with_overrides() {
-        let json = serde_json::json!({
-            "enabled": true,
-            "awaitingNotifyAfterSeconds": 45,
-            "repoShortNames": { "FSP-Horizon": "FH" }
-        });
-        let s: AgentOverviewSettings = serde_json::from_value(json).unwrap();
-        assert!(s.enabled);
-        assert_eq!(s.awaiting_notify_after_seconds, 45);
-        assert_eq!(s.repo_short_names.get("FSP-Horizon").unwrap(), "FH");
-    }
-}
 
 #[cfg(test)]
 mod redesign_field_tests {
@@ -600,7 +554,6 @@ mod redesign_field_tests {
         assert!(s.notifications.channels.sound);
         assert!(!s.notifications.channels.email_digest);
         assert!(s.notifications.last_test_fired_at.is_none());
-        assert!(s.agent_overview.auto_archive_after_hours.is_none());
     }
 
     #[test]
@@ -610,14 +563,12 @@ mod redesign_field_tests {
         s.ui.quick_review_hotkey = "Ctrl+Alt+R".to_string();
         s.ui.start_minimized_to_tray = true;
         s.notifications.channels.email_digest = true;
-        s.agent_overview.auto_archive_after_hours = Some(24);
         let json = serde_json::to_string(&s).unwrap();
         let back: AppSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.azure_dev_ops.link_match_by, "both");
         assert_eq!(back.ui.quick_review_hotkey, "Ctrl+Alt+R");
         assert!(back.ui.start_minimized_to_tray);
         assert!(back.notifications.channels.email_digest);
-        assert_eq!(back.agent_overview.auto_archive_after_hours, Some(24));
     }
 
     #[test]
@@ -625,18 +576,21 @@ mod redesign_field_tests {
         let s = AppSettings::default();
         let json = serde_json::to_value(&s).unwrap();
         assert_eq!(json["azureDevOps"]["linkMatchBy"], "branch");
-        assert!(json["azureDevOps"]["showWorkItemStateOnPrCard"].as_bool().unwrap());
+        assert!(json["azureDevOps"]["showWorkItemStateOnPrCard"]
+            .as_bool()
+            .unwrap());
         assert_eq!(json["ui"]["quickReviewHotkey"], "");
         assert!(json["sql"]["readOnlyByDefault"].as_bool().unwrap());
         assert!(json["notifications"]["channels"]["tray"].as_bool().unwrap());
     }
 
     #[test]
-    fn claude_api_feature_toggles_default_correctly() {
+    fn agent_and_summary_defaults_are_current() {
         let s: AppSettings = serde_json::from_str("{}").unwrap();
-        assert!(s.claude_api.pr_summary_enabled);
-        assert!(s.claude_api.diff_explanations_enabled);
-        assert!(!s.claude_api.review_nudge_phrasing_enabled);
-        assert!(!s.claude_api.commit_message_suggestions_enabled);
+        assert_eq!(s.agents.default_provider, "t3");
+        assert_eq!(s.agents.fallback_provider, "claude");
+        assert_eq!(s.summaries.provider, "claude");
+        assert_eq!(s.summaries.model, "sonnet");
+        assert!(s.summaries.enabled);
     }
 }

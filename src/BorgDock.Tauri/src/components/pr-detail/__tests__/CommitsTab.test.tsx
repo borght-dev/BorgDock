@@ -6,7 +6,7 @@ const mockGetClient = vi.fn();
 const mockGetPRCommits = vi.fn();
 
 vi.mock('@/services/github/singleton', () => ({
-  getClient: () => mockGetClient(),
+  getClientForRepo: () => mockGetClient(),
 }));
 
 vi.mock('@/services/github', () => ({

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -7,6 +8,7 @@ import {
   IconButton,
   Pill,
   SectionHeader,
+  Select,
   TextInput,
 } from '@/components/shared/primitives';
 import type { RepoSettings } from '@/types/settings';
@@ -20,6 +22,42 @@ interface Props {
 export function RepoSection({ repos, onChange }: Props) {
   const [parent, setParent] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
+  const [accounts, setAccounts] = useState<Array<{ login: string; active: boolean }>>([]);
+  const [detecting, setDetecting] = useState<number | null>(null);
+
+  useEffect(() => {
+    invoke<Array<{ login: string; active: boolean }>>('gh_cli_accounts')
+      .then(setAccounts)
+      .catch(() => setAccounts([]));
+  }, []);
+
+  const updateRepo = (index: number, patch: Partial<RepoSettings>) =>
+    onChange(repos.map((repo, i) => (i === index ? { ...repo, ...patch } : repo)));
+
+  const detectAccount = async (index: number) => {
+    const repo = repos[index];
+    if (!repo || !repo.owner || !repo.name) return;
+    setDetecting(index);
+    try {
+      for (const account of [...accounts].sort((a, b) => Number(b.active) - Number(a.active))) {
+        try {
+          const token = await invoke<string>('gh_cli_token', { user: account.login });
+          const response = await fetch(
+            `https://api.github.com/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}`,
+            { headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'BorgDock' } },
+          );
+          if (response.ok) {
+            updateRepo(index, { githubAccount: account.login });
+            return;
+          }
+        } catch {
+          // Try the next authenticated account.
+        }
+      }
+    } finally {
+      setDetecting(null);
+    }
+  };
 
   return (
     <>
@@ -62,7 +100,7 @@ export function RepoSection({ repos, onChange }: Props) {
           )}
           {repos.map((r, i) => (
             <div
-              key={`${r.owner}/${r.name}/${i}`}
+              key={`${r.owner}/${r.name}`}
               className="flex items-center gap-3 rounded-md border border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-3 py-2.5"
             >
               <span
@@ -92,7 +130,36 @@ export function RepoSection({ repos, onChange }: Props) {
                 <div className="mt-0.5 truncate font-mono text-[10.5px] text-[var(--color-text-muted)]">
                   {r.worktreeBasePath || '—'} · {r.worktreeSubfolder}
                 </div>
+                {!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(r.owner) && r.owner && (
+                  <div className="mt-1 text-[10.5px] text-[var(--color-status-amber)]">
+                    Owner must be a GitHub login or organization, not an SSH remote.
+                  </div>
+                )}
               </div>
+              <div className="w-[170px]">
+                <Select
+                  ariaLabel={`GitHub account for ${r.owner}/${r.name}`}
+                  value={r.githubAccount ?? ''}
+                  options={[
+                    { value: '', label: 'Active account' },
+                    ...accounts.map((account) => ({
+                      value: account.login,
+                      label: `${account.login}${account.active ? ' (active)' : ''}`,
+                    })),
+                  ]}
+                  onChange={(githubAccount) =>
+                    updateRepo(i, { githubAccount: githubAccount || undefined })
+                  }
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={detecting === i || accounts.length === 0}
+                onClick={() => void detectAccount(i)}
+              >
+                {detecting === i ? 'Detecting…' : 'Detect'}
+              </Button>
               <Pill tone={r.enabled ? 'success' : 'neutral'}>{r.enabled ? 'on' : 'off'}</Pill>
               <IconButton
                 aria-label={`Remove ${r.owner}/${r.name}`}

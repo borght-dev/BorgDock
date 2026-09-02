@@ -29,6 +29,7 @@ vi.mock('@/services/github/checks', () => ({
 
 vi.mock('@/services/github/singleton', () => ({
   getClient: () => ({ id: 'mock-client' }),
+  getClientForRepo: () => ({ id: 'mock-client' }),
 }));
 
 vi.mock('@/services/merge-celebration', () => ({
@@ -48,10 +49,12 @@ vi.mock('@/services/notification', () => ({
 }));
 
 vi.mock('@/stores/pr-store', () => ({
-  usePrStore: { getState: () => ({
-    refreshPr: mockRefreshPr,
-    optimisticallyMarkMerged: mockOptimisticallyMarkMerged,
-  }) },
+  usePrStore: {
+    getState: () => ({
+      refreshPr: mockRefreshPr,
+      optimisticallyMarkMerged: mockOptimisticallyMarkMerged,
+    }),
+  },
 }));
 
 let mockRepos: Array<{ owner: string; name: string; worktreeBasePath: string }> = [];
@@ -193,9 +196,7 @@ describe('toggleDraftPr', () => {
   it('uses a "ready" error title when toggling out of draft state fails', async () => {
     mockToggleDraft.mockRejectedValueOnce(new Error('x'));
     await toggleDraftPr({ repoOwner: 'owner', repoName: 'repo', number: 42, isDraft: true });
-    expect(mockShow).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Mark ready failed' }),
-    );
+    expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({ title: 'Mark ready failed' }));
   });
 });
 
@@ -224,12 +225,10 @@ describe('checkoutPrBranch', () => {
 
   it('reports an error and returns false when the repo has no worktree base path', async () => {
     mockRepos = [{ owner: 'owner', name: 'repo', worktreeBasePath: '' }];
-    expect(
-      await checkoutPrBranch({ repoOwner: 'owner', repoName: 'repo', headRef: 'x' }),
-    ).toBe(false);
-    expect(mockShow).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Checkout failed' }),
+    expect(await checkoutPrBranch({ repoOwner: 'owner', repoName: 'repo', headRef: 'x' })).toBe(
+      false,
     );
+    expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({ title: 'Checkout failed' }));
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
@@ -252,8 +251,6 @@ describe('openPrInBrowser', () => {
 
     mockOpenUrl.mockRejectedValueOnce(new Error('no'));
     expect(await openPrInBrowser('https://example/pr/2')).toBe(false);
-    expect(mockShow).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Failed to open URL' }),
-    );
+    expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({ title: 'Failed to open URL' }));
   });
 });

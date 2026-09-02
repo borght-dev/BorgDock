@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { Card, Pill } from '@/components/shared/primitives';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getPRCommits } from '@/services/github';
-import { getClient } from '@/services/github/singleton';
+import { getClientForRepo } from '@/services/github/singleton';
 import type { PullRequestCommit } from '@/types';
 
 interface CommitsTabProps {
@@ -25,7 +25,7 @@ function formatRelativeDate(dateStr: string): string {
 
 export function CommitsTab({ prNumber, repoOwner, repoName, prUpdatedAt }: CommitsTabProps) {
   const fetchFn = useCallback(async () => {
-    const client = getClient();
+    const client = getClientForRepo(repoOwner, repoName);
     if (!client) throw new Error('GitHub client not initialized');
     return getPRCommits(client, repoOwner, repoName, prNumber);
   }, [repoOwner, repoName, prNumber]);

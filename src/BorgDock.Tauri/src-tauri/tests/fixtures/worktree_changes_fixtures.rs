@@ -8,8 +8,12 @@ pub struct Fixture {
 }
 
 impl Fixture {
-    pub fn path(&self) -> &Path { self.tmp.path() }
-    pub fn path_str(&self) -> &str { self.tmp.path().to_str().unwrap() }
+    pub fn path(&self) -> &Path {
+        self.tmp.path()
+    }
+    pub fn path_str(&self) -> &str {
+        self.tmp.path().to_str().unwrap()
+    }
 }
 
 fn sig() -> Signature<'static> {
@@ -25,14 +29,16 @@ fn write(path: &Path, contents: &[u8]) {
 
 fn commit_all(repo: &Repository, msg: &str) -> git2::Oid {
     let mut idx = repo.index().unwrap();
-    idx.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None).unwrap();
+    idx.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
+        .unwrap();
     idx.write().unwrap();
     let tree_oid = idx.write_tree().unwrap();
     let tree = repo.find_tree(tree_oid).unwrap();
     let s = sig();
     let parent = repo.head().ok().and_then(|h| h.peel_to_commit().ok());
     let parents: Vec<&git2::Commit> = parent.iter().collect();
-    repo.commit(Some("HEAD"), &s, &s, msg, &tree, &parents).unwrap()
+    repo.commit(Some("HEAD"), &s, &s, msg, &tree, &parents)
+        .unwrap()
 }
 
 /// Repo with a single committed file and no edits.
@@ -43,7 +49,8 @@ pub fn build_clean_repo() -> Fixture {
     let oid = commit_all(&repo, "initial");
     // Rename master → main: create refs/heads/main pointing at the commit,
     // then point HEAD at it so git2 treats it as the current branch.
-    repo.reference("refs/heads/main", oid, false, "rename to main").unwrap();
+    repo.reference("refs/heads/main", oid, false, "rename to main")
+        .unwrap();
     repo.set_head("refs/heads/main").unwrap();
     // Delete master so `resolve_base_branch` doesn't see it as a fallback.
     if let Ok(mut r) = repo.find_reference("refs/heads/master") {
@@ -147,7 +154,15 @@ pub fn build_shallow_no_mergebase_repo() -> Fixture {
         idx.write().unwrap();
         let tree_oid = idx.write_tree().unwrap();
         let tree = repo.find_tree(tree_oid).unwrap();
-        repo.commit(Some("refs/heads/feature"), &s, &s, "feature root", &tree, &[]).unwrap();
+        repo.commit(
+            Some("refs/heads/feature"),
+            &s,
+            &s,
+            "feature root",
+            &tree,
+            &[],
+        )
+        .unwrap();
     }
 
     // Second orphan root: commit to refs/heads/master with no parents.
@@ -159,7 +174,8 @@ pub fn build_shallow_no_mergebase_repo() -> Fixture {
         idx.write().unwrap();
         let tree_oid = idx.write_tree().unwrap();
         let tree = repo.find_tree(tree_oid).unwrap();
-        repo.commit(Some("refs/heads/master"), &s, &s, "master root", &tree, &[]).unwrap();
+        repo.commit(Some("refs/heads/master"), &s, &s, "master root", &tree, &[])
+            .unwrap();
     }
 
     // Point HEAD at feature. No `main` branch exists → resolve_base_branch

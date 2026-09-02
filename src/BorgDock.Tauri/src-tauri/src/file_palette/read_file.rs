@@ -15,14 +15,13 @@ pub enum ReadFileError {
 }
 
 #[tauri::command]
-pub async fn read_text_file(
-    path: String,
-    max_bytes: Option<u64>,
-) -> Result<String, ReadFileError> {
+pub async fn read_text_file(path: String, max_bytes: Option<u64>) -> Result<String, ReadFileError> {
     let limit = max_bytes.unwrap_or(DEFAULT_MAX_BYTES);
     tokio::task::spawn_blocking(move || read_text_file_sync(PathBuf::from(path), limit))
         .await
-        .map_err(|e| ReadFileError::Io { message: format!("join error: {e}") })?
+        .map_err(|e| ReadFileError::Io {
+            message: format!("join error: {e}"),
+        })?
 }
 
 fn read_text_file_sync(path: PathBuf, limit: u64) -> Result<String, ReadFileError> {
@@ -30,13 +29,17 @@ fn read_text_file_sync(path: PathBuf, limit: u64) -> Result<String, ReadFileErro
         std::io::ErrorKind::NotFound => ReadFileError::NotFound {
             path: path.display().to_string(),
         },
-        _ => ReadFileError::Io { message: e.to_string() },
+        _ => ReadFileError::Io {
+            message: e.to_string(),
+        },
     })?;
     let size = meta.len();
     if size > limit {
         return Err(ReadFileError::TooLarge { size, limit });
     }
-    let bytes = std::fs::read(&path).map_err(|e| ReadFileError::Io { message: e.to_string() })?;
+    let bytes = std::fs::read(&path).map_err(|e| ReadFileError::Io {
+        message: e.to_string(),
+    })?;
 
     // Decode based on BOM / heuristic. SQL Server scripts and many Windows-edited
     // files are UTF-16 LE with a BOM — those look binary to a naive UTF-8 check

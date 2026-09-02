@@ -1,8 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
+import { T3SessionStrip } from '@/components/pr/T3SessionStrip';
 import { Markdown } from '@/components/shared/Markdown';
 import { Button, Card } from '@/components/shared/primitives';
+import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
+import { loadTabData, saveTabData } from '@/services/cache';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { summaryKey, useSummaryStore } from '@/stores/summary-store';
@@ -16,16 +19,52 @@ interface OverviewTabProps {
   pr: PullRequestWithChecks;
 }
 
+const DEFAULT_SUMMARY_SETTINGS = {
+  enabled: true,
+  provider: 'claude' as const,
+  model: 'sonnet',
+};
+
+const DEFAULT_AGENT_SETTINGS = {
+  defaultProvider: 't3' as const,
+  fallbackProvider: 'claude' as const,
+  defaultPostFixAction: 'commitAndNotify' as const,
+  t3Model: 'claude-fable-5',
+  t3ModelInstance: 'claudeAgent',
+  claudePath: undefined,
+  codexPath: undefined,
+};
+
 export function OverviewTab({ pr }: OverviewTabProps) {
+  useT3Sessions();
   const p = pr.pullRequest;
   const isOpen = p.state === 'open';
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
-  const claudeApiKey = useSettingsStore((s) => s.settings.claudeApi.apiKey);
+  const summarySettings = useSettingsStore((s) => s.settings.summaries ?? DEFAULT_SUMMARY_SETTINGS);
+  const agentSettings = useSettingsStore((s) => s.settings.agents ?? DEFAULT_AGENT_SETTINGS);
+  const repoPath = useSettingsStore(
+    (s) =>
+      s.settings.repos.find(
+        (repo) =>
+          repo.owner.toLowerCase() === p.repoOwner.toLowerCase() &&
+          repo.name.toLowerCase() === p.repoName.toLowerCase(),
+      )?.worktreeBasePath,
+  );
   const sKey = summaryKey(p.repoOwner, p.repoName, p.number);
-  const cachedSummary = useSummaryStore((s) => s.getSummary(sKey, p.updatedAt));
+  const headVersion = p.headSha || p.updatedAt;
+  const cachedSummary = useSummaryStore((s) => s.getSummary(sKey, headVersion));
   const summaryLoading = useSummaryStore((s) => s.isLoading(sKey));
   const [summaryError, setSummaryError] = useState('');
   const [summaryExpanded, setSummaryExpanded] = useState(true);
+
+  useEffect(() => {
+    if (cachedSummary) return;
+    void loadTabData<string>(p.repoOwner, p.repoName, p.number, 'summary').then((entry) => {
+      if (entry?.prUpdatedAt === headVersion && entry.data) {
+        useSummaryStore.getState().setSummary(sKey, entry.data, headVersion);
+      }
+    });
+  }, [cachedSummary, headVersion, p.number, p.repoName, p.repoOwner, sKey]);
 
   const handleGenerateSummary = useCallback(async () => {
     useOnboardingStore.getState().dismissBadge('pr-summary');
@@ -33,21 +72,32 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     useSummaryStore.getState().setLoading(sKey, true);
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      const text = await invoke<string>('generate_pr_summary', {
-        title: p.title,
-        body: p.body,
-        changedFiles: [], // v1: no file list from this view
-        branchName: p.headRef,
-        labels: p.labels,
-        additions: p.additions,
-        deletions: p.deletions,
+      const prompt = `Summarize this pull request for a reviewer. Use exactly these headings: Summary, Key Changes, Risk Level, Review Focus. Keep it concise and do not modify files.\n\nTitle: ${p.title}\nBranch: ${p.headRef}\nLabels: ${p.labels.join(', ') || 'None'}\nSize: +${p.additions} / -${p.deletions}\n\nDescription:\n${p.body || 'No description provided'}`;
+      const provider = summarySettings.provider;
+      const executable = provider === 'claude' ? agentSettings.claudePath : agentSettings.codexPath;
+      const result = await invoke<{
+        text: string;
+        provider: string;
+        model: string;
+        durationMs: number;
+      }>('run_headless_prompt', {
+        request: {
+          provider,
+          prompt,
+          cwd: repoPath,
+          model: summarySettings.model || undefined,
+          executable,
+          timeoutSeconds: 90,
+        },
       });
-      useSummaryStore.getState().setSummary(sKey, text, p.updatedAt);
+      const text = result.text;
+      useSummaryStore.getState().setSummary(sKey, text, headVersion);
+      void saveTabData(p.repoOwner, p.repoName, p.number, 'summary', text, headVersion);
     } catch (err) {
       useSummaryStore.getState().setLoading(sKey, false);
       setSummaryError(parseError(err).message);
     }
-  }, [sKey, p]);
+  }, [agentSettings, headVersion, p, repoPath, sKey, summarySettings]);
 
   return (
     <div className="px-6 py-5 space-y-5">
@@ -55,9 +105,10 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Merge Readiness Checklist */}
       <MergeReadinessChecklist pr={pr} />
+      <T3SessionStrip pr={p} />
 
       {/* AI Summary */}
-      {claudeApiKey ? (
+      {summarySettings.enabled ? (
         <div className="space-y-2">
           {!cachedSummary && !summaryLoading && (
             <>
@@ -65,16 +116,18 @@ export function OverviewTab({ pr }: OverviewTabProps) {
                 hintId="pr-summary-generate"
                 text="Generate a quick AI summary of this PR"
               />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleGenerateSummary}
-                data-overview-action="summarize"
-                className="w-full"
-              >
-                Summarize with AI
+              <div className="flex items-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  data-overview-action="summarize"
+                  className="flex-1"
+                >
+                  Summarize with AI
+                </Button>
                 <FeatureBadge badgeId="pr-summary" />
-              </Button>
+              </div>
             </>
           )}
           {summaryLoading && (
@@ -136,7 +189,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
         </div>
       ) : (
         <div className="text-[10px] text-[var(--color-text-ghost)]">
-          Configure an API key in Settings to enable AI summaries
+          Enable CLI summaries in Settings → Agents
         </div>
       )}
 

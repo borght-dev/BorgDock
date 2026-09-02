@@ -17,7 +17,8 @@ vi.mock('@/services/claude-launcher', () => ({
   buildFixPrompt: (...args: unknown[]) => mockBuildFixPrompt(...args),
   buildConflictPrompt: (...args: unknown[]) => mockBuildConflictPrompt(...args),
   buildMonitorPrompt: (...args: unknown[]) => mockBuildMonitorPrompt(...args),
-  launchClaude: (...args: unknown[]) => mockLaunchClaude(...args),
+  launchAgentSession: (options: { worktreePath: string; promptFile: string; title: string }) =>
+    mockLaunchClaude(options.worktreePath, options.promptFile, options.title),
   writePromptFile: (...args: unknown[]) => mockWritePromptFile(...args),
 }));
 

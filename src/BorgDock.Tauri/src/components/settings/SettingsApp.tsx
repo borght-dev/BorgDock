@@ -5,10 +5,8 @@ import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings } from '@/types/settings';
 import { AdoSection } from './AdoSection';
-import { AgentOverviewSection } from './AgentOverviewSection';
+import { AgentSection } from './AgentSection';
 import { AppearanceSection } from './AppearanceSection';
-import { ClaudeApiSection } from './ClaudeApiSection';
-import { ClaudeSection } from './ClaudeSection';
 // Existing section components — bodies are rewritten in later tasks.
 import { GitHubSection } from './GitHubSection';
 import { MaintenanceSection } from './MaintenanceSection';
@@ -69,7 +67,9 @@ export function SettingsApp() {
   // Ref-mirror of settings so the debounced save can read latest without
   // re-creating the `update` callback on every keystroke.
   const settingsRef = useRef<AppSettings>(settings);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // Persist active section + update hash
   useEffect(() => {
@@ -140,22 +140,23 @@ export function SettingsApp() {
             onChange={(notifications) => update({ notifications })}
           />
         );
-      case 'claude':
+      case 'agents':
         return (
-          <ClaudeSection
-            claudeCode={settings.claudeCode}
-            onChange={(claudeCode) => update({ claudeCode })}
+          <AgentSection
+            agents={
+              settings.agents ?? {
+                defaultProvider: 't3',
+                fallbackProvider: 'claude',
+                defaultPostFixAction: 'commitAndNotify',
+                t3Model: 'claude-fable-5',
+                t3ModelInstance: 'claudeAgent',
+              }
+            }
+            summaries={settings.summaries ?? { enabled: true, provider: 'claude', model: 'sonnet' }}
+            onAgentsChange={(agents) => update({ agents })}
+            onSummariesChange={(summaries) => update({ summaries })}
           />
         );
-      case 'claude-api':
-        return (
-          <ClaudeApiSection
-            claudeApi={settings.claudeApi}
-            onChange={(claudeApi) => update({ claudeApi })}
-          />
-        );
-      case 'agent-overview':
-        return <AgentOverviewSection />;
       case 'updates':
         return (
           <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />

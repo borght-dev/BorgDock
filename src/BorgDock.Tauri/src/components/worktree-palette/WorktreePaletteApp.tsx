@@ -7,8 +7,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { IconButton, Kbd, Pill } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
-import type { AppSettings, RepoSettings } from '@/types/settings';
-import { parseError } from '@/utils/parse-error';
+import type { AppSettings } from '@/types/settings';
+import {
+  WORKTREES_UPDATED_EVENT,
+  type WorktreeCacheRepo,
+  type WorktreeEntry,
+  type WorktreeSnapshot,
+} from '@/types/worktree';
 
 // Minimum window height so a small worktree list doesn't leave a cramped window.
 const MIN_PALETTE_HEIGHT = 420;
@@ -17,15 +22,11 @@ const MONITOR_BOTTOM_MARGIN = 60;
 
 // ── Types ────────────────────────────────────────────────────────────
 
-interface WorktreeEntry {
-  path: string;
-  branchName: string;
-  isMainWorktree: boolean;
-}
+type RepoRef = WorktreeCacheRepo['repo'];
 
 interface FlatEntry {
   wt: WorktreeEntry;
-  repo: RepoSettings;
+  repo: RepoRef;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -48,6 +49,42 @@ function matchesQuery(entry: FlatEntry, q: string): boolean {
   const branch = entry.wt.branchName.toLowerCase();
   const repo = `${entry.repo.owner}/${entry.repo.name}`.toLowerCase();
   return branch.includes(lower) || folder.includes(lower) || repo.includes(lower);
+}
+
+/** Numeric-aware, case-insensitive: worktree2 < worktree10, Foo ~ foo. */
+export function compareFolderNames(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+/**
+ * Palette order: repo → main worktree pinned first → folder name (numeric).
+ * Favorites are marked with a star but deliberately NOT hoisted — a stable
+ * folder order is what makes "worktree7" findable at a glance.
+ */
+export function compareFlatEntries(a: FlatEntry, b: FlatEntry): number {
+  const repoCmp = `${a.repo.owner}/${a.repo.name}`.localeCompare(`${b.repo.owner}/${b.repo.name}`);
+  if (repoCmp !== 0) return repoCmp;
+  const mainCmp = Number(b.wt.isMainWorktree) - Number(a.wt.isMainWorktree);
+  if (mainCmp !== 0) return mainCmp;
+  return compareFolderNames(folderName(a.wt.path), folderName(b.wt.path));
+}
+
+/** Flatten a cache snapshot into palette rows + per-repo error map. */
+export function flattenSnapshot(snapshot: WorktreeSnapshot): {
+  entries: FlatEntry[];
+  errors: Map<string, string>;
+} {
+  const entries: FlatEntry[] = [];
+  const errors = new Map<string, string>();
+  for (const repo of snapshot) {
+    for (const wt of repo.entries) entries.push({ wt, repo: repo.repo });
+    if (repo.error) errors.set(`${repo.repo.owner}/${repo.repo.name}`, repo.error);
+  }
+  return { entries, errors };
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((r) => requestAnimationFrame(() => r()));
 }
 
 function groupByRepo(entries: FlatEntry[]): Map<string, FlatEntry[]> {
@@ -101,7 +138,16 @@ function WorktreeRow({
         isSelected && 'bd-wt-row--selected',
         isMain && 'bd-wt-row--main',
       )}
+      role="button"
+      tabIndex={0}
       onClick={onOpenTerminal}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpenTerminal();
+        }
+      }}
       onMouseEnter={onSelect}
     >
       {isMain ? (
@@ -260,141 +306,149 @@ export function WorktreePaletteApp() {
   const searchRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
-  // ── Data fetching ──
-  const loadWorktrees = useCallback(async () => {
+  // ── Data: two-phase (cache snapshot → background revalidate) ──
+  const applySnapshot = useCallback((snapshot: WorktreeSnapshot) => {
+    const { entries, errors: errs } = flattenSnapshot(snapshot);
+    setAllEntries(entries);
+    setErrors(errs);
+  }, []);
+
+  // Favorites + the favorites-only flag live in settings. Loaded in parallel
+  // with the worktree snapshot; only gates the star, never the list.
+  const loadFavorites = useCallback(async () => {
     try {
       const settings = await invoke<AppSettings>('load_settings');
-      const repos = settings.repos.filter((r) => r.enabled && r.worktreeBasePath);
-      const flat: FlatEntry[] = [];
-      const errs = new Map<string, string>();
       const favs = new Set<string>();
       for (const r of settings.repos) {
         for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
       }
-
-      await Promise.allSettled(
-        repos.map(async (repo) => {
-          try {
-            // Fast path: only fetch path + branch. No per-worktree status scanning.
-            const worktrees = await invoke<WorktreeEntry[]>('list_worktrees_bare', {
-              basePath: repo.worktreeBasePath,
-            });
-            for (const wt of worktrees) {
-              flat.push({ wt, repo });
-            }
-          } catch (err) {
-            errs.set(`${repo.owner}/${repo.name}`, parseError(err).message);
-          }
-        }),
-      );
-
-      setAllEntries(flat);
       setFavoritePaths(favs);
       setFavoritesOnly(settings.ui?.worktreePaletteFavoritesOnly ?? false);
-      setErrors(errs);
     } catch {
-      // Settings load failed
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      // Settings load failed — stars stay empty, list still renders.
     }
   }, []);
 
+  // Ask Rust to rescan every repo. Never clears the current list; the fresh
+  // snapshot replaces it when it lands (also broadcast as `worktrees-updated`).
+  const refreshWorktrees = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const snapshot = await invoke<WorktreeSnapshot>('worktree_cache_refresh');
+      applySnapshot(snapshot);
+    } catch {
+      // Keep showing the cached rows; per-repo errors arrive via the snapshot.
+    } finally {
+      setRefreshing(false);
+    }
+  }, [applySnapshot]);
+
+  // Grow the window to fit the list (capped by the monitor) — only ever
+  // called BEFORE `window_ready`, so the user never sees the resize jump.
+  // The palette spec is fixed-size for the user; this is the one programmatic
+  // adjustment, done while the window is still invisible.
+  const fitWindowToContent = useCallback(async () => {
+    try {
+      const contentEl = document.querySelector('.bd-wt-content') as HTMLElement | null;
+      if (!contentEl) return;
+
+      const win = getCurrentWindow();
+      const [physSize, scale, monitor] = await Promise.all([
+        win.innerSize(),
+        win.scaleFactor(),
+        currentMonitor(),
+      ]);
+
+      const currentLogicalW = physSize.width / scale;
+      const currentLogicalH = physSize.height / scale;
+
+      const overflow = contentEl.scrollHeight - contentEl.clientHeight;
+      const maxLogicalH = (monitor ? monitor.size.height / scale : 900) - MONITOR_BOTTOM_MARGIN;
+
+      let targetH: number;
+      if (overflow > 0) {
+        targetH = Math.min(currentLogicalH + overflow, maxLogicalH);
+      } else if (overflow < -24) {
+        targetH = Math.max(currentLogicalH + overflow, MIN_PALETTE_HEIGHT);
+      } else {
+        return;
+      }
+      if (Math.abs(targetH - currentLogicalH) < 4) return;
+
+      await win.setSize(new LogicalSize(currentLogicalW, targetH));
+    } catch (err) {
+      // Tests don't mock these APIs; on failure the default size still
+      // works (the list scrolls).
+      console.debug('Palette fit-to-content failed:', err);
+    }
+  }, []);
+
+  // Mount: render the cached snapshot immediately, reveal the window on the
+  // next paint (skeleton if the cache is cold), then revalidate in the
+  // background. Settings (favorites) load in parallel and never gate reveal.
+  const revealedRef = useRef(false);
   useEffect(() => {
-    loadWorktrees();
-  }, [loadWorktrees]);
+    let cancelled = false;
+
+    const snapshotReady = invoke<WorktreeSnapshot>('worktree_cache_get_all')
+      .then((snapshot) => {
+        if (!cancelled) applySnapshot(snapshot);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    loadFavorites();
+
+    (async () => {
+      // Give the instant snapshot IPC a moment so the first paint (and the
+      // one-time fit) include cached rows — but never wait on it for long:
+      // reveal is "on mount", not "after data".
+      await Promise.race([snapshotReady, new Promise((r) => setTimeout(r, 100))]);
+      if (cancelled || revealedRef.current) return;
+      await nextFrame();
+      if (cancelled || revealedRef.current) return;
+      revealedRef.current = true;
+      await fitWindowToContent();
+      searchRef.current?.focus();
+      invoke('window_ready').catch(() => {});
+      // Background revalidation after reveal.
+      refreshWorktrees();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applySnapshot, loadFavorites, fitWindowToContent, refreshWorktrees]);
+
+  // Any refresh anywhere (startup prefetch, create/remove worktree in the
+  // main window, palette refresh) broadcasts the new snapshot.
+  useEffect(() => {
+    const unlisten = listen<WorktreeSnapshot>(WORKTREES_UPDATED_EVENT, (event) => {
+      applySnapshot(event.payload);
+      setLoading(false);
+    });
+    return () => {
+      unlisten.then((fn) => fn()).catch(() => {});
+    };
+  }, [applySnapshot]);
 
   // The window is hidden (not destroyed) on Escape / close button, so on
   // each re-show the Rust toggle emits `palette-shown`. Reset query +
-  // selection, refresh worktree data, and refocus the input.
+  // selection, revalidate in the background (list stays), refocus the input.
   useEffect(() => {
     const unlisten = listen('palette-shown', () => {
       setQuery('');
       setSelectedIndex(0);
-      setRefreshing(true);
-      loadWorktrees();
+      refreshWorktrees();
+      loadFavorites();
       requestAnimationFrame(() => searchRef.current?.focus());
     });
     return () => {
       unlisten.then((fn) => fn()).catch(() => {});
     };
-  }, [loadWorktrees]);
-
-  // Reveal the (invisible-built) window once data has loaded and React has
-  // painted, then focus the search input. `window_ready` shows the window
-  // and re-asserts OS focus on the main thread — the hotkey handler builds
-  // it `.visible(false)` to avoid a flash of unstyled chrome.
-  const revealedRef = useRef(false);
-  useEffect(() => {
-    if (loading || revealedRef.current) return;
-    revealedRef.current = true;
-    const id = window.setTimeout(() => {
-      searchRef.current?.focus();
-      invoke('window_ready').catch(() => {});
-    }, 50);
-    return () => window.clearTimeout(id);
-  }, [loading]);
-
-  // Auto-resize window to fit the worktree list, capped at the monitor height.
-  // Re-runs when the number of loaded worktrees or the favorites-only filter changes,
-  // but intentionally NOT on every keystroke of the search query (would feel janky).
-  useEffect(() => {
-    // Reference the visible-count signals so biome treats them as real deps;
-    // they are triggers, not values consumed inside the callback body.
-    void allEntries.length;
-    void favoritesOnly;
-    if (loading) return;
-    let cancelled = false;
-
-    const resize = async () => {
-      // Wait for layout to paint the new rows.
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-      if (cancelled) return;
-
-      try {
-        const contentEl = document.querySelector('.bd-wt-content') as HTMLElement | null;
-        if (!contentEl) return;
-
-        const win = getCurrentWindow();
-        const [physSize, scale, monitor] = await Promise.all([
-          win.innerSize(),
-          win.scaleFactor(),
-          currentMonitor(),
-        ]);
-
-        const currentLogicalW = physSize.width / scale;
-        const currentLogicalH = physSize.height / scale;
-
-        const overflow = contentEl.scrollHeight - contentEl.clientHeight;
-        const maxLogicalH = (monitor ? monitor.size.height / scale : 900) - MONITOR_BOTTOM_MARGIN;
-
-        let targetH: number;
-        if (overflow > 0) {
-          // Content is taller than visible — grow to fit, capped by the monitor.
-          targetH = Math.min(currentLogicalH + overflow, maxLogicalH);
-        } else if (overflow < -24) {
-          // Meaningful empty space — shrink, but never below the minimum.
-          targetH = Math.max(currentLogicalH + overflow, MIN_PALETTE_HEIGHT);
-        } else {
-          return;
-        }
-
-        // Skip micro-adjustments that would just thrash the window.
-        if (Math.abs(targetH - currentLogicalH) < 4) return;
-
-        await win.setSize(new LogicalSize(currentLogicalW, targetH));
-      } catch (err) {
-        // Ignore: tests don't mock these APIs, and on failure we fall back to the
-        // initial window size which is still usable (scrollable).
-        console.debug('Palette auto-resize failed:', err);
-      }
-    };
-
-    resize();
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, allEntries.length, favoritesOnly]);
+  }, [refreshWorktrees, loadFavorites]);
 
   // ── Filtered + sorted + grouped data ──
   const filtered = useMemo(() => {
@@ -405,18 +459,9 @@ export function WorktreePaletteApp() {
       if (favoritesOnly && !isFav(e) && !e.wt.isMainWorktree) return false;
       return true;
     });
-    // Sort within each repo: main first, then favorites, then everything else by branch.
-    visible.sort((a, b) => {
-      const repoCmp = `${a.repo.owner}/${a.repo.name}`.localeCompare(
-        `${b.repo.owner}/${b.repo.name}`,
-      );
-      if (repoCmp !== 0) return repoCmp;
-      const mainCmp = Number(b.wt.isMainWorktree) - Number(a.wt.isMainWorktree);
-      if (mainCmp !== 0) return mainCmp;
-      const favCmp = Number(isFav(b)) - Number(isFav(a));
-      if (favCmp !== 0) return favCmp;
-      return a.wt.branchName.localeCompare(b.wt.branchName);
-    });
+    // Sort within each repo: main first, then folder name (numeric-aware).
+    // Favorites keep their place — they're marked, not hoisted.
+    visible.sort(compareFlatEntries);
     return visible;
   }, [allEntries, query, favoritePaths, favoritesOnly]);
 
@@ -449,9 +494,8 @@ export function WorktreePaletteApp() {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadWorktrees();
-  }, [loadWorktrees]);
+    refreshWorktrees();
+  }, [refreshWorktrees]);
 
   const handleToggleFavorite = useCallback(
     async (entry: FlatEntry) => {
@@ -576,6 +620,7 @@ export function WorktreePaletteApp() {
           <input
             ref={searchRef}
             className="bd-input bd-wt-search"
+            aria-label="Filter worktrees"
             placeholder="Filter by branch, folder, or repo..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -644,14 +689,14 @@ export function WorktreePaletteApp() {
 
       {/* Content */}
       <div className="bd-wt-content">
-        {loading && (
+        {(loading || (refreshing && allEntries.length === 0 && errors.size === 0)) && (
           <div className="bd-wt-loading">
             <span className="bd-wt-spinner" />
             <span>Scanning worktrees...</span>
           </div>
         )}
 
-        {!loading && allEntries.length === 0 && errors.size === 0 && (
+        {!loading && !refreshing && allEntries.length === 0 && errors.size === 0 && (
           <div className="bd-wt-empty">
             <span className="bd-wt-empty-title">No worktrees configured</span>
             <span className="bd-wt-empty-detail">
@@ -678,39 +723,42 @@ export function WorktreePaletteApp() {
         )}
 
         {!loading &&
-          [...grouped.entries()].map(([repoKey, entries]) => (
-            <div key={repoKey} className="bd-wt-group">
-              <div className="bd-wt-group-header">
-                <span className="bd-wt-group-name">{repoKey}</span>
-                <Pill tone="ghost">{entries.length}</Pill>
-                {errors.has(repoKey) && <Pill tone="error">error</Pill>}
+          [...new Set([...grouped.keys(), ...errors.keys()])].map((repoKey) => {
+            const entries = grouped.get(repoKey) ?? [];
+            return (
+              <div key={repoKey} className="bd-wt-group">
+                <div className="bd-wt-group-header">
+                  <span className="bd-wt-group-name">{repoKey}</span>
+                  <Pill tone="ghost">{entries.length}</Pill>
+                  {errors.has(repoKey) && <Pill tone="error">error</Pill>}
+                </div>
+                {errors.has(repoKey) && (
+                  <div className="bd-wt-error-detail">{errors.get(repoKey)}</div>
+                )}
+                <div className="bd-wt-list">
+                  {entries.map((entry) => {
+                    const idx = flatIndex++;
+                    return (
+                      <WorktreeRow
+                        key={entry.wt.path}
+                        entry={entry}
+                        isSelected={idx === selectedIndex}
+                        isFavorite={favoritePaths.has(entry.wt.path)}
+                        onSelect={() => setSelectedIndex(idx)}
+                        onOpenTerminal={() => handleOpenTerminal(entry.wt.path)}
+                        onOpenFolder={() => handleOpenFolder(entry.wt.path)}
+                        onOpenEditor={() => handleOpenEditor(entry.wt.path)}
+                        onToggleFavorite={() => handleToggleFavorite(entry)}
+                        rowRef={(el) => {
+                          rowRefs.current.set(idx, el);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-              {errors.has(repoKey) && (
-                <div className="bd-wt-error-detail">{errors.get(repoKey)}</div>
-              )}
-              <div className="bd-wt-list">
-                {entries.map((entry) => {
-                  const idx = flatIndex++;
-                  return (
-                    <WorktreeRow
-                      key={entry.wt.path}
-                      entry={entry}
-                      isSelected={idx === selectedIndex}
-                      isFavorite={favoritePaths.has(entry.wt.path)}
-                      onSelect={() => setSelectedIndex(idx)}
-                      onOpenTerminal={() => handleOpenTerminal(entry.wt.path)}
-                      onOpenFolder={() => handleOpenFolder(entry.wt.path)}
-                      onOpenEditor={() => handleOpenEditor(entry.wt.path)}
-                      onToggleFavorite={() => handleToggleFavorite(entry)}
-                      rowRef={(el) => {
-                        rowRefs.current.set(idx, el);
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
       </div>
 
       <WindowStatusBar

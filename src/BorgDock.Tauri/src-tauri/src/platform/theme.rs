@@ -1,5 +1,13 @@
+/// Spawns a subprocess (`reg` / `defaults` / `gsettings`) — async so the
+/// wait happens on a blocking thread instead of inline on the GUI thread.
 #[tauri::command]
-pub fn get_system_theme() -> Result<String, String> {
+pub async fn get_system_theme() -> Result<String, String> {
+    tokio::task::spawn_blocking(get_system_theme_blocking)
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn get_system_theme_blocking() -> Result<String, String> {
     // Use dark-light crate logic inline since Tauri doesn't expose theme() on AppHandle.
     // On macOS: check NSApp.effectiveAppearance
     // On Windows: check registry AppsUseLightTheme

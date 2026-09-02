@@ -18,6 +18,8 @@ interface WorkItemsState {
   recentWorkItemIds: number[];
   currentUserDisplayName: string;
   isLoading: boolean;
+  /** True once an ADO call came back as a sign-in page (az login expired). Cleared on the next success. */
+  adoAuthExpired: boolean;
   fieldDefinitions: Map<string, AdoFieldMeta> | null;
   processId: string | null;
   processIdResolved: boolean;
@@ -49,6 +51,7 @@ interface WorkItemsState {
   setRecentWorkItemIds: (ids: number[]) => void;
   setCurrentUserDisplayName: (name: string) => void;
   setIsLoading: (loading: boolean) => void;
+  setAdoAuthExpired: (expired: boolean) => void;
   setFieldDefinitions: (defs: Map<string, AdoFieldMeta> | null) => void;
   setProcessId: (id: string | null) => void;
   setProcessIdResolved: (resolved: boolean) => void;
@@ -94,6 +97,7 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
   recentWorkItemIds: [],
   currentUserDisplayName: '',
   isLoading: false,
+  adoAuthExpired: false,
   fieldDefinitions: null,
   processId: null,
   processIdResolved: false,
@@ -247,6 +251,7 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
 
   setCurrentUserDisplayName: (name) => set({ currentUserDisplayName: name }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setAdoAuthExpired: (expired) => set({ adoAuthExpired: expired }),
   setFieldDefinitions: (defs) => set({ fieldDefinitions: defs }),
   setProcessId: (id) => set({ processId: id }),
   setProcessIdResolved: (resolved) => set({ processIdResolved: resolved }),

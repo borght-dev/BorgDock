@@ -4,7 +4,12 @@ import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
 import { pollOpenPrsAggregate } from '@/services/github/polling';
 import { getClosedPRs } from '@/services/github/pulls';
-import { getClient, initClient } from '@/services/github/singleton';
+import {
+  bindRepoClient,
+  getClient,
+  getClientForRepo,
+  initClient,
+} from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { PollingManager } from '@/services/polling';
 import { usePrStore } from '@/stores/pr-store';
@@ -17,7 +22,13 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
   // Keep settings in a ref so the poll function always reads the latest
   // without recreating the PollingManager on every settings change.
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+  const accountSignature = settings.repos
+    .map((repo) => `${repo.owner}/${repo.name}:${repo.githubAccount ?? ''}`)
+    .sort()
+    .join('|');
 
   // Initialize client and start polling
   useEffect(() => {
@@ -25,10 +36,23 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
       log.debug('polling deferred — not yet enabled');
       return;
     }
+    log.debug('configuring repository account bindings', { accountSignature });
     const pat = settings.gitHub.personalAccessToken;
     const tokenGetter = () => getGitHubToken(pat);
-
-    const client = initClient(tokenGetter);
+    const defaultClient = initClient(tokenGetter);
+    const clientsByAccount = new Map<string, ReturnType<typeof initClient>>([['', defaultClient]]);
+    const ensureRepoClient = (repo: (typeof settings.repos)[number]) => {
+      const account = repo.githubAccount?.trim() || undefined;
+      const accountKey = account?.toLowerCase() ?? '';
+      let repoClient = clientsByAccount.get(accountKey);
+      if (!repoClient) {
+        repoClient = initClient(() => getGitHubToken(pat, account), account);
+        clientsByAccount.set(accountKey, repoClient);
+      }
+      bindRepoClient(repo.owner, repo.name, account);
+      return repoClient;
+    };
+    for (const repo of settingsRef.current.repos) ensureRepoClient(repo);
 
     // Detect username
     (async () => {
@@ -53,13 +77,10 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
 
     // The poll function reads from the ref so it always uses current repos
     const pollFn = async (): Promise<PullRequestWithChecks[]> => {
-      const c = getClient();
-      if (!c) {
+      if (!getClient()) {
         log.error('poll skipped — GitHub client not initialized');
         throw new Error('GitHub client not initialized');
       }
-      c.markPollStart();
-
       const enabledRepos = settingsRef.current.repos.filter((r) => r.enabled);
       if (enabledRepos.length === 0) {
         log.debug('poll skipped — no enabled repos');
@@ -78,42 +99,36 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
 
       const pollStart = performance.now();
       log.info('poll cycle start', { repoCount: enabledRepos.length });
-      const allPrs: PullRequestWithChecks[] = [];
+      const perRepo = await Promise.all(
+        enabledRepos.map(async (repo) => {
+          const repoLabel = `${repo.owner}/${repo.name}`;
+          const repoClient = ensureRepoClient(repo);
+          repoClient.markPollStart();
+          try {
+            const repoStart = performance.now();
+            const prs = await pollOpenPrsAggregate(repoClient, repo.owner, repo.name);
 
-      for (let i = 0; i < enabledRepos.length; i++) {
-        // Stagger: wait 500ms between repos (skip first)
-        if (i > 0) {
-          await new Promise((r) => setTimeout(r, 500));
-        }
-        const repo = enabledRepos[i]!;
-        const repoLabel = `${repo.owner}/${repo.name}`;
-        try {
-          const repoStart = performance.now();
-          const prs = await pollOpenPrsAggregate(c, repo.owner, repo.name);
-          for (const pr of prs) {
-            allPrs.push(pr);
+            log.debug('poll: repo fetched', {
+              repo: repoLabel,
+              prs: prs.length,
+              durationMs: Math.round(performance.now() - repoStart),
+            });
+            return prs;
+          } catch (err) {
+            log.error('poll: repo failed — keeping last-known PRs', err, { repo: repoLabel });
+            return [...priorByKey.values()].filter((prior) => {
+              const p = prior.pullRequest;
+              return p.repoOwner === repo.owner && p.repoName === repo.name;
+            });
           }
-
-          log.debug('poll: repo fetched', {
-            repo: repoLabel,
-            prs: prs.length,
-            durationMs: Math.round(performance.now() - repoStart),
-          });
-        } catch (err) {
-          log.error('poll: repo failed — keeping last-known PRs', err, { repo: repoLabel });
-          for (const prior of priorByKey.values()) {
-            const p = prior.pullRequest;
-            if (p.repoOwner === repo.owner && p.repoName === repo.name) {
-              allPrs.push(prior);
-            }
-          }
-        }
-      }
+        }),
+      );
+      const allPrs = perRepo.flat();
 
       log.info('poll cycle done', {
         totalPrs: allPrs.length,
         durationMs: Math.round(performance.now() - pollStart),
-        rateLimitRemaining: c.getGraphqlRateLimit().remaining,
+        accounts: [...new Set(enabledRepos.map((repo) => repo.githubAccount || 'active'))],
       });
 
       return allPrs;
@@ -122,7 +137,10 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
     const intervalMs = (settings.gitHub.pollIntervalSeconds || 60) * 1000;
     const manager = new PollingManager(pollFn, intervalMs);
 
-    manager.rateLimitChecker = () => client.isRateLimitLow;
+    manager.rateLimitChecker = () =>
+      settingsRef.current.repos
+        .filter((repo) => repo.enabled)
+        .some((repo) => getClientForRepo(repo.owner, repo.name)?.isRateLimitLow);
 
     manager.onResult = (results) => {
       usePrStore.getState().setPullRequests(results);
@@ -130,17 +148,30 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
 
       // REST and GraphQL are separate pools — surface whichever is tighter
       // (polling spends GraphQL points; cold paths still spend REST).
-      const rest = client.getRateLimit();
-      const graphql = client.getGraphqlRateLimit();
-      const rl =
-        rest.remaining >= 0 && (graphql.remaining < 0 || rest.remaining < graphql.remaining)
-          ? rest
-          : graphql;
-      if (rl.remaining >= 0) {
+      const limits = settingsRef.current.repos
+        .filter((repo) => repo.enabled)
+        .flatMap((repo) => {
+          const repoClient = getClientForRepo(repo.owner, repo.name);
+          if (!repoClient) return [];
+          return [
+            { ...repoClient.getRateLimit(), pool: 'rest' as const, login: repoClient.account },
+            {
+              ...repoClient.getGraphqlRateLimit(),
+              pool: 'graphql' as const,
+              login: repoClient.account,
+            },
+          ];
+        })
+        .filter((limit) => limit.remaining >= 0)
+        .sort((a, b) => a.remaining - b.remaining);
+      const rl = limits[0];
+      if (rl) {
         usePrStore.getState().setRateLimit({
           remaining: rl.remaining,
           limit: rl.total,
           resetAt: rl.reset ?? new Date(),
+          pool: rl.pool,
+          login: rl.login || 'active',
         });
       }
 
@@ -154,7 +185,12 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
           saveCachedPRs(repo.owner, repo.name, repoPrs);
         }
       }
-      saveCachedEtags(client.getEtagEntries());
+      const accountClients = new Set(
+        enabledRepos.map((repo) => getClientForRepo(repo.owner, repo.name)).filter(Boolean),
+      );
+      saveCachedEtags(
+        [...accountClients].flatMap((accountClient) => accountClient?.getEtagEntries() ?? []),
+      );
     };
 
     manager.onError = (error) => {
@@ -165,13 +201,17 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
     // Fetch closed PRs once
     (async () => {
       try {
-        const closedResults: PullRequestWithChecks[] = [];
-        for (const repo of settingsRef.current.repos.filter((r) => r.enabled)) {
-          const closedPrs = await getClosedPRs(client, repo.owner, repo.name);
-          for (const pr of closedPrs) {
-            closedResults.push(aggregatePrWithChecks(pr, []));
-          }
-        }
+        const closedResults = (
+          await Promise.all(
+            settingsRef.current.repos
+              .filter((r) => r.enabled)
+              .map(async (repo) => {
+                const repoClient = ensureRepoClient(repo);
+                const closedPrs = await getClosedPRs(repoClient, repo.owner, repo.name);
+                return closedPrs.map((pr) => aggregatePrWithChecks(pr, []));
+              }),
+          )
+        ).flat();
         usePrStore.getState().setClosedPullRequests(closedResults);
       } catch {
         // Closed PR fetching is best-effort
@@ -191,7 +231,12 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
     // Only restart polling when auth, interval, or enabled changes.
     // Repo list changes are picked up via the ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, settings.gitHub.personalAccessToken, settings.gitHub.pollIntervalSeconds]);
+  }, [
+    enabled,
+    settings.gitHub.personalAccessToken,
+    settings.gitHub.pollIntervalSeconds,
+    accountSignature,
+  ]);
 
   const pollNow = useCallback(async () => {
     if (pollingRef.current) {

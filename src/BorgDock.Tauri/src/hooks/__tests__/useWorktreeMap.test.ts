@@ -1,12 +1,18 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppSettings } from '@/types';
-import type { WorktreeInfo } from '@/types/worktree';
+import type { WorktreeCacheRepo, WorktreeEntry, WorktreeSnapshot } from '@/types/worktree';
 
 const mockInvoke = vi.fn();
+const mockListen = vi.fn();
+const mockUnlisten = vi.fn();
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: (...args: unknown[]) => mockListen(...args),
 }));
 
 import { useUiStore } from '@/stores/ui-store';
@@ -16,7 +22,7 @@ import { useUiStore } from '@/stores/ui-store';
 // side-effect of registering the store.
 void useUiStore;
 
-import { useWorktreeMap } from '../useWorktreeMap';
+import { buildWorktreeBranchMap, useWorktreeMap, worktreeMapsEqual } from '../useWorktreeMap';
 
 function makeSettings(repos: AppSettings['repos'] = []): AppSettings {
   return {
@@ -46,8 +52,6 @@ function makeSettings(repos: AppSettings['repos'] = []): AppSettings {
       deduplicationWindowSeconds: 60,
       channels: { tray: true, system: true, sound: true, emailDigest: false },
     },
-    claudeCode: { defaultPostFixAction: 'none' },
-    claudeApi: { model: 'claude-sonnet-4-20250514', maxTokens: 4096, prSummaryEnabled: true, diffExplanationsEnabled: true, reviewNudgePhrasingEnabled: false, commitMessageSuggestionsEnabled: false },
     claudeReview: { botUsername: '' },
     updates: { autoCheckEnabled: true, autoDownload: false },
     azureDevOps: {
@@ -66,29 +70,42 @@ function makeSettings(repos: AppSettings['repos'] = []): AppSettings {
       updatePrStatusWhenWiDone: false,
     },
     sql: { connections: [], readOnlyByDefault: true, confirmDestructiveWithoutWhere: true },
-    repoPriority: {},
   };
 }
 
-function makeWorktreeInfo(overrides: Partial<WorktreeInfo> = {}): WorktreeInfo {
+function wt(overrides: Partial<WorktreeEntry> = {}): WorktreeEntry {
   return {
     path: '/repo/.worktrees/slot1',
     branchName: 'feature-branch',
     isMainWorktree: false,
-    status: 'clean',
-    uncommittedCount: 0,
-    ahead: 0,
-    behind: 0,
-    commitSha: 'abc123',
     ...overrides,
   };
 }
 
+function repoSnap(basePath: string, entries: WorktreeEntry[], error?: string): WorktreeCacheRepo {
+  return { repo: { owner: 'o', name: 'r', basePath }, entries, fetchedAt: 1, error };
+}
+
+const oneRepo = () =>
+  makeSettings([
+    { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
+  ]);
+
+/** Capture the `worktrees-updated` handler so tests can push snapshots. */
+let updatedHandler: ((event: { payload: WorktreeSnapshot }) => void) | null = null;
+
 describe('useWorktreeMap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
-    // Reset the worktree map in the store
+    updatedHandler = null;
+    mockListen.mockImplementation((_name: string, cb: typeof updatedHandler) => {
+      updatedHandler = cb;
+      return Promise.resolve(mockUnlisten);
+    });
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'worktree_cache_get_all') return Promise.resolve([]);
+      return Promise.resolve(undefined);
+    });
     useUiStore.getState().setWorktreeBranchMap(new Map());
   });
 
@@ -100,252 +117,179 @@ describe('useWorktreeMap', () => {
     const settings = makeSettings([
       { owner: 'o', name: 'r', enabled: false, worktreeBasePath: '/path', worktreeSubfolder: '' },
     ]);
-
     renderHook(() => useWorktreeMap(settings));
-
-    const map = useUiStore.getState().worktreeBranchMap;
-    expect(map.size).toBe(0);
+    expect(useUiStore.getState().worktreeBranchMap.size).toBe(0);
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  it('sets empty map when repos have no worktreeBasePath', () => {
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
-    const map = useUiStore.getState().worktreeBranchMap;
-    expect(map.size).toBe(0);
-  });
-
-  it('fetches worktrees and sets the branch map', async () => {
-    mockInvoke.mockResolvedValue([
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot1', branchName: 'feature-a' }),
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot2', branchName: 'feature-b' }),
-    ]);
-
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
-    await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('list_worktrees', { basePath: '/repo' });
+  it('reads the cache snapshot on mount and builds the branch map', async () => {
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'worktree_cache_get_all') {
+        return Promise.resolve([
+          repoSnap('/repo', [
+            wt({ path: '/repo', branchName: 'main', isMainWorktree: true }),
+            wt({ path: '/repo/.worktrees/slot1', branchName: 'feature-a' }),
+            wt({ path: '/repo/.worktrees/slot2', branchName: 'Feature-B' }),
+            wt({ path: '/repo/.worktrees/slot3', branchName: '' }),
+          ]),
+        ]);
+      }
+      return Promise.resolve(undefined);
     });
+
+    renderHook(() => useWorktreeMap(oneRepo()));
 
     await vi.waitFor(() => {
       const map = useUiStore.getState().worktreeBranchMap;
       expect(map.size).toBe(2);
-      expect(map.get('feature-a')).toEqual({
-        slotName: 'slot1',
-        branchName: 'feature-a',
-        fullPath: '/repo/.worktrees/slot1',
-      });
-      expect(map.get('feature-b')).toEqual({
-        slotName: 'slot2',
-        branchName: 'feature-b',
-        fullPath: '/repo/.worktrees/slot2',
-      });
     });
+    const map = useUiStore.getState().worktreeBranchMap;
+    expect(map.get('feature-a')).toEqual({
+      slotName: 'slot1',
+      branchName: 'feature-a',
+      fullPath: '/repo/.worktrees/slot1',
+    });
+    // key lowercased, branchName preserved; main + empty-branch skipped
+    expect(map.get('feature-b')?.branchName).toBe('Feature-B');
+    expect(map.has('main')).toBe(false);
+    expect(mockInvoke).toHaveBeenCalledWith('worktree_cache_get_all');
+    expect(mockInvoke).toHaveBeenCalledWith('worktree_cache_refresh');
+    expect(mockInvoke).not.toHaveBeenCalledWith('list_worktrees', expect.anything());
   });
 
-  it('skips main worktrees', async () => {
-    mockInvoke.mockResolvedValue([
-      makeWorktreeInfo({ path: '/repo', branchName: 'main', isMainWorktree: true }),
-      makeWorktreeInfo({
-        path: '/repo/.worktrees/slot1',
-        branchName: 'feature-a',
-        isMainWorktree: false,
-      }),
-    ]);
+  it('ignores snapshot repos that are not in the enabled settings', async () => {
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'worktree_cache_get_all') {
+        return Promise.resolve([
+          repoSnap('/repo', [wt({ branchName: 'mine' })]),
+          repoSnap('/other', [wt({ path: '/other/.worktrees/x', branchName: 'theirs' })]),
+        ]);
+      }
+      return Promise.resolve(undefined);
+    });
 
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
+    renderHook(() => useWorktreeMap(oneRepo()));
 
     await vi.waitFor(() => {
-      const map = useUiStore.getState().worktreeBranchMap;
-      expect(map.size).toBe(1);
-      expect(map.has('main')).toBe(false);
-      expect(map.has('feature-a')).toBe(true);
+      expect(useUiStore.getState().worktreeBranchMap.has('mine')).toBe(true);
     });
+    expect(useUiStore.getState().worktreeBranchMap.has('theirs')).toBe(false);
   });
 
-  it('skips worktrees without branchName', async () => {
-    mockInvoke.mockResolvedValue([
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot1', branchName: '' }),
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot2', branchName: 'feature-a' }),
-    ]);
+  it('subscribes to worktrees-updated and rebuilds the map from the event payload', async () => {
+    renderHook(() => useWorktreeMap(oneRepo()));
 
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
-    await vi.waitFor(() => {
-      const map = useUiStore.getState().worktreeBranchMap;
-      expect(map.size).toBe(1);
-      expect(map.has('feature-a')).toBe(true);
-    });
-  });
-
-  it('lowercases the branch name key in the map', async () => {
-    mockInvoke.mockResolvedValue([
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot1', branchName: 'Feature-Branch' }),
-    ]);
-
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
-    await vi.waitFor(() => {
-      const map = useUiStore.getState().worktreeBranchMap;
-      expect(map.has('feature-branch')).toBe(true);
-      expect(map.get('feature-branch')!.branchName).toBe('Feature-Branch');
-    });
-  });
-
-  it('handles invoke errors gracefully per repo', async () => {
-    mockInvoke.mockRejectedValue(new Error('disk error'));
-
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
-    await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalled();
-    });
-
-    // Should still set an empty map, not crash
-    await vi.waitFor(() => {
-      const map = useUiStore.getState().worktreeBranchMap;
-      expect(map.size).toBe(0);
-    });
-  });
-
-  it('polls every 30 seconds', async () => {
-    mockInvoke.mockResolvedValue([
-      makeWorktreeInfo({ path: '/repo/.worktrees/slot1', branchName: 'feature-a' }),
-    ]);
-
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
-    await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledTimes(1);
-    });
-
-    // Advance 30 seconds
-    await act(async () => {
-      vi.advanceTimersByTime(30_000);
-    });
-
-    await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledTimes(2);
-    });
-
-    // Advance another 30 seconds
-    await act(async () => {
-      vi.advanceTimersByTime(30_000);
-    });
-
-    await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledTimes(3);
-    });
-  });
-
-  it('cleans up interval on unmount', async () => {
-    mockInvoke.mockResolvedValue([]);
-
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    const { unmount } = renderHook(() => useWorktreeMap(settings));
-
-    await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledTimes(1);
-    });
-
-    unmount();
-
-    await act(async () => {
-      vi.advanceTimersByTime(60_000);
-    });
-
-    // Should not have been called again after unmount
-    expect(mockInvoke).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not update map after cancelled (unmount)', async () => {
-    let resolveInvoke: (v: WorktreeInfo[]) => void;
-    mockInvoke.mockImplementation(
-      () =>
-        new Promise<WorktreeInfo[]>((resolve) => {
-          resolveInvoke = resolve;
-        }),
+    await vi.waitFor(() =>
+      expect(mockListen).toHaveBeenCalledWith('worktrees-updated', expect.any(Function)),
     );
 
-    const settings = makeSettings([
-      { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
-    ]);
-
-    const { unmount } = renderHook(() => useWorktreeMap(settings));
-
-    // Unmount before invoke resolves
-    unmount();
-
-    // Now resolve — should be a no-op because cancelled=true
-    await act(async () => {
-      resolveInvoke!([
-        makeWorktreeInfo({ path: '/repo/.worktrees/slot1', branchName: 'late-branch' }),
-      ]);
+    act(() => {
+      updatedHandler?.({
+        payload: [
+          repoSnap('/repo', [wt({ path: '/repo/.worktrees/slot9', branchName: 'pushed' })]),
+        ],
+      });
     });
 
-    // Map should remain empty (the cancelled check prevents updating)
-    const map = useUiStore.getState().worktreeBranchMap;
-    expect(map.has('late-branch')).toBe(false);
+    expect(useUiStore.getState().worktreeBranchMap.get('pushed')?.slotName).toBe('slot9');
   });
 
-  it('handles multiple repos with worktreeBasePath', async () => {
-    mockInvoke
-      .mockResolvedValueOnce([
-        makeWorktreeInfo({ path: '/repo1/.worktrees/s1', branchName: 'branch-a' }),
-      ])
-      .mockResolvedValueOnce([
-        makeWorktreeInfo({ path: '/repo2/.worktrees/s2', branchName: 'branch-b' }),
-      ]);
+  it('does not write the store when the derived map is unchanged', async () => {
+    const snapshot = [repoSnap('/repo', [wt({ branchName: 'feature-a' })])];
+    mockInvoke.mockImplementation((cmd: string) =>
+      Promise.resolve(cmd === 'worktree_cache_get_all' ? snapshot : undefined),
+    );
 
-    const settings = makeSettings([
-      { owner: 'o1', name: 'r1', enabled: true, worktreeBasePath: '/repo1', worktreeSubfolder: '' },
-      { owner: 'o2', name: 'r2', enabled: true, worktreeBasePath: '/repo2', worktreeSubfolder: '' },
-    ]);
-
-    renderHook(() => useWorktreeMap(settings));
-
+    renderHook(() => useWorktreeMap(oneRepo()));
     await vi.waitFor(() => {
-      const map = useUiStore.getState().worktreeBranchMap;
-      expect(map.size).toBe(2);
-      expect(map.has('branch-a')).toBe(true);
-      expect(map.has('branch-b')).toBe(true);
+      expect(useUiStore.getState().worktreeBranchMap.has('feature-a')).toBe(true);
     });
+    const before = useUiStore.getState().worktreeBranchMap;
+
+    act(() => {
+      updatedHandler?.({ payload: snapshot });
+    });
+
+    // Same keys + same values → same Map instance (no re-render trigger).
+    expect(useUiStore.getState().worktreeBranchMap).toBe(before);
+
+    act(() => {
+      updatedHandler?.({
+        payload: [
+          repoSnap('/repo', [wt({ path: '/repo/.worktrees/slot2', branchName: 'feature-a' })]),
+        ],
+      });
+    });
+    expect(useUiStore.getState().worktreeBranchMap).not.toBe(before);
+    expect(useUiStore.getState().worktreeBranchMap.get('feature-a')?.slotName).toBe('slot2');
+  });
+
+  it('never installs a polling timer', () => {
+    vi.useFakeTimers();
+    renderHook(() => useWorktreeMap(oneRepo()));
+    const calls = mockInvoke.mock.calls.length;
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(mockInvoke.mock.calls.length).toBe(calls);
+  });
+
+  it('unlistens on unmount and ignores late snapshots', async () => {
+    let resolveGetAll: (v: WorktreeSnapshot) => void = () => {};
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'worktree_cache_get_all') {
+        return new Promise<WorktreeSnapshot>((resolve) => {
+          resolveGetAll = resolve;
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+
+    const { unmount } = renderHook(() => useWorktreeMap(oneRepo()));
+    await vi.waitFor(() => expect(mockListen).toHaveBeenCalled());
+    unmount();
+    await act(async () => {
+      resolveGetAll([repoSnap('/repo', [wt({ branchName: 'late' })])]);
+    });
+
+    expect(useUiStore.getState().worktreeBranchMap.has('late')).toBe(false);
+    await vi.waitFor(() => expect(mockUnlisten).toHaveBeenCalled());
+  });
+
+  it('does not re-subscribe when the repos array identity changes but base paths do not', async () => {
+    const { rerender } = renderHook(({ s }) => useWorktreeMap(s), {
+      initialProps: { s: oneRepo() },
+    });
+    await vi.waitFor(() => expect(mockListen).toHaveBeenCalledTimes(1));
+
+    rerender({ s: oneRepo() }); // new array, same base path
+    expect(mockListen).toHaveBeenCalledTimes(1);
+
+    rerender({
+      s: makeSettings([
+        { owner: 'o', name: 'r', enabled: true, worktreeBasePath: '/repo', worktreeSubfolder: '' },
+        {
+          owner: 'o2',
+          name: 'r2',
+          enabled: true,
+          worktreeBasePath: '/repo2',
+          worktreeSubfolder: '',
+        },
+      ]),
+    });
+    await vi.waitFor(() => expect(mockListen).toHaveBeenCalledTimes(2));
   });
 
   it('handles backslash paths (Windows)', async () => {
-    mockInvoke.mockResolvedValue([
-      makeWorktreeInfo({ path: 'C:\\repos\\project\\.worktrees\\slot1', branchName: 'win-branch' }),
-    ]);
+    mockInvoke.mockImplementation((cmd: string) =>
+      Promise.resolve(
+        cmd === 'worktree_cache_get_all'
+          ? [
+              repoSnap('C:\\repos\\project', [
+                wt({ path: 'C:\\repos\\project\\.worktrees\\slot1', branchName: 'win-branch' }),
+              ]),
+            ]
+          : undefined,
+      ),
+    );
 
     const settings = makeSettings([
       {
@@ -356,12 +300,36 @@ describe('useWorktreeMap', () => {
         worktreeSubfolder: '',
       },
     ]);
-
     renderHook(() => useWorktreeMap(settings));
 
     await vi.waitFor(() => {
-      const map = useUiStore.getState().worktreeBranchMap;
-      expect(map.get('win-branch')!.slotName).toBe('slot1');
+      expect(useUiStore.getState().worktreeBranchMap.get('win-branch')?.slotName).toBe('slot1');
     });
+  });
+});
+
+describe('buildWorktreeBranchMap / worktreeMapsEqual', () => {
+  it('builds only from requested base paths and skips main + branchless', () => {
+    const map = buildWorktreeBranchMap(
+      [
+        repoSnap('/a', [
+          wt({ path: '/a', branchName: 'main', isMainWorktree: true }),
+          wt({ path: '/a/.worktrees/w1', branchName: 'X' }),
+          wt({ path: '/a/.worktrees/w2', branchName: '' }),
+        ]),
+        repoSnap('/b', [wt({ path: '/b/.worktrees/w1', branchName: 'Y' })]),
+      ],
+      new Set(['/a']),
+    );
+    expect([...map.keys()]).toEqual(['x']);
+  });
+
+  it('compares by keys and mapping fields', () => {
+    const a = new Map([['x', { slotName: 'w1', branchName: 'X', fullPath: '/a/w1' }]]);
+    const b = new Map([['x', { slotName: 'w1', branchName: 'X', fullPath: '/a/w1' }]]);
+    const c = new Map([['x', { slotName: 'w2', branchName: 'X', fullPath: '/a/w2' }]]);
+    expect(worktreeMapsEqual(a, b)).toBe(true);
+    expect(worktreeMapsEqual(a, c)).toBe(false);
+    expect(worktreeMapsEqual(a, new Map())).toBe(false);
   });
 });

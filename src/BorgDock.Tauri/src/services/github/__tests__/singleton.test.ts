@@ -44,6 +44,17 @@ describe('GitHub singleton', () => {
     expect(getClient()).toBeNull();
   });
 
+  it('routes a repository to its selected GitHub account', async () => {
+    const { bindRepoClient, getClientForRepo, initClient } = await import('../singleton');
+    const defaultClient = initClient(vi.fn().mockResolvedValue('default-token'));
+    const workClient = initClient(vi.fn().mockResolvedValue('work-token'), 'Work-Login');
+
+    bindRepoClient('Owner', 'Repo', 'work-login');
+
+    expect(getClientForRepo('owner', 'repo')).toBe(workClient);
+    expect(getClientForRepo('other', 'repo')).toBe(defaultClient);
+  });
+
   it('resetClient is safe to call when already null', async () => {
     const { getClient, resetClient } = await import('../singleton');
 

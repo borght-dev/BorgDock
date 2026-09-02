@@ -35,7 +35,7 @@ vi.mock('@/services/github/mutations', () => ({
 }));
 
 vi.mock('@/services/github/singleton', () => ({
-  getClient: () => mockGetClient(),
+  getClientForRepo: () => mockGetClient(),
 }));
 
 function makePr(): PullRequestWithChecks {

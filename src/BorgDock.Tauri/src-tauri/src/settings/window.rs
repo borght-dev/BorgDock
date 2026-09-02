@@ -50,5 +50,5 @@ pub async fn open_settings_window(
         let _ = tx.send(result);
     })
     .map_err(|e| e.to_string())?;
-    rx.await.map_err(|e| e.to_string())?
+    crate::platform::window::main_thread_result(rx).await
 }

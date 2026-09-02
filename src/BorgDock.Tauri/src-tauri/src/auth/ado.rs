@@ -1,7 +1,7 @@
 //! ADO auth resolver — az CLI token fetching + PAT header formatting.
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 use crate::git::hidden_command;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
 use std::io;
 use std::sync::{Arc, Mutex};
@@ -164,7 +164,15 @@ pub fn az_cli_token() -> Result<String, AdoAuthError> {
 /// whether it exited successfully. Does not test login state; that
 /// surfaces naturally when a token fetch is attempted.
 #[tauri::command]
-pub fn az_cli_available() -> bool {
+pub async fn az_cli_available() -> bool {
+    tokio::task::spawn_blocking(az_cli_available_blocking)
+        .await
+        .unwrap_or(false)
+}
+
+/// Blocking body of `az_cli_available` (spawns `az --version`, which is a
+/// Python start-up — hundreds of ms). Always call through `spawn_blocking`.
+pub(crate) fn az_cli_available_blocking() -> bool {
     hidden_command(az_program())
         .arg("--version")
         .output()

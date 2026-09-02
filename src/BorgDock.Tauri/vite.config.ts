@@ -23,6 +23,55 @@ const webTreeSitterWasm = path
 
 const host = process.env.TAURI_DEV_HOST;
 
+/**
+ * Package name from a node_modules id — handles pnpm/bun nested layouts
+ * (`node_modules/.bun/<pkg>@<ver>/node_modules/<pkg>/...`) and scoped packages.
+ */
+function packageNameFromId(id: string): string | null {
+  const normalized = id.replace(/\\/g, "/");
+  const idx = normalized.lastIndexOf("node_modules/");
+  if (idx === -1) return null;
+  const rest = normalized.slice(idx + "node_modules/".length);
+  const segments = rest.split("/");
+  const first = segments[0] ?? "";
+  if (first.startsWith("@")) return `${first}/${segments[1] ?? ""}`;
+  return first;
+}
+
+const MARKDOWN_PREFIXES = [
+  "react-markdown",
+  "remark",
+  "rehype",
+  "micromark",
+  "mdast",
+  "unified",
+  "hast",
+  "unist",
+  "vfile",
+];
+
+/**
+ * Vendor chunking so the heavy libraries are shared, cacheable chunks that
+ * only the entries (or lazy components) that use them pull in. Notably the
+ * markdown stack must stay out of the main entry's preload graph — it's only
+ * reached via the lazily-loaded QuickReviewOverlay and the pop-out windows.
+ *
+ * `dompurify` is intentionally NOT grouped with markdown: the main window's
+ * work-item panels sanitize ADO HTML eagerly, so grouping it would drag the
+ * whole markdown chunk back into the main entry.
+ */
+function manualChunks(id: string): string | undefined {
+  const name = packageNameFromId(id);
+  if (!name) return undefined;
+  if (name === "react" || name === "react-dom" || name === "scheduler") return "vendor-react";
+  if (MARKDOWN_PREFIXES.some((prefix) => name.startsWith(prefix))) return "vendor-markdown";
+  if (name.startsWith("@codemirror/") || name.startsWith("@lezer/") || name === "codemirror") {
+    return "vendor-codemirror";
+  }
+  if (name === "web-tree-sitter") return "vendor-tree-sitter";
+  return undefined;
+}
+
 export default defineConfig({
   define: {
     __BORGDOCK_VERSION__: JSON.stringify(pkg.version),
@@ -86,7 +135,6 @@ export default defineConfig({
         "src/whats-new-main.tsx",
         "src/file-palette-main.tsx",
         "src/file-viewer-main.tsx",
-        "src/main-agent-overview.tsx",
         "src/settings-main.tsx",
         "src/test-setup.ts",
         "src/test-utils/**",
@@ -106,7 +154,10 @@ export default defineConfig({
     },
   },
   build: {
+    // WebView2 is evergreen Chromium — no need to down-level syntax.
+    target: "esnext",
     rollupOptions: {
+      output: { manualChunks },
       input: {
         main: path.resolve(__dirname, "index.html"),
         flyout: path.resolve(__dirname, "flyout.html"),
@@ -118,7 +169,6 @@ export default defineConfig({
         'whats-new': path.resolve(__dirname, "whats-new.html"),
         filepalette: path.resolve(__dirname, "file-palette.html"),
         fileviewer: path.resolve(__dirname, "file-viewer.html"),
-        'agent-overview': path.resolve(__dirname, "agent-overview.html"),
         settings: path.resolve(__dirname, "settings.html"),
       },
     },

@@ -89,9 +89,8 @@ pub fn normalize_root(raw: &str) -> String {
     //      Such paths can appear in cache keys even on unix — collapse case so
     //      callers passing the same root with different drive-letter casing
     //      collide on a single row.
-    let has_drive_prefix = s.len() >= 2
-        && s.as_bytes()[0].is_ascii_alphabetic()
-        && s.as_bytes()[1] == b':';
+    let has_drive_prefix =
+        s.len() >= 2 && s.as_bytes()[0].is_ascii_alphabetic() && s.as_bytes()[1] == b':';
     if cfg!(target_os = "windows") || has_drive_prefix {
         s = s.to_ascii_lowercase();
     }
@@ -110,16 +109,27 @@ impl Guard {
     /// Unconditionally insert the key (for tests). Prefer `try_claim` in
     /// production code so concurrent callers don't stack refreshes.
     pub fn new(set: &Arc<Mutex<HashSet<PathBuf>>>, key: PathBuf) -> Self {
-        set.lock().unwrap().insert(key.clone());
-        Self { set: set.clone(), key }
+        set.lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(key.clone());
+        Self {
+            set: set.clone(),
+            key,
+        }
     }
 
     /// Insert `key` only if absent. Returns `Some(Guard)` on success, `None`
     /// if another refresh for the same key is already in flight.
     pub fn try_claim(set: &Arc<Mutex<HashSet<PathBuf>>>, key: PathBuf) -> Option<Self> {
-        let inserted = set.lock().unwrap().insert(key.clone());
+        let inserted = set
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(key.clone());
         if inserted {
-            Some(Self { set: set.clone(), key })
+            Some(Self {
+                set: set.clone(),
+                key,
+            })
         } else {
             None
         }
@@ -198,7 +208,10 @@ pub fn init(state: &FileIndexCache) {
     let path = db_path();
     if let Some(parent) = path.parent() {
         if let Err(e) = std::fs::create_dir_all(parent) {
-            log::warn!("file_index cache: failed to create dir {}: {e}", parent.display());
+            log::warn!(
+                "file_index cache: failed to create dir {}: {e}",
+                parent.display()
+            );
             return;
         }
     }
@@ -206,10 +219,8 @@ pub fn init(state: &FileIndexCache) {
     match open_and_create(&path) {
         Some(conn) => install_conn(state, conn),
         None => {
-            let quarantine = path.with_extension(format!(
-                "db.corrupt-{}",
-                Utc::now().format("%Y%m%dT%H%M%S")
-            ));
+            let quarantine =
+                path.with_extension(format!("db.corrupt-{}", Utc::now().format("%Y%m%dT%H%M%S")));
             match std::fs::rename(&path, &quarantine) {
                 Ok(()) => {
                     log::warn!(
@@ -311,8 +322,14 @@ mod tests {
         let conn = memory_conn();
         let data = ListFilesResult {
             entries: vec![
-                FileEntry { rel_path: "a.ts".into(), size: 10 },
-                FileEntry { rel_path: "b/c.ts".into(), size: 20 },
+                FileEntry {
+                    rel_path: "a.ts".into(),
+                    size: 10,
+                },
+                FileEntry {
+                    rel_path: "b/c.ts".into(),
+                    size: 20,
+                },
             ],
             truncated: true,
         };
@@ -332,7 +349,10 @@ mod tests {
             &conn,
             "/repo",
             &ListFilesResult {
-                entries: vec![FileEntry { rel_path: "x.ts".into(), size: 1 }],
+                entries: vec![FileEntry {
+                    rel_path: "x.ts".into(),
+                    size: 1,
+                }],
                 truncated: false,
             },
         )
@@ -342,8 +362,14 @@ mod tests {
             "/repo",
             &ListFilesResult {
                 entries: vec![
-                    FileEntry { rel_path: "y.ts".into(), size: 2 },
-                    FileEntry { rel_path: "z.ts".into(), size: 3 },
+                    FileEntry {
+                        rel_path: "y.ts".into(),
+                        size: 2,
+                    },
+                    FileEntry {
+                        rel_path: "z.ts".into(),
+                        size: 3,
+                    },
                 ],
                 truncated: false,
             },
@@ -361,7 +387,10 @@ mod tests {
             &conn,
             "/one",
             &ListFilesResult {
-                entries: vec![FileEntry { rel_path: "one.ts".into(), size: 1 }],
+                entries: vec![FileEntry {
+                    rel_path: "one.ts".into(),
+                    size: 1,
+                }],
                 truncated: false,
             },
         )
@@ -370,7 +399,10 @@ mod tests {
             &conn,
             "/two",
             &ListFilesResult {
-                entries: vec![FileEntry { rel_path: "two.ts".into(), size: 2 }],
+                entries: vec![FileEntry {
+                    rel_path: "two.ts".into(),
+                    size: 2,
+                }],
                 truncated: false,
             },
         )
@@ -400,9 +432,15 @@ mod tests {
         let first = Guard::try_claim(&set, key.clone());
         assert!(first.is_some());
         let second = Guard::try_claim(&set, key.clone());
-        assert!(second.is_none(), "second claim must return None while first is live");
+        assert!(
+            second.is_none(),
+            "second claim must return None while first is live"
+        );
         drop(first);
         let third = Guard::try_claim(&set, key);
-        assert!(third.is_some(), "claim must succeed after previous guard drops");
+        assert!(
+            third.is_some(),
+            "claim must succeed after previous guard drops"
+        );
     }
 }

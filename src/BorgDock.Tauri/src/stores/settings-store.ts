@@ -44,16 +44,17 @@ const defaultSettings: AppSettings = {
     deduplicationWindowSeconds: 60,
     channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
-  claudeCode: {
+  agents: {
+    defaultProvider: 't3',
+    fallbackProvider: 'claude',
     defaultPostFixAction: 'commitAndNotify',
+    t3Model: 'claude-fable-5',
+    t3ModelInstance: 'claudeAgent',
   },
-  claudeApi: {
-    model: 'claude-sonnet-4-6',
-    maxTokens: 1024,
-    prSummaryEnabled: true,
-    diffExplanationsEnabled: true,
-    reviewNudgePhrasingEnabled: false,
-    commitMessageSuggestionsEnabled: false,
+  summaries: {
+    enabled: true,
+    provider: 'claude',
+    model: 'sonnet',
   },
   claudeReview: {
     botUsername: 'claude[bot]',
@@ -82,7 +83,6 @@ const defaultSettings: AppSettings = {
     readOnlyByDefault: true,
     confirmDestructiveWithoutWhere: true,
   },
-  repoPriority: {},
 };
 
 function deepMerge<T>(target: T, source: Partial<T>): T {
@@ -140,11 +140,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         }
       }
 
-      const claudeKey = await invoke<string | null>('get_credential', {
-        service: 'borgdock:claude_api',
-      });
-      if (claudeKey) settings.claudeApi.apiKey = claudeKey;
-
       if (settings.sql?.connections) {
         for (const conn of settings.sql.connections) {
           const pw = await invoke<string | null>('get_credential', {
@@ -181,12 +176,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
           secret: settings.azureDevOps.personalAccessToken,
         });
       }
-      if (settings.claudeApi.apiKey) {
-        await invoke('set_credential', {
-          service: 'borgdock:claude_api',
-          secret: settings.claudeApi.apiKey,
-        });
-      }
       if (settings.sql?.connections) {
         for (const conn of settings.sql.connections) {
           if (conn.password) {
@@ -202,7 +191,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       const stripped = JSON.parse(JSON.stringify(settings)) as AppSettings;
       delete stripped.gitHub.personalAccessToken;
       delete stripped.azureDevOps.personalAccessToken;
-      delete stripped.claudeApi.apiKey;
       if (stripped.sql?.connections) {
         for (const conn of stripped.sql.connections) {
           delete conn.password;

@@ -20,7 +20,7 @@ const mockGetPRCommits = vi.fn();
 const mockGetReviewThreads = vi.fn();
 
 vi.mock('@/services/github/singleton', () => ({
-  getClient: () => mockGetClient(),
+  getClientForRepo: () => mockGetClient(),
 }));
 
 vi.mock('@/services/github', () => ({
@@ -59,7 +59,9 @@ vi.mock('../diff/DiffToolbar', () => ({
     <div data-testid="diff-toolbar">
       Toolbar
       {onSubmitReview && (
-        <button type="button" onClick={onSubmitReview}>Submit review</button>
+        <button type="button" onClick={onSubmitReview}>
+          Submit review
+        </button>
       )}
     </div>
   ),
@@ -74,10 +76,15 @@ vi.mock('../ReviewComposer', () => ({
     onCancel: () => void;
   }) => (
     <div data-testid="review-composer">
-      <button type="button" onClick={() => onSubmit({ kind: 'review', decision: 'approve', body: 'looks good' })}>
+      <button
+        type="button"
+        onClick={() => onSubmit({ kind: 'review', decision: 'approve', body: 'looks good' })}
+      >
         Submit approve
       </button>
-      <button type="button" onClick={onCancel}>Cancel</button>
+      <button type="button" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }));

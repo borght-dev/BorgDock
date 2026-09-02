@@ -231,7 +231,7 @@ describe('PrDetailApp', () => {
     const consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { unmount } = render(<PrDetailApp />);
     unmount();
-    resolveSettings({ azureDevOps: {}, gitHub: {}, repos: [], ui: {}, claudeApi: {} });
+    resolveSettings({ azureDevOps: {}, gitHub: {}, repos: [], ui: {} });
 
     // wait a tick for any pending setState
     await new Promise((r) => setTimeout(r, 50));

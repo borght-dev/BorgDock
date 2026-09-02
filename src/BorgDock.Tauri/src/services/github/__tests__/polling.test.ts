@@ -233,7 +233,8 @@ describe('pollOpenPrsAggregate (adapter)', () => {
         },
       }),
     ]);
-    expect(pr!.pullRequest.requestedReviewers).toEqual(['alice', 'platform']);
+    expect(pr!.pullRequest.requestedReviewers).toEqual(['alice']);
+    expect(pr!.pullRequest.requestedTeams).toEqual(['platform']);
   });
 
   it('all-green check runs → overallStatus green', async () => {

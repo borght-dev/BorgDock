@@ -1,0 +1,5 @@
+/* Root reset for fixed-size palette/tool windows (sql, worktree, file palette,
+ * file viewer, work-item palette). Served from public/ instead of an inline
+ * <style> so Tauri's CSP nonce injection never kicks in — CodeMirror in the
+ * SQL window depends on 'unsafe-inline' staying effective. */
+html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; }

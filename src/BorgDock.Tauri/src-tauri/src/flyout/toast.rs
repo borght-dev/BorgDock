@@ -27,8 +27,7 @@ pub struct ToastPayload {
     pub pr_repo: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pr_number: Option<u32>,
-    /// Set on agent-overview "Claude needs your input" / "still waiting" toasts
-    /// so the card body and the Focus-pane action can call `focus_session_pane`.
+    /// Optional external session id for agent-related toasts.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
     #[serde(default)]
@@ -39,10 +38,7 @@ pub struct ToastPayload {
 /// Idempotent: if the flyout is already shown (glance or toast), we emit the
 /// payload and let the React app decide how to render it (stack, banner).
 #[tauri::command]
-pub async fn show_flyout_toast(
-    app: tauri::AppHandle,
-    payload: ToastPayload,
-) -> Result<(), String> {
+pub async fn show_flyout_toast(app: tauri::AppHandle, payload: ToastPayload) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
 
@@ -69,5 +65,5 @@ pub async fn show_flyout_toast(
     })
     .map_err(|e| e.to_string())?;
 
-    rx.await.map_err(|e| e.to_string())?
+    crate::platform::window::main_thread_result(rx).await
 }

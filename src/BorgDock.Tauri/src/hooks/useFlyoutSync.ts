@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { computeMergeScore } from '@/services/merge-score';
-import { sendOsNotification } from '@/services/notification';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useT3SessionStore } from '@/stores/t3-session-store';
 import type { PullRequestWithChecks } from '@/types';
 
 type TrayWorstState = 'failing' | 'pending' | 'passing' | 'idle';
@@ -89,6 +89,12 @@ export function useFlyoutSync() {
   const lastPollTime = lastPollTimeRaw ? lastPollTimeRaw.getTime() : null;
   const theme = useSettingsStore((s) => s.settings.ui.theme);
   const hotkey = useSettingsStore((s) => s.settings.ui.globalHotkey);
+  const agentAwaitingCount = useT3SessionStore(
+    (s) =>
+      s.sessions.filter(
+        (session) => session.status === 'waitingApproval' || session.status === 'waitingInput',
+      ).length,
+  );
 
   // Debounced sync — skip when nothing has changed
   const prevHashRef = useRef('');
@@ -138,8 +144,6 @@ export function useFlyoutSync() {
       const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
       const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
 
-      const agentAwaitingCount = agentAwaitingRef.current;
-
       // Cheap hash to skip redundant IPC
       const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${lastPollTime}:${agentAwaitingCount}`;
       if (hash === prevHashRef.current) return;
@@ -159,7 +163,7 @@ export function useFlyoutSync() {
         const parts: string[] = [`BorgDock — ${count} open PRs`];
         if (failingCount > 0) parts.push(`${failingCount} failing`);
         if (pendingCount > 0) parts.push(`${pendingCount} pending`);
-        if (agentAwaitingCount > 0) parts.push(`${agentAwaitingCount} Claude sessions waiting`);
+        if (agentAwaitingCount > 0) parts.push(`${agentAwaitingCount} T3 sessions waiting`);
         await invoke('update_tray_tooltip', { tooltip: parts.join(' · ') });
       } catch {
         // ignore — commands may not exist on older builds
@@ -171,7 +175,7 @@ export function useFlyoutSync() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [pullRequests, username, theme, hotkey, lastPollTime]);
+  }, [pullRequests, username, theme, hotkey, lastPollTime, agentAwaitingCount]);
 
   // Respond to flyout-request-data: re-send the current payload through the
   // same syncFlyout helper so the cache and the broadcast stay in sync.
@@ -266,95 +270,14 @@ export function useFlyoutSync() {
     };
   }, []);
 
-  // Track awaiting Claude sessions for tray badge merge.
-  const agentAwaitingRef = useRef(0);
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { listen } = await import('@tauri-apps/api/event');
-        const { invoke } = await import('@tauri-apps/api/core');
-        try {
-          const initial = await invoke<Array<{ state: string }>>('list_agent_sessions');
-          agentAwaitingRef.current = initial.filter((s) => s.state === 'awaiting').length;
-        } catch {
-          // ignore — command not registered yet on older builds
-        }
-        const fn = await listen<{ kind: string; session?: { state: string }; sessionId?: string }>(
-          'agent-sessions-changed',
-          () => {
-            // refetch the full list to recompute count; cheap because list is bounded
-            invoke<Array<{ state: string }>>('list_agent_sessions')
-              .then((all) => {
-                agentAwaitingRef.current = all.filter((s) => s.state === 'awaiting').length;
-              })
-              .catch(() => undefined);
-          },
-        );
-        if (cancelled) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
-
-  // Agent overview — toast notifications when a Claude session has been
-  // waiting on the user for too long.
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { listen } = await import('@tauri-apps/api/event');
-        const fn = await listen<{
-          sessionId: string;
-          repo: string;
-          worktree: string;
-          sinceMs: number;
-          escalation: boolean;
-        }>('agent-notify', (event) => {
-          const { sessionId, repo, worktree, sinceMs, escalation } = event.payload;
-          const since = Math.max(1, Math.round(sinceMs / 1000));
-          const title = escalation ? 'Claude still waiting' : 'Claude needs your input';
-          const body = `${repo}/${worktree} has been waiting ${since}s for your response.`;
-          void sendOsNotification({
-            title,
-            body,
-            severity: escalation ? 'warning' : 'info',
-            sessionId,
-            actions: [{ label: 'Focus pane', action: 'focus-pane' }],
-          }).catch(() => {});
-        });
-        if (cancelled) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      } catch (e) {
-        console.error('agent-notify listener failed', e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
-
   // Listen for fix/monitor events from flyout window
   const { fixWithClaude, monitorPr } = useClaudeActions();
   const fixRef = useRef(fixWithClaude);
-  fixRef.current = fixWithClaude;
   const monitorRef = useRef(monitorPr);
-  monitorRef.current = monitorPr;
+  useEffect(() => {
+    fixRef.current = fixWithClaude;
+    monitorRef.current = monitorPr;
+  }, [fixWithClaude, monitorPr]);
 
   useEffect(() => {
     let unlistenFix: (() => void) | undefined;

@@ -1,6 +1,8 @@
 import { createLogger } from '@/services/logger';
 import type {
   CheckRun,
+  PrReview,
+  PrReviewState,
   PullRequest,
   PullRequestCommit,
   PullRequestFileChange,
@@ -53,11 +55,18 @@ interface GitHubPullRequestDto {
   base: GitHubRefDto | null;
   labels: GitHubLabelDto[] | null;
   requested_reviewers: GitHubUserDto[] | null;
+  requested_teams?: GitHubTeamDto[] | null;
 }
 
 interface GitHubReviewDto {
   state: string;
   user: GitHubUserDto | null;
+  submitted_at?: string;
+}
+
+interface GitHubTeamDto {
+  slug: string;
+  name?: string;
 }
 
 interface GitHubCommitDto {
@@ -158,6 +167,8 @@ export async function getPRWithChecks(
   pr.mergeable = detail.mergeable ?? mergeableFromState(detail.mergeable_state) ?? undefined;
   pr.reviewStatus = aggregateReviewStatus(reviews);
   pr.requestedReviewers = detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
+  pr.requestedTeams = detail.requested_teams?.map((t) => t.slug) ?? pr.requestedTeams;
+  pr.latestReviews = latestReviewsFromRest(reviews);
 
   let checks: CheckRun[] = [];
   try {
@@ -304,6 +315,38 @@ export function aggregateReviewStatus(reviews: GitHubReviewDto[]): ReviewStatus 
   return 'none';
 }
 
+/** GitHub review states → {@link PrReviewState}; unknown states are dropped. */
+export function mapReviewState(state: string): PrReviewState | null {
+  switch (state.toUpperCase()) {
+    case 'APPROVED':
+      return 'approved';
+    case 'CHANGES_REQUESTED':
+      return 'changesRequested';
+    case 'COMMENTED':
+      return 'commented';
+    case 'DISMISSED':
+      return 'dismissed';
+    case 'PENDING':
+      return 'pending';
+    default:
+      return null;
+  }
+}
+
+/** Collapse the REST review timeline to the latest review per reviewer,
+ *  matching the GraphQL `latestReviews` shape the poll path produces. */
+export function latestReviewsFromRest(reviews: GitHubReviewDto[]): PrReview[] {
+  const byLogin = new Map<string, PrReview>();
+  for (const r of reviews) {
+    const login = r.user?.login;
+    const state = mapReviewState(r.state);
+    if (!login || !state) continue;
+    // Reviews arrive oldest-first; a later entry overwrites the earlier one.
+    byLogin.set(login.toLowerCase(), { authorLogin: login, state, submittedAt: r.submitted_at });
+  }
+  return [...byLogin.values()];
+}
+
 function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string): PullRequest {
   return {
     number: dto.number,
@@ -332,5 +375,6 @@ function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string
     mergedAt: dto.merged_at ?? undefined,
     closedAt: dto.closed_at ?? undefined,
     requestedReviewers: dto.requested_reviewers?.map((u) => u.login) ?? [],
+    requestedTeams: dto.requested_teams?.map((t) => t.slug) ?? [],
   };
 }

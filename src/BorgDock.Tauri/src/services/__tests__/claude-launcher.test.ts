@@ -310,7 +310,7 @@ describe('launchClaude', () => {
     vi.resetModules();
   });
 
-  it('invokes launch_claude_code with correct parameters', async () => {
+  it('invokes launch_agent_session with correct parameters', async () => {
     const mockInvoke = vi.fn().mockResolvedValue(undefined);
     vi.doMock('@tauri-apps/api/core', () => ({
       invoke: mockInvoke,
@@ -319,11 +319,13 @@ describe('launchClaude', () => {
     const { launchClaude } = await import('../claude-launcher');
     await launchClaude('/path/to/worktree', '/tmp/prompt.md', 'Fix PR #42');
 
-    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', {
+    expect(mockInvoke).toHaveBeenCalledWith('launch_agent_session', {
+      provider: 'claude',
       worktreePath: '/path/to/worktree',
       promptFile: '/tmp/prompt.md',
-      initialMessage: 'Fix PR #42',
-      claudeCodePath: '',
+      title: 'Fix PR #42',
+      executable: undefined,
+      model: undefined,
     });
   });
 
@@ -336,11 +338,13 @@ describe('launchClaude', () => {
     const { launchClaude } = await import('../claude-launcher');
     await launchClaude('/path/to/worktree', '/tmp/prompt.md');
 
-    expect(mockInvoke).toHaveBeenCalledWith('launch_claude_code', {
+    expect(mockInvoke).toHaveBeenCalledWith('launch_agent_session', {
+      provider: 'claude',
       worktreePath: '/path/to/worktree',
       promptFile: '/tmp/prompt.md',
-      initialMessage: '',
-      claudeCodePath: '',
+      title: '',
+      executable: undefined,
+      model: undefined,
     });
   });
 });
@@ -373,7 +377,7 @@ describe('performFixWithClaude', () => {
           { path: '/worktrees/fix-branch', branchName: 'fix/branch', isMainWorktree: false },
         ]);
       }
-      if (cmd === 'launch_claude_code') {
+      if (cmd === 'launch_agent_session') {
         return Promise.resolve(undefined);
       }
       return Promise.resolve(undefined);
@@ -406,9 +410,9 @@ describe('performFixWithClaude', () => {
       ],
     });
 
-    // Should have called launch_claude_code with existing worktree path
+    // Should have called the provider-neutral launcher with the existing worktree path.
     expect(mockInvoke).toHaveBeenCalledWith(
-      'launch_claude_code',
+      'launch_agent_session',
       expect.objectContaining({
         worktreePath: '/worktrees/fix-branch',
       }),
@@ -424,7 +428,7 @@ describe('performFixWithClaude', () => {
       if (cmd === 'create_worktree') {
         return Promise.resolve('/worktrees/.worktrees/fix-branch');
       }
-      if (cmd === 'launch_claude_code') {
+      if (cmd === 'launch_agent_session') {
         return Promise.resolve(undefined);
       }
       return Promise.resolve(undefined);
@@ -463,7 +467,7 @@ describe('performFixWithClaude', () => {
       branchName: 'fix/branch',
     });
     expect(mockInvoke).toHaveBeenCalledWith(
-      'launch_claude_code',
+      'launch_agent_session',
       expect.objectContaining({
         worktreePath: '/worktrees/.worktrees/fix-branch',
       }),
@@ -482,7 +486,7 @@ describe('performFixWithClaude', () => {
           },
         ]);
       }
-      if (cmd === 'launch_claude_code') {
+      if (cmd === 'launch_agent_session') {
         return Promise.resolve(undefined);
       }
       return Promise.resolve(undefined);
@@ -518,7 +522,7 @@ describe('performFixWithClaude', () => {
     // Should use the existing worktree, not create a new one
     expect(mockInvoke).not.toHaveBeenCalledWith('create_worktree', expect.anything());
     expect(mockInvoke).toHaveBeenCalledWith(
-      'launch_claude_code',
+      'launch_agent_session',
       expect.objectContaining({
         worktreePath: '/worktrees/my-branch',
       }),
@@ -530,7 +534,7 @@ describe('performFixWithClaude', () => {
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === 'list_worktrees') return Promise.resolve([]);
       if (cmd === 'create_worktree') return Promise.resolve('/worktrees/.worktrees/branch');
-      if (cmd === 'launch_claude_code') return Promise.resolve(undefined);
+      if (cmd === 'launch_agent_session') return Promise.resolve(undefined);
       return Promise.resolve(undefined);
     });
 

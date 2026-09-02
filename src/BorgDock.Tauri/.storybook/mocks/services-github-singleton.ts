@@ -30,6 +30,14 @@ export function getClient(): typeof DUMMY_CLIENT | null {
   return _client ?? DUMMY_CLIENT;
 }
 
+export function getClientForRepo(_owner: string, _repo: string): typeof DUMMY_CLIENT | null {
+  return getClient();
+}
+
+export function bindRepoClient(_owner: string, _repo: string, _account?: string): void {
+  // Storybook uses one deterministic client for every fixture repository.
+}
+
 export function initClient(tokenGetter: () => Promise<string>): typeof DUMMY_CLIENT {
   getControl().invocations.push({ command: 'github.initClient' });
   void tokenGetter; // consumed by PRDetailApp; ignored by mock

@@ -5,7 +5,13 @@ import type { CheckRun, PullRequest, PullRequestWithChecks } from '@/types';
 
 const log = createLogger('cache');
 
-export type TabDataType = 'commits' | 'files' | 'reviews' | 'comments' | 'reviewThreads';
+export type TabDataType =
+  | 'commits'
+  | 'files'
+  | 'reviews'
+  | 'comments'
+  | 'reviewThreads'
+  | 'summary';
 
 export interface CachedTabData<T> {
   data: T;

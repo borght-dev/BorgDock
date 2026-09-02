@@ -18,6 +18,7 @@ import { useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
+import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useTheme } from '@/hooks/useTheme';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
@@ -45,14 +46,21 @@ const forceWizardFromUrl = (() => {
 const log = createLogger('app');
 
 export default function App() {
-  const { settings, isLoading, loadSettings } = useSettingsStore();
+  // Individual selectors: subscribing to the whole store re-rendered the
+  // entire tree (MainWindow → PrList → every card) on any settings write.
+  const settings = useSettingsStore((s) => s.settings);
+  const isLoading = useSettingsStore((s) => s.isLoading);
+  const hasLoaded = useSettingsStore((s) => s.hasLoaded);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
   const activeSection = useUiStore((s) => s.activeSection);
   const isInitComplete = useInitStore((s) => s.isComplete);
   const [fadingOut, setFadingOut] = useState(false);
   // Latch: once init has completed, never show the splash again
   // (guards against window hide/show resetting transient state)
   const initCompletedRef = useRef(false);
-  if (isInitComplete) initCompletedRef.current = true;
+  useEffect(() => {
+    if (isInitComplete) initCompletedRef.current = true;
+  }, [isInitComplete]);
 
   // Apply theme from settings
   useTheme(settings.ui.theme);
@@ -98,14 +106,32 @@ export default function App() {
     }
   }, [isInitComplete, needsSetup]);
 
-  // Show the setup wizard window when setup is needed.
+  // Reveal the main window once settings have hydrated. Before `hasLoaded`
+  // the store still holds defaults (`setupComplete: false`), so `needsSetup`
+  // is spuriously true on every launch — acting on it here used to fire
+  // `show_setup_wizard`, which shrank the main window to 520×640 and left it
+  // there until the user dragged an edge (the OS min-size then snapped it
+  // back). Both paths now wait for the real settings.
+  //
+  // - setup needed      → show_setup_wizard (show + focus, no resize)
+  // - normal launch     → window_ready, unless the user opted to start in
+  //                       the tray (`ui.startMinimizedToTray`), in which case
+  //                       the tray click / global hotkey reveals it later.
+  const startMinimizedToTray = settings.ui.startMinimizedToTray;
   useEffect(() => {
+    if (!hasLoaded) return;
     if (needsSetup) {
       invoke('show_setup_wizard').catch(() => {
         // ignore
       });
+      return;
     }
-  }, [needsSetup]);
+    if (startMinimizedToTray) {
+      log.info('startMinimizedToTray set — leaving main hidden');
+      return;
+    }
+    invoke('window_ready').catch((err) => log.warn('window_ready failed', err));
+  }, [hasLoaded, needsSetup, startMinimizedToTray]);
 
   // Defer polling until init completes — otherwise the first cycle runs
   // before repos/auth are ready and idles for a full interval (~60s).
@@ -173,6 +199,7 @@ export default function App() {
 
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);
+  useT3Sessions(pollingEnabled);
 
   // Auto-update
   useAutoUpdate(settings);

@@ -8,9 +8,10 @@ export interface GitHubSettings {
   personalAccessToken?: string;
   pollIntervalSeconds: number;
   username: string;
+  /** Team slugs (or `org/slug`) the user belongs to — makes team review
+   *  requests count as "waiting on me". Merged with the auto-detected list. */
+  teams?: string[];
 }
-
-export type RepoPriority = 'high' | 'normal' | 'low';
 
 export interface RepoSettings {
   owner: string;
@@ -20,6 +21,8 @@ export interface RepoSettings {
   worktreeSubfolder: string;
   fixPromptTemplate?: string;
   favoriteWorktreePaths?: string[];
+  /** GitHub CLI login for this repo. Empty means the currently active account. */
+  githubAccount?: string;
 }
 
 export interface FilePaletteRoot {
@@ -64,19 +67,24 @@ export interface NotificationSettings {
   lastTestFiredAt?: number;
 }
 
-export interface ClaudeCodeSettings {
+export type AgentProvider = 'claude' | 'codex' | 't3';
+
+export interface AgentSettings {
+  defaultProvider: AgentProvider;
+  fallbackProvider: Exclude<AgentProvider, 't3'>;
   defaultPostFixAction: PostFixAction;
-  claudeCodePath?: string;
+  claudePath?: string;
+  codexPath?: string;
+  codexModel?: string;
+  t3Path?: string;
+  t3Model: string;
+  t3ModelInstance: string;
 }
 
-export interface ClaudeApiSettings {
-  apiKey?: string;
+export interface SummarySettings {
+  enabled: boolean;
+  provider: Exclude<AgentProvider, 't3'>;
   model: string;
-  maxTokens: number;
-  prSummaryEnabled: boolean;
-  diffExplanationsEnabled: boolean;
-  reviewNudgePhrasingEnabled: boolean;
-  commitMessageSuggestionsEnabled: boolean;
 }
 
 export interface ClaudeReviewSettings {
@@ -125,39 +133,25 @@ export interface SqlSettings {
   confirmDestructiveWithoutWhere: boolean;
 }
 
-export interface AgentOverviewSettings {
-  enabled?: boolean;
-  autoOpenOnStartup?: boolean;
-  awaitingNotifyAfterSeconds?: number;
-  awaitingNotifyEscalateSeconds?: number;
-  idleThresholdSeconds?: number;
-  endedThresholdSeconds?: number;
-  historyRetentionSeconds?: number;
-  otelExportIntervalMs?: number;
-  repoShortNames?: Record<string, string>;
-  windowState?: { x: number; y: number; width: number; height: number };
-  autoArchiveAfterHours?: number;
-}
-
 export interface PrDetailSettings {
   windowState?: { x: number; y: number; width: number; height: number };
 }
 
 export interface AppSettings {
+  /** Bumped by the Rust side after one-off migrations; see settings::migrate. */
+  schemaVersion?: number;
   setupComplete: boolean;
   gitHub: GitHubSettings;
   repos: RepoSettings[];
   ui: UiSettings;
   notifications: NotificationSettings;
-  claudeCode: ClaudeCodeSettings;
-  claudeApi: ClaudeApiSettings;
+  agents?: AgentSettings;
+  summaries?: SummarySettings;
   claudeReview: ClaudeReviewSettings;
   updates: UpdateSettings;
-  agentOverview?: AgentOverviewSettings;
   prDetail?: PrDetailSettings;
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
-  repoPriority: Record<string, RepoPriority>;
   filePaletteRoots?: FilePaletteRoot[];
   settingsWindow?: { x: number; y: number; width: number; height: number };
 }

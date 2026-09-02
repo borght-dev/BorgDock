@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { submitReview } from '@/services/github/mutations';
-import { getClient } from '@/services/github/singleton';
+import { getClientForRepo } from '@/services/github/singleton';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 
 export function useQuickReviewKeyboard() {
@@ -30,7 +30,7 @@ export function useQuickReviewKeyboard() {
         case 'a':
         case 'A': {
           e.preventDefault();
-          const client = getClient();
+          const client = getClientForRepo(pr.pullRequest.repoOwner, pr.pullRequest.repoName);
           if (!client) return;
           store.setSubmitting();
           try {
