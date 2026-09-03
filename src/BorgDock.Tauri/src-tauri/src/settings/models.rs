@@ -125,6 +125,8 @@ pub struct RemoteWorktreeRepoSettings {
     pub base_path: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    #[serde(default)]
+    pub favorite_worktree_paths: Vec<String>,
 }
 
 fn default_true() -> bool {
@@ -601,6 +603,9 @@ mod redesign_field_tests {
             identity_file: "C:/Users/koen/.ssh/id_ed25519".to_string(),
             base_path: "/Users/koen/Dev/fsp-horizon".to_string(),
             enabled: true,
+            favorite_worktree_paths: vec![
+                "/Users/koen/Dev/fsp-horizon/.worktrees/feature-a".to_string()
+            ],
         });
         let json = serde_json::to_string(&s).unwrap();
         let back: AppSettings = serde_json::from_str(&json).unwrap();
@@ -613,6 +618,20 @@ mod redesign_field_tests {
             back.remote_worktree_repos[0].ssh_target,
             "koen@example.test"
         );
+        assert_eq!(
+            back.remote_worktree_repos[0].favorite_worktree_paths.len(),
+            1
+        );
+    }
+
+    #[test]
+    fn remote_repo_without_favorites_defaults_to_empty() {
+        let remote: RemoteWorktreeRepoSettings = serde_json::from_str(
+            r#"{"id":"mac-fsp","sshTarget":"koen@example.test","basePath":"/repo"}"#,
+        )
+        .unwrap();
+
+        assert!(remote.favorite_worktree_paths.is_empty());
     }
 
     #[test]

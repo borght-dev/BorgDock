@@ -35,6 +35,7 @@ export interface RemoteWorktreeRepoSettings {
   identityFile: string;
   basePath: string;
   enabled: boolean;
+  favoriteWorktreePaths?: string[];
 }
 
 export interface FilePaletteRoot {

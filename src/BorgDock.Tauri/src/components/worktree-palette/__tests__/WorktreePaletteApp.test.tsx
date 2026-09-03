@@ -365,7 +365,22 @@ describe('WorktreePaletteApp', () => {
       },
     ];
     mockCommands(invoke, {
-      settings: { repos: [], ui: { worktreePaletteFavoritesOnly: true } },
+      settings: {
+        repos: [],
+        remoteWorktreeRepos: [
+          {
+            id: 'mac-fsp',
+            label: 'Mac mini',
+            owner: 'Gomocha-FSP',
+            name: 'fsp-horizon',
+            sshTarget: 'koenvdb@100.88.82.41',
+            identityFile: '',
+            basePath: '/Users/koenvdb/Dev/fsp-horizon',
+            enabled: true,
+          },
+        ],
+        ui: {},
+      },
       snapshot: remoteSnapshot,
       refresh: remoteSnapshot,
     });
@@ -375,11 +390,120 @@ describe('WorktreePaletteApp', () => {
     expect(screen.getAllByText('remote')).toHaveLength(2);
     expect(screen.getByText('feature/remote')).toBeTruthy();
     expect(document.querySelectorAll('[data-action="open-terminal"]')).toHaveLength(0);
-    expect(document.querySelectorAll('[data-worktree-row] [aria-pressed]')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-worktree-row] [aria-pressed]')).toHaveLength(2);
 
     const palette = document.querySelector('.bd-wt-palette');
     await act(async () => fireEvent.keyDown(palette!, { key: 'Enter' }));
     expect(invoke).not.toHaveBeenCalledWith('open_in_terminal', expect.anything());
+  });
+
+  it('saves favorites on the matching remote repository', async () => {
+    const invoke = await getInvoke();
+    const remotePath = '/Users/koenvdb/Dev/fsp-horizon/.worktrees/worktree1';
+    const remoteSnapshot: WorktreeSnapshot = [
+      {
+        repo: {
+          owner: 'Gomocha-FSP',
+          name: 'fsp-horizon',
+          basePath: '/Users/koenvdb/Dev/fsp-horizon',
+          remote: {
+            id: 'mac-fsp',
+            label: 'Mac mini',
+            sshTarget: 'koenvdb@100.88.82.41',
+          },
+        },
+        entries: [{ path: remotePath, branchName: 'feature/remote', isMainWorktree: false }],
+        fetchedAt: 1,
+      },
+    ];
+    mockCommands(invoke, {
+      settings: {
+        repos: [],
+        remoteWorktreeRepos: [
+          {
+            id: 'mac-fsp',
+            label: 'Mac mini',
+            owner: 'Gomocha-FSP',
+            name: 'fsp-horizon',
+            sshTarget: 'koenvdb@100.88.82.41',
+            identityFile: '',
+            basePath: '/Users/koenvdb/Dev/fsp-horizon',
+            enabled: true,
+          },
+        ],
+        ui: {},
+      },
+      snapshot: remoteSnapshot,
+      refresh: remoteSnapshot,
+    });
+    await renderPalette();
+
+    const star = document.querySelector('[data-worktree-row] [aria-pressed]') as HTMLElement | null;
+    expect(star).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(star!);
+      await Promise.resolve();
+    });
+
+    const saveCall = invoke.mock.calls.find((call) => call[0] === 'save_settings');
+    expect(saveCall).toBeTruthy();
+    const savedRemoteRepos = (
+      saveCall![1] as {
+        settings: { remoteWorktreeRepos: Array<{ favoriteWorktreePaths?: string[] }> };
+      }
+    ).settings.remoteWorktreeRepos;
+    expect(savedRemoteRepos[0]!.favoriteWorktreePaths).toContain(remotePath);
+  });
+
+  it('loads remote favorites and filters other remote worktrees in favorites-only mode', async () => {
+    const invoke = await getInvoke();
+    const favoritePath = '/Users/koenvdb/Dev/fsp-horizon/.worktrees/favorite';
+    const otherPath = '/Users/koenvdb/Dev/fsp-horizon/.worktrees/other';
+    const remoteSnapshot: WorktreeSnapshot = [
+      {
+        repo: {
+          owner: 'Gomocha-FSP',
+          name: 'fsp-horizon',
+          basePath: '/Users/koenvdb/Dev/fsp-horizon',
+          remote: {
+            id: 'mac-fsp',
+            label: 'Mac mini',
+            sshTarget: 'koenvdb@100.88.82.41',
+          },
+        },
+        entries: [
+          { path: favoritePath, branchName: 'feature/favorite', isMainWorktree: false },
+          { path: otherPath, branchName: 'feature/other', isMainWorktree: false },
+        ],
+        fetchedAt: 1,
+      },
+    ];
+    mockCommands(invoke, {
+      settings: {
+        repos: [],
+        remoteWorktreeRepos: [
+          {
+            id: 'mac-fsp',
+            label: 'Mac mini',
+            owner: 'Gomocha-FSP',
+            name: 'fsp-horizon',
+            sshTarget: 'koenvdb@100.88.82.41',
+            identityFile: '',
+            basePath: '/Users/koenvdb/Dev/fsp-horizon',
+            enabled: true,
+            favoriteWorktreePaths: [favoritePath],
+          },
+        ],
+        ui: { worktreePaletteFavoritesOnly: true },
+      },
+      snapshot: remoteSnapshot,
+      refresh: remoteSnapshot,
+    });
+    await renderPalette();
+
+    expect(screen.getByText('feature/favorite')).toBeTruthy();
+    expect(screen.queryByText('feature/other')).toBeNull();
+    expect(document.querySelector('[data-worktree-row] [aria-pressed="true"]')).toBeTruthy();
   });
 
   it('shows search input after loading with expected placeholder', async () => {
