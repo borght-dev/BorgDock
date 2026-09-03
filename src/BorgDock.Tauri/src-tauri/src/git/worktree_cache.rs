@@ -15,6 +15,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
+use super::remote_worktree::list_remote_worktrees;
 use super::worktree::{list_worktrees_bare_sync, natural_cmp, WorktreeEntry};
 
 /// Event broadcast to all windows after every refresh. Payload: `WorktreeSnapshot`.
@@ -31,6 +32,16 @@ pub struct CachedRepoRef {
     pub owner: String,
     pub name: String,
     pub base_path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote: Option<RemoteWorktreeRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteWorktreeRef {
+    pub id: String,
+    pub label: String,
+    pub ssh_target: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -74,10 +85,17 @@ impl WorktreeCache {
 
 fn sort_snapshot(items: &mut [CachedRepoWorktrees]) {
     items.sort_by(|a, b| {
-        let ka = format!("{}/{}", a.repo.owner, a.repo.name);
-        let kb = format!("{}/{}", b.repo.owner, b.repo.name);
+        let ka = snapshot_sort_key(&a.repo);
+        let kb = snapshot_sort_key(&b.repo);
         natural_cmp(&ka, &kb).then_with(|| natural_cmp(&a.repo.base_path, &b.repo.base_path))
     });
+}
+
+fn snapshot_sort_key(repo: &CachedRepoRef) -> String {
+    match &repo.remote {
+        Some(remote) => format!("1/{}/{}", remote.label, repo.name),
+        None => format!("0/{}/{}", repo.owner, repo.name),
+    }
 }
 
 /// Main worktree first, then natural order on path. `parse_worktree_list`
@@ -174,18 +192,49 @@ async fn refresh_inner(
             owner: r.owner.clone(),
             name: r.name.clone(),
             base_path: r.worktree_base_path.clone(),
+            remote: None,
         })
+        .collect();
+
+    let remote_targets: Vec<_> = settings
+        .remote_worktree_repos
+        .iter()
+        .filter(|r| r.enabled && !r.ssh_target.trim().is_empty() && !r.base_path.trim().is_empty())
+        .cloned()
         .collect();
 
     let mut set = tokio::task::JoinSet::new();
     for repo in targets.iter().cloned() {
         set.spawn_blocking(move || {
             let scanned = list_worktrees_bare_sync(&repo.base_path);
-            (repo, scanned)
+            let key = format!("local:{}", repo.base_path);
+            (key, repo, scanned)
+        });
+    }
+    for remote_repo in remote_targets.iter().cloned() {
+        set.spawn_blocking(move || {
+            let id = if remote_repo.id.trim().is_empty() {
+                format!("{}:{}", remote_repo.ssh_target, remote_repo.base_path)
+            } else {
+                remote_repo.id.clone()
+            };
+            let repo = CachedRepoRef {
+                owner: remote_repo.owner.clone(),
+                name: remote_repo.name.clone(),
+                base_path: remote_repo.base_path.clone(),
+                remote: Some(RemoteWorktreeRef {
+                    id: id.clone(),
+                    label: remote_repo.label.clone(),
+                    ssh_target: remote_repo.ssh_target.clone(),
+                }),
+            };
+            let scanned = list_remote_worktrees(&remote_repo);
+            let key = format!("remote:{id}:{}", repo.base_path);
+            (key, repo, scanned)
         });
     }
 
-    let mut scanned: Vec<(CachedRepoRef, Result<Vec<WorktreeEntry>, String>)> = Vec::new();
+    let mut scanned: Vec<(String, CachedRepoRef, Result<Vec<WorktreeEntry>, String>)> = Vec::new();
     while let Some(joined) = set.join_next().await {
         match joined {
             Ok(item) => scanned.push(item),
@@ -198,17 +247,27 @@ async fn refresh_inner(
             Ok(m) => m,
             Err(poisoned) => poisoned.into_inner(),
         };
-        let keep: std::collections::HashSet<&str> =
-            targets.iter().map(|r| r.base_path.as_str()).collect();
-        map.retain(|k, _| keep.contains(k.as_str()));
+        let mut keep: std::collections::HashSet<String> = targets
+            .iter()
+            .map(|r| format!("local:{}", r.base_path))
+            .collect();
+        keep.extend(remote_targets.iter().map(|r| {
+            let id = if r.id.trim().is_empty() {
+                format!("{}:{}", r.ssh_target, r.base_path)
+            } else {
+                r.id.clone()
+            };
+            format!("remote:{id}:{}", r.base_path)
+        }));
+        map.retain(|k, _| keep.contains(k));
 
         let fetched_at = now_ms();
-        for (repo, result) in scanned {
+        for (key, repo, result) in scanned {
             match result {
                 Ok(mut entries) => {
                     sort_entries(&mut entries);
                     map.insert(
-                        repo.base_path.clone(),
+                        key,
                         CachedRepoWorktrees {
                             repo,
                             entries,
@@ -219,14 +278,12 @@ async fn refresh_inner(
                 }
                 Err(err) => {
                     log::warn!("worktree scan failed for {}: {err}", repo.base_path);
-                    let entry =
-                        map.entry(repo.base_path.clone())
-                            .or_insert_with(|| CachedRepoWorktrees {
-                                repo: repo.clone(),
-                                entries: Vec::new(),
-                                fetched_at,
-                                error: None,
-                            });
+                    let entry = map.entry(key).or_insert_with(|| CachedRepoWorktrees {
+                        repo: repo.clone(),
+                        entries: Vec::new(),
+                        fetched_at,
+                        error: None,
+                    });
                     entry.repo = repo;
                     entry.error = Some(err);
                 }
@@ -297,6 +354,7 @@ mod tests {
                             owner: owner.into(),
                             name: name.into(),
                             base_path: base.into(),
+                            remote: None,
                         },
                         entries: vec![],
                         fetched_at: 0,

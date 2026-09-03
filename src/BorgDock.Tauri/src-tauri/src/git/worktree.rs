@@ -107,7 +107,7 @@ fn get_head_sha(worktree_path: &str) -> String {
         .unwrap_or_default()
 }
 
-fn parse_worktree_list(output: &str) -> Vec<(String, String, bool)> {
+pub(crate) fn parse_worktree_list(output: &str) -> Vec<(String, String, bool)> {
     if output.trim().is_empty() {
         return Vec::new();
     }

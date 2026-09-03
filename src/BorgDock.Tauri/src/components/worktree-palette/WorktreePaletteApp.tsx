@@ -42,12 +42,18 @@ function parentFolder(fullPath: string): string {
   return idx >= 0 ? normalized.slice(0, idx) : '';
 }
 
+function repoDisplayName(repo: RepoRef): string {
+  return repo.remote
+    ? `${repo.remote.label || repo.remote.sshTarget} · ${repo.owner}/${repo.name}`
+    : `${repo.owner}/${repo.name}`;
+}
+
 function matchesQuery(entry: FlatEntry, q: string): boolean {
   if (!q) return true;
   const lower = q.toLowerCase();
   const folder = folderName(entry.wt.path).toLowerCase();
   const branch = entry.wt.branchName.toLowerCase();
-  const repo = `${entry.repo.owner}/${entry.repo.name}`.toLowerCase();
+  const repo = repoDisplayName(entry.repo).toLowerCase();
   return branch.includes(lower) || folder.includes(lower) || repo.includes(lower);
 }
 
@@ -62,7 +68,7 @@ export function compareFolderNames(a: string, b: string): number {
  * folder order is what makes "worktree7" findable at a glance.
  */
 export function compareFlatEntries(a: FlatEntry, b: FlatEntry): number {
-  const repoCmp = `${a.repo.owner}/${a.repo.name}`.localeCompare(`${b.repo.owner}/${b.repo.name}`);
+  const repoCmp = repoDisplayName(a.repo).localeCompare(repoDisplayName(b.repo));
   if (repoCmp !== 0) return repoCmp;
   const mainCmp = Number(b.wt.isMainWorktree) - Number(a.wt.isMainWorktree);
   if (mainCmp !== 0) return mainCmp;
@@ -78,7 +84,7 @@ export function flattenSnapshot(snapshot: WorktreeSnapshot): {
   const errors = new Map<string, string>();
   for (const repo of snapshot) {
     for (const wt of repo.entries) entries.push({ wt, repo: repo.repo });
-    if (repo.error) errors.set(`${repo.repo.owner}/${repo.repo.name}`, repo.error);
+    if (repo.error) errors.set(repoDisplayName(repo.repo), repo.error);
   }
   return { entries, errors };
 }
@@ -90,7 +96,7 @@ function nextFrame(): Promise<void> {
 function groupByRepo(entries: FlatEntry[]): Map<string, FlatEntry[]> {
   const groups = new Map<string, FlatEntry[]>();
   for (const e of entries) {
-    const key = `${e.repo.owner}/${e.repo.name}`;
+    const key = repoDisplayName(e.repo);
     const arr = groups.get(key);
     if (arr) arr.push(e);
     else groups.set(key, [e]);
@@ -122,6 +128,7 @@ function WorktreeRow({
   rowRef: (el: HTMLDivElement | null) => void;
 }) {
   const { wt } = entry;
+  const isRemote = Boolean(entry.repo.remote);
   const hasBranch = wt.branchName.length > 0;
   const folder = folderName(wt.path);
   const parent = parentFolder(wt.path);
@@ -138,11 +145,11 @@ function WorktreeRow({
         isSelected && 'bd-wt-row--selected',
         isMain && 'bd-wt-row--main',
       )}
-      role="button"
-      tabIndex={0}
-      onClick={onOpenTerminal}
+      role={isRemote ? undefined : 'button'}
+      tabIndex={isRemote ? undefined : 0}
+      onClick={isRemote ? undefined : onOpenTerminal}
       onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
+        if (isRemote || event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onOpenTerminal();
@@ -166,6 +173,27 @@ function WorktreeRow({
             <circle cx="4" cy="14" r="1.6" fill="currentColor" />
             <circle cx="4" cy="2" r="1.6" fill="currentColor" />
             <circle cx="12" cy="8" r="1.6" fill="currentColor" />
+          </svg>
+        </span>
+      ) : isRemote ? (
+        <span
+          className="bd-wt-main-icon"
+          aria-label={`Remote worktree on ${entry.repo.remote?.label || entry.repo.remote?.sshTarget}`}
+          title={`Read-only remote worktree on ${entry.repo.remote?.sshTarget}`}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <rect x="2" y="3" width="12" height="8" rx="1.5" />
+            <path d="M5 14h6M8 11v3" />
           </svg>
         </span>
       ) : (
@@ -205,6 +233,7 @@ function WorktreeRow({
               main
             </Pill>
           )}
+          {isRemote && <Pill tone="neutral">remote</Pill>}
         </div>
         <div className="bd-wt-row-secondary">
           <span className="bd-wt-folder">{folder}</span>
@@ -215,79 +244,81 @@ function WorktreeRow({
           )}
         </div>
       </div>
-      <div className="bd-wt-row-actions">
-        <IconButton
-          size={26}
-          tooltip="Open terminal here"
-          data-action="open-terminal"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenTerminal();
-          }}
-          icon={
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 5l4 3-4 3" />
-              <path d="M9 12h4" />
-            </svg>
-          }
-        />
-        <IconButton
-          size={26}
-          tooltip="Open folder"
-          data-action="open-folder"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenFolder();
-          }}
-          icon={
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5H3A1 1 0 002 4.5z" />
-            </svg>
-          }
-        />
-        <IconButton
-          size={26}
-          tooltip="Open in editor"
-          data-action="open-editor"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenEditor();
-          }}
-          icon={
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
-              <path d="M9.5 3.5l3 3" />
-            </svg>
-          }
-        />
-      </div>
+      {!isRemote && (
+        <div className="bd-wt-row-actions">
+          <IconButton
+            size={26}
+            tooltip="Open terminal here"
+            data-action="open-terminal"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenTerminal();
+            }}
+            icon={
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 5l4 3-4 3" />
+                <path d="M9 12h4" />
+              </svg>
+            }
+          />
+          <IconButton
+            size={26}
+            tooltip="Open folder"
+            data-action="open-folder"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenFolder();
+            }}
+            icon={
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5H3A1 1 0 002 4.5z" />
+              </svg>
+            }
+          />
+          <IconButton
+            size={26}
+            tooltip="Open in editor"
+            data-action="open-editor"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenEditor();
+            }}
+            icon={
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
+                <path d="M9.5 3.5l3 3" />
+              </svg>
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -456,7 +487,7 @@ export function WorktreePaletteApp() {
     const visible = allEntries.filter((e) => {
       if (!matchesQuery(e, query)) return false;
       // Main worktree is the repo anchor — always visible, even in favorites-only mode.
-      if (favoritesOnly && !isFav(e) && !e.wt.isMainWorktree) return false;
+      if (favoritesOnly && !e.repo.remote && !isFav(e) && !e.wt.isMainWorktree) return false;
       return true;
     });
     // Sort within each repo: main first, then folder name (numeric-aware).
@@ -566,7 +597,7 @@ export function WorktreePaletteApp() {
           break;
         case 'Enter':
           e.preventDefault();
-          if (filtered[selectedIndex]) {
+          if (filtered[selectedIndex] && !filtered[selectedIndex].repo.remote) {
             handleOpenTerminal(filtered[selectedIndex].wt.path);
           }
           break;
@@ -740,7 +771,7 @@ export function WorktreePaletteApp() {
                     const idx = flatIndex++;
                     return (
                       <WorktreeRow
-                        key={entry.wt.path}
+                        key={`${entry.repo.remote?.id ?? 'local'}:${entry.wt.path}`}
                         entry={entry}
                         isSelected={idx === selectedIndex}
                         isFavorite={favoritePaths.has(entry.wt.path)}

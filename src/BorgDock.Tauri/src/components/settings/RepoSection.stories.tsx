@@ -1,7 +1,7 @@
 // src/components/settings/RepoSection.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { RepoSettings } from '@/types/settings';
+import type { RemoteWorktreeRepoSettings, RepoSettings } from '@/types/settings';
 import {
   configuredSettings,
   repoCandidates,
@@ -53,6 +53,27 @@ export const Empty: Story = {
 export const OneRepo: Story = {
   decorators: [baseDecorator],
   args: { repos: oneRepo, onChange: () => {} },
+};
+
+const macFspHorizon: RemoteWorktreeRepoSettings = {
+  id: 'mac-mini-fsp-horizon',
+  label: 'Mac mini',
+  owner: 'Gomocha-FSP',
+  name: 'fsp-horizon',
+  sshTarget: 'koenvdb@100.88.82.41',
+  identityFile: 'C:/Users/KoenvanderBorghtGomo/.ssh/id_ed25519',
+  basePath: '/Users/koenvdb/Dev/fsp-horizon',
+  enabled: true,
+};
+
+export const WithRemoteWorktrees: Story = {
+  decorators: [baseDecorator],
+  args: {
+    repos: oneRepo,
+    onChange: () => {},
+    remoteWorktreeRepos: [macFspHorizon],
+    onRemoteWorktreeReposChange: () => {},
+  },
 };
 
 export const ManyRepos: Story = {

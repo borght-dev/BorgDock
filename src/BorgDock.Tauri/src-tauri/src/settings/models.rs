@@ -13,6 +13,8 @@ pub struct AppSettings {
     pub git_hub: GitHubSettings,
     #[serde(default)]
     pub repos: Vec<RepoSettings>,
+    #[serde(default)]
+    pub remote_worktree_repos: Vec<RemoteWorktreeRepoSettings>,
     #[serde(default, rename = "ui")]
     pub ui: UiSettings,
     #[serde(default)]
@@ -97,6 +99,32 @@ pub struct RepoSettings {
     /// historic active-account behaviour.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_account: Option<String>,
+}
+
+/// A read-only repository whose worktree list is fetched over SSH.
+///
+/// Remote repositories deliberately live outside `repos`: those entries feed
+/// local checkout, file, editor, and terminal operations, while this list is
+/// only an additional source for the worktree palette.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteWorktreeRepoSettings {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub owner: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub ssh_target: String,
+    #[serde(default)]
+    pub identity_file: String,
+    #[serde(default)]
+    pub base_path: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 fn default_true() -> bool {
@@ -554,6 +582,7 @@ mod redesign_field_tests {
         assert!(s.notifications.channels.sound);
         assert!(!s.notifications.channels.email_digest);
         assert!(s.notifications.last_test_fired_at.is_none());
+        assert!(s.remote_worktree_repos.is_empty());
     }
 
     #[test]
@@ -563,12 +592,27 @@ mod redesign_field_tests {
         s.ui.quick_review_hotkey = "Ctrl+Alt+R".to_string();
         s.ui.start_minimized_to_tray = true;
         s.notifications.channels.email_digest = true;
+        s.remote_worktree_repos.push(RemoteWorktreeRepoSettings {
+            id: "mac-fsp".to_string(),
+            label: "Mac mini".to_string(),
+            owner: "Gomocha-FSP".to_string(),
+            name: "fsp-horizon".to_string(),
+            ssh_target: "koen@example.test".to_string(),
+            identity_file: "C:/Users/koen/.ssh/id_ed25519".to_string(),
+            base_path: "/Users/koen/Dev/fsp-horizon".to_string(),
+            enabled: true,
+        });
         let json = serde_json::to_string(&s).unwrap();
         let back: AppSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.azure_dev_ops.link_match_by, "both");
         assert_eq!(back.ui.quick_review_hotkey, "Ctrl+Alt+R");
         assert!(back.ui.start_minimized_to_tray);
         assert!(back.notifications.channels.email_digest);
+        assert_eq!(back.remote_worktree_repos.len(), 1);
+        assert_eq!(
+            back.remote_worktree_repos[0].ssh_target,
+            "koen@example.test"
+        );
     }
 
     #[test]
