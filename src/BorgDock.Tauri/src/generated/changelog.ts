@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.1.1",
+    "date": "2026-09-03",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "T3 pairing now accepts either the complete pairing link or its raw token and creates direct T3 sessions successfully. If T3 rejects a pairing request, BorgDock now shows the HTTP error instead of the misleading \"error decoding response body\" message."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "2.1.0",
     "date": "2026-09-02",
     "summary": "Choose the right coding agent for every PR, Use a different GitHub account per repository, and A Focus queue that explains itself.",

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1 — 2026-09-03
+
+### Improvements
+
+- Worktrees hosted on a remote Mac can now appear alongside local worktrees in the palette. Configure the SSH-backed repository in Settings to see its worktrees with clear host labels and view-only controls.
+
+### Bug Fixes
+
+- T3 pairing now accepts either the complete pairing link or its raw token and creates direct T3 sessions successfully. If T3 rejects a pairing request, BorgDock now shows the HTTP error instead of the misleading "error decoding response body" message.
+
 ## 2.1.0 — 2026-09-02
 
 ### New Features
