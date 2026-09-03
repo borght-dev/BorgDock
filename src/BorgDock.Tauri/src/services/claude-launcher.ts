@@ -1,5 +1,6 @@
 import { findRepoConfig } from '@/services/repo-lookup';
 import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
+import type { AgentProvider } from '@/types/settings';
 
 // Build a fix prompt for Claude Code when checks are failing
 export function buildFixPrompt(
@@ -261,57 +262,24 @@ export async function launchClaude(
 }
 
 export interface AgentLaunchOptions {
-  provider: 'claude' | 'codex' | 't3';
-  fallbackProvider: 'claude' | 'codex';
+  provider: AgentProvider;
   worktreePath: string;
   promptFile: string;
-  prompt: string;
   title: string;
-  branch: string;
-  action: 'fix' | 'resolve' | 'monitor';
   claudePath?: string;
   codexPath?: string;
   codexModel?: string;
-  t3Path?: string;
-  t3Model: string;
-  t3ModelInstance: string;
 }
 
-/** Launch through T3 when available, with a provider-specific terminal as a
- * deterministic fallback. Tier 1 T3 copies the prompt for a single paste. */
+/** Launch the chosen terminal agent (Claude Code or Codex) on a worktree. */
 export async function launchAgentSession(options: AgentLaunchOptions): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
-  if (options.provider === 't3') {
-    try {
-      const result = await invoke<{ tier: number; threadId?: string }>('t3_launch_session', {
-        workspaceRoot: options.worktreePath,
-        branch: options.branch,
-        title: options.title,
-        prompt: options.prompt,
-        action: options.action,
-        model: options.t3Model,
-        modelInstance: options.t3ModelInstance,
-        executable: options.t3Path,
-      });
-      if (result.tier === 1) {
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await writeText(options.prompt);
-      }
-      return;
-    } catch {
-      // T3 is optional and alpha. A closed, unpaired, or incompatible server
-      // falls back to the configured terminal provider without surfacing an
-      // error dialog for an action the user can still complete.
-    }
-  }
-
-  const provider = options.provider === 't3' ? options.fallbackProvider : options.provider;
   await invoke('launch_agent_session', {
-    provider,
+    provider: options.provider,
     worktreePath: options.worktreePath,
     promptFile: options.promptFile,
     title: options.title,
-    executable: provider === 'claude' ? options.claudePath : options.codexPath,
-    model: provider === 'codex' ? options.codexModel : undefined,
+    executable: options.provider === 'claude' ? options.claudePath : options.codexPath,
+    model: options.provider === 'codex' ? options.codexModel : undefined,
   });
 }

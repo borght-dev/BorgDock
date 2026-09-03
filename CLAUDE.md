@@ -151,6 +151,12 @@ cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' ca
 
 Or run cargo from cmd.exe / PowerShell where MSYS isn't involved.
 
+## T3 Code integration: no CLI or deep link, only the orchestration API
+
+T3 Code (`%LOCALAPPDATA%\Programs\t3-code-desktop\T3 Code (Alpha).exe`) ignores command-line arguments (its `second-instance` handler only looks for OAuth callback URLs) and registers no `open thread` deep link. Launching the exe merely focuses the running instance. The only way to open a project or thread programmatically is the paired HTTP API in `src-tauri/src/t3.rs`: `POST {origin}/api/orchestration/dispatch` with `project.create` / `thread.create` / `thread.meta.update` (the last one carries `linkedPullRequest`). The origin comes from `~/.t3/userdata/server-runtime.json`; the read-only projection DB is `~/.t3/userdata/state.sqlite` (`projection_projects`, `projection_threads`). T3 stores one project per worktree path, so look projects up by `workspace_root`.
+
+Because of this, T3 is **not** an agent provider for Fix / Resolve / Monitor (those spawn a terminal with a prompt file). The PR action is "Open a new thread in T3" (`src/services/t3-thread.ts`): find the worktree that has the PR branch, otherwise show the `CheckoutPanel` picker via `T3CheckoutDialog`, then create an empty PR-linked thread on that worktree and bring T3 to the front. Unpaired T3 only gets activated; pairing lives in Settings → Agents.
+
 ## Check for existing patterns before implementing
 
 Before writing a new component, hook, command, store, or utility, search the codebase for something similar that already exists. Reuse it, or extract the shared piece into a reusable abstraction — don't fork a near-duplicate.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0 — 2026-09-03
+
+### New Features
+
+- **Open any pull request in a fresh T3 thread** — Start a PR-linked T3 conversation from the detail window, PR list, or flyout. BorgDock uses the worktree that already has the branch, or opens the checkout picker first when you need one, then carries over your T3 model and permission defaults. ![Open a pull request in T3](whats-new/2.2.0/open-pr-in-t3.png)
+
+### Improvements
+
+- **Make the worktree palette yours** — Resize the palette and keep that size between sessions, star worktrees on this PC or a remote Mac, and switch to favorites-only when the full list gets busy. ![Resizable worktree palette with favorites](whats-new/2.2.0/worktree-palette-favorites.png)
+
 ## 2.1.1 — 2026-09-03
 
 ### Improvements

@@ -6,6 +6,7 @@ import type { TabDef } from '@/components/shared/primitives';
 import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
+import { openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -516,6 +517,11 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
           favoritesOnlyDefault={actions.favoritesOnlyDefault}
           windowsTerminalProfile={actions.windowsTerminalProfile}
           onDismiss={() => actions.setCheckoutOpen(false)}
+          onOpenInT3={(worktreePath) => {
+            openT3Thread(p, worktreePath).catch((err) =>
+              log.error('openT3Thread failed', err, { worktreePath }),
+            );
+          }}
         />
       )}
 

@@ -16,7 +16,6 @@ interface Props {
 }
 
 const PROVIDERS = [
-  { value: 't3', label: 'T3 Code' },
   { value: 'claude', label: 'Claude Code' },
   { value: 'codex', label: 'Codex' },
 ];
@@ -77,19 +76,6 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             }
           />
         </Field>
-        <Field label="Terminal fallback" hint="Used when T3 is closed or unpaired.">
-          <Select
-            ariaLabel="Fallback agent provider"
-            value={agents.fallbackProvider}
-            options={PROVIDERS.filter((option) => option.value !== 't3')}
-            onChange={(fallbackProvider) =>
-              onAgentsChange({
-                ...agents,
-                fallbackProvider: fallbackProvider as 'claude' | 'codex',
-              })
-            }
-          />
-        </Field>
         <Field label="Post-fix action">
           <Select
             value={agents.defaultPostFixAction}
@@ -138,7 +124,23 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             mono
           />
         </Field>
-        <Field label="T3 model">
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-1 text-[13px] font-semibold text-[var(--color-text-primary)]">T3 Code</h3>
+        <p className="mb-3 text-[11.5px] text-[var(--color-text-muted)]">
+          "Open a new thread in T3" on a pull request creates a thread on the PR's worktree and
+          brings T3 to the front.
+        </p>
+        <Field label="T3 path" hint="Leave empty to use the default install location.">
+          <TextInput
+            value={agents.t3Path ?? ''}
+            onChange={(t3Path) => onAgentsChange({ ...agents, t3Path: t3Path || undefined })}
+            placeholder="T3 Code (Alpha).exe"
+            mono
+          />
+        </Field>
+        <Field label="T3 model" hint="Only used when T3 has no default model for the project yet.">
           <TextInput
             value={agents.t3Model}
             onChange={(t3Model) => onAgentsChange({ ...agents, t3Model })}
@@ -158,10 +160,10 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
           label="T3 pairing"
           hint={
             t3?.paired
-              ? 'Paired. Fix, Resolve and Monitor can create T3 threads directly.'
+              ? 'Paired. New threads are created and linked to the PR automatically.'
               : t3?.running
-                ? 'Paste a one-time credential from t3 pair. Without it BorgDock uses clipboard mode.'
-                : 'T3 is closed. BorgDock will use the terminal fallback.'
+                ? 'Paste a one-time credential from t3 pair. Without it BorgDock can only bring T3 to the front.'
+                : 'T3 is closed. Start it to pair or to open threads.'
           }
         >
           <div className="flex gap-2">
@@ -210,9 +212,9 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
           <Select
             ariaLabel="Summary provider"
             value={summaries.provider}
-            options={PROVIDERS.filter((option) => option.value !== 't3')}
+            options={PROVIDERS}
             onChange={(provider) =>
-              onSummariesChange({ ...summaries, provider: provider as 'claude' | 'codex' })
+              onSummariesChange({ ...summaries, provider: provider as AgentProvider })
             }
           />
         </Field>

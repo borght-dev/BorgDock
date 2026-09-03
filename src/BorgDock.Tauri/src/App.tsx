@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { PrList } from '@/components/pr/PrList';
+import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
@@ -353,6 +354,7 @@ export default function App() {
         </MainWindow>
         <MergeToast />
         <QuickReviewOverlay />
+        <T3CheckoutDialog />
       </div>
     );
   }
@@ -366,6 +368,7 @@ export default function App() {
       </MainWindow>
       <MergeToast />
       <QuickReviewOverlay />
+      <T3CheckoutDialog />
     </div>
   );
 }

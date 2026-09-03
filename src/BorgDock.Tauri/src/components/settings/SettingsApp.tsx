@@ -152,8 +152,7 @@ export function SettingsApp() {
           <AgentSection
             agents={
               settings.agents ?? {
-                defaultProvider: 't3',
-                fallbackProvider: 'claude',
+                defaultProvider: 'claude',
                 defaultPostFixAction: 'commitAndNotify',
                 t3Model: 'claude-fable-5',
                 t3ModelInstance: 'claudeAgent',

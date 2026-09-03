@@ -335,7 +335,7 @@ pub fn run() {
             agents::agent_provider_availability,
             t3::t3_probe,
             t3::t3_pair,
-            t3::t3_launch_session,
+            t3::t3_open_thread,
             t3::t3_list_sessions,
             t3::t3_focus_session,
             // Azure DevOps HTTP proxy (CORS bypass)

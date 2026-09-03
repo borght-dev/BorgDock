@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { IconButton } from '@/components/shared/primitives';
 import { loadCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
@@ -257,6 +258,7 @@ export function PrDetailApp() {
       <div className="relative flex-1 overflow-y-auto">
         <PrDetailPanel pr={pr} checks={localChecks} popOutWindow />
       </div>
+      <T3CheckoutDialog />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import type { WorktreeCacheRepo, WorktreeSnapshot } from '@/types/worktree';
 
 import { getControl } from '../../../.storybook/mocks/control';
 import {
@@ -10,11 +11,13 @@ import {
   makeSettings,
   oneRepoFew,
   oneRepoMany,
+  type RepoTrees,
   repoBorgDock,
   repoNoBasePath,
   repoWithFavs,
   twoReposBalanced,
   twoReposLopsided,
+  type WorktreeEntry,
   wtDetached,
   wtFavoriteCandidate1,
   wtFavoriteCandidate2,
@@ -22,8 +25,6 @@ import {
   wtLongBranch,
   wtLongPath,
   wtMain,
-  type RepoTrees,
-  type WorktreeEntry,
 } from './__fixtures__/worktree-data';
 import { WorktreePaletteApp } from './WorktreePaletteApp';
 
@@ -54,6 +55,52 @@ function settingsFromHistory(history: RepoTrees[]) {
   return makeSettings(history.map((h) => h.repo));
 }
 
+async function snapshotFromParams(params: WorktreeStoryParams): Promise<WorktreeSnapshot> {
+  const settings = params.settings;
+  if (!settings) return [];
+
+  const repos: WorktreeCacheRepo['repo'][] = [
+    ...settings.repos
+      .filter((repo) => repo.enabled && repo.worktreeBasePath)
+      .map((repo) => ({
+        owner: repo.owner,
+        name: repo.name,
+        basePath: repo.worktreeBasePath,
+      })),
+    ...(settings.remoteWorktreeRepos ?? [])
+      .filter((repo) => repo.enabled && repo.basePath)
+      .map((repo) => ({
+        owner: repo.owner,
+        name: repo.name,
+        basePath: repo.basePath,
+        remote: {
+          id: repo.id.trim() || `${repo.sshTarget}:${repo.basePath}`,
+          label: repo.label,
+          sshTarget: repo.sshTarget,
+        },
+      })),
+  ];
+
+  return Promise.all(
+    repos.map(async (repo) => {
+      try {
+        const entries =
+          typeof params.listResponses === 'function'
+            ? await params.listResponses({ basePath: repo.basePath })
+            : (params.listResponses ?? []);
+        return { repo, entries, fetchedAt: Date.now() };
+      } catch (error) {
+        return {
+          repo,
+          entries: [],
+          fetchedAt: Date.now(),
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }),
+  );
+}
+
 function WorktreeHarness({ params }: { params: WorktreeStoryParams }) {
   const ctrl = getControl();
 
@@ -69,6 +116,8 @@ function WorktreeHarness({ params }: { params: WorktreeStoryParams }) {
   if (params.listResponses !== undefined) {
     ctrl.invokeResponses['list_worktrees_bare'] = params.listResponses;
   }
+  ctrl.invokeResponses['worktree_cache_get_all'] = () => snapshotFromParams(params);
+  ctrl.invokeResponses['worktree_cache_refresh'] = () => snapshotFromParams(params);
 
   // Log-only commands: no return value needed (mock returns undefined).
   ctrl.invokeResponses['save_settings'] = undefined;
@@ -330,12 +379,7 @@ export const FavoritesOnlyEmpty = story({
 
 export const FavoritesOnlyWithMix = story({
   settings: makeSettings([repoWithFavs], { worktreePaletteFavoritesOnly: true }),
-  listResponses: [
-    wtMain,
-    wtFavoriteCandidate1,
-    wtFavoriteCandidate2,
-    wtFeature,
-  ],
+  listResponses: [wtMain, wtFavoriteCandidate1, wtFavoriteCandidate2, wtFeature],
 });
 
 // ---------------------------------------------------------------------------
@@ -426,7 +470,9 @@ export const PaletteReshown: Story = {
     // A second load_settings should fire.
     await waitFor(() => {
       const ctrl = getControl();
-      expect(ctrl.invocations.filter((i) => i.command === 'load_settings').length).toBeGreaterThanOrEqual(2);
+      expect(
+        ctrl.invocations.filter((i) => i.command === 'load_settings').length,
+      ).toBeGreaterThanOrEqual(2);
     });
   },
 };

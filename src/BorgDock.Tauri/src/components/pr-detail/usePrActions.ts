@@ -3,6 +3,7 @@ import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { createLogger } from '@/services/logger';
 import { bypassMergePr, closePr, mergePr, toggleDraftPr } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
+import { requestT3Thread } from '@/services/t3-thread';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
@@ -21,6 +22,7 @@ export interface PrActions {
   onOpenInBrowser: () => Promise<void>;
   onCopyBranch: () => Promise<void>;
   onCheckoutToggle: () => void;
+  onOpenInT3: () => Promise<void>;
 
   actionStatus: string;
   isReady: boolean;
@@ -56,9 +58,7 @@ export function usePrActions(pr: PullRequestWithChecks): PrActions {
   const favoritesOnlyDefault = useSettingsStore(
     (s) => s.settings.ui.worktreePaletteFavoritesOnly ?? false,
   );
-  const windowsTerminalProfile = useSettingsStore(
-    (s) => s.settings.ui.windowsTerminalProfile,
-  );
+  const windowsTerminalProfile = useSettingsStore((s) => s.settings.ui.windowsTerminalProfile);
 
   const captureErrorAsStatus = useCallback(
     (label: string) => (_title: string, err: unknown) => {
@@ -147,6 +147,15 @@ export function usePrActions(pr: PullRequestWithChecks): PrActions {
 
   const onCheckoutToggle = useCallback(() => setCheckoutOpen((v) => !v), []);
 
+  const onOpenInT3 = useCallback(async () => {
+    try {
+      await requestT3Thread(p);
+    } catch (err) {
+      setActionStatus(`Open in T3 failed: ${parseError(err).message}`);
+      setTimeout(() => setActionStatus(''), 5000);
+    }
+  }, [p]);
+
   const isReady =
     pr.overallStatus === 'green' &&
     !p.isDraft &&
@@ -164,6 +173,7 @@ export function usePrActions(pr: PullRequestWithChecks): PrActions {
     onOpenInBrowser,
     onCopyBranch,
     onCheckoutToggle,
+    onOpenInT3,
     actionStatus,
     isReady,
     checkoutOpen,

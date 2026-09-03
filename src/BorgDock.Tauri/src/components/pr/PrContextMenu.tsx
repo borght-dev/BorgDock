@@ -3,6 +3,7 @@ import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { sendOsNotification } from '@/services/notification';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
+import { requestT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -54,8 +55,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
   const defaultProvider = settings.agents?.defaultProvider ?? 'claude';
-  const providerLabel =
-    defaultProvider === 't3' ? 'T3' : defaultProvider === 'codex' ? 'Codex' : 'Claude';
+  const providerLabel = defaultProvider === 'codex' ? 'Codex' : 'Claude';
 
   // Close on click outside
   useEffect(() => {
@@ -180,9 +180,9 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     await monitorPr(pr);
   }, 'Monitor with Claude failed');
 
-  const otherProviders = (['t3', 'claude', 'codex'] as const).filter(
-    (provider) => provider !== defaultProvider,
-  );
+  const handleOpenInT3 = handleAction(async () => {
+    await requestT3Thread(pullRequest);
+  }, 'Open in T3 failed');
 
   const handleCopyMonitorPrompt = handleAction(async () => {
     const prompt = getMonitorPrompt(pr);
@@ -251,6 +251,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       <Separator />
 
       <MenuItem label="Checkout branch" onClick={handleCheckout} disabled={!repoPath} />
+      <MenuItem label="Open a new thread in T3" onClick={handleOpenInT3} disabled={!repoPath} />
       <MenuItem
         label={pullRequest.isDraft ? 'Mark as ready' : 'Mark as draft'}
         onClick={handleToggleDraft}
@@ -265,27 +266,6 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       />
       <MenuItem label={`Fix with ${providerLabel}`} onClick={handleFixWithClaude} />
       <MenuItem label={`Monitor with ${providerLabel}`} onClick={handleMonitorWithClaude} />
-      {otherProviders.map((provider) => {
-        const label = provider === 't3' ? 'T3' : provider === 'codex' ? 'Codex' : 'Claude';
-        return (
-          <MenuItem
-            key={`fix-${provider}`}
-            label={`Fix with ${label}`}
-            onClick={handleAction(
-              () =>
-                fixWithClaude(
-                  pr,
-                  failedCheckNames.length > 0 ? failedCheckNames : ['unknown'],
-                  [],
-                  [],
-                  '',
-                  provider,
-                ),
-              `Fix with ${label} failed`,
-            )}
-          />
-        );
-      })}
 
       <Separator />
 

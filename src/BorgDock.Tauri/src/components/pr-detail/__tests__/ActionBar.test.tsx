@@ -16,6 +16,7 @@ function fakeActions(over: Partial<PrActions> = {}): PrActions {
     onOpenInBrowser: vi.fn(),
     onCopyBranch: vi.fn(),
     onCheckoutToggle: vi.fn(),
+    onOpenInT3: vi.fn(),
     actionStatus: '',
     isReady: true,
     checkoutOpen: false,
@@ -35,14 +36,7 @@ function fakeActions(over: Partial<PrActions> = {}): PrActions {
 
 describe('ActionBar', () => {
   it('renders Merge / Open / Copy / Checkout / Mark Draft when PR is open', () => {
-    render(
-      <ActionBar
-        actions={fakeActions()}
-        prState="open"
-        isDraft={false}
-        mergeable
-      />,
-    );
+    render(<ActionBar actions={fakeActions()} prState="open" isDraft={false} mergeable />);
     expect(screen.getByRole('button', { name: /^merge$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open in browser/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copy branch/i })).toBeInTheDocument();
@@ -69,9 +63,7 @@ describe('ActionBar', () => {
   });
 
   it('hides destructive + draft actions when PR is closed', () => {
-    render(
-      <ActionBar actions={fakeActions()} prState="closed" isDraft={false} mergeable />,
-    );
+    render(<ActionBar actions={fakeActions()} prState="closed" isDraft={false} mergeable />);
     expect(screen.queryByRole('button', { name: /merge/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /bypass merge/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /close pr/i })).toBeNull();

@@ -45,8 +45,7 @@ const defaultSettings: AppSettings = {
     channels: { tray: true, system: true, sound: true, emailDigest: false },
   },
   agents: {
-    defaultProvider: 't3',
-    fallbackProvider: 'claude',
+    defaultProvider: 'claude',
     defaultPostFixAction: 'commitAndNotify',
     t3Model: 'claude-fable-5',
     t3ModelInstance: 'claudeAgent',
