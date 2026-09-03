@@ -17,6 +17,8 @@ import {
 
 // Minimum window height so a small worktree list doesn't leave a cramped window.
 const MIN_PALETTE_HEIGHT = 420;
+const DEFAULT_PALETTE_WIDTH = 520;
+const DEFAULT_PALETTE_HEIGHT = 420;
 // Margin below the window so it doesn't overlap the OS taskbar / dock.
 const MONITOR_BOTTOM_MARGIN = 60;
 
@@ -46,6 +48,23 @@ function repoDisplayName(repo: RepoRef): string {
   return repo.remote
     ? `${repo.remote.label || repo.remote.sshTarget} · ${repo.owner}/${repo.name}`
     : `${repo.owner}/${repo.name}`;
+}
+
+function favoriteKey(repo: RepoRef, path: string): string {
+  return repo.remote ? `remote:${repo.remote.id}:${path}` : path;
+}
+
+function configuredRemoteId(repo: { id: string; sshTarget: string; basePath: string }): string {
+  return repo.id.trim() || `${repo.sshTarget}:${repo.basePath}`;
+}
+
+function favoritePathsAfterToggle(
+  existing: string[],
+  path: string,
+  wasFavorite: boolean,
+): string[] {
+  if (wasFavorite) return existing.filter((favoritePath) => favoritePath !== path);
+  return existing.includes(path) ? existing : [...existing, path];
 }
 
 function matchesQuery(entry: FlatEntry, q: string): boolean {
@@ -157,7 +176,7 @@ function WorktreeRow({
       }}
       onMouseEnter={onSelect}
     >
-      {isMain ? (
+      {isMain && !isRemote ? (
         <span className="bd-wt-main-icon" aria-hidden>
           <svg
             width="14"
@@ -173,27 +192,6 @@ function WorktreeRow({
             <circle cx="4" cy="14" r="1.6" fill="currentColor" />
             <circle cx="4" cy="2" r="1.6" fill="currentColor" />
             <circle cx="12" cy="8" r="1.6" fill="currentColor" />
-          </svg>
-        </span>
-      ) : isRemote ? (
-        <span
-          className="bd-wt-main-icon"
-          aria-label={`Remote worktree on ${entry.repo.remote?.label || entry.repo.remote?.sshTarget}`}
-          title={`Read-only remote worktree on ${entry.repo.remote?.sshTarget}`}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <rect x="2" y="3" width="12" height="8" rx="1.5" />
-            <path d="M5 14h6M8 11v3" />
           </svg>
         </span>
       ) : (
@@ -353,6 +351,10 @@ export function WorktreePaletteApp() {
       for (const r of settings.repos) {
         for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
       }
+      for (const r of settings.remoteWorktreeRepos ?? []) {
+        const remoteId = configuredRemoteId(r);
+        for (const p of r.favoriteWorktreePaths ?? []) favs.add(`remote:${remoteId}:${p}`);
+      }
       setFavoritePaths(favs);
       setFavoritesOnly(settings.ui?.worktreePaletteFavoritesOnly ?? false);
     } catch {
@@ -374,10 +376,8 @@ export function WorktreePaletteApp() {
     }
   }, [applySnapshot]);
 
-  // Grow the window to fit the list (capped by the monitor) — only ever
-  // called BEFORE `window_ready`, so the user never sees the resize jump.
-  // The palette spec is fixed-size for the user; this is the one programmatic
-  // adjustment, done while the window is still invisible.
+  // Grow the untouched default window to fit the list, capped by the monitor.
+  // A restored user size is left alone so manual resizing survives restarts.
   const fitWindowToContent = useCallback(async () => {
     try {
       const contentEl = document.querySelector('.bd-wt-content') as HTMLElement | null;
@@ -392,6 +392,10 @@ export function WorktreePaletteApp() {
 
       const currentLogicalW = physSize.width / scale;
       const currentLogicalH = physSize.height / scale;
+      const isDefaultSize =
+        Math.abs(currentLogicalW - DEFAULT_PALETTE_WIDTH) < 1 &&
+        Math.abs(currentLogicalH - DEFAULT_PALETTE_HEIGHT) < 1;
+      if (!isDefaultSize) return;
 
       const overflow = contentEl.scrollHeight - contentEl.clientHeight;
       const maxLogicalH = (monitor ? monitor.size.height / scale : 900) - MONITOR_BOTTOM_MARGIN;
@@ -483,11 +487,11 @@ export function WorktreePaletteApp() {
 
   // ── Filtered + sorted + grouped data ──
   const filtered = useMemo(() => {
-    const isFav = (e: FlatEntry) => favoritePaths.has(e.wt.path);
+    const isFav = (e: FlatEntry) => favoritePaths.has(favoriteKey(e.repo, e.wt.path));
     const visible = allEntries.filter((e) => {
       if (!matchesQuery(e, query)) return false;
       // Main worktree is the repo anchor — always visible, even in favorites-only mode.
-      if (favoritesOnly && !e.repo.remote && !isFav(e) && !e.wt.isMainWorktree) return false;
+      if (favoritesOnly && !isFav(e) && !e.wt.isMainWorktree) return false;
       return true;
     });
     // Sort within each repo: main first, then folder name (numeric-aware).
@@ -531,35 +535,44 @@ export function WorktreePaletteApp() {
   const handleToggleFavorite = useCallback(
     async (entry: FlatEntry) => {
       const path = entry.wt.path;
-      const wasFav = favoritePaths.has(path);
+      const key = favoriteKey(entry.repo, path);
+      const wasFav = favoritePaths.has(key);
 
       // Optimistic local update
       setFavoritePaths((prev) => {
         const next = new Set(prev);
-        if (wasFav) next.delete(path);
-        else next.add(path);
+        if (wasFav) next.delete(key);
+        else next.add(key);
         return next;
       });
 
       try {
         const settings = await invoke<AppSettings>('load_settings');
-        const updatedRepos = settings.repos.map((r) => {
-          if (r.owner !== entry.repo.owner || r.name !== entry.repo.name) return r;
-          const existing = r.favoriteWorktreePaths ?? [];
-          const favoriteWorktreePaths = wasFav
-            ? existing.filter((p) => p !== path)
-            : existing.includes(path)
-              ? existing
-              : [...existing, path];
-          return { ...r, favoriteWorktreePaths };
-        });
-        await invoke('save_settings', { settings: { ...settings, repos: updatedRepos } });
+        if (entry.repo.remote) {
+          const updatedRemoteRepos = (settings.remoteWorktreeRepos ?? []).map((r) => {
+            if (configuredRemoteId(r) !== entry.repo.remote?.id) return r;
+            const existing = r.favoriteWorktreePaths ?? [];
+            const favoriteWorktreePaths = favoritePathsAfterToggle(existing, path, wasFav);
+            return { ...r, favoriteWorktreePaths };
+          });
+          await invoke('save_settings', {
+            settings: { ...settings, remoteWorktreeRepos: updatedRemoteRepos },
+          });
+        } else {
+          const updatedRepos = settings.repos.map((r) => {
+            if (r.owner !== entry.repo.owner || r.name !== entry.repo.name) return r;
+            const existing = r.favoriteWorktreePaths ?? [];
+            const favoriteWorktreePaths = favoritePathsAfterToggle(existing, path, wasFav);
+            return { ...r, favoriteWorktreePaths };
+          });
+          await invoke('save_settings', { settings: { ...settings, repos: updatedRepos } });
+        }
       } catch {
         // Roll back on failure
         setFavoritePaths((prev) => {
           const next = new Set(prev);
-          if (wasFav) next.add(path);
-          else next.delete(path);
+          if (wasFav) next.add(key);
+          else next.delete(key);
           return next;
         });
       }
@@ -774,7 +787,7 @@ export function WorktreePaletteApp() {
                         key={`${entry.repo.remote?.id ?? 'local'}:${entry.wt.path}`}
                         entry={entry}
                         isSelected={idx === selectedIndex}
-                        isFavorite={favoritePaths.has(entry.wt.path)}
+                        isFavorite={favoritePaths.has(favoriteKey(entry.repo, entry.wt.path))}
                         onSelect={() => setSelectedIndex(idx)}
                         onOpenTerminal={() => handleOpenTerminal(entry.wt.path)}
                         onOpenFolder={() => handleOpenFolder(entry.wt.path)}

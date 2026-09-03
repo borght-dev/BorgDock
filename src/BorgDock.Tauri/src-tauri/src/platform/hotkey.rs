@@ -66,10 +66,10 @@ const WORKTREE_PALETTE_SPEC: PaletteSpec = PaletteSpec {
     title: "BorgDock Worktrees",
     url: "worktree.html",
     inner_size: (520.0, 420.0),
-    min_inner_size: None,
+    min_inner_size: Some((400.0, 300.0)),
     decorations: false,
     skip_taskbar: true,
-    resizable: false,
+    resizable: true,
 };
 
 /// Hotkey → spec table. Used to build all four fixed hotkey callbacks
@@ -331,4 +331,14 @@ pub async fn palette_ready(app: tauri::AppHandle, window: tauri::Window) -> Resu
     let r = crate::platform::window::main_thread_result(rx).await;
     log::info!("palette_ready[{label}]: returning ok={}", r.is_ok());
     r
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WORKTREE_PALETTE_SPEC;
+
+    #[test]
+    fn worktree_palette_is_resizable() {
+        assert!(WORKTREE_PALETTE_SPEC.resizable);
+    }
 }
