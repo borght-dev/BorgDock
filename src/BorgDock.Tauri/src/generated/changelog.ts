@@ -4,6 +4,35 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.2.0",
+    "date": "2026-09-03",
+    "summary": "Open any pull request in a fresh T3 thread and Make the worktree palette yours.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Open any pull request in a fresh T3 thread",
+        "description": "Start a PR-linked T3 conversation from the detail window, PR list, or flyout. BorgDock uses the worktree that already has the branch, or opens the checkout picker first when you need one, then carries over your T3 model and permission defaults.",
+        "hero": {
+          "src": "/whats-new/2.2.0/open-pr-in-t3.png",
+          "alt": "Open a pull request in T3"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Make the worktree palette yours",
+        "description": "Resize the palette and keep that size between sessions, star worktrees on this PC or a remote Mac, and switch to favorites-only when the full list gets busy.",
+        "hero": {
+          "src": "/whats-new/2.2.0/worktree-palette-favorites.png",
+          "alt": "Resizable worktree palette with favorites"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "2.1.1",
     "date": "2026-09-03",
     "summary": "",

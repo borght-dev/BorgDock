@@ -1,6 +1,6 @@
 [package]
 name = "borgdock"
-version = "2.1.1"
+version = "2.2.0"
 description = "BorgDock — cross-platform PR monitor sidebar"
 authors = ["Koen van der Borght"]
 edition = "2021"

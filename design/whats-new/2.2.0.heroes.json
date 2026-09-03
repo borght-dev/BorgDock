@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "open-pr-in-t3",
+    "storyId": "pr-detail-prdetailapp--default",
+    "viewport": { "width": 1100, "height": 820 },
+    "delay": 900
+  },
+  {
+    "slug": "worktree-palette-favorites",
+    "storyId": "worktree-worktreepaletteapp--favorites-only-with-mix",
+    "viewport": { "width": 760, "height": 620 },
+    "delay": 2000
+  }
+]
