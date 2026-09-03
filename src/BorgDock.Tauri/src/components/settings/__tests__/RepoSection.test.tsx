@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { RepoSection } from '../RepoSection';
+import { describe, expect, it, vi } from 'vitest';
 import type { RepoSettings } from '@/types/settings';
+import { RepoSection } from '../RepoSection';
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: vi.fn().mockResolvedValue(null),
@@ -44,5 +44,36 @@ describe('RepoSection', () => {
     render(<RepoSection repos={[]} onChange={() => {}} />);
     const scanBtn = screen.getByRole('button', { name: /Scan folder/ });
     expect(scanBtn).toBeDisabled();
+  });
+
+  it('edits and removes a remote worktree repository', () => {
+    const onRemoteChange = vi.fn();
+    const remote = {
+      id: 'mac-fsp',
+      label: 'Mac mini',
+      owner: 'Gomocha-FSP',
+      name: 'fsp-horizon',
+      sshTarget: 'koenvdb@100.88.82.41',
+      identityFile: 'C:/Users/koen/.ssh/id_ed25519',
+      basePath: '/Users/koenvdb/Dev/fsp-horizon',
+      enabled: true,
+    };
+
+    render(
+      <RepoSection
+        repos={[]}
+        onChange={() => {}}
+        remoteWorktreeRepos={[remote]}
+        onRemoteWorktreeReposChange={onRemoteChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Host label for remote repository 1'), {
+      target: { value: 'Studio Mac' },
+    });
+    expect(onRemoteChange).toHaveBeenCalledWith([{ ...remote, label: 'Studio Mac' }]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove remote repository Mac mini' }));
+    expect(onRemoteChange).toHaveBeenCalledWith([]);
   });
 });

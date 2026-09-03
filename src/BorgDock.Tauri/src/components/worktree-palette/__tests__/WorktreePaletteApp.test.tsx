@@ -335,6 +335,53 @@ describe('WorktreePaletteApp', () => {
     expect(screen.getByText('org/repo')).toBeTruthy();
   });
 
+  it('labels remote worktrees and does not expose local-only actions', async () => {
+    const invoke = await getInvoke();
+    const remoteSnapshot: WorktreeSnapshot = [
+      {
+        repo: {
+          owner: 'Gomocha-FSP',
+          name: 'fsp-horizon',
+          basePath: '/Users/koenvdb/Dev/fsp-horizon',
+          remote: {
+            id: 'mac-fsp',
+            label: 'Mac mini',
+            sshTarget: 'koenvdb@100.88.82.41',
+          },
+        },
+        entries: [
+          {
+            path: '/Users/koenvdb/Dev/fsp-horizon',
+            branchName: 'main',
+            isMainWorktree: true,
+          },
+          {
+            path: '/Users/koenvdb/Dev/fsp-horizon/.worktrees/worktree1',
+            branchName: 'feature/remote',
+            isMainWorktree: false,
+          },
+        ],
+        fetchedAt: 1,
+      },
+    ];
+    mockCommands(invoke, {
+      settings: { repos: [], ui: { worktreePaletteFavoritesOnly: true } },
+      snapshot: remoteSnapshot,
+      refresh: remoteSnapshot,
+    });
+    await renderPalette();
+
+    expect(screen.getByText('Mac mini · Gomocha-FSP/fsp-horizon')).toBeTruthy();
+    expect(screen.getAllByText('remote')).toHaveLength(2);
+    expect(screen.getByText('feature/remote')).toBeTruthy();
+    expect(document.querySelectorAll('[data-action="open-terminal"]')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-worktree-row] [aria-pressed]')).toHaveLength(0);
+
+    const palette = document.querySelector('.bd-wt-palette');
+    await act(async () => fireEvent.keyDown(palette!, { key: 'Enter' }));
+    expect(invoke).not.toHaveBeenCalledWith('open_in_terminal', expect.anything());
+  });
+
   it('shows search input after loading with expected placeholder', async () => {
     await renderPalette();
     expect(screen.getByPlaceholderText(/Filter by branch/i)).toBeTruthy();

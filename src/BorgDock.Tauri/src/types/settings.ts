@@ -25,6 +25,18 @@ export interface RepoSettings {
   githubAccount?: string;
 }
 
+/** A read-only repository whose worktrees are fetched over SSH. */
+export interface RemoteWorktreeRepoSettings {
+  id: string;
+  label: string;
+  owner: string;
+  name: string;
+  sshTarget: string;
+  identityFile: string;
+  basePath: string;
+  enabled: boolean;
+}
+
 export interface FilePaletteRoot {
   path: string;
   label?: string;
@@ -143,6 +155,7 @@ export interface AppSettings {
   setupComplete: boolean;
   gitHub: GitHubSettings;
   repos: RepoSettings[];
+  remoteWorktreeRepos?: RemoteWorktreeRepoSettings[];
   ui: UiSettings;
   notifications: NotificationSettings;
   agents?: AgentSettings;

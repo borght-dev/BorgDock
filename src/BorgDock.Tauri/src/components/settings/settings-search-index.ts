@@ -28,6 +28,12 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
 
   // Repositories
   { sectionId: 'repos', anchorId: 'tracked-repositories', label: 'Tracked repositories' },
+  {
+    sectionId: 'repos',
+    anchorId: 'remote-worktrees',
+    label: 'Remote worktrees',
+    keywords: ['ssh', 'mac', 'remote repository'],
+  },
   { sectionId: 'repos', anchorId: 'local-folder', label: 'Local folder' },
   {
     sectionId: 'repos',

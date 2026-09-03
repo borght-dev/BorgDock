@@ -11,15 +11,26 @@ import {
   Select,
   TextInput,
 } from '@/components/shared/primitives';
-import type { RepoSettings } from '@/types/settings';
+import type { RemoteWorktreeRepoSettings, RepoSettings } from '@/types/settings';
+import { RemoteWorktreeReposCard } from './RemoteWorktreeReposCard';
 import { RepoScanDialog } from './RepoScanDialog';
 
 interface Props {
   repos: RepoSettings[];
   onChange: (rs: RepoSettings[]) => void;
+  remoteWorktreeRepos?: RemoteWorktreeRepoSettings[];
+  onRemoteWorktreeReposChange?: (repos: RemoteWorktreeRepoSettings[]) => void;
 }
 
-export function RepoSection({ repos, onChange }: Props) {
+const EMPTY_REMOTE_REPOS: RemoteWorktreeRepoSettings[] = [];
+const IGNORE_REMOTE_REPO_CHANGES = () => {};
+
+export function RepoSection({
+  repos,
+  onChange,
+  remoteWorktreeRepos = EMPTY_REMOTE_REPOS,
+  onRemoteWorktreeReposChange = IGNORE_REMOTE_REPO_CHANGES,
+}: Props) {
   const [parent, setParent] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [accounts, setAccounts] = useState<Array<{ login: string; active: boolean }>>([]);
@@ -27,7 +38,7 @@ export function RepoSection({ repos, onChange }: Props) {
 
   useEffect(() => {
     invoke<Array<{ login: string; active: boolean }>>('gh_cli_accounts')
-      .then(setAccounts)
+      .then((found) => setAccounts(found ?? []))
       .catch(() => setAccounts([]));
   }, []);
 
@@ -36,7 +47,7 @@ export function RepoSection({ repos, onChange }: Props) {
 
   const detectAccount = async (index: number) => {
     const repo = repos[index];
-    if (!repo || !repo.owner || !repo.name) return;
+    if (!repo?.owner || !repo.name) return;
     setDetecting(index);
     try {
       for (const account of [...accounts].sort((a, b) => Number(b.active) - Number(a.active))) {
@@ -184,6 +195,8 @@ export function RepoSection({ repos, onChange }: Props) {
           ))}
         </div>
       </Card>
+
+      <RemoteWorktreeReposCard repos={remoteWorktreeRepos} onChange={onRemoteWorktreeReposChange} />
 
       <Card variant="default" padding="md">
         <h3 className="mb-1.5 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">

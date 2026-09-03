@@ -20,7 +20,13 @@ export interface WorktreeEntry {
 
 /** One repo's slice of the Rust-side worktree cache (`git::worktree_cache`). */
 export interface WorktreeCacheRepo {
-  repo: { owner: string; name: string; basePath: string };
+  repo: {
+    owner: string;
+    name: string;
+    basePath: string;
+    /** Present for read-only worktrees fetched over SSH. */
+    remote?: { id: string; label: string; sshTarget: string };
+  };
   /** Sorted by Rust: main worktree first, then natural path order. */
   entries: WorktreeEntry[];
   /** Unix epoch ms of the scan that produced `entries`. */

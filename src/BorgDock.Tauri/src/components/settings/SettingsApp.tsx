@@ -121,7 +121,14 @@ export function SettingsApp() {
       case 'github':
         return <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />;
       case 'repos':
-        return <RepoSection repos={settings.repos} onChange={(repos) => update({ repos })} />;
+        return (
+          <RepoSection
+            repos={settings.repos}
+            onChange={(repos) => update({ repos })}
+            remoteWorktreeRepos={settings.remoteWorktreeRepos ?? []}
+            onRemoteWorktreeReposChange={(remoteWorktreeRepos) => update({ remoteWorktreeRepos })}
+          />
+        );
       case 'ado':
         return (
           <AdoSection
