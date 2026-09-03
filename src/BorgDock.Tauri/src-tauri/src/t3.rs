@@ -8,6 +8,9 @@ use uuid::Uuid;
 
 const TESTED_T3_VERSION: &str = "0.0.38";
 const T3_TOKEN_SERVICE: &str = "borgdock:t3";
+const T3_TOKEN_EXCHANGE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:token-exchange";
+const T3_BOOTSTRAP_TOKEN_TYPE: &str = "urn:t3:params:oauth:token-type:environment-bootstrap";
+const T3_ACCESS_TOKEN_TYPE: &str = "urn:ietf:params:oauth:token-type:access_token";
 
 #[derive(Debug, Deserialize)]
 struct RuntimeFile {
@@ -58,6 +61,23 @@ fn runtime() -> Result<RuntimeFile, String> {
 
 fn token() -> Result<Option<String>, String> {
     crate::keychain::get_credential_blocking(T3_TOKEN_SERVICE)
+}
+
+fn pairing_token(pairing_credential: &str) -> &str {
+    let trimmed = pairing_credential.trim();
+    trimmed
+        .split_once("#token=")
+        .map_or(trimmed, |(_, token)| token.trim())
+}
+
+fn token_exchange_form(pairing_credential: &str) -> Vec<(&'static str, &str)> {
+    vec![
+        ("grant_type", T3_TOKEN_EXCHANGE_GRANT_TYPE),
+        ("subject_token_type", T3_BOOTSTRAP_TOKEN_TYPE),
+        ("subject_token", pairing_token(pairing_credential)),
+        ("requested_token_type", T3_ACCESS_TOKEN_TYPE),
+        ("scope", "orchestration:read orchestration:operate"),
+    ]
 }
 
 fn t3_executable(configured: Option<&str>) -> PathBuf {
@@ -169,27 +189,26 @@ pub async fn t3_pair(pairing_credential: String) -> Result<(), String> {
         .map_err(|e| e.to_string())??;
     let response = reqwest::Client::new()
         .post(format!("{}/oauth/token", runtime.origin))
-        .form(&[
-            (
-                "grant_type",
-                "urn:ietf:params:oauth:grant-type:token-exchange",
-            ),
-            (
-                "subject_token_type",
-                "urn:t3:params:oauth:token-type:environment-bootstrap",
-            ),
-            ("subject_token", pairing_credential.trim()),
-            ("scope", "orchestration:read orchestration:operate"),
-        ])
+        .form(&token_exchange_form(&pairing_credential))
         .timeout(std::time::Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Pairing exchange failed: {e}"))?;
     let status = response.status();
-    let value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read pairing response: {e}"))?;
     if !status.is_success() {
-        return Err(format!("Pairing exchange returned {status}: {value}"));
+        let detail = body.trim();
+        return Err(if detail.is_empty() {
+            format!("Pairing exchange returned {status}")
+        } else {
+            format!("Pairing exchange returned {status}: {detail}")
+        });
     }
+    let value: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Pairing exchange returned an invalid response: {e}"))?;
     let access_token = value["access_token"]
         .as_str()
         .ok_or_else(|| "Pairing response did not include an access token".to_string())?
@@ -202,6 +221,27 @@ pub async fn t3_pair(pairing_credential: String) -> Result<(), String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_exchange_requests_an_access_token() {
+        let form = token_exchange_form("PAIRING-CREDENTIAL");
+
+        assert!(form.contains(&("requested_token_type", T3_ACCESS_TOKEN_TYPE)));
+    }
+
+    #[test]
+    fn pairing_token_accepts_raw_credentials_and_pairing_links() {
+        assert_eq!(pairing_token("PAIRING-CREDENTIAL"), "PAIRING-CREDENTIAL");
+        assert_eq!(
+            pairing_token("http://127.0.0.1:3773/pair#token=PAIRING-CREDENTIAL"),
+            "PAIRING-CREDENTIAL"
+        );
+    }
 }
 
 #[tauri::command]
