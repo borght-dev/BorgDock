@@ -107,17 +107,19 @@ export function FlyoutPrContextMenu({
     }
   };
 
-  const runAction = (action: PrActionId, alsoCloseFlyout = true) => () => {
-    void emitMain('flyout-pr-action', {
-      repoOwner: pr.repoOwner,
-      repoName: pr.repoName,
-      number: pr.number,
-      action,
-      failedCheckNames: pr.failedCheckNames ?? [],
-    });
-    onClose();
-    if (alsoCloseFlyout) onCloseFlyout();
-  };
+  const runAction =
+    (action: PrActionId, alsoCloseFlyout = true) =>
+    () => {
+      void emitMain('flyout-pr-action', {
+        repoOwner: pr.repoOwner,
+        repoName: pr.repoName,
+        number: pr.number,
+        action,
+        failedCheckNames: pr.failedCheckNames ?? [],
+      });
+      onClose();
+      if (alsoCloseFlyout) onCloseFlyout();
+    };
 
   const handleOpenInGitHub = runAction('open');
 
@@ -164,11 +166,9 @@ export function FlyoutPrContextMenu({
     void (async () => {
       const names = pr.failedCheckNames ?? [];
       if (names.length === 0) return;
-      const md = [
-        `## Failed checks for PR #${pr.number}`,
-        '',
-        ...names.map((n) => `- ${n}`),
-      ].join('\n');
+      const md = [`## Failed checks for PR #${pr.number}`, '', ...names.map((n) => `- ${n}`)].join(
+        '\n',
+      );
       try {
         const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
         await writeText(md);
@@ -185,6 +185,16 @@ export function FlyoutPrContextMenu({
       repoName: pr.repoName,
       number: pr.number,
       failedCheckNames: pr.failedCheckNames ?? [],
+    });
+    onClose();
+    onCloseFlyout();
+  };
+
+  const handleOpenInT3 = () => {
+    void emitMain('flyout-open-t3-thread', {
+      repoOwner: pr.repoOwner,
+      repoName: pr.repoName,
+      number: pr.number,
     });
     onClose();
     onCloseFlyout();
@@ -215,26 +225,15 @@ export function FlyoutPrContextMenu({
     >
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
       <MenuItem label="Open detail window" onClick={handleOpenDetail} />
-      <MenuItem
-        label="Copy branch name"
-        disabled={!pr.headRef}
-        onClick={handleCopyBranch}
-      />
+      <MenuItem label="Copy branch name" disabled={!pr.headRef} onClick={handleCopyBranch} />
       <MenuItem label="Copy PR URL" disabled={!pr.htmlUrl} onClick={handleCopyUrl} />
-      <MenuItem
-        label="Copy errors for Claude"
-        disabled={!hasFailing}
-        onClick={handleCopyErrors}
-      />
+      <MenuItem label="Copy errors for Claude" disabled={!hasFailing} onClick={handleCopyErrors} />
 
       <Separator />
 
       <MenuItem label="Checkout branch" onClick={runAction('checkout')} />
-      <MenuItem
-        label="Rerun failed checks"
-        disabled={!hasFailing}
-        onClick={runAction('rerun')}
-      />
+      <MenuItem label="Open a new thread in T3" onClick={handleOpenInT3} />
+      <MenuItem label="Rerun failed checks" disabled={!hasFailing} onClick={runAction('rerun')} />
       <MenuItem label="Merge" disabled={!isReady} onClick={runAction('merge')} />
 
       <Separator />

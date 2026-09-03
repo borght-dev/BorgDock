@@ -1,13 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { computeMergeScore } from '@/services/merge-score';
+import { sendOsNotification } from '@/services/notification';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
+import { requestT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useT3SessionStore } from '@/stores/t3-session-store';
 import type { PullRequestWithChecks } from '@/types';
+import { parseError } from '@/utils/parse-error';
 
 type TrayWorstState = 'failing' | 'pending' | 'passing' | 'idle';
 
@@ -282,6 +285,7 @@ export function useFlyoutSync() {
   useEffect(() => {
     let unlistenFix: (() => void) | undefined;
     let unlistenMonitor: (() => void) | undefined;
+    let unlistenT3: (() => void) | undefined;
     let unlistenAction: (() => void) | undefined;
     let cancelled = false;
 
@@ -325,6 +329,30 @@ export function useFlyoutSync() {
               );
             if (pr) {
               monitorRef.current(pr).catch(console.error);
+            }
+          },
+        );
+
+        const fnT3 = await listen<{ repoOwner: string; repoName: string; number: number }>(
+          'flyout-open-t3-thread',
+          (event) => {
+            const { repoOwner, repoName, number } = event.payload;
+            const pr = usePrStore
+              .getState()
+              .pullRequests.find(
+                (p) =>
+                  p.pullRequest.repoOwner === repoOwner &&
+                  p.pullRequest.repoName === repoName &&
+                  p.pullRequest.number === number,
+              );
+            if (pr) {
+              requestT3Thread(pr.pullRequest).catch((err) => {
+                void sendOsNotification({
+                  title: 'Open in T3 failed',
+                  body: parseError(err).message,
+                  severity: 'error',
+                }).catch(() => {});
+              });
             }
           },
         );
@@ -397,11 +425,13 @@ export function useFlyoutSync() {
         if (cancelled) {
           fnFix();
           fnMonitor();
+          fnT3();
           fnAction();
           return;
         }
         unlistenFix = fnFix;
         unlistenMonitor = fnMonitor;
+        unlistenT3 = fnT3;
         unlistenAction = fnAction;
       } catch {
         // ignore
@@ -412,6 +442,7 @@ export function useFlyoutSync() {
       cancelled = true;
       unlistenFix?.();
       unlistenMonitor?.();
+      unlistenT3?.();
       unlistenAction?.();
     };
   }, []);

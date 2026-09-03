@@ -80,23 +80,26 @@ export interface NotificationSettings {
   lastTestFiredAt?: number;
 }
 
-export type AgentProvider = 'claude' | 'codex' | 't3';
+/** Terminal agents used by Fix / Resolve / Monitor. T3 is not a provider:
+ * "Open a new thread in T3" is its own action (see services/t3-thread.ts). */
+export type AgentProvider = 'claude' | 'codex';
 
 export interface AgentSettings {
   defaultProvider: AgentProvider;
-  fallbackProvider: Exclude<AgentProvider, 't3'>;
   defaultPostFixAction: PostFixAction;
   claudePath?: string;
   codexPath?: string;
   codexModel?: string;
+  /** Override for the T3 Code executable. */
   t3Path?: string;
+  /** Model used for new T3 threads when T3 has no default of its own yet. */
   t3Model: string;
   t3ModelInstance: string;
 }
 
 export interface SummarySettings {
   enabled: boolean;
-  provider: Exclude<AgentProvider, 't3'>;
+  provider: AgentProvider;
   model: string;
 }
 

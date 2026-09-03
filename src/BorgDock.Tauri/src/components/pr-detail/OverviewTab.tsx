@@ -26,8 +26,7 @@ const DEFAULT_SUMMARY_SETTINGS = {
 };
 
 const DEFAULT_AGENT_SETTINGS = {
-  defaultProvider: 't3' as const,
-  fallbackProvider: 'claude' as const,
+  defaultProvider: 'claude' as const,
   defaultPostFixAction: 'commitAndNotify' as const,
   t3Model: 'claude-fable-5',
   t3ModelInstance: 'claudeAgent',

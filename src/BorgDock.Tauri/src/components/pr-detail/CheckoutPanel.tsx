@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createLogger } from '@/services/logger';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, IconButton, Input, Pill } from '@/components/shared/primitives';
+import { createLogger } from '@/services/logger';
 
 const log = createLogger('CheckoutPanel');
 
@@ -49,9 +49,7 @@ type Mode =
   | { kind: 'success'; worktreePath: string; steps: GitStep[] }
   | { kind: 'error'; steps: GitStep[]; error: string };
 
-type Selection =
-  | { kind: 'existing'; path: string }
-  | { kind: 'new'; name: string };
+type Selection = { kind: 'existing'; path: string } | { kind: 'new'; name: string };
 
 export interface CheckoutPanelProps {
   branchName: string;
@@ -61,6 +59,15 @@ export interface CheckoutPanelProps {
   favoritesOnlyDefault?: boolean;
   windowsTerminalProfile?: string;
   onDismiss: () => void;
+  /**
+   * Called once a worktree holds the branch (already checked out, or right
+   * after a successful checkout). Set by flows that only need the worktree
+   * path, such as "Open a new thread in T3": the panel hands the path over
+   * instead of showing its launch buttons.
+   */
+  onWorktreeReady?: (worktreePath: string) => void;
+  /** Adds a "T3" launch button next to Explorer / Terminal / Claude / VSCode. */
+  onOpenInT3?: (worktreePath: string) => void;
 }
 
 function sanitizeBranchForPath(name: string): string {
@@ -97,6 +104,8 @@ export function CheckoutPanel({
   favoritesOnlyDefault,
   windowsTerminalProfile,
   onDismiss,
+  onWorktreeReady,
+  onOpenInT3,
 }: CheckoutPanelProps) {
   const defaultName = useMemo(() => sanitizeBranchForPath(branchName), [branchName]);
   const favoriteSet = useMemo(() => new Set(favoritePaths ?? []), [favoritePaths]);
@@ -116,7 +125,9 @@ export function CheckoutPanel({
   useEffect(() => {
     let cancelled = false;
     if (!repoBasePath) {
-      setWorktreesError('No worktree base path is configured for this repo. Open Settings and fill it in.');
+      setWorktreesError(
+        'No worktree base path is configured for this repo. Open Settings and fill it in.',
+      );
       setWorktrees([]);
       return;
     }
@@ -124,9 +135,7 @@ export function CheckoutPanel({
       .then((entries) => {
         if (cancelled) return;
         setWorktrees(entries);
-        const match = entries.find(
-          (w) => !w.isMainWorktree && w.branchName === branchName,
-        );
+        const match = entries.find((w) => !w.isMainWorktree && w.branchName === branchName);
         if (match) {
           setSelection({ kind: 'existing', path: match.path });
           // Branch is already checked out in a worktree — skip the picker and
@@ -165,6 +174,17 @@ export function CheckoutPanel({
     };
   }, [repoBasePath, branchName]);
 
+  // Hand the worktree path over as soon as one holds the branch. The ref
+  // keeps the effect from re-firing when the parent re-renders with a new
+  // callback identity for the same mode.
+  const readyPath = mode.kind === 'ready' || mode.kind === 'success' ? mode.worktreePath : null;
+  const handedOverRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!onWorktreeReady || !readyPath || handedOverRef.current === readyPath) return;
+    handedOverRef.current = readyPath;
+    onWorktreeReady(readyPath);
+  }, [onWorktreeReady, readyPath]);
+
   const nonMainWorktrees = useMemo(
     () => (worktrees ?? []).filter((w) => !w.isMainWorktree),
     [worktrees],
@@ -176,14 +196,10 @@ export function CheckoutPanel({
     if (!favoritesOnly) return nonMainWorktrees;
     const keepSelected = selection.kind === 'existing' ? selection.path : null;
     return nonMainWorktrees.filter(
-      (w) =>
-        favoriteSet.has(w.path) || w.branchName === branchName || w.path === keepSelected,
+      (w) => favoriteSet.has(w.path) || w.branchName === branchName || w.path === keepSelected,
     );
   }, [nonMainWorktrees, favoritesOnly, favoriteSet, selection, branchName]);
-  const mainWorktree = useMemo(
-    () => (worktrees ?? []).find((w) => w.isMainWorktree),
-    [worktrees],
-  );
+  const mainWorktree = useMemo(() => (worktrees ?? []).find((w) => w.isMainWorktree), [worktrees]);
 
   const fullNewPath = useMemo(() => {
     if (!repoBasePath) return '';
@@ -306,7 +322,12 @@ export function CheckoutPanel({
             </>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-1.5 px-3 pb-2 pt-1">
+        <div
+          className={clsx(
+            'grid gap-1.5 px-3 pb-2 pt-1',
+            onOpenInT3 ? 'grid-cols-5' : 'grid-cols-4',
+          )}
+        >
           <Button
             variant="primary"
             size="sm"
@@ -347,13 +368,21 @@ export function CheckoutPanel({
           >
             VSCode
           </Button>
+          {onOpenInT3 && (
+            <Button
+              variant="primary"
+              size="sm"
+              leading={iconThread}
+              onClick={() => onOpenInT3(mode.worktreePath)}
+              data-checkout-launch="t3"
+              className="!w-full"
+            >
+              T3
+            </Button>
+          )}
         </div>
         <div className="flex justify-end px-3 pb-2.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setMode({ kind: 'picking' })}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setMode({ kind: 'picking' })}>
             pick a different worktree
           </Button>
         </div>
@@ -371,7 +400,9 @@ export function CheckoutPanel({
         data-checkout-stage={stageAttr}
       >
         <StatusStrip mode={mode} branchName={branchName} />
-        {mode.kind !== 'running' && <LogBlock steps={steps} error={mode.kind === 'error' ? mode.error : undefined} />}
+        {mode.kind !== 'running' && (
+          <LogBlock steps={steps} error={mode.kind === 'error' ? mode.error : undefined} />
+        )}
         {mode.kind === 'running' && (
           <div className="mx-[6px] mt-2 mb-3 bg-[var(--color-background)] border border-[var(--color-separator)] rounded-md font-mono text-[11px] leading-[1.55] px-3 py-2.5">
             <div className="text-[var(--color-text-ghost)]">cwd: {repoBasePath}</div>
@@ -391,7 +422,12 @@ export function CheckoutPanel({
           </div>
         )}
         {mode.kind === 'success' && (
-          <div className="grid grid-cols-4 gap-1.5 px-3 pb-3 pt-2">
+          <div
+            className={clsx(
+              'grid gap-1.5 px-3 pb-3 pt-2',
+              onOpenInT3 ? 'grid-cols-5' : 'grid-cols-4',
+            )}
+          >
             <Button
               variant="primary"
               size="sm"
@@ -432,16 +468,23 @@ export function CheckoutPanel({
             >
               VSCode
             </Button>
+            {onOpenInT3 && (
+              <Button
+                variant="primary"
+                size="sm"
+                leading={iconThread}
+                onClick={() => onOpenInT3(mode.worktreePath)}
+                data-checkout-launch="t3"
+                className="!w-full"
+              >
+                T3
+              </Button>
+            )}
           </div>
         )}
         {mode.kind === 'error' && (
           <div className="flex justify-between gap-2 px-3 py-2 border-t border-[var(--color-separator)]">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDismiss}
-              data-checkout-action="cancel"
-            >
+            <Button variant="ghost" size="sm" onClick={onDismiss} data-checkout-action="cancel">
               Dismiss
             </Button>
             <Button
@@ -456,12 +499,7 @@ export function CheckoutPanel({
         )}
         {mode.kind === 'success' && (
           <div className="flex justify-end px-3 pb-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDismiss}
-              data-checkout-action="done"
-            >
+            <Button variant="ghost" size="sm" onClick={onDismiss} data-checkout-action="done">
               dismiss
             </Button>
           </div>
@@ -547,7 +585,9 @@ export function CheckoutPanel({
           <IconButton
             icon={<StarIcon filled={favoritesOnly} />}
             active={favoritesOnly}
-            tooltip={favoritesOnly ? 'Showing favorites only — click to show all' : 'Show favorites only'}
+            tooltip={
+              favoritesOnly ? 'Showing favorites only — click to show all' : 'Show favorites only'
+            }
             size={22}
             onClick={() => setFavoritesOnly((v) => !v)}
             data-checkout-favorites-toggle
@@ -567,7 +607,8 @@ export function CheckoutPanel({
 
       {!isListLoading && !worktreesError && !hasNonMain && (
         <div className="mx-[6px] mb-2 rounded-md border border-dashed border-[var(--color-subtle-border)] px-3 py-2.5 text-[11.5px] leading-[1.5] text-[var(--color-text-muted)]">
-          No worktrees yet. Create one below to safely check out this branch without touching your current working tree.
+          No worktrees yet. Create one below to safely check out this branch without touching your
+          current working tree.
         </div>
       )}
 
@@ -628,7 +669,9 @@ export function CheckoutPanel({
                   </div>
                   <div className="mt-[3px] flex items-center gap-1.5 flex-wrap text-[11px] text-[var(--color-text-muted)]">
                     {w.status !== undefined && <StatusDot status={w.status} />}
-                    <span className="font-mono text-[var(--color-text-secondary)]">{w.branchName || '(detached)'}</span>
+                    <span className="font-mono text-[var(--color-text-secondary)]">
+                      {w.branchName || '(detached)'}
+                    </span>
                     {statusLabel(w) && (
                       <>
                         <Sep />
@@ -702,9 +745,7 @@ export function CheckoutPanel({
             <div className="px-1.5 pb-2.5">
               <button
                 type="button"
-                onClick={() =>
-                  setSelection({ kind: 'existing', path: mainWorktree.path })
-                }
+                onClick={() => setSelection({ kind: 'existing', path: mainWorktree.path })}
                 className={clsx(
                   'relative grid grid-cols-[16px_1fr_auto] items-center gap-2.5 rounded-md px-2 py-2.5 text-left transition-colors border border-dashed w-full',
                   selection.kind === 'existing' && selection.path === mainWorktree.path
@@ -713,7 +754,9 @@ export function CheckoutPanel({
                 )}
               >
                 <span className="font-mono text-[12px] leading-none text-[var(--color-status-red)]">
-                  {selection.kind === 'existing' && selection.path === mainWorktree.path ? '◆' : '◇'}
+                  {selection.kind === 'existing' && selection.path === mainWorktree.path
+                    ? '◆'
+                    : '◇'}
                 </span>
                 <div className="min-w-0">
                   <div className="font-mono text-[12px] text-[var(--color-status-red)] truncate">
@@ -721,7 +764,9 @@ export function CheckoutPanel({
                     <span className="text-[var(--color-text-ghost)] font-normal">(main)</span>
                   </div>
                   <div className="mt-[3px] flex items-center gap-1.5 flex-wrap text-[11px] text-[var(--color-text-muted)]">
-                    {mainWorktree.status !== undefined && <StatusDot status={mainWorktree.status} />}
+                    {mainWorktree.status !== undefined && (
+                      <StatusDot status={mainWorktree.status} />
+                    )}
                     <span className="font-mono text-[var(--color-text-secondary)]">
                       {mainWorktree.branchName || '(detached)'}
                     </span>
@@ -732,7 +777,9 @@ export function CheckoutPanel({
                       </>
                     )}
                     <Sep />
-                    <span className="text-[var(--color-status-red)]">overwrites your current branch</span>
+                    <span className="text-[var(--color-status-red)]">
+                      overwrites your current branch
+                    </span>
                   </div>
                 </div>
                 <Pill tone="error">unsafe</Pill>
@@ -743,12 +790,7 @@ export function CheckoutPanel({
       )}
 
       <div className="grid grid-cols-[auto_1fr] gap-2 px-3 pb-3 pt-2 border-t border-[var(--color-separator)]">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDismiss}
-          data-checkout-action="cancel"
-        >
+        <Button variant="ghost" size="sm" onClick={onDismiss} data-checkout-action="cancel">
           Cancel
         </Button>
         <Button
@@ -936,7 +978,15 @@ function LogBlock({ steps, error }: { steps: GitStep[]; error?: string }) {
 
 function XIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    >
       <path d="M3 3l6 6M9 3l-6 6" />
     </svg>
   );
@@ -944,7 +994,16 @@ function XIcon() {
 
 function ArrowLeftIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M7.5 2.5L4 6l3.5 3.5M4 6h6" />
     </svg>
   );
@@ -952,7 +1011,16 @@ function ArrowLeftIcon() {
 
 function ArrowRightIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M4.5 2.5L8 6l-3.5 3.5M2 6h6" />
     </svg>
   );
@@ -976,23 +1044,77 @@ function StarIcon({ filled }: { filled: boolean }) {
 }
 
 const iconFolder = (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z" />
   </svg>
 );
 const iconTerminal = (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <rect x="2" y="3" width="12" height="10" rx="1.5" />
     <path d="M5 7l2 2-2 2M9 11h3" />
   </svg>
 );
 const iconSparkle = (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M8 2l1.6 3.8L13.5 7l-3.9 1.2L8 12l-1.6-3.8L2.5 7l3.9-1.2z" />
   </svg>
 );
+const iconThread = (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H6l-3 2.5v-2.5h-.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z" />
+    <path d="M5 7h6" />
+    <path d="M5 9.5h3.5" />
+  </svg>
+);
+
 const iconCode = (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M5 4l-3 4 3 4M11 4l3 4-3 4M9.5 3 6.5 13" />
   </svg>
 );

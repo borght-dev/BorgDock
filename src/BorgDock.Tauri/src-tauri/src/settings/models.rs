@@ -308,10 +308,9 @@ impl Default for NotificationChannels {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSettings {
+    /// Terminal agent for Fix / Resolve / Monitor: "claude" or "codex".
     #[serde(default = "default_agent_provider")]
     pub default_provider: String,
-    #[serde(default = "default_fallback_provider")]
-    pub fallback_provider: String,
     #[serde(default = "default_post_fix_action")]
     pub default_post_fix_action: String,
     pub claude_path: Option<String>,
@@ -325,9 +324,6 @@ pub struct AgentSettings {
 }
 
 fn default_agent_provider() -> String {
-    "t3".to_string()
-}
-fn default_fallback_provider() -> String {
     "claude".to_string()
 }
 fn default_t3_model() -> String {
@@ -345,7 +341,6 @@ impl Default for AgentSettings {
     fn default() -> Self {
         Self {
             default_provider: default_agent_provider(),
-            fallback_provider: default_fallback_provider(),
             default_post_fix_action: "commitAndNotify".to_string(),
             claude_path: None,
             codex_path: None,
@@ -650,8 +645,8 @@ mod redesign_field_tests {
     #[test]
     fn agent_and_summary_defaults_are_current() {
         let s: AppSettings = serde_json::from_str("{}").unwrap();
-        assert_eq!(s.agents.default_provider, "t3");
-        assert_eq!(s.agents.fallback_provider, "claude");
+        assert_eq!(s.agents.default_provider, "claude");
+        assert_eq!(s.agents.t3_model_instance, "claudeAgent");
         assert_eq!(s.summaries.provider, "claude");
         assert_eq!(s.summaries.model, "sonnet");
         assert!(s.summaries.enabled);

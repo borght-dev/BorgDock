@@ -244,14 +244,64 @@ mod tests {
     }
 }
 
+/// Model selection and runtime mode to seed a new thread with. Prefers the
+/// project's own default, then whatever the user picked for their most recent
+/// thread, and only then the values from BorgDock settings.
+fn thread_defaults(
+    project_id: Option<&str>,
+    fallback_model: &str,
+    fallback_instance: &str,
+) -> Result<(serde_json::Value, String), String> {
+    let connection = open_db()?;
+    let mut selection: Option<serde_json::Value> = None;
+    if let Some(project_id) = project_id {
+        let raw: Option<String> = connection
+            .query_row(
+                "SELECT default_model_selection_json FROM projection_projects WHERE project_id=?1",
+                [project_id],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten();
+        selection = raw.and_then(|json| serde_json::from_str(&json).ok());
+    }
+    let latest: Option<(Option<String>, String)> = connection
+        .query_row(
+            "SELECT model_selection_json, runtime_mode FROM projection_threads              WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .ok();
+    let runtime_mode = latest
+        .as_ref()
+        .map(|(_, mode)| mode.clone())
+        .unwrap_or_else(|| "full-access".to_string());
+    if selection.is_none() {
+        selection = latest
+            .and_then(|(json, _)| json)
+            .and_then(|json| serde_json::from_str(&json).ok());
+    }
+    Ok((
+        selection.unwrap_or_else(
+            || json!({ "instanceId": fallback_instance, "model": fallback_model, "options": [] }),
+        ),
+        runtime_mode,
+    ))
+}
+
+/// Open a fresh, empty T3 thread on `workspace_root` and bring T3 to the
+/// front. Paired: the thread is created through the orchestration API and
+/// linked to the pull request. Unpaired: T3 is only activated (tier 1) so the
+/// user can start the thread by hand.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub async fn t3_launch_session(
+pub async fn t3_open_thread(
     workspace_root: String,
     branch: String,
     title: String,
-    prompt: String,
-    action: String,
+    repository: String,
+    pr_number: u32,
+    pr_url: String,
     model: String,
     model_instance: String,
     executable: Option<String>,
@@ -275,6 +325,12 @@ pub async fn t3_launch_session(
     })
     .await
     .map_err(|e| e.to_string())??;
+    let (model_selection, runtime_mode) = tokio::task::spawn_blocking({
+        let project_id = project_id.clone();
+        move || thread_defaults(project_id.as_deref(), &model, &model_instance)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     let now = Utc::now().to_rfc3339();
     if project_id.is_none() {
         let id = Uuid::new_v4().to_string();
@@ -287,12 +343,6 @@ pub async fn t3_launch_session(
     }
     let project_id = project_id.unwrap();
     let thread_id = Uuid::new_v4().to_string();
-    let runtime_mode = if action.eq_ignore_ascii_case("monitor") {
-        "approval-required"
-    } else {
-        "auto-accept-edits"
-    };
-    let model_selection = json!({ "instanceId": model_instance, "model": model, "options": [] });
     dispatch(
         &runtime.origin,
         &access_token,
@@ -304,12 +354,23 @@ pub async fn t3_launch_session(
         }),
     )
     .await?;
-    dispatch(&runtime.origin, &access_token, json!({
-        "type": "thread.turn.start", "commandId": Uuid::new_v4(), "threadId": thread_id,
-        "message": { "messageId": Uuid::new_v4(), "role": "user", "text": prompt, "attachments": [] },
-        "modelSelection": model_selection, "titleSeed": title, "runtimeMode": runtime_mode,
-        "interactionMode": "default", "createdAt": Utc::now().to_rfc3339()
-    })).await?;
+    // Linking is best-effort: the thread already exists and is usable even if
+    // an older T3 rejects the linkedPullRequest field.
+    if let Err(error) = dispatch(
+        &runtime.origin,
+        &access_token,
+        json!({
+            "type": "thread.meta.update", "commandId": Uuid::new_v4(), "threadId": thread_id,
+            "linkedPullRequest": {
+                "projectId": project_id, "repository": repository,
+                "number": pr_number, "url": pr_url
+            }
+        }),
+    )
+    .await
+    {
+        log::warn!("t3_open_thread: linking PR to thread failed: {error}");
+    }
     activate_t3(Path::new(&workspace_root), executable.as_deref())?;
     Ok(T3LaunchResult {
         tier: 2,

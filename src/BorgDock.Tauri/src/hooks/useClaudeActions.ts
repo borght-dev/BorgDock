@@ -9,8 +9,10 @@ import {
 } from '@/services/claude-launcher';
 import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
+import { findWorktreeForBranch } from '@/services/worktree-lookup';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { ParsedError, PullRequestWithChecks } from '@/types';
+import type { AgentProvider } from '@/types/settings';
 
 const log = (step: string, detail?: string) =>
   console.log(`[claude-actions] ${step}${detail ? `: ${detail}` : ''}`);
@@ -27,7 +29,6 @@ export function useClaudeActions() {
   const settings = useSettingsStore((s) => s.settings);
   const agentSettings = settings.agents ?? {
     defaultProvider: 'claude' as const,
-    fallbackProvider: 'claude' as const,
     defaultPostFixAction: 'commitAndNotify' as const,
     t3Model: 'claude-fable-5',
     t3ModelInstance: 'claudeAgent',
@@ -37,27 +38,17 @@ export function useClaudeActions() {
     (
       worktreePath: string,
       promptFile: string,
-      prompt: string,
       title: string,
-      branch: string,
-      action: 'fix' | 'resolve' | 'monitor',
-      provider = agentSettings.defaultProvider,
+      provider: AgentProvider = agentSettings.defaultProvider,
     ) =>
       launchAgentSession({
         provider,
-        fallbackProvider: agentSettings.fallbackProvider,
         worktreePath,
         promptFile,
-        prompt,
         title,
-        branch,
-        action,
         claudePath: agentSettings.claudePath,
         codexPath: agentSettings.codexPath,
         codexModel: agentSettings.codexModel,
-        t3Path: agentSettings.t3Path,
-        t3Model: agentSettings.t3Model,
-        t3ModelInstance: agentSettings.t3ModelInstance,
       }),
     [agentSettings],
   );
@@ -77,14 +68,7 @@ export function useClaudeActions() {
       }
 
       log('list_worktrees_bare', repo.worktreeBasePath);
-      const worktrees = await invoke<
-        Array<{ path: string; branchName: string; isMainWorktree: boolean }>
-      >('list_worktrees_bare', { basePath: repo.worktreeBasePath });
-      log('list_worktrees_bare done', `found ${worktrees.length} worktrees`);
-
-      const existing = worktrees.find(
-        (w) => w.branchName === branch || w.branchName === `refs/heads/${branch}`,
-      );
+      const existing = await findWorktreeForBranch(repo.worktreeBasePath, branch);
       if (existing) {
         log('reusing worktree', existing.path);
         return existing.path;
@@ -110,7 +94,7 @@ export function useClaudeActions() {
       errors: ParsedError[],
       changedFiles: string[],
       rawLog: string,
-      provider?: 'claude' | 'codex' | 't3',
+      provider?: AgentProvider,
     ) => {
       const p = pr.pullRequest;
       log('fixWithClaude', `PR #${p.number} checks=${failedCheckNames.join(', ')}`);
@@ -130,22 +114,14 @@ export function useClaudeActions() {
         failedCheckNames.length === 1
           ? failedCheckNames[0]
           : `${failedCheckNames.length} failing checks`;
-      await launch(
-        worktreePath,
-        promptFile,
-        prompt,
-        `Fix ${checksLabel}`,
-        p.headRef,
-        'fix',
-        provider,
-      );
+      await launch(worktreePath, promptFile, `Fix ${checksLabel}`, provider);
       log('claude launched');
     },
     [findRepoSettings, getOrCreateWorktree, launch],
   );
 
   const resolveConflicts = useCallback(
-    async (pr: PullRequestWithChecks, provider?: 'claude' | 'codex' | 't3') => {
+    async (pr: PullRequestWithChecks, provider?: AgentProvider) => {
       const p = pr.pullRequest;
       log('resolveConflicts', `PR #${p.number}`);
 
@@ -153,22 +129,14 @@ export function useClaudeActions() {
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       const prompt = buildConflictPrompt(pr);
       const promptFile = await writePromptFile(prompt);
-      await launch(
-        worktreePath,
-        promptFile,
-        prompt,
-        'Resolve merge conflicts',
-        p.headRef,
-        'resolve',
-        provider,
-      );
+      await launch(worktreePath, promptFile, 'Resolve merge conflicts', provider);
       log('claude launched for conflict resolution');
     },
     [getOrCreateWorktree, launch],
   );
 
   const monitorPr = useCallback(
-    async (pr: PullRequestWithChecks, provider?: 'claude' | 'codex' | 't3') => {
+    async (pr: PullRequestWithChecks, provider?: AgentProvider) => {
       const p = pr.pullRequest;
       log('monitorPr', `PR #${p.number} branch=${p.headRef}`);
 
@@ -183,15 +151,7 @@ export function useClaudeActions() {
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
       log('launching claude');
-      await launch(
-        worktreePath,
-        promptFile,
-        prompt,
-        `Monitor PR #${p.number}`,
-        p.headRef,
-        'monitor',
-        provider,
-      );
+      await launch(worktreePath, promptFile, `Monitor PR #${p.number}`, provider);
       log('claude launched');
     },
     [findRepoSettings, getOrCreateWorktree, launch],

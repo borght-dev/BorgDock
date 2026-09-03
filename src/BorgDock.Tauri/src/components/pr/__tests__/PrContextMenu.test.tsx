@@ -44,6 +44,11 @@ vi.mock('@/stores/settings-store', () => {
   return { useSettingsStore: fn };
 });
 
+const mockRequestT3Thread = vi.fn().mockResolvedValue(undefined);
+vi.mock('@/services/t3-thread', () => ({
+  requestT3Thread: (...args: unknown[]) => mockRequestT3Thread(...args),
+}));
+
 vi.mock('@/hooks/useClaudeActions', () => ({
   useClaudeActions: () => ({
     fixWithClaude: vi.fn().mockResolvedValue(undefined),
@@ -141,6 +146,7 @@ describe('PrContextMenu', () => {
     expect(screen.getByText('Copy PR URL')).toBeInTheDocument();
     expect(screen.getByText('Copy errors for Claude')).toBeInTheDocument();
     expect(screen.getByText('Checkout branch')).toBeInTheDocument();
+    expect(screen.getByText('Open a new thread in T3')).toBeInTheDocument();
     expect(screen.getByText('Mark as draft')).toBeInTheDocument();
     expect(screen.getByText('Fix with Claude')).toBeInTheDocument();
     expect(screen.getByText('Monitor with Claude')).toBeInTheDocument();
@@ -398,6 +404,22 @@ describe('PrContextMenu', () => {
       />,
     );
     fireEvent.click(screen.getByText('Fix with Claude'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('requests a T3 thread when "Open a new thread in T3" is clicked', () => {
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Open a new thread in T3'));
+    expect(mockRequestT3Thread).toHaveBeenCalledWith(
+      expect.objectContaining({ headRef: 'feature/test' }),
+    );
     expect(onClose).toHaveBeenCalled();
   });
 

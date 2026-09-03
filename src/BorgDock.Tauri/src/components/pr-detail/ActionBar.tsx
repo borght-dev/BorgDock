@@ -3,8 +3,17 @@ import { Button } from '@/components/shared/primitives';
 import type { PrActions } from './usePrActions';
 
 const MergeIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <circle cx="3" cy="8" r="1.5" />
     <circle cx="13" cy="3" r="1.5" />
     <circle cx="13" cy="13" r="1.5" />
@@ -15,24 +24,70 @@ const MergeIcon = () => (
 );
 
 const ExternalIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M9 2h5v5" /><path d="m14 2-7 7" />
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M9 2h5v5" />
+    <path d="m14 2-7 7" />
     <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
   </svg>
 );
 
+const ThreadIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H6l-3 2.5v-2.5h-.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z" />
+    <path d="M5 7h6" />
+    <path d="M5 9.5h3.5" />
+  </svg>
+);
+
 const CopyIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <rect x="5" y="5" width="9" height="9" rx="1.5" />
     <path d="M11 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2" />
   </svg>
 );
 
 const BranchIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <circle cx="4" cy="3.5" r="1.5" />
     <circle cx="4" cy="12.5" r="1.5" />
     <circle cx="12" cy="6.5" r="1.5" />
@@ -42,8 +97,17 @@ const BranchIcon = () => (
 );
 
 const EditIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M11 2.5 13.5 5 5 13.5l-3 .5.5-3z" />
   </svg>
 );
@@ -116,6 +180,15 @@ export function ActionBar({ actions, prState, isDraft, mergeable }: ActionBarPro
         )}
       >
         Checkout
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        leading={<ThreadIcon />}
+        onClick={actions.onOpenInT3}
+        data-action-bar-action="t3"
+      >
+        Open in T3
       </Button>
       {isOpen && (
         <Button
