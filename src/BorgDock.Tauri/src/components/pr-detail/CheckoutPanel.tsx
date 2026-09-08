@@ -217,6 +217,9 @@ export function CheckoutPanel({
           ? shortPath(sel.path, repoBasePath) || sel.path
           : `${worktreeSubfolder || '.worktrees'}/${sanitizeBranchForPath(sel.name || defaultName)}`;
       setMode({ kind: 'running', target });
+      const started = performance.now();
+      const context = { branchName, repoBasePath, target, selectionKind: sel.kind };
+      log.info('checkout_pr started', context);
       try {
         const args =
           sel.kind === 'existing'
@@ -232,13 +235,21 @@ export function CheckoutPanel({
                 newWorktreeName: sanitizeBranchForPath(sel.name || defaultName),
               };
         const result = await invoke<CheckoutPrResult>('checkout_pr', args);
+        log.info('checkout_pr completed', {
+          ...context,
+          worktreePath: result.worktreePath,
+          durationMs: Math.round(performance.now() - started),
+        });
         setMode({
           kind: 'success',
           worktreePath: result.worktreePath,
           steps: result.steps,
         });
       } catch (err) {
-        log.error('checkout_pr failed', err);
+        log.error('checkout_pr failed', err, {
+          ...context,
+          durationMs: Math.round(performance.now() - started),
+        });
         setMode({
           kind: 'error',
           steps: [],
@@ -830,14 +841,14 @@ function DrawerHeader({
 }) {
   return (
     <div className="flex items-baseline gap-2 px-3.5 py-3 border-b border-dashed border-[var(--color-subtle-border)]">
-      <div className="flex items-baseline gap-1.5 text-[12.5px] text-[var(--color-text-secondary)]">
+      <div className="min-w-0 flex flex-wrap items-baseline gap-1.5 text-[12.5px] text-[var(--color-text-secondary)]">
         <span>{label}</span>
-        <span className="font-mono text-[12px] text-[var(--color-text-primary)] bg-[var(--color-background)] border border-[var(--color-separator)] px-1.5 py-[1px] rounded-sm">
+        <span className="min-w-0 break-all font-mono text-[12px] text-[var(--color-text-primary)] bg-[var(--color-background)] border border-[var(--color-separator)] px-1.5 py-[1px] rounded-sm">
           {branchName}
         </span>
         {suffix && <span>{suffix}</span>}
       </div>
-      <span className="ml-auto">
+      <span className="ml-auto shrink-0">
         <IconButton
           icon={<XIcon />}
           tooltip="Dismiss"

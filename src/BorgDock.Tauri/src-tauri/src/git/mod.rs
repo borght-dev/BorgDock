@@ -144,21 +144,42 @@ pub struct GitStep {
 /// Run a git command and capture everything for UI display.
 /// Unlike the local `run_git` helpers, this never discards stdout/stderr on success.
 pub(crate) fn run_git_step(working_dir: &str, args: &[&str]) -> GitStep {
-    log::debug!("git run: cwd={working_dir} args={:?}", args);
-    let output = match output_with_timeout(
-        git_command().args(args).current_dir(working_dir),
-        GIT_TIMEOUT,
-    ) {
+    // Network fetches can take longer than local git operations, even on a
+    // healthy connection. Keep a bound, but allow time for authentication
+    // and object transfer before checkout starts.
+    let is_fetch = args.first() == Some(&"fetch");
+    let timeout = if is_fetch {
+        std::time::Duration::from_secs(120)
+    } else {
+        GIT_TIMEOUT
+    };
+    let started = std::time::Instant::now();
+    log::info!(
+        "git step started: cwd={working_dir} args={args:?} timeout_s={}",
+        timeout.as_secs()
+    );
+    let mut command = git_command();
+    command.args(args).current_dir(working_dir);
+    if is_fetch {
+        command
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .env("GCM_INTERACTIVE", "Never");
+    }
+    let output = match output_with_timeout(&mut command, timeout) {
         Ok(o) => o,
         Err(e) => {
             log::error!(
-                "git spawn failed: cwd={working_dir} args={:?} err={e}",
-                args
+                "git step failed: cwd={working_dir} args={args:?} duration_ms={} err={e}",
+                started.elapsed().as_millis()
             );
             return GitStep {
                 cmd: format!("git {}", args.join(" ")),
                 cwd: working_dir.to_string(),
-                output: format!("spawn failed: {e}"),
+                output: if e.kind() == std::io::ErrorKind::TimedOut {
+                    format!("{e}. Check network access and Git credentials, then retry.")
+                } else {
+                    format!("spawn failed: {e}")
+                },
                 exit_code: -1,
                 ok: false,
             };
@@ -168,12 +189,13 @@ pub(crate) fn run_git_step(working_dir: &str, args: &[&str]) -> GitStep {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let code = output.status.code().unwrap_or(-1);
-    // Full stdout/stderr used to be logged at info on every call — with the
-    // Webview log target that was one IPC round-trip per git invocation, and
-    // multi-KB payloads for `status`/`diff`. Log the command line at debug
-    // and only stderr when the command actually failed.
+    // These steps only run during an explicit checkout. Log timings without
+    // copying successful command output into the application log.
     if output.status.success() {
-        log::debug!("git done: cwd={working_dir} args={:?} exit={code}", args);
+        log::info!(
+            "git step completed: cwd={working_dir} args={args:?} exit={code} duration_ms={}",
+            started.elapsed().as_millis()
+        );
     } else {
         log::warn!(
             "git failed: cwd={working_dir} args={:?} exit={code} stderr={:?}",

@@ -25,17 +25,39 @@ export async function openT3Thread(
   worktreePath: string,
 ): Promise<T3OpenThreadResult> {
   const agents = useSettingsStore.getState().settings.agents;
-  log.info('openT3Thread', { pr: pr.number, worktreePath });
-  const result = await invoke<T3OpenThreadResult>('t3_open_thread', {
-    workspaceRoot: worktreePath,
-    branch: pr.headRef,
-    title: `PR #${pr.number}: ${pr.title}`,
+  const context = {
+    pr: pr.number,
     repository: `${pr.repoOwner}/${pr.repoName}`,
-    prNumber: pr.number,
-    prUrl: pr.htmlUrl,
-    model: agents?.t3Model ?? 'claude-fable-5',
-    modelInstance: agents?.t3ModelInstance ?? 'claudeAgent',
-    executable: agents?.t3Path,
+    branch: pr.headRef,
+    worktreePath,
+  };
+  const started = performance.now();
+  log.info('openT3Thread started', context);
+  let result: T3OpenThreadResult;
+  try {
+    result = await invoke<T3OpenThreadResult>('t3_open_thread', {
+      workspaceRoot: worktreePath,
+      branch: pr.headRef,
+      title: `PR #${pr.number}: ${pr.title}`,
+      repository: `${pr.repoOwner}/${pr.repoName}`,
+      prNumber: pr.number,
+      prUrl: pr.htmlUrl,
+      model: agents?.t3Model ?? 'claude-fable-5',
+      modelInstance: agents?.t3ModelInstance ?? 'claudeAgent',
+      executable: agents?.t3Path,
+    });
+  } catch (err) {
+    log.error('openT3Thread failed', err, {
+      ...context,
+      durationMs: Math.round(performance.now() - started),
+    });
+    throw err;
+  }
+  log.info('openT3Thread completed', {
+    ...context,
+    tier: result.tier,
+    threadId: result.threadId,
+    durationMs: Math.round(performance.now() - started),
   });
   if (result.tier === 1) {
     void sendOsNotification({
@@ -54,6 +76,11 @@ export async function openT3Thread(
  * `openT3Thread` once a worktree exists.
  */
 export async function requestT3Thread(pr: PullRequest): Promise<void> {
+  log.info('T3 thread requested', {
+    pr: pr.number,
+    repository: `${pr.repoOwner}/${pr.repoName}`,
+    branch: pr.headRef,
+  });
   const repoConfig = findRepoConfig(
     useSettingsStore.getState().settings.repos,
     pr.repoOwner,
@@ -64,10 +91,13 @@ export async function requestT3Thread(pr: PullRequest): Promise<void> {
       `No worktree base path configured for ${pr.repoOwner}/${pr.repoName}. Configure it in Settings → Repos.`,
     );
   }
-  const existing = await findWorktreeForBranch(repoConfig.worktreeBasePath, pr.headRef);
+  const existing = await log.time('find worktree', () =>
+    findWorktreeForBranch(repoConfig.worktreeBasePath, pr.headRef),
+  );
   if (existing) {
     await openT3Thread(pr, existing.path);
     return;
   }
+  log.info('Opening checkout picker', { pr: pr.number, repoBasePath: repoConfig.worktreeBasePath });
   useT3ThreadStore.getState().setPendingCheckout(pr);
 }
