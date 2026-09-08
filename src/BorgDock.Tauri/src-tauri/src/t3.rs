@@ -125,6 +125,9 @@ fn project_for_workspace(workspace: &str) -> Result<Option<String>, String> {
 }
 
 async fn dispatch(origin: &str, token: &str, command: serde_json::Value) -> Result<(), String> {
+    let command_type = command["type"].as_str().unwrap_or("unknown");
+    let started = std::time::Instant::now();
+    log::info!("T3 dispatch started: command={command_type}");
     let response = reqwest::Client::new()
         .post(format!("{origin}/api/orchestration/dispatch"))
         .bearer_auth(token)
@@ -132,13 +135,26 @@ async fn dispatch(origin: &str, token: &str, command: serde_json::Value) -> Resu
         .timeout(std::time::Duration::from_secs(10))
         .send()
         .await
-        .map_err(|e| format!("T3 dispatch failed: {e}"))?;
+        .map_err(|e| {
+            log::error!(
+                "T3 dispatch failed: command={command_type} duration_ms={} error={e}",
+                started.elapsed().as_millis()
+            );
+            format!("T3 {command_type} dispatch failed: {e}")
+        })?;
+    log::info!(
+        "T3 dispatch response: command={command_type} status={} duration_ms={}",
+        response.status(),
+        started.elapsed().as_millis()
+    );
     if response.status().is_success() {
         Ok(())
     } else {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        Err(format!("T3 dispatch returned {status}: {body}"))
+        Err(format!(
+            "T3 {command_type} dispatch returned {status}: {body}"
+        ))
     }
 }
 

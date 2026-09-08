@@ -64,7 +64,7 @@ export function T3CheckoutDialog() {
         <button
           type="button"
           aria-label="Close T3 checkout dialog"
-          className="fixed inset-0 z-50 bg-black/50"
+          className="fixed inset-0 z-50 bg-[var(--color-overlay-bg)]"
           onClick={dismiss}
         />
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
@@ -72,7 +72,7 @@ export function T3CheckoutDialog() {
             role="dialog"
             aria-modal="true"
             aria-label={`Check out ${pr.headRef} for T3`}
-            className="pointer-events-auto w-full max-w-md max-h-full overflow-y-auto"
+            className="pointer-events-auto w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-md bg-[var(--color-modal-bg)] shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <CheckoutPanel
