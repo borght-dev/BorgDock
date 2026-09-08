@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.2.1",
+    "date": "2026-09-08",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Fixed the T3 checkout popup overlapping the app, including long worktree lists and narrow windows.",
+      "Reduced premature checkout failures on slower Git fetches and improved error diagnostics."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "2.2.0",
     "date": "2026-09-03",
     "summary": "Open any pull request in a fresh T3 thread and Make the worktree palette yours.",

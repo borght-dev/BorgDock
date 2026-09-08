@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.1 — 2026-09-08
+
+### Bug Fixes
+
+- Fixed the T3 checkout popup overlapping the app, including long worktree lists and narrow windows.
+- Reduced premature checkout failures on slower Git fetches and improved error diagnostics.
+
 ## 2.2.0 — 2026-09-03
 
 ### New Features
