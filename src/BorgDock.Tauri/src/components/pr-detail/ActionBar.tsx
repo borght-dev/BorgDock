@@ -114,6 +114,7 @@ const EditIcon = () => (
 
 interface ActionBarProps {
   actions: PrActions;
+  onReview: () => void;
   /** PullRequest.state — 'open' | 'closed'. Closed PRs hide destructive + draft actions. */
   prState: string;
   /** PullRequest.isDraft. */
@@ -126,7 +127,7 @@ interface ActionBarProps {
  * ActionBar — sticky toolbar below the header on the PR detail panel.
  * Pure presentation; all state + handlers live in usePrActions().
  */
-export function ActionBar({ actions, prState, isDraft, mergeable }: ActionBarProps) {
+export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: ActionBarProps) {
   const isOpen = prState === 'open';
 
   return (
@@ -138,12 +139,11 @@ export function ActionBar({ actions, prState, isDraft, mergeable }: ActionBarPro
         <Button
           variant="primary"
           size="sm"
-          leading={<MergeIcon />}
-          onClick={actions.onMerge}
-          disabled={!actions.isReady}
-          data-action-bar-action="merge"
+          leading={actions.isReady ? <MergeIcon /> : <ThreadIcon />}
+          onClick={actions.isReady ? actions.onMerge : onReview}
+          data-action-bar-action={actions.isReady ? 'merge' : 'review'}
         >
-          Merge
+          {actions.isReady ? 'Merge' : 'Review'}
         </Button>
       )}
       {isOpen && (

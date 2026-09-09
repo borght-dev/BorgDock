@@ -1,0 +1,216 @@
+<div id="borg-review" aria-label="BorgDock quick review mockup">
+  <style>
+    #borg-review { color-scheme: light dark; --br-bg:light-dark(#ffffff,#1d1d29); --br-rail:light-dark(#f8f8fc,#181822); --br-text:light-dark(#282735,#eeeef6); --br-muted:light-dark(#67657a,#b0aec3); --br-border:light-dark(#e5e4ed,#373544); --br-accent:light-dark(#6551d8,#ab9cff); --br-tint:light-dark(#efecff,#302846); --br-green:light-dark(#167552,#81d8ae); --br-add:light-dark(#eaf7ef,#17362b); --br-red:light-dark(#b54153,#f4a1ae); --br-del:light-dark(#fff0f1,#40252f); font:14px/1.5 'Segoe UI',sans-serif; color:var(--br-text); background:var(--br-bg); border:1px solid var(--br-border); border-radius:12px; overflow:clip; text-align:left; }
+    #borg-review { display:grid; grid-template-rows:auto auto minmax(0,1fr) 52px 40px; height:780px; max-height:calc(100dvh - 24px); min-height:560px; }
+    #borg-review * { box-sizing:border-box; }
+    #borg-review button,#borg-review textarea,#borg-review select { font:inherit; }
+    #borg-review button { cursor:pointer; background:var(--br-bg); color:var(--br-text); border:1px solid var(--br-border); border-radius:6px; padding:7px 12px; display:inline-flex; gap:7px; align-items:center; justify-content:center; }
+    #borg-review button:hover { background:var(--br-tint); }
+    #borg-review button:disabled { opacity:.45; cursor:default; }
+    #borg-review button:focus-visible,#borg-review textarea:focus-visible { outline:2px solid var(--br-accent); outline-offset:2px; }
+    #borg-review .br-primary { color:#fff; background:#6551d8; border-color:#6551d8; }
+    #borg-review .br-primary:hover { background:#5541c7; }
+    #borg-review .br-quiet { background:transparent; border-color:transparent; }
+    #borg-review .br-muted { color:var(--br-muted); }
+    #borg-review .br-small { font-size:12px; }
+    #borg-review .br-mono { font-family:Consolas,'SFMono-Regular',monospace; }
+    #borg-review .br-positive { color:var(--br-green); }
+    #borg-review .br-negative { color:var(--br-red); }
+    #borg-review .br-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    #borg-review .br-spacer { flex:1; }
+    #borg-review .br-pill { font-size:12px; border:1px solid var(--br-border); padding:2px 8px; border-radius:20px; white-space:nowrap; }
+    #borg-review .br-top { padding:10px 18px; background:var(--br-rail); border-bottom:1px solid var(--br-border); }
+    #borg-review .br-logo { width:26px; height:26px; background:#6551d8; color:white; border-radius:7px; text-align:center; line-height:26px; font-weight:600; }
+    #borg-review .br-header { padding:18px 22px; border-bottom:1px solid var(--br-border); }
+    #borg-review h1 { font-size:20px; line-height:1.4; font-weight:600; margin:6px 0 8px; }
+    #borg-review h2 { font-size:19px; line-height:1.4; font-weight:600; margin:0 0 12px; }
+    #borg-review h3 { font-size:14px; font-weight:600; margin:22px 0 8px; }
+    #borg-review p { margin:0 0 13px; }
+    #borg-review .br-workspace { display:grid; grid-template-columns:234px minmax(0,1fr); min-height:0; overflow:hidden; }
+    #borg-review .br-sidebar { background:var(--br-rail); border-right:1px solid var(--br-border); padding:18px 12px; overflow:auto; scrollbar-gutter:stable; }
+    #borg-review .br-nav-heading { display:flex; justify-content:space-between; margin:2px 8px 12px; font-weight:600; }
+    #borg-review #br-toggle-files { display:none; }
+    #borg-review .br-navitem { display:flex; align-items:flex-start; justify-content:flex-start; width:100%; text-align:left; border:1px solid transparent; background:transparent; padding:9px; margin:3px 0; }
+    #borg-review .br-navitem[aria-current="step"] { background:var(--br-tint); border-color:light-dark(#d9d1ff,#594c84); color:var(--br-accent); }
+    #borg-review .br-filetext { min-width:0; flex:1; overflow-wrap:anywhere; }
+    #borg-review .br-filename { display:block; font-size:12px; font-weight:600; }
+    #borg-review .br-filepath { display:block; font-size:11px; color:var(--br-muted); margin-top:2px; }
+    #borg-review .br-circle { flex-shrink:0; display:inline-flex; width:19px; height:19px; border:1px solid var(--br-border); border-radius:50%; font-size:11px; align-items:center; justify-content:center; margin-top:1px; }
+    #borg-review .br-circle.br-done { color:var(--br-green); border-color:var(--br-green); }
+    #borg-review details > summary { cursor:pointer; color:var(--br-muted); font-size:12px; font-weight:600; padding:14px 8px 5px; }
+    #borg-review .br-sidefoot { margin:20px 8px 0; border-top:1px solid var(--br-border); padding-top:14px; color:var(--br-muted); font-size:12px; }
+    #borg-review .br-progress { background:var(--br-border); height:4px; border-radius:4px; margin:8px 0; overflow:hidden; }
+    #borg-review .br-progress > span { display:block; height:100%; background:var(--br-accent); }
+    #borg-review .br-main { min-width:0; min-height:0; overflow:auto; scrollbar-gutter:stable; overscroll-behavior:contain; }
+    #borg-review .br-content { padding:24px 28px; }
+    #borg-review .br-eyebrow { color:var(--br-accent); font-size:12px; font-weight:600; margin-bottom:8px; }
+    #borg-review .br-intro { border-left:3px solid var(--br-accent); padding:12px 16px; background:var(--br-tint); margin:18px 0 22px; }
+    #borg-review .br-intro p:last-child { margin:0; }
+    #borg-review .br-description { max-width:840px; }
+    #borg-review ul { margin:8px 0 18px; padding-left:22px; }
+    #borg-review li { margin:6px 0; }
+    #borg-review code { font:12px/1.5 Consolas,monospace; color:var(--br-accent); background:var(--br-tint); border-radius:4px; padding:2px 4px; overflow-wrap:anywhere; }
+    #borg-review .br-table { width:100%; border-collapse:collapse; font-size:12px; }
+    #borg-review .br-table td,#borg-review .br-table th { text-align:left; padding:10px; border:1px solid var(--br-border); overflow-wrap:anywhere; }
+    #borg-review .br-table th { background:var(--br-rail); font-weight:600; }
+    #borg-review .br-filebar { padding:13px 18px; border-bottom:1px solid var(--br-border); background:var(--br-rail); }
+    #borg-review .br-filebar .br-mono { overflow-wrap:anywhere; min-width:0; }
+    #borg-review .br-purpose { padding:18px 22px; border-bottom:1px solid var(--br-border); }
+    #borg-review .br-purpose p { margin:5px 0 0; }
+    #borg-review .br-hunk { padding:7px 18px; color:var(--br-muted); background:var(--br-rail); font:12px/1.7 Consolas,monospace; border-bottom:1px solid var(--br-border); overflow-wrap:anywhere; }
+    #borg-review .br-code-row { display:grid; grid-template-columns:27px 32px 32px 18px minmax(0,1fr); align-items:start; min-height:27px; font:12px/1.8 Consolas,monospace; }
+    #borg-review .br-code-row.br-add { background:var(--br-add); }
+    #borg-review .br-code-row.br-del { background:var(--br-del); }
+    #borg-review .br-code-row.br-selected { box-shadow:inset 3px 0 var(--br-accent); }
+    #borg-review .br-code-row .br-line { color:var(--br-muted); text-align:right; padding:2px 6px 2px 0; user-select:none; }
+    #borg-review .br-code-row pre { font:inherit; color:var(--br-text); white-space:pre-wrap; overflow-wrap:anywhere; margin:0; padding:2px 14px 2px 2px; background:transparent; border:0; }
+    #borg-review .br-code-row .br-plus { background:transparent; color:var(--br-accent); border:0; border-radius:3px; padding:0; margin:2px; width:23px; min-height:23px; font-size:16px; }
+    #borg-review .br-sign { padding-top:2px; text-align:center; }
+    #borg-review .br-editor { margin:12px 20px; padding:14px; border:1px solid var(--br-accent); background:var(--br-bg); border-radius:8px; }
+    #borg-review textarea { display:block; width:100%; min-height:86px; resize:vertical; border:1px solid var(--br-border); border-radius:6px; padding:10px; background:var(--br-bg); color:var(--br-text); margin:10px 0; }
+    #borg-review .br-draft { margin:10px 20px; padding:13px; border:1px solid var(--br-border); border-radius:8px; background:var(--br-bg); }
+    #borg-review .br-draft p { white-space:pre-wrap; overflow-wrap:anywhere; margin:10px 0 2px; }
+    #borg-review .br-bottom { padding:8px 18px; border-top:1px solid var(--br-border); background:var(--br-bg); display:grid; grid-template-columns:minmax(80px,1fr) 90px 96px 178px 104px; gap:8px; align-items:center; }
+    #borg-review #br-skip { grid-column:1; justify-self:start; }
+    #borg-review #br-prev,#borg-review #br-back-review { grid-column:2; }
+    #borg-review #br-next { grid-column:3; }
+    #borg-review #br-mark-next,#borg-review #br-submit { grid-column:4; }
+    #borg-review #br-finish { grid-column:5; }
+    #borg-review .br-bottom > button { grid-row:1; font-size:12px; height:30px; padding:4px 8px; }
+    #borg-review .br-footer { padding:9px 18px; border-top:1px solid var(--br-border); background:var(--br-rail); flex-wrap:nowrap; overflow:hidden; }
+    #borg-review #br-status { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    #borg-review .br-shortcuts { flex-shrink:0; }
+    #borg-review kbd { font:11px Consolas,monospace; padding:2px 5px; border:1px solid var(--br-border); border-radius:4px; background:var(--br-bg); }
+    #borg-review .br-context { border-bottom:1px solid var(--br-border); background:var(--br-tint); padding:16px 22px; }
+    #borg-review .br-context summary { padding:0; color:var(--br-accent); }
+    #borg-review .br-context p { margin:10px 0 0; }
+    #borg-review .br-review-option { display:flex; gap:10px; align-items:flex-start; padding:11px; border:1px solid var(--br-border); border-radius:6px; margin:8px 0; cursor:pointer; }
+    #borg-review .br-review-option:has(input:checked) { border-color:var(--br-accent); background:var(--br-tint); }
+    #borg-review .br-notice { background:var(--br-tint); padding:12px 15px; border-radius:6px; margin-bottom:18px; }
+    #borg-review [hidden] { display:none !important; }
+    @media(max-width:760px) { #borg-review .br-workspace { grid-template-columns:190px minmax(0,1fr); } #borg-review .br-content { padding:20px; } #borg-review .br-header { padding:15px 18px; } }
+    @media(max-width:560px) { #borg-review .br-workspace { display:block; } #borg-review .br-sidebar { border-right:0; border-bottom:1px solid var(--br-border); } #borg-review .br-sidebar:not(.br-expanded) .br-navgroups,#borg-review .br-sidebar:not(.br-expanded) .br-sidefoot { display:none; } #borg-review .br-content { padding:18px 14px; } #borg-review .br-code-row { grid-template-columns:26px 26px 26px 14px minmax(0,1fr); } #borg-review .br-header h1 { font-size:18px; } #borg-review .br-shortcuts { display:none; } #borg-review .br-editor { margin:10px; } }
+    @media(max-width:760px) {
+      #borg-review { grid-template-rows:auto auto minmax(0,1fr) 84px 40px; }
+      #borg-review .br-bottom { grid-template-columns:1fr 1fr 1fr; grid-template-rows:30px 30px; }
+      #borg-review #br-prev,#borg-review #br-back-review { grid-column:1; }
+      #borg-review #br-next { grid-column:2; }
+      #borg-review #br-finish { grid-column:3; }
+      #borg-review #br-skip { grid-column:1; grid-row:2; }
+      #borg-review #br-mark-next,#borg-review #br-submit { grid-column:2 / 4; grid-row:2; }
+      #borg-review .br-shortcuts { display:none; }
+    }
+    @media(max-width:560px) {
+      #borg-review { height:900px; min-height:680px; }
+      #borg-review .br-workspace { display:flex; flex-direction:column; }
+      #borg-review .br-sidebar { flex-shrink:0; max-height:45%; padding:8px 12px; }
+      #borg-review .br-main { flex:1; }
+      #borg-review #br-toggle-files { display:inline-flex; }
+      #borg-review .br-nav-heading { margin-bottom:0; }
+    }
+    @media(pointer:coarse) { #borg-review button { min-height:44px; } #borg-review .br-code-row .br-plus { min-height:44px; } }
+  </style>
+  <header class="br-top br-row">
+    <span class="br-logo" aria-hidden="true">B</span><strong>BorgDock</strong><span class="br-muted">/</span><span>Quick review</span>
+    <span class="br-spacer"></span><span class="br-pill">Interactive mockup · sample PR</span>
+  </header>
+  <div class="br-header">
+    <div class="br-row br-small br-muted"><span>Gomocha-FSP / fsp-horizon</span><span>PR #3668</span><span class="br-spacer"></span><span>PR 1 of 22</span></div>
+    <h1>Offer Save &amp; Approve when finishing an order</h1>
+    <div class="br-row br-small"><span class="br-muted">sander · 3 commits</span><span class="br-pill br-mono">feat/order-approval → main</span><span class="br-positive">✓ Checks passing</span><span class="br-spacer"></span><span id="br-stats"></span></div>
+  </div>
+  <div class="br-workspace">
+    <nav class="br-sidebar" aria-label="Review steps">
+      <div class="br-nav-heading"><span>Review path</span><button class="br-quiet br-small" id="br-toggle-files" aria-expanded="false">Files</button></div>
+      <button class="br-navitem" id="br-overview"><span class="br-circle">≡</span><span class="br-filetext">PR description<span class="br-filepath">Start with the intent</span></span></button>
+      <div class="br-navgroups" id="br-nav"></div>
+      <div class="br-sidefoot"><span id="br-progress-text">0 of 6 files reviewed</span><div class="br-progress"><span id="br-progress-bar"></span></div><span>Tests come last. Opening a file does not mark it reviewed.</span></div>
+    </nav>
+    <main class="br-main" id="br-main"></main>
+  </div>
+  <div class="br-bottom br-row" id="br-actions"></div>
+  <footer class="br-footer br-row br-small br-muted"><span id="br-status" role="status" aria-live="polite">Demo only. Nothing is sent to GitHub.</span><span class="br-spacer"></span><span class="br-shortcuts"><kbd>N</kbd> next file &nbsp; <kbd>P</kbd> previous &nbsp; <kbd>V</kbd> reviewed</span></footer>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('borg-review');
+  const $ = s => root.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fixtures = [
+    { path:'FSP.Domain/Orders/SaveOrderRequest.cs', group:'Order approval', title:'Make approval an explicit choice', purpose:'The request carries the chosen action. Existing callers continue to save without approving.', start:12, lines:[[' ','public sealed record SaveOrderRequest'],[' ','{'],[' ','    public required Guid OrderId { get; init; }'],['+','    public bool ApproveAfterSave { get; init; }'],[' ','}']] },
+    { path:'FSP.Application/Orders/SaveOrderHandler.cs', group:'Order approval', title:'Save first, then approve', purpose:'A single handler owns the save and approval flow. Check the permission guard and what happens if approval fails after the save.', start:38, lines:[[' ','public async Task<Result> Handle('],[' ','    SaveOrderRequest request, CancellationToken ct)'],[' ','{'],[' ','    var order = await orders.Get(request.OrderId, ct);'],[' ',''],['+','    if (request.ApproveAfterSave)'],['+','        await permissions.RequireApproval(order, ct);'],['+',''],[' ','    await orders.Save(order, ct);'],[' ',''],['-','    return Result.Success();'],['+','    if (request.ApproveAfterSave)'],['+','        await approvals.Approve(order.Id, ct);'],['+',''],['+','    return Result.Success(order.Id);'],[' ','}']] },
+    { path:'FSP.Portal/src/orders/OrderActions.tsx', group:'Order approval', title:'Put both actions beside the order', purpose:'Save stays available to everyone who can edit. Save & Approve appears only when the user can approve.', start:64, lines:[[' ','return ('],[' ','  <ActionBar>'],['-','    <Button onClick={save}>Save</Button>'],['+','    <Button onClick={() => save(false)}>Save</Button>'],['+','    {canApprove && ('],['+','      <Button onClick={() => save(true)} disabled={saving}>'],['+','        Save & Approve'],['+','      </Button>'],['+','    )}'],[' ','  </ActionBar>'],[' ',');']] },
+    { path:'docs/orders/approval.md', group:'Documentation', title:'Explain the two save actions', purpose:'Describe the permission requirement and the result of each action.', start:8, lines:[[' ','## Saving an order'],['-','Choose Save to store your changes.'],['+','Choose Save to store your changes without approving.'],['+','Choose Save & Approve to save and approve in one step.'],['+','Approval requires the order approval permission.']] },
+    { path:'FSP.Application.Tests/Orders/SaveOrderHandlerTests.cs', group:'Tests', title:'Cover the approval permission boundary', purpose:'Tests for the default save path and an unauthorized approval request.', start:21, lines:[['+','[Fact]'],['+','public async Task Save_does_not_approve_by_default()'],['+','{'],['+','    await handler.Handle(Request(), ct);'],['+','    approvals.VerifyNoOtherCalls();'],['+','}'],['+',''],['+','[Fact]'],['+','public async Task Approval_requires_permission()'],['+','{'],['+','    permissions.DenyApproval();'],['+','    await Assert.ThrowsAsync<ForbiddenException>('],['+','        () => handler.Handle(Request(approve: true), ct));'],['+','}']] },
+    { path:'FSP.Portal/src/orders/OrderActions.test.tsx', group:'Tests', title:'Check which actions users can see', purpose:'The UI must hide approval when permission is missing and pass the selected action to save.', start:17, lines:[['+',"it('hides approval without permission', () => {"],['+','  render(<OrderActions canApprove={false} />);'],['+',"  expect(screen.queryByText('Save & Approve')).toBeNull();"],['+','});'],['+',''],['+',"it('saves with approval when selected', async () => {"],['+','  render(<OrderActions canApprove />);'],['+',"  await user.click(screen.getByText('Save & Approve'));"],['+','  expect(save).toHaveBeenCalledWith(true);'],['+','});']] }
+  ];
+  const isTest = path => /(?:^|\/)[^/]*\.Tests(?:\/|$)|(?:^|\/)(?:tests|__tests__)(?:\/|$)|\.test\./i.test(path);
+  const files = fixtures.map((f, id) => ({...f,id,test:isTest(f.path)})).sort((a,b) => Number(a.test)-Number(b.test) || a.id-b.id);
+  const reviewed = new Set();
+  const drafts = [];
+  const buffers = {};
+  const choices = { context:true, density:'Comfortable' };
+  let step = -1, mode = 'browse', editor = null, reviewText = '', decision = 'COMMENT', lastBrowse = -1;
+  const description = `<div class="br-description"><div class="br-eyebrow">PR description · written by the author</div><h2>Save and approve an order in one step</h2><div class="br-intro"><p>Dispatchers currently save an order, reopen it, and then approve it. This adds a second action alongside Save for people with approval permission.</p></div><h3>What changed</h3><ul><li>Add an optional <code>ApproveAfterSave</code> flag to the save request.</li><li>Check approval permission before saving, then approve the saved order.</li><li>Show <strong>Save &amp; Approve</strong> next to Save when the user has permission.</li></ul><h3>Expected behavior</h3><table class="br-table"><thead><tr><th>Action</th><th>Result</th></tr></thead><tbody><tr><td>Save</td><td>Stores the changes and leaves approval unchanged.</td></tr><tr><td>Save &amp; Approve</td><td>Stores the changes, approves the order, then returns to the order list.</td></tr><tr><td>No approval permission</td><td>Only Save is shown. The API also rejects approval requests.</td></tr></tbody></table><h3>Validation</h3><ul><li>Handler tests cover saving without approval and denied approval.</li><li>UI tests cover action visibility and the approval flag.</li></ul><h3>Notes for reviewers</h3><p>Please check the order of saving and approving. If approval fails, the dispatcher should understand whether their changes were saved.</p><p class="br-muted br-small">End of description · sample content for this design</p></div>`;
+  function status(message) { $('#br-status').textContent = message; }
+  function counts() { return files.reduce((s,f) => { f.lines.forEach(l => { if(l[0]==='+')s.add++; if(l[0]==='-')s.del++; }); return s; },{add:0,del:0}); }
+  function nav() {
+    $('#br-overview').setAttribute('aria-current',step===-1 && mode==='browse'?'step':'false');
+    $('#br-nav').innerHTML = ['Order approval','Documentation','Tests'].map(group => `<details open><summary>${group} <span class="br-muted">· ${files.filter(f=>f.group===group).length}</span></summary>${files.map((f,i) => f.group===group?`<button class="br-navitem" data-step="${i}" aria-current="${step===i&&mode==='browse'?'step':'false'}"><span class="br-circle ${reviewed.has(i)?'br-done':''}">${reviewed.has(i)?'✓':i+1}</span><span class="br-filetext"><span class="br-filename">${esc(f.path.split('/').pop())}</span><span class="br-filepath">${esc(f.path.split('/').slice(0,-1).join('/'))}</span></span>${drafts.some(d=>d.file===i)?'<span aria-label="Has draft comment">•</span>':''}</button>`:'').join('')}</details>`).join('');
+    $('#br-progress-text').textContent = `${reviewed.size} of ${files.length} files reviewed`;
+    $('#br-progress-bar').style.width = `${reviewed.size/files.length*100}%`;
+  }
+  function draftHTML(d,index) { return `<div class="br-draft"><div class="br-row br-small"><strong>You</strong><span class="br-pill">Draft</span><span class="br-muted">${esc(files[d.file].path.split('/').pop())} · ${d.side==='LEFT'?'old':'new'} line ${d.line}</span><span class="br-spacer"></span><button class="br-quiet" data-edit="${index}">Edit</button><button class="br-quiet" data-delete="${index}" aria-label="Delete draft ${index+1}">Delete</button></div><p>${esc(d.body)}</p></div>`; }
+  function editorHTML(row) {
+    if (!editor || editor.row!==row) return '';
+    const key = `${step}:${row}`;
+    return `<div class="br-editor"><div class="br-row"><strong>Add a line comment</strong><span class="br-pill">${editor.side==='LEFT'?'Old':'New'} line ${editor.line}</span></div><label for="br-comment" class="br-small br-muted">What should change?</label><textarea id="br-comment" placeholder="Describe the issue or suggest a change...">${esc(buffers[key]||'')}</textarea><div class="br-row"><span class="br-small br-muted">Draft until you finish the review</span><span class="br-spacer"></span><button id="br-cancel-comment">Cancel</button><button id="br-save-comment" class="br-primary" ${!(buffers[key]||'').trim()?'disabled':''}>Save draft</button></div></div>`;
+  }
+  function diff() {
+    const f = files[step]; let old = f.start, fresh = f.start;
+    return `<div class="br-purpose"><div class="br-eyebrow">${esc(f.group)} · File ${step+1} of ${files.length}</div><strong>${esc(f.title)}</strong><p class="br-muted">${esc(f.purpose)}</p></div>${choices.context?'<details class="br-context"><summary>PR context</summary>'+description+'</details>':''}<div class="br-filebar br-row"><span class="br-mono br-small">${esc(f.path)}</span><span class="br-spacer"></span><label class="br-small"><input type="checkbox" id="br-viewed" ${reviewed.has(step)?'checked':''}> Reviewed</label></div><div class="br-hunk">@@ -${f.start},${f.lines.filter(l=>l[0]!=='+').length} +${f.start},${f.lines.filter(l=>l[0]!=='-').length} @@</div>${f.lines.map((l,r) => {const left=l[0]==='+'?'':old++,right=l[0]==='-'?'':fresh++; return `<div class="br-code-row ${l[0]==='+'?'br-add':l[0]==='-'?'br-del':''} ${editor?.row===r?'br-selected':''}"><button class="br-plus" data-line="${right||left}" data-side="${l[0]==='-'?'LEFT':'RIGHT'}" data-row="${r}" aria-label="Comment on ${l[0]==='-'?'old':'new'} line ${right||left}">+</button><span class="br-line">${left}</span><span class="br-line">${right}</span><span class="br-sign">${l[0]===' '?'':l[0]}</span><pre>${esc(l[1])}</pre></div>${editorHTML(r)}${drafts.map((d,i)=>d.file===step&&d.row===r?draftHTML(d,i):'').join('')}`;}).join('')}<div class="br-content br-small br-muted">End of file · Use + beside a line to comment. Drafts stay with the file.</div>`;
+  }
+  function finish() {
+    return `<div class="br-content"><div class="br-eyebrow">Finish this PR</div><h2>Review your comments and decision</h2><div class="br-notice">${reviewed.size} of ${files.length} files reviewed. ${files.length-reviewed.size} still unreviewed.</div>${drafts.length?drafts.map(draftHTML).join(''):'<p class="br-muted">No inline comments yet.</p>'}<h3>Review decision</h3>${[['COMMENT','Comment','Share feedback without approving.'],['REQUEST_CHANGES','Request changes','Ask the author to address your feedback.'],['APPROVE','Approve','The changes look ready to merge.']].map(([v,t,d])=>`<label class="br-review-option"><input type="radio" name="br-decision" value="${v}" ${decision===v?'checked':''}><span><strong>${t}</strong><span class="br-filepath">${d}</span></span></label>`).join('')}<label for="br-review-text">Overall comment <span class="br-muted br-small">${decision==='REQUEST_CHANGES'?'required':'optional'}</span></label><textarea id="br-review-text" placeholder="Add any overall feedback...">${esc(reviewText)}</textarea><p class="br-small br-muted">This prototype simulates submission. Your comments are kept only while this preview is open.</p></div>`;
+  }
+  function render() {
+    const focusedId = document.activeElement?.id;
+    nav();
+    $('#br-main').innerHTML = mode==='finish'?finish():mode==='done'?`<div class="br-content"><div class="br-eyebrow">Demo complete</div><h2>${decision==='APPROVE'?'Approval':decision==='REQUEST_CHANGES'?'Change request':'Review'} previewed</h2><p>${drafts.length} inline comment${drafts.length===1?'':'s'} included. Nothing was posted to GitHub.</p><p class="br-muted">In the app, a successful submission would advance to the next PR. This mockup contains one sample PR.</p><button id="br-resume" class="br-primary">Return to mockup</button></div>`:mode==='paused'?'<div class="br-content"><h2>Review saved for later</h2><p>Your draft comments and file progress are retained in this preview.</p><button id="br-resume" class="br-primary">Resume review</button></div>':step===-1?`<div class="br-content">${description}</div>`:diff();
+    $('#br-actions').innerHTML = mode==='finish'?`<button id="br-back-review">← Back to files</button><button id="br-submit" class="br-primary">Preview submission · ${drafts.length} comments</button>`:mode!=='browse'?'':`<button id="br-skip" class="br-quiet">Review later</button><button id="br-prev" ${step<0?'disabled':''}>← Previous</button><button id="br-next" ${step===files.length-1?'disabled':''}>${step<0?'Start review →':'Next file →'}</button>${step>=0?`<button id="br-mark-next" class="br-primary">${step===files.length-1?'Mark reviewed & finish':'Mark reviewed & next'}</button>`:''}<button id="br-finish">Finish review${drafts.length?` · ${drafts.length}`:''}</button>`;
+    root.style.setProperty('--br-density', choices.density==='Compact'?'22px':'27px');
+    root.querySelectorAll('.br-code-row').forEach(el => { el.style.minHeight=choices.density==='Compact'?'22px':'27px'; });
+    if (focusedId) root.querySelector(`#${focusedId}`)?.focus({preventScroll:true});
+  }
+  function go(target) { step=Math.max(-1,Math.min(files.length-1,target)); lastBrowse=step; mode='browse'; editor=null; render(); $('#br-main').scrollTop=0; status(step<0?'Full PR description':`File ${step+1} of ${files.length}: ${files[step].path}`); }
+  function next(mark=false) { if(mark&&step>=0) reviewed.add(step); if(step===files.length-1){mode='finish';render();$('#br-main').scrollTop=0;}else go(step+1); }
+  function openEditor(file,row,line,side,editIndex) { step=file;lastBrowse=file;mode='browse';editor={row,line,side,editIndex};render();$('#br-comment').focus(); }
+  root.addEventListener('click', event => {
+    const b=event.target.closest('button'); if(!b)return;
+    if(b.dataset.step!==undefined)go(Number(b.dataset.step));
+    else if(b.dataset.row!==undefined)openEditor(step,Number(b.dataset.row),Number(b.dataset.line),b.dataset.side);
+    else if(b.dataset.delete!==undefined){drafts.splice(Number(b.dataset.delete),1);render();status('Draft deleted.');}
+    else if(b.dataset.edit!==undefined){const i=Number(b.dataset.edit),d=drafts[i];buffers[`${d.file}:${d.row}`]=d.body;openEditor(d.file,d.row,d.line,d.side,i);}
+    else switch(b.id){
+      case 'br-overview':go(-1);break;
+      case 'br-next':next();break;
+      case 'br-prev':go(step-1);break;
+      case 'br-mark-next':next(true);break;
+      case 'br-finish':mode='finish';render();$('#br-main').scrollTop=0;break;
+      case 'br-back-review':go(lastBrowse);break;
+      case 'br-toggle-files':{const expanded=$('.br-sidebar').classList.toggle('br-expanded');b.setAttribute('aria-expanded',String(expanded));break;}
+      case 'br-cancel-comment':editor=null;render();break;
+      case 'br-save-comment':{const key=`${step}:${editor.row}`,body=(buffers[key]||'').trim();if(!body)return;const draft={file:step,row:editor.row,line:editor.line,side:editor.side,body};if(editor.editIndex!==undefined)drafts[editor.editIndex]=draft;else drafts.push(draft);delete buffers[key];editor=null;render();status('Draft saved. Nothing has been posted.');break;}
+      case 'br-skip':mode='paused';render();status('Review paused in this preview.');break;
+      case 'br-resume':go(lastBrowse);break;
+      case 'br-submit':if(decision==='REQUEST_CHANGES'&&!reviewText.trim()){status('Add an overall comment to explain the requested changes.');$('#br-review-text').focus();return;}mode='done';render();$('#br-main').scrollTop=0;status('Submission simulated. Nothing was posted to GitHub.');break;
+    }
+  });
+  root.addEventListener('input',event=>{if(event.target.id==='br-comment'){buffers[`${step}:${editor.row}`]=event.target.value;$('#br-save-comment').disabled=!event.target.value.trim();}if(event.target.id==='br-review-text')reviewText=event.target.value;});
+  root.addEventListener('change',event=>{if(event.target.id==='br-viewed'){event.target.checked?reviewed.add(step):reviewed.delete(step);nav();}if(event.target.name==='br-decision'){decision=event.target.value;render();}});
+  root.addEventListener('keydown',event=>{if(event.ctrlKey||event.metaKey||event.altKey||event.target.closest('input,textarea,select,[contenteditable="true"]')||mode!=='browse')return;const key=event.key.toLowerCase();if(key==='n'){event.preventDefault();next();}if(key==='p'){event.preventDefault();go(step-1);}if(key==='v'&&step>=0){event.preventDefault();reviewed.has(step)?reviewed.delete(step):reviewed.add(step);render();}});
+  const totals=counts();$('#br-stats').innerHTML=`6 files &nbsp; <span class="br-positive">+${totals.add}</span> <span class="br-negative">−${totals.del}</span>`;
+  render();
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addToggle(choices,'context',{label:'PR context inside each file'});tweak.addSelect(choices,'density',{label:'Diff density',options:['Comfortable','Compact']});}
+})();
+</script>

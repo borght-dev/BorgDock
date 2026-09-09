@@ -204,10 +204,10 @@ describe('DiffFileTree', () => {
 
   it('toggles tree mode button', () => {
     render(<DiffFileTree {...makeProps()} />);
-    const toggleBtn = screen.getByTitle('Tree view');
+    const toggleBtn = screen.getByTitle('Flat list');
     expect(toggleBtn).toBeDefined();
     fireEvent.click(toggleBtn);
-    expect(screen.getByTitle('Flat list')).toBeDefined();
+    expect(screen.getByTitle('Grouped view')).toBeDefined();
   });
 
   it('shows extension icons for known types', () => {
@@ -253,5 +253,38 @@ describe('DiffFileTree', () => {
     const props = makeProps();
     const { container } = render(<DiffFileTree {...props} />);
     expect(container.querySelectorAll('[data-file-tree-row]').length).toBe(props.files.length);
+  });
+  it('groups source folders first and places both test conventions last', () => {
+    const paths = [
+      'Orders.Tests/Handler.cs',
+      'src/handler.test.ts',
+      'docs/guide.md',
+      'src/orders/handler.ts',
+    ];
+    const { container } = render(
+      <DiffFileTree {...makeProps({ files: paths.map((filename) => makeFile({ filename })) })} />,
+    );
+    expect(
+      [...container.querySelectorAll('[data-file-group]')].map((el) =>
+        el.getAttribute('data-file-group'),
+      ),
+    ).toEqual(['src/orders', 'Documentation', 'Tests']);
+    fireEvent.click(screen.getByRole('button', { name: /Tests, 2 files/ }));
+    expect(screen.queryByText('Handler.cs')).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText('Filter files...'), {
+      target: { value: 'Handler.cs' },
+    });
+    expect(screen.getByText('Handler.cs')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Filter files...'), { target: { value: '' } });
+    expect(screen.queryByText('Handler.cs')).toBeNull();
+  });
+
+  it('shows an empty state and matching count when nothing matches', () => {
+    render(<DiffFileTree {...makeProps()} />);
+    fireEvent.change(screen.getByPlaceholderText('Filter files...'), {
+      target: { value: 'missing' },
+    });
+    expect(screen.getByText('No files match your filters.')).toBeInTheDocument();
+    expect(screen.getByText(/0 of 3 files/)).toBeInTheDocument();
   });
 });

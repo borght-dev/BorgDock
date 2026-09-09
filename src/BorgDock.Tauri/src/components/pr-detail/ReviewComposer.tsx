@@ -3,15 +3,32 @@ import { useState } from 'react';
 import { Button } from '@/components/shared/primitives';
 
 const CheckIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="m4 8 3 3 5-6" />
   </svg>
 );
 
 const CloseIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
     <path d="m4 4 8 8M12 4 4 12" />
   </svg>
 );
@@ -34,11 +51,48 @@ interface ReviewComposerProps {
   inline?: boolean;
 }
 
-const DECISIONS: Array<{ id: ReviewComposerDecision; label: string; tone: 'success' | 'neutral' | 'error' }> = [
+const DECISIONS: Array<{
+  id: ReviewComposerDecision;
+  label: string;
+  tone: 'success' | 'neutral' | 'error';
+}> = [
   { id: 'approve', label: 'Approve', tone: 'success' },
   { id: 'comment', label: 'Comment only', tone: 'neutral' },
   { id: 'request', label: 'Request changes', tone: 'error' },
 ];
+
+export function ReviewDecisionPicker({
+  decision,
+  onChange,
+}: {
+  decision: ReviewComposerDecision;
+  onChange: (value: ReviewComposerDecision) => void;
+}) {
+  return (
+    <div className="mb-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Review decision">
+      {DECISIONS.map((d) => (
+        <button
+          key={d.id}
+          type="button"
+          onClick={() => onChange(d.id)}
+          aria-pressed={decision === d.id}
+          className={clsx(
+            'bd-pill h-[26px] cursor-pointer text-[11px]',
+            decision === d.id ? `bd-pill--${d.tone}` : 'bd-pill--ghost',
+            decision === d.id ? 'font-semibold' : 'font-medium',
+          )}
+        >
+          {decision === d.id && (
+            <span className="mr-1 inline-flex">
+              <CheckIcon />
+            </span>
+          )}
+          {d.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /**
  * ReviewComposer — shared inline composer for adding a comment or submitting a review.
@@ -66,10 +120,7 @@ export function ReviewComposer({
     }
   };
 
-  const submitLabel =
-    kind === 'comment'
-      ? 'Comment'
-      : `Submit ${decision}`;
+  const submitLabel = kind === 'comment' ? 'Comment' : `Submit ${decision}`;
 
   return (
     <div
@@ -94,30 +145,7 @@ export function ReviewComposer({
         </button>
       </div>
 
-      {kind === 'review' && (
-        <div className="mb-2.5 flex flex-wrap gap-1.5">
-          {DECISIONS.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => setDecision(d.id)}
-              aria-pressed={decision === d.id}
-              className={clsx(
-                'bd-pill h-[26px] cursor-pointer text-[11px]',
-                decision === d.id ? `bd-pill--${d.tone}` : 'bd-pill--ghost',
-                decision === d.id ? 'font-semibold' : 'font-medium',
-              )}
-            >
-              {decision === d.id && (
-                <span className="mr-1 inline-flex">
-                  <CheckIcon />
-                </span>
-              )}
-              {d.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {kind === 'review' && <ReviewDecisionPicker decision={decision} onChange={setDecision} />}
 
       <textarea
         placeholder={kind === 'review' ? 'Optional comment for review…' : 'Leave a comment…'}

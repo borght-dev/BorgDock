@@ -3,6 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { MarkdownImage } from './MarkdownImage';
 
 /**
  * Anchor renderer for markdown content. A bare `<a href>` inside the Tauri
@@ -38,11 +39,27 @@ function MarkdownLink({
 }
 
 const MARKDOWN_COMPONENTS: Components = { a: MarkdownLink };
+const PREVIEW_COMPONENTS: Components = {
+  ...MARKDOWN_COMPONENTS,
+  a: ({ node, children, ...props }) =>
+    node?.children.some((child) => child.type === 'element' && child.tagName === 'img') ? (
+      <span>
+        {children}
+        <MarkdownLink {...props}>Open linked page</MarkdownLink>
+      </span>
+    ) : (
+      <MarkdownLink {...props}>{children}</MarkdownLink>
+    ),
+  img: ({ src, alt }) => (
+    <MarkdownImage key={src} src={typeof src === 'string' ? src : undefined} alt={alt} />
+  ),
+};
 
 interface MarkdownProps {
   children: string;
   /** Allow raw HTML embedded in the markdown (rehype-raw). Defaults to true. */
   allowRawHtml?: boolean;
+  previewImages?: boolean;
 }
 
 /**
@@ -51,12 +68,12 @@ interface MarkdownProps {
  * of navigating the Tauri webview. Render inside a `.markdown-body` wrapper for
  * styling, exactly like the raw `<ReactMarkdown>` it replaces.
  */
-export function Markdown({ children, allowRawHtml = true }: MarkdownProps) {
+export function Markdown({ children, allowRawHtml = true, previewImages = false }: MarkdownProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={allowRawHtml ? [rehypeRaw, rehypeSanitize] : [rehypeSanitize]}
-      components={MARKDOWN_COMPONENTS}
+      components={previewImages ? PREVIEW_COMPONENTS : MARKDOWN_COMPONENTS}
     >
       {children}
     </ReactMarkdown>

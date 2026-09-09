@@ -13,6 +13,13 @@
 import type { PullRequest, PullRequestCommit, PullRequestFileChange } from '../../src/types';
 import { getControl } from './control';
 
+export async function getPRReviewDetails() {
+  const response = getControl().githubResponses.getPRReviewDetails;
+  if (typeof response === 'function') return response();
+  if (!response) throw new Error('No PR review fixture supplied');
+  return response;
+}
+
 export async function getOpenPRs(
   _client: unknown,
   owner: string,

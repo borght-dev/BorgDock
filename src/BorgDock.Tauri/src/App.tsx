@@ -15,7 +15,6 @@ import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useGitHubPolling } from '@/hooks/useGitHubPolling';
 import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
-import { useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
@@ -196,7 +195,6 @@ export default function App() {
   useKeyboardNav();
 
   // Quick Review keyboard shortcuts
-  useQuickReviewKeyboard();
 
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);

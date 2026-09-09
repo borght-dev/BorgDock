@@ -181,6 +181,21 @@ describe('toggleDraft', () => {
 });
 
 describe('submitReview', () => {
+  it('posts line comments together with the exact reviewed commit', async () => {
+    const client = createMockClient();
+    const review = {
+      commit_id: 'reviewed-sha',
+      comments: [
+        { path: 'src/a.ts', line: 7, side: 'LEFT' as const, body: 'Please retain this behavior.' },
+      ],
+    };
+    await submitReview(client, 'owner', 'repo', 42, 'COMMENT', 'Overall feedback', review);
+    expect(client.post).toHaveBeenCalledWith('repos/owner/repo/pulls/42/reviews', {
+      event: 'COMMENT',
+      body: 'Overall feedback',
+      ...review,
+    });
+  });
   it('submits an APPROVE review', async () => {
     const client = createMockClient();
     vi.mocked(client.post).mockResolvedValueOnce(undefined);

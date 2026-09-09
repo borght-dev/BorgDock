@@ -110,10 +110,15 @@ export async function submitReview(
   prNumber: number,
   event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT',
   body?: string,
+  review?: {
+    commit_id: string;
+    comments: { path: string; line: number; side: 'LEFT' | 'RIGHT'; body: string }[];
+  },
 ): Promise<void> {
   await client.post(`repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
     event,
     body,
+    ...review,
   });
 }
 

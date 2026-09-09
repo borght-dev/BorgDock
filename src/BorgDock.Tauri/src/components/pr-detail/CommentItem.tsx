@@ -6,6 +6,7 @@ interface CommentItemProps {
   authorIsBot: boolean;
   body: string;
   createdAt: string;
+  previewImages?: boolean;
 }
 
 function relative(createdAt: string): string {
@@ -27,7 +28,13 @@ function initials(login: string): string {
 }
 
 /** Generic top-level (issue) comment. */
-export function CommentItem({ author, authorIsBot, body, createdAt }: CommentItemProps) {
+export function CommentItem({
+  author,
+  authorIsBot,
+  body,
+  createdAt,
+  previewImages,
+}: CommentItemProps) {
   return (
     <Card padding="sm" data-discussion-item="comment">
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -38,7 +45,7 @@ export function CommentItem({ author, authorIsBot, body, createdAt }: CommentIte
         <span className="text-[11px] text-[var(--color-text-muted)]">{relative(createdAt)}</span>
       </div>
       <div className="markdown-body text-[12.5px] leading-[1.55] text-[var(--color-text-secondary)]">
-        <Markdown>{body}</Markdown>
+        <Markdown previewImages={previewImages}>{body}</Markdown>
       </div>
     </Card>
   );

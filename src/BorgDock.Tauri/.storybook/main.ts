@@ -76,6 +76,10 @@ const config: StorybookConfig = {
 
     config.resolve.alias = [
       ...existingEntries,
+      {
+        find: '@/services/github/reviews',
+        replacement: resolve(here, 'mocks/services-github-reviews.ts'),
+      },
       { find: '@tauri-apps/api/core', replacement: resolve(here, 'mocks/tauri-core.ts') },
       { find: '@tauri-apps/api/event', replacement: resolve(here, 'mocks/tauri-event.ts') },
       { find: '@tauri-apps/api/window', replacement: resolve(here, 'mocks/tauri-api-window.ts') },

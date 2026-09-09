@@ -1,5 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useState } from 'react';
+import { QuickReviewOverlay } from '@/components/focus/QuickReviewOverlay';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { WindowControls } from '@/components/shared/chrome';
 import type { TabDef } from '@/components/shared/primitives';
@@ -9,6 +10,7 @@ import { computeMergeScore } from '@/services/merge-score';
 import { openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { ActionBar } from './ActionBar';
@@ -441,7 +443,13 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
       </div>
 
       {/* Action bar — sticky, all PR actions */}
-      <ActionBar actions={actions} prState={p.state} isDraft={p.isDraft} mergeable={p.mergeable} />
+      <ActionBar
+        onReview={() => useQuickReviewStore.getState().startSinglePr(pr)}
+        actions={actions}
+        prState={p.state}
+        isDraft={p.isDraft}
+        mergeable={p.mergeable}
+      />
 
       {/* Activity strip — persistent checks summary, click-to-jump */}
       {pr.totalCheckCount > 0 && (
@@ -544,6 +552,8 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
         onConfirm={actions.onBypassExecute}
         onCancel={() => actions.setConfirmBypass(false)}
       />
+
+      {popOutWindow && <QuickReviewOverlay />}
 
       {actions.actionStatus && (
         <div

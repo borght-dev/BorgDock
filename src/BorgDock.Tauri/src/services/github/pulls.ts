@@ -93,6 +93,16 @@ interface GitHubFileChangeDto {
 
 // --- Public API ---
 
+export async function getPRReviewDetails(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  number: number,
+) {
+  const detail = await client.get<GitHubPullRequestDto>(`repos/${owner}/${repo}/pulls/${number}`);
+  return { pr: mapToPullRequest(detail, owner, repo), baseSha: detail.base?.sha ?? '' };
+}
+
 export async function getOpenPRs(
   client: GitHubClient,
   owner: string,

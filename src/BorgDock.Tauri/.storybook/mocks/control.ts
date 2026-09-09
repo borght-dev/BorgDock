@@ -96,6 +96,9 @@ export interface RawReview {
 
 // Phase 11 — github service responses
 export type GithubResponses = {
+  getPRReviewDetails?:
+    | { pr: PullRequest; baseSha: string }
+    | (() => { pr: PullRequest; baseSha: string } | Promise<{ pr: PullRequest; baseSha: string }>);
   getOpenPRs?:
     | PullRequest[]
     | ((args: {

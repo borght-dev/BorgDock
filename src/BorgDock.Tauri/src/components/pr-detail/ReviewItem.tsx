@@ -10,6 +10,7 @@ interface ReviewItemProps {
   verdict: ReviewVerdict;
   body: string | null;
   createdAt: string;
+  previewImages?: boolean;
 }
 
 function relative(createdAt: string): string {
@@ -96,7 +97,14 @@ function VerdictPill({ v }: { v: ReviewVerdict }) {
  *  - body == null  → compact one-line row (typical "approval with no message" case)
  *  - body != null  → full card with markdown body and a coloured left border by verdict
  */
-export function ReviewItem({ author, authorIsBot, verdict, body, createdAt }: ReviewItemProps) {
+export function ReviewItem({
+  author,
+  authorIsBot,
+  verdict,
+  body,
+  createdAt,
+  previewImages,
+}: ReviewItemProps) {
   if (!body) {
     return (
       <Card
@@ -138,7 +146,7 @@ export function ReviewItem({ author, authorIsBot, verdict, body, createdAt }: Re
         <span className="text-[11px] text-[var(--color-text-muted)]">{relative(createdAt)}</span>
       </div>
       <div className="markdown-body text-[12.5px] leading-[1.55] text-[var(--color-text-secondary)]">
-        <Markdown>{body}</Markdown>
+        <Markdown previewImages={previewImages}>{body}</Markdown>
       </div>
     </Card>
   );

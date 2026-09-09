@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActionBar } from '../ActionBar';
@@ -36,7 +36,15 @@ function fakeActions(over: Partial<PrActions> = {}): PrActions {
 
 describe('ActionBar', () => {
   it('renders Merge / Open / Copy / Checkout / Mark Draft when PR is open', () => {
-    render(<ActionBar actions={fakeActions()} prState="open" isDraft={false} mergeable />);
+    render(
+      <ActionBar
+        onReview={vi.fn()}
+        actions={fakeActions()}
+        prState="open"
+        isDraft={false}
+        mergeable
+      />,
+    );
     expect(screen.getByRole('button', { name: /^merge$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open in browser/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copy branch/i })).toBeInTheDocument();
@@ -47,24 +55,47 @@ describe('ActionBar', () => {
   });
 
   it('shows "Mark Ready" when PR is currently a draft', () => {
-    render(<ActionBar actions={fakeActions()} prState="open" isDraft mergeable />);
+    render(
+      <ActionBar onReview={vi.fn()} actions={fakeActions()} prState="open" isDraft mergeable />,
+    );
     expect(screen.getByRole('button', { name: /mark ready/i })).toBeInTheDocument();
   });
 
   it('shows Resolve Conflicts only when mergeable is false', () => {
     const { rerender } = render(
-      <ActionBar actions={fakeActions()} prState="open" isDraft={false} mergeable />,
+      <ActionBar
+        onReview={vi.fn()}
+        actions={fakeActions()}
+        prState="open"
+        isDraft={false}
+        mergeable
+      />,
     );
     expect(screen.queryByRole('button', { name: /resolve conflicts/i })).toBeNull();
     rerender(
-      <ActionBar actions={fakeActions()} prState="open" isDraft={false} mergeable={false} />,
+      <ActionBar
+        onReview={vi.fn()}
+        actions={fakeActions()}
+        prState="open"
+        isDraft={false}
+        mergeable={false}
+      />,
     );
     expect(screen.getByRole('button', { name: /resolve conflicts/i })).toBeInTheDocument();
   });
 
   it('hides destructive + draft actions when PR is closed', () => {
-    render(<ActionBar actions={fakeActions()} prState="closed" isDraft={false} mergeable />);
+    render(
+      <ActionBar
+        onReview={vi.fn()}
+        actions={fakeActions()}
+        prState="closed"
+        isDraft={false}
+        mergeable
+      />,
+    );
     expect(screen.queryByRole('button', { name: /merge/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^review$/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /bypass merge/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /close pr/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /mark draft/i })).toBeNull();
@@ -72,15 +103,17 @@ describe('ActionBar', () => {
     expect(screen.getByRole('button', { name: /copy branch/i })).toBeInTheDocument();
   });
 
-  it('Merge button is disabled when isReady=false', () => {
+  it('opens Review instead of offering a disabled Merge', () => {
+    const onReview = vi.fn();
+    const actions = fakeActions({ isReady: false });
     render(
-      <ActionBar
-        actions={fakeActions({ isReady: false })}
-        prState="open"
-        isDraft={false}
-        mergeable
-      />,
+      <ActionBar onReview={onReview} actions={actions} prState="open" isDraft={false} mergeable />,
     );
-    expect(screen.getByRole('button', { name: /^merge$/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^merge$/i })).toBeNull();
+    const review = screen.getByRole('button', { name: 'Review' });
+    expect(review).toBeEnabled();
+    fireEvent.click(review);
+    expect(onReview).toHaveBeenCalledOnce();
+    expect(actions.onMerge).not.toHaveBeenCalled();
   });
 });

@@ -21,6 +21,28 @@ function createMockClient() {
 }
 
 describe('getReviews', () => {
+  it('paginates reviews and uses rendered bodies for authenticated screenshots', async () => {
+    const client = createMockClient();
+    const dto = {
+      id: 1,
+      body: 'raw',
+      body_html: '<p>Rendered proof</p>',
+      state: 'COMMENTED',
+      submitted_at: '2026-09-09T12:00:00Z',
+      user: { login: 'author' },
+    };
+    vi.mocked(client.get).mockResolvedValueOnce(Array(100).fill(dto)).mockResolvedValueOnce([dto]);
+    const result = await getReviews(client, 'owner', 'repo', 1, {
+      paginate: true,
+      renderedBody: true,
+    });
+    expect(result).toHaveLength(101);
+    expect(result[100]?.body).toBe('<p>Rendered proof</p>');
+    expect(client.get).toHaveBeenCalledWith(
+      'repos/owner/repo/pulls/1/reviews?per_page=100&page=2',
+      { renderedBody: 'review' },
+    );
+  });
   it('fetches reviews for a PR', async () => {
     const client = createMockClient();
     const reviews = [
@@ -314,6 +336,66 @@ describe('getBotReviewComments', () => {
 });
 
 describe('getAllComments', () => {
+  it('uses rendered bodies for both issue and inline screenshots when requested', async () => {
+    const client = createMockClient();
+    const dto = {
+      id: 1,
+      body: 'raw',
+      body_html: '<p>Rendered proof</p>',
+      created_at: '2026-09-09T12:00:00Z',
+      user: { login: 'author' },
+    };
+    vi.mocked(client.get)
+      .mockResolvedValueOnce([{ ...dto, path: 'code.ts' }])
+      .mockResolvedValueOnce([dto]);
+    const result = await getAllComments(client, 'owner', 'repo', 1, {
+      paginate: true,
+      renderedBody: true,
+    });
+    expect(result.map((c) => c.body)).toEqual(['<p>Rendered proof</p>', '<p>Rendered proof</p>']);
+    expect(client.get).toHaveBeenCalledWith(
+      'repos/owner/repo/issues/1/comments?per_page=100&page=1',
+      { renderedBody: 'issue' },
+    );
+  });
+  it('loads every page of both comment sources when requested', async () => {
+    const client = createMockClient();
+    const inline = {
+      id: 1,
+      body: 'Inline',
+      path: 'code.ts',
+      line: 1,
+      created_at: '2026-09-09T10:00:00Z',
+      user: { login: 'author' },
+    };
+    const issue = {
+      id: 1,
+      body: 'Proof',
+      created_at: '2026-09-09T11:00:00Z',
+      user: { login: 'author' },
+    };
+    vi.mocked(client.get)
+      .mockResolvedValueOnce(Array.from({ length: 100 }, (_, id) => ({ ...inline, id })))
+      .mockResolvedValueOnce([{ ...inline, id: 101 }])
+      .mockResolvedValueOnce(Array.from({ length: 100 }, (_, id) => ({ ...issue, id })))
+      .mockResolvedValueOnce([{ ...issue, id: 101 }]);
+    const result = await getAllComments(client, 'owner', 'repo', 1, { paginate: true });
+    expect(result).toHaveLength(202);
+    expect(client.get).toHaveBeenCalledWith(
+      'repos/owner/repo/pulls/1/comments?per_page=100&page=2',
+    );
+    expect(client.get).toHaveBeenCalledWith(
+      'repos/owner/repo/issues/1/comments?per_page=100&page=2',
+    );
+  });
+
+  it('reports failed comment sources to callers while retaining successful sources', async () => {
+    const client = createMockClient();
+    const onError = vi.fn();
+    vi.mocked(client.get).mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValueOnce([]);
+    await getAllComments(client, 'owner', 'repo', 1, { paginate: true, onError });
+    expect(onError).toHaveBeenCalledWith('Inline comments', expect.any(Error));
+  });
   it('combines and sorts PR review and issue comments', async () => {
     const client = createMockClient();
 
