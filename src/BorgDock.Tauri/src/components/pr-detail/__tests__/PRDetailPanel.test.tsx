@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import type { CheckRun } from '@/types/check-run';
@@ -34,7 +35,11 @@ vi.mock('../DiscussionTab', () => ({
 
 // Mock ActionBar, ActivityStrip, CheckoutPanel so PRDetailPanel tests stay focused
 vi.mock('../ActionBar', () => ({
-  ActionBar: () => <div data-action-bar />,
+  ActionBar: ({ onReview }: { onReview: () => void }) => (
+    <button type="button" data-action-bar onClick={onReview}>
+      Review
+    </button>
+  ),
 }));
 vi.mock('../ActivityStrip', () => ({
   ActivityStrip: () => <div data-activity-strip />,
@@ -44,6 +49,10 @@ vi.mock('../CheckoutPanel', () => ({
 }));
 vi.mock('@/components/shared/ConfirmDialog', () => ({
   ConfirmDialog: () => null,
+}));
+
+vi.mock('@/components/focus/QuickReviewOverlay', () => ({
+  QuickReviewOverlay: () => <div data-testid="quick-review-host" />,
 }));
 
 // Mock usePrActions — return a stable no-op actions object
@@ -421,5 +430,19 @@ describe('PrDetailPanel', () => {
     expect(checksTab.querySelector('.bd-tab__indicator')).not.toBeNull();
 
     expect(screen.getByRole('tab', { name: /discussion/i })).toBeInTheDocument();
+  });
+  it('starts Quick Review for this PR and uses the main window overlay host', () => {
+    const pr = makePr();
+    render(<PrDetailPanel pr={pr} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(useQuickReviewStore.getState().queue).toEqual([pr]);
+    expect(useQuickReviewStore.getState().state).toBe('reviewing');
+    expect(screen.queryByTestId('quick-review-host')).toBeNull();
+    useQuickReviewStore.getState().endSession();
+  });
+
+  it('hosts Quick Review in a separate PR window', () => {
+    render(<PrDetailPanel pr={makePr()} popOutWindow />);
+    expect(screen.getByTestId('quick-review-host')).toBeInTheDocument();
   });
 });

@@ -6,6 +6,7 @@ import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getCommitFiles, getPRCommits, getPRFiles, getReviewThreads } from '@/services/github';
 import { submitReview } from '@/services/github/mutations';
 import { getClientForRepo } from '@/services/github/singleton';
+import { groupReviewFiles } from '@/services/quick-review';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { usePrStore } from '@/stores/pr-store';
 import type {
@@ -183,7 +184,13 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
   }, [prNumber, repoOwner, repoName]);
 
   // Resolve which files to display
-  const files = selectedCommit ? (commitFiles ?? []) : (cachedFiles ?? []);
+  const files = useMemo(() => {
+    const source = (selectedCommit ? commitFiles : cachedFiles) ?? [];
+    const byPath = new Map(source.map((file) => [file.filename, file]));
+    return groupReviewFiles(source).flatMap((group) =>
+      group.files.map((file) => byPath.get(file.filename)!),
+    );
+  }, [selectedCommit, commitFiles, cachedFiles]);
   const loading = selectedCommit ? commitFilesLoading : prFilesLoading;
 
   // Fetch review threads after files load
@@ -465,7 +472,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
       <div className="flex flex-1 min-h-0">
         {/* File tree sidebar */}
         {showFileTree && (
-          <div className="shrink-0 w-[220px] min-w-[160px] max-w-[320px]">
+          <div className="shrink-0 w-[clamp(240px,24vw,340px)] max-w-[45%]">
             <DiffFileTree
               files={files}
               activeFile={activeFile}

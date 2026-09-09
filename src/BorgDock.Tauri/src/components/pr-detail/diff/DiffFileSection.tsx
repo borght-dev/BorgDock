@@ -1,16 +1,17 @@
 import {
   forwardRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
   useCallback,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { IconButton, Pill, type PillTone } from '@/components/shared/primitives';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
-import type { DiffFile, DiffViewMode, ReviewThread } from '@/types';
-import { IconButton, Pill, type PillTone } from '@/components/shared/primitives';
+import type { DiffFile, DiffLine, DiffViewMode, ReviewThread } from '@/types';
 import { SplitDiffView } from './SplitDiffView';
 import { UnifiedDiffView } from './UnifiedDiffView';
 
@@ -30,6 +31,8 @@ interface DiffFileSectionProps {
   /** Forwarded from FilesTab for cross-render persistence. */
   openThreadIds?: Set<string>;
   onToggleThread?: (id: string) => void;
+  onAddComment?: (line: DiffLine) => void;
+  renderLineAttachment?: (line: DiffLine) => ReactNode;
 }
 
 function statusPillTone(status: DiffFile['status']): PillTone {
@@ -66,6 +69,8 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
       onReply,
       openThreadIds,
       onToggleThread,
+      onAddComment,
+      renderLineAttachment,
     },
     ref,
   ) {
@@ -85,7 +90,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
 
     const threadsByLine = useMemo(() => {
       const map = new Map<number, ReviewThread[]>();
-      for (const t of (threads ?? [])) {
+      for (const t of threads ?? []) {
         const list = map.get(t.line) ?? [];
         list.push(t);
         map.set(t.line, list);
@@ -125,6 +130,11 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
 
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (
+          onAddComment ||
+          (e.target as HTMLElement).closest('input,textarea,select,[contenteditable="true"]')
+        )
+          return;
         if (e.key === 'n') {
           e.preventDefault();
           handleNextHunk();
@@ -133,7 +143,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
           handlePrevHunk();
         }
       },
-      [handleNextHunk, handlePrevHunk],
+      [handleNextHunk, handlePrevHunk, onAddComment],
     );
 
     return (
@@ -146,9 +156,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
         onKeyDown={handleKeyDown}
       >
         {/* Sticky file header */}
-        <div
-          className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)] bg-[var(--color-diff-file-header-bg)] backdrop-blur-[8px]"
-        >
+        <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)] bg-[var(--color-diff-file-header-bg)] backdrop-blur-[8px]">
           <IconButton
             icon={collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
             tooltip={collapsed ? 'Expand' : 'Collapse'}
@@ -238,6 +246,8 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
               </div>
             ) : viewMode === 'unified' ? (
               <UnifiedDiffView
+                onAddComment={onAddComment}
+                renderLineAttachment={renderLineAttachment}
                 hunks={hunks}
                 syntaxHighlights={syntaxHighlights}
                 threadsByLine={threadsByLine}

@@ -90,14 +90,28 @@ export class GitHubClient {
     return entries;
   }
 
-  async get<T>(path: string): Promise<T> {
+  async get<T>(path: string, options?: { renderedBody?: 'issue' | 'review' }): Promise<T> {
     const url = `https://api.github.com/${path}`;
     const start = performance.now();
     log.info('GET start', { path });
-    const response = await this.fetchWithRetry(url);
+    // Rendered comments can contain expiring attachment URLs. Fetch them fresh
+    // and keep them out of the persisted ETag cache.
+    const useCache = !options?.renderedBody;
+    const response = await this.fetchWithRetry(
+      url,
+      options?.renderedBody
+        ? {
+            accept:
+              options.renderedBody === 'review'
+                ? 'application/vnd.github-commitcomment.full+json'
+                : 'application/vnd.github.full+json',
+          }
+        : undefined,
+      useCache,
+    );
     const durationMs = Math.round(performance.now() - start);
 
-    if (response.status === 304) {
+    if (response.status === 304 && useCache) {
       const cached = this.etagCache.get(url);
       if (cached) {
         log.info('GET 304 cached', { path, durationMs });
@@ -141,7 +155,7 @@ export class GitHubClient {
     this._freshCount++;
 
     const etag = response.headers.get('etag');
-    if (etag) {
+    if (etag && useCache) {
       this.etagCache.set(url, { etag, data: body });
       if (this.etagCache.size > 500) {
         const oldest = this.etagCache.keys().next().value;
@@ -154,7 +168,7 @@ export class GitHubClient {
       status: response.status,
       durationMs,
       rateLimitRemaining: this.restRateLimit.remaining,
-      cached: !!etag,
+      cached: !!etag && useCache,
     });
 
     return body as T;
@@ -337,6 +351,7 @@ export class GitHubClient {
   private async fetchWithRetry(
     url: string,
     extraHeaders?: Record<string, string>,
+    useEtag = true,
   ): Promise<Response> {
     const maxRetries = 3;
     const baseDelay = 1000;
@@ -345,14 +360,15 @@ export class GitHubClient {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const token = await this.getToken();
+        const { accept, ...otherHeaders } = extraHeaders ?? {};
         const headers: Record<string, string> = {
           Authorization: `Bearer ${token}`,
           'User-Agent': 'BorgDock',
-          Accept: extraHeaders?.accept ?? 'application/vnd.github.v3+json',
-          ...extraHeaders,
+          Accept: accept ?? 'application/vnd.github.v3+json',
+          ...otherHeaders,
         };
 
-        const cached = this.etagCache.get(url);
+        const cached = useEtag ? this.etagCache.get(url) : undefined;
         if (cached) {
           headers['If-None-Match'] = cached.etag;
         }

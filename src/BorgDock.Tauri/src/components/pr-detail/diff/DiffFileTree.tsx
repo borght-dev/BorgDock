@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useMemo, useState } from 'react';
 import { IconButton, Input } from '@/components/shared/primitives';
+import { groupReviewFiles } from '@/services/quick-review';
 import type { DiffFile, FileStatusFilter } from '@/types';
 
 interface DiffFileTreeProps {
@@ -105,7 +106,9 @@ function ListIcon() {
 
 export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: DiffFileTreeProps) {
   const [search, setSearch] = useState('');
-  const [treeMode, setTreeMode] = useState(false);
+  const [treeMode, setTreeMode] = useState(true);
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     let result = files;
@@ -118,108 +121,146 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
       const allowed = statusMap[statusFilter] ?? [];
       result = result.filter((f) => allowed.includes(f.status));
     }
-    if (search) {
-      const q = search.toLowerCase();
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
       result = result.filter((f) => f.filename.toLowerCase().includes(q));
     }
     return result;
   }, [files, search, statusFilter]);
 
+  const groups = useMemo(() => groupReviewFiles(filtered), [filtered]);
   const totalAdditions = files.reduce((s, f) => s + f.additions, 0);
   const totalDeletions = files.reduce((s, f) => s + f.deletions, 0);
 
+  function renderFile(file: DiffFile, groupName?: string) {
+    const badge = statusBadge(file.status);
+    const basename = file.filename.split('/').pop() ?? file.filename;
+    const directory = file.filename.split('/').slice(0, -1).join('/');
+    const isActive = activeFile === file.filename;
+    return (
+      <button
+        key={file.filename}
+        type="button"
+        data-file-tree-row
+        data-filename={file.filename}
+        aria-label={`${file.filename}, ${file.status}, ${file.additions} additions, ${file.deletions} deletions`}
+        aria-current={isActive ? 'location' : undefined}
+        onClick={() => onFileClick(file.filename)}
+        className={clsx(
+          'flex items-start gap-[8px] w-full rounded-md px-[10px] py-[8px] text-left transition-colors border-l-2 focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]',
+          isActive
+            ? 'bg-[var(--color-selected-row-bg)] border-[var(--color-accent)]'
+            : 'border-transparent hover:bg-[var(--color-surface-hover)]',
+        )}
+        title={file.filename}
+      >
+        <span
+          aria-hidden="true"
+          className="shrink-0 mt-0.5 w-[24px] h-[24px] flex items-center justify-center rounded text-[9px] font-semibold bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]"
+        >
+          {fileExtIcon(file.filename)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs leading-[16px] font-medium text-[var(--color-text-primary)] [overflow-wrap:anywhere]">
+            {basename}
+          </span>
+          {directory && directory !== groupName && (
+            <span className="block mt-0.5 text-[10px] leading-[16px] text-[var(--color-text-muted)] [overflow-wrap:anywhere]">
+              {directory}
+            </span>
+          )}
+          <span className="flex flex-wrap items-center gap-[8px] mt-[4px] text-[10px] leading-[14px]">
+            {/* style: the badge color reflects the file change status. */}
+            <span title={file.status} aria-label={file.status} style={{ color: badge.color }}>
+              {badge.letter}
+            </span>
+            {file.additions > 0 && (
+              <span className="text-[var(--color-status-green)]">+{file.additions}</span>
+            )}
+            {file.deletions > 0 && (
+              <span className="text-[var(--color-status-red)]">-{file.deletions}</span>
+            )}
+          </span>
+        </span>
+      </button>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full border-r border-[var(--color-diff-border)]">
-      {/* Search */}
-      <div className="p-1.5 border-b border-[var(--color-diff-border)]">
+    <nav
+      aria-label="Changed files"
+      className="flex flex-col h-full min-h-0 border-r border-[var(--color-diff-border)] bg-[var(--color-surface)]"
+    >
+      <div className="p-[12px] border-b border-[var(--color-diff-border)] space-y-[8px]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
+            Files <span className="ml-1 text-[var(--color-text-muted)]">{files.length}</span>
+          </span>
+          <IconButton
+            icon={treeMode ? <ListIcon /> : <TreeIcon />}
+            active={treeMode}
+            tooltip={treeMode ? 'Flat list' : 'Grouped view'}
+            aria-label={treeMode ? 'Flat list' : 'Grouped view'}
+            size={22}
+            onClick={() => setTreeMode((v) => !v)}
+            data-file-tree-toggle
+          />
+        </div>
         <Input
+          aria-label="Filter changed files"
           leading={<SearchIcon />}
           placeholder="Filter files..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <p className="text-[10px] text-[var(--color-text-muted)]">Source first · Tests last</p>
       </div>
-
-      {/* Tree mode toggle */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-[var(--color-diff-border)]">
-        <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-medium">
-          Files
-        </span>
-        <IconButton
-          icon={treeMode ? <ListIcon /> : <TreeIcon />}
-          active={treeMode}
-          tooltip={treeMode ? 'Flat list' : 'Tree view'}
-          aria-label={treeMode ? 'Flat list' : 'Tree view'}
-          size={22}
-          onClick={() => setTreeMode((v) => !v)}
-          data-file-tree-toggle
-        />
-      </div>
-
-      {/* File list */}
-      <div className="flex-1 overflow-y-auto">
-        {filtered.map((file) => {
-          const badge = statusBadge(file.status);
-          const basename = file.filename.split('/').pop() ?? file.filename;
-          const dirPath = treeMode
-            ? undefined
-            : file.filename.slice(0, -(basename.length + 1)) || undefined;
-          const isActive = activeFile === file.filename;
-
-          return (
-            <button
-              key={file.filename}
-              type="button"
-              data-file-tree-row
-              data-filename={file.filename}
-              onClick={() => onFileClick(file.filename)}
-              className={clsx(
-                'flex items-center gap-1.5 w-full px-2 py-1 text-left transition-colors',
-                isActive
-                  ? 'bg-[var(--color-selected-row-bg)]'
-                  : 'hover:bg-[var(--color-surface-hover)]',
-              )}
-              title={file.filename}
-            >
-              <span className="shrink-0 w-4 h-4 flex items-center justify-center rounded text-[7px] font-bold bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
-                {fileExtIcon(file.filename)}
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[11px] text-[var(--color-text-secondary)]">
-                  {basename}
+      <div className="flex-1 overflow-y-auto min-h-0 p-1.5 space-y-1">
+        {filtered.length === 0 && (
+          <p className="px-2 py-5 text-xs text-[var(--color-text-muted)]">
+            No files match your filters.
+          </p>
+        )}
+        {treeMode
+          ? groups.map((group) => {
+              const expanded = search.trim() !== '' || !collapsed.has(group.name);
+              return (
+                <div key={group.name} data-file-group={group.name}>
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-label={`${group.name}, ${group.files.length} files`}
+                    disabled={search.trim() !== ''}
+                    className="flex items-start gap-[6px] w-full px-[8px] py-[8px] text-left text-[11px] leading-[16px] font-medium text-[var(--color-text-secondary)] rounded hover:bg-[var(--color-surface-hover)]"
+                    onClick={() =>
+                      setCollapsed((previous) => {
+                        const next = new Set(previous);
+                        if (next.has(group.name)) next.delete(group.name);
+                        else next.add(group.name);
+                        return next;
+                      })
+                    }
+                  >
+                    <span aria-hidden="true" className="shrink-0">
+                      {expanded ? '⌄' : '›'}
+                    </span>
+                    <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{group.name}</span>
+                    <span className="shrink-0 text-[var(--color-text-muted)]">
+                      {group.files.length}
+                    </span>
+                  </button>
+                  {expanded && group.files.map((file) => renderFile(file, group.name))}
                 </div>
-                {dirPath && (
-                  <div className="truncate text-[9px] text-[var(--color-text-muted)]">
-                    {dirPath}
-                  </div>
-                )}
-              </div>
-
-              {/* style: file-status badge color — badge.color is status-driven (added/modified/deleted), computed per file */}
-              <span className="shrink-0 text-[8px] font-bold" style={{ color: badge.color }}>
-                {badge.letter}
-              </span>
-
-              <div className="shrink-0 flex gap-0.5 text-[9px]">
-                {file.additions > 0 && (
-                  <span className="text-[var(--color-status-green)]">+{file.additions}</span>
-                )}
-                {file.deletions > 0 && (
-                  <span className="text-[var(--color-status-red)]">-{file.deletions}</span>
-                )}
-              </div>
-            </button>
-          );
-        })}
+              );
+            })
+          : groups.flatMap((group) => group.files.map((file) => renderFile(file)))}
       </div>
-
-      {/* Summary */}
-      <div className="px-2 py-1.5 border-t border-[var(--color-diff-border)] text-[9px] text-[var(--color-text-muted)]">
+      <div className="px-[12px] py-[10px] border-t border-[var(--color-diff-border)] text-[11px] text-[var(--color-text-muted)]">
+        {filtered.length !== files.length ? `${filtered.length} of ` : ''}
         {files.length} file{files.length !== 1 ? 's' : ''},{' '}
         <span className="text-[var(--color-status-green)]">+{totalAdditions}</span>{' '}
         <span className="text-[var(--color-status-red)]">-{totalDeletions}</span>
       </div>
-    </div>
+    </nav>
   );
 }

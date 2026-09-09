@@ -13,8 +13,12 @@ export async function submitReview(
   _prNumber: number,
   event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT',
   body?: string,
+  review?: { commit_id: string; comments: unknown[] },
 ): Promise<void> {
-  getControl().invocations.push({ command: 'github.submitReview', args: { event, body } });
+  getControl().invocations.push({
+    command: 'github.submitReview',
+    args: { event, body, ...review },
+  });
 }
 
 export async function postComment(

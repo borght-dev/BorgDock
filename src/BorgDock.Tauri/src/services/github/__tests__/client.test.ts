@@ -118,6 +118,27 @@ describe('GitHubClient', () => {
   });
 
   describe('get', () => {
+    it('fetches fresh rendered comment bodies without reusing or persisting signed attachment URLs', async () => {
+      const client = createClient();
+      const path = 'repos/owner/repo/issues/42/comments';
+      const url = `https://api.github.com/${path}`;
+      client.seedEtagCache([{ url, etag: 'raw-etag', data: [{ body: 'raw' }] }]);
+      const rendered = [
+        {
+          body: 'raw',
+          body_html:
+            '<img src="https://private-user-images.githubusercontent.com/proof?jwt=sample" />',
+        },
+      ];
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, rendered, { etag: 'rendered-etag' }));
+      expect(await client.get(path, { renderedBody: 'issue' })).toEqual(rendered);
+      const headers = fetchSpy.mock.calls[0]![1].headers;
+      expect(headers.Accept).toBe('application/vnd.github.full+json');
+      expect(headers['If-None-Match']).toBeUndefined();
+      expect(client.getEtagEntries()).toEqual([
+        { url, etag: 'raw-etag', jsonData: [{ body: 'raw' }] },
+      ]);
+    });
     it('makes a GET request to the correct URL', async () => {
       const client = createClient();
       fetchSpy.mockResolvedValueOnce(mockResponse(200, { id: 1 }));

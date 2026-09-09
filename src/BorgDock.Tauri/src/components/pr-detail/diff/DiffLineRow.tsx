@@ -15,6 +15,7 @@ interface DiffLineRowProps {
   onToggleThread?: () => void;
   /** Yellow-highlight treatment for the jump-target line. */
   highlight?: boolean;
+  onAddComment?: (line: DiffLine) => void;
 }
 
 /**
@@ -31,6 +32,7 @@ export function DiffLineRow({
   threadOpen,
   onToggleThread,
   highlight,
+  onAddComment,
 }: DiffLineRowProps) {
   if (line.type === 'hunk-header') {
     return (
@@ -90,6 +92,19 @@ export function DiffLineRow({
         {line.newLineNumber ?? ''}
       </td>
       <td className="pl-2 whitespace-pre overflow-x-auto">
+        {onAddComment && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddComment(line);
+            }}
+            aria-label={`Comment on ${line.type === 'delete' ? 'old' : 'new'} line ${line.type === 'delete' ? line.oldLineNumber : line.newLineNumber}`}
+            className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)] focus-visible:outline"
+          >
+            +
+          </button>
+        )}
         <span className="select-none text-[var(--color-diff-line-number)] mr-1">{prefix}</span>
         <DiffLineContent
           content={line.content}
@@ -104,11 +119,24 @@ export function DiffLineRow({
               onToggleThread?.();
             }}
             className="ml-3 inline-flex items-center gap-1 rounded-full bg-[var(--color-accent-subtle)] px-2 py-[1px] text-[10px] font-semibold text-[var(--color-accent)]"
-            aria-label={threadOpen ? 'Hide thread' : `${threadCount ?? 1} comment${threadCount === 1 ? '' : 's'}`}
+            aria-label={
+              threadOpen
+                ? 'Hide thread'
+                : `${threadCount ?? 1} comment${threadCount === 1 ? '' : 's'}`
+            }
             data-thread-chip
           >
-            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                 strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <path d="M3 4h10v6H7l-3 3v-3H3z" />
             </svg>
             {threadOpen ? 'hide' : (threadCount ?? 1)}

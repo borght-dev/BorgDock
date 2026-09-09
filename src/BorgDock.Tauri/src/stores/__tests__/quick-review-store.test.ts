@@ -127,6 +127,18 @@ describe('quick-review-store', () => {
   });
 
   describe('advance', () => {
+    it('does not carry a failed review error into the next PR or summary', () => {
+      const store = useQuickReviewStore.getState();
+      store.startSession([makePr(1), makePr(2)]);
+      store.setError('Review failed');
+      store.advance('skipped');
+      expect(useQuickReviewStore.getState().error).toBeNull();
+      store.setError('Second review failed');
+      store.advance('skipped');
+      expect(useQuickReviewStore.getState().error).toBeNull();
+      expect(useQuickReviewStore.getState().state).toBe('complete');
+    });
+
     it('records decision and moves to next PR', () => {
       useQuickReviewStore.getState().startSession([makePr(1), makePr(2), makePr(3)]);
       useQuickReviewStore.getState().advance('approved');

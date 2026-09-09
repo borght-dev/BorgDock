@@ -9,6 +9,7 @@ const log = createLogger('github:reviews');
 interface GitHubPrReviewCommentDto {
   id: number;
   body: string | null;
+  body_html?: string;
   path: string | null;
   line: number | null;
   original_line: number | null;
@@ -20,6 +21,7 @@ interface GitHubPrReviewCommentDto {
 interface GitHubIssueCommentDto {
   id: number;
   body: string | null;
+  body_html?: string;
   html_url: string | null;
   created_at: string;
   user: { login: string } | null;
@@ -29,19 +31,52 @@ interface GitHubReviewDto {
   id: number;
   state: string;
   body: string | null;
+  body_html?: string;
   submitted_at: string;
   user: { login: string } | null;
 }
 
 // --- Public API ---
 
+interface CommentFetchOptions {
+  paginate?: boolean;
+  renderedBody?: boolean;
+  onError?: (source: string, error: unknown) => void;
+}
+
+async function getCommentPages<T>(
+  client: GitHubClient,
+  path: string,
+  options: CommentFetchOptions,
+): Promise<T[]> {
+  const fetchPage = (url: string) =>
+    options.renderedBody
+      ? client.get<T[]>(url, { renderedBody: path.includes('/pulls/') ? 'review' : 'issue' })
+      : client.get<T[]>(url);
+  if (!options.paginate) return fetchPage(path);
+  const items: T[] = [];
+  for (let page = 1; ; page++) {
+    const batch = await fetchPage(`${path}?per_page=100&page=${page}`);
+    items.push(...batch);
+    if (batch.length < 100) return items;
+  }
+}
+
 export async function getReviews(
   client: GitHubClient,
   owner: string,
   repo: string,
   prNumber: number,
+  options: CommentFetchOptions = {},
 ): Promise<GitHubReviewDto[]> {
-  return client.get<GitHubReviewDto[]>(`repos/${owner}/${repo}/pulls/${prNumber}/reviews`);
+  const reviews = await getCommentPages<GitHubReviewDto>(
+    client,
+    `repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+    options,
+  );
+  return options.renderedBody
+    ? reviews.map((review) => ({ ...review, body: review.body_html ?? review.body }))
+    : reviews;
 }
 
 export async function getReviewComments(
@@ -145,20 +180,23 @@ export async function getAllComments(
   owner: string,
   repo: string,
   prNumber: number,
+  options: CommentFetchOptions = {},
 ): Promise<ClaudeReviewComment[]> {
   const comments: ClaudeReviewComment[] = [];
 
   // PR review comments
   try {
-    const reviewDtos = await client.get<GitHubPrReviewCommentDto[]>(
+    const reviewDtos = await getCommentPages<GitHubPrReviewCommentDto>(
+      client,
       `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+      options,
     );
 
     for (const dto of reviewDtos) {
       comments.push({
         id: String(dto.id),
         author: dto.user?.login ?? '',
-        body: dto.body ?? '',
+        body: (options.renderedBody ? dto.body_html : undefined) ?? dto.body ?? '',
         filePath: dto.path ?? undefined,
         lineNumber: dto.line ?? dto.original_line ?? undefined,
         severity: detectSeverity(dto.body ?? ''),
@@ -168,19 +206,22 @@ export async function getAllComments(
     }
   } catch (err) {
     log.warn('failed to fetch PR review comments', { owner, repo, prNumber, error: String(err) });
+    options.onError?.('Inline comments', err);
   }
 
   // Issue comments
   try {
-    const issueDtos = await client.get<GitHubIssueCommentDto[]>(
+    const issueDtos = await getCommentPages<GitHubIssueCommentDto>(
+      client,
       `repos/${owner}/${repo}/issues/${prNumber}/comments`,
+      options,
     );
 
     for (const dto of issueDtos) {
       comments.push({
         id: String(dto.id),
         author: dto.user?.login ?? '',
-        body: dto.body ?? '',
+        body: (options.renderedBody ? dto.body_html : undefined) ?? dto.body ?? '',
         severity: detectSeverity(dto.body ?? ''),
         createdAt: dto.created_at,
         htmlUrl: dto.html_url ?? '',
@@ -188,6 +229,7 @@ export async function getAllComments(
     }
   } catch (err) {
     log.warn('failed to fetch issue comments', { owner, repo, prNumber, error: String(err) });
+    options.onError?.('PR comments', err);
   }
 
   return comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());

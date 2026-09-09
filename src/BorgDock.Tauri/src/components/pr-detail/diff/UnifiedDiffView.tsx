@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Fragment, useMemo, useRef } from 'react';
+import { Fragment, type ReactNode, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/shared/primitives';
 import { computeInlineChanges, findLinePairs } from '@/services/diff-parser';
 import type { DiffHunk, DiffLine, HighlightSpan, InlineChange, ReviewThread } from '@/types';
 import { InlineThread } from '../InlineThread';
@@ -18,6 +19,8 @@ interface UnifiedDiffViewProps {
   onUnresolve?: (id: string) => void;
   onReply?: (id: string, body: string) => void;
   highlightLine?: number | null;
+  onAddComment?: (line: DiffLine) => void;
+  renderLineAttachment?: (line: DiffLine) => ReactNode;
 }
 
 export function UnifiedDiffView({
@@ -30,7 +33,10 @@ export function UnifiedDiffView({
   onUnresolve,
   onReply,
   highlightLine,
+  onAddComment,
+  renderLineAttachment,
 }: UnifiedDiffViewProps) {
+  const [visibleCount, setVisibleCount] = useState(500);
   const allLines = useMemo(() => hunks.flatMap((h) => h.lines), [hunks]);
 
   const inlineMap = useMemo(() => {
@@ -49,7 +55,7 @@ export function UnifiedDiffView({
     return map;
   }, [allLines]);
 
-  if (allLines.length > VIRTUALIZE_THRESHOLD) {
+  if (allLines.length > VIRTUALIZE_THRESHOLD && !onAddComment && !renderLineAttachment) {
     return (
       <VirtualUnifiedDiff
         allLines={allLines}
@@ -72,7 +78,7 @@ export function UnifiedDiffView({
         <col />
       </colgroup>
       <tbody>
-        {allLines.map((line, i) => {
+        {allLines.slice(0, onAddComment ? visibleCount : allLines.length).map((line, i) => {
           const inlineData = inlineMap.get(i);
           const inlineChanges: InlineChange[] | undefined = inlineData
             ? line.type === 'delete'
@@ -83,10 +89,11 @@ export function UnifiedDiffView({
             : undefined;
           const syntaxSpans = syntaxHighlights?.get(i);
           const lineNo = line.type !== 'hunk-header' ? line.newLineNumber : undefined;
-          const lineThreads = lineNo != null ? threadsByLine?.get(lineNo) ?? [] : [];
+          const lineThreads = lineNo != null ? (threadsByLine?.get(lineNo) ?? []) : [];
           const firstThread = lineThreads[0];
-          const isOpen = firstThread ? openThreadIds?.has(firstThread.id) ?? false : false;
+          const isOpen = firstThread ? (openThreadIds?.has(firstThread.id) ?? false) : false;
           const isHighlighted = lineNo != null && highlightLine != null && lineNo === highlightLine;
+          const attachment = renderLineAttachment?.(line);
 
           return (
             <Fragment key={i}>
@@ -99,7 +106,15 @@ export function UnifiedDiffView({
                 threadOpen={isOpen}
                 onToggleThread={firstThread ? () => onToggleThread?.(firstThread.id) : undefined}
                 highlight={isHighlighted}
+                onAddComment={onAddComment}
               />
+              {attachment && (
+                <tr>
+                  <td colSpan={3} className="p-0 whitespace-normal">
+                    {attachment}
+                  </td>
+                </tr>
+              )}
               {isOpen && firstThread && (
                 <tr>
                   <td colSpan={3} className="p-0">
@@ -116,6 +131,15 @@ export function UnifiedDiffView({
             </Fragment>
           );
         })}
+        {onAddComment && allLines.length > visibleCount && (
+          <tr>
+            <td colSpan={3} className="p-3">
+              <Button variant="secondary" size="md" onClick={() => setVisibleCount((n) => n + 500)}>
+                Show next {Math.min(500, allLines.length - visibleCount)} lines
+              </Button>
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );
