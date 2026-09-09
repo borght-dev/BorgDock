@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import type { PullRequestFileChange } from '@/types';
 import { getControl } from '../../../.storybook/mocks/control';
@@ -156,4 +157,26 @@ export const LoadFailure: Story = {
       return <Story />;
     },
   ],
+};
+
+export const InlineDraft: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const file = await canvas.findByRole('button', { name: /SaveOrderHandler.cs/ });
+    await userEvent.click(file);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Comment on new line 46' }));
+    await userEvent.type(
+      canvas.getByPlaceholderText('Describe the issue or suggest a change...'),
+      'What happens if approval fails after the order has been saved?',
+    );
+  },
+};
+
+export const ScreenshotComments: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Comments' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /PR author/ }));
+    await waitFor(() => expect(canvas.getByAltText('Browser verification')).toBeVisible());
+  },
 };

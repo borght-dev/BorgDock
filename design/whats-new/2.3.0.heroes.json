@@ -1,0 +1,5 @@
+[
+  {"slug":"guided-review","storyId":"focus-quick-review--inline-draft","viewport":{"width":1360,"height":900},"selector":".qr-dialog","delay":1800},
+  {"slug":"review-comments","storyId":"focus-quick-review--screenshot-comments","viewport":{"width":1360,"height":900},"selector":".qr-dialog","delay":1800},
+  {"slug":"pr-files","storyId":"pr-detail-prdetailpanel--grouped-files","viewport":{"width":1360,"height":1000},"selector":".storybook-pr-detail-frame","delay":1000}
+]

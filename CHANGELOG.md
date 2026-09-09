@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.0 — 2026-09-09
+
+### New Features
+
+- **Review a PR from start to finish** — Read the full description, then move through the changes one file at a time, with tests at the end. Add comments beside the code and keep your drafts and progress when you step away. Compact navigation buttons stay in place as you scroll. ![Guided Quick Review with inline comments](whats-new/2.3.0/guided-review.png)
+- **See the proof in the conversation** — Skim PR comments and screenshots without leaving Quick Review. Filter by the PR author or other commenters, then open any screenshot at full size when you need a closer look. ![Screenshot comments in Quick Review](whats-new/2.3.0/review-comments.png)
+
+### Improvements
+
+- **Find your way through changed files** — PR details now group files into collapsible sections with readable names and tests last. When a PR cannot merge yet, the Review button opens Quick Review for that PR. ![Grouped file navigation in PR details](whats-new/2.3.0/pr-files.png)
+
 ## 2.2.1 — 2026-09-08
 
 ### Bug Fixes
