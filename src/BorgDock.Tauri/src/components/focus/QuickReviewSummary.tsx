@@ -1,4 +1,5 @@
-import { Button, Card } from '@/components/shared/primitives';
+import { avatarInitials } from '@/components/pr/pr-card-data';
+import { Avatar, Button, Pill, type PillTone } from '@/components/shared/primitives';
 import type { ReviewDecision } from '@/stores/quick-review-store';
 import type { PullRequestWithChecks } from '@/types';
 
@@ -8,10 +9,10 @@ interface QuickReviewSummaryProps {
   onClose: () => void;
 }
 
-const DECISION_LABELS: Record<ReviewDecision, { label: string; color: string }> = {
-  approved: { label: 'Approved', color: 'var(--color-status-green)' },
-  commented: { label: 'Commented', color: 'var(--color-status-yellow)' },
-  skipped: { label: 'Skipped', color: 'var(--color-text-muted)' },
+const DECISION_LABELS: Record<ReviewDecision, { label: string; tone: PillTone }> = {
+  approved: { label: 'Approved', tone: 'success' },
+  commented: { label: 'Commented', tone: 'warning' },
+  skipped: { label: 'Skipped', tone: 'ghost' },
 };
 
 export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSummaryProps) {
@@ -34,17 +35,13 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
       <div className="flex justify-center gap-6">
         {approved > 0 && (
           <div className="text-center">
-            <div className="text-xl font-bold text-[var(--color-status-green)]">
-              {approved}
-            </div>
+            <div className="text-xl font-bold text-[var(--color-status-green)]">{approved}</div>
             <div className="text-[10px] text-[var(--color-text-muted)]">Approved</div>
           </div>
         )}
         {commented > 0 && (
           <div className="text-center">
-            <div className="text-xl font-bold text-[var(--color-status-yellow)]">
-              {commented}
-            </div>
+            <div className="text-xl font-bold text-[var(--color-status-yellow)]">{commented}</div>
             <div className="text-[10px] text-[var(--color-text-muted)]">Commented</div>
           </div>
         )}
@@ -57,24 +54,17 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
       </div>
 
       {/* PR list */}
-      <div className="space-y-1 max-h-[300px] overflow-y-auto">
+      <div className="bd-pr-panel max-h-[300px] overflow-y-auto">
         {queue.map((pr) => {
           const decision = decisions.get(pr.pullRequest.number);
           const info = decision ? DECISION_LABELS[decision] : null;
           return (
-            <Card key={pr.pullRequest.number} padding="sm">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--color-text-secondary)] truncate mr-2">
-                  #{pr.pullRequest.number} {pr.pullRequest.title}
-                </span>
-                {info && (
-                  // style: decision-driven color — info.color maps to status token per decision type
-                  <span className="shrink-0 font-medium" style={{ color: info.color }}>
-                    {info.label}
-                  </span>
-                )}
-              </div>
-            </Card>
+            <div key={pr.pullRequest.number} className="bd-pr-mini-row">
+              <Avatar initials={avatarInitials(pr.pullRequest.authorLogin)} size="sm" />
+              <span className="min-w-0 flex-1 truncate font-medium">{pr.pullRequest.title}</span>
+              <span className="bd-pr-item__number">#{pr.pullRequest.number}</span>
+              {info && <Pill tone={info.tone}>{info.label}</Pill>}
+            </div>
           );
         })}
       </div>

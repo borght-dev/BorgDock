@@ -31,7 +31,6 @@ vi.mock('@/stores/ui-store', () => {
       toggleRepoGroup: vi.fn(),
       worktreeBranchMap: new Map(),
       prGroupBy: 'repo',
-      prDensity: 'comfortable',
     });
   });
   return { useUiStore: fn };
@@ -40,7 +39,7 @@ vi.mock('@/stores/ui-store', () => {
 vi.mock('@/stores/settings-store', () => {
   const fn = vi.fn();
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({ settings: { repos: [] } });
+    return selector({ settings: { repos: [], ui: {} } });
   });
   return { useSettingsStore: fn };
 });

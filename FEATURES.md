@@ -29,7 +29,7 @@ Current as of **2.3.1** (2026-09-15). `/CHANGELOG.md` records what changed per r
 - Borderless always-on-top panel anchored near the tray, toggled by its own global hotkey (default Ctrl+Win+Shift+F) or the tray menu; closes on click-outside
 - Header: open count, refresh, open main window, settings
 - Summary strip with failing / running / passing counts and a **Focus N** shortcut
-- PR rows with readiness ring, j/k navigation, and a smart primary action (Re-run / Merge / Review / Checkout / Open) plus Checkout and More
+- PR rows match the main window's comfortable rows (readiness ring, +/− lines, labels, repo when several are monitored); j/k navigation; hover action bar with smart primary action (Re-run / Merge / Review / Checkout / Open), Checkout, Review, More
 - Row context menu: open in GitHub or detail window, copy branch / URL / errors for Claude, checkout, open T3 thread, rerun failed checks, merge, fix / monitor with agent
 - Skeleton placeholder while data is still loading
 - Hosts BorgDock's notification toasts (see §8)
@@ -41,18 +41,18 @@ Current as of **2.3.1** (2026-09-15). `/CHANGELOG.md` records what changed per r
 ### Filtering, Search & Layout
 - Filter chips with counts: **All**, **Needs Review** (includes team review requests), **Mine**, **Failing**, **Ready**, **Review**, **Closed**
 - Debounced search across title, author, branch, owner/repo, and labels
-- Group by author, repository, or status; collapsible groups (E collapses all)
-- Sort by updated, created, or title
-- Density: compact or comfortable
+- Group by author, repository, or status (segmented control); collapsible groups (E collapses all)
+- Sort by updated, created, or title (menu button)
+- Density (Settings → Appearance): **Comfortable** two-line rows or **Compact** single-line table with Author / Pull request / Review / Checks / Δ lines / # / Ready columns
 - Per-author strip with PR and failing counts
 - Pinned **Needs Your Review** section in the All view
 - **Recently Closed** section
 
-### PR Card
-- Author initials avatar, title, review-state pill (approved / changes / commented / review needed)
-- Repo, PR number, author, CI summary (N failing / in progress / x/y passing)
+### PR Row
+- Rows sit in one hairline-separated panel per section; author initials avatar, title, review-state pill (approved / changes / commented / review needed)
+- PR number, author, CI summary (N failing / in progress / x/y passing)
 - Draft, conflicts, merged, closed pills
-- Branch → base, +/− lines, commit, file, and comment counts
+- +/− lines; base branch only when it isn't main/master (repo, head branch, commit/file/comment counts are hidden)
 - Labels, worktree name, merge-readiness ring (0–100)
 - Linked Azure DevOps work-item badges
 - Live T3 session chips (running, approval needed, input needed, settled)
@@ -82,7 +82,7 @@ Current as of **2.3.1** (2026-09-15). `/CHANGELOG.md` records what changed per r
 - Ranks open PRs by priority score; shows only PRs scoring above zero; others' drafts excluded
 - Header summary: "Showing X of Y — N failing, N waiting on you, N stale"
 - **Why not the others?** breakdown of excluded PRs with reasons and counts
-- Rows: rank, score ring, primary reason pill, points, title, repo/number, status, Open
+- Rows: the same PR rows as the PR list (density setting, hover action bar, context menu, click opens detail), ranked top to bottom, plus repo name, primary reason pill, and priority points
 - Keyboard: `r` reviews selected PR, `m` merges with a 3-second Undo toast, `Shift+R` starts Quick Review over everything waiting on you
 - First-run overlay, inline hint, and "new" feature badges
 

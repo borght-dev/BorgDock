@@ -123,7 +123,7 @@ describe('PrCardContainer card-click → pop-out detail', () => {
 
   it('opens the pop-out detail window when the card is clicked', () => {
     const { container } = render(<PrCardContainer prWithChecks={makePr()} />);
-    const card = container.querySelector('.bd-pr-card');
+    const card = container.querySelector('[data-pr-row]');
     expect(card).toBeInTheDocument();
     fireEvent.click(card!);
     expect(invokeMock).toHaveBeenCalledWith(

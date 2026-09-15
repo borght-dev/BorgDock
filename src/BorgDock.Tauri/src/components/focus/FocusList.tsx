@@ -2,36 +2,18 @@ import { Zap } from 'lucide-react';
 import { useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { FeatureBadge, FirstRunOverlay, InlineHint } from '@/components/onboarding';
-import { Avatar, Button, Pill, Ring } from '@/components/shared/primitives';
+import { PrCardContainer } from '@/components/pr/PrCardContainer';
+import { PrPanel } from '@/components/pr/PrRow';
+import { Button } from '@/components/shared/primitives';
 import { formatFocusHeadline, summarizeFocus } from '@/services/focus-summary';
 import { prScoreKey } from '@/services/priority-scoring';
 import { openPrDetail } from '@/services/windows';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import type { OverallStatus, PullRequestWithChecks } from '@/types';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { PullRequestWithChecks } from '@/types';
 import { FocusEmptyState } from './FocusEmptyState';
-import { PriorityReasonLabel } from './PriorityReasonLabel';
-
-// ── helpers ────────────────────────────────────────────────────────────────
-
-function statusToneFor(status: OverallStatus): string {
-  if (status === 'green') return 'passing';
-  if (status === 'red') return 'failing';
-  if (status === 'yellow') return 'running';
-  return 'passing';
-}
-
-function statusLabelFor(status: OverallStatus): string {
-  if (status === 'green') return 'Passing';
-  if (status === 'red') return 'Failing';
-  if (status === 'yellow') return 'Running';
-  return 'Unknown';
-}
-
-function initialsFor(login: string): string {
-  return login.slice(0, 2).toUpperCase();
-}
 
 // ── component ──────────────────────────────────────────────────────────────
 
@@ -58,6 +40,7 @@ export function FocusList() {
   const hasSeenFocusOverlay = useOnboardingStore((s) => s.hasSeenFocusOverlay);
   const markFocusOverlaySeen = useOnboardingStore((s) => s.markFocusOverlaySeen);
   const dismissBadge = useOnboardingStore((s) => s.dismissBadge);
+  const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
   const summary = summarizeFocus(pullRequests, priorityScores, username, teams);
 
   // Auto-dismiss Focus badge when tab is viewed
@@ -123,62 +106,33 @@ export function FocusList() {
         />
       </div>
 
-      {/* ── Focus rows ───────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-0 px-2 pb-2 pt-1">
-        {focusPrs.map((pr, index) => {
-          const score = priorityScores.get(prScoreKey(pr.pullRequest));
-          const rank = index + 1;
-          const scoreValue = score?.total ?? 0;
-          const tone = statusToneFor(pr.overallStatus);
-          const label = statusLabelFor(pr.overallStatus);
-          const initials = initialsFor(pr.pullRequest.authorLogin);
-
-          return (
-            <div
-              key={prScoreKey(pr.pullRequest)}
-              data-focus-item=""
-              className="animate-[fadeSlideIn_0.2s_ease-out]"
-            >
-              <div className="bd-focus-row">
-                {/* Rank pill */}
-                <div className="bd-focus-row__rank">{rank}</div>
-
-                {/* Ring score */}
-                <Ring value={scoreValue} size={38} stroke={3} />
-
-                {/* Main column: reason + title + meta */}
-                <div className="bd-focus-row__main">
-                  <div className="bd-focus-row__chips">
-                    {score && score.factors.length > 0 ? (
-                      <PriorityReasonLabel factors={score.factors} />
-                    ) : (
-                      <Pill tone="neutral">In focus</Pill>
-                    )}
-                    {score && <span className="bd-mono bd-focus-row__points">+{score.total}</span>}
-                  </div>
-                  <div className="bd-focus-row__title">{pr.pullRequest.title}</div>
-                  <div className="bd-meta bd-focus-row__meta">
-                    <Avatar initials={initials} size="sm" />
-                    <span className="bd-mono">{pr.pullRequest.repoName}</span>
-                    <span className="sep">·</span>
-                    <span className="bd-mono">#{pr.pullRequest.number}</span>
-                  </div>
-                </div>
-
-                {/* Status label */}
-                <div className="bd-focus-row__status" data-tone={tone}>
-                  {label}
-                </div>
-
-                {/* Open button — pops out the PR detail window (the inline
-                    detail panel was removed in the main-window rewrite). */}
-                <Button variant="secondary" size="sm" onClick={() => openPrDetailFor(pr)}>
-                  Open
-                </Button>
-              </div>
-            </div>
-          );
-        })}
+      {/* ── Focus rows — ranked, same rows as the PR list ───────────────── */}
+      <div className="bd-pr-list">
+        <PrPanel density={density} className="mt-2">
+          {focusPrs.map((pr) => {
+            const score = priorityScores.get(prScoreKey(pr.pullRequest));
+            return (
+              <PrCardContainer
+                key={prScoreKey(pr.pullRequest)}
+                prWithChecks={pr}
+                density={density}
+                showRepo
+                focusMode
+                priorityFactors={score?.factors}
+                badge={
+                  score && (
+                    <span
+                      data-priority-points=""
+                      className="font-mono text-[10px] text-[var(--color-text-muted)]"
+                    >
+                      +{score.total}
+                    </span>
+                  )
+                }
+              />
+            );
+          })}
+        </PrPanel>
       </div>
 
       {/* Feature badge (kept for onboarding tracking) */}

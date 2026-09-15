@@ -30,7 +30,7 @@ export function ReviewSlaIndicator({ tier, waitTime }: ReviewSlaIndicatorProps) 
   // style: tier-driven color-mix border and background — tier name selects the token used in color-mix, computed per render
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+      className="inline-flex h-[18px] items-center gap-1 rounded-full border px-[7px] text-[10.5px] leading-none font-semibold"
       style={{
         borderColor: `color-mix(in srgb, ${tier === 'fresh' ? 'var(--color-status-green)' : tier === 'aging' ? 'var(--color-status-yellow)' : 'var(--color-status-red)'} 30%, transparent)`,
         background: `color-mix(in srgb, ${tier === 'fresh' ? 'var(--color-status-green)' : tier === 'aging' ? 'var(--color-status-yellow)' : 'var(--color-status-red)'} 8%, transparent)`,

@@ -32,7 +32,8 @@ const STATUS_LABEL: Record<string, string> = {
   active: 'active',
 };
 
-export function T3SessionStrip({ pr }: { pr: PullRequest }) {
+/** `inline` drops the top margin so the strip can sit inside a PR row's meta line. */
+export function T3SessionStrip({ pr, inline }: { pr: PullRequest; inline?: boolean }) {
   const sessions = useT3SessionStore((state) => state.sessions ?? EMPTY_SESSIONS);
   const t3Path = useSettingsStore((state) => state.settings.agents?.t3Path);
   const matching = useMemo(
@@ -42,7 +43,12 @@ export function T3SessionStrip({ pr }: { pr: PullRequest }) {
   if (matching.length === 0) return null;
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1" data-t3-sessions="">
+    <div
+      className={
+        inline ? 'inline-flex items-center gap-1' : 'mt-1.5 flex flex-wrap items-center gap-1'
+      }
+      data-t3-sessions=""
+    >
       <span className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">
         T3
       </span>

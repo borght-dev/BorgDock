@@ -71,6 +71,7 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
 
   // Appearance
   { sectionId: 'appearance', anchorId: 'theme', label: 'Theme' },
+  { sectionId: 'appearance', anchorId: 'pr-density', label: 'Pull request density' },
   { sectionId: 'appearance', anchorId: 'sidebar-edge', label: 'Sidebar edge' },
   { sectionId: 'appearance', anchorId: 'sidebar-mode', label: 'Sidebar mode' },
   { sectionId: 'appearance', anchorId: 'sidebar-width', label: 'Sidebar width' },

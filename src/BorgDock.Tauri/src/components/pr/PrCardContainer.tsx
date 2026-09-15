@@ -9,11 +9,12 @@ import { openPrDetail } from '@/services/windows';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { PullRequestWithChecks } from '@/types';
+import type { PrDensity, PullRequestWithChecks } from '@/types';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { HoverActionPillBar } from './HoverActionPillBar';
-import { type PrCardData, type PrCardDensity, PrCardView } from './PrCardView';
 import { PrContextMenu } from './PrContextMenu';
+import { PrRow } from './PrRow';
+import { toPrCardData } from './pr-card-data';
 import { T3SessionStrip } from './T3SessionStrip';
 
 interface PrCardContainerProps {
@@ -21,63 +22,11 @@ interface PrCardContainerProps {
   isFocused?: boolean;
   focusMode?: boolean;
   priorityFactors?: PriorityFactor[];
-  density?: PrCardDensity;
-  /** Extra badge rendered beside the review pill (e.g. review SLA wait time). */
+  density?: PrDensity;
+  /** Extra inline badge in the row's meta line (e.g. review SLA wait time). */
   badge?: React.ReactNode;
-}
-
-function mapToPrCardData(
-  prw: PullRequestWithChecks,
-  isMyPr: boolean,
-  worktreeSlot?: string,
-): PrCardData {
-  const pr = prw.pullRequest;
-  const failedCount = prw.failedCheckNames.length;
-  const pendingCount = prw.pendingCheckNames.length;
-  const totalChecks = prw.totalCheckCount;
-  const relevant = totalChecks - prw.skippedCount;
-  const statusLabel =
-    failedCount > 0
-      ? `${failedCount} failing`
-      : pendingCount > 0
-        ? 'in progress'
-        : totalChecks > 0
-          ? `${prw.passedCount}/${relevant} passing`
-          : '';
-  const reviewState =
-    pr.reviewStatus === 'approved'
-      ? 'approved'
-      : pr.reviewStatus === 'changesRequested'
-        ? 'changes'
-        : pr.reviewStatus === 'commented'
-          ? 'commented'
-          : pr.reviewStatus === 'pending'
-            ? 'pending'
-            : 'none';
-  return {
-    number: pr.number,
-    title: pr.title,
-    repoOwner: pr.repoOwner,
-    repoName: pr.repoName,
-    authorLogin: pr.authorLogin,
-    isMine: isMyPr,
-    status: prw.overallStatus,
-    statusLabel,
-    reviewState,
-    isDraft: pr.isDraft,
-    isMerged: !!pr.mergedAt,
-    isClosed: !!pr.closedAt,
-    hasConflict: pr.mergeable === false,
-    branch: pr.headRef,
-    baseBranch: pr.baseRef,
-    additions: pr.additions ?? 0,
-    deletions: pr.deletions ?? 0,
-    changedFiles: pr.changedFiles ?? 0,
-    commitCount: pr.commitCount ?? 0,
-    commentCount: pr.commentCount,
-    labels: pr.labels,
-    worktreeSlot,
-  };
+  /** Show the repo name next to the author. */
+  showRepo?: boolean;
 }
 
 function dispatchPrimaryAction(
@@ -103,8 +52,9 @@ export const PrCardContainer = memo(function PrCardContainer({
   isFocused,
   focusMode,
   priorityFactors,
-  density = 'normal',
+  density = 'comfortable',
   badge,
+  showRepo,
 }: PrCardContainerProps) {
   const { pullRequest: pr } = prWithChecks;
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
@@ -120,7 +70,7 @@ export const PrCardContainer = memo(function PrCardContainer({
   const workItemIds = useMemo(() => detectWorkItemIds(pr), [pr]);
 
   const cardData = useMemo(
-    () => mapToPrCardData(prWithChecks, isMyPr, worktreeMatch?.slotName),
+    () => toPrCardData(prWithChecks, isMyPr, worktreeMatch?.slotName),
     [prWithChecks, isMyPr, worktreeMatch?.slotName],
   );
 
@@ -146,35 +96,38 @@ export const PrCardContainer = memo(function PrCardContainer({
 
   return (
     <>
-      {/* Wrapper preserves the data-pr-card hook used by useKeyboardNav and `group` for hover-only action bar reveal. */}
-      <div data-pr-card="" className="group relative">
-        {focusMode && priorityFactors && priorityFactors.length > 0 && (
-          <div className="mb-1 px-1">
-            <PriorityReasonLabel factors={priorityFactors} />
-          </div>
-        )}
-        <PrCardView
+      {/* data-pr-card is the useKeyboardNav hook; bd-pr-row-wrap drives the hover action bar reveal. */}
+      <div data-pr-card="" className="bd-pr-row-wrap">
+        <PrRow
           density={density}
           pr={cardData}
           score={mergeScore}
-          badge={badge}
           onClick={handleCardClick}
           onContextMenu={actions.handleContextMenu}
           active={isFocused}
           isFocused={isSelected}
+          showRepo={showRepo}
+          extras={
+            <>
+              {focusMode && priorityFactors && priorityFactors.length > 0 && (
+                <PriorityReasonLabel factors={priorityFactors} />
+              )}
+              {workItemIds.map((id) => (
+                <LinkedWorkItemBadge key={id} workItemId={id} compact />
+              ))}
+              {badge}
+              <T3SessionStrip pr={pr} inline />
+            </>
+          }
         />
-        {/* Variant A — compact hover-reveal pill bar anchored bottom-right.
+        {/* Variant A — hover-reveal pill bar floating over the row's right side.
             Heavy actions (Bypass, Close, Mark Draft, Copy Errors, Fix/Monitor with
             Claude) live on the right-click context menu via the More button.
             When the PR has merge conflicts, a purple "Resolve Conflicts" button
             is injected at the start of the bar instead of being rendered as a
             separate always-visible block below the card. */}
         {isOpen && (
-          <div
-            className="absolute right-3 bottom-2.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-            // style: pointer-events toggled inline so the bar can't intercept clicks while invisible
-            style={{ pointerEvents: undefined }}
-          >
+          <div className="bd-pr-item__actions" data-density={density}>
             <HoverActionPillBar
               primary={primary}
               onPrimary={(e) => dispatchPrimaryAction(primary, e, actions)}
@@ -189,14 +142,6 @@ export const PrCardContainer = memo(function PrCardContainer({
             />
           </div>
         )}
-        {workItemIds.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {workItemIds.map((id) => (
-              <LinkedWorkItemBadge key={id} workItemId={id} compact />
-            ))}
-          </div>
-        )}
-        <T3SessionStrip pr={pr} />
       </div>
 
       {/* Context menu */}

@@ -3,8 +3,10 @@ import { ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Pill } from '@/components/shared/primitives';
 import type { PrGroup } from '@/services/pr-grouping';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { PrCardContainer } from './PrCardContainer';
+import { PrPanel } from './PrRow';
 
 interface RepoGroupProps {
   group: PrGroup;
@@ -13,7 +15,7 @@ interface RepoGroupProps {
 export function RepoGroup({ group }: RepoGroupProps) {
   const expandedRepoGroups = useUiStore((s) => s.expandedRepoGroups);
   const toggleRepoGroup = useUiStore((s) => s.toggleRepoGroup);
-  const density = useUiStore((s) => s.prDensity);
+  const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
   const repoKey = group.key;
   const prs = group.prs;
   const isExpanded = !expandedRepoGroups.has(repoKey); // default expanded; set = collapsed
@@ -42,7 +44,7 @@ export function RepoGroup({ group }: RepoGroupProps) {
   const failing = group.stats.failing;
 
   return (
-    <div className="mb-0.5 bd-repo-group">
+    <div className="bd-repo-group">
       {/* Header \u2014 chevron + section label + horizontal rule + count pill.
           Wrapper stays a single <button> so the entire row is clickable as one
           target (matches keyboard-nav expectations). The inner chevron / hr are
@@ -81,7 +83,7 @@ export function RepoGroup({ group }: RepoGroupProps) {
         className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
         style={{ maxHeight }}
       >
-        <div className="flex flex-col gap-1 pt-0.5 pb-0.5">
+        <PrPanel density={density}>
           {prs.map((pr) => (
             <PrCardContainer
               key={`${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`}
@@ -89,7 +91,7 @@ export function RepoGroup({ group }: RepoGroupProps) {
               density={density}
             />
           ))}
-        </div>
+        </PrPanel>
       </div>
     </div>
   );

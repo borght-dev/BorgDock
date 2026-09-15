@@ -52,6 +52,7 @@ export type {
   GitHubSettings,
   NotificationSettings,
   PostFixAction,
+  PrDensity,
   RepoSettings,
   SqlServerConnection,
   SqlSettings,

@@ -5,9 +5,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { Card } from '@/components/shared/primitives';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { PullRequestWithChecks } from '@/types';
+import type { PrDensity, PullRequestWithChecks } from '@/types';
 import { PrCardContainer } from './PrCardContainer';
+import { PrPanel } from './PrRow';
 import { type PrFilterCounts, PrToolbar } from './PrToolbar';
 import { RepoGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
@@ -55,7 +57,7 @@ export function PrList() {
   const counts = usePrStore((s) => s.counts);
   const authorLoad = usePrStore((s) => s.authorLoad);
   const groupBy = useUiStore((s) => s.prGroupBy);
-  const density = useUiStore((s) => s.prDensity);
+  const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
 
   const groups = groupedPrs(groupBy);
   const prs = filteredPrs();
@@ -117,113 +119,102 @@ export function PrList() {
   const showReviewQueue = filter === 'all' && reviewQueue.length > 0;
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <PrToolbar counts={prFilterCounts} />
-      {filter !== 'closed' && authors.length > 0 && (
-        <div
-          className="flex items-center gap-2 overflow-x-auto px-3 py-2"
-          aria-label="Pull requests by author"
-        >
-          {authors.map((author) => (
-            <span
-              key={author.login.toLowerCase()}
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-raised)] px-2 py-1 text-[10px]"
-            >
-              <span>
-                {author.login}
-                {author.isMe ? ' (you)' : ''}
+    <div className="flex flex-col">
+      <PrToolbar counts={prFilterCounts} authors={filter !== 'closed' ? authors : undefined} />
+      <div className="bd-pr-list">
+        {showReviewQueue && (
+          <>
+            <div className="bd-pr-section-head">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-status-yellow)]">
+                Needs Your Review
               </span>
-              <span className="bd-mono">{author.count}</span>
-              {author.failing > 0 && (
-                <span className="text-[var(--color-status-red)]">{author.failing} failing</span>
+              <span className="h-px flex-1 bg-[var(--color-separator)]" />
+              {/* style: color-mix background + yellow text — no Tailwind utility for color-mix percentage blends */}
+              <span
+                className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
+                style={{
+                  color: 'var(--color-status-yellow)',
+                  background: 'color-mix(in srgb, var(--color-status-yellow) 15%, transparent)',
+                }}
+              >
+                {reviewQueue.length}
+              </span>
+            </div>
+            <PrPanel density={density}>
+              {reviewQueue.map((pr) => {
+                const prk = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`;
+                const requestedAt = usePrStore.getState().getReviewRequestedAt(prk, username);
+                const tier = requestedAt ? getReviewSlaTier(requestedAt) : 'fresh';
+                const waitTime = requestedAt ? formatReviewWaitTime(requestedAt) : '<1h';
+                return (
+                  <PrCardContainer
+                    key={`review-${pr.pullRequest.number}`}
+                    prWithChecks={pr}
+                    density={density}
+                    badge={<ReviewSlaIndicator tier={tier} waitTime={waitTime} />}
+                  />
+                );
+              })}
+            </PrPanel>
+          </>
+        )}
+
+        {groups.map((group) => (
+          <RepoGroup key={group.key} group={group} />
+        ))}
+
+        {filter !== 'closed' && <TeamReviewLoad />}
+
+        {showRecentlyClosed && (
+          <>
+            <div className="bd-pr-section-head mt-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
+                Recently Closed
+              </span>
+              <span className="h-px flex-1 bg-[var(--color-separator)]" />
+              <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]">
+                {closedPullRequests.length}
+              </span>
+            </div>
+            <div className="opacity-60">
+              {closedPullRequests.length > VIRTUALIZE_THRESHOLD ? (
+                <VirtualizedPrCards prs={closedPullRequests} density={density} />
+              ) : (
+                <PrPanel density={density}>
+                  {closedPullRequests.map((pr) => (
+                    <PrCardContainer
+                      key={pr.pullRequest.number}
+                      prWithChecks={pr}
+                      density={density}
+                    />
+                  ))}
+                </PrPanel>
               )}
-            </span>
-          ))}
-        </div>
-      )}
-      {showReviewQueue && (
-        <>
-          <div className="flex items-center gap-2 px-3 pt-2 pb-1 border-[var(--color-separator)]">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-status-yellow)]">
-              Needs Your Review
-            </span>
-            <span className="h-px flex-1 bg-[var(--color-separator)]" />
-            {/* style: color-mix background + yellow text — no Tailwind utility for color-mix percentage blends */}
-            <span
-              className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
-              style={{
-                color: 'var(--color-status-yellow)',
-                background: 'color-mix(in srgb, var(--color-status-yellow) 15%, transparent)',
-              }}
-            >
-              {reviewQueue.length}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 pb-1">
-            {reviewQueue.map((pr) => {
-              const prk = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`;
-              const requestedAt = usePrStore.getState().getReviewRequestedAt(prk, username);
-              const tier = requestedAt ? getReviewSlaTier(requestedAt) : 'fresh';
-              const waitTime = requestedAt ? formatReviewWaitTime(requestedAt) : '<1h';
-              return (
-                <PrCardContainer
-                  key={`review-${pr.pullRequest.number}`}
-                  prWithChecks={pr}
-                  density={density}
-                  badge={<ReviewSlaIndicator tier={tier} waitTime={waitTime} />}
-                />
-              );
-            })}
-          </div>
-          <div className="mb-1 h-px mx-3 bg-[var(--color-separator)]" />
-        </>
-      )}
-
-      {groups.map((group) => (
-        <RepoGroup key={group.key} group={group} />
-      ))}
-
-      {filter !== 'closed' && <TeamReviewLoad />}
-
-      {showRecentlyClosed && (
-        <>
-          <div className="mt-4 flex items-center gap-2 border-t px-3 pt-2.5 pb-1 border-[var(--color-separator)]">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
-              Recently Closed
-            </span>
-            <span className="h-px flex-1 bg-[var(--color-separator)]" />
-            <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]">
-              {closedPullRequests.length}
-            </span>
-          </div>
-          <div className="opacity-60">
-            {closedPullRequests.length > VIRTUALIZE_THRESHOLD ? (
-              <VirtualizedPrCards prs={closedPullRequests} />
-            ) : (
-              closedPullRequests.map((pr) => (
-                <div key={pr.pullRequest.number} className="px-0.5">
-                  <PrCardContainer prWithChecks={pr} />
-                </div>
-              ))
-            )}
-          </div>
-        </>
-      )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-function VirtualizedPrCards({ prs }: { prs: PullRequestWithChecks[] }) {
+function VirtualizedPrCards({
+  prs,
+  density,
+}: {
+  prs: PullRequestWithChecks[];
+  density: PrDensity;
+}) {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: prs.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 80,
+    estimateSize: () => (density === 'compact' ? 33 : 58),
     overscan: 10,
   });
 
   return (
-    <div ref={parentRef} className="max-h-[400px] overflow-y-auto">
+    <div ref={parentRef} className="bd-pr-panel max-h-[400px] overflow-y-auto">
       {/* style: virtualizer total height is computed per render — cannot be expressed as a Tailwind class */}
       <div
         style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
@@ -244,9 +235,7 @@ function VirtualizedPrCards({ prs }: { prs: PullRequestWithChecks[] }) {
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <div className="px-0.5">
-                <PrCardContainer prWithChecks={pr} />
-              </div>
+              <PrCardContainer prWithChecks={pr} density={density} />
             </div>
           );
         })}

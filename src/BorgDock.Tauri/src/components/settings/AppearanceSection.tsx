@@ -1,10 +1,22 @@
-import { Card } from '@/components/shared/primitives';
-import { Field, SectionHeader, Seg2, TextInput, ToggleRow } from '@/components/shared/primitives';
-import type { UiSettings, ThemeMode } from '@/types/settings';
+import {
+  disable as disableAutostart,
+  enable as enableAutostart,
+} from '@tauri-apps/plugin-autostart';
+import {
+  Card,
+  Field,
+  SectionHeader,
+  Seg2,
+  TextInput,
+  ToggleRow,
+} from '@/components/shared/primitives';
+import type { PrDensity, ThemeMode, UiSettings } from '@/types/settings';
 import { HotkeyRecorder } from './HotkeyRecorder';
-import { enable as enableAutostart, disable as disableAutostart } from '@tauri-apps/plugin-autostart';
 
-interface Props { ui: UiSettings; onChange: (u: UiSettings) => void }
+interface Props {
+  ui: UiSettings;
+  onChange: (u: UiSettings) => void;
+}
 
 export function AppearanceSection({ ui, onChange }: Props) {
   const update = (partial: Partial<UiSettings>) => onChange({ ...ui, ...partial });
@@ -17,37 +29,65 @@ export function AppearanceSection({ ui, onChange }: Props) {
       />
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Theme</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Theme & layout
+        </h3>
         <Field label="Theme" anchorId="theme">
           <Seg2
             value={ui.theme}
             options={[
               { value: 'system', label: 'System' },
-              { value: 'light',  label: 'Light' },
-              { value: 'dark',   label: 'Dark' },
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' },
             ]}
             onChange={(v) => update({ theme: v as ThemeMode })}
+          />
+        </Field>
+        <Field
+          label="Pull request density"
+          hint="Comfortable shows two-line rows. Compact fits a single-line table with twice the PRs on screen."
+          anchorId="pr-density"
+        >
+          <Seg2
+            value={ui.prDensity ?? 'comfortable'}
+            options={[
+              { value: 'comfortable', label: 'Comfortable' },
+              { value: 'compact', label: 'Compact' },
+            ]}
+            onChange={(v) => update({ prDensity: v as PrDensity })}
           />
         </Field>
       </Card>
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Hotkeys</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Hotkeys
+        </h3>
         <Field
           label="Global hotkey"
           hint="Toggle the BorgDock window from anywhere on the desktop."
           anchorId="global-hotkey"
         >
-          <HotkeyRecorder value={ui.globalHotkey} onChange={(globalHotkey) => update({ globalHotkey })} />
+          <HotkeyRecorder
+            value={ui.globalHotkey}
+            onChange={(globalHotkey) => update({ globalHotkey })}
+          />
         </Field>
         <Field
           label="Flyout hotkey"
           hint="Toggles the tray flyout from anywhere. Default Ctrl+Win+Shift+F."
           anchorId="flyout-hotkey"
         >
-          <HotkeyRecorder value={ui.flyoutHotkey} onChange={(flyoutHotkey) => update({ flyoutHotkey })} />
+          <HotkeyRecorder
+            value={ui.flyoutHotkey}
+            onChange={(flyoutHotkey) => update({ flyoutHotkey })}
+          />
         </Field>
-        <Field label="Quick review" hint="Open the focused PR in review mode." anchorId="quick-review-hotkey">
+        <Field
+          label="Quick review"
+          hint="Open the focused PR in review mode."
+          anchorId="quick-review-hotkey"
+        >
           <HotkeyRecorder
             value={ui.quickReviewHotkey}
             onChange={(quickReviewHotkey) => update({ quickReviewHotkey })}
@@ -56,7 +96,9 @@ export function AppearanceSection({ ui, onChange }: Props) {
       </Card>
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Terminal & startup</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Terminal & startup
+        </h3>
         <Field
           label="Windows Terminal profile"
           hint='Used by the "Claude" button in the checkout flow. Leave empty to auto-detect the default profile.'

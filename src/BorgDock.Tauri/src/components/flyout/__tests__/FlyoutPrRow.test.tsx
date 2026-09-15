@@ -22,7 +22,7 @@ const sample: FlyoutPr = {
 };
 
 describe('FlyoutPrRow', () => {
-  it('renders PrCardView in compact density', () => {
+  it('renders a comfortable PR row without a ring when no score is sent', () => {
     const { container } = render(<FlyoutPrRow pr={sample} onClick={vi.fn()} />);
     expect(container.querySelector('[data-pr-row]')).toBeInTheDocument();
     expect(container.querySelector('.bd-ring')).not.toBeInTheDocument();
@@ -134,20 +134,26 @@ describe('FlyoutPrRow', () => {
     expect(onAction).toHaveBeenCalledWith(failingPr, 'rerun', expect.anything());
   });
 
-  it('reveals secondary checkout/more icons on hover', () => {
+  it('forwards checkout, review and more from the hover action bar', () => {
     const onAction = vi.fn();
-    const { container } = render(
-      <FlyoutPrRow pr={sample} onClick={vi.fn()} onAction={onAction} />,
-    );
-    fireEvent.mouseEnter(container.querySelector('.relative')!);
-    const checkoutBtn = container.querySelector('[data-flyout-action="checkout"]')!;
-    fireEvent.click(checkoutBtn);
+    const { container } = render(<FlyoutPrRow pr={sample} onClick={vi.fn()} onAction={onAction} />);
+    fireEvent.click(container.querySelector('[data-pr-action="checkout"]')!);
     expect(onAction).toHaveBeenCalledWith(sample, 'checkout', expect.anything());
-
-    const moreBtn = container.querySelector('[data-flyout-action="more"]')!;
-    fireEvent.click(moreBtn);
+    fireEvent.click(container.querySelector('[data-pr-action="review"]')!);
+    expect(onAction).toHaveBeenCalledWith(sample, 'review', expect.anything());
+    fireEvent.click(container.querySelector('[data-pr-action="more"]')!);
     expect(onAction).toHaveBeenCalledWith(sample, 'more', expect.anything());
+  });
 
-    expect(screen.queryByText(/^Fix$/)).not.toBeInTheDocument();
+  it('shows repo, delta and base branch when the payload carries them', () => {
+    render(
+      <FlyoutPrRow
+        pr={{ ...sample, additions: 12, deletions: 3, baseRef: 'release/2.3' }}
+        onClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('FSP')).toBeInTheDocument();
+    expect(screen.getByText('+12')).toBeInTheDocument();
+    expect(screen.getByText(/release\/2\.3/)).toBeInTheDocument();
   });
 });

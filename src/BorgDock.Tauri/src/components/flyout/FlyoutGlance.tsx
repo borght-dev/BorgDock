@@ -49,6 +49,12 @@ export interface FlyoutPr {
   mergeScore?: number;
   /** GitHub's `mergeable` field — false means conflicts. */
   mergeable?: boolean;
+  /** Checks that count toward the pass ratio (total minus skipped). */
+  relevantChecks?: number;
+  baseRef?: string;
+  additions?: number;
+  deletions?: number;
+  labels?: string[];
 }
 
 export function FlyoutGlance({
@@ -360,7 +366,7 @@ export function FlyoutGlance({
             fixed max-h-[360px], which could push the header off-screen when
             the window was shorter than header + 360 + footer. */}
       {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
-      <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+      <div className="bd-pr-rows min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
         {pullRequests.map((pr, i) => (
           <FlyoutPrRow
             key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}

@@ -1,13 +1,14 @@
 // src/components/work-items/WorkItemDetailPanel/RightRail.tsx
+import { GitPullRequest } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Pill } from '@/components/shared/primitives';
 import {
+  avatarToneFor,
+  getInitials,
   MiniAvatar,
   PrioBars,
   StatePill,
   TypeGlyph,
-  avatarToneFor,
-  getInitials,
 } from '@/components/work-items/shared/wi-visuals';
 import type { LinkedPR } from './parseLinkedPRs';
 
@@ -189,39 +190,20 @@ export function RightRail(props: Props) {
 
       {linkedPRs.length > 0 && (
         <RailGroup title="Linked PRs">
-          {linkedPRs.map((pr) => (
-            <div
-              key={pr.id}
-              className="bd-card"
-              style={{
-                padding: '8px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-              }}
-            >
-              <span
-                className="bd-mono"
-                style={{ fontSize: 11, color: 'var(--color-text-muted)' }}
-              >
-                #{pr.id}
-              </span>
-              {pr.comment && (
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: 11.5,
-                    color: 'var(--color-text-primary)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {pr.comment}
-                </span>
-              )}
-            </div>
-          ))}
+          <div className="bd-pr-panel">
+            {linkedPRs.map((pr) => (
+              <div key={pr.id} className="bd-pr-mini-row text-[11.5px]">
+                <GitPullRequest
+                  size={12}
+                  strokeWidth={2.25}
+                  className="shrink-0 text-[var(--color-text-muted)]"
+                  aria-hidden
+                />
+                <span className="bd-pr-item__number">#{pr.id}</span>
+                {pr.comment && <span className="min-w-0 flex-1 truncate">{pr.comment}</span>}
+              </div>
+            ))}
+          </div>
         </RailGroup>
       )}
     </div>

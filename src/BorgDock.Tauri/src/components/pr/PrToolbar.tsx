@@ -1,7 +1,8 @@
-import { Search } from 'lucide-react';
+import { ArrowDownUp, ChevronDown, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Chip, Kbd } from '@/components/shared/primitives';
-import { type PrFilter, usePrStore } from '@/stores/pr-store';
+import { Avatar, Chip, Kbd, Seg2 } from '@/components/shared/primitives';
+import type { AuthorLoad, PrGroupBy } from '@/services/pr-grouping';
+import { type PrFilter, type SortBy, usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 
 export type PrFilterCountKey = 'all' | 'needs' | 'mine' | 'failing' | 'ready' | 'review' | 'closed';
@@ -35,12 +36,27 @@ const FILTERS: FilterDef[] = [
   { key: 'closed', storeKey: 'closed', label: 'Closed' },
 ];
 
+const GROUP_OPTIONS: ReadonlyArray<{ value: PrGroupBy; label: string }> = [
+  { value: 'author', label: 'Author' },
+  { value: 'repo', label: 'Repo' },
+  { value: 'status', label: 'Status' },
+];
+
+const SORT_OPTIONS: ReadonlyArray<{ value: SortBy; label: string }> = [
+  { value: 'updated', label: 'Updated' },
+  { value: 'created', label: 'Created' },
+  { value: 'title', label: 'Title' },
+];
+
 interface Props {
   counts: PrFilterCounts;
+  /** Per-author open/failing counts shown on the second row. Omit to hide the row. */
+  authors?: AuthorLoad[];
 }
 
 /**
- * PrToolbar — filter pills + search input.
+ * PrToolbar — filter chips, group segmented control, sort menu, search, and
+ * the per-author strip. Row density lives in Settings → Appearance.
  *
  * Replaces `components/layout/FilterBar.tsx` + `components/layout/SearchBar.tsx`,
  * but stays per-section (mounted inside `PrList`, not the global titlebar).
@@ -49,7 +65,7 @@ interface Props {
  * SearchBar used). Search is debounced 300ms to avoid thrashing the filtered-PR
  * memoization on every keystroke.
  */
-export function PrToolbar({ counts }: Props) {
+export function PrToolbar({ counts, authors }: Props) {
   const filter = usePrStore((s) => s.filter);
   const setFilter = usePrStore((s) => s.setFilter);
   const setSearchQuery = usePrStore((s) => s.setSearchQuery);
@@ -58,8 +74,6 @@ export function PrToolbar({ counts }: Props) {
   const setSortBy = usePrStore((s) => s.setSortBy);
   const groupBy = useUiStore((s) => s.prGroupBy);
   const setGroupBy = useUiStore((s) => s.setPrGroupBy);
-  const density = useUiStore((s) => s.prDensity);
-  const setDensity = useUiStore((s) => s.setPrDensity);
 
   const [search, setSearch] = useState(storedSearch);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,63 +104,99 @@ export function PrToolbar({ counts }: Props) {
     [setSearchQuery],
   );
 
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Updated';
+
   return (
     <div className="bd-pr-toolbar">
-      <div className="bd-pr-toolbar__pills">
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.key}
-            active={filter === f.storeKey}
-            count={counts[f.key]}
-            tone={f.tone}
-            onClick={() => setFilter(f.storeKey)}
-            data-filter-chip
-            data-filter-key={f.key}
+      <div className="bd-pr-toolbar__row">
+        <div className="bd-pr-toolbar__pills">
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.key}
+              active={filter === f.storeKey}
+              count={counts[f.key]}
+              tone={f.tone}
+              onClick={() => setFilter(f.storeKey)}
+              data-filter-chip
+              data-filter-key={f.key}
+            >
+              {f.label}
+            </Chip>
+          ))}
+        </div>
+        <span className="bd-spacer" />
+        <div className="bd-pr-toolbar__view-control" role="group" aria-label="Group pull requests">
+          <span>Group</span>
+          <Seg2 size="sm" value={groupBy} options={GROUP_OPTIONS} onChange={setGroupBy} />
+        </div>
+        <label className="bd-pr-toolbar__sort">
+          <ArrowDownUp
+            size={12}
+            strokeWidth={2.25}
+            aria-hidden="true"
+            className="text-[var(--color-text-tertiary)]"
+          />
+          {sortLabel}
+          <ChevronDown
+            size={11}
+            strokeWidth={2.25}
+            aria-hidden="true"
+            className="text-[var(--color-text-muted)]"
+          />
+          <select
+            aria-label="Sort pull requests"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
           >
-            {f.label}
-          </Chip>
-        ))}
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="bd-pr-toolbar__search">
+          <Search
+            size={13}
+            strokeWidth={2.25}
+            aria-hidden="true"
+            className="bd-pr-toolbar__search-icon"
+          />
+          <input
+            aria-label="Filter pull requests"
+            type="text"
+            value={search}
+            onChange={handleChange}
+            placeholder="Filter pull requests…"
+          />
+          <Kbd>⌘K</Kbd>
+        </div>
       </div>
-      <span className="bd-spacer" />
-      <label className="bd-pr-toolbar__view-control">
-        <span>Group</span>
-        <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}>
-          <option value="author">Author</option>
-          <option value="repo">Repository</option>
-          <option value="status">Status</option>
-        </select>
-      </label>
-      <label className="bd-pr-toolbar__view-control">
-        <span>Density</span>
-        <select value={density} onChange={(e) => setDensity(e.target.value as typeof density)}>
-          <option value="compact">Compact</option>
-          <option value="normal">Comfortable</option>
-        </select>
-      </label>
-      <label className="bd-pr-toolbar__view-control">
-        <span>Sort</span>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-          <option value="updated">Updated</option>
-          <option value="created">Created</option>
-          <option value="title">Title</option>
-        </select>
-      </label>
-      <div className="bd-pr-toolbar__search">
-        <Search
-          size={13}
-          strokeWidth={2.25}
-          aria-hidden="true"
-          className="bd-pr-toolbar__search-icon"
-        />
-        <input
-          aria-label="Filter pull requests"
-          type="text"
-          value={search}
-          onChange={handleChange}
-          placeholder="Filter pull requests…"
-        />
-        <Kbd>⌘K</Kbd>
-      </div>
+      {authors && authors.length > 0 && (
+        <div className="bd-pr-toolbar__authors" aria-label="Pull requests by author">
+          {authors.map((author) => (
+            <span key={author.login.toLowerCase()} className="bd-pr-author-chip">
+              <Avatar
+                initials={author.login.slice(0, 2).toUpperCase()}
+                tone={author.isMe ? 'own' : 'them'}
+                size="sm"
+              />
+              <span>
+                {author.login}
+                {author.isMe ? ' (you)' : ''}
+              </span>
+              <span className="font-mono text-[10.5px] text-[var(--color-text-muted)]">
+                {author.count}
+              </span>
+              {author.failing > 0 && (
+                <span className="text-[10.5px] font-semibold text-[var(--color-status-red)]">
+                  {author.failing} failing
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

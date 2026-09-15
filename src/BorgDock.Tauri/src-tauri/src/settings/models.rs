@@ -179,6 +179,9 @@ pub struct UiSettings {
     pub start_minimized_to_tray: bool,
     #[serde(default = "default_true")]
     pub restore_last_selection: bool,
+    /// Main-window PR list layout ("comfortable" | "compact").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pr_density: Option<String>,
 }
 
 fn default_theme() -> String {
@@ -217,6 +220,7 @@ impl Default for UiSettings {
             quick_review_hotkey: String::new(),
             start_minimized_to_tray: false,
             restore_last_selection: true,
+            pr_density: None,
         }
     }
 }

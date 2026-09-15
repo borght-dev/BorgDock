@@ -138,29 +138,11 @@ describe('FocusList', () => {
     expect(screen.getByText('Add feature')).toBeDefined();
   });
 
-  it('renders rank numbers for each focus PR', () => {
-    const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
-    const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
-    usePrStore.setState({ pullRequests: [pr1, pr2] });
-    render(<FocusList />);
-    expect(screen.getByText('1')).toBeDefined();
-    expect(screen.getByText('2')).toBeDefined();
-  });
-
-  it('renders Open button for each focus PR', () => {
-    const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
-    const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
-    usePrStore.setState({ pullRequests: [pr1, pr2] });
-    render(<FocusList />);
-    const openButtons = screen.getAllByText('Open');
-    expect(openButtons.length).toBe(2);
-  });
-
-  it('Open button pops out the PR detail window with owner/repo/number', () => {
-    const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
+  it('clicking a row pops out the PR detail window with owner/repo/number', () => {
+    const pr = makePr({ title: 'Row click', authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr] });
     render(<FocusList />);
-    fireEvent.click(screen.getByText('Open'));
+    fireEvent.click(screen.getByText('Row click'));
     expect(mockOpenPrDetail).toHaveBeenCalledWith({
       owner: pr.pullRequest.repoOwner,
       repo: pr.pullRequest.repoName,
@@ -251,24 +233,23 @@ describe('FocusList', () => {
     expect(useOnboardingStore.getState().dismissedBadges.has('focus-mode')).toBe(true);
   });
 
-  it('marks each focus PR row with [data-focus-item]', () => {
+  it('renders each focus PR as a shared PR row', () => {
     const pr1 = makePr({ title: 'A', authorLogin: 'testuser', reviewStatus: 'approved' });
     const pr2 = makePr({ title: 'B', authorLogin: 'testuser', reviewStatus: 'approved' });
     const pr3 = makePr({ title: 'C', authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr1, pr2, pr3] });
     const { container } = render(<FocusList />);
-    const rows = container.querySelectorAll('[data-focus-item]');
+    const rows = container.querySelectorAll('[data-pr-card]');
     const focusPrs = usePrStore.getState().focusPrs();
     expect(rows.length).toBe(focusPrs.length);
     expect(rows.length).toBe(3);
   });
 
-  it('renders status label for each PR based on overallStatus', () => {
+  it('renders the priority points for each PR', () => {
     const pr = makePr({ authorLogin: 'testuser', reviewStatus: 'approved' });
     usePrStore.setState({ pullRequests: [pr] });
-    render(<FocusList />);
-    // Default overallStatus in makePr is 'green' → shows 'Passing'
-    expect(screen.getByText('Passing')).toBeDefined();
+    const { container } = render(<FocusList />);
+    expect(container.querySelector('[data-priority-points]')?.textContent).toMatch(/^\+\d+$/);
   });
 
   it('renders Ring component for each focus PR', () => {

@@ -26,9 +26,10 @@ import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
-import { useSettingsStore } from '@/stores/settings-store';
+import { SETTINGS_UI_CHANGED_EVENT, useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { installTestSeed } from '@/test-support/test-seed';
+import type { UiSettings } from '@/types';
 
 installTestSeed({ isDev: import.meta.env.DEV });
 
@@ -253,6 +254,31 @@ export default function App() {
           void invoke('open_settings_window', {}).catch((err) =>
             console.error('open_settings_window failed', err),
           );
+        });
+        if (cancelled) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Apply UI settings saved from the Settings window (theme, PR density).
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const fn = await listen<UiSettings>(SETTINGS_UI_CHANGED_EVENT, (e) => {
+          useSettingsStore.setState((s) => ({ settings: { ...s.settings, ui: e.payload } }));
         });
         if (cancelled) {
           fn();

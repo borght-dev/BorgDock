@@ -886,24 +886,6 @@
   }
 }
 
-/* PrCardView compact title: marquee scroll on hover when text overflows.
-   The shift distance is set per-row via the --prcard-marquee-shift custom
-   property so a single keyframe definition serves every row. */
-@keyframes prcard-marquee {
-  0% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(0);
-  }
-  80% {
-    transform: translateX(var(--prcard-marquee-shift, 0));
-  }
-  100% {
-    transform: translateX(var(--prcard-marquee-shift, 0));
-  }
-}
-
 /* ════════════════════════════════════════════════════════
    Splash Screen Animations
    ════════════════════════════════════════════════════════ */
@@ -4102,15 +4084,15 @@ body.sql-resizing-v .sql-resize-handle {
     width: 100%;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px 10px;
+    padding: 14px 0 6px;
     background: transparent;
     border: 0;
     text-align: left;
     cursor: pointer;
     color: inherit;
   }
-  .bd-repo-group__header:hover {
-    background: var(--color-surface-hover);
+  .bd-repo-group__header:hover .bd-section-label {
+    color: var(--color-text-primary);
   }
   .bd-repo-group__chevron {
     flex-shrink: 0;
@@ -4130,15 +4112,19 @@ body.sql-resizing-v .sql-resize-handle {
   }
 }
 
-/* ── PrToolbar (per-section filter pills + search) ─────────── */
+/* ── PrToolbar (filter chips, group/sort, search, author strip) ── */
 @layer components {
   .bd-pr-toolbar {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 18px 10px;
+    flex-direction: column;
     border-bottom: 1px solid var(--color-subtle-border);
     background: var(--color-surface);
+  }
+  .bd-pr-toolbar__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 6px;
   }
   .bd-pr-toolbar__pills {
     display: inline-flex;
@@ -4148,36 +4134,55 @@ body.sql-resizing-v .sql-resize-handle {
   .bd-pr-toolbar__view-control {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 10px;
+    gap: 6px;
+    font-size: 11px;
     color: var(--color-text-tertiary);
+    white-space: nowrap;
   }
-  .bd-pr-toolbar__view-control select {
-    height: 28px;
+  .bd-pr-toolbar__sort {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 8px;
     border: 1px solid var(--color-input-border);
-    border-radius: 6px;
+    border-radius: 5px;
     background: var(--color-input-bg);
+    font-size: 11px;
+    font-weight: 500;
     color: var(--color-text-primary);
-    padding: 0 6px;
-    font-size: 10px;
+    white-space: nowrap;
+  }
+  .bd-pr-toolbar__sort:focus-within {
+    border-color: var(--color-accent);
+  }
+  .bd-pr-toolbar__sort select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    cursor: pointer;
   }
   .bd-pr-toolbar__search {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    width: 280px;
-    height: 28px;
+    width: 220px;
+    height: 26px;
+    margin-left: 4px;
     padding: 0 8px;
     border: 1px solid var(--color-input-border);
     background: var(--color-input-bg);
-    border-radius: 6px;
-    color: var(--color-text-ghost);
+    border-radius: 5px;
+    color: var(--color-text-muted);
   }
   .bd-pr-toolbar__search:focus-within {
     border-color: var(--color-accent);
   }
   .bd-pr-toolbar__search input {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: 0;
     outline: none;
@@ -4185,10 +4190,245 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-primary);
   }
   .bd-pr-toolbar__search input::placeholder {
-    color: var(--color-text-ghost);
+    color: var(--color-text-muted);
   }
   .bd-pr-toolbar__search-icon {
     flex-shrink: 0;
+  }
+  .bd-pr-toolbar__authors {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px 8px;
+    overflow-x: auto;
+  }
+  .bd-pr-author-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 8px 0 3px;
+    border-radius: 9999px;
+    background: var(--color-surface-hover);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .bd-pr-author-chip .bd-avatar {
+    width: 16px;
+    height: 16px;
+    font-size: 7px;
+  }
+}
+
+/* ── PR list panels + rows (comfortable = two-line, compact = table) ── */
+@layer components {
+  .bd-pr-list {
+    padding: 0 12px 12px;
+  }
+  .bd-pr-section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0 6px;
+  }
+  .bd-pr-panel {
+    container-type: inline-size;
+    overflow: hidden;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+  }
+  /* .bd-pr-rows = hairline-separated rows without the panel chrome (flyout). */
+  .bd-pr-rows {
+    container-type: inline-size;
+  }
+  :is(.bd-pr-panel, .bd-pr-rows) > :is(.bd-pr-row-wrap, .bd-pr-mini-row) + :is(.bd-pr-row-wrap, .bd-pr-mini-row),
+  .bd-pr-table-head + .bd-pr-row-wrap {
+    border-top: 1px solid var(--color-subtle-border);
+  }
+  .bd-pr-row-wrap {
+    position: relative;
+  }
+  /* One-line row for PR lists that only carry a number + note or decision
+     (Quick Review summary, work-item linked PRs). */
+  .bd-pr-mini-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--color-text-primary);
+  }
+  .bd-pr-item {
+    position: relative;
+    cursor: pointer;
+    transition: background var(--duration-color) ease;
+  }
+  .bd-pr-item:hover,
+  .bd-pr-item[data-active='true'] {
+    background: var(--color-surface-hover);
+  }
+  .bd-pr-item[data-selected='true'] {
+    box-shadow: inset 0 0 0 2px var(--color-accent);
+  }
+  .bd-pr-item--comfortable {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    column-gap: 10px;
+    align-items: start;
+    padding: 9px 12px;
+  }
+  .bd-pr-item__headline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    height: 20px;
+  }
+  .bd-pr-item__title {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-primary);
+  }
+  /* Chips wrap instead of shrinking; the fixed height + overflow hides any
+     chip that lands on the second line, so none are ever cut in half. */
+  .bd-pr-item__chips {
+    display: flex;
+    /* Don't shrink: the title truncates first. max-width caps the group, and
+       chips past it wrap onto the hidden second line. */
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: flex-start;
+    gap: 6px;
+    min-width: 0;
+    max-width: 60%;
+    height: 18px;
+    overflow: hidden;
+  }
+  .bd-pr-item__chips > *,
+  .bd-pr-item__chips [data-t3-sessions] > * {
+    flex-shrink: 0;
+    max-width: 100%;
+  }
+  .bd-pr-item__chips .bd-pill {
+    overflow: hidden;
+  }
+  .bd-pr-item__chips [data-t3-sessions] button {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding-block: 0;
+    line-height: 1;
+  }
+  .bd-pr-item__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    height: 18px;
+    overflow: hidden;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .bd-pr-item .bd-pill {
+    box-sizing: border-box;
+    height: 18px;
+    padding: 0 7px;
+    gap: 4px;
+    font-size: 10.5px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .bd-pr-item__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .bd-pr-item__status::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .bd-pr-item__delta {
+    display: inline-flex;
+    gap: 5px;
+    font-family: var(--font-code);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bd-pr-item__number {
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-muted);
+  }
+  .bd-pr-item__ring .bd-ring__label {
+    font-size: 9.5px;
+  }
+  .bd-pr-item__actions {
+    position: absolute;
+    right: 100px;
+    bottom: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms;
+  }
+  .bd-pr-item__actions[data-density='compact'] {
+    right: 112px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+  .bd-pr-row-wrap:hover .bd-pr-item__actions,
+  .bd-pr-row-wrap:focus-within .bd-pr-item__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Compact table: header + rows share one column template. */
+  .bd-pr-table-head,
+  .bd-pr-item--compact {
+    display: grid;
+    grid-template-columns: 20px 168px minmax(0, 1fr) 92px 112px 108px 48px 40px;
+    column-gap: 12px;
+    align-items: center;
+    padding: 0 12px;
+  }
+  .bd-pr-item--compact {
+    height: 32px;
+  }
+  .bd-pr-table-head {
+    height: 24px;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    background: var(--color-surface-raised);
+  }
+  /* Narrow window: drop the author-name and Δ columns before squeezing titles. */
+  @container (max-width: 760px) {
+    .bd-pr-table-head,
+    .bd-pr-item--compact {
+      grid-template-columns: 20px minmax(0, 1fr) 92px 112px 48px 40px;
+    }
+    /* !important: the cells also carry Tailwind display utilities, which sit
+       in a later cascade layer. */
+    .bd-pr-col--wide {
+      display: none !important;
+    }
   }
 }
 
@@ -4489,78 +4729,4 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-tertiary);
     margin-top: 2px;
   }
-
-  .bd-focus-row {
-    display: grid;
-    grid-template-columns: auto 44px 1fr auto auto;
-    column-gap: 14px;
-    align-items: center;
-    padding: 14px;
-    margin-bottom: 8px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-subtle-border);
-    border-radius: 10px;
-  }
-
-  .bd-focus-row__rank {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--color-surface-hover);
-    color: var(--color-text-tertiary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .bd-focus-row__main {
-    min-width: 0;
-  }
-
-  .bd-focus-row__chips {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 2px;
-  }
-
-  .bd-focus-row__points {
-    font-size: 10px;
-    color: var(--color-text-muted);
-  }
-
-  .bd-focus-row__title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .bd-focus-row__meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 3px;
-    font-size: 11px;
-    color: var(--color-text-muted);
-  }
-
-  .bd-focus-row__meta .sep {
-    color: var(--color-text-faint);
-  }
-
-  .bd-focus-row__status {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-  }
-
-  .bd-focus-row__status[data-tone="failing"] { color: var(--color-status-red); }
-  .bd-focus-row__status[data-tone="running"] { color: var(--color-status-yellow); }
-  .bd-focus-row__status[data-tone="passing"] { color: var(--color-status-green); }
 }

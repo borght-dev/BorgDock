@@ -171,13 +171,13 @@ describe('PrCardContainer', () => {
 
     it('renders the PR number', () => {
       render(<PrCardContainer prWithChecks={makePr()} />);
-      // PrCardView primitive renders the number in both the meta row and the right column
+      // PrRow renders the number in both the meta row and the right column
       expect(screen.getAllByText('#42').length).toBeGreaterThan(0);
     });
 
-    it('renders the branch name', () => {
+    it('omits the head branch name', () => {
       render(<PrCardContainer prWithChecks={makePr()} />);
-      expect(screen.getByText('feature/x')).toBeInTheDocument();
+      expect(screen.queryByText('feature/x')).not.toBeInTheDocument();
     });
 
     it('renders the author avatar initials', () => {
@@ -190,9 +190,9 @@ describe('PrCardContainer', () => {
       expect(screen.getByText('+100')).toBeInTheDocument();
     });
 
-    it('renders commit count', () => {
+    it('omits commit count', () => {
       render(<PrCardContainer prWithChecks={makePr()} />);
-      expect(screen.getByText(/3c/)).toBeInTheDocument();
+      expect(screen.queryByText(/3c/)).not.toBeInTheDocument();
     });
 
     it('renders the merge score badge', () => {
@@ -204,8 +204,7 @@ describe('PrCardContainer', () => {
 
     it('renders the status indicator', () => {
       const { container } = render(<PrCardContainer prWithChecks={makePr()} />);
-      // Dot primitive carries `.bd-dot--green` for green status
-      expect(container.querySelector('.bd-dot--green')).toBeInTheDocument();
+      expect(container.querySelector('.bd-pr-item__status')).toBeInTheDocument();
     });
   });
 
@@ -312,10 +311,9 @@ describe('PrCardContainer', () => {
   });
 
   describe('focus mode', () => {
-    it('shows the repo path on every PR card', () => {
-      // PrCardView primitive always renders repo in meta row, regardless of focus mode
+    it('omits the repo path from rows', () => {
       render(<PrCardContainer prWithChecks={makePr()} focusMode={true} />);
-      expect(screen.getByText('test/repo')).toBeInTheDocument();
+      expect(screen.queryByText('test/repo')).not.toBeInTheDocument();
     });
 
     it('shows priority reason label when factors are provided in focus mode', () => {
@@ -353,8 +351,7 @@ describe('PrCardContainer', () => {
 
     it('opens context menu on right click', () => {
       const { container } = render(<PrCardContainer prWithChecks={makePr()} />);
-      // PrCardView primitive renders an interactive Card div with .bd-pr-card class
-      const card = container.querySelector('.bd-pr-card');
+      const card = container.querySelector('[data-pr-row]');
       expect(card).toBeInTheDocument();
       fireEvent.contextMenu(card!);
       expect(screen.getByText('Open in GitHub')).toBeInTheDocument();
@@ -508,18 +505,16 @@ describe('PrCardContainer', () => {
   });
 
   describe('selected state', () => {
-    it('applies the focused-ring class via PrCardView isFocused prop when PR is selected', () => {
+    it('marks the row selected when the PR is selected', () => {
       uiState.selectedPrNumber = 42;
       const { container } = render(<PrCardContainer prWithChecks={makePr()} />);
-      // PrCardContainer maps store selectedPrNumber === pr.number to PrCardView isFocused, which adds ring-2
-      const card = container.querySelector('.bd-pr-card');
-      expect(card?.className).toContain('ring-2');
+      const card = container.querySelector('[data-pr-row]');
+      expect(card?.getAttribute('data-selected')).toBe('true');
     });
 
-    it('marks active=true via the isFocused prop on the underlying PrCardView', () => {
+    it('marks active=true via the isFocused prop on the underlying PrRow', () => {
       const { container } = render(<PrCardContainer prWithChecks={makePr()} isFocused={true} />);
-      const card = container.querySelector('.bd-pr-card');
-      // active prop on PrCardView emits data-active="true"
+      const card = container.querySelector('[data-pr-row]');
       expect(card?.getAttribute('data-active')).toBe('true');
     });
 
@@ -610,7 +605,7 @@ describe('PrCardContainer', () => {
   });
 
   describe('comment count', () => {
-    it('shows comment count when there are comments', () => {
+    it('omits the comment count', () => {
       const { container } = render(
         <PrCardContainer
           prWithChecks={makePr({
@@ -618,9 +613,7 @@ describe('PrCardContainer', () => {
           })}
         />,
       );
-      // Comment count is rendered via the PrCardView primitive's stats row, marked with data-comment-icon
-      expect(container.querySelector('[data-comment-icon]')).toBeInTheDocument();
-      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(container.querySelector('[data-comment-icon]')).not.toBeInTheDocument();
     });
   });
 
@@ -652,7 +645,7 @@ describe('PrCardContainer', () => {
           })}
         />,
       );
-      // PrCardView primitive renders the pass ratio inside the status label
+      // PrRow renders the pass ratio inside the status label
       expect(screen.getByText('2/2 passing')).toBeInTheDocument();
     });
   });

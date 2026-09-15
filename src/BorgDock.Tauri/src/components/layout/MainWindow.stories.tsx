@@ -26,7 +26,13 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type { AdoQuery, OverallStatus, PullRequestWithChecks, ReviewStatus } from '@/types';
+import type {
+  AdoQuery,
+  OverallStatus,
+  PrDensity,
+  PullRequestWithChecks,
+  ReviewStatus,
+} from '@/types';
 import { getControl } from '../../../.storybook/mocks/control';
 import { MainWindow } from './MainWindow';
 
@@ -286,18 +292,21 @@ function SectionBody() {
 function Harness({
   section,
   groupBy = 'repo',
-  density = 'normal',
+  density = 'comfortable',
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
-  density?: 'normal' | 'compact';
+  density?: PrDensity;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
-    useUiStore.setState({ activeSection: section, prGroupBy: groupBy, prDensity: density });
+    useUiStore.setState({ activeSection: section, prGroupBy: groupBy });
+    useSettingsStore.setState((s) => ({
+      settings: { ...s.settings, ui: { ...s.settings.ui, prDensity: density } },
+    }));
     return null;
   });
   return (
@@ -322,7 +331,7 @@ export const PrsTab: Story = { args: { section: 'prs' } };
 /** The PR tab grouped by author, with the current user first. */
 export const PrsByAuthor: Story = { args: { section: 'prs', groupBy: 'author' } };
 
-/** Compact PR rows for high-volume review queues. */
+/** Compact density — single-line table rows for high-volume review queues. */
 export const PrsCompact: Story = { args: { section: 'prs', density: 'compact' } };
 
 /** The Focus tab — ranked "what needs you" queue with the Quick Review CTA. */

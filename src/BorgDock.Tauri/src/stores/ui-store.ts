@@ -4,7 +4,6 @@ import type { PrGroupBy } from '@/services/pr-grouping';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 export type ActiveSection = 'prs' | 'focus' | 'workitems';
-export type PrDensity = 'compact' | 'normal';
 
 interface UiState {
   activeSection: ActiveSection;
@@ -16,7 +15,6 @@ interface UiState {
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
   prGroupBy: PrGroupBy;
-  prDensity: PrDensity;
   _hasUserNavigated: boolean;
 
   setActiveSection: (section: ActiveSection) => void;
@@ -28,7 +26,6 @@ interface UiState {
   setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
   setPrGroupBy: (groupBy: PrGroupBy) => void;
-  setPrDensity: (density: PrDensity) => void;
   restorePersistedSection: () => void;
 }
 
@@ -41,7 +38,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
   prGroupBy: 'author',
-  prDensity: 'compact',
   _hasUserNavigated: false,
 
   setActiveSection: (section) => {
@@ -79,19 +75,13 @@ export const useUiStore = create<UiState>()((set, get) => ({
     persistToTauriStore('ui-state.json', 'prGroupBy', prGroupBy).catch(() => {});
   },
 
-  setPrDensity: (prDensity) => {
-    set({ prDensity });
-    persistToTauriStore('ui-state.json', 'prDensity', prDensity).catch(() => {});
-  },
-
   restorePersistedSection: () => {
     if (get()._hasUserNavigated) return;
     Promise.all([
       readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection'),
       readFromTauriStore<PrGroupBy>('ui-state.json', 'prGroupBy'),
-      readFromTauriStore<PrDensity>('ui-state.json', 'prDensity'),
     ])
-      .then(([section, groupBy, density]) => {
+      .then(([section, groupBy]) => {
         if (get()._hasUserNavigated) return;
         const preferences: Partial<UiState> = {};
         if (section && (section === 'prs' || section === 'focus' || section === 'workitems')) {
@@ -99,9 +89,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
         }
         if (groupBy && (groupBy === 'repo' || groupBy === 'author' || groupBy === 'status')) {
           preferences.prGroupBy = groupBy;
-        }
-        if (density && (density === 'normal' || density === 'compact')) {
-          preferences.prDensity = density;
         }
         set(preferences);
       })

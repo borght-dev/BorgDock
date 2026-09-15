@@ -63,7 +63,11 @@ export interface UiSettings {
   quickReviewHotkey: string;
   startMinimizedToTray: boolean;
   restoreLastSelection: boolean;
+  /** PR list row layout in the main window. comfortable = two-line rows, compact = single-line table. */
+  prDensity?: PrDensity;
 }
+
+export type PrDensity = 'comfortable' | 'compact';
 
 export interface NotificationSettings {
   toastOnCheckStatusChange: boolean;

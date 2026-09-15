@@ -110,6 +110,8 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 
 let _saveTimer: ReturnType<typeof setTimeout> | undefined;
 
+export const SETTINGS_UI_CHANGED_EVENT = 'settings:ui-changed';
+
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: defaultSettings,
   isLoading: false,
@@ -197,6 +199,15 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       }
 
       await invoke('save_settings', { settings: stripped });
+
+      // Each window has its own store. Broadcast the UI slice so the main
+      // window picks up Settings-window changes (theme, PR density) live.
+      try {
+        const { emit } = await import('@tauri-apps/api/event');
+        await emit(SETTINGS_UI_CHANGED_EVENT, stripped.ui);
+      } catch {
+        // No Tauri event bridge (tests, Storybook) — nothing to sync.
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
       // Revert on failure by reloading

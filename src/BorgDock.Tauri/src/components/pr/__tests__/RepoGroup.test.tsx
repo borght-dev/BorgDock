@@ -46,7 +46,7 @@ vi.mock('@/stores/pr-store', () => {
 vi.mock('@/stores/settings-store', () => {
   const fn = vi.fn();
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({ settings: { repos: [] } });
+    return selector({ settings: { repos: [], ui: {} } });
   });
   return { useSettingsStore: fn };
 });
