@@ -1,457 +1,455 @@
 # BorgDock Design System
 
-A structured reference for BorgDock's visual language, suitable for handing to a design tool (Claude Design, Figma plugins, token translators) or a human designer.
+A reference for BorgDock's visual language — for designers, design tools (Claude Design, Figma plugins, token translators), and anyone building UI in `src/BorgDock.Tauri`.
 
-BorgDock is a dense, desktop-native developer tool. The visual language is tuned for dense information (many PRs, many checks, many rows) while still feeling warm and distinctive — it should never read as "bootstrap gray." The signature is **deep plum backgrounds with a violet accent** plus a muted aquamarine/ruby status palette.
+BorgDock is a dense, desktop-native developer tool. The visual language is tuned for lots of information (many PRs, checks, rows) while still feeling warm and distinctive — never "bootstrap gray." The signature is **deep plum backgrounds with a violet accent** plus a muted aquamarine / ruby / amber status palette.
+
+Current as of **2.3.1** (2026-09-15). Origin spec: `docs/superpowers/specs/2026-04-24-shared-components-design.md`; canonical mockup: `design/mockups/borgdock-streamline-redesign.html`.
 
 ---
 
 ## 1. Design Principles
 
-1. **Dense but breathable.** Text is small (11–13px base), padding is tight (4–10px common), but whitespace is preserved between logical groups. Never hide information behind hover if it can fit.
-2. **Violet is the only chromatic accent.** Everything interactive (buttons, tabs, selection, focus rings) uses the purple scale. Other hues are reserved for semantic meaning (status, diffs).
-3. **Status is duochrome.** Success = aquamarine green, danger = ruby red, warning = amber, with a soft-tinted background (6–10% alpha) and a matching border (14–22% alpha). Never pure saturated fills.
-4. **Surfaces, not shadows.** Depth is conveyed by `--color-surface-raised` / `--color-surface-hover` tints, not drop shadows. Shadows are reserved for floating UI (toasts, badge, modal).
-5. **Dark theme is first-class.** Every color token has a `.dark` override. Do not hard-code hex values in components — always go through a token.
-6. **Tactile micro-motion.** Buttons scale to 0.9–0.97 on press with 80ms transform + 120ms color transitions. Everything feels slightly pressable.
+1. **Dense but breathable.** Text is small (10–13px), padding is tight (4–10px), but whitespace separates logical groups. Don't hide information behind hover if it fits.
+2. **Violet is the only chromatic accent.** Buttons, tabs, selection, and focus rings use the purple scale. Other hues carry meaning (status, diffs, merged).
+3. **Status is duochrome.** Success = aquamarine, error = ruby, warning = amber — rendered as a soft tint (6–10% alpha) with a matching border (14–25% alpha) and full-strength foreground. No saturated fills.
+4. **Surfaces over shadows.** Depth comes from `surface-raised` / `surface-hover` tints. Shadows (`--elevation-*`) are for floating UI: flyout, toasts, modals.
+5. **Dark theme is first-class.** Every color token has a `.dark` override. Go through a token; don't hard-code hex.
+6. **Tactile micro-motion.** Pressables scale to 0.90–0.97 with an 80ms transform and 120ms color transition.
+7. **Primitives first.** Use `components/shared/primitives` before writing a new button, pill, card, or input.
 
 ---
 
-## 2. Color Tokens
+## 2. Architecture
 
-All tokens live on `:root` (light) and `.dark` (dark) in `src/BorgDock.Tauri/src/styles/index.css`. 327 CSS custom properties in total — the catalog below groups them by semantic role.
+| Layer | Where | What |
+|---|---|---|
+| Tokens | `src/styles/index.css` `:root` / `.dark` | ~196 custom properties (167 colors, 3 elevations, 26 scale tokens) |
+| Tailwind bridge | `src/styles/index.css` `@theme inline` | Re-exports 166 colors + spacing, radius, text, duration, fonts as utilities |
+| Component classes | `src/styles/index.css` `@layer components` | `.bd-*` classes backing the primitives, plus feature families (`bd-fp-*`, `bd-fv-*`, `bd-wt-*`, `bd-wp-*`, `bd-wi-*`, `bd-code-*`) |
+| Legacy / unlayered | `src/styles/index.css` | `.sql-*` (SQL window), `.markdown-body`, `.tactile-icon-btn`, diff preview / find strip |
+| Feature stylesheet | `src/components/focus/quick-review.css` | `.qr-*` for the Quick Review overlay |
+| Primitives | `src/components/shared/primitives/` | React components selecting `.bd-*` classes via `clsx` |
 
-### 2.1 Brand / Accent
+**Theme switching:** the `.dark` class on `<html>` (`hooks/useTheme.ts`; setting = system / light / dark, following `prefers-color-scheme` live). `.dark` also sets `color-scheme: dark`. No `data-theme`.
+
+---
+
+## 3. Color Tokens
+
+All names below omit the `--color-` prefix. Values are **light / dark**.
+
+### 3.1 Accent & Purple
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `--color-accent` | `#6655d4` | `#7c6af6` | Primary interactive color (buttons, tabs, focus) |
-| `--color-accent-foreground` | `#ffffff` | `#ffffff` | Text/icon on accent fills |
-| `--color-accent-subtle` | `rgba(124,106,246,0.10)` | `rgba(124,106,246,0.15)` | Hover / selection wash |
-| `--color-purple` | `#6655d4` | `#9384f7` | Purple scale anchor |
-| `--color-purple-soft` | `rgba(124,106,246,0.06)` | `rgba(147,132,247,0.08)` | Tinted surface |
-| `--color-purple-border` | `rgba(124,106,246,0.14)` | `rgba(147,132,247,0.20)` | Tinted border |
+| `accent` | `#6655d4` | `#7c6af6` | Primary interactive color |
+| `accent-foreground` | `#ffffff` | `#ffffff` | Text/icon on accent |
+| `accent-subtle` | `rgba(124,106,246,.10)` | `rgba(124,106,246,.15)` | Hover / selection wash |
+| `accent-soft` | `rgba(102,85,212,.06)` | `rgba(124,106,246,.08)` | Faint accent tint |
+| `purple` | `#6655d4` | `#9384f7` | Purple scale anchor |
+| `purple-soft` | `rgba(124,106,246,.06)` | `rgba(147,132,247,.08)` | Tinted surface |
+| `purple-border` | `rgba(124,106,246,.14)` | `rgba(147,132,247,.20)` | Tinted border |
 
-### 2.2 Surfaces & Background
+### 3.2 Surfaces
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `--color-background` | `#f7f5fb` | `#110f1a` | Window background |
-| `--color-surface` | `#ffffff` | `#1a1726` | Raised panels, cards |
-| `--color-surface-raised` | `rgba(90,86,112,0.03)` | `rgba(138,133,160,0.03)` | Subtle lift above surface |
-| `--color-surface-hover` | `rgba(90,86,112,0.05)` | `rgba(138,133,160,0.05)` | Row hover |
-| `--color-sidebar-gradient-top` | `#f7f5fb` | `#110f1a` | Sidebar vertical gradient start |
-| `--color-sidebar-gradient-bottom` | `#edeaf4` | `#1a1726` | Sidebar vertical gradient end |
-| `--color-card-background` | `#ffffff` | `#1a1726` | PR card fill |
-| `--color-card-border` | `rgba(90,86,112,0.08)` | `rgba(138,133,160,0.08)` | PR card edge |
-| `--color-card-border-my-pr` | `rgba(124,106,246,0.22)` | `rgba(124,106,246,0.22)` | Own-PR accent edge |
+| `background` | `#f7f5fb` | `#110f1a` | Window background |
+| `bg-primary` | `#f7f5fb` | `#110f1a` | Alias of `background` |
+| `surface` | `#ffffff` | `#1a1726` | Panels, cards |
+| `surface-raised` | `rgba(90,86,112,.03)` | `rgba(138,133,160,.03)` | Subtle lift |
+| `surface-hover` | `rgba(90,86,112,.05)` | `rgba(138,133,160,.05)` | Row hover |
+| `card-background` | `#ffffff` | `#1a1726` | Card fill |
+| `card-border` | `rgba(90,86,112,.08)` | `rgba(138,133,160,.08)` | Card edge |
+| `card-border-my-pr` | `rgba(124,106,246,.22)` | same | Own-PR card edge (`.bd-card--own`) |
 
-### 2.3 Text Hierarchy
+### 3.3 Text
 
-Six-step scale (primary → ghost). Use one step down per level of emphasis.
-
-| Token | Light | Dark |
-|---|---|---|
-| `--color-text-primary` | `#1a1726` | `#edeaf4` |
-| `--color-text-secondary` | `#3a3550` | `#c8c4d6` |
-| `--color-text-tertiary` | `#5a5670` | `#8a85a0` |
-| `--color-text-muted` | `#8a85a0` | `#5a5670` |
-| `--color-text-faint` | `#b8b0c8` | `#3a3650` |
-| `--color-text-ghost` | `#d8d4e3` | `#2a2640` |
-
-### 2.4 Borders & Separators
+Six steps; drop one per level of emphasis. `text-muted` is contrast-tested at 4.5:1 (`src/styles/__tests__/contrast.test.ts`).
 
 | Token | Light | Dark |
 |---|---|---|
-| `--color-subtle-border` | `rgba(90,86,112,0.08)` | `rgba(138,133,160,0.08)` |
-| `--color-strong-border` | `rgba(90,86,112,0.14)` | `rgba(138,133,160,0.14)` |
-| `--color-separator` | `rgba(90,86,112,0.08)` | `rgba(138,133,160,0.08)` |
+| `text-primary` | `#1a1726` | `#edeaf4` |
+| `text-secondary` | `#3a3550` | `#c8c4d6` |
+| `text-tertiary` | `#5a5670` | `#8a85a0` |
+| `text-muted` | `#6a6580` | `#9490a8` |
+| `text-faint` | `#b8b0c8` | `#3a3650` |
+| `text-ghost` | `#d8d4e3` | `#2a2640` |
 
-### 2.5 Status (semantic)
+### 3.4 Borders
 
 | Token | Light | Dark |
 |---|---|---|
-| `--color-status-green` | `#3ba68e` | `#7dd3c0` |
-| `--color-status-red` | `#c7324f` | `#e54065` |
-| `--color-status-yellow` | `#b07d09` | `#f5b73b` |
-| `--color-status-gray` | `#8a85a0` | `#5a5670` |
+| `subtle-border` | `rgba(90,86,112,.08)` | `rgba(138,133,160,.08)` |
+| `separator` | `rgba(90,86,112,.08)` | `rgba(138,133,160,.08)` |
+| `strong-border` | `rgba(90,86,112,.14)` | `rgba(138,133,160,.14)` |
 
-Each status has matching **badge** and **glow** tokens:
-- Badge bg (6–10% alpha), fg (same as status), border (14–22% alpha) — e.g. `--color-success-badge-{bg,fg,border}`, and mirrored for `warning`, `error`, `neutral`, `draft`.
-- Glow: `--color-{green,red}-glow`, `--color-badge-glow-{green,red,yellow}`, `--color-toast-{success,error,warning,info,merged}-glow`.
+### 3.5 Status
 
-### 2.6 Review States
-
-| Token | Light | Dark | Maps to |
+| Token | Light | Dark | Meaning |
 |---|---|---|---|
-| `--color-review-approved` | `#3ba68e` | `#7dd3c0` | status-green |
-| `--color-review-changes-requested` | `#c7324f` | `#e54065` | status-red |
-| `--color-review-required` | `#b07d09` | `#f5b73b` | status-yellow |
-| `--color-review-commented` | `#5a5670` | `#8a85a0` | text-tertiary |
+| `status-green` | `#3ba68e` | `#7dd3c0` | Passing, approved, success |
+| `status-red` | `#c7324f` | `#e54065` | Failing, changes requested, error |
+| `status-yellow` | `#b07d09` | `#f5b73b` | Pending, review required, warning |
+| `status-gray` | `#8a85a0` | `#5a5670` | Neutral, skipped |
+| `status-merged` | `#8250df` | `#a371f7` | Merged PRs |
+| `status-amber` | `#d97706` | `#f59e0b` | Aging / attention |
+| `status-blue` | `#2563eb` | `#60a5fa` | Informational |
 
-### 2.7 Interactive / Button Roles
+**Tone triples** — `{tone}-badge-{bg,fg,border}`:
 
-| Token | Light | Dark | Used on |
+| Tone | bg | fg | border |
 |---|---|---|---|
-| `--color-action-secondary-bg` | transparent | transparent | Ghost button bg |
-| `--color-action-secondary-fg` | `#6655d4` | `#9384f7` | Ghost button text |
-| `--color-action-success-bg` | `rgba(59,166,142,0.07)` | `rgba(125,211,192,0.10)` | Confirm action tint |
-| `--color-action-success-fg` | `#3ba68e` | `#7dd3c0` | Confirm action text |
-| `--color-action-danger-bg` | `rgba(199,50,79,0.06)` | `rgba(229,64,101,0.10)` | Destructive tint |
-| `--color-action-danger-fg` | `#c7324f` | `#e54065` | Destructive text |
-| `--color-icon-btn-bg` | transparent | transparent | Icon button base |
-| `--color-icon-btn-hover` | `rgba(90,86,112,0.06)` | `rgba(138,133,160,0.08)` | Icon button hover |
-| `--color-icon-btn-pressed` | `rgba(90,86,112,0.10)` | `rgba(138,133,160,0.12)` | Icon button press |
-| `--color-icon-btn-fg` | `#5a5670` | `#8a85a0` | Icon button stroke |
+| `success` | `rgba(59,166,142,.07)` / `rgba(125,211,192,.10)` | status-green | `.18` / `.25` |
+| `warning` | `rgba(176,125,9,.06)` / `rgba(245,183,59,.10)` | status-yellow | `.14` / `.15` |
+| `error` | `rgba(199,50,79,.06)` / `rgba(229,64,101,.10)` | status-red | `.14` / `.20` |
+| `neutral` | `rgba(124,106,246,.06)` / `rgba(147,132,247,.08)` | `#6655d4` / `#9384f7` | `.14` / `.20` |
+| `draft` | `rgba(90,86,112,.05)` / `rgba(138,133,160,.08)` | `#8a85a0` / `#5a5670` | `.14` / `.20` |
 
-### 2.8 Input / Form Controls
+**Glows & check rows:** `green-glow`, `red-glow`; `check-{passed,failed}-{bg,border}` (4–6% tint, 10–14% border).
+
+### 3.6 Interactive
 
 | Token | Light | Dark |
 |---|---|---|
-| `--color-input-bg` | `#ffffff` | `rgba(138,133,160,0.04)` |
-| `--color-input-border` | `rgba(90,86,112,0.12)` | `rgba(138,133,160,0.10)` |
-| `--color-selected-row-bg` | `rgba(124,106,246,0.06)` | `rgba(124,106,246,0.06)` |
-| `--color-expanded-row-bg` | `rgba(90,86,112,0.02)` | `rgba(138,133,160,0.02)` |
+| `icon-btn-hover` | `rgba(90,86,112,.06)` | `rgba(138,133,160,.08)` |
+| `icon-btn-pressed` | `rgba(90,86,112,.10)` | `rgba(138,133,160,.12)` |
+| `icon-btn-fg` | `#5a5670` | `#8a85a0` |
+| `action-secondary-fg` | `#6655d4` | `#9384f7` |
+| `action-danger-bg` | `rgba(199,50,79,.06)` | `rgba(229,64,101,.10)` |
+| `action-danger-fg` | `#c7324f` | `#e54065` |
+| `input-bg` | `#ffffff` | `rgba(138,133,160,.04)` |
+| `input-border` | `rgba(90,86,112,.12)` | `rgba(138,133,160,.10)` |
+| `selected-row-bg` | `rgba(124,106,246,.06)` | same |
+| `toggle-knob` | `#ffffff` | `#ffffff` |
 
-### 2.9 Overlays, Modals, Title Bar
-
-| Token | Light | Dark |
-|---|---|---|
-| `--color-overlay-bg` | `rgba(0,0,0,0.35)` | `rgba(0,0,0,0.65)` |
-| `--color-modal-bg` | `#ffffff` | `#1a1726` |
-| `--color-modal-border` | `rgba(90,86,112,0.10)` | `rgba(138,133,160,0.10)` |
-| `--color-title-bar-bg` | `rgba(247,245,251,0.88)` | `rgba(26,23,38,0.80)` |
-| `--color-status-bar-bg` | `rgba(247,245,251,0.88)` | `rgba(17,15,26,0.60)` |
-
-### 2.10 Floating Badge
-
-A distinctive feature — five selectable styles share this palette:
+### 3.7 Chrome & Overlays
 
 | Token | Light | Dark |
 |---|---|---|
-| `--color-badge-glass` | `rgba(247,245,251,0.97)` | `rgba(26,23,38,0.97)` |
-| `--color-badge-surface` | `rgba(237,234,244,0.97)` | `rgba(26,23,38,0.97)` |
-| `--color-badge-border` | `rgba(90,86,112,0.12)` | `rgba(255,255,255,0.12)` |
-| `--color-badge-glow-green/red/yellow` | see 2.5 | see 2.5 |
-| `--color-badge-progress-track` | `rgba(90,86,112,0.07)` | `rgba(255,255,255,0.06)` |
+| `title-bar-bg` | `rgba(247,245,251,.88)` | `rgba(26,23,38,.80)` |
+| `status-bar-bg` | `rgba(247,245,251,.88)` | `rgba(17,15,26,.60)` |
+| `overlay-bg` | `rgba(0,0,0,.35)` | `rgba(0,0,0,.65)` |
+| `modal-bg` | `#ffffff` | `#1a1726` |
+| `modal-border` | `rgba(90,86,112,.10)` | `rgba(138,133,160,.10)` |
 
-### 2.11 Diff View
+### 3.8 Toasts
 
-Full token set for unified diff rendering:
-- `--color-diff-added-{bg,bg-highlight,gutter-bg}` (green scale)
-- `--color-diff-deleted-{bg,bg-highlight,gutter-bg}` (red scale)
-- `--color-diff-context-bg`, `--color-diff-hunk-header-{bg,text}`, `--color-diff-line-number`
-- `--color-diff-file-header-{bg,border}`, `--color-diff-border`
-- `--color-code-block-bg` (standalone code blocks)
+- `toast-bg` — `rgba(255,255,255,.96)` / `rgba(26,23,38,.96)`
+- Per severity `success | error | warning | info | merged`: `toast-{sev}-glow`, `toast-{sev}-stripe`, `toast-{sev}-icon-bg`
+  - Stripes: `#3ba68e`/`#7dd3c0`, `#c7324f`/`#e54065`, `#d4960d`/`#f5b73b`, `#6655d4`/`#9384f7`, `#8250df`/`#a371f7`
+  - Merged also has `toast-merged-icon-fg` and an animated `toast-merged-shimmer` gradient (not exported to Tailwind)
 
-### 2.12 Syntax Highlighting (Tree-sitter)
+### 3.9 Diff
 
-14-token syntax palette covering the supported grammars:
+- Added — `diff-added-{bg,bg-highlight,gutter-bg}`: 7/20/5% green light, 10/25/6% dark
+- Deleted — `diff-deleted-{bg,bg-highlight,gutter-bg}`: 6/18/4% red light, 10/22/6% dark
+- `diff-context-bg` (transparent), `diff-hunk-header-bg`, `diff-hunk-header-text`, `diff-line-number`
+- `diff-file-header-{bg,border}`, `diff-border`
+- `code-block-bg` — `#f0ecf9` / `#110f1a`
+
+### 3.10 Syntax (Tree-sitter)
 
 | Token | Role | Light | Dark |
 |---|---|---|---|
-| `--color-syntax-keyword` | `if`, `for`, `fn`… | `#6655d4` | `#b8b0f8` |
-| `--color-syntax-string` | string literals | `#3ba68e` | `#7dd3c0` |
-| `--color-syntax-comment` | comments | `#8a85a0` | `#5a5670` |
-| `--color-syntax-number` | numeric literals | `#b07d09` | `#f5b73b` |
-| `--color-syntax-type` | types, classes | `#c7324f` | `#e54065` |
-| `--color-syntax-function` | function names | `#3a3550` | `#c8c4d6` |
-| `--color-syntax-variable` | identifiers | `#1a1726` | `#edeaf4` |
-| `--color-syntax-operator` | `+`, `=`, `->` | `#5a5670` | `#8a85a0` |
-| `--color-syntax-punctuation` | `;`, `,`, `.` | `#8a85a0` | `#5a5670` |
-| `--color-syntax-constant` | `true`, `null`, consts | `#6655d4` | `#b8b0f8` |
-| `--color-syntax-property` | object properties | `#3a3550` | `#c8c4d6` |
-| `--color-syntax-tag` | HTML/JSX tags | `#c7324f` | `#e54065` |
-| `--color-syntax-attribute` | HTML attrs, decorators | `#b07d09` | `#f5b73b` |
-| `--color-syntax-plain` | fallback | `#1a1726` | `#edeaf4` |
+| `syntax-keyword` | `if`, `fn`… | `#6655d4` | `#b8b0f8` |
+| `syntax-string` | strings | `#3ba68e` | `#7dd3c0` |
+| `syntax-comment` | comments | `#8a85a0` | `#5a5670` |
+| `syntax-number` | numbers | `#b07d09` | `#f5b73b` |
+| `syntax-type` | types, classes | `#c7324f` | `#e54065` |
+| `syntax-function` | functions | `#3a3550` | `#c8c4d6` |
+| `syntax-variable` | identifiers | `#1a1726` | `#edeaf4` |
+| `syntax-operator` | operators | `#5a5670` | `#8a85a0` |
+| `syntax-punctuation` | punctuation | `#8a85a0` | `#5a5670` |
+| `syntax-constant` | `true`, `null` | `#6655d4` | `#b8b0f8` |
+| `syntax-property` | properties | `#3a3550` | `#c8c4d6` |
+| `syntax-tag` | JSX/HTML tags | `#c7324f` | `#e54065` |
+| `syntax-attribute` | attributes | `#b07d09` | `#f5b73b` |
+| `syntax-plain` | fallback | `#1a1726` | `#edeaf4` |
 
-### 2.13 Notification Toast
+### 3.11 Small Groups
 
-Per-severity triple (`glow`, `stripe`, `icon-bg`):
-- `--color-toast-{success,error,warning,info,merged}-{glow,stripe,icon-bg}`
-- Plus `--color-toast-bg` and the animated `--color-toast-merged-shimmer` gradient.
-
-### 2.14 What's New
-
-- `--color-whats-new-{new,improved,fixed}-{fg,bg,border}` — three kinds aligned with status-green / status-yellow / purple scales.
-- `--color-whats-new-rail` — accordion rail color.
-
-### 2.15 Scrollbar, Wizard, Splash, Logo
-
-Small token groups — each is self-contained in the CSS (search `--color-scrollbar-`, `--color-wizard-`, `--color-splash-`, `--color-logo-`).
+- **What's New** — `whats-new-{new,improved,fixed}-{fg,bg,border}` (green / amber / purple), `whats-new-rail`
+- **Scrollbar** — `scrollbar-thumb`, `scrollbar-thumb-hover`
+- **Wizard** — `wizard-step-{active,complete,inactive,track}`
+- **Brand gradients** — `splash-gradient-end`, `logo-gradient-{start,end}`
+- **Other** — `avatar-text`, `badge-progress-track`
 
 ---
 
-## 3. Typography
+## 4. Scale Tokens
 
-System fonts only. No webfont loading.
+Scale tokens live on `:root` and are not themed (except elevation).
 
-### 3.1 Font Families
+### 4.1 Spacing
 
-| Token | Value | Used for |
+| Token | Value | Tailwind |
 |---|---|---|
-| UI | `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif` | All UI chrome |
-| `--font-code` | `"Cascadia Code", "Cascadia Mono", "Consolas", "Courier New", monospace` | Code, SQL input, diff, file viewer |
+| `--space-1` | 2px | `p-1`, `gap-1` |
+| `--space-2` | 4px | `p-2` |
+| `--space-3` | 6px | `p-3` |
+| `--space-4` | 8px | `p-4` |
+| `--space-5` | 10px | `p-5` |
+| `--space-6` | 12px | `p-6` |
+| `--space-8` | 16px | `p-8` |
+| `--space-10` | 20px | `p-10` |
+| `--space-12` | 24px | `p-12` |
 
-### 3.2 Font Sizes (observed clusters)
+> ⚠️ Only these nine steps are overridden. Any other step falls back to Tailwind's 4px multiplier (`p-1.5` = 6px, `p-2.5` = 10px, `p-7` = 28px, `p-9` = 36px), so the scale isn't monotonic (`p-7` 28px > `p-8` 16px). Stick to the steps above.
 
-BorgDock uses a compact type scale. Promote these to formal tokens:
+### 4.2 Radius
 
-| Suggested token | Size | Usage |
+| Token | Value | Usage |
 |---|---|---|
-| `--text-micro` | `10px` | Per-file stats, badge counters, very dense meta |
-| `--text-small` | `11px` | Default UI (toolbars, chips, selects, run button) |
-| `--text-body` | `12px` | Card body, descriptions, tab labels |
-| `--text-base` | `13px` | Expanded PR content, headings in cards |
-| `--text-title` | `18px` | Window titles, large page headings |
+| `--radius-sm` | 5px | Buttons, chips, inputs |
+| `--radius-md` | 6px | Window controls |
+| `--radius-lg` | 8px | Cards, panels |
+| `--radius-xl` | 12px | Large surfaces |
+| `--radius-pill` | 9999px | Pills, dots, avatars |
 
-### 3.3 Font Weights
+Modals and Focus rows use a literal 10px.
 
-- 400 — body copy
-- 500 — labels, select values
-- 600 — buttons, badge text, emphasized metadata
-- 700 — page/window titles (rare)
+### 4.3 Typography
 
-### 3.4 Line Height
+System fonts only; no webfonts.
 
-- Default: browser default for density
-- Code views: `1.5` (set via `--code-line-height` CSS var on `.CodeView`)
-
----
-
-## 4. Spacing
-
-No dedicated tokens exist yet. Observed scale (promote these):
-
-| Suggested token | Value | Usage |
-|---|---|---|
-| `--space-1` | `2px` | Icon-group gap, status dot offset |
-| `--space-2` | `4px` | Button vertical padding, chip padding-y |
-| `--space-3` | `6px` | Icon-to-label gap |
-| `--space-4` | `8px` | Toolbar gap, card inner gap |
-| `--space-5` | `10px` | Button horizontal padding |
-| `--space-6` | `12px` | Run-button horizontal padding, card padding |
-| `--space-8` | `16px` | Section padding |
-| `--space-12` | `24px` | Panel padding, modal padding |
-
----
-
-## 5. Radii
-
-| Suggested token | Value | Usage |
-|---|---|---|
-| `--radius-sm` | `5px` | Selects, buttons, chips |
-| `--radius-md` | `6px` | Window control buttons, inputs |
-| `--radius-lg` | `8px` | Cards, panels |
-| `--radius-pill` | `9999px` | Status pills, PR number badges |
-
----
-
-## 6. Motion
-
-Transitions are short and paired. Promote these:
-
-| Suggested token | Value | Usage |
-|---|---|---|
-| `--motion-press` | `transform 80ms ease` | Button press scale |
-| `--motion-color` | `120ms ease` | bg / color transitions on buttons |
-| `--motion-ui` | `150ms ease` | Generic UI transitions (border-color, opacity) |
-| `--motion-tab` | `200ms ease-out` | Tab underline slide |
-| `--motion-breath` | `3000ms` | Badge pulse / settle after state change |
-
-Press scale values in use: `0.90` (icon button), `0.92` (window control), `0.97` (run button). Keep ≤0.97 for content buttons so the UI doesn't feel wobbly.
-
-Focus rings: `outline: 2px solid var(--color-accent); outline-offset: 1px;` (or `-2px` on chrome buttons).
-
----
-
-## 7. Elevation / Shadows
-
-BorgDock uses glow more than shadow. Define these token slots:
-
-| Suggested token | Purpose |
+| Token | Value |
 |---|---|
-| `--elevation-0` | Flat surface — no shadow |
-| `--elevation-1` | Card hover — `0 1px 2px rgba(0,0,0,0.04)` |
-| `--elevation-2` | Floating badge — `0 8px 32px rgba(0,0,0,0.18)` with colored glow |
-| `--elevation-3` | Modal / overlay — `0 20px 60px rgba(0,0,0,0.32)` |
-| `--glow-status-*` | see §2.5 glow tokens — colored drop shadow for floating badge |
+| `--font-ui` → `font-sans` | `-apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif` |
+| `--font-code` → `font-mono` | `"Cascadia Code", "Cascadia Mono", "Consolas", "Courier New", monospace` |
 
----
-
-## 8. Component Inventory
-
-Existing building blocks in `src/BorgDock.Tauri/src/components/`. Entries marked **(ad-hoc)** are currently styled per-feature and should be extracted into a shared primitive.
-
-### Primitives
-
-| Component | Status | Notes |
+| Token | Size | Usage |
 |---|---|---|
-| Button (primary / secondary / ghost / success / danger) | **ad-hoc** | Sized variants needed (toolbar 11px / body 12px / large 13px). Shared press-scale + focus ring. |
-| IconButton | ✓ `.tactile-icon-btn` | 80ms press, accent focus ring |
-| WindowControls | ✓ `.window-ctrl-btn`, `.window-ctrl-btn--close` | Close variant uses Windows red `#e81123` hover |
-| Input | **ad-hoc** | Uses input-bg + input-border; 150ms border-color on focus |
-| Select | **ad-hoc** | `.sql-connection-select` is a reference |
-| Checkbox / Radio | **ad-hoc** | No primitive |
-| Badge (status / PR number / draft / branch / target / whats-new) | **ad-hoc** | Standardize on `{bg,fg,border}` triple per variant |
-| Chip (filter) | **ad-hoc** | `--color-filter-chip-{bg,fg}` |
-| Tab | **ad-hoc** | `--color-tab-{active,inactive}`, 200ms underline slide |
-| Card (PR card, detail card) | **ad-hoc** | Own-PR accent via `--color-card-border-my-pr` |
-| Dialog / Modal | **ad-hoc** | Uses overlay + modal tokens |
-| Dropdown / Menu | **ad-hoc** | Context menus on PR cards, tray menu |
-| Tooltip / InlineHint | ✓ `InlineHint.tsx` | Onboarding hint pattern |
-| FeatureBadge | ✓ `FeatureBadge.tsx` | Onboarding "new" dot |
+| `--text-micro` | 10px | Counters, dense meta |
+| `--text-small` | 11px | Pills, toolbars, chips |
+| `--text-body` | 12px | Buttons, card body, tabs |
+| `--text-base` | 13px | Expanded content, card headings |
+| `--text-title` | 18px | Window / page titles |
 
-### Composed / Feature
+Weights (no tokens): 400 body, 500 labels and buttons, 600 pills and emphasis, 700 titles. Code views use `--code-line-height: 1.5`.
 
-| Component | Location |
+### 4.4 Motion
+
+| Token | Value | Usage |
+|---|---|---|
+| `--duration-press` | 80ms | Press scale transform |
+| `--duration-color` | 120ms | Background / color on pressables |
+| `--duration-ui` | 150ms | Border, opacity |
+| `--duration-tab` | 200ms | Tab underline (`ease-out`) |
+| `--duration-breath` | 2600ms | Pulse / settle loops |
+
+Press scales: `0.90` icon buttons, `0.92` window controls, `0.97` buttons. Easing is literal `ease` / `ease-out` (no tokens).
+
+### 4.5 Elevation
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `--elevation-1` | `0 1px 2px rgba(0,0,0,.04)` | `…rgba(0,0,0,.2)` | Interactive card hover |
+| `--elevation-2` | `0 8px 32px rgba(26,23,38,.14)` | `…rgba(0,0,0,.4)` | Floating panels |
+| `--elevation-3` | `0 20px 60px rgba(26,23,38,.28)` | `…rgba(0,0,0,.6)` | Modals |
+
+Elevation isn't exported to Tailwind; use `shadow-[var(--elevation-2)]` or CSS.
+
+### 4.6 Focus
+
+- Pressables: `outline: 2px solid var(--color-accent); outline-offset: 1px` (`-2px` on window controls)
+- Inputs: border color shifts to `--color-accent`
+
+---
+
+## 5. Tailwind Integration
+
+`index.css` contains an `@theme inline` block:
+
+- `--color-*: initial` removes Tailwind's default palette, so only BorgDock colors generate utilities
+- Utility names are the token name minus `--color-`, which doubles some words: `bg-surface`, `bg-accent`, `bg-status-green`, **`text-text-primary`**, **`border-subtle-border`**
+- Also exported: `spacing-*`, `rounded-{sm,md,lg,xl,pill}`, `text-{micro,small,body,base,title}`, `duration-*`, `font-sans`, `font-mono`
+- Not reset: Tailwind's default text sizes (`text-xs`…), shadows, line-heights, tracking
+- No `@custom-variant dark` — `dark:` would follow the OS media query, not the `.dark` class. Rely on tokens instead of `dark:`.
+
+**Preferred order when styling:**
+1. A primitive from `shared/primitives`
+2. Semantic utilities (`bg-surface text-text-secondary rounded-lg text-small`)
+3. `[var(--color-…)]` arbitrary values when no utility exists
+4. A `.bd-*` class in `@layer components` for dense feature layout
+
+---
+
+## 6. Components
+
+### 6.1 Primitives — `src/components/shared/primitives/`
+
+Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `clsx`; no cva / tailwind-merge. All but HoverPopover, SectionHeader, and Select have unit tests in `primitives/__tests__/`.
+
+| Primitive | API | CSS |
+|---|---|---|
+| `Button` | `variant` primary / secondary / ghost / danger (dashed red); `size` sm 24px / md 28px / lg 32px; `leading`, `trailing`, `loading` | `.bd-btn` — 12px/500, radius-sm, scale .97, disabled opacity .5 |
+| `IconButton` | `icon`, `active`, `tooltip` (native title), `size` 22 / 26 / 30 | `.bd-icon-btn` |
+| `Pill` | `tone` success / warning / error / neutral / draft / ghost / merged; `icon`; emits `data-pill-tone` | `.bd-pill` — 20px, 11px/600 |
+| `Chip` | filter chip: `active`, `count`, `tone` neutral / error | `.bd-chip` — 24px, 12px |
+| `Dot` | `tone` green / red / yellow / gray / merged; `pulse`; `size` | `.bd-dot` — 8px |
+| `Card` | `variant` default / own; `padding` sm 8 / md 10 / lg 16; `interactive` | `.bd-card` |
+| `Avatar` | `initials`, `tone` own / them / blue / rose, `size` sm 20 / md 24 / lg 28 | `.bd-avatar` (gradient fills) |
+| `Ring` | readiness ring: `value` 0–100, `size`, `stroke`, `label` | `.bd-ring`, `--ring-size` |
+| `LinearProgress` | `value`, `tone` accent / success / warning / error | `.bd-linear` — 4px |
+| `SegmentedProgress` | `passed`, `running`, `total`; striped running segment | — |
+| `Tabs` | `value`, `onChange`, `tabs: {id,label,count,indicator}[]`, `dense` | `.bd-tabs` — 2px underline, 200ms |
+| `Seg2` | two-option segmented control | — |
+| `Input` | native input + `leading` / `trailing` | `.bd-input` — 28px |
+| `TextInput` | controlled; `type` text / password / number; `mono`, `suffix` | `.bd-input` |
+| `Select` | native select with Lucide chevron | — |
+| `Checkbox` | `checked`, `label`, `hint` | — |
+| `Toggle` / `ToggleRow` | switch; row adds `label`, `hint` | — |
+| `Slider` | `min`, `max`, `step`, `suffix`, `format` | — |
+| `Field` | `label`, `hint`, `dense`, `anchorId` (settings search target) | — |
+| `SectionHeader` | `title`, `subtitle`, `badge` | — |
+| `Kbd` | keyboard hint | `.bd-kbd` |
+| `HoverPopover` | fixed-position hover content | inline styles |
+| `TitleBar` | `title`, `count`, `meta`, `left`, `middle`, `right` | `.bd-title-bar` — 36px, blur 16px |
+| `WindowControls` | min / max / close for the main window | `.bd-wc` |
+
+### 6.2 Chrome & Shared — `src/components/shared/`
+
+| Component | Notes |
 |---|---|
-| PR Card | `components/pr/` |
-| PR Detail Panel (tabbed) | `components/pr-detail/` |
-| Focus List + Priority Reason Label | `components/focus/` |
-| Quick Review Overlay + Card + Summary | `components/focus/` |
-| File Palette (results, preview, roots, search) | `components/file-palette/` |
-| File Viewer window | `components/file-viewer/` |
-| CodeView | `components/file-palette/CodeView.tsx` |
-| Diff view | `components/diff/` |
-| Worktree Palette / Prune Dialog | `components/worktree/` |
-| Command Palette | `components/command-palette/` |
-| SQL App (toolbar, editor, results table) | `components/sql/` |
-| Settings Flyout | `components/settings/` |
-| Setup Wizard | `components/wizard/` |
-| Notification Toast | `components/notifications/` |
-| Floating Badge (5 styles) | `components/badge/` |
-| What's New (Hero, Release, Highlight, Fixed list) | `components/whats-new/` |
+| `chrome/WindowControls` | Callback-based min / max / close for pop-out windows |
+| `chrome/WindowStatusBar` | `left`, `right` slots; `.bd-statusbar` 26px |
+| `WindowTitleBar` | Title + meta + window controls for pop-outs |
+| `ConfirmDialog` | `variant` danger / default; focus-trapped |
+| `Markdown` / `MarkdownImage` | `.markdown-body`; images open full size |
+| `ErrorBoundary` | Per-window error boundary |
+| `icons/BorgDockLogo`, `RefreshIcon` (spinning), `SettingsIcon` | Brand and animated icons |
+
+### 6.3 Icons
+
+- **Lucide** (`lucide-react`) everywhere, imported directly — no wrapper
+- Common sizes: 10–13px inline, 22px for larger affordances
+- Stroke width is set per call site; `strokeWidth={2.25}` is the most common choice for small icons (~59 of 160 explicit uses) — prefer it for consistency
+- Brand marks live in `shared/icons/`
+
+### 6.4 Feature Surfaces
+
+| Surface | Location | Window / entry |
+|---|---|---|
+| Main window (Focus / PRs / Work Items), status bar | `components/layout/` | `index.html` → `main.tsx` |
+| PR list, cards, toolbar, review load, T3 checkout dialog | `components/pr/` | main |
+| Focus list, Quick Review overlay, merge toast | `components/focus/` | main |
+| PR detail (tabs, action bar, checkout, composer, diff) | `components/pr-detail/` (`diff/` subdir) | `pr-detail.html` |
+| Tray flyout, flyout toasts | `components/flyout/` | `flyout.html` |
+| Work items workspace & detail | `components/work-items/` | main, `workitem-detail.html` |
+| Work item palette | `components/work-item-palette/` | `work-item-palette.html` |
+| Worktree palette | `components/worktree-palette/` | `worktree.html` |
+| File palette, code view | `components/file-palette/` | `file-palette.html` |
+| File viewer | `components/file-viewer/` | `file-viewer.html` |
+| SQL window | `components/sql/` | `sql.html` |
+| Settings window, sections, dialogs | `components/settings/` | `settings.html` |
+| What's New | `components/whats-new/` | `whats-new.html` |
+| Setup wizard | `components/wizard/` | main |
+| Onboarding (FeatureBadge, InlineHint, FirstRunOverlay) | `components/onboarding/` | main |
+| Worktree prune dialog | `components/worktree/` | settings |
+
+### 6.5 Still Ad-hoc
+
+Candidates for new primitives:
+
+| Pattern | Current implementations |
+|---|---|
+| Dialog / Modal | Only `ConfirmDialog` is shared; `ConnectionEditorDialog`, `RepoScanDialog`, `SelfTestResultsDialog`, `SaveSnippetDialog`, `T3CheckoutDialog`, `WorktreePruneDialog` each roll their own. `.bd-modal` is used once. |
+| Context menu | `PrContextMenu`, `FlyoutPrContextMenu`, `FilePaletteContextMenu`, `ChipPicker`, `WorkItemFilterPopover` |
+| Tooltip | Native `title`, `HoverPopover`, or `InlineHint` |
+| Skeleton | `FlyoutInitializing`, `PrList`, `WorktreePaletteApp` |
+| Toast | `FlyoutToast` and `MergeToast` |
+| Badges | `LabelBadge`, `MergeScoreBadge`, `LinkedWorkItemBadge` beside `Pill` |
+| Chips / segmented | `work-item-palette/FilterChip`, `ChipInput`, `GroupSeg` duplicate `Chip` / `Seg2` |
+| Window controls | `primitives/WindowControls` and `chrome/WindowControls` overlap |
 
 ---
 
-## 9. Patterns
+## 7. Patterns
 
-### 9.1 How to pick a color
+### 7.1 Picking a color
+1. State (success / warning / error / merged) → status tokens; brand or interaction → accent / purple.
+2. Fill → `{tone}-badge-bg`; text on it → `{tone}-badge-fg`; edge → `{tone}-badge-border`.
+3. No fitting token? Add one to `:root` **and** `.dark`, then to `@theme inline`.
 
-1. Ask: is this state (success / warning / error) or brand (accent / purple)? Use status tokens for the former, accent/purple for the latter.
-2. For a fill: use the `-bg` variant (6–10% alpha tint).
-3. For text on top of that fill: use the `-fg` variant (same hue, full saturation).
-4. For a border: use the `-border` variant (14–22% alpha).
-5. Never hardcode a hex — if there's no token that fits, add one.
-
-### 9.2 Pressable element
-
-```css
-.my-btn {
-  transition: background 120ms ease, color 120ms ease, transform 80ms ease;
-}
-.my-btn:hover:not(:disabled) { opacity: 0.88; }
-.my-btn:active:not(:disabled) { transform: scale(0.97); }
-.my-btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
+### 7.2 Status pill
+```tsx
+<Pill tone="success" icon={<Check size={11} strokeWidth={2.25} />}>Approved</Pill>
 ```
 
-### 9.3 Status-tinted badge
-
-```css
-.my-badge--success {
-  background: var(--color-success-badge-bg);
-  color: var(--color-success-badge-fg);
-  border: 1px solid var(--color-success-badge-border);
-  border-radius: var(--radius-pill);
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-}
+### 7.3 Button row
+```tsx
+<Button variant="primary" size="md" leading={<GitMerge size={12} />}>Merge</Button>
+<Button variant="ghost" size="md">Open in browser</Button>
+<Button variant="danger" size="sm">Close PR</Button>
 ```
 
-### 9.4 Floating surface with glow
-
+### 7.4 Custom pressable (when no primitive fits)
 ```css
-.my-float {
-  background: var(--color-badge-glass);
-  border: 1px solid var(--color-badge-border);
-  box-shadow: 0 8px 32px var(--color-badge-glow-green);
-  backdrop-filter: blur(12px);
+.bd-my-thing {
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-color) ease, color var(--duration-color) ease,
+    transform var(--duration-press) ease;
+}
+.bd-my-thing:hover:not(:disabled) { background: var(--color-surface-hover); }
+.bd-my-thing:active:not(:disabled) { transform: scale(0.97); }
+.bd-my-thing:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+```
+
+### 7.5 Floating panel
+```css
+.bd-my-float {
+  background: var(--color-surface);
+  border: 1px solid var(--color-strong-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-2);
 }
 ```
 
 ---
 
-## 10. Tailwind v4 Integration (Recommendation)
+## 8. Storybook
 
-Tailwind is imported via `@import "tailwindcss"` but no `@theme` directive exists, so the 327 color tokens aren't exposed as utilities (`bg-status-green`, `text-accent`, etc.). Recommended addition to `index.css`:
-
-```css
-@theme {
-  --color-*: initial; /* opt out of Tailwind's default palette */
-
-  /* Re-export every semantic token so Tailwind generates utilities */
-  --color-accent: var(--color-accent);
-  --color-surface: var(--color-surface);
-  --color-text-primary: var(--color-text-primary);
-  /* …etc for every token you want as a utility… */
-
-  /* Promote the spacing / radius / text scales */
-  --spacing-1: 2px;
-  --spacing-2: 4px;
-  /* …etc… */
-  --radius-sm: 5px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-pill: 9999px;
-
-  --text-micro: 10px;
-  --text-small: 11px;
-  --text-body: 12px;
-  --text-base: 13px;
-  --text-title: 18px;
-
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Cascadia Code", "Cascadia Mono", "Consolas", "Courier New", monospace;
-}
-```
-
-After this, components can drop most `style={{}}` props in favor of `className="bg-surface text-primary border-subtle"`.
+- Config: `src/BorgDock.Tauri/.storybook/` — Tauri APIs mocked via `.storybook/mocks/`, `index.css` loaded, light / dark / system theme toolbar
+- 31 app- and feature-level stories: main window (`layout/MainWindow.stories.tsx`), flyout, Quick Review, palettes, file viewer, SQL, What's New, work items, PR detail (app, panel, every tab, checkout, checklist, composer), settings (app, every section, dialogs)
+- Hero screenshots for release notes come from these stories (`scripts/screenshot-stories.mjs` + `design/whats-new/<version>.heroes.json`)
+- No primitive or token stories yet
 
 ---
 
-## 11. Tokens — Machine-Readable Export
-
-A starter [DTCG](https://tr.designtokens.org/format/) JSON for designer tooling (subset shown; extend to cover the full catalog in §2):
+## 9. Machine-Readable Tokens (DTCG subset)
 
 ```json
 {
   "color": {
-    "accent":           { "$value": "#6655d4", "$type": "color", "$extensions": { "dark": "#7c6af6" } },
-    "accent-foreground":{ "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#ffffff" } },
-
-    "bg":               { "$value": "#f7f5fb", "$type": "color", "$extensions": { "dark": "#110f1a" } },
-    "surface":          { "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#1a1726" } },
-    "surface-raised":   { "$value": "rgba(90,86,112,0.03)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.03)" } },
-
-    "text-primary":     { "$value": "#1a1726", "$type": "color", "$extensions": { "dark": "#edeaf4" } },
-    "text-secondary":   { "$value": "#3a3550", "$type": "color", "$extensions": { "dark": "#c8c4d6" } },
-    "text-tertiary":    { "$value": "#5a5670", "$type": "color", "$extensions": { "dark": "#8a85a0" } },
-    "text-muted":       { "$value": "#8a85a0", "$type": "color", "$extensions": { "dark": "#5a5670" } },
-
-    "status-green":     { "$value": "#3ba68e", "$type": "color", "$extensions": { "dark": "#7dd3c0" } },
-    "status-red":       { "$value": "#c7324f", "$type": "color", "$extensions": { "dark": "#e54065" } },
-    "status-yellow":    { "$value": "#b07d09", "$type": "color", "$extensions": { "dark": "#f5b73b" } },
-
-    "border-subtle":    { "$value": "rgba(90,86,112,0.08)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.08)" } },
-    "border-strong":    { "$value": "rgba(90,86,112,0.14)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.14)" } }
+    "accent":         { "$value": "#6655d4", "$type": "color", "$extensions": { "dark": "#7c6af6" } },
+    "background":     { "$value": "#f7f5fb", "$type": "color", "$extensions": { "dark": "#110f1a" } },
+    "surface":        { "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#1a1726" } },
+    "text-primary":   { "$value": "#1a1726", "$type": "color", "$extensions": { "dark": "#edeaf4" } },
+    "text-secondary": { "$value": "#3a3550", "$type": "color", "$extensions": { "dark": "#c8c4d6" } },
+    "text-tertiary":  { "$value": "#5a5670", "$type": "color", "$extensions": { "dark": "#8a85a0" } },
+    "text-muted":     { "$value": "#6a6580", "$type": "color", "$extensions": { "dark": "#9490a8" } },
+    "status-green":   { "$value": "#3ba68e", "$type": "color", "$extensions": { "dark": "#7dd3c0" } },
+    "status-red":     { "$value": "#c7324f", "$type": "color", "$extensions": { "dark": "#e54065" } },
+    "status-yellow":  { "$value": "#b07d09", "$type": "color", "$extensions": { "dark": "#f5b73b" } },
+    "status-merged":  { "$value": "#8250df", "$type": "color", "$extensions": { "dark": "#a371f7" } },
+    "subtle-border":  { "$value": "rgba(90,86,112,0.08)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.08)" } },
+    "strong-border":  { "$value": "rgba(90,86,112,0.14)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.14)" } }
   },
-  "size": {
-    "space-1":  { "$value": "2px",  "$type": "dimension" },
-    "space-2":  { "$value": "4px",  "$type": "dimension" },
-    "space-4":  { "$value": "8px",  "$type": "dimension" },
-    "space-6":  { "$value": "12px", "$type": "dimension" },
-    "space-8":  { "$value": "16px", "$type": "dimension" },
-
+  "dimension": {
+    "space-1": { "$value": "2px",  "$type": "dimension" },
+    "space-2": { "$value": "4px",  "$type": "dimension" },
+    "space-3": { "$value": "6px",  "$type": "dimension" },
+    "space-4": { "$value": "8px",  "$type": "dimension" },
+    "space-5": { "$value": "10px", "$type": "dimension" },
+    "space-6": { "$value": "12px", "$type": "dimension" },
+    "space-8": { "$value": "16px", "$type": "dimension" },
     "radius-sm":   { "$value": "5px",    "$type": "dimension" },
     "radius-md":   { "$value": "6px",    "$type": "dimension" },
     "radius-lg":   { "$value": "8px",    "$type": "dimension" },
+    "radius-xl":   { "$value": "12px",   "$type": "dimension" },
     "radius-pill": { "$value": "9999px", "$type": "dimension" },
-
     "text-micro": { "$value": "10px", "$type": "dimension" },
     "text-small": { "$value": "11px", "$type": "dimension" },
     "text-body":  { "$value": "12px", "$type": "dimension" },
@@ -459,29 +457,50 @@ A starter [DTCG](https://tr.designtokens.org/format/) JSON for designer tooling 
     "text-title": { "$value": "18px", "$type": "dimension" }
   },
   "duration": {
-    "motion-press": { "$value": "80ms",  "$type": "duration" },
-    "motion-color": { "$value": "120ms", "$type": "duration" },
-    "motion-ui":    { "$value": "150ms", "$type": "duration" },
-    "motion-tab":   { "$value": "200ms", "$type": "duration" }
+    "press":  { "$value": "80ms",   "$type": "duration" },
+    "color":  { "$value": "120ms",  "$type": "duration" },
+    "ui":     { "$value": "150ms",  "$type": "duration" },
+    "tab":    { "$value": "200ms",  "$type": "duration" },
+    "breath": { "$value": "2600ms", "$type": "duration" }
   }
 }
 ```
 
 ---
 
-## 12. Current Gaps (to close if taking this system to a tool)
+## 10. Known Gaps
 
-- **No spacing / radius / typography / shadow tokens** as CSS variables — §4–§7 above are recommended additions.
-- **No `@theme` block** — Tailwind utilities aren't semantic yet (§10).
-- **No primitive components** for Button, Input, Select, Dialog, Menu — each feature re-rolls its own variant.
-- **Per-feature CSS files** (`sql-*`, `.file-palette-*`, `.window-ctrl-*`) coexist with Tailwind — pick one primary styling approach and migrate (recommendation: keep feature CSS for dense feature-specific layout, move primitives to Tailwind + `@theme`).
-- **No dark-mode contrast audit** recorded. Tokens look good but should be verified against WCAG AA for text on tinted backgrounds.
+### Adoption
+- **Semantic utilities are barely used.** Components reach tokens through ~790 `*-[var(--…)]` arbitrary classes and ~330 inline `style` `var()` strings; `text-text-muted` appears 11 times.
+- **Arbitrary sizes win over tokens.** `text-[11px]` (87), `text-[10px]` (63), `text-[13px]` (45), plus off-scale `text-[11.5px]` / `text-[10.5px]`; `text-micro/small/body` utilities have 0 uses. Tailwind default `text-xs`, `rounded-md`, `shadow-xl` are common.
+- **Hard-coded colors** — 26 six-digit hex in component TSX, mostly `work-items/shared/wi-visuals.tsx` (state dots) and `flyout/FlyoutGlance.tsx` (off-palette gradients); avatar gradients, window-close red, and find highlights are literals in CSS.
+- **Theme logic duplicated** in `FlyoutApp`, `PRDetailApp`, `SqlApp`, `WorkItemDetailApp`, and `useWorkItemPaletteSearch` instead of `useTheme`.
+- **No enforcement** — no lint rule for hex or arbitrary values; the contrast test uses hand-copied hex values.
+
+### Token Hygiene
+- **Unused tokens (~57)**: floating-badge set (`badge-glass`, `badge-surface`, `badge-border`, `badge-glow-*`), all `review-*`, `whats-new-*` fg/bg/border, `tracked-*` / `working-on-*`, `tab-active/inactive`, `pr-badge-*`, `pr-my-badge-*`, `branch-badge-*`, `target-badge-*`, `comment-count-fg`, several `action-*` and `check-*`, `avatar-text`, `expanded-row-bg`, `diff-hunk-header` (duplicate), `syntax-tag/attribute/plain`, `radius-md/xl`, `space-10/12`, `text-title`, `duration-breath`
+- **Dead CSS**: `.sidebar-*` block (and its `sidebar-gradient-*` tokens), `.field-input`, and six unused keyframes (`toast-progress-shrink`, `notifPop`, `scale-in`, `comment-enter`, `fadeSlideIn`, `slideInRight`)
+- **Aliases**: `bg-primary` duplicates `background`
+- **Undefined references**: `--color-app-background` (PR detail fixture); `--flyout-shadow` defined inline in `FlyoutFrame.tsx`
+- **Two body font stacks**: `body` doesn't use `--font-ui`
+- **Two window-control families**: `.bd-wc` (36×28) and `.bd-window-control` (28×24)
+
+### Missing
+- No `prefers-reduced-motion` or `forced-colors` handling
+- No line-height, font-weight, easing, or focus-ring tokens
+- Spacing scale gaps (see §4.1)
+- No `dark:` variant bound to `.dark`
+- No primitive / token stories in Storybook
+- Primitives still missing for Dialog, Menu, Tooltip, Skeleton, Toast (see §6.5)
 
 ---
 
-## 13. Source of Truth
+## 11. Source of Truth
 
-- Color, syntax, and most existing tokens: `src/BorgDock.Tauri/src/styles/index.css`
-- Feature-specific CSS: `src/BorgDock.Tauri/src/styles/file-palette.css`, `worktree-palette.css`, `file-viewer.css`
-- Theme switching: `src/BorgDock.Tauri/src/` — theme applied by toggling `.dark` class on `<html>`, driven by the theme store (system / light / dark)
-- Tray icon variants: `src/BorgDock.Tauri/src-tauri/icons/` (light and dark tray variants)
+- Tokens, `@theme`, component classes: `src/BorgDock.Tauri/src/styles/index.css`
+- Quick Review styles: `src/BorgDock.Tauri/src/components/focus/quick-review.css`
+- Primitives: `src/BorgDock.Tauri/src/components/shared/primitives/`
+- Theme hook: `src/BorgDock.Tauri/src/hooks/useTheme.ts`
+- Contrast test: `src/BorgDock.Tauri/src/styles/__tests__/contrast.test.ts`
+- Design specs & mockups: `docs/superpowers/specs/2026-04-24-shared-components-design.md`, `design/mockups/`, `design/quick-review/`
+- Tray icons: rendered at runtime in `src-tauri/src/platform/tray.rs`; static icon assets in `src-tauri/icons/`
