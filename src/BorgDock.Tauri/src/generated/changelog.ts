@@ -4,6 +4,28 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.3.1",
+    "date": "2026-09-15",
+    "summary": "A cleaner, more consistent look.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "A cleaner, more consistent look",
+        "description": "Every icon across BorgDock now comes from one polished set, from the settings gear in the title bar to the buttons in PR details, palettes, and the SQL window. Everything feels sharper and matches wherever you look.",
+        "hero": {
+          "src": "/whats-new/2.3.1/lucide-icons.png",
+          "alt": "Consistent icons across the main window"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Opening the tray flyout for the first time no longer shows a loading screen when your pull requests are already loaded. If data is still on its way, you now see a tidy skeleton of the panel instead.",
+      "The review wait-time badge on PR cards in \"Needs your review\" no longer overlaps the review status pill."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "2.3.0",
     "date": "2026-09-09",
     "summary": "Review a PR from start to finish, See the proof in the conversation, and Find your way through changed files.",

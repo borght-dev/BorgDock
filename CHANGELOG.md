@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.1 — 2026-09-15
+
+### Improvements
+
+- **A cleaner, more consistent look** — Every icon across BorgDock now comes from one polished set, from the settings gear in the title bar to the buttons in PR details, palettes, and the SQL window. Everything feels sharper and matches wherever you look. ![Consistent icons across the main window](whats-new/2.3.1/lucide-icons.png)
+
+### Bug Fixes
+
+- Opening the tray flyout for the first time no longer shows a loading screen when your pull requests are already loaded. If data is still on its way, you now see a tidy skeleton of the panel instead.
+- The review wait-time badge on PR cards in "Needs your review" no longer overlaps the review status pill.
+
 ## 2.3.0 — 2026-09-09
 
 ### New Features
