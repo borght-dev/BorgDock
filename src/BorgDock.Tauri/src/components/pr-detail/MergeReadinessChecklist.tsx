@@ -1,19 +1,7 @@
+import { Check, Clock, Minus, X, Zap } from 'lucide-react';
 import { LinearProgress } from '@/components/shared/primitives';
 import { computeMergeScore } from '@/services/merge-score';
 import type { PullRequestWithChecks } from '@/types';
-
-const BoltIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="currentColor"
-    aria-hidden="true"
-    className="text-[var(--color-accent)]"
-  >
-    <path d="M9 1 3 9h4l-1 6 6-8H8z" />
-  </svg>
-);
 
 interface MergeReadinessChecklistProps {
   pr: PullRequestWithChecks;
@@ -118,41 +106,6 @@ function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
   ];
 }
 
-// Icon-only glyphs used inside the round status badge below
-const CheckGlyph = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path
-      d="M4 8.5l2.5 2.5L12 5"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-const XGlyph = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-);
-const ClockGlyph = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.5" />
-    <path
-      d="M8 5.5V8l1.6 1"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-const DashGlyph = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M5 8h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-);
-
 function StatusIcon({ status }: { status: CheckStatus }) {
   // Token triple per status — keeps the badge in sync with pills/chips elsewhere.
   const tokens = {
@@ -183,10 +136,10 @@ function StatusIcon({ status }: { status: CheckStatus }) {
       className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border"
       style={{ background: tokens.bg, color: tokens.fg, borderColor: tokens.bd }}
     >
-      {status === 'pass' && <CheckGlyph />}
-      {status === 'fail' && <XGlyph />}
-      {status === 'pending' && <ClockGlyph />}
-      {status === 'none' && <DashGlyph />}
+      {status === 'pass' && <Check size={11} strokeWidth={2.7} aria-hidden="true" />}
+      {status === 'fail' && <X size={11} strokeWidth={2.7} aria-hidden="true" />}
+      {status === 'pending' && <Clock size={11} strokeWidth={2.25} aria-hidden="true" />}
+      {status === 'none' && <Minus size={11} strokeWidth={2.7} aria-hidden="true" />}
     </span>
   );
 }
@@ -204,7 +157,13 @@ export function MergeReadinessChecklist({ pr }: MergeReadinessChecklistProps) {
     >
       {/* Header row: bolt + label on the left, inline progress bar + score on the right */}
       <div className="flex items-center gap-3 border-b border-[var(--color-subtle-border)] px-3.5 py-3">
-        <BoltIcon />
+        <Zap
+          size={14}
+          fill="currentColor"
+          strokeWidth={0}
+          aria-hidden="true"
+          className="text-[var(--color-accent)]"
+        />
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
           Merge Readiness
         </span>

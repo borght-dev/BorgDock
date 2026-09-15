@@ -1,10 +1,12 @@
+import { PanelRightOpen, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshIcon } from '@/components/shared/icons';
+import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
 import { Dot, IconButton } from '@/components/shared/primitives';
 import type { PrActionId } from '@/services/pr-action-resolver';
-import type { ToastPayload } from './flyout-mode';
+import { FlyoutFrame } from './FlyoutFrame';
 import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
 import { FlyoutPrRow } from './FlyoutPrRow';
+import type { ToastPayload } from './flyout-mode';
 
 /** Payload sent from the main window via the 'flyout-update' event. */
 export interface FlyoutData {
@@ -185,13 +187,10 @@ export function FlyoutGlance({
 
   // 'more' opens the local context menu; other actions emit to main (which
   // executes them against the live pr-store) and close the flyout.
-  const [contextMenu, setContextMenu] = useState<
-    | {
-        pr: FlyoutPr;
-        position: { x: number; y: number };
-      }
-    | null
-  >(null);
+  const [contextMenu, setContextMenu] = useState<{
+    pr: FlyoutPr;
+    position: { x: number; y: number };
+  } | null>(null);
 
   const handlePrAction = useCallback(
     async (pr: FlyoutPr, action: PrActionId | 'more', e: React.MouseEvent) => {
@@ -217,288 +216,186 @@ export function FlyoutGlance({
   );
 
   return (
-    <div
-      className="flex h-screen w-screen items-end justify-end"
-      // style: transparent background required for Tauri transparent-window overlay; padding in px avoids Tailwind rounding
-      style={{ background: 'transparent', padding: 16 }}
-      onMouseDown={handleBackdropMouseDown}
+    <FlyoutFrame
+      panelRef={panelRef}
+      onBackdropMouseDown={handleBackdropMouseDown}
+      overlay={
+        contextMenu && (
+          <FlyoutPrContextMenu
+            pr={contextMenu.pr}
+            position={contextMenu.position}
+            onClose={() => setContextMenu(null)}
+            onCloseFlyout={onClose}
+          />
+        )
+      }
     >
+      {/* Header */}
       <div
-        ref={panelRef}
-        // max-h-full + flex-col so the panel never overflows the window — the
-        // PR list shrinks instead of pushing the header off-screen when the
-        // window's vertical budget is tight.
-        className="flex max-h-full w-[428px] flex-col overflow-hidden rounded-[14px] border"
-        // style: animation keyframe + flyout-shadow custom property cannot be expressed as Tailwind utilities
+        className="shrink-0 border-b px-4 pt-3.5 pb-3"
+        // style: gradient background — no Tailwind utility covers multi-stop CSS gradients with tokens
         style={{
-          background: 'var(--color-surface)',
-          borderColor: 'var(--color-strong-border)',
-          animation: 'flyoutIn 220ms cubic-bezier(.2,.8,.2,1)',
-          boxShadow: 'var(--flyout-shadow)',
+          borderColor: 'var(--color-subtle-border)',
+          background: 'linear-gradient(135deg, var(--color-surface-raised), transparent)',
         }}
       >
-        {/* Header */}
-        <div
-          className="shrink-0 border-b px-4 pt-3.5 pb-3"
-          // style: gradient background — no Tailwind utility covers multi-stop CSS gradients with tokens
-          style={{
-            borderColor: 'var(--color-subtle-border)',
-            background: 'linear-gradient(135deg, var(--color-surface-raised), transparent)',
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              {/* Brand icon — heartbeat pulse line matching sidebar header */}
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-lg"
-                // style: gradient background + color-mix box-shadow — no Tailwind utilities for these
-                style={{
-                  background:
-                    'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
-                  boxShadow: '0 2px 8px color-mix(in srgb, var(--color-accent) 25%, transparent)',
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
-                    stroke="white"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
-                </svg>
-              </div>
-              <div>
-                <div
-                  className="text-[13px] font-bold tracking-tight text-[var(--color-text-primary)]"
-                >
-                  BorgDock
-                </div>
-                <div
-                  className="mt-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]"
-                >
-                  {totalCount} open pull request{totalCount !== 1 ? 's' : ''}
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <IconButton
-                icon={<RefreshIcon spinning={isRefreshing} />}
-                tooltip={isRefreshing ? 'Refreshing…' : 'Poll now'}
-                aria-label="Refresh"
-                aria-busy={isRefreshing}
-                size={26}
-                disabled={isRefreshing}
-                onClick={handleRefresh}
-              />
-              <IconButton
-                icon={<PanelRightOpenIcon />}
-                tooltip="Open sidebar"
-                aria-label="Open sidebar"
-                size={26}
-                onClick={handleOpenSidebar}
-              />
-              <IconButton
-                icon={<SettingsIcon />}
-                tooltip="Settings"
-                aria-label="Settings"
-                size={26}
-                onClick={handleOpenSettings}
-              />
-            </div>
-          </div>
-
-          {/* Stat strip */}
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3.5">
-              <div className="flex items-center gap-1.5">
-                <Dot tone="red" pulse={failingCount > 0} />
-                <span
-                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
-                >
-                  {failingCount}
-                </span>
-                <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                  failing
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Dot tone="yellow" />
-                <span
-                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
-                >
-                  {pendingCount}
-                </span>
-                <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                  running
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Dot tone="green" />
-                <span
-                  className="text-[11px] font-semibold text-[var(--color-text-secondary)]"
-                >
-                  {passingCount}
-                </span>
-                <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                  passing
-                </span>
-              </div>
-            </div>
-            {focusCount > 0 && (
-              <button
-                type="button"
-                onClick={handleOpenFocus}
-                aria-label={`Open focus tab — ${focusCount} need attention`}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
-                // style: accent-tinted pill — color-mix backgrounds + accent token are not in the Tailwind config
-                style={{
-                  background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
-                  color: 'var(--color-accent)',
-                  border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
-                }}
-              >
-                <FocusBoltIcon />
-                <span>Focus {focusCount}</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {banner && (
-          <div
-            className="shrink-0 px-4 py-2 text-[11px] font-semibold text-white"
-            // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
-            style={{ background: bannerColor(banner.severity) }}
-            data-testid="flyout-glance-banner"
-          >
-            {banner.title}
-          </div>
-        )}
-
-        {/* PR list */}
-        {/* flex-1 + min-h-0 lets this region absorb the leftover vertical
-            space inside the panel and scroll internally — replaces the old
-            fixed max-h-[360px], which could push the header off-screen when
-            the window was shorter than header + 360 + footer. */}
-        {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
-        <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-          {pullRequests.map((pr, i) => (
-            <FlyoutPrRow
-              key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
-              pr={pr}
-              active={i === activeIndex}
-              onClick={handleClickPr}
-              onAction={handlePrAction}
-              showRepo={showRepoPerRow}
-            />
-          ))}
-          {pullRequests.length === 0 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            {/* Brand icon — heartbeat pulse line matching sidebar header */}
             <div
-              className="py-8 text-center text-[12px] text-[var(--color-text-muted)]"
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              // style: gradient background + color-mix box-shadow — no Tailwind utilities for these
+              style={{
+                background:
+                  'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
+                boxShadow: '0 2px 8px color-mix(in srgb, var(--color-accent) 25%, transparent)',
+              }}
             >
-              No open pull requests
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
+                  stroke="white"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
+              </svg>
             </div>
-          )}
+            <div>
+              <div className="text-[13px] font-bold tracking-tight text-[var(--color-text-primary)]">
+                BorgDock
+              </div>
+              <div className="mt-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                {totalCount} open pull request{totalCount !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-1">
+            <IconButton
+              icon={<RefreshIcon spinning={isRefreshing} />}
+              tooltip={isRefreshing ? 'Refreshing…' : 'Poll now'}
+              aria-label="Refresh"
+              aria-busy={isRefreshing}
+              size={26}
+              disabled={isRefreshing}
+              onClick={handleRefresh}
+            />
+            <IconButton
+              icon={<PanelRightOpen size={14} />}
+              tooltip="Open sidebar"
+              aria-label="Open sidebar"
+              size={26}
+              onClick={handleOpenSidebar}
+            />
+            <IconButton
+              icon={<SettingsIcon />}
+              tooltip="Settings"
+              aria-label="Settings"
+              size={26}
+              onClick={handleOpenSettings}
+            />
+          </div>
         </div>
 
-        {/* Footer */}
-        <div
-          className="flex shrink-0 items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]"
-        >
-          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
-          <span
-            className="text-[10px] text-[var(--color-text-muted)]"
-            style={{ fontFamily: 'var(--font-code)' }}
-          >
-            synced {data.lastSyncAgo}
-          </span>
-          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
-          <span
-            className="text-[10px] text-[var(--color-text-muted)]"
-            style={{ fontFamily: 'var(--font-code)' }}
-          >
-            {data.hotkey}
-          </span>
+        {/* Stat strip */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3.5">
+            <div className="flex items-center gap-1.5">
+              <Dot tone="red" pulse={failingCount > 0} />
+              <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                {failingCount}
+              </span>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">failing</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Dot tone="yellow" />
+              <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                {pendingCount}
+              </span>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">running</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Dot tone="green" />
+              <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                {passingCount}
+              </span>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">passing</span>
+            </div>
+          </div>
+          {focusCount > 0 && (
+            <button
+              type="button"
+              onClick={handleOpenFocus}
+              aria-label={`Open focus tab — ${focusCount} need attention`}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+              // style: accent-tinted pill — color-mix backgrounds + accent token are not in the Tailwind config
+              style={{
+                background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+                color: 'var(--color-accent)',
+                border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+              }}
+            >
+              <Zap size={11} fill="currentColor" stroke="none" aria-hidden="true" />
+              <span>Focus {focusCount}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {contextMenu && (
-        <FlyoutPrContextMenu
-          pr={contextMenu.pr}
-          position={contextMenu.position}
-          onClose={() => setContextMenu(null)}
-          onCloseFlyout={onClose}
-        />
+      {banner && (
+        <div
+          className="shrink-0 px-4 py-2 text-[11px] font-semibold text-white"
+          // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
+          style={{ background: bannerColor(banner.severity) }}
+          data-testid="flyout-glance-banner"
+        >
+          {banner.title}
+        </div>
       )}
 
-      <style>{`
-        :root {
-          --flyout-shadow: 0 8px 24px rgba(90, 86, 112, 0.18), 0 2px 6px rgba(90, 86, 112, 0.06);
-        }
-        .dark {
-          --flyout-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
-        }
-        @keyframes flyoutIn {
-          0% { opacity: 0; transform: translateY(8px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-    </div>
-  );
-}
+      {/* PR list */}
+      {/* flex-1 + min-h-0 lets this region absorb the leftover vertical
+            space inside the panel and scroll internally — replaces the old
+            fixed max-h-[360px], which could push the header off-screen when
+            the window was shorter than header + 360 + footer. */}
+      {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
+      <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+        {pullRequests.map((pr, i) => (
+          <FlyoutPrRow
+            key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
+            pr={pr}
+            active={i === activeIndex}
+            onClick={handleClickPr}
+            onAction={handlePrAction}
+            showRepo={showRepoPerRow}
+          />
+        ))}
+        {pullRequests.length === 0 && (
+          <div className="py-8 text-center text-[12px] text-[var(--color-text-muted)]">
+            No open pull requests
+          </div>
+        )}
+      </div>
 
-// --- Inline SVG-only icons (consumed by primitive IconButton via icon prop) ---
-
-function PanelRightOpenIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M15 3v18" />
-      <path d="m10 15-3-3 3-3" />
-    </svg>
-  );
-}
-
-function FocusBoltIcon() {
-  return (
-    <svg
-      width="11"
-      height="11"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
-    </svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
+      {/* Footer */}
+      <div className="flex shrink-0 items-center justify-between border-t px-3.5 py-2 border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)]">
+        {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
+        <span
+          className="text-[10px] text-[var(--color-text-muted)]"
+          style={{ fontFamily: 'var(--font-code)' }}
+        >
+          synced {data.lastSyncAgo}
+        </span>
+        {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
+        <span
+          className="text-[10px] text-[var(--color-text-muted)]"
+          style={{ fontFamily: 'var(--font-code)' }}
+        >
+          {data.hotkey}
+        </span>
+      </div>
+    </FlyoutFrame>
   );
 }
 

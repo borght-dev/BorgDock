@@ -1,3 +1,4 @@
+import { Sparkle } from 'lucide-react';
 import type { MouseEvent, ReactNode } from 'react';
 import { Button, IconButton } from '@/components/shared/primitives';
 import type { PrActionId } from '@/services/pr-action-resolver';
@@ -46,7 +47,7 @@ export function HoverActionPillBar({
         <Button
           variant="primary"
           size="sm"
-          leading={<ResolveConflictsIcon />}
+          leading={<Sparkle size={12} fill="currentColor" stroke="none" aria-hidden="true" />}
           title="Resolve Conflicts"
           data-pr-action="resolve-conflicts"
           // Inline style — Tailwind v4 doesn't honour the v3 `!`-prefix syntax,
@@ -108,24 +109,5 @@ export function HoverActionPillBar({
         }}
       />
     </div>
-  );
-}
-
-/**
- * Sparkle/conflict glyph for the Resolve Conflicts button. Matches the original
- * standalone-button glyph (✦) — small enough to read at sm button size while
- * still signalling "magic / fix-up flow" rather than a literal merge action.
- */
-function ResolveConflictsIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M8 1 9.4 6.6 15 8l-5.6 1.4L8 15l-1.4-5.6L1 8l5.6-1.4z" />
-    </svg>
   );
 }

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, IconButton } from '@/components/shared/primitives';
 import type { ToastPayload, ToastSeverity } from './flyout-mode';
@@ -60,7 +61,13 @@ interface Props {
   onActionClick: (toast: ToastPayload, action: string, url?: string) => void;
 }
 
-export function FlyoutToast({ queue, onHoverEnter, onHoverLeave, onDismiss, onActionClick }: Props) {
+export function FlyoutToast({
+  queue,
+  onHoverEnter,
+  onHoverLeave,
+  onDismiss,
+  onActionClick,
+}: Props) {
   return (
     <div
       className="flex h-screen w-screen items-end justify-end"
@@ -90,7 +97,13 @@ interface CardProps {
   onActionClick: (action: string, url?: string) => void;
 }
 
-function FlyoutToastCard({ toast, onHoverEnter, onHoverLeave, onDismiss, onActionClick }: CardProps) {
+function FlyoutToastCard({
+  toast,
+  onHoverEnter,
+  onHoverLeave,
+  onDismiss,
+  onActionClick,
+}: CardProps) {
   const [phase, setPhase] = useState<'enter' | 'visible' | 'exit'>('enter');
   const pausedRef = useRef(false);
   const elapsedRef = useRef(0);
@@ -163,7 +176,11 @@ function FlyoutToastCard({ toast, onHoverEnter, onHoverLeave, onDismiss, onActio
       data-toast=""
       data-testid={`flyout-toast-card-${toast.id}`}
       data-notification-severity={toast.severity}
-      className={clsx('relative', isMerged ? 'w-[400px]' : 'w-[380px]', isClickable && 'cursor-pointer')}
+      className={clsx(
+        'relative',
+        isMerged ? 'w-[400px]' : 'w-[380px]',
+        isClickable && 'cursor-pointer',
+      )}
       style={{
         animation:
           phase === 'enter' || phase === 'visible'
@@ -280,16 +297,7 @@ function FlyoutToastCard({ toast, onHoverEnter, onHoverLeave, onDismiss, onActio
 
           <IconButton
             size={22}
-            icon={
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                <path
-                  d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            }
+            icon={<X size={12} strokeWidth={3} aria-hidden />}
             aria-label="Dismiss"
             data-testid="dismiss-flyout-toast"
             onClick={(e) => {

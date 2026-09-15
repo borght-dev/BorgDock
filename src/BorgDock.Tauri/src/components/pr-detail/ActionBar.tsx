@@ -1,116 +1,7 @@
 import clsx from 'clsx';
+import { Copy, ExternalLink, GitBranch, GitMerge, MessageSquareText, Pencil } from 'lucide-react';
 import { Button } from '@/components/shared/primitives';
 import type { PrActions } from './usePrActions';
-
-const MergeIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.75"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="3" cy="8" r="1.5" />
-    <circle cx="13" cy="3" r="1.5" />
-    <circle cx="13" cy="13" r="1.5" />
-    <path d="M3 9.5v3" />
-    <path d="M3 6.5C3 6.5 5 5 8 5h3.5" />
-    <path d="M3 9.5C3 9.5 5 11 8 11h3.5" />
-  </svg>
-);
-
-const ExternalIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 2h5v5" />
-    <path d="m14 2-7 7" />
-    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-  </svg>
-);
-
-const ThreadIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H6l-3 2.5v-2.5h-.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z" />
-    <path d="M5 7h6" />
-    <path d="M5 9.5h3.5" />
-  </svg>
-);
-
-const CopyIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <rect x="5" y="5" width="9" height="9" rx="1.5" />
-    <path d="M11 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2" />
-  </svg>
-);
-
-const BranchIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="4" cy="3.5" r="1.5" />
-    <circle cx="4" cy="12.5" r="1.5" />
-    <circle cx="12" cy="6.5" r="1.5" />
-    <path d="M4 5v6" />
-    <path d="M12 8c0 2-2 3-4 3s-4-.5-4-2" />
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M11 2.5 13.5 5 5 13.5l-3 .5.5-3z" />
-  </svg>
-);
 
 interface ActionBarProps {
   actions: PrActions;
@@ -139,7 +30,13 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
         <Button
           variant="primary"
           size="sm"
-          leading={actions.isReady ? <MergeIcon /> : <ThreadIcon />}
+          leading={
+            actions.isReady ? (
+              <GitMerge size={13} strokeWidth={2.5} aria-hidden="true" />
+            ) : (
+              <MessageSquareText size={13} strokeWidth={2.25} aria-hidden="true" />
+            )
+          }
           onClick={actions.isReady ? actions.onMerge : onReview}
           data-action-bar-action={actions.isReady ? 'merge' : 'review'}
         >
@@ -152,7 +49,7 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
       <Button
         variant="secondary"
         size="sm"
-        leading={<ExternalIcon />}
+        leading={<ExternalLink size={13} strokeWidth={2.25} aria-hidden="true" />}
         onClick={actions.onOpenInBrowser}
         data-action-bar-action="browser"
       >
@@ -161,7 +58,7 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
       <Button
         variant="ghost"
         size="sm"
-        leading={<CopyIcon />}
+        leading={<Copy size={13} strokeWidth={2.25} aria-hidden="true" />}
         onClick={actions.onCopyBranch}
         data-action-bar-action="copy"
       >
@@ -170,7 +67,7 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
       <Button
         variant="ghost"
         size="sm"
-        leading={<BranchIcon />}
+        leading={<GitBranch size={13} strokeWidth={2.25} aria-hidden="true" />}
         onClick={actions.onCheckoutToggle}
         aria-expanded={actions.checkoutOpen}
         data-action-bar-action="checkout"
@@ -184,7 +81,7 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
       <Button
         variant="ghost"
         size="sm"
-        leading={<ThreadIcon />}
+        leading={<MessageSquareText size={13} strokeWidth={2.25} aria-hidden="true" />}
         onClick={actions.onOpenInT3}
         data-action-bar-action="t3"
       >
@@ -194,7 +91,7 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
         <Button
           variant="ghost"
           size="sm"
-          leading={<EditIcon />}
+          leading={<Pencil size={13} strokeWidth={2.25} aria-hidden="true" />}
           onClick={actions.onToggleDraft}
           data-action-bar-action="draft"
         >

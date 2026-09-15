@@ -46,6 +46,7 @@
     "codemirror": "^6.0.2",
     "dompurify": "^3.4.2",
     "focus-trap-react": "^12.0.1",
+    "lucide-react": "^1.46.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",

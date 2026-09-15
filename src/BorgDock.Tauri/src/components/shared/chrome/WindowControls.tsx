@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { Minus, Square, X } from 'lucide-react';
 
 export interface WindowControlsProps {
   /** Fires when the minimize button is clicked. No-op if omitted. */
@@ -31,9 +32,7 @@ export function WindowControls({
         aria-label="Minimize"
         title="Minimize"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M1 5h8" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
+        <Minus size={10} strokeWidth={2.9} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -42,17 +41,7 @@ export function WindowControls({
         aria-label="Maximize"
         title="Maximize"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-          <rect
-            x="1.5"
-            y="1.5"
-            width="7"
-            height="7"
-            rx="1"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          />
-        </svg>
+        <Square size={10} strokeWidth={2.9} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -61,14 +50,7 @@ export function WindowControls({
         aria-label="Close"
         title="Close"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-          <path
-            d="M2 2l6 6M8 2l-6 6"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </svg>
+        <X size={10} strokeWidth={2.9} aria-hidden="true" />
       </button>
     </div>
   );

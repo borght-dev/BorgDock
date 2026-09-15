@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight, Plus, Star, X } from 'lucide-react';
 import { IconButton } from '@/components/shared/primitives';
 import type { FilePaletteRoot } from '@/types/settings';
 
@@ -53,21 +54,7 @@ export function FilePaletteRootsColumn({
     return (
       <div className="bd-fp-roots bd-fp-roots--collapsed" data-testid="fp-roots-collapsed">
         <IconButton
-          icon={
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="m6 4 4 4-4 4" />
-            </svg>
-          }
+          icon={<ChevronRight size={12} strokeWidth={2.25} aria-hidden />}
           tooltip="Expand worktree list"
           aria-label="Expand worktree list"
           size={22}
@@ -88,21 +75,7 @@ export function FilePaletteRootsColumn({
         <span className="bd-fp-roots-toolbar-title">ROOTS</span>
         <div className="bd-fp-roots-toolbar-actions">
           <IconButton
-            icon={
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M8 3v10M3 8h10" />
-              </svg>
-            }
+            icon={<Plus size={12} strokeWidth={2.25} aria-hidden />}
             tooltip="Add custom path…"
             aria-label="Add custom path…"
             size={22}
@@ -110,19 +83,12 @@ export function FilePaletteRootsColumn({
           />
           <IconButton
             icon={
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
+              <Star
+                size={12}
+                strokeWidth={2.25}
                 fill={favoritesOnly ? 'currentColor' : 'none'}
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
                 aria-hidden
-              >
-                <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
-              </svg>
+              />
             }
             active={favoritesOnly}
             tooltip={favoritesOnly ? 'Showing favorites only' : 'Show favorites only'}
@@ -131,21 +97,7 @@ export function FilePaletteRootsColumn({
             onClick={onToggleFavoritesOnly}
           />
           <IconButton
-            icon={
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="m10 4-4 4 4 4" />
-              </svg>
-            }
+            icon={<ChevronLeft size={12} strokeWidth={2.25} aria-hidden />}
             tooltip="Collapse worktree list"
             aria-label="Collapse worktree list"
             size={22}
@@ -189,11 +141,7 @@ export function FilePaletteRootsColumn({
               onRemove={() => onRemoveCustomRoot(root)}
             />
           ))}
-          <button
-            type="button"
-            className="bd-fp-roots-add-custom"
-            onClick={onAddCustomRoot}
-          >
+          <button type="button" className="bd-fp-roots-add-custom" onClick={onAddCustomRoot}>
             + Add directory…
           </button>
         </div>
@@ -231,24 +179,19 @@ function RootRow({
       {showStar ? (
         <IconButton
           icon={
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 16 16"
+            <Star
+              size={12}
+              strokeWidth={2.25}
               fill={favorite ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
               aria-hidden
-            >
-              <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
-            </svg>
+            />
           }
           active={favorite}
           tooltip={favorite ? 'Unmark as favorite' : 'Mark as favorite'}
           aria-pressed={favorite}
-          aria-label={favorite ? `Unmark ${root.label} as favorite` : `Mark ${root.label} as favorite`}
+          aria-label={
+            favorite ? `Unmark ${root.label} as favorite` : `Mark ${root.label} as favorite`
+          }
           size={22}
           onClick={(e) => {
             e.stopPropagation();
@@ -258,21 +201,7 @@ function RootRow({
       ) : onRemove ? (
         <IconButton
           className="bd-fp-root-remove-btn"
-          icon={
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="m4 4 8 8M12 4l-8 8" />
-            </svg>
-          }
+          icon={<X size={10} strokeWidth={2.25} aria-hidden />}
           tooltip="Remove custom path"
           aria-label="Remove custom path"
           size={22}

@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { Button } from '@/components/shared/primitives';
 
 export interface QueryRowData {
@@ -40,22 +41,9 @@ function QueryRow({
         aria-label={isFavorite ? `Remove ${q.name} from favorites` : `Add ${q.name} to favorites`}
         aria-pressed={isFavorite}
       >
-        <svg
-          viewBox="0 0 16 16"
-          fill={isFavorite ? 'currentColor' : 'none'}
-          stroke="currentColor"
-          strokeWidth="1.4"
-          width="11"
-          height="11"
-        >
-          <path d="M8 1.5l2 4.1 4.5.6-3.3 3.2.8 4.5L8 11.7l-4 2.2.8-4.5L1.5 6.2l4.5-.6z" />
-        </svg>
+        <Star size={11} strokeWidth={2.1} fill={isFavorite ? 'currentColor' : 'none'} />
       </button>
-      <button
-        type="button"
-        className="bd-query-row__select"
-        onClick={onClick}
-      >
+      <button type="button" className="bd-query-row__select" onClick={onClick}>
         <span className="bd-query-row__name">{q.name}</span>
         {q.count !== undefined && <span className="bd-query-row__count">{q.count}</span>}
       </button>
@@ -74,9 +62,7 @@ export function QueriesRail({
   return (
     <aside className="bd-queries-rail">
       <div className="bd-section-label bd-queries-rail__heading">Favorites</div>
-      {favorites.length === 0 && (
-        <div className="bd-queries-rail__empty">No favorites yet</div>
-      )}
+      {favorites.length === 0 && <div className="bd-queries-rail__empty">No favorites yet</div>}
       {favorites.map((q) => (
         <QueryRow
           key={q.id}
@@ -88,9 +74,7 @@ export function QueriesRail({
         />
       ))}
       <div className="bd-section-label bd-queries-rail__heading">My Queries</div>
-      {myQueries.length === 0 && (
-        <div className="bd-queries-rail__empty">None loaded</div>
-      )}
+      {myQueries.length === 0 && <div className="bd-queries-rail__empty">None loaded</div>}
       {myQueries.map((q) => (
         <QueryRow
           key={q.id}

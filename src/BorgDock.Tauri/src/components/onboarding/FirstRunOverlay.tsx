@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { Button, Card } from '@/components/shared/primitives';
 
 interface FirstRunOverlayProps {
@@ -21,17 +22,7 @@ export function FirstRunOverlay({
           onClick={onDismiss}
           className="absolute top-2 right-2 rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-icon-btn-hover)] transition-colors"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
+          <X size={12} strokeWidth={3} />
         </button>
 
         <p className="pr-6 text-sm font-medium text-[var(--color-text-primary)]">{message}</p>

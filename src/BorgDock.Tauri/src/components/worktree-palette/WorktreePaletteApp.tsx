@@ -3,6 +3,7 @@ import { LogicalSize } from '@tauri-apps/api/dpi';
 import { listen } from '@tauri-apps/api/event';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
+import { Folder, GitBranch, Pencil, RefreshCw, Search, Star, Terminal } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { IconButton, Kbd, Pill } from '@/components/shared/primitives';
@@ -178,21 +179,7 @@ function WorktreeRow({
     >
       {isMain && !isRemote ? (
         <span className="bd-wt-main-icon" aria-hidden>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4 2v12M12 8c0-3-2-4-4-4" />
-            <circle cx="4" cy="14" r="1.6" fill="currentColor" />
-            <circle cx="4" cy="2" r="1.6" fill="currentColor" />
-            <circle cx="12" cy="8" r="1.6" fill="currentColor" />
-          </svg>
+          <GitBranch size={14} strokeWidth={2.25} />
         </span>
       ) : (
         <IconButton
@@ -205,20 +192,7 @@ function WorktreeRow({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          icon={
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill={isFavorite ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
-            </svg>
-          }
+          icon={<Star size={13} strokeWidth={2.25} fill={isFavorite ? 'currentColor' : 'none'} />}
         />
       )}
       <div className="bd-wt-row-body">
@@ -252,21 +226,7 @@ function WorktreeRow({
               e.stopPropagation();
               onOpenTerminal();
             }}
-            icon={
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 5l4 3-4 3" />
-                <path d="M9 12h4" />
-              </svg>
-            }
+            icon={<Terminal size={13} strokeWidth={2.25} />}
           />
           <IconButton
             size={26}
@@ -276,20 +236,7 @@ function WorktreeRow({
               e.stopPropagation();
               onOpenFolder();
             }}
-            icon={
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5H3A1 1 0 002 4.5z" />
-              </svg>
-            }
+            icon={<Folder size={13} strokeWidth={2.25} />}
           />
           <IconButton
             size={26}
@@ -299,21 +246,7 @@ function WorktreeRow({
               e.stopPropagation();
               onOpenEditor();
             }}
-            icon={
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
-                <path d="M9.5 3.5l3 3" />
-              </svg>
-            }
+            icon={<Pencil size={13} strokeWidth={2.25} />}
           />
         </div>
       )}
@@ -647,20 +580,7 @@ export function WorktreePaletteApp() {
 
       <div className="bd-wt-toolbar">
         <div className="bd-wt-search-wrap">
-          <svg
-            className="bd-wt-search-icon"
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            aria-hidden
-          >
-            <circle cx="7" cy="7" r="4.5" />
-            <path d="m10.5 10.5 3 3" />
-          </svg>
+          <Search className="bd-wt-search-icon" size={13} strokeWidth={2.4} aria-hidden />
           <input
             ref={searchRef}
             className="bd-input bd-wt-search"
@@ -693,18 +613,7 @@ export function WorktreePaletteApp() {
             aria-pressed={favoritesOnly}
             onClick={handleToggleFavoritesOnly}
             icon={
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill={favoritesOnly ? 'currentColor' : 'none'}
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6 4.2 13.6l.7-4.3-3.1-3 4.3-.6z" />
-              </svg>
+              <Star size={13} strokeWidth={2.25} fill={favoritesOnly ? 'currentColor' : 'none'} />
             }
           />
           <IconButton
@@ -712,20 +621,11 @@ export function WorktreePaletteApp() {
             tooltip="Refresh"
             onClick={handleRefresh}
             icon={
-              <svg
+              <RefreshCw
                 className={refreshing ? 'animate-spin' : undefined}
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" />
-                <path d="M12.5 1v3.5H9M3.5 15v-3.5H7" />
-              </svg>
+                size={13}
+                strokeWidth={2.25}
+              />
             }
           />
         </div>

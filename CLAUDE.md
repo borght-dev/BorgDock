@@ -29,6 +29,8 @@ bun run site:build              # Astro marketing site build
 
 The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` checks every file out with CRLF line endings** — while biome (which the lefthook pre-commit runs on staged files) requires LF. The main checkout's files are LF on disk only because they predate the autocrlf setting; a new worktree is CRLF everywhere, so the very first commit touching any file fails the format check with whole-file `␍`-removal diffs. Fix: after editing in a fresh worktree, run `bunx biome check --write <files you touched>` before committing (committed blobs are LF either way — only the working-tree bytes are wrong). Don't mass-format untouched files: that surfaces unrelated pre-existing lint fixes as spurious diffs.
 
+**Duplicate React:** if a root-hoisted dep (e.g. `lucide-react`) crashes with `Cannot read properties of null (reading 'useContext')`, check `src/BorgDock.Tauri/node_modules/react` — stale pre-workspace copies there make the app and the dep load two Reacts. `bun.lock` has only the root copy; delete the member's `react`, `react-dom`, `scheduler`. Don't paper over it with Vite `dedupe` (vitest externalizes deps, so it doesn't help).
+
 Two other fresh-worktree facts: run `bun install` at the worktree root before anything else (node_modules is per-worktree), and Playwright e2e (`bun run test:e2e`) reuses any server already listening on :1420 (`reuseExistingServer`) — if the main checkout's dev server is running, e2e silently tests the *main checkout's* code, not the worktree's. Stop it first or the results are meaningless.
 
 ## React Compiler escape hatch
@@ -156,6 +158,15 @@ Or run cargo from cmd.exe / PowerShell where MSYS isn't involved.
 T3 Code (`%LOCALAPPDATA%\Programs\t3-code-desktop\T3 Code (Alpha).exe`) ignores command-line arguments (its `second-instance` handler only looks for OAuth callback URLs) and registers no `open thread` deep link. Launching the exe merely focuses the running instance. The only way to open a project or thread programmatically is the paired HTTP API in `src-tauri/src/t3.rs`: `POST {origin}/api/orchestration/dispatch` with `project.create` / `thread.create` / `thread.meta.update` (the last one carries `linkedPullRequest`). The origin comes from `~/.t3/userdata/server-runtime.json`; the read-only projection DB is `~/.t3/userdata/state.sqlite` (`projection_projects`, `projection_threads`). T3 stores one project per worktree path, so look projects up by `workspace_root`.
 
 Because of this, T3 is **not** an agent provider for Fix / Resolve / Monitor (those spawn a terminal with a prompt file). The PR action is "Open a new thread in T3" (`src/services/t3-thread.ts`): find the worktree that has the PR branch, otherwise show the `CheckoutPanel` picker via `T3CheckoutDialog`, then create an empty PR-linked thread on that worktree and bring T3 to the front. Unpaired T3 only gets activated; pairing lives in Settings → Agents.
+
+## Diagnosing a hung / frozen BorgDock (AppHang)
+
+Symptom pattern seen on 2026-09-08 (2.2.0): `%APPDATA%\BorgDock\logs\borgdock.log` shows webview lines (poll cycles every ~65 s) stop dead while Rust-side `worktree cache refreshed` lines keep coming every 5 min, then Windows reports `AppHangTransient` for `borgdock.exe` in the Application event log (Event 1001). That split means the main GUI thread / IPC is blocked while the tokio runtime is alive. Things to know before chasing it:
+
+- **Log timestamps are UTC**; WER / event-log / file mtimes are local time. Convert before correlating.
+- `borgdock-panic.log` only covers panics, never hangs. WER keeps no dump for transient hangs, and `[profile.release] strip = true` means a post-hoc dump would show borgdock frames as module+offset only.
+- **To catch the next one**, run `pwsh -File src/BorgDock.Tauri/scripts/diag/hang-watchdog.ps1` and leave it open. It triggers on `Process.Responding = false` or on `borgdock.log` going stale, attaches `cdb` non-invasively, and writes `logs\hang-<stamp>.txt` (all thread stacks, OS/WebView2 frames symbolized) plus a full minidump. Read thread 0 (main) first: a wait inside `EmbeddedBrowserWebView.dll` means WebView2, a wait under a `borgdock` frame means a Rust-side Mutex/oneshot deadlock (see "Tauri sync commands and main-thread operations").
+- For symbolized borgdock frames, build a local release with `strip = false` and `debug = 1` temporarily (don't commit) and run that instead of the installed exe.
 
 ## Check for existing patterns before implementing
 

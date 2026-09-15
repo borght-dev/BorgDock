@@ -1,6 +1,14 @@
+import { Terminal } from 'lucide-react';
 import { useState } from 'react';
-import { Card, Button, Pill } from '@/components/shared/primitives';
-import { Field, SectionHeader, Select, ToggleRow } from '@/components/shared/primitives';
+import {
+  Button,
+  Card,
+  Field,
+  Pill,
+  SectionHeader,
+  Select,
+  ToggleRow,
+} from '@/components/shared/primitives';
 import type { SqlSettings } from '@/types/settings';
 import { ConnectionEditorDialog } from './ConnectionEditorDialog';
 
@@ -42,19 +50,7 @@ export function SqlSection({ sql, onChange }: Props) {
                 aria-hidden
                 className="grid h-[22px] w-[22px] place-items-center rounded-md bg-[var(--color-accent-subtle)] text-[var(--color-accent)]"
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m4 17 6-6-6-6" />
-                  <path d="M12 19h8" />
-                </svg>
+                <Terminal size={12} strokeWidth={1.5} />
               </span>
               <div className="min-w-0">
                 <div className="text-xs font-semibold text-[var(--color-text-primary)] truncate">

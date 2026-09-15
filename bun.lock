@@ -26,7 +26,7 @@
     },
     "src/BorgDock.Tauri": {
       "name": "borgdock-app",
-      "version": "1.2.0",
+      "version": "2.2.0",
       "dependencies": {
         "@codemirror/autocomplete": "^6.20.2",
         "@codemirror/commands": "^6.10.3",
@@ -52,6 +52,7 @@
         "codemirror": "^6.0.2",
         "dompurify": "^3.4.2",
         "focus-trap-react": "^12.0.1",
+        "lucide-react": "^1.46.0",
         "react": "^19.2.6",
         "react-dom": "^19.2.6",
         "react-markdown": "^10.1.0",
@@ -1515,6 +1516,8 @@
     "loupe": ["loupe@3.2.1", "", {}, "sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ=="],
 
     "lru-cache": ["lru-cache@11.3.6", "", {}, "sha512-Gf/KoL3C/MlI7Bt0PGI9I+TeTC/I6r/csU58N4BSNc4lppLBeKsOdFYkK+dX0ABDUMJNfCHTyPpzwwO21Awd3A=="],
+
+    "lucide-react": ["lucide-react@1.46.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-Bv+FZXgZPrxc/NCl1e7JJVQFLdiCxYgxNVhqoV7X0p6I8ADJo8DxBnK1auH0fZz4AmqOJ3jgneL4f1i8LJQRAA=="],
 
     "lz-string": ["lz-string@1.5.0", "", { "bin": { "lz-string": "bin/bin.js" } }, "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ=="],
 

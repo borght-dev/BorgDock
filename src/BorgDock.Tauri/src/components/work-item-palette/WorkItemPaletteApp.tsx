@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { Dot, Kbd } from '@/components/shared/primitives';
@@ -371,22 +372,16 @@ export function WorkItemPaletteApp() {
                     textAlign: 'left',
                   }}
                 >
-                  <svg
-                    width={9}
-                    height={9}
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
+                  <ChevronDown
+                    size={9}
+                    strokeWidth={3}
                     style={{
                       color: 'var(--color-text-faint)',
                       transform: isCollapsed ? 'rotate(-90deg)' : 'none',
                       transition: 'transform 100ms ease',
                       flexShrink: 0,
                     }}
-                  >
-                    <path d="M3 6l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  />
                   <span
                     style={{
                       fontSize: 10,

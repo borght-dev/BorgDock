@@ -1,6 +1,7 @@
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import FocusTrap from 'focus-trap-react';
+import { X } from 'lucide-react';
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
 import { Markdown } from '@/components/shared/Markdown';
@@ -61,7 +62,7 @@ export function QuickReviewOverlay() {
             </span>
             <span className="qr-spacer" />
             <IconButton
-              icon={<span aria-hidden="true">×</span>}
+              icon={<X size={12} strokeWidth={2.25} aria-hidden="true" />}
               tooltip="Close"
               disabled={state === 'submitting'}
               onClick={endSession}

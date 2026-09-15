@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, ExternalLink } from 'lucide-react';
 import {
   forwardRef,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -158,7 +159,13 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
         {/* Sticky file header */}
         <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)] bg-[var(--color-diff-file-header-bg)] backdrop-blur-[8px]">
           <IconButton
-            icon={collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
+            icon={
+              collapsed ? (
+                <ChevronRight size={12} strokeWidth={3} aria-hidden="true" />
+              ) : (
+                <ChevronDown size={12} strokeWidth={3} aria-hidden="true" />
+              )
+            }
             tooltip={collapsed ? 'Expand' : 'Collapse'}
             aria-label={collapsed ? 'Expand' : 'Collapse'}
             size={22}
@@ -192,7 +199,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
           </div>
 
           <IconButton
-            icon={<ArrowUpIcon />}
+            icon={<ArrowUp size={12} strokeWidth={2.25} aria-hidden="true" />}
             tooltip="Previous hunk (p)"
             aria-label="Previous hunk"
             size={22}
@@ -200,7 +207,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
             data-action="prev-hunk"
           />
           <IconButton
-            icon={<ArrowDownIcon />}
+            icon={<ArrowDown size={12} strokeWidth={2.25} aria-hidden="true" />}
             tooltip="Next hunk (n)"
             aria-label="Next hunk"
             size={22}
@@ -209,7 +216,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
           />
 
           <IconButton
-            icon={<CopyIcon />}
+            icon={<Copy size={12} strokeWidth={2.25} aria-hidden="true" />}
             tooltip="Copy file path"
             aria-label="Copy file path"
             size={22}
@@ -218,7 +225,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
 
           {onOpenInGitHub && (
             <IconButton
-              icon={<ExternalLinkIcon />}
+              icon={<ExternalLink size={12} strokeWidth={2.25} aria-hidden="true" />}
               tooltip="Open in GitHub"
               aria-label="Open in GitHub"
               size={22}
@@ -277,111 +284,3 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
     );
   },
 );
-
-// --- Inline icon glyphs --------------------------------------------------
-
-function ChevronRightIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M6 4l4 4-4 4" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M4 6l4 4 4-4" />
-    </svg>
-  );
-}
-
-function ArrowUpIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M8 12V4" />
-      <path d="M4 8l4-4 4 4" />
-    </svg>
-  );
-}
-
-function ArrowDownIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M8 4v8" />
-      <path d="M4 8l4 4 4-4" />
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      aria-hidden="true"
-    >
-      <rect x="5" y="5" width="8" height="8" rx="1" />
-      <path d="M3 11V3h8" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M9 2h5v5" />
-      <path d="m14 2-7 7" />
-      <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-    </svg>
-  );
-}

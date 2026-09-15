@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { T3SessionStrip } from '@/components/pr/T3SessionStrip';
@@ -153,17 +154,11 @@ export function OverviewTab({ pr }: OverviewTabProps) {
                 className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]"
               >
                 AI Summary
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  {summaryExpanded ? <path d="m4 10 4-4 4 4" /> : <path d="m4 6 4 4 4-4" />}
-                </svg>
+                {summaryExpanded ? (
+                  <ChevronUp size={10} strokeWidth={3} />
+                ) : (
+                  <ChevronDown size={10} strokeWidth={3} />
+                )}
               </button>
               {summaryExpanded && (
                 <div className="mt-2 border-t border-[var(--color-separator)] pt-2">

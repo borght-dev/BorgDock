@@ -1,5 +1,6 @@
-import type { DiffViewMode, FileStatusFilter, PullRequestCommit } from '@/types';
+import { ChevronsDownUp, ChevronsUpDown, ListTree } from 'lucide-react';
 import { Button, Chip, IconButton } from '@/components/shared/primitives';
+import type { DiffViewMode, FileStatusFilter, PullRequestCommit } from '@/types';
 
 interface DiffToolbarProps {
   viewMode: DiffViewMode;
@@ -20,59 +21,6 @@ interface DiffToolbarProps {
 }
 
 const STATUS_FILTERS = ['all', 'added', 'modified', 'deleted'] as const;
-
-function TreeIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M2 3h12M2 8h8M2 13h10" />
-    </svg>
-  );
-}
-
-function ExpandIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M4 4l4 4 4-4" />
-      <path d="M4 8l4 4 4-4" />
-    </svg>
-  );
-}
-
-function CollapseIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M4 6l4-4 4 4" />
-      <path d="M4 10l4 4 4-4" />
-    </svg>
-  );
-}
 
 export function DiffToolbar({
   viewMode,
@@ -114,7 +62,7 @@ export function DiffToolbar({
       </div>
 
       <IconButton
-        icon={<TreeIcon />}
+        icon={<ListTree size={12} strokeWidth={2.25} aria-hidden="true" />}
         active={showFileTree}
         tooltip={showFileTree ? 'Hide file tree' : 'Show file tree'}
         size={22}
@@ -123,7 +71,13 @@ export function DiffToolbar({
       />
 
       <IconButton
-        icon={allExpanded ? <CollapseIcon /> : <ExpandIcon />}
+        icon={
+          allExpanded ? (
+            <ChevronsDownUp size={12} strokeWidth={2.25} aria-hidden="true" />
+          ) : (
+            <ChevronsUpDown size={12} strokeWidth={2.25} aria-hidden="true" />
+          )
+        }
         active={allExpanded}
         tooltip={allExpanded ? 'Collapse all' : 'Expand all'}
         size={22}
@@ -169,7 +123,12 @@ export function DiffToolbar({
       {onSubmitReview && (
         <>
           <span className="mx-1 inline-block h-[18px] w-px bg-[var(--color-subtle-border)]" />
-          <Button variant="primary" size="sm" onClick={onSubmitReview} data-files-action="submit-review">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onSubmitReview}
+            data-files-action="submit-review"
+          >
             Submit review
           </Button>
         </>

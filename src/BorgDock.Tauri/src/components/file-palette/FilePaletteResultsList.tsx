@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { Check, Clipboard } from 'lucide-react';
 import { useState } from 'react';
 import type { SearchMode } from './parse-query';
 
@@ -88,48 +89,15 @@ export function FilePaletteResultsList({
                 window.setTimeout(() => setCopiedIndex((cur) => (cur === i ? null : cur)), 1200);
               }}
             >
-              {copied ? <CheckIcon /> : <ClipboardIcon />}
+              {copied ? (
+                <Check size={13} strokeWidth={2.85} aria-hidden />
+              ) : (
+                <Clipboard size={13} strokeWidth={2.1} aria-hidden />
+              )}
             </button>
           </div>
         );
       })}
     </div>
-  );
-}
-
-function ClipboardIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="3" y="3.2" width="10" height="11" rx="1.5" />
-      <rect x="5.4" y="1.8" width="5.2" height="2.6" rx="0.8" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="m3.5 8.5 3 3 6-6.5" />
-    </svg>
   );
 }

@@ -1,9 +1,9 @@
-import clsx from 'clsx';
 import { invoke } from '@tauri-apps/api/core';
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
-import { RefreshIcon } from '@/components/shared/icons';
-import { Pill, Tabs, TitleBar, WindowControls } from '@/components/shared/primitives';
+import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
 import type { TabDef } from '@/components/shared/primitives';
+import { Pill, Tabs, TitleBar, WindowControls } from '@/components/shared/primitives';
 import { useStatusBar } from '@/hooks/useStatusBar';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
@@ -116,17 +116,7 @@ export function MainWindow({ children }: MainWindowProps) {
               onClick={openSettings}
               data-tauri-drag-region="false"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              >
-                <circle cx="8" cy="8" r="2.5" />
-                <path d="M13.5 8a5.5 5.5 0 0 0-.1-1.1l1.5-1.2-1-1.7-1.8.5a5.5 5.5 0 0 0-1-.6L10.7 2H8.7l-.4 1.9a5.5 5.5 0 0 0-1 .6l-1.8-.5-1 1.7 1.5 1.2a5.5 5.5 0 0 0 0 2.2l-1.5 1.2 1 1.7 1.8-.5a5.5 5.5 0 0 0 1 .6L9.3 14h2l.4-1.9a5.5 5.5 0 0 0 1-.6l1.8.5 1-1.7-1.5-1.2a5.5 5.5 0 0 0 .1-1.1z" />
-              </svg>
+              <SettingsIcon />
             </button>
             <WindowControls />
           </span>

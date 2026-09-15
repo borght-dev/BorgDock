@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import type { ReviewerLoad } from '@/services/team-review-load';
 import { usePrStore } from '@/stores/pr-store';
@@ -28,9 +29,7 @@ function ReviewerRow({ reviewer }: { reviewer: ReviewerLoad }) {
       }}
       title={`${reviewer.login}: ${reviewer.pendingReviewCount} pending review${reviewer.pendingReviewCount !== 1 ? 's' : ''}${reviewer.stalePrCount > 0 ? `, ${reviewer.stalePrCount} stale` : ''}`}
     >
-      <span
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-white bg-[#534AB7]"
-      >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-white bg-[#534AB7]">
         {avatarInitials(reviewer.login)}
       </span>
       <span className="min-w-0 flex-1">
@@ -75,25 +74,16 @@ export function TeamReviewLoad() {
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="flex w-full items-center gap-2 px-3 pt-2 pb-1"
       >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
+        <ChevronRight
+          size={10}
+          strokeWidth={3}
           className={`shrink-0 text-[var(--color-text-ghost)] transition-transform duration-200 ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}
-        >
-          <path d="m6 4 4 4-4 4" />
-        </svg>
+        />
         <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
           Review Load
         </span>
         <span className="h-px flex-1 bg-[var(--color-separator)]" />
-        <span
-          className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]"
-        >
+        <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]">
           {reviewers.length}
         </span>
       </button>

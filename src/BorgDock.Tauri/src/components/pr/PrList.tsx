@@ -1,4 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { GitPullRequest } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Card } from '@/components/shared/primitives';
@@ -98,20 +99,12 @@ export function PrList() {
       <>
         <PrToolbar counts={prFilterCounts} />
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="var(--color-text-ghost)"
-            strokeWidth="1"
-            strokeLinecap="round"
+          <GitPullRequest
+            size={32}
+            color="var(--color-text-ghost)"
+            strokeWidth={1.5}
             className="mb-3"
-          >
-            <path d="M6 3H3v10h10V6" />
-            <path d="M10 2v4h4" />
-            <path d="m10 2 4 4" />
-          </svg>
+          />
           <p className="text-xs text-[var(--color-text-muted)]">No pull requests found</p>
         </div>
       </>
@@ -173,12 +166,12 @@ export function PrList() {
               const tier = requestedAt ? getReviewSlaTier(requestedAt) : 'fresh';
               const waitTime = requestedAt ? formatReviewWaitTime(requestedAt) : '<1h';
               return (
-                <div key={`review-${pr.pullRequest.number}`} className="relative">
-                  <div className="absolute right-3 top-3 z-10">
-                    <ReviewSlaIndicator tier={tier} waitTime={waitTime} />
-                  </div>
-                  <PrCardContainer prWithChecks={pr} density={density} />
-                </div>
+                <PrCardContainer
+                  key={`review-${pr.pullRequest.number}`}
+                  prWithChecks={pr}
+                  density={density}
+                  badge={<ReviewSlaIndicator tier={tier} waitTime={waitTime} />}
+                />
               );
             })}
           </div>

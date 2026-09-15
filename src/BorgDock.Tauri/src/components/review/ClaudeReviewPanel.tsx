@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Pill } from '@/components/shared/primitives';
 import type { ClaudeReviewComment, CommentSeverity } from '@/types';
@@ -70,22 +71,14 @@ export function ClaudeReviewPanel({ comments }: ClaudeReviewPanelProps) {
               data-review-group={group.key}
               className="w-full justify-start"
               leading={
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                <ChevronRight
+                  size={10}
+                  strokeWidth={3}
                   className={clsx(
                     'shrink-0 transition-transform duration-200',
                     isCollapsed ? 'rotate-0' : 'rotate-90',
                   )}
-                >
-                  <path d="m6 4 4 4-4 4" />
-                </svg>
+                />
               }
             >
               {/* style: severity-group dot color — group.color is a severity-driven hex string computed per group */}

@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { IconButton } from '@/components/shared/primitives';
@@ -13,12 +14,6 @@ import { PR_REFRESHED_EVENT, type PrRefreshedDetail } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, CheckRun, PullRequestWithChecks } from '@/types';
 import { PrDetailPanel } from './PRDetailPanel';
-
-const XIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-    <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-  </svg>
-);
 
 export function PrDetailApp() {
   const [pr, setPr] = useState<PullRequestWithChecks | null>(null);
@@ -209,7 +204,7 @@ export function PrDetailApp() {
         {number ? `PR #${number}` : 'Pull Request'}
       </span>
       <IconButton
-        icon={<XIcon />}
+        icon={<X size={10} strokeWidth={2.9} aria-hidden="true" />}
         tooltip="Close"
         size={22}
         aria-label="Close"

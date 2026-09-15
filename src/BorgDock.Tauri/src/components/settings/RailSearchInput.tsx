@@ -1,7 +1,11 @@
-import { Kbd } from '@/components/shared/primitives';
+import { Search } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { Kbd } from '@/components/shared/primitives';
 
-interface Props { value: string; onChange: (s: string) => void }
+interface Props {
+  value: string;
+  onChange: (s: string) => void;
+}
 
 export function RailSearchInput({ value, onChange }: Props) {
   const ref = useRef<HTMLInputElement>(null);
@@ -20,9 +24,7 @@ export function RailSearchInput({ value, onChange }: Props) {
   }, [onChange]);
   return (
     <div className="flex h-7 items-center gap-2 rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-2.5">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-muted)]">
-        <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-      </svg>
+      <Search size={12} strokeWidth={1.5} className="text-[var(--color-text-muted)]" />
       <input
         ref={ref}
         value={value}

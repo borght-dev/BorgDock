@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { ArrowRight, Check, ChevronDown, File, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { Markdown } from '@/components/shared/Markdown';
 import { Avatar, Button, Card, Pill } from '@/components/shared/primitives';
@@ -40,87 +41,6 @@ function fileShort(path: string): string {
   const idx = path.lastIndexOf('/');
   return idx === -1 ? path : path.slice(idx + 1);
 }
-
-const FileIcon = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6L9 2z" />
-    <path d="M9 2v4h4" />
-  </svg>
-);
-
-const Check = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="m4 8 3 3 5-6" />
-  </svg>
-);
-
-const ChevronDown = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    aria-hidden="true"
-  >
-    <path d="m4 6 4 4 4-4" />
-  </svg>
-);
-
-const ArrowRight = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 8h10" />
-    <path d="m9 4 4 4-4 4" />
-  </svg>
-);
-
-const Speech = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 4h10v6H7l-3 3v-3H3z" />
-  </svg>
-);
 
 function SnippetLine({ line }: { line: ReviewThreadSnippetLine }) {
   const bg = line.isAnchor
@@ -195,7 +115,7 @@ export function CodeThreadCard({
         className="bd-card flex cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-[var(--color-text-tertiary)] !border-dashed"
       >
         <span className="text-[var(--color-status-green)] inline-flex">
-          <Check />
+          <Check size={11} strokeWidth={3} aria-hidden="true" />
         </span>
         <span className="text-[11.5px] font-medium">Resolved</span>
         <span
@@ -212,7 +132,7 @@ export function CodeThreadCard({
         <span className="text-[11px] text-[var(--color-text-muted)]">
           {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
         </span>
-        <ChevronDown />
+        <ChevronDown size={11} strokeWidth={2.4} aria-hidden="true" />
       </button>
     );
   }
@@ -227,7 +147,7 @@ export function CodeThreadCard({
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[var(--color-subtle-border)] bg-[var(--color-surface-hover)] px-3 py-2">
         <span className="text-[var(--color-accent)] inline-flex">
-          <FileIcon />
+          <File size={11} strokeWidth={2.25} aria-hidden="true" />
         </span>
         <button
           type="button"
@@ -242,7 +162,7 @@ export function CodeThreadCard({
           <span className="opacity-60">:{thread.line}</span>
         </button>
         {thread.isResolved && (
-          <Pill tone="success" icon={<Check />}>
+          <Pill tone="success" icon={<Check size={11} strokeWidth={3} aria-hidden="true" />}>
             resolved
           </Pill>
         )}
@@ -253,7 +173,7 @@ export function CodeThreadCard({
         <Button
           variant="ghost"
           size="sm"
-          leading={<ArrowRight />}
+          leading={<ArrowRight size={11} strokeWidth={2.4} aria-hidden="true" />}
           onClick={() =>
             onJumpToFile({ filePath: thread.filePath, line: thread.line, threadId: thread.id })
           }
@@ -329,7 +249,7 @@ export function CodeThreadCard({
             <Button
               variant="ghost"
               size="sm"
-              leading={<Speech />}
+              leading={<MessageSquare size={11} strokeWidth={2.25} aria-hidden="true" />}
               onClick={() => setReplying(true)}
               data-thread-action="reply"
             >
@@ -339,7 +259,7 @@ export function CodeThreadCard({
               <Button
                 variant="ghost"
                 size="sm"
-                leading={<Check />}
+                leading={<Check size={11} strokeWidth={3} aria-hidden="true" />}
                 onClick={() => onResolve(thread.id)}
                 data-thread-action="resolve"
               >

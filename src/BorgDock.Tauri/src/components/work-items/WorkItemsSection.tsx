@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { FileText, ListFilter } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, HoverPopover } from '@/components/shared/primitives';
+import { QueriesRail, type QueryRowData } from '@/components/work-items/QueriesRail';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
-import { QueriesRail, type QueryRowData } from '@/components/work-items/QueriesRail';
 import { WorkItemDetailPanel } from '@/components/work-items/WorkItemDetailPanel';
 import { parseLinkedPRs } from '@/components/work-items/WorkItemDetailPanel/parseLinkedPRs';
 import { useAdjacentNav } from '@/components/work-items/WorkItemDetailPanel/useAdjacentNav';
@@ -279,29 +280,24 @@ export function WorkItemsSection() {
   }, []);
 
   // Not configured state — spans all 3 panes (rendered above the grid).
-  const hasCredentials =
-    adoSettings.authMethod === 'azCli' || !!adoSettings.personalAccessToken;
+  const hasCredentials = adoSettings.authMethod === 'azCli' || !!adoSettings.personalAccessToken;
   if (!adoSettings.organization || !hasCredentials) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
         <Card padding="lg" className="text-center">
-          <svg
+          <FileText
             className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-          >
-            <rect x="2" y="3" width="12" height="10" rx="1.5" />
-            <path d="M5 6h6M5 9h4" />
-          </svg>
+            strokeWidth={1.5}
+          />
           <p className="mb-3 text-[13px] text-[var(--color-text-muted)]">
             Configure Azure DevOps in Settings to see work items
           </p>
           <Button
             variant="primary"
             size="sm"
-            onClick={() => void invoke('open_settings_window', { section: 'ado' }).catch(console.error)}
+            onClick={() =>
+              void invoke('open_settings_window', { section: 'ado' }).catch(console.error)
+            }
           >
             Open Settings
           </Button>
@@ -378,16 +374,7 @@ export function WorkItemsSection() {
             }
           >
             <button type="button" className="bd-icon-btn" aria-label="Filter">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              >
-                <path d="M2 4h12M4 8h8M6 12h4" />
-              </svg>
+              <ListFilter size={13} strokeWidth={2.1} />
             </button>
           </HoverPopover>
         </div>
@@ -407,9 +394,7 @@ export function WorkItemsSection() {
               />
             ))}
           {!isLoading && rowItems.length === 0 && selectedQueryId && (
-            <div className="bd-empty">
-              No items in {selectedQueryName ?? 'this query'}
-            </div>
+            <div className="bd-empty">No items in {selectedQueryName ?? 'this query'}</div>
           )}
           {!isLoading && !selectedQueryId && (
             <div className="bd-empty">Pick a query from the rail</div>

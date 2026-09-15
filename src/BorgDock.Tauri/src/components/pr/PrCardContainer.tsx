@@ -22,6 +22,8 @@ interface PrCardContainerProps {
   focusMode?: boolean;
   priorityFactors?: PriorityFactor[];
   density?: PrCardDensity;
+  /** Extra badge rendered beside the review pill (e.g. review SLA wait time). */
+  badge?: React.ReactNode;
 }
 
 function mapToPrCardData(
@@ -102,6 +104,7 @@ export const PrCardContainer = memo(function PrCardContainer({
   focusMode,
   priorityFactors,
   density = 'normal',
+  badge,
 }: PrCardContainerProps) {
   const { pullRequest: pr } = prWithChecks;
   const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
@@ -154,6 +157,7 @@ export const PrCardContainer = memo(function PrCardContainer({
           density={density}
           pr={cardData}
           score={mergeScore}
+          badge={badge}
           onClick={handleCardClick}
           onContextMenu={actions.handleContextMenu}
           active={isFocused}

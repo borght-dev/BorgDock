@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Chip, Kbd } from '@/components/shared/primitives';
 import { type PrFilter, usePrStore } from '@/stores/pr-store';
@@ -131,7 +132,12 @@ export function PrToolbar({ counts }: Props) {
         </select>
       </label>
       <div className="bd-pr-toolbar__search">
-        <SearchIcon />
+        <Search
+          size={13}
+          strokeWidth={2.25}
+          aria-hidden="true"
+          className="bd-pr-toolbar__search-icon"
+        />
         <input
           aria-label="Filter pull requests"
           type="text"
@@ -142,25 +148,5 @@ export function PrToolbar({ counts }: Props) {
         <Kbd>⌘K</Kbd>
       </div>
     </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="bd-pr-toolbar__search-icon"
-    >
-      <circle cx="7" cy="7" r="5" />
-      <path d="m11 11 3.5 3.5" />
-    </svg>
   );
 }

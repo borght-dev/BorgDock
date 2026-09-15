@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
+import { X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Card, IconButton, LinearProgress, Pill } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
@@ -213,130 +214,120 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
           onClick={(e) => e.stopPropagation()}
         >
           <Card variant="default" padding="sm" className="flex h-full flex-col p-0">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-5 py-3.5">
-            <h2
-              id="prune-dialog-title"
-              className="text-sm font-semibold text-[var(--color-text-primary)]"
-            >
-              Prune Worktrees
-            </h2>
-            <IconButton
-              size={22}
-              onClick={onClose}
-              aria-label="Close"
-              icon={
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                >
-                  <path d="M4 4l8 8M12 4l-8 8" />
-                </svg>
-              }
-            />
-          </div>
-
-          {/* Toolbar */}
-          <div className="flex items-center gap-2 border-b border-[var(--color-separator)] px-5 py-2.5">
-            <Button variant="secondary" size="sm" onClick={selectAllOrphaned}>
-              Select all orphaned
-            </Button>
-            <Button variant="ghost" size="sm" onClick={deselectAll}>
-              Deselect all
-            </Button>
-            <span className="ml-auto text-[11px] text-[var(--color-text-muted)]">
-              {rows.length} worktree{rows.length !== 1 ? 's' : ''} found
-            </span>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto px-5 py-3">
-            {isLoading && (
-              <div className="flex items-center justify-center py-10">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
-              </div>
-            )}
-
-            {!isLoading && rows.length === 0 && (
-              <div className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">
-                No worktrees found. Configure worktree base paths in Settings &rarr; Repos.
-              </div>
-            )}
-
-            {!isLoading && rows.length > 0 && (
-              <div className="space-y-1.5">
-                {rows.map((row, index) => (
-                  <label
-                    key={row.worktree.path}
-                    className={clsx(
-                      'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
-                      row.isSelected
-                        ? 'bg-[var(--color-selected-row-bg)]'
-                        : 'hover:bg-[var(--color-surface-hover)]',
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={row.isSelected}
-                      onChange={() => toggleRow(index)}
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[var(--color-accent)]"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[12px] font-medium text-[var(--color-text-primary)]">
-                          {row.worktree.branchName.replace(/^refs\/heads\//, '')}
-                        </span>
-                        <Pill tone={pillTone(row.status)}>{statusLabel(row.status)}</Pill>
-                      </div>
-                      <div
-                        className="mt-0.5 text-[11px] text-[var(--color-text-muted)]"
-                        title={row.worktree.path}
-                      >
-                        {truncatePath(row.worktree.path)}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="border-t border-[var(--color-separator)] px-5 py-3.5">
-            {error && <p className="mb-2 text-[11px] text-[var(--color-status-red)]">{error}</p>}
-
-            {isRemoving && (
-              <div className="mb-2.5">
-                <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
-                  <span>Removing worktrees...</span>
-                  <span>
-                    {removeProgress}/{removeTotal}
-                  </span>
-                </div>
-                <LinearProgress
-                  value={removeTotal > 0 ? (removeProgress / removeTotal) * 100 : 0}
-                  tone="accent"
-                />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={selectedCount === 0 || isRemoving}
-                onClick={removeSelected}
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-5 py-3.5">
+              <h2
+                id="prune-dialog-title"
+                className="text-sm font-semibold text-[var(--color-text-primary)]"
               >
-                Remove selected ({selectedCount})
-              </Button>
+                Prune Worktrees
+              </h2>
+              <IconButton
+                size={22}
+                onClick={onClose}
+                aria-label="Close"
+                icon={<X className="h-4 w-4" strokeWidth={2.25} />}
+              />
             </div>
-          </div>
+
+            {/* Toolbar */}
+            <div className="flex items-center gap-2 border-b border-[var(--color-separator)] px-5 py-2.5">
+              <Button variant="secondary" size="sm" onClick={selectAllOrphaned}>
+                Select all orphaned
+              </Button>
+              <Button variant="ghost" size="sm" onClick={deselectAll}>
+                Deselect all
+              </Button>
+              <span className="ml-auto text-[11px] text-[var(--color-text-muted)]">
+                {rows.length} worktree{rows.length !== 1 ? 's' : ''} found
+              </span>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-5 py-3">
+              {isLoading && (
+                <div className="flex items-center justify-center py-10">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+                </div>
+              )}
+
+              {!isLoading && rows.length === 0 && (
+                <div className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">
+                  No worktrees found. Configure worktree base paths in Settings &rarr; Repos.
+                </div>
+              )}
+
+              {!isLoading && rows.length > 0 && (
+                <div className="space-y-1.5">
+                  {rows.map((row, index) => (
+                    <label
+                      key={row.worktree.path}
+                      className={clsx(
+                        'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
+                        row.isSelected
+                          ? 'bg-[var(--color-selected-row-bg)]'
+                          : 'hover:bg-[var(--color-surface-hover)]',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={row.isSelected}
+                        onChange={() => toggleRow(index)}
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[var(--color-accent)]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[12px] font-medium text-[var(--color-text-primary)]">
+                            {row.worktree.branchName.replace(/^refs\/heads\//, '')}
+                          </span>
+                          <Pill tone={pillTone(row.status)}>{statusLabel(row.status)}</Pill>
+                        </div>
+                        <div
+                          className="mt-0.5 text-[11px] text-[var(--color-text-muted)]"
+                          title={row.worktree.path}
+                        >
+                          {truncatePath(row.worktree.path)}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-[var(--color-separator)] px-5 py-3.5">
+              {error && <p className="mb-2 text-[11px] text-[var(--color-status-red)]">{error}</p>}
+
+              {isRemoving && (
+                <div className="mb-2.5">
+                  <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                    <span>Removing worktrees...</span>
+                    <span>
+                      {removeProgress}/{removeTotal}
+                    </span>
+                  </div>
+                  <LinearProgress
+                    value={removeTotal > 0 ? (removeProgress / removeTotal) * 100 : 0}
+                    tone="accent"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  Close
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={selectedCount === 0 || isRemoving}
+                  onClick={removeSelected}
+                >
+                  Remove selected ({selectedCount})
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
       </div>

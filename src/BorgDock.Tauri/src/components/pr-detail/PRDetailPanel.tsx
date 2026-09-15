@@ -1,4 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ArrowRight, ExternalLink, GitBranch, LoaderCircle, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { QuickReviewOverlay } from '@/components/focus/QuickReviewOverlay';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -25,56 +26,6 @@ import { usePrActions } from './usePrActions';
 
 const log = createLogger('PrDetailPanel');
 
-const XIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    aria-hidden="true"
-  >
-    <path d="m4 4 8 8M12 4 4 12" />
-  </svg>
-);
-
-const ExternalIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 2h5v5" />
-    <path d="m14 2-7 7" />
-    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-  </svg>
-);
-
-const PopOutIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    aria-hidden="true"
-  >
-    <path d="M9 2h5v5" />
-    <path d="m14 2-7 7" />
-    <path d="M4 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1" />
-  </svg>
-);
-
 const BorgDockLogo = () => (
   <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <defs>
@@ -92,57 +43,6 @@ const BorgDockLogo = () => (
       strokeLinejoin="round"
     />
     <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
-  </svg>
-);
-
-const BranchIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="4" cy="3.5" r="1.5" />
-    <circle cx="4" cy="12.5" r="1.5" />
-    <circle cx="12" cy="6.5" r="1.5" />
-    <path d="M4 5v6" />
-    <path d="M12 8c0 2-2 3-4 3s-4-.5-4-2" />
-  </svg>
-);
-
-const ArrowRightIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 8h10" />
-    <path d="m9 4 4 4-4 4" />
-  </svg>
-);
-
-const HeaderSpinnerIcon = () => (
-  <svg
-    width="10"
-    height="10"
-    viewBox="0 0 16 16"
-    fill="none"
-    className="animate-spin"
-    aria-hidden="true"
-  >
-    <circle cx="8" cy="8" r="6" stroke="currentColor" opacity="0.3" strokeWidth="1.6" />
-    <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 
@@ -292,7 +192,10 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
       id: 'Checks',
       label: 'Checks',
       count: `${pr.passedCount}/${totalChecks}`,
-      indicator: pr.pendingCheckNames.length > 0 ? <HeaderSpinnerIcon /> : undefined,
+      indicator:
+        pr.pendingCheckNames.length > 0 ? (
+          <LoaderCircle size={10} strokeWidth={2.4} className="animate-spin" aria-hidden="true" />
+        ) : undefined,
     },
     { id: 'Discussion', label: 'Discussion' },
   ];
@@ -324,7 +227,7 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
                 aria-label="Open in browser"
                 title="Open in browser"
               >
-                <ExternalIcon />
+                <ExternalLink size={13} strokeWidth={2.25} aria-hidden="true" />
               </button>
               <WindowControls
                 onMinimize={handleMinimize}
@@ -342,7 +245,7 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
         {!popOutWindow && (
           <div className="absolute right-3 top-3">
             <IconButton
-              icon={<PopOutIcon />}
+              icon={<ExternalLink size={14} strokeWidth={3} aria-hidden="true" />}
               tooltip="Open in new window"
               size={22}
               aria-label="Pop out"
@@ -368,7 +271,17 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
               {!isTerminal && p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
               {!isTerminal && totalChecks > 0 && <Pill tone="success">{passedCount} passed</Pill>}
               {!isTerminal && pr.pendingCheckNames.length > 0 && (
-                <Pill tone="warning" icon={<HeaderSpinnerIcon />}>
+                <Pill
+                  tone="warning"
+                  icon={
+                    <LoaderCircle
+                      size={10}
+                      strokeWidth={2.4}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  }
+                >
                   {pr.pendingCheckNames.length} running
                 </Pill>
               )}
@@ -395,9 +308,9 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
               </span>
               <span aria-hidden>·</span>
               <span className="inline-flex items-center gap-1">
-                <BranchIcon />
+                <GitBranch size={12} strokeWidth={2.25} aria-hidden="true" />
                 <span className="font-mono text-[11px]">{p.headRef}</span>
-                <ArrowRightIcon />
+                <ArrowRight size={12} strokeWidth={2.25} aria-hidden="true" />
                 <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
                   {p.baseRef}
                 </span>
@@ -428,7 +341,7 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
               </span>
               {!popOutWindow && (
                 <IconButton
-                  icon={<XIcon />}
+                  icon={<X size={14} strokeWidth={3} aria-hidden="true" />}
                   tooltip="Close"
                   size={22}
                   aria-label="Close"

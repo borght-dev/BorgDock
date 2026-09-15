@@ -1,10 +1,11 @@
+import { MessageSquare } from 'lucide-react';
 import {
+  avatarToneFor,
+  getInitials,
   MiniAvatar,
   PrioBars,
   StatePill,
   TypeGlyph,
-  avatarToneFor,
-  getInitials,
 } from '@/components/work-items/shared/wi-visuals';
 import type { ResultItem } from '@/hooks/useWorkItemPaletteSearch';
 
@@ -31,9 +32,7 @@ export function WorkItemPaletteRow({ item, isSelected, onMouseEnter, onSelect }:
         paddingLeft: isSelected ? 12 : 14,
         cursor: 'pointer',
         background: isSelected ? 'var(--color-selected-row-bg)' : 'transparent',
-        borderLeft: isSelected
-          ? '2px solid var(--color-accent)'
-          : '2px solid transparent',
+        borderLeft: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent',
         borderBottom: '1px solid var(--color-subtle-border)',
       }}
     >
@@ -76,9 +75,7 @@ export function WorkItemPaletteRow({ item, isSelected, onMouseEnter, onSelect }:
       >
         {item.commentCount ? (
           <>
-            <svg width={10} height={10} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3}>
-              <path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-3 3v-3H4a2 2 0 01-2-2V4z" strokeLinejoin="round" />
-            </svg>
+            <MessageSquare size={10} strokeWidth={2} />
             {item.commentCount}
           </>
         ) : null}

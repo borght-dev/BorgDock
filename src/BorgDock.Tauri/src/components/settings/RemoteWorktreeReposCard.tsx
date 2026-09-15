@@ -1,4 +1,5 @@
 import { open } from '@tauri-apps/plugin-dialog';
+import { X } from 'lucide-react';
 import { Button, Card, Field, IconButton, TextInput } from '@/components/shared/primitives';
 import type { RemoteWorktreeRepoSettings } from '@/types/settings';
 
@@ -67,20 +68,7 @@ export function RemoteWorktreeReposCard({ repos, onChange }: Props) {
               <IconButton
                 aria-label={`Remove remote repository ${repo.label || repo.name || index + 1}`}
                 size={22}
-                icon={
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                }
+                icon={<X size={13} strokeWidth={1.5} />}
                 onClick={() => onChange(repos.filter((_, itemIndex) => itemIndex !== index))}
               />
             </div>

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { CircleAlert } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { type HintId, useOnboardingStore } from '@/stores/onboarding-store';
 
@@ -39,19 +40,7 @@ export function InlineHint({ hintId, text, timeoutMs = 10000 }: InlineHintProps)
       data-onboarding-hint
       data-hint-id={hintId}
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        className="shrink-0 text-[var(--color-accent)]"
-      >
-        <circle cx="8" cy="8" r="7" />
-        <path d="M8 5v3M8 10.5v.5" />
-      </svg>
+      <CircleAlert size={12} strokeWidth={2.25} className="shrink-0 text-[var(--color-accent)]" />
       {text}
     </button>
   );

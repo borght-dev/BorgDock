@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { X } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, IconButton } from '@/components/shared/primitives';
 import type { Baseline, Mode, ViewMode } from './types';
@@ -15,23 +16,6 @@ interface Props {
   onSelectViewMode: (v: ViewMode) => void;
   inRepo: boolean;
   defaultBranchLabel: string | null;
-}
-
-function XIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <path d="m4 4 8 8M12 4l-8 8" />
-    </svg>
-  );
 }
 
 export function FileViewerToolbar({
@@ -123,15 +107,11 @@ export function FileViewerToolbar({
         >
           {copied ? 'Copied' : 'Copy all'}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => invoke('open_in_editor', { path })}
-        >
+        <Button variant="ghost" size="sm" onClick={() => invoke('open_in_editor', { path })}>
           Open in editor
         </Button>
         <IconButton
-          icon={<XIcon />}
+          icon={<X size={13} strokeWidth={2.4} aria-hidden />}
           tooltip="Close"
           aria-label="Close"
           size={22}

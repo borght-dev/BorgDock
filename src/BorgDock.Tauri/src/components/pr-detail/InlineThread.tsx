@@ -1,3 +1,4 @@
+import { Check, MessageSquare, X } from 'lucide-react';
 import { useState } from 'react';
 import { Markdown } from '@/components/shared/Markdown';
 import { Avatar, Button, Pill } from '@/components/shared/primitives';
@@ -10,53 +11,6 @@ interface InlineThreadProps {
   onUnresolve?: (threadId: string) => void;
   onReply?: (threadId: string, body: string) => void;
 }
-
-const Check = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="m4 8 3 3 5-6" />
-  </svg>
-);
-
-const Close = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    aria-hidden="true"
-  >
-    <path d="m4 4 8 8M12 4 4 12" />
-  </svg>
-);
-
-const Speech = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 4h10v6H7l-3 3v-3H3z" />
-  </svg>
-);
 
 function relative(createdAt: string): string {
   const seconds = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
@@ -98,7 +52,7 @@ export function InlineThread({
     >
       <div className="flex items-center gap-2 border-b border-[var(--color-subtle-border)] bg-[var(--color-accent-subtle)] px-3 py-1.5">
         <span className="text-[var(--color-accent)] inline-flex">
-          <Speech />
+          <MessageSquare size={11} strokeWidth={2.25} aria-hidden="true" />
         </span>
         <span className="text-[11px] font-semibold text-[var(--color-accent)]">
           Thread · {thread.comments.length} {thread.comments.length === 1 ? 'comment' : 'comments'}
@@ -108,7 +62,7 @@ export function InlineThread({
           <Button
             variant="ghost"
             size="sm"
-            leading={<Check />}
+            leading={<Check size={11} strokeWidth={3} aria-hidden="true" />}
             onClick={() => onResolve(thread.id)}
           >
             Resolve
@@ -125,7 +79,7 @@ export function InlineThread({
           onClick={onClose}
           className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
         >
-          <Close />
+          <X size={11} strokeWidth={3} aria-hidden="true" />
         </button>
       </div>
 
@@ -174,7 +128,12 @@ export function InlineThread({
 
       <div className="border-t border-[var(--color-subtle-border)] px-3 py-2">
         {!replying ? (
-          <Button variant="ghost" size="sm" leading={<Speech />} onClick={() => setReplying(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            leading={<MessageSquare size={11} strokeWidth={2.25} aria-hidden="true" />}
+            onClick={() => setReplying(true)}
+          >
             Reply
           </Button>
         ) : (

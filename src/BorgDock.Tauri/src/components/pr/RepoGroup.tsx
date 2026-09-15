@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Pill } from '@/components/shared/primitives';
 import type { PrGroup } from '@/services/pr-grouping';
@@ -47,19 +48,11 @@ export function RepoGroup({ group }: RepoGroupProps) {
           target (matches keyboard-nav expectations). The inner chevron / hr are
           decorative, not separate buttons. */}
       <button onClick={() => toggleRepoGroup(repoKey)} className="bd-repo-group__header">
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <ChevronRight
+          size={13}
+          strokeWidth={3}
           className={clsx('bd-repo-group__chevron', isExpanded ? 'rotate-90' : 'rotate-0')}
-        >
-          <path d="m6 4 4 4-4 4" />
-        </svg>
+        />
         {group.author && (
           <Avatar initials={group.author.login.slice(0, 2).toUpperCase()} size="sm" />
         )}

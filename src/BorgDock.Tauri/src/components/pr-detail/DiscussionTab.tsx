@@ -1,3 +1,4 @@
+import { CircleCheck, Eye, File, MessageSquare } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Button, Chip } from '@/components/shared/primitives';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
@@ -18,73 +19,6 @@ import { CommentItem } from './CommentItem';
 import { buildDiscussionItems, type DiscussionItem } from './discussion/buildDiscussionItems';
 import { ReviewComposer, type ReviewComposerSubmitPayload } from './ReviewComposer';
 import { ReviewItem } from './ReviewItem';
-
-const Speech = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 4h10v6H7l-3 3v-3H3z" />
-  </svg>
-);
-
-const CheckCircle = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="8" cy="8" r="6.5" />
-    <path d="m5 8.5 2 2 4-4" />
-  </svg>
-);
-
-const Eye = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M1.5 8s2.5-5 6.5-5 6.5 5 6.5 5-2.5 5-6.5 5S1.5 8 1.5 8z" />
-    <circle cx="8" cy="8" r="2" />
-  </svg>
-);
-
-const FileIcon = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6L9 2z" />
-    <path d="M9 2v4h4" />
-  </svg>
-);
 
 type Filter = 'all' | 'reviews' | 'comments' | 'code';
 
@@ -258,7 +192,7 @@ export function DiscussionTab({
         </Chip>
         <Chip active={filter === 'code'} count={counts.code} onClick={() => setFilter('code')}>
           <span className="inline-flex items-center gap-1.5">
-            <FileIcon />
+            <File size={11} strokeWidth={2.25} aria-hidden="true" />
             On code
           </span>
         </Chip>
@@ -271,7 +205,11 @@ export function DiscussionTab({
             className="bd-pill bd-pill--ghost h-[24px] cursor-pointer text-[11px] font-medium"
           >
             <span className="inline-flex items-center gap-1.5">
-              {showResolved ? <Eye /> : <CheckCircle />}
+              {showResolved ? (
+                <Eye size={11} strokeWidth={2.25} aria-hidden="true" />
+              ) : (
+                <CircleCheck size={11} strokeWidth={2.4} aria-hidden="true" />
+              )}
               {showResolved ? 'Hide resolved' : `Show resolved (${counts.resolved})`}
             </span>
           </button>
@@ -280,7 +218,7 @@ export function DiscussionTab({
         <Button
           variant="secondary"
           size="sm"
-          leading={<Speech />}
+          leading={<MessageSquare size={11} strokeWidth={2.25} aria-hidden="true" />}
           onClick={() => setComposing('comment')}
         >
           Comment
@@ -288,7 +226,7 @@ export function DiscussionTab({
         <Button
           variant="primary"
           size="sm"
-          leading={<CheckCircle />}
+          leading={<CircleCheck size={11} strokeWidth={2.4} aria-hidden="true" />}
           onClick={() => setComposing('review')}
         >
           Submit review

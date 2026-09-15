@@ -1,3 +1,4 @@
+import { ChevronRight, CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react';
 import { SegmentedProgress } from '@/components/shared/primitives';
 
 interface ActivityStripProps {
@@ -7,38 +8,6 @@ interface ActivityStripProps {
   total: number;
   onJumpToChecks: () => void;
 }
-
-const Spinner = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="animate-spin"
-       aria-hidden="true">
-    <circle cx="8" cy="8" r="6" stroke="currentColor" opacity="0.2" strokeWidth="1.6" />
-    <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-  </svg>
-);
-
-const Alert = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-    <circle cx="8" cy="8" r="6.5" />
-    <path d="M8 5v3.5" />
-    <circle cx="8" cy="11" r="0.6" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const Check = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="8" cy="8" r="6.5" />
-    <path d="m5 8.5 2 2 4-4" />
-  </svg>
-);
-
-const ChevronRight = () => (
-  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-       strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-    <path d="m6 4 4 4-4 4" />
-  </svg>
-);
 
 /**
  * ActivityStrip — persistent "checks summary" pill between ActionBar and Tabs.
@@ -53,8 +22,7 @@ export function ActivityStrip({
 }: ActivityStripProps) {
   if (total === 0) return null;
 
-  const tone: 'red' | 'yellow' | 'green' =
-    failing > 0 ? 'red' : running > 0 ? 'yellow' : 'green';
+  const tone: 'red' | 'yellow' | 'green' = failing > 0 ? 'red' : running > 0 ? 'yellow' : 'green';
 
   const bg =
     tone === 'red'
@@ -100,7 +68,13 @@ export function ActivityStrip({
         style={{ color: fg, border: `1px solid ${fg}` }}
         className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)]"
       >
-        {running > 0 ? <Spinner /> : failing > 0 ? <Alert /> : <Check />}
+        {running > 0 ? (
+          <LoaderCircle size={14} strokeWidth={2.4} className="animate-spin" aria-hidden="true" />
+        ) : failing > 0 ? (
+          <CircleAlert size={14} strokeWidth={2.4} aria-hidden="true" />
+        ) : (
+          <CircleCheck size={14} strokeWidth={2.4} aria-hidden="true" />
+        )}
       </span>
 
       <div className="min-w-0 flex-1">
@@ -115,7 +89,7 @@ export function ActivityStrip({
           </span>
           <span className="flex-1" />
           <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)]">
-            View checks <ChevronRight />
+            View checks <ChevronRight size={11} strokeWidth={2.4} aria-hidden="true" />
           </span>
         </div>
         <SegmentedProgress passed={passed} running={running} total={total} />

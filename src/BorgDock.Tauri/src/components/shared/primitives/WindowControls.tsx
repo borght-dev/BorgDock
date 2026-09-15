@@ -1,45 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-
-const MinusIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-  >
-    <path d="M4 8h8" />
-  </svg>
-);
-
-const MaximizeIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-  >
-    <rect x="3" y="3" width="10" height="10" rx="1" />
-  </svg>
-);
-
-const XIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-  >
-    <path d="M4 4l8 8M12 4l-8 8" />
-  </svg>
-);
+import { Minus, Square, X } from 'lucide-react';
 
 /**
  * WindowControls — minimize / maximize / close trio for custom title bars.
@@ -55,7 +15,7 @@ export function WindowControls() {
         aria-label="Minimize"
         onClick={() => void win.minimize()}
       >
-        <MinusIcon />
+        <Minus size={14} strokeWidth={2.25} />
       </button>
       <button
         type="button"
@@ -63,7 +23,7 @@ export function WindowControls() {
         aria-label="Maximize"
         onClick={() => void win.toggleMaximize()}
       >
-        <MaximizeIcon />
+        <Square size={12} strokeWidth={2.25} />
       </button>
       <button
         type="button"
@@ -71,7 +31,7 @@ export function WindowControls() {
         aria-label="Close"
         onClick={() => void win.close()}
       >
-        <XIcon />
+        <X size={14} strokeWidth={2.25} />
       </button>
     </div>
   );

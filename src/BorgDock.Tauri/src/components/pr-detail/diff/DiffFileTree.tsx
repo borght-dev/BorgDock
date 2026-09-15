@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { ChevronDown, ChevronRight, LayoutGrid, List, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { IconButton, Input } from '@/components/shared/primitives';
 import { groupReviewFiles } from '@/services/quick-review';
@@ -47,61 +48,6 @@ function statusBadge(status: string): { letter: string; color: string } {
     default:
       return { letter: 'M', color: 'var(--color-text-muted)' };
   }
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="7" cy="7" r="4" />
-      <path d="M10 10l3 3" />
-    </svg>
-  );
-}
-
-function TreeIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <rect x="2" y="2" width="5" height="5" rx="1" />
-      <rect x="9" y="2" width="5" height="5" rx="1" />
-      <rect x="2" y="9" width="5" height="5" rx="1" />
-      <rect x="9" y="9" width="5" height="5" rx="1" />
-    </svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M2 4h12M2 8h12M2 12h12" />
-    </svg>
-  );
 }
 
 export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: DiffFileTreeProps) {
@@ -197,7 +143,13 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
             Files <span className="ml-1 text-[var(--color-text-muted)]">{files.length}</span>
           </span>
           <IconButton
-            icon={treeMode ? <ListIcon /> : <TreeIcon />}
+            icon={
+              treeMode ? (
+                <List size={12} strokeWidth={2.25} aria-hidden="true" />
+              ) : (
+                <LayoutGrid size={12} strokeWidth={2.25} aria-hidden="true" />
+              )
+            }
             active={treeMode}
             tooltip={treeMode ? 'Flat list' : 'Grouped view'}
             aria-label={treeMode ? 'Flat list' : 'Grouped view'}
@@ -208,7 +160,7 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
         </div>
         <Input
           aria-label="Filter changed files"
-          leading={<SearchIcon />}
+          leading={<Search size={12} strokeWidth={2.25} aria-hidden="true" />}
           placeholder="Filter files..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -241,8 +193,12 @@ export function DiffFileTree({ files, activeFile, statusFilter, onFileClick }: D
                       })
                     }
                   >
-                    <span aria-hidden="true" className="shrink-0">
-                      {expanded ? '⌄' : '›'}
+                    <span aria-hidden="true" className="shrink-0 mt-0.5">
+                      {expanded ? (
+                        <ChevronDown size={12} strokeWidth={2.25} aria-hidden="true" />
+                      ) : (
+                        <ChevronRight size={12} strokeWidth={2.25} aria-hidden="true" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{group.name}</span>
                     <span className="shrink-0 text-[var(--color-text-muted)]">

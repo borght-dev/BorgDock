@@ -19,6 +19,15 @@ function applyTheme(theme: string) {
   document.documentElement.classList.toggle('dark', isDark);
 }
 
+async function isFlyoutVisible(): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    return await getCurrentWindow().isVisible();
+  } catch {
+    return false;
+  }
+}
+
 export function FlyoutApp() {
   const [data, setData] = useState<FlyoutData>({
     pullRequests: [],
@@ -58,6 +67,12 @@ export function FlyoutApp() {
             hasReceivedData.current = true;
             setData(parsed);
             if (parsed.theme) applyTheme(parsed.theme);
+            // The window is built lazily on first open, long after the main
+            // window emitted `init-complete` — and Rust's open nudge fires
+            // before this webview has listeners. Cached data means main has
+            // already synced, so skip the splash and open straight to glance.
+            dispatch({ type: 'init-complete' });
+            if ((await isFlyoutVisible()) && !cancelled) dispatch({ type: 'user-open' });
           } catch {
             // ignore parse errors
           }
@@ -99,6 +114,11 @@ export function FlyoutApp() {
       const { listen } = await import('@tauri-apps/api/event');
       const init = await listen('init-complete', () => {
         dispatch({ type: 'init-complete' });
+        // User opened the flyout while main was still initializing — show
+        // the glance instead of dropping to a hidden idle view.
+        void isFlyoutVisible().then((visible) => {
+          if (visible && !cancelled) dispatch({ type: 'user-open' });
+        });
       });
       const toast = await listen<ToastPayload>('flyout-toast', (event) => {
         dispatch({ type: 'toast', payload: event.payload });

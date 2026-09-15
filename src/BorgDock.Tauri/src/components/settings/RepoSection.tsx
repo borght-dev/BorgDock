@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { GitBranch, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   Button,
@@ -118,21 +119,7 @@ export function RepoSection({
                 aria-hidden
                 className="grid h-[18px] w-[18px] place-items-center rounded-md bg-[var(--color-accent-subtle)] text-[var(--color-accent)]"
               >
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="6" cy="3" r="2" />
-                  <circle cx="6" cy="18" r="2" />
-                  <circle cx="18" cy="6" r="2" />
-                  <path d="M6 5v8a5 5 0 0 0 5 5h1M6 16V9M18 8v1a4 4 0 0 1-4 4h-2" />
-                </svg>
+                <GitBranch size={11} strokeWidth={1.5} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold text-[var(--color-text-primary)]">
@@ -175,20 +162,7 @@ export function RepoSection({
               <IconButton
                 aria-label={`Remove ${r.owner}/${r.name}`}
                 size={22}
-                icon={
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                }
+                icon={<X size={13} strokeWidth={1.5} />}
                 onClick={() => onChange(repos.filter((_, j) => j !== i))}
               />
             </div>

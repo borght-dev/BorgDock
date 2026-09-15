@@ -1,53 +1,29 @@
 import clsx from 'clsx';
+import {
+  Circle,
+  CircleAlert,
+  CircleCheck,
+  Clock,
+  type LucideIcon,
+  MessageCircle,
+} from 'lucide-react';
 import type { CSSProperties, HTMLAttributes, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Card, Dot, Pill, type PillTone, Ring } from '@/components/shared/primitives';
 import type { OverallStatus } from '@/types';
 
+const STATUS_GLYPH: Record<OverallStatus, LucideIcon> = {
+  red: CircleAlert,
+  yellow: Clock,
+  green: CircleCheck,
+  gray: Circle,
+};
+
 function StatusGlyph({ status }: { status: OverallStatus }) {
   // 13px circle icon coloured via currentColor — matches the surrounding
   // status text so the glyph + label read as a single tone.
-  const common = {
-    width: 13,
-    height: 13,
-    viewBox: '0 0 24 24',
-    fill: 'none' as const,
-    stroke: 'currentColor',
-    strokeWidth: 2,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-  switch (status) {
-    case 'red':
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-      );
-    case 'yellow':
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
-      );
-    case 'green':
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="10" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-      );
-    default:
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="10" />
-        </svg>
-      );
-  }
+  const Icon = STATUS_GLYPH[status] ?? Circle;
+  return <Icon size={13} aria-hidden />;
 }
 
 const STATUS_TEXT_CLASS: Record<OverallStatus, string> = {
@@ -151,25 +127,6 @@ function MarqueeTitle({ text, className }: { text: string; className?: string })
   );
 }
 
-function CommentIcon() {
-  return (
-    <svg
-      data-comment-icon=""
-      width="11"
-      height="11"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M14 8a5 5 0 0 1-5 5H5l-3 2v-9a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5z" />
-    </svg>
-  );
-}
-
 export interface PrCardViewProps {
   pr: PrCardData;
   /** Visual density. compact = single-line grid (flyout). normal = column with score Ring. */
@@ -191,6 +148,8 @@ export interface PrCardViewProps {
   isFocused?: boolean;
   /** Optional trailing slot for action buttons / score / etc. (normal density only). */
   trailing?: ReactNode;
+  /** Extra badge rendered beside the review pill, in both densities. */
+  badge?: ReactNode;
   /** Show "owner/repo" in the secondary line (compact density only). Default true. */
   showRepo?: boolean;
 }
@@ -223,6 +182,7 @@ export function PrCardView({
   active,
   isFocused,
   trailing,
+  badge,
   showRepo = true,
 }: PrCardViewProps) {
   const review = REVIEW_PILL[pr.reviewState];
@@ -306,10 +266,15 @@ export function PrCardView({
             </span>
           </div>
         </div>
-        {review && (
-          <Pill tone={review.tone} data-pill-tone={review.toneAttr}>
-            {review.label}
-          </Pill>
+        {(review || badge) && (
+          <div className="flex items-center gap-1.5">
+            {review && (
+              <Pill tone={review.tone} data-pill-tone={review.toneAttr}>
+                {review.label}
+              </Pill>
+            )}
+            {badge}
+          </div>
         )}
       </div>
     );
@@ -341,6 +306,7 @@ export function PrCardView({
                 {review.label}
               </Pill>
             )}
+            {badge}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-tertiary)]">
             <span className="font-mono">
@@ -388,7 +354,12 @@ export function PrCardView({
               )}
               {pr.commentCount !== undefined && pr.commentCount > 0 && (
                 <span className="inline-flex items-center gap-0.5" title="Comments">
-                  <CommentIcon />
+                  <MessageCircle
+                    data-comment-icon=""
+                    size={11}
+                    strokeWidth={2.25}
+                    aria-hidden="true"
+                  />
                   {pr.commentCount}
                 </span>
               )}

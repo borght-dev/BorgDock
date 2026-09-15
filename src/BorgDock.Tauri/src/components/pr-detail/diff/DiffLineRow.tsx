@@ -1,3 +1,4 @@
+import { MessageSquare } from 'lucide-react';
 import type { DiffLine, HighlightSpan, InlineChange } from '@/types';
 import { DiffLineContent } from './DiffLineContent';
 
@@ -126,19 +127,7 @@ export function DiffLineRow({
             }
             data-thread-chip
           >
-            <svg
-              width="9"
-              height="9"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 4h10v6H7l-3 3v-3H3z" />
-            </svg>
+            <MessageSquare size={9} strokeWidth={2.5} aria-hidden="true" />
             {threadOpen ? 'hide' : (threadCount ?? 1)}
           </button>
         )}

@@ -1,37 +1,7 @@
 import clsx from 'clsx';
+import { Check, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/shared/primitives';
-
-const CheckIcon = () => (
-  <svg
-    width="10"
-    height="10"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="m4 8 3 3 5-6" />
-  </svg>
-);
-
-const CloseIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    aria-hidden="true"
-  >
-    <path d="m4 4 8 8M12 4 4 12" />
-  </svg>
-);
 
 export type ReviewComposerDecision = 'approve' | 'comment' | 'request';
 
@@ -84,7 +54,7 @@ export function ReviewDecisionPicker({
         >
           {decision === d.id && (
             <span className="mr-1 inline-flex">
-              <CheckIcon />
+              <Check size={10} strokeWidth={3} aria-hidden="true" />
             </span>
           )}
           {d.label}
@@ -141,7 +111,7 @@ export function ReviewComposer({
           className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
           onClick={onCancel}
         >
-          <CloseIcon />
+          <X size={13} strokeWidth={3} aria-hidden="true" />
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { ChevronRight, FileText, Star, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Card, Chip } from '@/components/shared/primitives';
 import type { AdoQuery } from '../../types';
@@ -62,27 +63,18 @@ function QueryTreeItem({
         }}
       >
         {node.isFolder ? (
-          <svg
+          <ChevronRight
             className={clsx(
               'h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)] transition-transform',
               node.isExpanded && 'rotate-90',
             )}
-            viewBox="0 0 16 16"
-            fill="currentColor"
-          >
-            <path d="M6 4l4 4-4 4V4z" />
-          </svg>
+            strokeWidth={2.5}
+          />
         ) : (
-          <svg
+          <FileText
             className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <rect x="2" y="3" width="12" height="10" rx="1.5" />
-            <path d="M5 6h6M5 9h4" />
-          </svg>
+            strokeWidth={2.25}
+          />
         )}
         <span className="min-w-0 truncate">{node.name}</span>
         {!node.isFolder && (
@@ -99,15 +91,11 @@ function QueryTreeItem({
               onToggleFavorite(node.id);
             }}
           >
-            <svg
+            <Star
               className="h-3.5 w-3.5"
-              viewBox="0 0 16 16"
               fill={node.isFavorite ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth="1.2"
-            >
-              <path d="M8 1.5l2 4.1 4.5.6-3.3 3.2.8 4.5L8 11.7l-4 2.2.8-4.5L1.5 6.2l4.5-.6z" />
-            </svg>
+              strokeWidth={1.8}
+            />
           </button>
         )}
       </Card>
@@ -171,15 +159,7 @@ export function QueryBrowser({
           onClick={onClose}
           className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
         >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
+          <X className="h-4 w-4" strokeWidth={2.25} />
         </button>
       </div>
 
@@ -212,13 +192,11 @@ export function QueryBrowser({
                       active={q.id === selectedQueryId}
                       onClick={() => onSelectQuery(q.id)}
                     >
-                      <svg
+                      <Star
                         className="h-3 w-3 text-[var(--color-accent)]"
-                        viewBox="0 0 16 16"
                         fill="currentColor"
-                      >
-                        <path d="M8 1.5l2 4.1 4.5.6-3.3 3.2.8 4.5L8 11.7l-4 2.2.8-4.5L1.5 6.2l4.5-.6z" />
-                      </svg>
+                        stroke="none"
+                      />
                       {q.name}
                     </Chip>
                   ))}

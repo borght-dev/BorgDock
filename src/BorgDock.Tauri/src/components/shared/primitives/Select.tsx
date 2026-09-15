@@ -1,4 +1,9 @@
-export interface SelectOption { value: string; label: string }
+import { ChevronDown } from 'lucide-react';
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
 export interface SelectProps {
   value: string;
@@ -17,17 +22,25 @@ export function Select({ value, options, onChange, placeholder, ariaLabel }: Sel
         onChange={(e) => onChange(e.target.value)}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
       >
-        {placeholder && <option value="" disabled>{placeholder}</option>}
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
       </select>
       <span className="text-xs text-[var(--color-text-primary)] pointer-events-none">
         {options.find((o) => o.value === value)?.label ?? placeholder ?? ''}
       </span>
-      <svg
+      <ChevronDown
         className="pointer-events-none absolute right-[8px] top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
-        width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+        size={12}
+        strokeWidth={1.5}
+      />
     </div>
   );
 }

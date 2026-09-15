@@ -1,5 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Code,
+  Folder,
+  MessageSquareText,
+  Sparkle,
+  SquareTerminal,
+  Star,
+  X,
+} from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, IconButton, Input, Pill } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
@@ -302,7 +313,7 @@ export function CheckoutPanel({
           </span>
           <span className="ml-auto">
             <IconButton
-              icon={<XIcon />}
+              icon={<X size={12} strokeWidth={2.8} />}
               tooltip="Dismiss"
               size={22}
               aria-label="Dismiss"
@@ -557,7 +568,7 @@ export function CheckoutPanel({
           <Button
             variant="ghost"
             size="sm"
-            leading={<ArrowLeftIcon />}
+            leading={<ArrowLeft size={12} strokeWidth={2.8} />}
             onClick={() => setMode({ kind: 'picking' })}
           >
             Back
@@ -565,7 +576,7 @@ export function CheckoutPanel({
           <Button
             variant="primary"
             size="sm"
-            trailing={<ArrowRightIcon />}
+            trailing={<ArrowRight size={12} strokeWidth={2.8} />}
             disabled={!repoBasePath || !newName.trim()}
             onClick={() => runCheckout({ kind: 'new', name: newName.trim() })}
             data-checkout-action="create"
@@ -594,7 +605,9 @@ export function CheckoutPanel({
         <span className="flex-1 h-px bg-[var(--color-separator)]" />
         {favoriteSet.size > 0 && (
           <IconButton
-            icon={<StarIcon filled={favoritesOnly} />}
+            icon={
+              <Star size={12} strokeWidth={2.8} fill={favoritesOnly ? 'currentColor' : 'none'} />
+            }
             active={favoritesOnly}
             tooltip={
               favoritesOnly ? 'Showing favorites only — click to show all' : 'Show favorites only'
@@ -807,7 +820,7 @@ export function CheckoutPanel({
         <Button
           variant="primary"
           size="sm"
-          trailing={<ArrowRightIcon />}
+          trailing={<ArrowRight size={12} strokeWidth={2.8} />}
           disabled={selection.kind === 'existing' ? false : !newName.trim()}
           onClick={() => {
             if (selection.kind === 'new') {
@@ -850,7 +863,7 @@ function DrawerHeader({
       </div>
       <span className="ml-auto shrink-0">
         <IconButton
-          icon={<XIcon />}
+          icon={<X size={12} strokeWidth={2.8} />}
           tooltip="Dismiss"
           size={22}
           aria-label="Dismiss"
@@ -985,147 +998,10 @@ function LogBlock({ steps, error }: { steps: GitStep[]; error?: string }) {
   );
 }
 
-// ─────────────────────────────── Inline icons ───────────────────────────────
+// ─────────────────────────────── Icons ───────────────────────────────
 
-function XIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-    >
-      <path d="M3 3l6 6M9 3l-6 6" />
-    </svg>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M7.5 2.5L4 6l3.5 3.5M4 6h6" />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4.5 2.5L8 6l-3.5 3.5M2 6h6" />
-    </svg>
-  );
-}
-
-function StarIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 1.5l1.4 3 3.1.4-2.3 2.1.6 3.1L6 8.6 3.2 10.1l.6-3.1L1.5 4.9l3.1-.4z" />
-    </svg>
-  );
-}
-
-const iconFolder = (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z" />
-  </svg>
-);
-const iconTerminal = (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="2" y="3" width="12" height="10" rx="1.5" />
-    <path d="M5 7l2 2-2 2M9 11h3" />
-  </svg>
-);
-const iconSparkle = (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 2l1.6 3.8L13.5 7l-3.9 1.2L8 12l-1.6-3.8L2.5 7l3.9-1.2z" />
-  </svg>
-);
-const iconThread = (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H6l-3 2.5v-2.5h-.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z" />
-    <path d="M5 7h6" />
-    <path d="M5 9.5h3.5" />
-  </svg>
-);
-
-const iconCode = (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M5 4l-3 4 3 4M11 4l3 4-3 4M9.5 3 6.5 13" />
-  </svg>
-);
+const iconFolder = <Folder size={13} strokeWidth={2.1} />;
+const iconTerminal = <SquareTerminal size={13} strokeWidth={2.1} />;
+const iconSparkle = <Sparkle size={13} strokeWidth={2.1} />;
+const iconThread = <MessageSquareText size={12} strokeWidth={2.25} aria-hidden="true" />;
+const iconCode = <Code size={13} strokeWidth={2.1} />;

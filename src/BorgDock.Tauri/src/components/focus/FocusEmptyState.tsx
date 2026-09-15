@@ -1,3 +1,4 @@
+import { CircleCheck } from 'lucide-react';
 import { Card } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -18,19 +19,7 @@ export function FocusEmptyState() {
   return (
     <Card padding="lg" className="flex flex-col items-center justify-center text-center">
       <div className="text-[var(--color-text-ghost)] mb-3">
-        <svg
-          width="40"
-          height="40"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
+        <CircleCheck size={40} strokeWidth={1.5} />
       </div>
       <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">
         No PRs need attention

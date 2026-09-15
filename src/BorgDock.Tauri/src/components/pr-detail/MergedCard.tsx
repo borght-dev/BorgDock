@@ -1,3 +1,4 @@
+import { Check, X } from 'lucide-react';
 import type { PullRequest } from '@/types';
 
 interface MergedCardProps {
@@ -17,18 +18,6 @@ function formatAge(iso: string): string {
   return `${days}d`;
 }
 
-const CheckGlyph = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="m4 10 4 4 8-8" />
-  </svg>
-);
-
-const XGlyph = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="m5 5 10 10M15 5 5 15" />
-  </svg>
-);
-
 export function MergedCard({ pr }: MergedCardProps) {
   const isMerged = Boolean(pr.mergedAt);
   const variant = isMerged ? 'merged' : 'closed';
@@ -39,8 +28,12 @@ export function MergedCard({ pr }: MergedCardProps) {
   const timestampIso = isMerged ? pr.mergedAt : pr.closedAt;
   const age = timestampIso ? formatAge(timestampIso) : '';
   const timestampLabel = isMerged
-    ? age === 'just now' ? 'Merged just now' : `Merged ${age} ago`
-    : age === 'just now' ? 'Closed just now' : `Closed ${age} ago`;
+    ? age === 'just now'
+      ? 'Merged just now'
+      : `Merged ${age} ago`
+    : age === 'just now'
+      ? 'Closed just now'
+      : `Closed ${age} ago`;
 
   return (
     <div
@@ -71,7 +64,11 @@ export function MergedCard({ pr }: MergedCardProps) {
           flexShrink: 0,
         }}
       >
-        {isMerged ? <CheckGlyph /> : <XGlyph />}
+        {isMerged ? (
+          <Check size={20} strokeWidth={3} aria-hidden="true" />
+        ) : (
+          <X size={20} strokeWidth={3} aria-hidden="true" />
+        )}
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: fgColor, lineHeight: 1.2 }}>
@@ -95,7 +92,9 @@ export function MergedCard({ pr }: MergedCardProps) {
               <span style={{ fontFamily: 'var(--font-code)' }}>{pr.baseRef}</span>
             </>
           )}
-          <span aria-hidden style={{ color: 'var(--color-text-faint)' }}>·</span>
+          <span aria-hidden style={{ color: 'var(--color-text-faint)' }}>
+            ·
+          </span>
           <span>{timestampLabel}</span>
         </div>
       </div>
