@@ -1,0 +1,5 @@
+[
+  {"slug":"pr-list-comfortable","storyId":"main-window-mainwindow--prs-tab","viewport":{"width":1360,"height":850},"delay":2500},
+  {"slug":"pr-list-compact","storyId":"main-window-mainwindow--prs-compact","viewport":{"width":1360,"height":850},"delay":2500},
+  {"slug":"focus-rows","storyId":"main-window-mainwindow--focus-tab","viewport":{"width":1360,"height":850},"delay":6000}
+]

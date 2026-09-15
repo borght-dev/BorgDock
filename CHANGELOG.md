@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.4.0 — 2026-09-15
+
+### New Features
+
+- **Choose how dense your PR list is** — Pick **Comfortable** or **Compact** in Settings → Appearance. Compact turns every section into a tidy table with Author, Pull request, Review, Checks, Δ lines, # and Ready columns, so twice as many PRs fit on screen. The change applies to the main window right away. ![Compact PR table](whats-new/2.4.0/pr-list-compact.png)
+
+### Improvements
+
+- **A calmer, easier-to-scan PR list** — Each section is now one clean panel with a title line and a single details line per PR. Status, review and label pills line up together, and noise like the repo name, branch and commit counts is gone. The base branch shows only when it isn't main or master. Grouping is a quick toggle, sorting sits in a menu, and the author strip has avatars. ![Comfortable PR rows](whats-new/2.4.0/pr-list-comfortable.png)
+- **The same look everywhere you see PRs** — The Focus tab, the tray flyout, the Quick Review summary and a work item's linked PRs now share these rows. Focus rows also get hover actions and the right-click menu, and still show why each PR needs you. ![Focus tab with the new rows](whats-new/2.4.0/focus-rows.png)
+
+### Bug Fixes
+
+- Changing the theme in Settings now updates the main window immediately instead of after a restart.
+- Pills on PR rows are no longer cut off when a title is long or the window is narrow.
+
 ## 2.3.1 — 2026-09-15
 
 ### Improvements

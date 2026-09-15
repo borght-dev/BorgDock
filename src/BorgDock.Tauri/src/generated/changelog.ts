@@ -4,6 +4,48 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.4.0",
+    "date": "2026-09-15",
+    "summary": "Choose how dense your PR list is, A calmer, easier-to-scan PR list, and The same look everywhere you see PRs.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Choose how dense your PR list is",
+        "description": "Pick **Comfortable** or **Compact** in Settings → Appearance. Compact turns every section into a tidy table with Author, Pull request, Review, Checks, Δ lines, # and Ready columns, so twice as many PRs fit on screen. The change applies to the main window right away.",
+        "hero": {
+          "src": "/whats-new/2.4.0/pr-list-compact.png",
+          "alt": "Compact PR table"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "A calmer, easier-to-scan PR list",
+        "description": "Each section is now one clean panel with a title line and a single details line per PR. Status, review and label pills line up together, and noise like the repo name, branch and commit counts is gone. The base branch shows only when it isn't main or master. Grouping is a quick toggle, sorting sits in a menu, and the author strip has avatars.",
+        "hero": {
+          "src": "/whats-new/2.4.0/pr-list-comfortable.png",
+          "alt": "Comfortable PR rows"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "The same look everywhere you see PRs",
+        "description": "The Focus tab, the tray flyout, the Quick Review summary and a work item's linked PRs now share these rows. Focus rows also get hover actions and the right-click menu, and still show why each PR needs you.",
+        "hero": {
+          "src": "/whats-new/2.4.0/focus-rows.png",
+          "alt": "Focus tab with the new rows"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Changing the theme in Settings now updates the main window immediately instead of after a restart.",
+      "Pills on PR rows are no longer cut off when a title is long or the window is narrow."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "2.3.1",
     "date": "2026-09-15",
     "summary": "A cleaner, more consistent look.",
