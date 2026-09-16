@@ -15,6 +15,7 @@ import {
   type PrGroup,
   type PrGroupBy,
 } from '@/services/pr-grouping';
+import { matchesSearch } from '@/services/pr-search';
 import {
   computePriorityScores,
   type PriorityScore,
@@ -159,20 +160,6 @@ interface PrState extends DerivedCache {
    *  after a successful merge / bypass-merge call. The eventual server
    *  refresh (scheduled by pr-actions) reconciles the optimistic state. */
   optimisticallyMarkMerged: (owner: string, repo: string, number: number) => void;
-}
-
-function matchesSearch(pr: PullRequestWithChecks, query: string): boolean {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  const p = pr.pullRequest;
-  return (
-    p.title.toLowerCase().includes(q) ||
-    p.authorLogin.toLowerCase().includes(q) ||
-    p.headRef.toLowerCase().includes(q) ||
-    `${p.repoOwner}/${p.repoName}`.toLowerCase().includes(q) ||
-    p.number.toString().includes(q) ||
-    p.labels.some((l) => l.toLowerCase().includes(q))
-  );
 }
 
 function applyFilter(

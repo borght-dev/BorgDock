@@ -118,6 +118,7 @@ pub fn run() {
         .build();
 
     let builder = tauri::Builder::default()
+        .on_page_load(|webview, _| platform::browser_shortcuts::disable(webview))
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {

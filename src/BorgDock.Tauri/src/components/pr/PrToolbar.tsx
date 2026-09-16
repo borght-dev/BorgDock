@@ -4,6 +4,7 @@ import { Avatar, Chip, Kbd, Seg2 } from '@/components/shared/primitives';
 import type { AuthorLoad, PrGroupBy } from '@/services/pr-grouping';
 import { type PrFilter, type SortBy, usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
+import { shortcutLabel } from '@/utils/shortcut-label';
 
 export type PrFilterCountKey = 'all' | 'needs' | 'mine' | 'failing' | 'ready' | 'review' | 'closed';
 
@@ -168,8 +169,9 @@ export function PrToolbar({ counts, authors }: Props) {
             value={search}
             onChange={handleChange}
             placeholder="Filter pull requests…"
+            data-section-search
           />
-          <Kbd>⌘K</Kbd>
+          <Kbd>{shortcutLabel('K')}</Kbd>
         </div>
       </div>
       {authors && authors.length > 0 && (

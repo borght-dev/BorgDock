@@ -351,6 +351,7 @@ export function WorkItemsSection() {
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value)}
               aria-label="Filter items"
+              data-section-search
             />
           </div>
           <HoverPopover

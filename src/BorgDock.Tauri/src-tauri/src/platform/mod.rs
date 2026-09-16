@@ -1,3 +1,4 @@
+pub mod browser_shortcuts;
 #[cfg(target_os = "windows")]
 pub mod click_outside;
 pub mod flyout_cache;

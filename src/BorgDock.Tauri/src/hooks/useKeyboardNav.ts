@@ -14,6 +14,12 @@ export function useKeyboardNav() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if (isSearchShortcut(e)) {
+        e.preventDefault();
+        focusSectionSearch();
+        return;
+      }
+
       // Don't intercept when typing in inputs
       const target = e.target as HTMLElement;
       if (
@@ -144,6 +150,27 @@ export function useKeyboardNav() {
   }, [pullRequests, filter]);
 
   return { focusedIndex: focusedIndexRef };
+}
+
+function isSearchShortcut(e: KeyboardEvent): boolean {
+  const key = e.key.toLowerCase();
+  return (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === 'k' || key === 'f');
+}
+
+const SECTION_SEARCH_SELECTOR = 'input[data-section-search]';
+
+function focusAndSelect(input: HTMLInputElement | null): boolean {
+  if (!input) return false;
+  input.focus();
+  input.select();
+  return true;
+}
+
+/** Focus has no search box, so the shortcut jumps to the PR tab's. */
+function focusSectionSearch(): void {
+  if (focusAndSelect(document.querySelector(SECTION_SEARCH_SELECTOR))) return;
+  useUiStore.getState().setActiveSection('prs');
+  requestAnimationFrame(() => focusAndSelect(document.querySelector(SECTION_SEARCH_SELECTOR)));
 }
 
 function scrollFocusedIntoView(index: number): void {

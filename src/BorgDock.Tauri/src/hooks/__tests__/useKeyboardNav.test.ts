@@ -11,6 +11,7 @@ const mockNeedsMyReview = vi.fn<() => PullRequestWithChecks[]>(() => []);
 const mockCollapseAllRepoGroups = vi.fn();
 const mockStartSinglePr = vi.fn();
 const mockStartSession = vi.fn();
+const mockSetActiveSection = vi.fn();
 
 let mockSelectedPrNumber: number | null = null;
 let mockActiveSection = 'prs';
@@ -26,6 +27,7 @@ vi.mock('@/stores/ui-store', () => ({
       getState: () => ({
         activeSection: mockActiveSection,
         collapseAllRepoGroups: mockCollapseAllRepoGroups,
+        setActiveSection: mockSetActiveSection,
       }),
     },
   ),
@@ -420,5 +422,67 @@ describe('useKeyboardNav', () => {
     rerender();
 
     expect(result.current.focusedIndex.current).toBe(0);
+  });
+
+  describe('search shortcut', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    function mountSearch(value = ''): HTMLInputElement {
+      const input = document.createElement('input');
+      input.setAttribute('data-section-search', '');
+      input.value = value;
+      document.body.appendChild(input);
+      return input;
+    }
+
+    it.each([
+      ['k', { ctrlKey: true }],
+      ['f', { ctrlKey: true }],
+      ['k', { metaKey: true }],
+      ['f', { metaKey: true }],
+    ])('%s with %o focuses and selects the section search', (key, modifiers) => {
+      const input = mountSearch('abc');
+      renderHook(() => useKeyboardNav());
+
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+        ...modifiers,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(input);
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(3);
+    });
+
+    it('works while another input has focus', () => {
+      const search = mountSearch();
+      const other = document.createElement('textarea');
+      document.body.appendChild(other);
+      other.focus();
+      renderHook(() => useKeyboardNav());
+
+      other.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }));
+
+      expect(document.activeElement).toBe(search);
+    });
+
+    it('switches to the PR tab when the active section has no search', () => {
+      renderHook(() => useKeyboardNav());
+      fireKey('k', { ctrlKey: true });
+      expect(mockSetActiveSection).toHaveBeenCalledWith('prs');
+    });
+
+    it('ignores the plain letter', () => {
+      const input = mountSearch();
+      renderHook(() => useKeyboardNav());
+      fireKey('f');
+      expect(document.activeElement).not.toBe(input);
+    });
   });
 });

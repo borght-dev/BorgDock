@@ -8,6 +8,7 @@ import { Button, Kbd, Pill } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
+import { shortcutLabel } from '@/utils/shortcut-label';
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -580,7 +581,7 @@ export function SqlApp() {
           onClick={saveOverActive}
           title={activeSnippet ? `Save changes to "${activeSnippet.name}"` : 'No snippet active'}
         >
-          Save <Kbd>{navigator.platform.toLowerCase().includes('mac') ? '⌘S' : 'Ctrl+S'}</Kbd>
+          Save <Kbd>{shortcutLabel('S')}</Kbd>
         </Button>
         <Button variant="ghost" size="sm" leading={<CopyIcon size={11} />} onClick={openSaveAs}>
           Save as snippet…
