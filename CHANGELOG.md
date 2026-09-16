@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.1 — 2026-09-16
+
+### Bug Fixes
+
+- Searching the PR tab now filters everything you see, including Needs Your Review and Recently Closed, instead of leaving those sections untouched.
+- Press Ctrl+F or Ctrl+K (⌘K on Mac) to jump straight to the search box on the PRs or Work Items tab. From Focus, it takes you to the PR search. The shortcut hint now shows the right key for your platform.
+- Browser shortcuts like the find bar, print, reload, zoom and developer tools no longer pop up inside BorgDock windows and get in the way of the app's own shortcuts.
+
 ## 2.4.0 — 2026-09-15
 
 ### New Features
