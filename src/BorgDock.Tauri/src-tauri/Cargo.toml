@@ -61,6 +61,7 @@ tempfile = "3"
 tauri = { version = "2", features = ["macos-private-api"] }
 
 [target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
 windows = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",

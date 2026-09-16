@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Kbd } from '@/components/shared/primitives';
+import { shortcutLabel } from '@/utils/shortcut-label';
 
 interface Props {
   value: string;
@@ -32,7 +33,7 @@ export function RailSearchInput({ value, onChange }: Props) {
         placeholder="Search settings…"
         className="flex-1 bg-transparent text-[11.5px] outline-none placeholder:text-[var(--color-text-faint)]"
       />
-      <Kbd>⌘K</Kbd>
+      <Kbd>{shortcutLabel('K')}</Kbd>
     </div>
   );
 }

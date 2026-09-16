@@ -33,9 +33,11 @@ The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` c
 
 Two other fresh-worktree facts: run `bun install` at the worktree root before anything else (node_modules is per-worktree), and Playwright e2e (`bun run test:e2e`) reuses any server already listening on :1420 (`reuseExistingServer`) — if the main checkout's dev server is running, e2e silently tests the *main checkout's* code, not the worktree's. Stop it first or the results are meaningless.
 
+If every e2e test hangs on the splash screen (`waitForSelector('[data-app-ready="true"]')` timeout) and the WebServer log shows `ENOENT ... src/BorgDock.Tauri/node_modules/react-dom/index.js`, Vite's pre-bundle cache is stale: `rm -rf src/BorgDock.Tauri/node_modules/.vite/deps`.
+
 ## React Compiler escape hatch
 
-The React Compiler (`babel-plugin-react-compiler`, wired into `@vitejs/plugin-react` in `vite.config.ts`) auto-memoizes function components and hooks at build time. If a specific component breaks under compilation — usually because it relied on referential identity for a side effect — opt it out file-locally with the `"use no memo"` directive at the very top of the file:
+The React Compiler (`babel-plugin-react-compiler`, wired into `@vitejs/plugin-react` in `vite.config.ts`) auto-memoizes function components and hooks at build time. **Not currently active:** `@vitejs/plugin-react` 6 ignores the `babel` option, so the plugin in `vite.config.ts` is a no-op (no `memo_cache_sentinel` in `dist/`). Wiring it back needs the v6 `reactCompilerPreset` + `@rolldown/plugin-babel`. Until then, don't blame stale renders on the compiler. If a specific component breaks under compilation — usually because it relied on referential identity for a side effect — opt it out file-locally with the `"use no memo"` directive at the very top of the file:
 
 ```ts
 "use no memo";

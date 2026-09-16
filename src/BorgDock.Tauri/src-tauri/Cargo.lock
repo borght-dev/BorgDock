@@ -460,6 +460,7 @@ dependencies = [
  "tokio-util",
  "urlencoding",
  "uuid",
+ "webview2-com",
  "windows",
 ]
 

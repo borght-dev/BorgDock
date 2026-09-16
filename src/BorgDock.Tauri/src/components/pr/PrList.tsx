@@ -3,6 +3,7 @@ import { GitPullRequest } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Card } from '@/components/shared/primitives';
+import { matchesSearch } from '@/services/pr-search';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -39,7 +40,12 @@ export function PrList() {
   // Subscribe to state fields that affect derived selectors so the
   // component re-renders when they change. useShallow performs a
   // shallow equality check, replacing the old void-statement workaround.
-  const { closedPullRequests, filter, username } = usePrStore(
+  const {
+    closedPullRequests: allClosedPrs,
+    filter,
+    searchQuery,
+    username,
+  } = usePrStore(
     useShallow((s) => ({
       pullRequests: s.pullRequests,
       closedPullRequests: s.closedPullRequests,
@@ -61,7 +67,8 @@ export function PrList() {
 
   const groups = groupedPrs(groupBy);
   const prs = filteredPrs();
-  const reviewQueue = needsMyReview();
+  const reviewQueue = needsMyReview().filter((pr) => matchesSearch(pr, searchQuery));
+  const closedPullRequests = allClosedPrs.filter((pr) => matchesSearch(pr, searchQuery));
   const authors = authorLoad();
   const isFirstLoad = !lastPollTime && isPolling;
 
