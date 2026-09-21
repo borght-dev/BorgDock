@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.4.3 — 2026-09-21
+
+### Improvements
+
+- Open Worktrees, Files, Work Items, SQL, Settings, and What's New from the main window or tray flyout.
+
+### Bug Fixes
+
+- Closing and reopening a tool window, including SQL, no longer risks freezing BorgDock. Tool windows now hide and reopen instead of being destroyed and rebuilt.
+- The SQL window refreshes its connection list when reopened, so newly added servers appear immediately.
+
 ## 2.4.2 — 2026-09-21
 
 ### Bug Fixes

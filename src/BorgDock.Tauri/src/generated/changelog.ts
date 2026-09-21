@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.4.3",
+    "date": "2026-09-21",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Closing and reopening a tool window, including SQL, no longer risks freezing BorgDock. Tool windows now hide and reopen instead of being destroyed and rebuilt.",
+      "The SQL window refreshes its connection list when reopened, so newly added servers appear immediately."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "2.4.2",
     "date": "2026-09-21",
     "summary": "",
