@@ -3,6 +3,8 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqlApp } from '../SqlApp';
 
+let paletteShownHandler: (() => void) | undefined;
+
 vi.mock('../SqlEditor', () => {
   // Mock that mirrors the real SqlEditor's run-text contract:
   // returns the textarea selection if non-empty, else the full value.
@@ -63,6 +65,13 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(async (event: string, handler: () => void) => {
+    if (event === 'palette-shown') paletteShownHandler = handler;
+    return vi.fn();
+  }),
+}));
+
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: vi.fn(() => ({
     close: mockClose,
@@ -89,6 +98,7 @@ describe('SqlApp', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    paletteShownHandler = undefined;
     localStorage.clear();
 
     const { invoke } = await import('@tauri-apps/api/core');
@@ -831,5 +841,55 @@ describe('SqlApp', () => {
     });
 
     expect((select as HTMLSelectElement).value).toBe('ProdDB');
+  });
+
+  it('reloads connections when the hidden SQL window is shown again', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    let settingsLoad = 0;
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_settings') {
+        settingsLoad += 1;
+        const connections = [
+          {
+            name: 'DevDB',
+            server: 'localhost',
+            port: 1433,
+            database: 'test',
+            authentication: 'sql',
+            trustServerCertificate: true,
+          },
+        ];
+        if (settingsLoad > 1) {
+          connections.push({
+            name: 'New server',
+            server: 'new-server',
+            port: 1433,
+            database: 'new-db',
+            authentication: 'sql',
+            trustServerCertificate: true,
+          });
+        }
+        return Promise.resolve({
+          sql: { connections, lastUsedConnection: 'DevDB' },
+          ui: { theme: 'system' },
+        });
+      }
+      if (cmd === 'cache_load_sql_schema') return Promise.resolve(null);
+      if (cmd === 'fetch_sql_schema') {
+        return Promise.resolve({ database: 'TestDb', fetchedAt: '', tables: [] });
+      }
+      return Promise.resolve();
+    });
+
+    await act(async () => {
+      render(<SqlApp />);
+    });
+    expect(screen.queryByRole('option', { name: 'New server' })).toBeNull();
+
+    await act(async () => {
+      paletteShownHandler?.();
+    });
+
+    expect(screen.getByRole('option', { name: 'New server' })).toBeInTheDocument();
   });
 });

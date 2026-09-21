@@ -121,7 +121,10 @@ pub fn run() {
         .on_page_load(|webview, _| platform::browser_shortcuts::disable(webview))
         .on_window_event(|window, event| {
             match event {
-                tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+                tauri::WindowEvent::CloseRequested { api, .. }
+                    if window.label() == "main"
+                        || platform::hotkey::is_reusable_tool_window(window.label()) =>
+                {
                     api.prevent_close();
                     let _ = window.hide();
                 }
@@ -259,6 +262,7 @@ pub fn run() {
             platform::hotkey::register_user_hotkeys,
             platform::hotkey::unregister_hotkey,
             platform::hotkey::palette_ready,
+            platform::hotkey::open_tool_window,
             platform::tray::update_tray_tooltip,
             platform::tray::update_tray_icon,
             platform::flyout_cache::cache_flyout_data,

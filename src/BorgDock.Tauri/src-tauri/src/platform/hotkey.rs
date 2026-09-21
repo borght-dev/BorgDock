@@ -28,6 +28,13 @@ struct PaletteSpec {
     resizable: bool,
 }
 
+pub(crate) fn is_reusable_tool_window(label: &str) -> bool {
+    matches!(
+        label,
+        "worktree-palette" | "file-palette" | "work-item-palette" | "sql"
+    )
+}
+
 const SQL_SPEC: PaletteSpec = PaletteSpec {
     label: "sql",
     title: "BorgDock SQL",
@@ -100,25 +107,29 @@ const PALETTE_HOTKEYS: &[(&str, &PaletteSpec)] = &[
 ///
 /// MUST run on the main GUI thread — does WebviewWindowBuilder work and Win32
 /// focus APIs that have thread affinity.
-fn open_or_toggle_palette(app: &tauri::AppHandle, spec: &PaletteSpec) {
+fn open_palette_window(
+    app: &tauri::AppHandle,
+    spec: &PaletteSpec,
+    toggle_if_focused: bool,
+) -> Result<(), String> {
     let label = spec.label;
     if let Some(win) = app.get_webview_window(label) {
         let is_focused = win.is_focused().unwrap_or(false);
         let is_visible = win.is_visible().unwrap_or(false);
         log::info!("palette[{label}]: existing (visible={is_visible}, focused={is_focused})");
-        if is_focused && is_visible {
+        if toggle_if_focused && is_focused && is_visible {
             log::info!("palette[{label}]: focused → hide");
-            let _ = win.hide();
+            win.hide().map_err(|e| e.to_string())?;
         } else {
             log::info!("palette[{label}]: not focused → raise + focus");
-            let _ = win.unminimize();
-            let _ = win.show();
-            let _ = win.set_focus();
+            win.unminimize().map_err(|e| e.to_string())?;
+            win.show().map_err(|e| e.to_string())?;
+            win.set_focus().map_err(|e| e.to_string())?;
             if !is_visible {
                 let _ = win.emit("palette-shown", ());
             }
         }
-        return;
+        return Ok(());
     }
 
     log::info!("palette[{label}]: building new window");
@@ -138,13 +149,36 @@ fn open_or_toggle_palette(app: &tauri::AppHandle, spec: &PaletteSpec) {
     if let Some((w, h)) = spec.min_inner_size {
         builder = builder.min_inner_size(w, h);
     }
-    match builder.build() {
-        Ok(win) => {
-            log::info!("palette[{label}]: build succeeded in {:?}", t0.elapsed());
-            crate::platform::window_geometry::persist_window_geometry(app, &win, spec.label);
-        }
-        Err(e) => log::error!("palette[{label}]: build failed in {:?}: {e}", t0.elapsed()),
+    let win = builder.build().map_err(|e| {
+        let message = format!("palette[{label}]: build failed in {:?}: {e}", t0.elapsed());
+        log::error!("{message}");
+        message
+    })?;
+    log::info!("palette[{label}]: build succeeded in {:?}", t0.elapsed());
+    crate::platform::window_geometry::persist_window_geometry(app, &win, spec.label);
+    Ok(())
+}
+
+fn spec_for_tool(tool: &str) -> Option<&'static PaletteSpec> {
+    match tool {
+        "worktrees" => Some(&WORKTREE_PALETTE_SPEC),
+        "files" => Some(&FILE_PALETTE_SPEC),
+        "work-items" => Some(&WORK_ITEM_PALETTE_SPEC),
+        "sql" => Some(&SQL_SPEC),
+        _ => None,
     }
+}
+
+#[tauri::command]
+pub async fn open_tool_window(app: tauri::AppHandle, tool: String) -> Result<(), String> {
+    let spec = spec_for_tool(&tool).ok_or_else(|| format!("Unknown tool window: {tool}"))?;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(open_palette_window(&app_for_run, spec, false));
+    })
+    .map_err(|e| e.to_string())?;
+    crate::platform::window::main_thread_result(rx).await
 }
 
 /// Currently-registered main-window toggle shortcut (user-configurable via
@@ -184,7 +218,9 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                     log::info!("{shortcut}: shortcut fired");
                     let app_inner = app_for_cb.clone();
                     if let Err(e) = app_for_cb.run_on_main_thread(move || {
-                        open_or_toggle_palette(&app_inner, spec);
+                        if let Err(e) = open_palette_window(&app_inner, spec, true) {
+                            log::error!("{shortcut}: open/toggle failed: {e}");
+                        }
                     }) {
                         log::error!("{shortcut}: run_on_main_thread dispatch failed: {e}");
                     }
@@ -335,10 +371,32 @@ pub async fn palette_ready(app: tauri::AppHandle, window: tauri::Window) -> Resu
 
 #[cfg(test)]
 mod tests {
-    use super::WORKTREE_PALETTE_SPEC;
+    use super::{is_reusable_tool_window, spec_for_tool, WORKTREE_PALETTE_SPEC};
 
     #[test]
     fn worktree_palette_is_resizable() {
         assert!(WORKTREE_PALETTE_SPEC.resizable);
+    }
+
+    #[test]
+    fn fixed_tool_windows_are_reused_instead_of_destroyed() {
+        for label in [
+            "worktree-palette",
+            "file-palette",
+            "work-item-palette",
+            "sql",
+        ] {
+            assert!(is_reusable_tool_window(label), "{label}");
+        }
+        assert!(!is_reusable_tool_window("settings"));
+        assert!(!is_reusable_tool_window("pr-detail-owner-repo-1"));
+    }
+
+    #[test]
+    fn launcher_ids_resolve_to_every_fixed_tool_window() {
+        for tool in ["worktrees", "files", "work-items", "sql"] {
+            assert!(spec_for_tool(tool).is_some(), "{tool}");
+        }
+        assert!(spec_for_tool("unknown").is_none());
     }
 }

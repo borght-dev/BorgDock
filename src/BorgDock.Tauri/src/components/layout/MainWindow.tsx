@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
 import type { TabDef } from '@/components/shared/primitives';
 import { Pill, Tabs, TitleBar, WindowControls } from '@/components/shared/primitives';
+import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import { useStatusBar } from '@/hooks/useStatusBar';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
@@ -100,6 +101,7 @@ export function MainWindow({ children }: MainWindowProps) {
               className={clsx('bd-status-dot', hasFailing && 'bd-status-dot--red')}
               aria-hidden
             />
+            <WindowLauncher />
             <button
               type="button"
               className="bd-icon-btn"

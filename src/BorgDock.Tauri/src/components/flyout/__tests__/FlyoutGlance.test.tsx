@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { FlyoutGlance, type FlyoutData } from '../FlyoutGlance';
+import { type FlyoutData, FlyoutGlance } from '../FlyoutGlance';
 
 const data: FlyoutData = {
   pullRequests: [
@@ -72,6 +72,7 @@ describe('FlyoutGlance', () => {
   it('exposes header buttons by accessible name', () => {
     render(<FlyoutGlance data={data} onClose={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open window' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 

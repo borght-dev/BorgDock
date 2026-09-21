@@ -2,6 +2,7 @@ import { PanelRightOpen, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
 import { Dot, IconButton } from '@/components/shared/primitives';
+import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import { FlyoutFrame } from './FlyoutFrame';
 import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
@@ -287,6 +288,7 @@ export function FlyoutGlance({
               disabled={isRefreshing}
               onClick={handleRefresh}
             />
+            <WindowLauncher onWindowOpened={onClose} />
             <IconButton
               icon={<PanelRightOpen size={14} />}
               tooltip="Open sidebar"

@@ -23,6 +23,7 @@ describe('MainWindow', () => {
     expect(screen.getByLabelText('Minimize')).toBeInTheDocument();
     expect(screen.getByLabelText('Maximize')).toBeInTheDocument();
     expect(screen.getByLabelText('Close')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open window' })).toBeInTheDocument();
     expect(screen.getByTestId('content')).toBeInTheDocument();
   });
 });

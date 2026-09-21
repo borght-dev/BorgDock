@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
@@ -140,39 +141,47 @@ export function SqlApp() {
     return query.length > 0;
   }, [activeSnippet, query]);
 
+  const loadSqlSettings = useCallback(async () => {
+    const settings = await invoke<AppSettings>('load_settings');
+    setSqlSettings(settings.sql);
+
+    const t = settings.ui?.theme ?? 'system';
+    const isDark =
+      t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);
+
+    setSelectedConnection((current) => {
+      if (current && settings.sql.connections.some((c) => c.name === current)) return current;
+      const lastUsed = settings.sql.lastUsedConnection;
+      if (lastUsed && settings.sql.connections.some((c) => c.name === lastUsed)) return lastUsed;
+      return settings.sql.connections[0]?.name ?? '';
+    });
+  }, []);
+
   /* ── Initial settings + window position ───────────────── */
   useEffect(() => {
-    (async () => {
-      try {
-        const settings = await invoke<AppSettings>('load_settings');
-        setSqlSettings(settings.sql);
-
-        const t = settings.ui?.theme ?? 'system';
-        const isDark =
-          t === 'dark' ||
-          (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', isDark);
-
-        const lastUsed = settings.sql.lastUsedConnection;
-        if (lastUsed && settings.sql.connections.some((c) => c.name === lastUsed)) {
-          setSelectedConnection(lastUsed);
-        } else if (settings.sql.connections.length > 0) {
-          setSelectedConnection(settings.sql.connections[0]!.name);
-        }
-      } catch (err) {
-        console.error('Failed to load settings:', err);
-      } finally {
+    void loadSqlSettings()
+      .catch((err) => console.error('Failed to load settings:', err))
+      .finally(() => {
         setAppReady(true);
-      }
-
-      // Reveal the window after settings have been applied. Position and
-      // size are restored by the Rust-side persist_window_geometry helper
-      // before the React app mounts, so no JS-side restore is needed.
-      requestAnimationFrame(() => {
-        void invoke('window_ready').catch(() => {});
+        requestAnimationFrame(() => {
+          void invoke('window_ready').catch(() => {});
+        });
       });
-    })();
-  }, []);
+
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen('palette-shown', () => {
+      void loadSqlSettings().catch((err) => console.error('Failed to refresh settings:', err));
+    }).then((dispose) => {
+      if (disposed) dispose();
+      else unlisten = dispose;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [loadSqlSettings]);
 
   /* ── Persist query (debounced) ────────────────────────── */
   const queryRef = useRef(query);
