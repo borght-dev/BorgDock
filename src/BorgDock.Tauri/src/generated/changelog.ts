@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "2.4.2",
+    "date": "2026-09-21",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "After skimming files with Next, you can now mark every remaining file reviewed from Finish review instead of reopening them one by one.",
+      "Selecting Approve in Quick Review now reliably enables submission. When another choice cannot be submitted, BorgDock shows exactly what is missing."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "2.4.1",
     "date": "2026-09-16",
     "summary": "",

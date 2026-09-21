@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.2 — 2026-09-21
+
+### Bug Fixes
+
+- After skimming files with Next, you can now mark every remaining file reviewed from Finish review instead of reopening them one by one.
+- Selecting Approve in Quick Review now reliably enables submission. When another choice cannot be submitted, BorgDock shows exactly what is missing.
+
 ## 2.4.1 — 2026-09-16
 
 ### Bug Fixes

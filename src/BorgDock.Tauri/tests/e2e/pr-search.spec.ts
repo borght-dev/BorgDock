@@ -54,6 +54,9 @@ for (const key of ['k', 'f']) {
 test('Ctrl+F on Focus jumps to the PR search', async ({ page }) => {
   await bootApp(page, '', 'happy-path');
   await seedMainWindow(page, { prs: SAMPLE_PRS });
+  await page.getByRole('tab', { name: 'Focus' }).click();
+  await expect(page.getByText('No PRs need attention')).toBeVisible();
+  await expect(page.locator('[style*="splash-fade-out"]')).toHaveCount(0);
 
   await page.keyboard.press('Control+f');
 
