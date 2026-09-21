@@ -49,7 +49,7 @@ async function openReview(page: Page) {
   }, pr);
   await expect(page.locator('.qr-next')).toBeEnabled();
 }
-async function setup(page: Page) {
+async function setup(page: Page, state = detail.state) {
   await bootApp(page);
   const reviews: unknown[] = [];
   await page.route('https://api.github.com/repos/test-org/borgdock/pulls/42**', (route) => {
@@ -69,11 +69,39 @@ async function setup(page: Page) {
           patch: i === 0 ? longPatch : '@@ -0,0 +1 @@\n+const value = 1;',
         })),
       });
-    return route.fulfill({ json: url.endsWith('/reviews') ? [] : detail });
+    return route.fulfill({ json: url.endsWith('/reviews') ? [] : { ...detail, state } });
   });
   await openReview(page);
   return reviews;
 }
+
+test('marks skipped files reviewed and submits approval from the finish screen', async ({
+  page,
+}) => {
+  const reviews = await setup(page, 'OPEN');
+  await page.locator('.qr-next').click();
+  for (let i = 1; i < paths.length; i++) await page.locator('.qr-next').click();
+  await page.locator('.qr-finish').click();
+
+  await expect(page.getByText('5 of 5 files remain unreviewed.')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('finish-unreviewed.png') });
+  await page.getByRole('button', { name: 'Mark all files reviewed' }).click();
+  await expect(page.getByText('0 of 5 files remain unreviewed.')).toBeVisible();
+  await page.getByRole('button', { name: 'Request changes' }).click();
+  await expect(page.getByText('Add an overall comment before requesting changes.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Request changes', exact: true }).last()).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath('finish-disabled-reason.png') });
+  await page.getByRole('button', { name: 'Approve' }).click();
+
+  const submit = page.getByRole('button', { name: 'Submit approval' });
+  await expect(submit).toBeEnabled();
+  await page.screenshot({ path: test.info().outputPath('finish-approval.png') });
+  await submit.click();
+  await expect(page.getByText('Review Complete', { exact: true })).toBeVisible();
+  expect(reviews).toEqual([
+    { event: 'APPROVE', body: '', commit_id: 'sha42', comments: [] },
+  ]);
+});
 
 test('compact next button stays fixed across descriptions, diffs, comments, and widths', async ({
   page,

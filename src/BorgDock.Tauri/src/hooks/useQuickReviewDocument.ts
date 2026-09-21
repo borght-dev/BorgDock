@@ -75,7 +75,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
           'This PR has new changes. Reload files before submitting. Your drafts are kept.',
         );
       }
-      if (current.pr.state !== 'open') throw new Error('This PR is no longer open.');
+      if (current.pr.state.toLowerCase() !== 'open') throw new Error('This PR is no longer open.');
       await submitReview(client, pr.repoOwner, pr.repoName, pr.number, doc.event, doc.body.trim(), {
         commit_id: doc.headSha,
         comments: doc.comments.map((c) => ({

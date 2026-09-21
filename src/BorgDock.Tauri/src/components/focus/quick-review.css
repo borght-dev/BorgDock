@@ -290,6 +290,15 @@
 .qr-mark {
   grid-column: 4;
 }
+.qr-finish-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.qr-finish-progress p {
+  margin: 0;
+}
 .qr-finish {
   grid-column: 5;
 }

@@ -125,11 +125,23 @@ function QuickReviewWorkspace({ pr }: { pr: PullRequestWithChecks }) {
   const busy = state === 'submitting';
   const ready = !!snapshot && !loading && !loadError && !stale;
   const unreadyComments = doc.comments.some((c) => !c.saved || c.outdated || !c.body.trim());
-  const validBody =
-    doc.event === 'APPROVE' ||
-    !!doc.body.trim() ||
-    (doc.event === 'COMMENT' && doc.comments.length > 0);
-  const canSubmit = ready && !busy && !unreadyComments && validBody && detail.state === 'open';
+  const submitIssue =
+    !snapshot || loading
+      ? 'Wait for the latest files to finish loading.'
+      : loadError
+        ? 'Reload the files before submitting.'
+        : stale
+          ? 'Reload files before submitting this review.'
+          : unreadyComments
+            ? 'Save or delete unfinished drafts and reattach outdated comments before submitting.'
+            : doc.event === 'REQUEST_CHANGES' && !doc.body.trim()
+              ? 'Add an overall comment before requesting changes.'
+              : doc.event === 'COMMENT' && !doc.body.trim() && doc.comments.length === 0
+                ? 'Add an overall or inline comment before submitting.'
+                : detail.state.toLowerCase() !== 'open'
+                  ? 'This PR is no longer open.'
+                  : null;
+  const canSubmit = !busy && submitIssue === null;
 
   function go(path: string | null) {
     setShowingComments(false);
@@ -296,9 +308,9 @@ function QuickReviewWorkspace({ pr }: { pr: PullRequestWithChecks }) {
           {finishing ? (
             <QuickReviewFinish
               document={doc}
-              total={files.length}
-              unfinished={unreadyComments}
+              filePaths={files.map((item) => item.filename)}
               comments={doc.comments.map(commentView)}
+              submitIssue={submitIssue}
               update={update}
             />
           ) : !file ? (
@@ -389,6 +401,8 @@ function QuickReviewWorkspace({ pr }: { pr: PullRequestWithChecks }) {
             size="md"
             className="qr-mark"
             disabled={!canSubmit || showingComments}
+            aria-describedby={submitIssue ? 'quick-review-submit-issue' : undefined}
+            title={submitIssue ?? undefined}
             loading={busy}
             onClick={() => void submit()}
           >

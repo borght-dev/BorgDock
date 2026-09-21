@@ -120,6 +120,19 @@ describe('Quick review workspace', () => {
     render(<QuickReviewOverlay />);
     await waitFor(() => expect(screen.getByText('1 of 3 files reviewed')).toBeInTheDocument());
   });
+  it('can mark every skipped file reviewed from the finish screen', async () => {
+    await start();
+    fireEvent.click(screen.getByRole('button', { name: 'Start review →' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next file →' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next file →' }));
+    finish();
+
+    expect(screen.getByText('3 of 3 files remain unreviewed.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all files reviewed' }));
+
+    expect(screen.getByText('0 of 3 files remain unreviewed.')).toBeInTheDocument();
+    expect(screen.getByText('3 of 3 files reviewed')).toBeInTheDocument();
+  });
   it('keeps unsaved text and saved comments while navigating and closing', async () => {
     const view = await start();
     await addDraft();
@@ -214,10 +227,29 @@ describe('Quick review workspace', () => {
     );
     const submit = document.querySelector('.qr-mark')!;
     expect(submit).toBeDisabled();
+    expect(screen.getByText('Add an overall comment before requesting changes.')).toBeVisible();
     fireEvent.change(screen.getByPlaceholderText('Add overall feedback...'), {
       target: { value: 'Needs work' },
     });
     expect(submit).not.toBeDisabled();
+  });
+  it('enables and submits approval after selecting Approve', async () => {
+    vi.mocked(getPRReviewDetails).mockResolvedValue({
+      pr: { ...pr.pullRequest, state: 'OPEN' },
+      baseSha: 'base',
+    });
+    await start();
+    finish();
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Review decision' })).getByRole('button', {
+        name: 'Approve',
+      }),
+    );
+
+    const submit = screen.getByRole('button', { name: 'Submit approval' });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() => expect(submitReview).toHaveBeenCalledOnce());
   });
   it('reports a load failure with retry and retains the description', async () => {
     vi.mocked(getPRFiles).mockRejectedValueOnce(new Error('Files unavailable'));
