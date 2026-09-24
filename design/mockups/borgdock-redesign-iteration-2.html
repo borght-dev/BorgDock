@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BorgDock — iteration 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Instrument+Sans:ital,wght@0,400..600;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ease:cubic-bezier(.2,.8,.2,1);--ease-out:cubic-bezier(.16,1,.3,1);--ease-in:cubic-bezier(.4,0,1,1);
+  --page-bg:#0e0f12;--page-fg:#e9eaee;--page-dim:#8b8e98;--page-line:rgba(255,255,255,.08);
+  /* the shared graphite palette (from Workbench) used by every mockup on this page */
+  --bg:#151618;--sf:#1b1c1f;--sf2:#212226;--sf3:#28292e;--ln:rgba(255,255,255,.065);--ln2:rgba(255,255,255,.12);--fg:#ededef;--fg2:#9c9da4;--fg3:#67686f;
+  --ac:#7f7eff;--ok:#5cc98f;--bad:#f0616d;--warn:#e5b454;--info:#6fa8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--page-bg);color:var(--page-fg);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:disabled{cursor:not-allowed}
+svg{display:block}
+:focus-visible{outline:2px solid #8b8cff;outline-offset:2px;border-radius:4px}
+.reduce-motion *,.reduce-motion *::before,.reduce-motion *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+kbd{font:11px/1 JetBrains Mono,monospace;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,.14);color:inherit}
+code{font:.92em JetBrains Mono,monospace}
+
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:20px;padding:12px 32px;background:rgba(14,15,18,.72);backdrop-filter:blur(18px) saturate(1.4);border-bottom:1px solid var(--page-line)}
+.topbar .brand{font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.topbar .brand i{width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#8b8cff,#5eead4)}
+.tabs{position:relative;display:flex;gap:2px;margin-left:auto;padding:3px;border-radius:10px;background:rgba(255,255,255,.04)}
+.tabs a{position:relative;z-index:1;padding:6px 12px;border-radius:8px;font-size:13px;color:var(--page-dim);text-decoration:none;transition:color .2s var(--ease)}
+.tabs a.on{color:var(--page-fg)}
+.tabs .ind{position:absolute;top:3px;left:0;height:calc(100% - 6px);width:0;border-radius:8px;background:rgba(255,255,255,.08);transition:transform .35s var(--ease),width .35s var(--ease)}
+.motion-toggle{font-size:12px;color:var(--page-dim);display:flex;align-items:center;gap:8px}
+.motion-toggle .sw{width:30px;height:18px;border-radius:9px;background:rgba(255,255,255,.12);position:relative;transition:background .2s}
+.motion-toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .25s var(--ease)}
+.motion-toggle.on .sw{background:#8b8cff}
+.motion-toggle.on .sw::after{transform:translateX(12px)}
+
+.hero{max-width:1180px;margin:0 auto;padding:84px 32px 24px}
+.hero h1{font-size:clamp(32px,4.6vw,50px);line-height:1.04;letter-spacing:-.035em;font-weight:600;max-width:16ch}
+.hero p{margin-top:20px;max-width:58ch;color:var(--page-dim);font-size:16.5px;line-height:1.55}
+.hero > *{opacity:0;transform:translateY(14px);animation:rise .8s var(--ease-out) forwards}
+.hero > *:nth-child(2){animation-delay:.1s}.hero > *:nth-child(3){animation-delay:.2s}
+@keyframes rise{to{opacity:1;transform:none}}
+.fb{max-width:1180px;margin:0 auto;padding:0 32px 40px}
+.fb table{width:100%;border-collapse:collapse;font-size:13.5px}
+.fb th{text-align:left;color:var(--page-dim);font-weight:500;padding:10px 12px;border-bottom:1px solid var(--page-line)}
+.fb td{padding:12px 12px;border-bottom:1px solid var(--page-line);vertical-align:top;line-height:1.5}
+.fb td:first-child{color:var(--page-dim);width:34%}
+
+.variant{max-width:1180px;margin:0 auto;padding:64px 32px 20px;scroll-margin-top:64px}
+.variant header{display:grid;grid-template-columns:1fr 1.2fr;gap:32px;align-items:end;margin-bottom:20px}
+.variant h2{font-size:30px;letter-spacing:-.03em;font-weight:600;line-height:1.1}
+.variant h2 small{display:block;font-size:13px;letter-spacing:0;font-weight:500;color:var(--page-dim);margin-bottom:8px}
+.variant header p{color:var(--page-dim);font-size:14.5px;max-width:60ch}
+.win{position:relative;height:760px;border-radius:14px;overflow:hidden;box-shadow:0 40px 90px -20px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.07);display:flex;flex-direction:column;isolation:isolate;background:var(--bg);color:var(--fg);font-size:13px}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:22px;padding-top:20px;border-top:1px solid var(--page-line);font-size:13.5px;color:var(--page-dim)}
+.notes h4{color:var(--page-fg);font-size:13px;font-weight:600;margin-bottom:10px}
+.notes ul{list-style:none;display:grid;gap:7px}
+.notes li b{color:var(--page-fg);font-weight:500}
+@media (max-width:900px){.variant header,.notes{grid-template-columns:1fr}.win{height:640px}}
+
+/* shared primitives */
+.av{display:inline-grid;place-items:center;border-radius:50%;font-weight:600;letter-spacing:.02em;color:#fff;flex:none;width:22px;height:22px;font-size:9px}
+.av[data-u=koen]{background:linear-gradient(135deg,#6f6cf5,#8f7dff)}.av[data-u=mira]{background:linear-gradient(135deg,#1fb5a0,#4fd1c5)}.av[data-u=sasha]{background:linear-gradient(135deg,#e4557a,#f08aa4)}.av[data-u=renovate]{background:linear-gradient(135deg,#5b6472,#7f8896)}.av[data-u=sander]{background:linear-gradient(135deg,#d08a2b,#e6a94f)}.av[data-u=jules]{background:linear-gradient(135deg,#3f8ee6,#6fb2ff)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--fg3)}
+.dot.ok{background:var(--ok)}.dot.fail{background:var(--bad)}.dot.run{background:var(--warn);animation:pulse 1.6s ease-in-out infinite}.dot.skip{background:var(--fg3)}
+@keyframes pulse{50%{opacity:.35}}
+.cbar{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--fg2)}
+.cbar i{display:flex;width:44px;height:4px;border-radius:2px;overflow:hidden;background:var(--ln2)}
+.cbar i b{display:block;height:100%}
+.cbar i b.ok{background:var(--ok)}.cbar i b.fail{background:var(--bad)}.cbar i b.run{background:var(--warn)}
+.cbar.fail{color:var(--bad)}.cbar.run{color:var(--warn)}
+.chip{font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid var(--ln2);color:var(--fg2);white-space:nowrap}
+.chip.approved{color:var(--ok);border-color:rgba(92,201,143,.35)}.chip.changes{color:var(--bad);border-color:rgba(240,97,109,.35)}.chip.requested{color:var(--info);border-color:rgba(111,168,255,.35)}.chip.draft{color:var(--fg3);border-style:dashed}.chip.stale{color:var(--fg3)}
+.btn{height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--ln2);background:var(--sf2);font-weight:500;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;transition:background .15s,transform .15s var(--ease),border-color .15s,opacity .2s;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--sf3);border-color:rgba(255,255,255,.18)}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn.pri{background:var(--ac);border-color:transparent;color:#fff}
+.btn.pri:hover:not(:disabled){background:#8e8dff}
+.btn.ok{background:rgba(92,201,143,.14);border-color:rgba(92,201,143,.3);color:var(--ok)}
+.btn.ghost{background:none;border-color:transparent;color:var(--fg2)}
+.btn:disabled{opacity:.45}
+.sbar{display:flex;justify-content:space-between;padding:6px 16px;border-top:1px solid var(--ln);font-size:11.5px;color:var(--fg3)}
+.md h3{font-size:12.5px;font-weight:600;color:var(--fg);margin:12px 0 4px}
+.md h3:first-child{margin-top:0}
+.md p{margin:4px 0;color:var(--fg2);line-height:1.55}
+.md ul,.md ol{margin:4px 0 4px 18px;color:var(--fg2);line-height:1.55}
+.md code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;font-size:11.5px;color:var(--fg)}
+.md img{display:block;width:100%;max-width:360px;border-radius:8px;border:1px solid var(--ln);margin:6px 0}
+.clamp{position:relative;max-height:var(--clamp,7.2em);overflow:hidden;transition:max-height .4s var(--ease)}
+.clamp::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(transparent,var(--fade,var(--sf)));transition:opacity .3s}
+.clamp.open{max-height:var(--full,600px);overflow:auto}
+.clamp.open::after{opacity:0}
+.more{font-size:12px;color:var(--ac);margin-top:6px;padding:0}
+.grp{display:grid;gap:2px}
+.grp > details{border-radius:8px}
+.grp > details > summary{list-style:none;display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:7px;font-size:12.5px;cursor:pointer;color:var(--fg)}
+.grp > details > summary::-webkit-details-marker{display:none}
+.grp > details > summary:hover{background:rgba(255,255,255,.04)}
+.grp > details > summary .car{width:12px;height:12px;stroke:var(--fg3);fill:none;stroke-width:2;transition:transform .2s var(--ease)}
+.grp > details[open] > summary .car{transform:rotate(90deg)}
+.grp > details > summary .n{margin-left:auto;color:var(--fg3);font-size:11.5px;font-variant-numeric:tabular-nums}
+.grp > details > summary .n.bad{color:var(--bad)}.grp > details > summary .n.run{color:var(--warn)}
+.grp .row{display:flex;align-items:center;gap:10px;height:28px;padding:0 10px 0 32px;font-size:12px;color:var(--fg2);border-radius:6px}
+.grp .row:hover{background:rgba(255,255,255,.03)}
+.grp .row.fail{color:var(--fg)}
+.grp .row .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp .row .d{margin-left:0;color:var(--fg3);font-size:11px;font-variant-numeric:tabular-nums}
+.grp .row .fx{font-size:11px;color:var(--ac);padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .15s}
+.grp .row:hover .fx{opacity:1}
+pre.log{font:11.5px/1.55 JetBrains Mono,monospace;color:var(--fg2);background:rgba(0,0,0,.28);border:1px solid var(--ln);border-radius:8px;padding:10px 12px;white-space:pre-wrap;overflow:auto;max-height:180px}
+pre.log b{color:var(--bad);font-weight:500}
+.seg{display:flex;padding:2px;border-radius:8px;background:rgba(255,255,255,.04);position:relative}
+.seg .hl{position:absolute;top:2px;left:0;height:calc(100% - 4px);border-radius:6px;background:var(--sf2);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 1px 2px rgba(0,0,0,.4);transition:transform .32s var(--ease),width .32s var(--ease)}
+.seg button{position:relative;padding:4px 10px;border-radius:6px;color:var(--fg2);display:flex;gap:6px;align-items:center;transition:color .2s;white-space:nowrap}
+.seg button.on{color:var(--fg)}
+.seg button b{font-weight:500;color:var(--fg3);font-size:11px}
+
+/* ═════════ Workbench v2 ═════════ */
+.wb{font-family:Inter,system-ui,sans-serif;display:grid;grid-template-columns:200px 1fr 0px;transition:grid-template-columns .36s var(--ease)}
+.wb.open{grid-template-columns:200px 1fr 360px}
+.wb-rail{border-right:1px solid var(--ln);padding:14px 10px;display:flex;flex-direction:column}
+.wb-rail .ws{display:flex;align-items:center;gap:8px;padding:6px 8px;font-weight:600}
+.wb-rail .ws i{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,#7f7eff,#5eead4)}
+.wb-rail nav{position:relative;margin-top:14px;display:grid;gap:1px}
+.wb-rail nav .hl{position:absolute;left:0;right:0;height:30px;border-radius:7px;background:rgba(255,255,255,.07);transition:transform .32s var(--ease);pointer-events:none}
+.wb-rail nav button{position:relative;display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:7px;color:var(--fg2);text-align:left;transition:color .2s}
+.wb-rail nav button.on{color:var(--fg)}
+.wb-rail nav button b{margin-left:auto;font-weight:500;font-size:11.5px;color:var(--fg3)}
+.wb-rail nav button b.hot{color:var(--bad)}
+.wb-rail .sync{margin-top:auto;padding:8px 10px;color:var(--fg3);font-size:11.5px;display:grid;gap:8px}
+.wb-rail .meter{height:3px;border-radius:2px;background:var(--ln);overflow:hidden}
+.wb-rail .meter i{display:block;height:100%;width:96.7%;background:var(--ac)}
+.wb-main{display:flex;flex-direction:column;min-width:0}
+.wb-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ln)}
+.wb-head h1{font-size:14px;font-weight:600;margin-right:6px;white-space:nowrap}
+.wb-search{margin-left:auto;display:flex;align-items:center;gap:8px;height:28px;padding:0 8px 0 10px;border:1px solid var(--ln);border-radius:7px;color:var(--fg3);flex:0 1 200px;min-width:90px;white-space:nowrap;overflow:hidden}
+.wb-search span{flex:1;overflow:hidden;text-overflow:ellipsis}
+.wb-list{overflow:auto;flex:1;padding:6px 0 20px}
+.wb-list::-webkit-scrollbar{width:8px}.wb-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+.wb-group{padding:14px 16px 6px;font-size:12px;color:var(--fg2);display:flex;align-items:center;gap:8px}
+.wb-group b{font-weight:500;color:var(--fg3)}
+.wb-group::after{content:"";flex:1;height:1px;background:var(--ln)}
+.wb-row{display:grid;grid-template-columns:22px 1fr auto auto 46px;align-items:center;gap:14px;height:42px;padding:0 16px 0 14px;border-left:2px solid transparent;cursor:default;transition:background .15s,border-color .2s}
+.wb-row:hover{background:rgba(255,255,255,.028)}
+.wb-row.sel{background:rgba(127,126,255,.07);border-left-color:var(--ac)}
+.wb-row .t{min-width:0;display:grid;gap:1px}
+.wb-row .t b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-row .t span{font-size:11.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-row .t span em{font-style:normal;color:var(--fg2)}
+.wb-row .num{color:var(--fg3);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.wb-insp{border-left:1px solid var(--ln);background:var(--sf);overflow:hidden;opacity:0;transform:translateX(12px);transition:opacity .3s var(--ease),transform .36s var(--ease);min-width:0}
+.wb.open .wb-insp{opacity:1;transform:none}
+.wb-insp .in{width:359px;padding:18px 18px 24px;display:grid;gap:16px;align-content:start;height:100%;overflow:auto}
+.wb-insp .in > *{min-width:0}
+.tl-more .in > *{min-width:0}
+.wb-insp .in::-webkit-scrollbar{width:8px}.wb-insp .in::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+.wb-insp .ttl span{font-size:11.5px;color:var(--fg3)}
+.wb-insp .ttl h2{font-size:15px;font-weight:600;line-height:1.35;letter-spacing:-.01em;margin-top:4px}
+.wb-insp .ready{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,.04);font-size:12.5px}
+.wb-insp .ready b{font-weight:600}
+.wb-insp .ready i{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.wb-insp .ready[data-s=ok] i{background:var(--ok)}.wb-insp .ready[data-s=bad] i{background:var(--bad)}
+.wb-insp h3{font-size:12px;color:var(--fg2);font-weight:500;display:flex;justify-content:space-between;margin-bottom:6px}
+.wb-insp .acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ═════════ Timeline v2 ═════════ */
+.tl{font-family:"Instrument Sans",Inter,system-ui,sans-serif;font-size:14px}
+.tl-title{display:flex;align-items:center;gap:22px;padding:12px 24px;border-bottom:1px solid var(--ln)}
+.tl-title .logo{font-weight:600;letter-spacing:-.01em;display:flex;gap:10px;align-items:center}
+.tl-title .logo i{width:16px;height:16px;border-radius:50%;border:2px solid var(--ac)}
+.tl-title nav{display:flex;gap:4px}
+.tl-title nav button{padding:5px 12px;border-radius:999px;color:var(--fg2);transition:background .2s,color .2s}
+.tl-title nav button.on{background:rgba(255,255,255,.07);color:var(--fg)}
+.tl-title .search{margin-left:auto;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--ln);border-radius:999px;color:var(--fg3);font-size:13px;width:220px}
+.tl-sum{display:flex;gap:8px;padding:14px 24px 6px}
+.tl-sum button{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:10px;border:1px solid var(--ln);background:rgba(255,255,255,.02);color:var(--fg2);font-size:13px;transition:background .2s,border-color .2s,color .2s}
+.tl-sum button i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.tl-sum button b{font-weight:600;color:var(--fg);font-size:15px;font-variant-numeric:tabular-nums}
+.tl-sum button:hover{background:rgba(255,255,255,.04)}
+.tl-sum button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 10%,transparent);color:var(--fg)}
+.tl-sum button[data-f=you]{--c:var(--bad)}.tl-sum button[data-f=wait]{--c:var(--warn)}.tl-sum button[data-f=ready]{--c:var(--ok)}.tl-sum button[data-f=stale]{--c:var(--fg3)}
+.tl-sum .all{margin-left:auto;border-color:transparent;background:none}
+.tl-body{flex:1;overflow:auto;padding:10px 24px 40px}
+.tl-body::-webkit-scrollbar{width:8px}.tl-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px}
+.tl-when{display:flex;align-items:center;gap:10px;padding:14px 0 8px;color:var(--fg3);font-size:13px;cursor:pointer;user-select:none}
+.tl-when::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--ln2);margin-left:14px;margin-right:9px}
+.tl-when b{font-weight:500;color:var(--fg2)}
+.tl-when .car{width:12px;height:12px;stroke:var(--fg3);fill:none;stroke-width:2;transition:transform .2s var(--ease);transform:rotate(90deg)}
+.tl-when.closed .car{transform:rotate(0)}
+.tl-when .cnt{color:var(--fg3)}
+.tl-when .hint{margin-left:auto;font-size:12px}
+.tl-sec{display:grid;grid-template-rows:1fr;transition:grid-template-rows .35s var(--ease)}
+.tl-sec.closed{grid-template-rows:0fr}
+.tl-sec > div{min-height:0;overflow:hidden}
+.tl-item{position:relative;display:grid;grid-template-columns:46px 1fr}
+.tl-item::before{content:"";position:absolute;left:22px;top:0;bottom:0;width:2px;background:var(--ln)}
+.tl-item.open::before{background:linear-gradient(180deg,var(--ac),rgba(127,126,255,.12))}
+.tl-item.stale{opacity:.68}
+.tl-item.stale.open,.tl-item.stale:hover{opacity:1}
+.tl-node{position:relative;z-index:1;margin:15px 0 0 13px;width:20px;height:20px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+.tl-node i{width:14px;height:14px;border-radius:50%;background:conic-gradient(var(--ok) calc(var(--p)*1%),var(--bad) calc(var(--p)*1%) calc((var(--p) + var(--f))*1%),var(--warn) calc((var(--p) + var(--f))*1%) calc((var(--p) + var(--f) + var(--r))*1%),var(--ln2) 0);mask:radial-gradient(circle,transparent 50%,#000 52%);-webkit-mask:radial-gradient(circle,transparent 50%,#000 52%);transition:box-shadow .3s}
+.tl-item[data-s=run] .tl-node i{animation:spin 2.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tl-item.open .tl-node i{box-shadow:0 0 0 4px rgba(127,126,255,.18)}
+.tl-card{padding:11px 16px 11px 8px;border-radius:12px;cursor:pointer;display:grid;grid-template-rows:auto 0fr;transition:grid-template-rows .34s var(--ease),background .2s,box-shadow .2s}
+.tl-item:hover .tl-card{background:rgba(255,255,255,.03)}
+.tl-item.open .tl-card{background:var(--sf);grid-template-rows:auto 1fr;box-shadow:0 0 0 1px var(--ln)}
+.tl-card .hd{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:18px}
+.tl-card .hd b{font-weight:500;font-size:15px;letter-spacing:-.005em;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-card .hd .sub{margin-top:3px;color:var(--fg3);font-size:12.5px;display:flex;gap:12px;align-items:center;white-space:nowrap}
+.tl-card .hd .sub .av{width:16px;height:16px;font-size:7px;margin-right:-6px}
+.tl-card .hd .sub em{font-style:normal;color:var(--fg2)}
+.tl-card .hd .num{color:var(--fg3);font-size:12.5px;font-variant-numeric:tabular-nums}
+.delta{display:grid;gap:4px;width:110px}
+.delta .bar{height:4px;border-radius:2px;display:flex;overflow:hidden;background:var(--ln)}
+.delta .bar i{height:100%}
+.delta .bar i:first-child{background:var(--ok)}.delta .bar i:last-child{background:var(--bad)}
+.delta span{font-size:11px;color:var(--fg3);display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.tl-more{min-height:0;overflow:hidden}
+.tl-more .in{padding-top:14px;display:grid;grid-template-columns:1.1fr 1fr;gap:18px 22px;opacity:0;transform:translateY(-4px);transition:opacity .3s .1s,transform .3s var(--ease) .1s}
+.tl-item.open .tl-more .in{opacity:1;transform:none}
+.tl-more h4{font-size:12px;color:var(--fg3);font-weight:500;margin-bottom:6px;display:flex;justify-content:space-between}
+.tl-more .desc{font-size:13px}
+.tl-link{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tl-link .lk{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--ln);background:rgba(255,255,255,.02);font-size:12.5px}
+.tl-link .lk .ty{font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--fg2)}
+.tl-link .lk .ty.bug{background:rgba(240,97,109,.16);color:var(--bad)}.tl-link .lk .ty.agent{background:rgba(229,180,84,.16);color:var(--warn)}.tl-link .lk .ty.agent.done{background:rgba(92,201,143,.16);color:var(--ok)}
+.tl-link .lk b{font-weight:500}
+.tl-link .lk > span:not(.ty){grid-column:2;color:var(--fg3);font-size:12px}
+.tl-link .lk .ty{justify-self:start}
+.tl-link .lk.none{color:var(--fg3);grid-template-columns:1fr}
+.tl-more .act{grid-column:1/-1;display:flex;gap:8px;padding-top:2px;flex-wrap:wrap}
+.tl-empty{padding:60px;text-align:center;color:var(--fg3)}
+
+/* ═════════ Board v2 ═════════ */
+.bd{font-family:Inter,system-ui,sans-serif}
+.bd-title{display:flex;align-items:center;gap:18px;padding:12px 22px;border-bottom:1px solid var(--ln)}
+.bd-title .logo{font-weight:600;letter-spacing:-.01em;display:flex;gap:9px;align-items:center}
+.bd-title .logo i{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,#7f7eff,#5eead4)}
+.bd-title nav{display:flex;gap:2px;margin-left:8px}
+.bd-title nav button{padding:6px 12px;border-radius:8px;color:var(--fg2);font-weight:500;transition:background .2s,color .2s}
+.bd-title nav button.on{background:rgba(255,255,255,.07);color:var(--fg)}
+.bd-title .done{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--fg2);font-size:12.5px}
+.bd-title .done b{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:rgba(92,201,143,.16);color:var(--ok);font-weight:600;transition:transform .3s var(--ease)}
+.bd-title .done b.bump{transform:scale(1.25)}
+.bd-cols{flex:1;display:grid;grid-template-columns:1.15fr 1fr 1fr .8fr;gap:12px;padding:16px 22px;overflow:hidden;min-height:0}
+.bd-col{background:rgba(255,255,255,.025);border:1px solid var(--ln);border-radius:14px;padding:10px;display:flex;flex-direction:column;min-height:0}
+.bd-col > header{display:flex;align-items:center;gap:8px;padding:4px 6px 10px;font-weight:600;font-size:13px}
+.bd-col > header i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--fg3))}
+.bd-col[data-col=you]{--c:var(--bad)}.bd-col[data-col=wait]{--c:var(--warn)}.bd-col[data-col=ready]{--c:var(--ok)}.bd-col[data-col=stale]{--c:var(--fg3)}
+.bd-col > header b{margin-left:auto;font-weight:500;font-size:12px;color:var(--fg3);transition:transform .3s var(--ease)}
+.bd-col > header b.bump{transform:scale(1.3)}
+.bd-col > header span{font-weight:400;color:var(--fg3);font-size:11.5px}
+.bd-col .stack{display:grid;gap:8px;align-content:start;flex:1;overflow:auto;padding:2px}
+.bd-col .stack::-webkit-scrollbar{width:6px}.bd-col .stack::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+.bd-card{background:var(--sf);border:1px solid var(--ln);border-radius:11px;padding:11px 12px;display:grid;gap:7px;transition:border-color .2s,transform .2s var(--ease)}
+.bd-card:hover{border-color:var(--ln2)}
+.bd-card .repo{font-size:11px;color:var(--fg3);display:flex;justify-content:space-between;align-items:center}
+.bd-card .ttl{font-weight:500;font-size:13px;line-height:1.35;letter-spacing:-.005em}
+.bd-card .why{font-size:11.5px;color:var(--fg2);line-height:1.4}
+.bd-card .foot{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg2)}
+.bd-card .foot .av{width:18px;height:18px;font-size:7px}
+.bd-card .foot .cbar{margin-left:auto;font-size:11px}
+.bd-card .acts{display:flex;gap:6px}
+.bd-card .acts .btn{height:28px;font-size:12px;padding:0 10px;flex:1;justify-content:center}
+.bd-card.compact{padding:8px 10px;gap:4px}
+.bd-card.compact .ttl{font-size:12.5px;font-weight:400;color:var(--fg2)}
+.bd-merge{position:relative;overflow:hidden}
+.bd-merge::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.18);transform:scaleX(0);transform-origin:left}
+.bd-merge.busy::after{animation:fill 1.1s var(--ease) forwards}
+@keyframes fill{to{transform:scaleX(1)}}
+.bd-toast{position:absolute;left:50%;bottom:44px;transform:translate(-50%,16px);opacity:0;background:var(--sf3);border:1px solid var(--ln2);padding:9px 14px;border-radius:9px;font-size:12.5px;transition:transform .3s var(--ease-out),opacity .25s;pointer-events:none}
+.bd-toast.on{transform:translate(-50%,0);opacity:1}
+
+/* ═════════ Quick review v2 ═════════ */
+.qr{font-family:"Instrument Sans",Inter,system-ui,sans-serif;font-size:14px;background:radial-gradient(120% 80% at 50% 110%,#1c1d22 0%,var(--bg) 60%)}
+.qr-title{display:flex;align-items:center;gap:16px;padding:14px 26px}
+.qr-title h1{font:italic 22px/1 "Instrument Serif",serif;letter-spacing:-.01em}
+.qr-title .prog{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--fg2);font-size:13px}
+.qr-title .bar{width:160px;height:2px;background:var(--ln2);border-radius:1px;overflow:hidden}
+.qr-title .bar i{display:block;height:100%;width:0;background:var(--fg);transition:width .5s var(--ease)}
+.qr-title .x{color:var(--fg3);font-size:18px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center}
+.qr-stage{flex:1;position:relative;display:grid;place-items:center;padding:0 40px 30px;perspective:1400px;transition:opacity .3s,transform .4s var(--ease)}
+.qr.reviewing .qr-stage{opacity:0;transform:scale(.97);pointer-events:none}
+.qr-card{position:absolute;width:680px;max-width:calc(100% - 80px);background:var(--sf);border:1px solid var(--ln);border-radius:20px;padding:30px 34px 26px;box-shadow:0 30px 60px -30px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.05) inset;transform-origin:center bottom;transition:transform .55s var(--ease-out),opacity .45s var(--ease),filter .5s;display:grid;gap:18px}
+.qr-card[data-i="0"]{z-index:5}
+.qr-card[data-i="1"]{z-index:4;transform:translateY(-20px) scale(.955);opacity:.7;filter:brightness(.85)}
+.qr-card[data-i="2"]{z-index:3;transform:translateY(-38px) scale(.91);opacity:.45;filter:brightness(.7)}
+.qr-card[data-i="3"],.qr-card[data-i="4"]{z-index:2;transform:translateY(-54px) scale(.865);opacity:0}
+.qr-card:not([data-i="0"]) > *:not(.hd){visibility:hidden}
+.qr-card.gone-r{transform:translate(140%,-8%) rotate(8deg)!important;opacity:0!important;transition:transform .6s var(--ease-in),opacity .45s}
+.qr-card.gone-l{transform:translate(-140%,10%) rotate(-8deg)!important;opacity:0!important;transition:transform .6s var(--ease-in),opacity .45s}
+.qr-card .hd .over{display:flex;align-items:center;gap:12px;color:var(--fg3);font-size:12.5px}
+.qr-card .hd .over .av{width:20px;height:20px;font-size:8px}
+.qr-card .hd h2{margin-top:10px;font:400 30px/1.12 "Instrument Serif",serif;letter-spacing:-.01em}
+.qr-card .desc{font-size:13.5px;--fade:var(--sf);--clamp:6.4em}
+.qr-card .meta{display:flex;gap:22px;font-size:12.5px;color:var(--fg2);flex-wrap:wrap}
+.qr-card .meta b{display:block;font-weight:500;color:var(--fg);font-size:13.5px;margin-bottom:2px}
+.qr-files{display:grid;gap:8px}
+.qr-files h4{font-size:12px;color:var(--fg3);font-weight:500;display:flex;justify-content:space-between}
+.qr-files .folders{display:flex;flex-wrap:wrap;gap:6px}
+.qr-files .folders span{font-size:12px;padding:4px 9px;border-radius:999px;border:1px solid var(--ln);color:var(--fg2)}
+.qr-files .folders span b{font-weight:500;color:var(--fg);margin-left:6px;font-variant-numeric:tabular-nums}
+.qr-files .folders span.gen{border-style:dashed;color:var(--fg3)}
+.qr-checks{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--fg2)}
+.qr-act{display:flex;gap:10px;align-items:center;padding-top:2px}
+.qr-btn{height:38px;padding:0 18px;border-radius:999px;border:1px solid var(--ln2);font-size:13.5px;font-weight:500;color:var(--fg2);transition:background .2s,color .2s,transform .15s var(--ease),opacity .2s;position:relative}
+.qr-btn:hover:not(:disabled){background:rgba(255,255,255,.05);color:var(--fg)}
+.qr-btn:active:not(:disabled){transform:scale(.97)}
+.qr-btn.pri{background:var(--fg);color:#141517;border-color:transparent}
+.qr-btn.pri:hover:not(:disabled){background:#fff;color:#141517}
+.qr-btn.approve{margin-left:auto;background:var(--ok);color:#0e1a13;border-color:transparent}
+.qr-btn.approve:hover:not(:disabled){background:#72d8a0;color:#0e1a13}
+.qr-btn:disabled{opacity:.4}
+.qr-btn .tip{position:absolute;bottom:calc(100% + 8px);right:0;background:var(--sf3);border:1px solid var(--ln2);color:var(--fg2);font-size:11.5px;padding:5px 9px;border-radius:7px;white-space:nowrap;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;pointer-events:none}
+.qr-btn:disabled:hover .tip{opacity:1;transform:none}
+.qr-keys{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:var(--fg3);font-size:12px;transition:opacity .3s}
+.qr.reviewing .qr-keys{opacity:0}
+.qr-review{position:absolute;inset:56px 22px 22px;border-radius:16px;background:var(--sf);border:1px solid var(--ln);display:grid;grid-template-columns:260px 1fr;grid-template-rows:1fr auto;opacity:0;transform:scale(.985);pointer-events:none;transition:opacity .3s .1s,transform .45s var(--ease-out) .1s;overflow:hidden}
+.qr.reviewing .qr-review{opacity:1;transform:none;pointer-events:auto}
+.qr-tree{border-right:1px solid var(--ln);overflow:auto;padding:12px 8px}
+.qr-tree::-webkit-scrollbar{width:6px}.qr-tree::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+.qr-tree .fold{font-size:11.5px;color:var(--fg3);padding:10px 8px 4px;display:flex;justify-content:space-between}
+.qr-tree .fold:first-child{padding-top:0}
+.qr-tree .f{display:grid;grid-template-columns:16px 1fr auto;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;font-size:12.5px;color:var(--fg2);cursor:pointer;transition:background .15s,color .15s}
+.qr-tree .f:hover{background:rgba(255,255,255,.04)}
+.qr-tree .f.cur{background:rgba(127,126,255,.12);color:var(--fg)}
+.qr-tree .f .cb{width:14px;height:14px;border-radius:4px;border:1px solid var(--ln2);display:grid;place-items:center;transition:background .2s,border-color .2s}
+.qr-tree .f .cb svg{width:9px;height:9px;stroke:#0e1a13;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:14;stroke-dashoffset:14;transition:stroke-dashoffset .3s var(--ease-out)}
+.qr-tree .f.done .cb{background:var(--ok);border-color:var(--ok)}
+.qr-tree .f.done .cb svg{stroke-dashoffset:0}
+.qr-tree .f.done{color:var(--fg3)}
+.qr-tree .f .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qr-tree .f .dl{font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.qr-tree .f .dl em{font-style:normal;color:var(--ok)}.qr-tree .f .dl i{font-style:normal;color:var(--bad)}
+.qr-tree .f.gen .nm{color:var(--fg3);font-style:italic}
+.qr-diff{display:flex;flex-direction:column;min-width:0}
+.qr-diff .fh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--ln);font-size:12.5px}
+.qr-diff .fh code{font-size:12px;color:var(--fg)}
+.qr-diff .fh span{color:var(--fg3)}
+.qr-diff .fh .st{margin-left:auto;font-size:11.5px;color:var(--fg3)}
+.qr-diff pre{flex:1;overflow:auto;font:12px/1.65 JetBrains Mono,monospace;padding:12px 0;color:var(--fg2);transition:opacity .2s}
+.qr-diff pre.swap{opacity:0}
+.qr-diff pre span{display:block;padding:0 16px 0 52px;position:relative;white-space:pre}
+.qr-diff pre span::before{content:attr(data-n);position:absolute;left:14px;color:var(--fg3);font-size:11px}
+.qr-diff pre .add{background:rgba(92,201,143,.1);color:#bfe9d1}.qr-diff pre .del{background:rgba(240,97,109,.1);color:#f4bcc1}
+.qr-diff pre .hunk{color:var(--fg3);padding-top:8px}
+.qr-foot{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--ln)}
+.qr-foot .left{color:var(--fg3);font-size:12.5px;margin-right:auto}
+.qr-foot .btn{height:34px;font-size:13px}
+.qr-empty{position:absolute;text-align:center;opacity:0;transform:translateY(10px);transition:opacity .5s .3s,transform .5s var(--ease-out) .3s;pointer-events:none}
+.qr-empty.on{opacity:1;transform:none;pointer-events:auto}
+.qr-empty h2{font:italic 34px/1.1 "Instrument Serif",serif}
+.qr-empty p{margin-top:10px;color:var(--fg2)}
+.qr-empty button{margin-top:22px}
+
+.closing{max-width:1180px;margin:0 auto;padding:64px 32px 120px}
+.closing h2{font-size:30px;letter-spacing:-.03em;font-weight:600;margin-bottom:14px}
+.closing p{color:var(--page-dim);max-width:62ch;font-size:15px;line-height:1.6;margin-bottom:12px}
+.closing ol{margin:10px 0 0 20px;color:var(--page-dim);line-height:1.6;max-width:62ch}
+.closing li b{color:var(--page-fg);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><i></i>BorgDock redesign, iteration 2</div>
+  <nav class="tabs" id="pageTabs"><span class="ind hl"></span>
+    <a href="#timeline">Timeline</a><a href="#workbench">Workbench</a><a href="#board">Board</a><a href="#review">Quick review</a><a href="#closing">Proposal</a>
+  </nav>
+  <button class="motion-toggle" id="motionToggle" aria-pressed="false">Reduce motion <span class="sw"></span></button>
+</div>
+
+<section class="hero">
+  <h1>Timeline leads. The rest fold into it.</h1>
+  <p>Second pass on the four directions you kept. Everything is on the same graphite palette now so you compare structure, not colour. The data is closer to real: 18 open pull requests, some weeks old, a repository with 80 checks, a pull request with a proper multi-section description and 23 files.</p>
+</section>
+<div class="fb">
+  <table>
+    <tr><th>You said</th><th>What changed</th></tr>
+    <tr><td>Workbench gives a good overview but looks busy, and the segmented check glyph is unrealistic at 80 checks.</td><td>Rows lost the ring and the segments. Checks are one count with a small proportional bar that reads the same at 6 or 80. The inspector groups checks by suite, failures first, passing suites collapsed.</td></tr>
+    <tr><td>Briefing and Pulse: no.</td><td>Removed. The plain-language summary survives only as the count strip at the top of Timeline and Board.</td></tr>
+    <tr><td>Timeline: everything, except the brown. What about long descriptions and many, old PRs?</td><td>Recoloured to the Workbench graphite. Now 18 PRs across Today, Yesterday, This week and a collapsed Older group. Stale rows dim. The open row renders the real description with a six-line clamp and a Show more that scrolls inside the row. Checks are the 80-check set, grouped. The Thread idea lives here now as a linked work item and agent strip.</td></tr>
+    <tr><td>Board: good overview, but dragging to Approved is not reviewing.</td><td>No drag. Placement is computed and every card says why it sits where it sits. Review opens the review; only Merge acts on the card.</td></tr>
+    <tr><td>Quick review: nice, but with a lot of files?</td><td>The card summarises files by folder and Approve is disabled until the files are reviewed. Review files turns the card into a file walk with a tree, diff and Mark reviewed and next. Generated files can be skipped in one go.</td></tr>
+    <tr><td>Thread: nice idea, questionable in real life.</td><td>Demoted from a top-level view to a strip inside the expanded Timeline row, shown only when a link exists. No separate navigation, nothing to keep in sync.</td></tr>
+  </table>
+</div>
+
+<!-- ═════════ TIMELINE ═════════ -->
+<section class="variant" id="timeline">
+  <header>
+    <h2><small>Lead direction</small>Timeline</h2>
+    <p>Eighteen PRs. Groups by recency, Older collapsed by default. The strip at the top is Board's overview and it filters. Open the first row: the description is the real one from #482 clamped to six lines, the checks are the 80-check set grouped by suite with failures first, and the linked work item and agent appear below. Press <kbd>J</kbd> <kbd>K</kbd> to move, <kbd>Enter</kbd> to open, <kbd>Esc</kbd> to close.</p>
+  </header>
+  <div class="win tl" id="tlWin">
+    <div class="tl-title">
+      <div class="logo"><i></i>BorgDock</div>
+      <nav><button class="on">Pull requests</button><button>Work items</button><button>Worktrees</button></nav>
+      <div class="search">Search pull requests <kbd style="margin-left:auto">/</kbd></div>
+    </div>
+    <div class="tl-sum" id="tlSum">
+      <button data-f="you"><i></i>Needs you <b>0</b></button>
+      <button data-f="wait"><i></i>Waiting on others <b>0</b></button>
+      <button data-f="ready"><i></i>Ready to merge <b>0</b></button>
+      <button data-f="stale"><i></i>Stale <b>0</b></button>
+      <button class="all on" data-f="all">Everything <b>0</b></button>
+    </div>
+    <div class="tl-body" id="tlBody"></div>
+    <div class="sbar"><span>Synced 12 s ago, 18 open across 3 repositories</span><span>J and K move, Enter opens, Esc closes, F fixes with Claude</span></div>
+  </div>
+  <div class="notes">
+    <div><h4>Scaling answers</h4><ul>
+      <li><b>Many PRs:</b> recency groups keep today's work at the top; Older is collapsed with a count so a 40-PR backlog costs one line. Stale rows (no update in 7 days) dim and get their own filter.</li>
+      <li><b>Long descriptions:</b> rendered markdown, clamped to six lines, Show more scrolls within a 320 px box so the row never grows past the window.</li>
+      <li><b>80 checks:</b> the ring is a fraction, so it looks the same at any count. The expansion shows suites, not checks; only failing suites open by default.</li>
+      <li><b>Thread:</b> the work item and agent strip is shown only when a link exists. For an unlinked PR it says so in one line.</li>
+    </ul></div>
+    <div><h4>Motion</h4><ul>
+      <li>Rows expand with a grid-row transition (340 ms); content fades in a beat later.</li>
+      <li>Filtering FLIPs the surviving rows; group headers collapse with the same transition.</li>
+      <li>Only rings with running checks spin. Nothing else moves on its own.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ═════════ WORKBENCH ═════════ -->
+<section class="variant" id="workbench">
+  <header>
+    <h2><small>Alternative</small>Workbench, calmer</h2>
+    <p>Same overview, fewer marks per row: avatar, title, one meta line, one check count with a bar, one review chip, the number. The ring is gone from the list; readiness is a sentence at the top of the inspector. Click a row. The inspector's checks are the 80-check set grouped by suite.</p>
+  </header>
+  <div class="win wb" id="wbWin">
+    <aside class="wb-rail">
+      <div class="ws"><i></i>BorgDock</div>
+      <nav id="wbNav"><span class="hl"></span><button>Focus<b>5</b></button><button class="on">Pull requests<b class="hot">18</b></button><button>Work items<b>12</b></button><button>Worktrees<b>4</b></button></nav>
+      <div class="sync"><span>Synced 12 s ago</span><div class="meter"><i></i></div><span>4 837 of 5 000 requests left</span></div>
+    </aside>
+    <main class="wb-main">
+      <div class="wb-head"><h1>Pull requests</h1>
+        <div class="seg" id="wbSeg"><span class="hl"></span><button class="on" data-f="all">All <b>18</b></button><button data-f="you">Needs you <b>5</b></button><button data-f="mine">Mine <b>7</b></button><button data-f="failing">Failing <b>2</b></button></div>
+        <div class="wb-search"><span>Search or run a command</span><kbd>⌘K</kbd></div></div>
+      <div class="wb-list" id="wbList"></div>
+      <div class="sbar"><span>18 open across 3 repositories</span><span>Refresh <kbd>R</kbd> Inspector <kbd>I</kbd></span></div>
+    </main>
+    <aside class="wb-insp" id="wbInsp"><div class="in"></div></aside>
+  </div>
+  <div class="notes">
+    <div><h4>What got cut</h4><ul>
+      <li><b>Per-check segments:</b> replaced by count plus bar. Two failing out of 80 is a thin red sliver and red text; that is the signal that matters.</li>
+      <li><b>Ring in the row:</b> gone. It duplicated the checks and the review chip. Readiness lives in the inspector as words.</li>
+      <li><b>Second meta line:</b> gone. Author, repo, checks summary and age fit in one.</li>
+    </ul></div>
+    <div><h4>Versus Timeline</h4><ul>
+      <li>Workbench is better for scanning many rows at once and for keyboard-driven comparison.</li>
+      <li>Timeline is better for the in-place open, description reading and the linked context.</li>
+      <li>They share the same row grammar now, so a hybrid (Timeline body with a Workbench inspector) is a small step.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ═════════ BOARD ═════════ -->
+<section class="variant" id="board">
+  <header>
+    <h2><small>Alternative</small>Board, without drag</h2>
+    <p>Four computed columns. Each card says in one line why it is there. Review opens the quick review below; nothing moves by hand. Merge on a ready card runs, completes and counts itself. Stale is a narrow column of compact cards so old PRs stay visible without taking room.</p>
+  </header>
+  <div class="win bd" id="bdWin">
+    <div class="bd-title"><div class="logo"><i></i>BorgDock</div><nav><button class="on">Focus</button><button>Pull requests</button><button>Work items</button></nav><div class="done">Merged today <b id="bdDone">2</b></div></div>
+    <div class="bd-cols" id="bdCols">
+      <div class="bd-col" data-col="you"><header><i></i>Needs you<b>0</b></header><div class="stack"></div></div>
+      <div class="bd-col" data-col="wait"><header><i></i>Waiting on others<b>0</b></header><div class="stack"></div></div>
+      <div class="bd-col" data-col="ready"><header><i></i>Ready to merge<b>0</b></header><div class="stack"></div></div>
+      <div class="bd-col" data-col="stale"><header><i></i>Stale <span>7 d or more</span><b>0</b></header><div class="stack"></div></div>
+    </div>
+    <div class="sbar"><span>Focus computed just now</span><span>Placement is computed; Review opens the review</span></div>
+    <div class="bd-toast" id="bdToast"></div>
+  </div>
+  <div class="notes">
+    <div><h4>Why no drag</h4><ul>
+      <li><b>Columns are facts,</b> not opinions: who the ball is with. Moving a card by hand would lie about that.</li>
+      <li><b>The card explains itself.</b> "Because mira asked for your review 1 h ago" is the reason, so you never wonder why it is on the left.</li>
+      <li><b>Actions do the moving.</b> Approving in the review moves the card to Ready; merging removes it.</li>
+    </ul></div>
+    <div><h4>Motion</h4><ul>
+      <li>Merge fills the button (1.1 s), flips to Merged, the card fades and the tally bumps.</li>
+      <li>Review shows a toast naming what opens; in the app it would open the quick review.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ═════════ QUICK REVIEW ═════════ -->
+<section class="variant" id="review">
+  <header>
+    <h2><small>Alternative</small>Quick review, for large PRs</h2>
+    <p>The top card is #482 with 23 files. The card shows the description, size and files by folder. Approve is disabled until the files are reviewed. Press Review files: the card becomes a file walk with a tree, the diff and Mark reviewed and next. Skip generated marks lockfiles and generated code as reviewed in one go. Finish review returns to the deck with Approve enabled.</p>
+  </header>
+  <div class="win qr" id="qrWin">
+    <div class="qr-title"><h1>Quick review</h1><div class="prog"><span id="qrProg">1 of 4</span><div class="bar"><i id="qrBar"></i></div></div><button class="x" aria-label="Close">×</button></div>
+    <div class="qr-stage" id="qrStage"><div class="qr-empty" id="qrEmpty"><h2>You're caught up.</h2><p>Four reviewed. The queue refills as new reviews arrive.</p><button class="qr-btn" id="qrReset">Start over</button></div></div>
+    <div class="qr-keys" id="qrKeys"><kbd>→</kbd> approve when enabled <kbd>←</kbd> review later <kbd>Enter</kbd> review files</div>
+    <div class="qr-review" id="qrReview">
+      <div class="qr-tree" id="qrTree"></div>
+      <div class="qr-diff" id="qrDiff"><div class="fh"></div><pre></pre></div>
+      <div class="qr-foot"><span class="left" id="qrLeft"></span><button class="btn ghost" id="qrSkipGen">Skip generated</button><button class="btn" id="qrPrev">Previous</button><button class="btn" id="qrNext">Next file</button><button class="btn pri" id="qrMark">Mark reviewed and next</button><button class="btn ok" id="qrFinish">Finish review</button></div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h4>Scaling answers</h4><ul>
+      <li><b>Many files:</b> the card never lists them; it counts them by folder. The file walk is the existing guided review with the tree kept visible.</li>
+      <li><b>No rubber-stamping:</b> Approve is disabled until every non-generated file is marked, and the tooltip says how many are left.</li>
+      <li><b>Generated files:</b> lockfiles, generated changelogs and snapshots are detected by path and can be skipped together.</li>
+      <li><b>Small PRs:</b> a two-file PR still shows the card, the walk just has two entries.</li>
+    </ul></div>
+    <div><h4>Motion</h4><ul>
+      <li>Card to file walk: the stack fades and shrinks while the walk scales up from 98 %, 450 ms.</li>
+      <li>Marking a file draws its checkmark; the diff crossfades to the next file.</li>
+      <li>Approve flings the card right; Review later flings it left.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="closing" id="closing">
+  <h2>Proposal</h2>
+  <p>Make Timeline the main Pull requests view and keep the Focus tab as the Board. Quick review becomes the file-walk version above. Workbench's inspector can come later as an optional right pane on Timeline for people who want to compare rows without opening them.</p>
+  <ol>
+    <li><b>Row grammar:</b> avatar, title, one meta line, check count with bar, review chip, number. Same in Timeline, Board cards and the inspector.</li>
+    <li><b>In-place expansion</b> replaces the PR detail window for description, checks and linked context. The detail window stays for files and comments.</li>
+    <li><b>Computed columns</b> on Focus, no drag, reasons on the cards.</li>
+    <li><b>Quick review</b> gates Approve on reviewed files and skips generated ones.</li>
+    <li><b>Graphite palette</b> from Workbench, Instrument Sans for the timeline and review, Inter for dense lists. Or one family for both; that is a detail to settle after the structure.</li>
+  </ol>
+</section>
+
+<script>
+const EASE='cubic-bezier(.2,.8,.2,1)',EASE_OUT='cubic-bezier(.16,1,.3,1)';
+const motionOK=()=>!document.body.classList.contains('reduce-motion')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+const inView=new Map();
+const io=new IntersectionObserver(es=>es.forEach(e=>inView.set(e.target.id,e.isIntersecting)),{threshold:.35});
+const fmt=n=>n.toLocaleString('en-US').replace(/,/g,' ');
+const ini=u=>u.slice(0,2).toUpperCase();
+const av=u=>`<span class="av" data-u="${u}">${ini(u)}</span>`;
+const REVIEW={approved:'Approved',changes:'Changes requested',requested:'Review requested',commented:'Commented',draft:'Draft',none:'No review yet'};
+const ago=d=>d===0?'today':d===1?'yesterday':`${d} d ago`;
+const car='<svg class="car" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+
+/* ── check sets ── */
+function bigChecks(){const c=[];const add=(suite,name)=>c.push({suite,name});
+  ['Lint','Typecheck','Biome format','Cargo clippy','Cargo test'].forEach(n=>add('Static analysis',n));
+  for(let i=1;i<=8;i++)add('Unit tests',`Unit tests (shard ${i}/8)`);
+  for(const br of['Chromium','Firefox','WebKit'])for(const os of['Windows','macOS','Linux'])for(let i=1;i<=2;i++)add('End to end',`E2E ${br} on ${os} (${i}/2)`);
+  for(const os of['Windows x64','Windows arm64','macOS x64','macOS arm64','Linux x64','Linux arm64'])add('Build',`Build ${os}`);
+  for(let i=1;i<=16;i++)add('Visual tests',`Storybook visual (shard ${i}/16)`);
+  for(const s of['SQL','ADO','GitHub','T3'])for(const k of['contract','smoke'])add('Integration',`${s} ${k}`);
+  for(const p of['MSI','NSIS','DMG','AppImage','deb'])add('Packaging',`Package ${p}`);
+  for(const s of['npm audit','cargo deny','CodeQL (JS)','CodeQL (Rust)'])add('Security',s);
+  ['Docs build','Site build','Site link check','Changelog validate','Storybook build','Release dry run','Coverage report','Bundle size','License check','Commit lint'].forEach(n=>add('Housekeeping',n));
+  return c}
+function siteChecks(){const c=[];const add=(suite,name)=>c.push({suite,name});['Lint','Typecheck','Astro build','Link check'].forEach(n=>add('Build',n));['Home','Changelog','Docs'].forEach(n=>add('Lighthouse',`Lighthouse ${n}`));for(let i=1;i<=4;i++)add('Visual tests',`Visual (shard ${i}/4)`);add('Deploy','Preview deploy');return c}
+const dur=i=>{const s=(i*37)%420+20;return s<60?`${s} s`:`${Math.floor(s/60)} m ${String(s%60).padStart(2,'0')} s`};
+function withStatus(set,fails=[],running=0){return set.map((c,i)=>({...c,i,s:fails.includes(c.name)?'fail':i>=set.length-running?'run':'ok',d:dur(i)}))}
+
+/* ── pull requests (18) ── */
+const DESC482=`## Summary
+Shows a live strip under a pull request while a T3 Code thread is working on it: the thread title, its state and the last assistant message, refreshed every 10 s from the projection database.
+
+## What changed
+- \`src/services/t3-thread.ts\` now exposes \`watchThreadForPr(prId)\` which polls \`projection_threads\` by \`linkedPullRequest\`.
+- New \`T3SessionStrip\` component under the PR row; collapses when the thread is idle for more than 30 min.
+- \`src-tauri/src/t3.rs\` gained a read-only \`t3_read_threads\` command that runs on \`spawn_blocking\` (no I/O on the main thread).
+- Settings: the Agents panel shows pairing state and lets you unpair.
+- Capability grants for the main window updated for the new command.
+
+## How to test
+1. Pair T3 in Settings, then open a thread on any PR with "Open a new thread in T3".
+2. Type anything in the thread; within 10 s the strip under the PR row shows the message.
+3. Unpair; the strip disappears and no polling happens (check the log for \`t3_read_threads\`).
+
+## Notes
+The strip is intentionally read-only. Replying from BorgDock is a separate PR because it needs the dispatch API and a permission prompt.
+
+![Strip under a PR row](whats-new/2.4.0/pr-list-comfortable.png)`;
+const PRS=[
+ {id:471,title:'SQL: virtualize the results grid',author:'koen',mine:true,repo:'borght-dev/BorgDock',review:'changes',checks:withStatus(bigChecks(),['E2E Chromium on Windows (1/2)','E2E Chromium on Windows (2/2)']),add:320,del:96,days:0,updated:'2 h ago',files:9,commits:4,branch:'feat/sql-virtual-grid',
+  desc:'Replaces the results table with a windowed grid so 50 000-row result sets scroll without dropping frames.\n\nThe grid keeps the column resize handles and the copy-cell behaviour. Row height is fixed at 28 px, which the design already assumed.',
+  log:'FAIL src/components/sql/ResultsGrid.test.tsx\n  ● renders 50k rows › keeps scroll position\n    expect(received).toBe(expected)\n    Expected: 1240  Received: 0',
+  wi:{id:3668,type:'Bug',title:'SQL results grid drops frames on large result sets',state:'Active'},agent:{title:'Fix E2E scroll restore in ResultsGrid',live:true,since:'working for 4 min'}},
+ {id:482,title:'T3 Code: live agent sessions on pull requests',author:'koen',mine:true,repo:'borght-dev/BorgDock',review:'approved',checks:withStatus(bigChecks()),add:1840,del:220,days:0,updated:'3 h ago',files:23,commits:11,branch:'feat/t3-sessions',desc:DESC482,
+  wi:{id:3702,type:'PBI',title:'Show live agent sessions on pull requests',state:'Active'},agent:null},
+ {id:479,title:'GraphQL polling: one call per repo',author:'mira',repo:'borght-dev/BorgDock',review:'requested',checks:withStatus(bigChecks()),add:612,del:410,days:0,updated:'5 h ago',files:7,commits:3,branch:'perf/graphql-batch',
+  desc:'Collapses the per-PR REST calls into a single GraphQL query per repository. Rate-limit use drops by roughly 80 % on the test account.\n\n## Risk\nThe GraphQL schema for check runs differs slightly from REST: `conclusion` can be null while `status` is `COMPLETED` for skipped jobs. Handled in `mapCheckRun`.',wi:{id:3740,type:'PBI',title:'Batch GraphQL polling per repository',state:'Active'},agent:null},
+ {id:88,title:'Marketing site: real, sourced changelog page',author:'sasha',repo:'borght-dev/site',review:'requested',checks:withStatus(siteChecks(),[],5),add:210,del:34,days:1,updated:'yesterday',files:5,commits:2,branch:'site/changelog',
+  desc:'The changelog page now parses CHANGELOG.md at build time instead of a hand-maintained copy.',wi:{id:3711,type:'PBI',title:'Changelog page sourced from CHANGELOG.md',state:'Active'},agent:{title:'Address review comments on the changelog parser',live:false,since:'finished 25 min ago'}},
+ {id:86,title:'Hero pipeline: capture screenshots from Storybook',author:'koen',mine:true,repo:'borght-dev/site',review:'commented',checks:withStatus(siteChecks()),add:95,del:12,days:1,updated:'yesterday',files:4,commits:2,branch:'site/hero-shots',
+  desc:'A script that boots Storybook, screenshots the stories listed in a heroes.json and writes them at 2× for the What\'s new window.',wi:{id:3720,type:'Task',title:'Hero screenshots from Storybook',state:'Active'},agent:null},
+ {id:84,title:'Bump deps: Vite 8, Vitest 4, Storybook 10',author:'renovate',repo:'borght-dev/site',review:'draft',checks:withStatus(siteChecks()),add:40,del:10,days:2,updated:'2 d ago',files:2,commits:1,branch:'renovate/major-tooling',desc:'Automated major bumps. Vite 8 changes the dev server middleware order; see the attached upgrade notes.'},
+ {id:478,title:'Worktree palette: remember favourites per repo',author:'koen',mine:true,repo:'borght-dev/BorgDock',review:'requested',checks:withStatus(bigChecks()),add:140,del:22,days:2,updated:'2 d ago',files:5,commits:3,branch:'feat/worktree-favourites',desc:'Favourites were global; now they are keyed by repository so the palette shows the right ones after switching.',wi:{id:3698,type:'PBI',title:'Per-repo worktree favourites',state:'Active'}},
+ {id:476,title:'Settings: per-repository poll interval',author:'jules',repo:'borght-dev/BorgDock',review:'commented',checks:withStatus(bigChecks()),add:260,del:80,days:3,updated:'3 d ago',files:8,commits:5,branch:'feat/poll-interval',desc:'Lets busy repositories poll every 30 s while archived ones poll hourly.'},
+ {id:3668,title:'Offer Save and Approve when finishing an order',author:'sander',repo:'Gomocha-FSP/fsp-horizon',review:'requested',checks:withStatus(bigChecks().slice(0,24)),add:10,del:5,days:3,updated:'3 d ago',files:6,commits:1,branch:'feat/order-approval',desc:'Adds a second button to the finish-order dialog that saves and immediately requests approval.'},
+ {id:474,title:'ADO: attachments tab in the detail window',author:'mira',repo:'borght-dev/BorgDock',review:'changes',checks:withStatus(bigChecks(),['Unit tests (shard 3/8)']),add:410,del:60,days:4,updated:'4 d ago',files:11,commits:6,branch:'feat/ado-attachments',desc:'Lists work item attachments with preview for images and PDFs.',log:'FAIL src/components/work-items/__tests__/Attachments.test.tsx\n  ● previews a PDF attachment\n    TypeError: URL.createObjectURL is not a function'},
+ {id:3655,title:'Order list: keep scroll position after refresh',author:'sander',repo:'Gomocha-FSP/fsp-horizon',review:'approved',checks:withStatus(bigChecks().slice(0,24)),add:36,del:8,days:5,updated:'5 d ago',files:3,commits:2,branch:'fix/order-scroll',desc:'Stores the scroll offset in the route state before refetching.'},
+ {id:470,title:'Renovate: tauri 2.9 and plugins',author:'renovate',repo:'borght-dev/BorgDock',review:'none',checks:withStatus(bigChecks()),add:60,del:60,days:6,updated:'6 d ago',files:3,commits:1,branch:'renovate/tauri-2.x',desc:'Automated minor bumps.'},
+ {id:462,title:'Flyout: show failing checks first',author:'koen',mine:true,repo:'borght-dev/BorgDock',review:'none',checks:withStatus(bigChecks()),add:88,del:30,days:9,updated:'9 d ago',files:4,commits:2,branch:'feat/flyout-failing-first',desc:'Sorts the tray flyout so failing PRs come first.'},
+ {id:458,title:'SQL: export results to CSV',author:'jules',repo:'borght-dev/BorgDock',review:'requested',checks:withStatus(bigChecks()),add:190,del:12,days:12,updated:'12 d ago',files:6,commits:4,branch:'feat/sql-export',desc:'Adds an Export button to the SQL results toolbar.'},
+ {id:451,title:'Docs: agent recipes for the vera CLI',author:'sasha',repo:'borght-dev/BorgDock',review:'commented',checks:withStatus(bigChecks()),add:320,del:0,days:14,updated:'14 d ago',files:2,commits:3,branch:'docs/agent-recipes',desc:'Documentation only.'},
+ {id:3601,title:'Inventory: barcode scan on the mobile client',author:'sander',repo:'Gomocha-FSP/fsp-horizon',review:'changes',checks:withStatus(bigChecks().slice(0,24)),add:540,del:120,days:17,updated:'17 d ago',files:14,commits:9,branch:'feat/barcode-scan',desc:'Uses the device camera through the Tauri barcode plugin.'},
+ {id:440,title:'Spike: WebView2 hang watchdog in-app',author:'koen',mine:true,repo:'borght-dev/BorgDock',review:'draft',checks:withStatus(bigChecks()),add:410,del:20,days:21,updated:'21 d ago',files:7,commits:5,branch:'spike/hang-watchdog',desc:'Draft. Runs the watchdog inside the app instead of a PowerShell script.'},
+ {id:433,title:'Theme: high-contrast variant',author:'mira',repo:'borght-dev/BorgDock',review:'none',checks:withStatus(bigChecks()),add:220,del:40,days:26,updated:'26 d ago',files:3,commits:2,branch:'feat/high-contrast',desc:'Adds a high-contrast theme for accessibility.'},
+];
+const counts=p=>{const ok=p.checks.filter(c=>c.s==='ok').length,fail=p.checks.filter(c=>c.s==='fail').length,run=p.checks.filter(c=>c.s==='run').length;return{ok,fail,run,n:p.checks.length}};
+const status=p=>{const c=counts(p);return c.fail?'fail':c.run?'run':'ok'};
+const cbar=p=>{const c=counts(p);const s=status(p);const txt=c.fail?`${c.fail} failing`:c.run?`${c.n-c.run} of ${c.n}, running`:`${c.n} passing`;return `<span class="cbar ${s}"><i><b class="ok" style="flex:${c.ok}"></b><b class="fail" style="flex:${c.fail}"></b><b class="run" style="flex:${c.run}"></b></i>${txt}</span>`};
+const stale=p=>p.days>=7;
+const bucket=p=>{if(stale(p))return'stale';const s=status(p);if(p.review==='approved'&&s==='ok')return'ready';if((p.review==='requested'&&!p.mine)||(p.mine&&s==='fail')||(p.mine&&(p.review==='changes'||p.review==='commented')))return'you';return'wait'};
+const why=p=>{const s=status(p),c=counts(p);if(stale(p))return`No update in ${p.days} days.`;if(p.review==='approved'&&s==='ok')return`Approved and all ${c.n} checks passed.`;if(p.mine&&s==='fail')return`Your PR, ${c.fail} check${c.fail>1?'s':''} failing.`;if(p.review==='requested'&&!p.mine)return`${p.author} asked for your review ${p.updated}.`;if(p.mine&&p.review==='changes')return`Changes requested on your PR.`;if(p.mine&&p.review==='commented')return`Comments on your PR to answer.`;if(p.review==='draft')return`Draft, ${p.author} is still working on it.`;if(s==='run')return`Checks running, ${c.n-c.run} of ${c.n} done.`;if(p.mine)return`Your PR, waiting for a reviewer.`;return`${p.author}'s PR, not assigned to you.`};
+function md(src){const lines=src.split('\n');let out='',list=null;const inl=s=>s.replace(/`([^`]+)`/g,'<code>$1</code>');const close=()=>{if(list){out+=`</${list}>`;list=null}};
+  for(const l of lines){if(/^## /.test(l)){close();out+=`<h3>${l.slice(3)}</h3>`}else if(/^- /.test(l)){if(list!=='ul'){close();out+='<ul>';list='ul'}out+=`<li>${inl(l.slice(2))}</li>`}else if(/^\d+\. /.test(l)){if(list!=='ol'){close();out+='<ol>';list='ol'}out+=`<li>${inl(l.replace(/^\d+\. /,''))}</li>`}else if(/^!\[/.test(l)){close();const m=l.match(/^!\[([^\]]*)\]\(([^)]+)\)/);out+=`<img alt="${m[1]}" src="../../docs/${m[2]}">`}else if(l.trim()===''){close()}else{close();out+=`<p>${inl(l)}</p>`}}
+  close();return out}
+function groupedChecks(p,openAll=false){const suites=[...new Set(p.checks.map(c=>c.suite))];return `<div class="grp">${suites.map(s=>{const cs=p.checks.filter(c=>c.suite===s);const f=cs.filter(c=>c.s==='fail').length,r=cs.filter(c=>c.s==='run').length;const open=f>0||openAll;const n=f?`<span class="n bad">${f} failing</span>`:r?`<span class="n run">${cs.length-r} of ${cs.length}</span>`:`<span class="n">${cs.length} passed</span>`;const sorted=[...cs].sort((a,b)=>({fail:0,run:1,ok:2}[a.s]-{fail:0,run:1,ok:2}[b.s]));
+  return `<details ${open?'open':''}><summary>${car}<i class="dot ${f?'fail':r?'run':'ok'}"></i>${s}${n}</summary>${sorted.map(c=>`<div class="row ${c.s}"><i class="dot ${c.s}"></i><span class="nm">${c.name}</span>${c.s==='fail'?'<button class="fx">Fix with Claude</button>':''}<span class="d">${c.s==='run'?'running':c.s==='fail'?'failed':c.d}</span></div>`).join('')}</details>`}).join('')}</div>`}
+function flip(container,mutate,sel){const before=new Map([...container.querySelectorAll(sel)].map(el=>[el.dataset.key,el.getBoundingClientRect()]));mutate();if(!motionOK())return;
+  container.querySelectorAll(sel).forEach(el=>{const f=before.get(el.dataset.key),l=el.getBoundingClientRect();if(!f){el.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:260,easing:EASE_OUT});return}const dx=f.left-l.left,dy=f.top-l.top;if(Math.abs(dx)>.5||Math.abs(dy)>.5)el.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:360,easing:EASE})})}
+function slideHl(nav,active,pad=0){const hl=nav.querySelector('.hl'),r=active.getBoundingClientRect(),n=nav.getBoundingClientRect();hl.style.width=r.width+'px';hl.style.transform=`translate(${r.left-n.left}px,${r.top-n.top-pad}px)`}
+
+/* page tabs */
+(()=>{const nav=document.getElementById('pageTabs'),links=[...nav.querySelectorAll('a')];const set=a=>{links.forEach(l=>l.classList.toggle('on',l===a));slideHl(nav,a,3)};set(links[0]);
+  links.forEach((l,i)=>new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)set(links[i])}),{rootMargin:'-30% 0px -60% 0px'}).observe(document.querySelector(l.getAttribute('href'))));
+  addEventListener('resize',()=>set(nav.querySelector('a.on')));
+  const mt=document.getElementById('motionToggle');mt.onclick=()=>{const on=document.body.classList.toggle('reduce-motion');mt.classList.toggle('on',on);mt.setAttribute('aria-pressed',on)}})();
+
+/* ───────── TIMELINE ───────── */
+(()=>{
+  const win=document.getElementById('tlWin'),body=document.getElementById('tlBody'),sum=document.getElementById('tlSum');
+  let filter='all',open=null;const closed=new Set(['older']);
+  const GROUPS=[['today','Today',p=>p.days===0],['yesterday','Yesterday',p=>p.days===1],['week','This week',p=>p.days>=2&&p.days<7],['older','Older',p=>p.days>=7]];
+  const match=p=>filter==='all'||bucket(p)===filter;
+  const item=p=>{const c=counts(p);const s=status(p);
+    return `<div class="tl-item ${stale(p)?'stale':''} ${open===p.id?'open':''}" data-key="${p.id}" data-id="${p.id}" data-s="${s}"><div class="tl-node"><i style="--p:${c.ok/c.n*100};--f:${c.fail/c.n*100};--r:${c.run/c.n*100}"></i></div>
+    <div class="tl-card" tabindex="0"><div class="hd"><div><b>${p.title}</b><div class="sub">${av(p.author)}<em>${p.author}</em><span>${p.repo.split('/')[1]}</span>${cbar(p)}<span>updated ${p.updated}</span>${stale(p)?'<span class="chip stale">stale</span>':''}</div></div>
+      <div class="delta"><div class="bar"><i style="flex:${p.add}"></i><i style="flex:${p.del}"></i></div><span><span>+${fmt(p.add)}</span><span>−${fmt(p.del)}</span></span></div>
+      <span class="chip ${p.review}">${REVIEW[p.review]}</span><span class="num">#${p.id}</span></div>
+      <div class="tl-more"><div class="in">${open===p.id?more(p):''}</div></div></div></div>`};
+  const more=p=>{const c=counts(p);const s=status(p);const primary=s==='fail'?'<button class="btn pri">Fix with Claude</button><button class="btn">Rerun failed</button>':p.review==='approved'&&s==='ok'?'<button class="btn ok">Merge</button>':p.review==='requested'&&!p.mine?'<button class="btn pri">Review</button>':'<button class="btn">Open in GitHub</button>';
+    return `<div><h4>Description <span>${p.branch} into main, ${p.files} files, ${p.commits} commits</span></h4><div class="desc md clamp" style="--fade:var(--sf);--full:320px">${md(p.desc)}</div>${p.desc.length>260?'<button class="more">Show more</button>':''}</div>
+      <div><h4>Checks <span>${c.n} checks in ${new Set(p.checks.map(x=>x.suite)).size} suites</span></h4>${groupedChecks(p)}${p.log?`<h4 style="margin-top:12px">First failure</h4><pre class="log">${p.log.replace(/(FAIL[^\n]*|Expected[^\n]*|TypeError[^\n]*)/g,'<b>$1</b>')}</pre>`:''}</div>
+      <div class="tl-link">${p.wi?`<div class="lk"><span class="ty ${p.wi.type.toLowerCase()}">${p.wi.type}</span><b>AB#${p.wi.id}  ${p.wi.title}</b><span>${p.wi.state}, assigned to you, sprint 47</span></div>`:'<div class="lk none">No linked work item. Link one from the context menu.</div>'}${p.agent?`<div class="lk"><span class="ty agent ${p.agent.live?'':'done'}">Agent</span><b>${p.agent.title}</b><span>${p.agent.live?'<i class="dot run" style="display:inline-block;vertical-align:middle;margin-right:6px"></i>':''}${p.agent.since}, T3 thread</span></div>`:'<div class="lk none">No agent on this PR. F hands the failure to Claude, T opens a T3 thread.</div>'}</div>
+      <div class="act">${primary}<button class="btn">Checkout</button><button class="btn">Open in T3</button><button class="btn ghost">Files and comments</button></div>`};
+  function render(){const vis=PRS.filter(match);
+    const cnt={you:0,wait:0,ready:0,stale:0};PRS.forEach(p=>cnt[bucket(p)]++);sum.querySelectorAll('button').forEach(b=>{b.querySelector('b').textContent=b.dataset.f==='all'?PRS.length:cnt[b.dataset.f];b.classList.toggle('on',b.dataset.f===filter)});
+    body.innerHTML=vis.length?GROUPS.map(([k,label,fn])=>{const g=vis.filter(fn);if(!g.length)return'';const c=closed.has(k);return `<div class="tl-when ${c?'closed':''}" data-g="${k}">${car}<b>${label}</b><span class="cnt">${g.length}</span>${k==='older'?`<span class="hint">${c?'collapsed, click to show':'no update in 7 days or more'}</span>`:''}</div><div class="tl-sec ${c?'closed':''}" data-sec="${k}"><div>${g.map(item).join('')}</div></div>`}).join(''):'<div class="tl-empty">Nothing in this bucket right now.</div>'}
+  render();
+  sum.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;filter=b.dataset.f;open=null;
+    const leaving=[...body.querySelectorAll('.tl-item')].filter(r=>!match(PRS.find(p=>p.id==r.dataset.id)));
+    if(motionOK()&&leaving.length){leaving.forEach(r=>r.animate([{opacity:1},{opacity:0}],{duration:140,fill:'forwards'}));setTimeout(()=>flip(body,render,'.tl-item'),140)}else flip(body,render,'.tl-item')});
+  body.addEventListener('click',e=>{
+    const w=e.target.closest('.tl-when');if(w){const k=w.dataset.g;closed.has(k)?closed.delete(k):closed.add(k);w.classList.toggle('closed');body.querySelector(`[data-sec="${k}"]`).classList.toggle('closed');w.querySelector('.hint')&&(w.querySelector('.hint').textContent=closed.has(k)?'collapsed, click to show':'no update in 7 days or more');return}
+    if(e.target.closest('.more')){const d=e.target.closest('.more').previousElementSibling;d.classList.toggle('open');e.target.textContent=d.classList.contains('open')?'Show less':'Show more';return}
+    if(e.target.closest('button')||e.target.closest('summary'))return;
+    const it=e.target.closest('.tl-item');if(it)toggle(it)});
+  function toggle(it){const id=+it.dataset.id;const was=it.classList.contains('open');
+    body.querySelectorAll('.tl-item.open').forEach(x=>{x.classList.remove('open');setTimeout(()=>{if(!x.classList.contains('open'))x.querySelector('.in').innerHTML=''},motionOK()?360:0)});
+    if(!was){open=id;it.querySelector('.in').innerHTML=more(PRS.find(p=>p.id===id));requestAnimationFrame(()=>it.classList.add('open'))}else open=null}
+  addEventListener('keydown',e=>{if(!inView.get('tlWin')||e.target.tagName==='INPUT')return;const items=[...body.querySelectorAll('.tl-item')].filter(x=>!x.closest('.tl-sec.closed'));const cur=body.querySelector('.tl-item:has(.tl-card:focus)')||body.querySelector('.tl-item.open');const i=items.indexOf(cur);
+    if(e.key==='j'||e.key==='k'){e.preventDefault();const n=items[e.key==='j'?Math.min(items.length-1,i+1):Math.max(0,i-1)];n?.querySelector('.tl-card').focus();n?.scrollIntoView({block:'nearest'})}
+    if(e.key==='Enter'&&cur){e.preventDefault();toggle(cur)}if(e.key==='Escape'&&cur?.classList.contains('open')){toggle(cur)}});
+  setTimeout(()=>{const first=body.querySelector('.tl-item[data-id="482"]');if(first)toggle(first)},600);
+  io.observe(win);
+})();
+
+/* ───────── WORKBENCH ───────── */
+(()=>{
+  const win=document.getElementById('wbWin'),list=document.getElementById('wbList'),insp=document.getElementById('wbInsp'),nav=document.getElementById('wbNav'),seg=document.getElementById('wbSeg');
+  let filter='all',selected=null;
+  const match=p=>filter==='all'||(filter==='you'&&bucket(p)==='you')||(filter==='mine'&&p.mine)||(filter==='failing'&&status(p)==='fail');
+  const row=p=>`<div class="wb-row" data-key="${p.id}" data-id="${p.id}">${av(p.author)}<div class="t"><b>${p.title}</b><span><em>${p.author}</em> in ${p.repo.split('/')[1]}, updated ${p.updated}${stale(p)?', stale':''}</span></div>${cbar(p)}<span class="chip ${p.review}">${REVIEW[p.review]}</span><span class="num">#${p.id}</span></div>`;
+  function render(){const vis=PRS.filter(match);const groups=[];const need=vis.filter(p=>bucket(p)==='you');if(need.length&&filter!=='you')groups.push(['Needs you',need]);const rest=filter==='you'?vis:vis.filter(p=>!need.includes(p));
+    ['borght-dev/BorgDock','borght-dev/site','Gomocha-FSP/fsp-horizon'].forEach(r=>{const g=rest.filter(p=>p.repo===r);if(g.length)groups.push([r,g])});
+    list.innerHTML=groups.map(([n,g])=>`<div class="wb-group">${n} <b>${g.length}</b></div>${g.map(row).join('')}`).join('');if(selected)list.querySelector(`[data-id="${selected}"]`)?.classList.add('sel')}
+  render();
+  list.addEventListener('click',e=>{const r=e.target.closest('.wb-row');if(!r)return;const id=+r.dataset.id;if(selected===id){selected=null;win.classList.remove('open');r.classList.remove('sel');return}selected=id;list.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));r.classList.add('sel');openInsp(PRS.find(p=>p.id===id))});
+  function openInsp(p){const c=counts(p),s=status(p);const ready=s==='fail'?['bad',`Not ready: ${c.fail} check${c.fail>1?'s':''} failing`]:s==='run'?['run',`Waiting: ${c.run} checks still running`]:p.review==='approved'?['ok','Ready to merge: approved, all checks passed']:p.review==='requested'?['run','Waiting for review']:['run',`Waiting: ${REVIEW[p.review].toLowerCase()}`];
+    const primary=s==='fail'?'<button class="btn pri">Fix with Claude</button><button class="btn">Rerun failed</button>':p.review==='approved'&&s==='ok'?'<button class="btn ok">Merge</button>':p.review==='requested'&&!p.mine?'<button class="btn pri">Review</button>':'<button class="btn">Open in GitHub</button>';
+    insp.querySelector('.in').innerHTML=`<div class="ttl"><span>${p.repo} #${p.id}, ${p.branch} into main</span><h2>${p.title}</h2></div><div class="ready" data-s="${ready[0]}"><i></i><b>${ready[1]}</b></div>
+      <div class="acts">${primary}<button class="btn">Checkout</button><button class="btn">Open in T3</button></div>
+      <div><h3>Checks <span>${c.ok} of ${c.n} passed</span></h3>${groupedChecks(p)}</div>
+      ${p.log?`<div><h3>First failure</h3><pre class="log">${p.log.replace(/(FAIL[^\n]*|Expected[^\n]*|TypeError[^\n]*)/g,'<b>$1</b>')}</pre></div>`:''}
+      <div><h3>Description</h3><div class="md clamp" style="--fade:var(--sf);--full:300px;font-size:12.5px">${md(p.desc)}</div>${p.desc.length>260?'<button class="more">Show more</button>':''}</div>`;
+    win.classList.add('open')}
+  insp.addEventListener('click',e=>{if(e.target.closest('.more')){const d=e.target.previousElementSibling;d.classList.toggle('open');e.target.textContent=d.classList.contains('open')?'Show less':'Show more'}});
+  nav.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;nav.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));slideHl(nav,b)});
+  seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));slideHl(seg,b,2);filter=b.dataset.f;
+    const leaving=[...list.querySelectorAll('.wb-row')].filter(r=>!match(PRS.find(p=>p.id==r.dataset.id)));
+    if(motionOK()&&leaving.length){leaving.forEach(r=>r.animate([{opacity:1},{opacity:0}],{duration:140,fill:'forwards'}));setTimeout(()=>flip(list,render,'.wb-row'),140)}else flip(list,render,'.wb-row')});
+  const init=()=>{slideHl(nav,nav.querySelector('.on'));slideHl(seg,seg.querySelector('.on'),2)};init();addEventListener('resize',init);
+  io.observe(win);
+})();
+
+/* ───────── BOARD ───────── */
+(()=>{
+  const win=document.getElementById('bdWin'),cols=document.getElementById('bdCols'),done=document.getElementById('bdDone'),toast=document.getElementById('bdToast');
+  const state={you:[],wait:[],ready:[],stale:[]};PRS.forEach(p=>state[bucket(p)].push(p.id));
+  const stacks=Object.fromEntries([...cols.querySelectorAll('.bd-col')].map(c=>[c.dataset.col,c.querySelector('.stack')]));
+  const card=(p,col)=>{const s=status(p);if(col==='stale')return `<div class="bd-card compact" data-key="${p.id}" data-id="${p.id}"><div class="repo"><span>${p.repo.split('/')[1]} #${p.id}</span><span>${p.days} d</span></div><div class="ttl">${p.title}</div></div>`;
+    const act=col==='ready'?'<button class="btn ok bd-merge"><span>Merge</span></button><button class="btn">Open</button>':s==='fail'&&p.mine?'<button class="btn pri" data-act="fix">Fix with Claude</button><button class="btn" data-act="rerun">Rerun</button>':p.review==='requested'&&!p.mine?'<button class="btn pri" data-act="review">Review</button><button class="btn" data-act="later">Later</button>':p.mine&&(p.review==='changes'||p.review==='commented')?'<button class="btn pri" data-act="comments">Open comments</button><button class="btn" data-act="checkout">Checkout</button>':'<button class="btn" data-act="open">Open</button>';
+    return `<div class="bd-card" data-key="${p.id}" data-id="${p.id}"><div class="repo"><span>${p.repo.split('/')[1]} #${p.id}</span><span class="chip ${p.review}">${REVIEW[p.review]}</span></div><div class="ttl">${p.title}</div><div class="why">${why(p)}</div><div class="foot">${av(p.author)}${p.author}${cbar(p)}</div><div class="acts">${act}</div></div>`};
+  function render(){for(const k in state){stacks[k].innerHTML=state[k].map(id=>card(PRS.find(p=>p.id===id),k)).join('');const b=cols.querySelector(`[data-col="${k}"] header b`);if(b.textContent!=state[k].length){b.textContent=state[k].length;b.classList.add('bump');setTimeout(()=>b.classList.remove('bump'),300)}}}
+  render();
+  let tt;const say=m=>{toast.textContent=m;toast.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove('on'),2600)};
+  cols.addEventListener('click',e=>{const m=e.target.closest('.bd-merge');const b=e.target.closest('[data-act]');const c=e.target.closest('.bd-card');if(!c)return;const p=PRS.find(x=>x.id==c.dataset.id);
+    if(m&&!m.classList.contains('busy')){m.classList.add('busy');m.querySelector('span').textContent='Merging';setTimeout(()=>{m.classList.remove('busy');m.querySelector('span').textContent='Merged';setTimeout(()=>{const go=()=>{flip(cols,()=>{state.ready.splice(state.ready.indexOf(p.id),1);render()},'.bd-card');done.textContent=+done.textContent+1;done.classList.add('bump');setTimeout(()=>done.classList.remove('bump'),300)};if(motionOK())c.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(-8px) scale(.98)'}],{duration:260,easing:'ease-in',fill:'forwards'}).onfinish=go;else go()},600)},motionOK()?1100:0);return}
+    if(b){say({review:`Opening quick review for #${p.id}`,fix:`Handing the failing checks of #${p.id} to Claude`,rerun:`Rerunning failed checks on #${p.id}`,comments:`Opening comments on #${p.id}`,checkout:`Checking out ${p.branch}`,open:`Opening #${p.id} in GitHub`,later:`#${p.id} snoozed until tomorrow`}[b.dataset.act]);
+      if(b.dataset.act==='later'){const go=()=>flip(cols,()=>{state.you.splice(state.you.indexOf(p.id),1);state.wait.unshift(p.id);render()},'.bd-card');if(motionOK())c.animate([{opacity:1},{opacity:0}],{duration:160,fill:'forwards'}).onfinish=go;else go()}}});
+  io.observe(win);
+})();
+
+/* ───────── QUICK REVIEW ───────── */
+(()=>{
+  const win=document.getElementById('qrWin'),stage=document.getElementById('qrStage'),prog=document.getElementById('qrProg'),bar=document.getElementById('qrBar'),empty=document.getElementById('qrEmpty'),tree=document.getElementById('qrTree'),diff=document.getElementById('qrDiff'),left=document.getElementById('qrLeft');
+  const FILES482=[['src/services','t3-thread.ts',120,8],['src/services','t3-session-store.ts',86,0],['src/components/pr','T3SessionStrip.tsx',140,0],['src/components/pr','T3SessionStrip.stories.tsx',64,0],['src/components/pr','PrRow.tsx',18,4],['src/components/pr','PrCardContainer.tsx',9,2],['src/hooks','useT3Session.ts',52,0],['src/hooks/__tests__','useT3Session.test.ts',96,0],['src/stores','t3.ts',40,6],['src/types','t3.ts',22,0],['src-tauri/src','t3.rs',210,30],['src-tauri/src','lib.rs',6,1],['src-tauri/capabilities','main.json',3,0],['src/components/settings','AgentsPanel.tsx',74,20],['src/components/settings','T3PairingCard.tsx',58,0],['src/styles','index.css',31,4],['e2e','t3-session.spec.ts',88,0],['docs/docs/internal/features','t3.md',60,10],['/','CHANGELOG.md',4,0],['src/generated','changelog.ts',210,110,'gen'],['/','package.json',1,1],['/','bun.lock',360,24,'gen'],['src/components/layout','MainWindow.stories.tsx',12,0]];
+  const SNIPS=[
+   [['hunk','@@ -12,6 +12,18 @@'],['ctx','import { invoke } from "@tauri-apps/api/core";'],['add','import type { T3Thread } from "../types/t3";'],['ctx',''],['add','export function watchThreadForPr(prId: number, onChange: (t: T3Thread | null) => void) {'],['add','  let stopped = false;'],['add','  const tick = async () => {'],['add','    if (stopped) return;'],['add','    const t = await invoke<T3Thread | null>("t3_read_threads", { prId });'],['add','    onChange(t);'],['add','    setTimeout(tick, 10_000);'],['add','  };'],['add','  void tick();'],['add','  return () => { stopped = true; };'],['add','}']],
+   [['hunk','@@ -1,0 +1,14 @@'],['add','export function T3SessionStrip({ prId }: { prId: number }) {'],['add','  const session = useT3Session(prId);'],['add','  if (!session || session.idleMinutes > 30) return null;'],['add','  return ('],['add','    <div className="t3-strip">'],['add','      <span className="t3-strip__title">{session.title}</span>'],['add','      <span className="t3-strip__last">{session.lastMessage}</span>'],['add','    </div>'],['add','  );'],['add','}']],
+   [['hunk','@@ -40,9 +40,7 @@'],['ctx','#[tauri::command]'],['del','pub fn t3_read_threads(pr_id: i64) -> Result<Option<Thread>, String> {'],['del','    let conn = open_projection_db()?;'],['del','    read_thread(&conn, pr_id)'],['add','pub async fn t3_read_threads(pr_id: i64) -> Result<Option<Thread>, String> {'],['add','    tokio::task::spawn_blocking(move || {'],['add','        let conn = open_projection_db()?;'],['add','        read_thread(&conn, pr_id)'],['add','    }).await.map_err(|e| e.to_string())?'],['ctx','}']],
+  ];
+  const QUEUE=()=>[PRS.find(p=>p.id===482),PRS.find(p=>p.id===479),PRS.find(p=>p.id===3668),PRS.find(p=>p.id===88)];
+  let queue,reviewed,files,cur;
+  const filesFor=p=>p.id===482?FILES482.map(([d,n,a,r,g])=>({d,n,a,r,gen:g==='gen',done:false})):Array.from({length:p.files},(_,i)=>({d:['src/services','src/components','tests'][i%3],n:`file-${i+1}.ts`,a:20+i*7,r:i*3,gen:false,done:false}));
+  const folderSummary=fs=>{const m=new Map();fs.forEach(f=>{const k=f.gen?'generated':f.d;m.set(k,(m.get(k)||0)+1)});return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<span class="${k==='generated'?'gen':''}">${k}<b>${n}</b></span>`).join('')};
+  const card=(p,i)=>{const fs=filesFor(p);const c=counts(p);const s=status(p);const left=fs.filter(f=>!f.gen&&!f.done).length;
+    return `<div class="qr-card" data-i="${i}" data-id="${p.id}"><div class="hd"><div class="over">${av(p.author)}<span>${p.author}</span><span>${p.repo}</span><span>#${p.id}</span><span>${p.updated}</span></div><h2>${p.title}</h2></div>
+    <div class="desc md clamp" style="--full:260px">${md(p.desc)}</div>${p.desc.length>260?'<button class="more" style="margin-top:-8px">Show more</button>':''}
+    <div class="meta"><div><b><code>${p.branch}</code></b>into main</div><div><b>${p.files} files</b>${p.commits} commits</div><div><b>+${fmt(p.add)} −${fmt(p.del)}</b>lines</div><div><b>${REVIEW[p.review]}</b>review</div></div>
+    <div class="qr-files"><h4>Files by folder <span class="qr-left">${left} of ${fs.filter(f=>!f.gen).length} to review, ${fs.filter(f=>f.gen).length} generated</span></h4><div class="folders">${folderSummary(fs)}</div></div>
+    <div class="qr-checks">${cbar(p)}<span>${s==='ok'?'nothing blocking on CI':s==='fail'?'CI is failing, review can wait':'CI still running'}</span></div>
+    <div class="qr-act"><button class="qr-btn later">Review later</button><button class="qr-btn pri files">Review files</button><button class="qr-btn approve" disabled>Approve<span class="tip">${left} files not reviewed yet</span></button></div></div>`};
+  function reset(){queue=QUEUE();reviewed=0;stage.querySelectorAll('.qr-card').forEach(c=>c.remove());stage.insertAdjacentHTML('afterbegin',queue.map(card).join(''));empty.classList.remove('on');files=filesFor(queue[0]);update()}
+  function update(){const total=4;prog.textContent=queue.length?`${reviewed+1} of ${total}`:`${total} of ${total}`;bar.style.width=(reviewed/total*100)+'%';if(!queue.length)empty.classList.add('on')}
+  function decide(dir){if(!queue.length)return;const top=stage.querySelector('.qr-card[data-i="0"]');if(!top)return;if(dir==='right'&&top.querySelector('.approve').disabled)return;
+    top.classList.add(dir==='right'?'gone-r':'gone-l');top.dataset.i='x';queue.shift();reviewed++;stage.querySelectorAll('.qr-card:not(.gone-r):not(.gone-l)').forEach((c,i)=>c.dataset.i=i);setTimeout(()=>top.remove(),motionOK()?650:0);if(queue[0])files=filesFor(queue[0]);update()}
+  /* file walk */
+  function renderTree(){const folders=[...new Set(files.map(f=>f.gen?'generated':f.d))];tree.innerHTML=folders.map(d=>`<div class="fold"><span>${d}</span><span>${files.filter(f=>(f.gen?'generated':f.d)===d).length}</span></div>${files.map((f,i)=>({f,i})).filter(({f})=>(f.gen?'generated':f.d)===d).map(({f,i})=>`<div class="f ${f.done?'done':''} ${f.gen?'gen':''} ${i===cur?'cur':''}" data-i="${i}"><span class="cb"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg></span><span class="nm">${f.n}</span><span class="dl"><em>+${f.a}</em> <i>−${f.r}</i></span></div>`).join('')}`).join('');
+    const leftN=files.filter(f=>!f.gen&&!f.done).length;left.textContent=`${files.filter(f=>f.done).length} of ${files.length} reviewed, ${leftN} to go`;document.getElementById('qrSkipGen').style.display=files.some(f=>f.gen&&!f.done)?'':'none';document.getElementById('qrFinish').classList.toggle('pri',leftN===0)}
+  function renderDiff(){const f=files[cur];const pre=diff.querySelector('pre');const snip=f.gen?[['hunk','@@ generated file, 484 lines changed @@'],['ctx','// This file is generated by scripts/changelog. Do not edit.'],['add','export const releases = ['],['add','  { version: "2.4.0", date: "2026-09-10", highlights: [ /* … */ ] },'],['ctx','  …']]:SNIPS[f.n.endsWith(".rs")?2:f.n.endsWith(".tsx")?1:0];
+    diff.querySelector('.fh').innerHTML=`<code>${f.d==='/'?'':f.d+'/'}${f.n}</code><span>+${f.a} −${f.r}</span><span class="st">${f.done?'reviewed':f.gen?'generated, skippable':'not reviewed'}</span>`;
+    const draw=()=>{let n=12;pre.innerHTML=snip.map(([k,t])=>`<span class="${k}" data-n="${k==='hunk'?'':n++}">${t.replace(/</g,'&lt;')}</span>`).join('');pre.classList.remove('swap')};
+    if(motionOK()){pre.classList.add('swap');setTimeout(draw,120)}else draw()}
+  function goto(i){cur=Math.max(0,Math.min(files.length-1,i));renderTree();renderDiff();tree.querySelector('.f.cur')?.scrollIntoView({block:'nearest'})}
+  function openWalk(){cur=files.findIndex(f=>!f.done);if(cur<0)cur=0;win.classList.add('reviewing');goto(cur)}
+  function closeWalk(){win.classList.remove('reviewing');const top=stage.querySelector('.qr-card[data-i="0"]');if(!top)return;const leftN=files.filter(f=>!f.gen&&!f.done).length;const ap=top.querySelector('.approve');ap.disabled=leftN>0;ap.querySelector('.tip').textContent=`${leftN} files not reviewed yet`;top.querySelector('.qr-left').textContent=`${leftN} of ${files.filter(f=>!f.gen).length} to review, ${files.filter(f=>f.gen).length} generated`;top.querySelector('.files').textContent=leftN?'Continue reviewing':'Review files again'}
+  stage.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.classList.contains('approve'))decide('right');else if(b.classList.contains('later'))decide('left');else if(b.classList.contains('files'))openWalk();else if(b.classList.contains('more')){const d=b.previousElementSibling;d.classList.toggle('open');b.textContent=d.classList.contains('open')?'Show less':'Show more'}});
+  tree.addEventListener('click',e=>{const f=e.target.closest('.f');if(f)goto(+f.dataset.i)});
+  document.getElementById('qrMark').onclick=()=>{files[cur].done=true;const next=files.findIndex((f,i)=>i>cur&&!f.done);goto(next<0?cur:next)};
+  document.getElementById('qrNext').onclick=()=>goto(cur+1);document.getElementById('qrPrev').onclick=()=>goto(cur-1);
+  document.getElementById('qrSkipGen').onclick=()=>{files.forEach(f=>{if(f.gen)f.done=true});goto(cur)};
+  document.getElementById('qrFinish').onclick=closeWalk;
+  document.getElementById('qrReset').onclick=reset;
+  addEventListener('keydown',e=>{if(!inView.get('qrWin')||e.target.tagName==='INPUT')return;if(win.classList.contains('reviewing')){if(e.key==='Escape')closeWalk();if(e.key==='v'||e.key==='V')document.getElementById('qrMark').click();if(e.key==='n')goto(cur+1);if(e.key==='p')goto(cur-1);return}if(e.key==='ArrowRight'){e.preventDefault();decide('right')}if(e.key==='ArrowLeft'){e.preventDefault();decide('left')}if(e.key==='Enter'){e.preventDefault();openWalk()}});
+  reset();io.observe(win);
+})();
+</script>
+</body>
+</html>
