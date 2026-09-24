@@ -174,6 +174,15 @@ interface ViewTransitionLike {
 
 type StartViewTransition = (callback: () => void | Promise<void>) => ViewTransitionLike;
 
+export interface ViewTransitionOptions {
+  /**
+   * Runs once the transition is over: after its animations (or when it was
+   * skipped), or right after `fn` when no transition ran. Use it to undo
+   * state set up for the transition, e.g. a direction attribute on <html>.
+   */
+  onFinished?: () => void;
+}
+
 /**
  * Runs `fn` inside `document.startViewTransition` when the API exists and
  * motion is allowed; otherwise runs it directly (synchronously). Either way
@@ -184,18 +193,26 @@ type StartViewTransition = (callback: () => void | Promise<void>) => ViewTransit
  * Like `flip`, a React state change inside `fn` should be wrapped in
  * `flushSync` so the browser captures the new state.
  */
-export function withViewTransition(fn: () => void | Promise<void>): Promise<void> {
+export function withViewTransition(
+  fn: () => void | Promise<void>,
+  options: ViewTransitionOptions = {},
+): Promise<void> {
   const start =
     typeof document === 'undefined'
       ? undefined
       : (document as unknown as { startViewTransition?: StartViewTransition }).startViewTransition;
 
   if (typeof start !== 'function' || !motionOK()) {
-    return new Promise<void>((resolve) => resolve(fn()));
+    const done = new Promise<void>((resolve) => resolve(fn()));
+    done.then(
+      () => options.onFinished?.(),
+      () => options.onFinished?.(),
+    );
+    return done;
   }
 
   const transition = start.call(document, fn);
   transition.ready?.catch(() => undefined);
-  transition.finished.catch(() => undefined);
+  transition.finished.catch(() => undefined).then(() => options.onFinished?.());
   return transition.updateCallbackDone;
 }

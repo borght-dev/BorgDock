@@ -18,7 +18,7 @@ interface PrContextMenuProps {
 }
 
 function Separator() {
-  return <div className="h-px bg-[var(--color-separator)] my-1" />;
+  return <div role="separator" className="h-px bg-[var(--color-separator)] my-1" />;
 }
 
 interface MenuItemProps {
@@ -30,6 +30,8 @@ interface MenuItemProps {
 function MenuItem({ label, disabled, onClick }: MenuItemProps) {
   return (
     <button
+      type="button"
+      role="menuitem"
       className={`w-full text-left px-3 py-1.5 text-[13px] text-[var(--color-text-primary)] rounded transition-colors ${
         disabled
           ? 'opacity-40 pointer-events-none'
@@ -224,6 +226,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   return (
     <div
       ref={menuRef}
+      role="menu"
+      aria-label={`Actions for pull request #${pr.pullRequest.number}`}
       className="fixed z-50 min-w-[200px] rounded-lg border shadow-lg py-1"
       style={{
         left: resolvedPos.x,

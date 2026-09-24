@@ -1,16 +1,15 @@
 // src/components/layout/MainWindow.stories.tsx
 //
 // Window-level catalog for the main BorgDock window (the docked-sidebar
-// replacement). MainWindow takes the active section's body as `children`;
-// App.tsx swaps FocusList / PrList / WorkItemsSection on useUiStore.activeSection.
-// This harness mirrors that wiring and seeds the stores directly so the
-// Focus, PRs, and Work Items tabs render with realistic data — the source for
-// the 2.0 "What's new" hero screenshots.
+// replacement). App.tsx renders <MainWindow><ViewStack /></MainWindow>; this
+// harness renders the same tree, so Storybook and the app cannot drift, and
+// seeds the stores directly so the Focus, PRs, and Work Items sections render
+// with realistic data — the source for the "What's new" hero screenshots.
+// `layoutV3` switches between the tab layout and the Workbench rail layout;
+// `view` pushes a detail view on the stack.
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { FocusList } from '@/components/focus';
-import { PrList } from '@/components/pr/PrList';
 import {
   bugWithReproSteps,
   epicWithCustomFields,
@@ -20,11 +19,10 @@ import {
   taskMinimalFields,
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
-import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { type ActiveSection, useUiStore } from '@/stores/ui-store';
+import { type ActiveSection, type MainView, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type {
   AdoQuery,
@@ -35,6 +33,7 @@ import type {
 } from '@/types';
 import { getControl } from '../../../.storybook/mocks/control';
 import { MainWindow } from './MainWindow';
+import { ViewStack } from './ViewStack';
 
 // ── PR fixtures ──────────────────────────────────────────────────────────────
 
@@ -281,37 +280,39 @@ function seedWorkItems() {
 
 // ── harness ──────────────────────────────────────────────────────────────────
 
-/** Mirrors App.tsx: render the active section's body inside MainWindow. */
-function SectionBody() {
-  const active = useUiStore((s) => s.activeSection);
-  if (active === 'focus') return <FocusList />;
-  if (active === 'workitems') return <WorkItemsSection />;
-  return <PrList />;
-}
-
 function Harness({
   section,
   groupBy = 'repo',
   density = 'comfortable',
+  layoutV3 = false,
+  view,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
   density?: PrDensity;
+  /** Workbench rail layout instead of the title-bar tabs. */
+  layoutV3?: boolean;
+  /** A detail view pushed on top of the list. */
+  view?: MainView;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
-    useUiStore.setState({ activeSection: section, prGroupBy: groupBy });
+    useUiStore.setState({
+      activeSection: section,
+      prGroupBy: groupBy,
+      viewStack: view ? [{ kind: 'list' }, view] : [{ kind: 'list' }],
+    });
     useSettingsStore.setState((s) => ({
-      settings: { ...s.settings, ui: { ...s.settings.ui, prDensity: density } },
+      settings: { ...s.settings, ui: { ...s.settings.ui, prDensity: density, layoutV3 } },
     }));
     return null;
   });
   return (
     <MainWindow>
-      <SectionBody />
+      <ViewStack />
     </MainWindow>
   );
 }
@@ -339,3 +340,24 @@ export const FocusTab: Story = { args: { section: 'focus' } };
 
 /** The Work Items tab — the 3-pane queries rail | list | detail workspace. */
 export const WorkItemsTab: Story = { args: { section: 'workitems' } };
+
+/** Workbench rail layout (`ui.layoutV3`) on the Pull requests section. */
+export const RailPrs: Story = { args: { section: 'prs', layoutV3: true } };
+
+/** Workbench rail layout on the Focus section. */
+export const RailFocus: Story = { args: { section: 'focus', layoutV3: true } };
+
+/** Workbench rail layout on the Worktrees placeholder section. */
+export const RailWorktrees: Story = { args: { section: 'worktrees', layoutV3: true } };
+
+/** The tab layout (`ui.layoutV3` off) on the Pull requests section. */
+export const TabsPrs: Story = { args: { section: 'prs', layoutV3: false } };
+
+/** A pull request pushed on the view stack (placeholder detail view with Back). */
+export const RailPrDetailPushed: Story = {
+  args: {
+    section: 'prs',
+    layoutV3: true,
+    view: { kind: 'pr-detail', owner: 'borght-dev', repo: 'BorgDock', number: 482 },
+  },
+};

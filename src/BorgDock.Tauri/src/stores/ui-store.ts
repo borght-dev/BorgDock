@@ -3,7 +3,29 @@ import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 import type { PrGroupBy } from '@/services/pr-grouping';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
-export type ActiveSection = 'prs' | 'focus' | 'workitems';
+export type ActiveSection = 'prs' | 'focus' | 'workitems' | 'worktrees';
+
+/** Sections in rail order; keys `1`–`4` pick them by position. */
+export const SECTION_ORDER: readonly ActiveSection[] = ['focus', 'prs', 'workitems', 'worktrees'];
+
+function isActiveSection(value: unknown): value is ActiveSection {
+  return typeof value === 'string' && (SECTION_ORDER as readonly string[]).includes(value);
+}
+
+/** Tabs of the PR detail view, for `pr-detail` views that open on a specific tab. */
+export type PrDetailTab = 'overview' | 'commits' | 'files' | 'checks' | 'discussion';
+
+/**
+ * What the main window shows. `list` is the section list (`activeSection`
+ * picks which one); the detail views are pushed on top of it and popped with
+ * Back, `Esc`, `Alt+Left` or the mouse back button.
+ */
+export type MainView =
+  | { kind: 'list' }
+  | { kind: 'pr-detail'; owner: string; repo: string; number: number; initialTab?: PrDetailTab }
+  | { kind: 'work-item-detail'; id: number };
+
+const LIST_VIEW: MainView = { kind: 'list' };
 
 interface UiState {
   activeSection: ActiveSection;
@@ -16,6 +38,11 @@ interface UiState {
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
   prGroupBy: PrGroupBy;
   _hasUserNavigated: boolean;
+  /**
+   * Navigation stack of the main window. Always starts with the list view and
+   * never drops below it. Not persisted: a restart opens on the list.
+   */
+  viewStack: MainView[];
 
   setActiveSection: (section: ActiveSection) => void;
   selectPr: (prNumber: number | null) => void;
@@ -27,7 +54,24 @@ interface UiState {
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
   setPrGroupBy: (groupBy: PrGroupBy) => void;
   restorePersistedSection: () => void;
+  /** Push a view on top of the stack. */
+  pushView: (view: MainView) => void;
+  /** Pop the top view. No-op when only the list is left. */
+  popView: () => void;
+  /**
+   * Replace the top detail view. The list always stays at the bottom: at
+   * depth 1 a detail view is pushed instead, and replacing with the list view
+   * returns to the list.
+   */
+  replaceView: (view: MainView) => void;
 }
+
+/** The view the main window is showing. */
+export const selectTopView = (s: Pick<UiState, 'viewStack'>): MainView =>
+  s.viewStack[s.viewStack.length - 1] ?? LIST_VIEW;
+
+/** Number of views on the stack; 1 means the list is showing. */
+export const selectViewDepth = (s: Pick<UiState, 'viewStack'>): number => s.viewStack.length;
 
 export const useUiStore = create<UiState>()((set, get) => ({
   activeSection: 'focus',
@@ -39,6 +83,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   worktreeBranchMap: new Map(),
   prGroupBy: 'author',
   _hasUserNavigated: false,
+  viewStack: [LIST_VIEW],
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });
@@ -84,7 +129,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       .then(([section, groupBy]) => {
         if (get()._hasUserNavigated) return;
         const preferences: Partial<UiState> = {};
-        if (section && (section === 'prs' || section === 'focus' || section === 'workitems')) {
+        if (isActiveSection(section)) {
           preferences.activeSection = section;
         }
         if (groupBy && (groupBy === 'repo' || groupBy === 'author' || groupBy === 'status')) {
@@ -94,4 +139,18 @@ export const useUiStore = create<UiState>()((set, get) => ({
       })
       .catch((err) => console.warn('Failed to restore persisted UI preferences:', err));
   },
+
+  pushView: (view) => set((state) => ({ viewStack: [...state.viewStack, view] })),
+
+  popView: () =>
+    set((state) =>
+      state.viewStack.length > 1 ? { viewStack: state.viewStack.slice(0, -1) } : state,
+    ),
+
+  replaceView: (view) =>
+    set((state) => {
+      if (view.kind === 'list') return { viewStack: [LIST_VIEW] };
+      if (state.viewStack.length <= 1) return { viewStack: [...state.viewStack, view] };
+      return { viewStack: [...state.viewStack.slice(0, -1), view] };
+    }),
 }));

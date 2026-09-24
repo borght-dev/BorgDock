@@ -335,6 +335,54 @@ describe('withViewTransition', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
+  it('calls onFinished after the transition finishes, not before', async () => {
+    let finish: () => void = () => {};
+    const finished = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    doc.startViewTransition = vi.fn((cb: () => void) => {
+      cb();
+      return { updateCallbackDone: Promise.resolve(), finished };
+    });
+    const onFinished = vi.fn();
+
+    await withViewTransition(vi.fn(), { onFinished });
+    expect(onFinished).not.toHaveBeenCalled();
+
+    finish();
+    await finished;
+    await Promise.resolve();
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onFinished for a skipped transition', async () => {
+    const skipped = () => Promise.reject(new DOMException('skipped', 'AbortError'));
+    doc.startViewTransition = vi.fn((cb: () => void) => {
+      cb();
+      return { updateCallbackDone: Promise.resolve(), ready: skipped(), finished: skipped() };
+    });
+    const onFinished = vi.fn();
+    await withViewTransition(vi.fn(), { onFinished });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onFinished right after fn when no transition runs, even if fn throws', async () => {
+    const onFinished = vi.fn();
+    await withViewTransition(vi.fn(), { onFinished });
+    expect(onFinished).toHaveBeenCalledTimes(1);
+
+    const failed = withViewTransition(
+      () => {
+        throw new Error('boom');
+      },
+      { onFinished },
+    );
+    await expect(failed).rejects.toThrow('boom');
+    await Promise.resolve();
+    expect(onFinished).toHaveBeenCalledTimes(2);
+  });
+
   it('skips the transition under reduced motion', async () => {
     const start = vi.fn();
     doc.startViewTransition = start;

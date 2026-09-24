@@ -8,6 +8,8 @@
  * branch along with the imports it guards.
  *
  * Exposed globals:
+ *   - `window.__borgdock_test_push_view(view)` — pushes a view on the main
+ *     window's view stack (see `services/navigation.ts`).
  *   - `window.__borgdock_test_seed(payload)` — writes fixtures into the
  *     pr-store, work-items-store, and settings-store. Partial payloads
  *     only touch the stores named in the payload.
@@ -16,10 +18,12 @@
  *     same rendering path as production notifications.
  */
 
+import { pushView } from '@/services/navigation';
 import { sendOsNotification } from '@/services/notification';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import type { MainView } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { AppSettings, NotificationSeverity, PullRequestWithChecks, WorkItem } from '@/types';
 
@@ -46,11 +50,19 @@ export type TestToastFn = (args: TestToastArgs) => void;
  */
 export type TestStartQuickReviewFn = (count?: number) => void;
 
+/**
+ * Pushes a view on the main window's view stack through the same navigation
+ * helper the app uses, so specs can open a detail view before any list row
+ * pushes one itself.
+ */
+export type TestPushViewFn = (view: MainView) => void;
+
 declare global {
   interface Window {
     __borgdock_test_seed?: TestSeedFn;
     __borgdock_test_toast?: TestToastFn;
     __borgdock_test_start_quick_review?: TestStartQuickReviewFn;
+    __borgdock_test_push_view?: TestPushViewFn;
     /**
      * Set by Playwright's `injectCompletedSetup` so the dev/test-only URL
      * deep-links (`?section=`, `?settings=open`, `?wizard=force`,
@@ -101,5 +113,9 @@ export function installTestSeed({ isDev }: { isDev: boolean }): void {
     const all = usePrStore.getState().pullRequests;
     if (all.length === 0) return;
     useQuickReviewStore.getState().startSession(all.slice(0, Math.max(2, count)));
+  };
+
+  window.__borgdock_test_push_view = (view: MainView) => {
+    void pushView(view);
   };
 }

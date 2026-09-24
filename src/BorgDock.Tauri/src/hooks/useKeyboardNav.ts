@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { isOverlayOpen, showSection } from '@/services/navigation';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useUiStore } from '@/stores/ui-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { SECTION_ORDER, useUiStore } from '@/stores/ui-store';
 
 type QueueMergeFn = (owner: string, repo: string, prNumber: number) => void;
 
@@ -14,6 +16,7 @@ export function useKeyboardNav() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // Search and refresh work from any view.
       if (isSearchShortcut(e)) {
         e.preventDefault();
         focusSectionSearch();
@@ -29,6 +32,38 @@ export function useKeyboardNav() {
         target.isContentEditable
       ) {
         return;
+      }
+
+      if (isRefreshShortcut(e)) {
+        e.preventDefault();
+        dispatchRefresh();
+        return;
+      }
+
+      // The rest are the list view's keys. A detail view on top of the list
+      // has its own (ViewStack handles Esc / Alt+Left there).
+      if (useUiStore.getState().viewStack.length > 1) return;
+
+      // Single-key shortcuts of the rail layout (plan section 7): not on key
+      // repeat, and not while a menu, dialog or Quick Review owns the keyboard.
+      const layoutV3 = useSettingsStore.getState().settings.ui.layoutV3 ?? false;
+      if (layoutV3 && isPlainKey(e) && !e.repeat && !isOverlayOpen()) {
+        const section = railSectionForKey(e);
+        if (section) {
+          e.preventDefault();
+          void showSection(section);
+          return;
+        }
+        if (e.key === '/') {
+          e.preventDefault();
+          focusSectionSearch();
+          return;
+        }
+        if (e.key === 'r' && useUiStore.getState().activeSection !== 'focus') {
+          e.preventDefault();
+          dispatchRefresh();
+          return;
+        }
       }
 
       const filteredPrs = usePrStore.getState().filteredPrs();
@@ -67,11 +102,8 @@ export function useKeyboardNav() {
           break;
         }
         case 'r': {
-          // Ctrl+R or just 'r' to refresh
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            document.dispatchEvent(new CustomEvent('borgdock-refresh'));
-          } else if (useUiStore.getState().activeSection === 'focus' && !e.shiftKey) {
+          // Ctrl+R is handled above; plain R in Focus starts Quick Review.
+          if (useUiStore.getState().activeSection === 'focus' && !e.shiftKey) {
             // R in Focus: start Quick Review for selected PR
             e.preventDefault();
             const focusPrs = usePrStore.getState().focusPrs();
@@ -152,6 +184,25 @@ export function useKeyboardNav() {
   return { focusedIndex: focusedIndexRef };
 }
 
+/** No modifier that changes what the key means (Shift is allowed: `/` needs it on some layouts). */
+function isPlainKey(e: KeyboardEvent): boolean {
+  return !e.ctrlKey && !e.metaKey && !e.altKey;
+}
+
+/** `1`–`4` pick the rail's sections (the rail layout only; the caller checks). */
+function railSectionForKey(e: KeyboardEvent) {
+  if (e.shiftKey || !/^[1-9]$/.test(e.key)) return null;
+  return SECTION_ORDER[Number(e.key) - 1] ?? null;
+}
+
+function isRefreshShortcut(e: KeyboardEvent): boolean {
+  return (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r';
+}
+
+function dispatchRefresh(): void {
+  document.dispatchEvent(new CustomEvent('borgdock-refresh'));
+}
+
 function isSearchShortcut(e: KeyboardEvent): boolean {
   const key = e.key.toLowerCase();
   return (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === 'k' || key === 'f');
@@ -159,24 +210,53 @@ function isSearchShortcut(e: KeyboardEvent): boolean {
 
 const SECTION_SEARCH_SELECTOR = 'input[data-section-search]';
 
+/** First match of `selector` outside inert layers (a covered list, a section fading out). */
+function live<T extends Element>(selector: string): T[] {
+  return [...document.querySelectorAll<T>(selector)].filter((el) => !el.closest('[inert]'));
+}
+
+function findSectionSearch(): HTMLInputElement | null {
+  return live<HTMLInputElement>(SECTION_SEARCH_SELECTOR)[0] ?? null;
+}
+
+/** Focuses and selects `input`; false when there is none or it could not take focus. */
 function focusAndSelect(input: HTMLInputElement | null): boolean {
   if (!input) return false;
   input.focus();
+  if (document.activeElement !== input) return false;
   input.select();
   return true;
 }
 
-/** Focus has no search box, so the shortcut jumps to the PR tab's. */
-function focusSectionSearch(): void {
-  if (focusAndSelect(document.querySelector(SECTION_SEARCH_SELECTOR))) return;
+/** Switch to the PR list, which always has a search box, and focus it. */
+function focusPrSearch(): void {
   useUiStore.getState().setActiveSection('prs');
-  requestAnimationFrame(() => focusAndSelect(document.querySelector(SECTION_SEARCH_SELECTOR)));
+  requestAnimationFrame(() => focusAndSelect(findSectionSearch()));
+}
+
+/**
+ * Focus the search of the section on screen. From a detail view this goes
+ * back to the list first; a section without a search box (Focus, Worktrees)
+ * jumps to the PR list's.
+ */
+function focusSectionSearch(): void {
+  if (focusAndSelect(findSectionSearch())) return;
+  const ui = useUiStore.getState();
+  if (ui.viewStack.length > 1) {
+    void showSection(ui.activeSection).then(() =>
+      requestAnimationFrame(() => {
+        if (!focusAndSelect(findSectionSearch())) focusPrSearch();
+      }),
+    );
+    return;
+  }
+  focusPrSearch();
 }
 
 function scrollFocusedIntoView(index: number): void {
-  // Find the PR card by data attribute
-  const cards = document.querySelectorAll('[data-pr-card]');
-  const card = cards[index];
+  // PR cards in the live section only; a covered list or a section fading
+  // out keeps its cards in the DOM.
+  const card = live('[data-pr-card]')[index];
   if (card) {
     card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }

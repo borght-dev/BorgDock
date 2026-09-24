@@ -3196,6 +3196,303 @@ body.sql-resizing-v .sql-resize-handle {
     flex: 1;
   }
 
+  /* ── MainWindow rail layout (ui.layoutV3) ────────────── */
+  .bd-mainwindow--rail {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+  .bd-mainwindow__main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Rail ────────────────────────────────────────────── */
+  .bd-rail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0 10px 10px;
+    overflow-y: auto;
+    background: var(--color-background);
+    border-right: 1px solid var(--color-subtle-border);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    user-select: none;
+  }
+  .bd-rail__ws {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    height: 36px;
+    padding: 0 8px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .bd-rail__ws-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-rail__nav {
+    display: grid;
+    gap: 1px;
+    margin-top: 10px;
+  }
+  .bd-rail__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      color var(--motion-fast) var(--ease-std),
+      background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-rail__item:hover {
+    color: var(--color-text-primary);
+    background: var(--color-surface-hover);
+  }
+  .bd-rail__item--active,
+  .bd-rail__item--active:hover {
+    color: var(--color-text-primary);
+    background: transparent;
+  }
+  .bd-rail__item:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-rail__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-rail__count {
+    font-size: 11.5px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-rail__count--hot {
+    color: var(--color-status-red);
+  }
+  .bd-rail__sync {
+    display: grid;
+    gap: 8px;
+    margin-top: auto;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-rail__meter {
+    height: 3px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--color-subtle-border);
+  }
+  .bd-rail__meter-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+    transition: width var(--motion-move) var(--ease-std);
+  }
+  .bd-rail__meter--low .bd-rail__meter-fill {
+    background: var(--color-status-red);
+  }
+
+  /* ── ViewStack: list with detail views pushed on top ─── */
+  .bd-viewstack {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    /* Push and pop animate this box on its own (motion.css), so the rail and
+       title bar hold still while the view changes. */
+    view-transition-name: bd-view;
+  }
+  .bd-viewstack__layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  /* The list stays laid out under a detail view (visibility, not display)
+     so its scroll position survives the round trip. */
+  .bd-viewstack__list {
+    z-index: 0;
+    outline: none;
+    transition:
+      opacity var(--motion-push) var(--ease-out),
+      visibility 0s linear 0s;
+  }
+  .bd-viewstack__list--covered {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--motion-push) var(--ease-out),
+      visibility 0s linear var(--motion-push);
+  }
+  .bd-viewstack__detail {
+    z-index: 2;
+    overflow-y: auto;
+    background: var(--color-background);
+    outline: none;
+  }
+  /* Fallback when the View Transitions API is missing: the detail slides up
+     12 px and fades in; on pop it fades back down. */
+  .bd-viewstack__detail--entering {
+    animation: bd-view-push-in var(--motion-push) var(--ease-out) both;
+  }
+  .bd-viewstack__detail--leaving {
+    z-index: 1;
+    pointer-events: none;
+    animation: bd-view-pop-out var(--motion-push) var(--ease-in) both;
+  }
+  @keyframes bd-view-push-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes bd-view-pop-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+
+  /* ── SectionView: crossfade between sections ─────────── */
+  .bd-section-view {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .bd-section {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .bd-section--entering {
+    animation: bd-section-in var(--motion-base) var(--ease-out) both;
+  }
+  .bd-section--leaving {
+    pointer-events: none;
+    animation: bd-section-out var(--motion-base) var(--ease-in) both;
+  }
+  @keyframes bd-section-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes bd-section-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  /* Placeholder body for a section that has not moved in yet (Worktrees). */
+  .bd-section-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    max-width: 380px;
+    margin: auto;
+    padding: 32px 24px;
+    text-align: center;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+  .bd-section-placeholder__icon {
+    color: var(--color-text-tertiary);
+  }
+  .bd-section-placeholder__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .bd-section-placeholder__text {
+    line-height: 1.5;
+  }
+  .bd-section-placeholder__hint {
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ── Detail views pushed on the view stack ───────────── */
+  .bd-detail-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    font-family: var(--font-reading);
+    font-size: 14px;
+    color: var(--color-text-primary);
+  }
+  .bd-detail-view__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+  .bd-detail-view__crumb {
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-detail-view__body {
+    display: grid;
+    gap: 8px;
+    padding: 24px 16px;
+  }
+  .bd-detail-view__title {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-detail-view__note {
+    color: var(--color-text-tertiary);
+  }
+
   /* ── WindowControls ──────────────────────────────────── */
   .bd-window-controls {
     display: inline-flex;

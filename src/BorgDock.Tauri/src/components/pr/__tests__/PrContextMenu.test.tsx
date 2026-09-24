@@ -155,6 +155,21 @@ describe('PrContextMenu', () => {
     expect(screen.getByText('Close PR')).toBeInTheDocument();
   });
 
+  it('exposes a menu of menu items, so Esc guards and screen readers see it', () => {
+    render(
+      <PrContextMenu
+        pr={makePr()}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    const menu = screen.getByRole('menu');
+    expect(menu).toHaveAccessibleName(/^Actions for pull request #\d+$/);
+    expect(screen.getByRole('menuitem', { name: 'Open in GitHub' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Close PR' })).toBeInTheDocument();
+  });
+
   it('shows "Mark as ready" for draft PRs', () => {
     render(
       <PrContextMenu

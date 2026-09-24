@@ -1,12 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef, useState } from 'react';
-import { FocusList, MergeToast, QuickReviewOverlay } from '@/components/focus';
+import { MergeToast, QuickReviewOverlay } from '@/components/focus';
 import { MainWindow } from '@/components/layout/MainWindow';
-import { PrList } from '@/components/pr/PrList';
+import { ViewStack } from '@/components/layout/ViewStack';
 import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
-import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useCacheInit } from '@/hooks/useCacheInit';
@@ -53,7 +52,6 @@ export default function App() {
   const isLoading = useSettingsStore((s) => s.isLoading);
   const hasLoaded = useSettingsStore((s) => s.hasLoaded);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
-  const activeSection = useUiStore((s) => s.activeSection);
   const isInitComplete = useInitStore((s) => s.isComplete);
   const [fadingOut, setFadingOut] = useState(false);
   // Latch: once init has completed, never show the splash again
@@ -359,11 +357,12 @@ export default function App() {
     );
   }
 
-  // Brief fade-out overlay after init completes
-  if (fadingOut) {
-    return (
-      <div data-app-ready={appReady} style={{ display: 'contents' }}>
-        {/* style: custom animation keyframe name — no Tailwind utility for splash-fade-out */}
+  // One tree for the splash fade-out and the normal state, so the main
+  // window stays mounted when the brief fade-out overlay goes away.
+  return (
+    <div data-app-ready={appReady} style={{ display: 'contents' }}>
+      {fadingOut && (
+        // style: custom animation keyframe name — no Tailwind utility for splash-fade-out
         <div
           className="pointer-events-none fixed inset-0 z-50"
           style={{
@@ -371,24 +370,9 @@ export default function App() {
             animation: 'splash-fade-out 200ms ease-out forwards',
           }}
         />
-        <MainWindow>
-          {activeSection === 'focus' && <FocusList />}
-          {activeSection === 'prs' && <PrList />}
-          {activeSection === 'workitems' && <WorkItemsSection />}
-        </MainWindow>
-        <MergeToast />
-        <QuickReviewOverlay />
-        <T3CheckoutDialog />
-      </div>
-    );
-  }
-
-  return (
-    <div data-app-ready={appReady} style={{ display: 'contents' }}>
+      )}
       <MainWindow>
-        {activeSection === 'focus' && <FocusList />}
-        {activeSection === 'prs' && <PrList />}
-        {activeSection === 'workitems' && <WorkItemsSection />}
+        <ViewStack />
       </MainWindow>
       <MergeToast />
       <QuickReviewOverlay />
