@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ThemeMode } from '../types';
+import { REDUCE_MOTION_CLASS } from '../utils/motion';
 
 type EffectiveTheme = 'light' | 'dark';
 
@@ -32,7 +33,16 @@ function applyTheme(effective: EffectiveTheme) {
   }
 }
 
-export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
+export interface UseThemeOptions {
+  /** The `ui.reduceMotion` setting. Toggles `.reduce-motion` on <html> (see styles/motion.css). */
+  reduceMotion?: boolean;
+}
+
+export function useTheme(
+  initial: ThemeMode = 'system',
+  options: UseThemeOptions = {},
+): UseThemeReturn {
+  const reduceMotion = options.reduceMotion ?? false;
   const [theme, setThemeState] = useState<ThemeMode>(initial);
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(
     resolveEffectiveTheme(initial),
@@ -57,6 +67,11 @@ export function useTheme(initial: ThemeMode = 'system'): UseThemeReturn {
     setThemeState(initial);
     updateEffective(initial);
   }, [initial, updateEffective]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle(REDUCE_MOTION_CLASS, reduceMotion);
+    return () => document.documentElement.classList.remove(REDUCE_MOTION_CLASS);
+  }, [reduceMotion]);
 
   // Listen for OS theme changes when in system mode
   useEffect(() => {

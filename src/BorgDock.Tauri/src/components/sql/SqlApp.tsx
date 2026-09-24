@@ -149,6 +149,7 @@ export function SqlApp() {
     const isDark =
       t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('reduce-motion', settings.ui?.reduceMotion ?? false);
 
     setSelectedConnection((current) => {
       if (current && settings.sql.connections.some((c) => c.name === current)) return current;

@@ -1,0 +1,88 @@
+/*
+ * Motion tokens for the Workbench UI (plans/ui-overhaul-workbench.md, section 4).
+ *
+ * One token per kind of movement. Components reference these instead of
+ * ad-hoc milliseconds so reduced motion can collapse every transition in one
+ * place. The older --duration-* tokens in index.css stay for the components
+ * that still use them.
+ *
+ * Reduced motion has two sources: the OS preference and the Appearance
+ * setting, which puts `.reduce-motion` on <html>. `motionOK()` in
+ * src/utils/motion.ts reads the same two signals for FLIP and View
+ * Transitions.
+ */
+
+:root {
+  --motion-fast: 150ms; /* hover, press, chip colour */
+  --motion-base: 260ms; /* fades, crossfade between sections */
+  --motion-move: 320ms; /* sliding highlights, FLIP reorders */
+  --motion-push: 360ms; /* push and pop of a view */
+  --motion-expand: 340ms; /* grid-row expansion, inspector-like panels */
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* enter, expand, push */
+  --ease-std: cubic-bezier(0.2, 0.8, 0.2, 1); /* move, reflow, highlight */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* leave, dismiss, pop */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-move: 0.01ms;
+    --motion-push: 0.01ms;
+    --motion-expand: 0.01ms;
+  }
+}
+
+html.reduce-motion {
+  --motion-fast: 0.01ms;
+  --motion-base: 0.01ms;
+  --motion-move: 0.01ms;
+  --motion-push: 0.01ms;
+  --motion-expand: 0.01ms;
+}
+
+/*
+ * Reduced motion also covers the keyframes and transitions that predate the
+ * tokens: everything finishes at once and looping animations (spinners, the
+ * running-check pulse) stop after one pass, so their state still shows as a
+ * static icon instead of strobing at 0.01ms. Delays go to zero too, so a
+ * staggered entrance does not leave items invisible for a beat. `!important`
+ * is the point here: it has to beat every component's own animation and
+ * transition declarations.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+    animation-delay: 0ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+    transition-delay: 0ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+    scroll-behavior: auto !important;
+  }
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+  animation-duration: 0.01ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+  animation-iteration-count: 1 !important;
+  /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+  animation-delay: 0ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+  transition-duration: 0.01ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+  transition-delay: 0ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+  scroll-behavior: auto !important;
+}

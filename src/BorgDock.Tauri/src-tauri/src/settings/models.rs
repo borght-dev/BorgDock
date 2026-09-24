@@ -182,6 +182,12 @@ pub struct UiSettings {
     /// Main-window PR list layout ("comfortable" | "compact").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pr_density: Option<String>,
+    /// Collapse every UI transition to instant (adds `.reduce-motion` to <html>).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reduce_motion: Option<bool>,
+    /// Opt in to the Workbench layout while the UI overhaul is behind a flag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout_v3: Option<bool>,
 }
 
 fn default_theme() -> String {
@@ -221,6 +227,8 @@ impl Default for UiSettings {
             start_minimized_to_tray: false,
             restore_last_selection: true,
             pr_density: None,
+            reduce_motion: None,
+            layout_v3: None,
         }
     }
 }
@@ -592,6 +600,8 @@ mod redesign_field_tests {
         s.azure_dev_ops.link_match_by = "both".to_string();
         s.ui.quick_review_hotkey = "Ctrl+Alt+R".to_string();
         s.ui.start_minimized_to_tray = true;
+        s.ui.reduce_motion = Some(true);
+        s.ui.layout_v3 = Some(true);
         s.notifications.channels.email_digest = true;
         s.remote_worktree_repos.push(RemoteWorktreeRepoSettings {
             id: "mac-fsp".to_string(),
@@ -611,6 +621,10 @@ mod redesign_field_tests {
         assert_eq!(back.azure_dev_ops.link_match_by, "both");
         assert_eq!(back.ui.quick_review_hotkey, "Ctrl+Alt+R");
         assert!(back.ui.start_minimized_to_tray);
+        assert_eq!(back.ui.reduce_motion, Some(true));
+        assert_eq!(back.ui.layout_v3, Some(true));
+        assert!(json.contains("\"reduceMotion\":true"));
+        assert!(json.contains("\"layoutV3\":true"));
         assert!(back.notifications.channels.email_digest);
         assert_eq!(back.remote_worktree_repos.len(), 1);
         assert_eq!(

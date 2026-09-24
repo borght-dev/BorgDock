@@ -156,6 +156,12 @@ export default defineConfig({
   build: {
     // WebView2 is evergreen Chromium — no need to down-level syntax.
     target: "esnext",
+    // Never inline fonts as data: URIs. The CSP in tauri.conf.json has no
+    // font-src, so fonts fall back to default-src 'self' and a data: font is
+    // blocked in packaged builds. The small @fontsource subsets (< 4 KB) would
+    // otherwise be inlined.
+    assetsInlineLimit: (filePath: string) =>
+      /\.(woff2?|ttf|otf)$/.test(filePath) ? false : undefined,
     rollupOptions: {
       output: { manualChunks },
       input: {

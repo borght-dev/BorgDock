@@ -34,6 +34,28 @@ describe('useTheme', () => {
     vi.restoreAllMocks();
   });
 
+  it('adds reduce-motion to <html> when the setting is on and removes it when off', () => {
+    const { rerender } = renderHook(({ reduce }) => useTheme('light', { reduceMotion: reduce }), {
+      initialProps: { reduce: true },
+    });
+    expect(document.documentElement.classList.contains('reduce-motion')).toBe(true);
+    rerender({ reduce: false });
+    expect(document.documentElement.classList.contains('reduce-motion')).toBe(false);
+  });
+
+  it('removes reduce-motion from <html> on unmount', () => {
+    const { unmount } = renderHook(() => useTheme('light', { reduceMotion: true }));
+    expect(document.documentElement.classList.contains('reduce-motion')).toBe(true);
+    unmount();
+    expect(document.documentElement.classList.contains('reduce-motion')).toBe(false);
+  });
+
+  it('leaves reduce-motion off by default', () => {
+    document.documentElement.classList.add('reduce-motion');
+    renderHook(() => useTheme('light'));
+    expect(document.documentElement.classList.contains('reduce-motion')).toBe(false);
+  });
+
   it('applies dark class when initial is "dark"', () => {
     renderHook(() => useTheme('dark'));
     expect(document.documentElement.classList.contains('dark')).toBe(true);

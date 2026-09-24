@@ -30,6 +30,8 @@ const defaultSettings: AppSettings = {
     quickReviewHotkey: '',
     startMinimizedToTray: false,
     restoreLastSelection: true,
+    reduceMotion: false,
+    layoutV3: false,
   },
   notifications: {
     toastOnCheckStatusChange: true,

@@ -93,17 +93,31 @@ describe('AppearanceSection', () => {
 
   // 6. WT profile TextInput round-trips through onChange
   it('updates Windows Terminal profile via TextInput', () => {
-    render(<AppearanceSection ui={makeUi({ windowsTerminalProfile: 'PowerShell 7' })} onChange={onChange} />);
+    render(
+      <AppearanceSection
+        ui={makeUi({ windowsTerminalProfile: 'PowerShell 7' })}
+        onChange={onChange}
+      />,
+    );
     const input = screen.getByRole('textbox', { name: 'Windows Terminal profile' });
     fireEvent.change(input, { target: { value: 'Ubuntu' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ windowsTerminalProfile: 'Ubuntu' }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ windowsTerminalProfile: 'Ubuntu' }),
+    );
   });
 
   it('clears Windows Terminal profile to undefined when empty', () => {
-    render(<AppearanceSection ui={makeUi({ windowsTerminalProfile: 'PowerShell 7' })} onChange={onChange} />);
+    render(
+      <AppearanceSection
+        ui={makeUi({ windowsTerminalProfile: 'PowerShell 7' })}
+        onChange={onChange}
+      />,
+    );
     const input = screen.getByRole('textbox', { name: 'Windows Terminal profile' });
     fireEvent.change(input, { target: { value: '   ' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ windowsTerminalProfile: undefined }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ windowsTerminalProfile: undefined }),
+    );
   });
 
   // New toggles
@@ -117,6 +131,30 @@ describe('AppearanceSection', () => {
     render(<AppearanceSection ui={makeUi({ restoreLastSelection: true })} onChange={onChange} />);
     const toggle = screen.getByRole('switch', { name: 'Restore last selection' });
     expect(toggle.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('reduce motion toggle defaults to off and turns on', () => {
+    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: 'Reduce motion' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ reduceMotion: true }));
+  });
+
+  it('reduce motion toggle turns off when on', () => {
+    render(<AppearanceSection ui={makeUi({ reduceMotion: true })} onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: 'Reduce motion' });
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ reduceMotion: false }));
+  });
+
+  it('new layout (preview) toggle writes layoutV3', () => {
+    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: 'New layout (preview)' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ layoutV3: true }));
   });
 
   it('preserves other fields when updating one', () => {

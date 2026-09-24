@@ -18,12 +18,12 @@ function contrastRatio(a: string, b: string): number {
 }
 
 // These mirror the index.css values. Update both when the tokens change.
-// Light surface-raised = rgba(90,86,112,0.03) blended onto white → #fafafb
-const LIGHT_TEXT_MUTED = '#6a6580'; // post-PR6 (was #8a85a0 → 3.39:1; now → 5.32:1)
-const LIGHT_SURFACE_RAISED = '#fafafb';
-// Dark surface-raised = rgba(138,133,160,0.03) blended onto #1a1726 → #1d1a2a
-const DARK_TEXT_MUTED = '#9490a8'; // post-PR6 (was #5a5670 → 2.43:1; now → 5.52:1)
-const DARK_SURFACE_RAISED = '#1d1a2a';
+// Light (Porcelain) surface-raised = rgba(23,24,28,0.03) blended onto white → #f8f8f8
+const LIGHT_TEXT_MUTED = '#6b6e78';
+const LIGHT_SURFACE_RAISED = '#f8f8f8';
+// Dark (graphite) surface-raised is the solid #212226
+const DARK_TEXT_MUTED = '#8e8f96';
+const DARK_SURFACE_RAISED = '#212226';
 
 describe('text-muted contrast against surface-raised', () => {
   it('light theme: text-muted on surface-raised meets WCAG 2.1 AA (≥4.5:1)', () => {
@@ -31,5 +31,22 @@ describe('text-muted contrast against surface-raised', () => {
   });
   it('dark theme: text-muted on surface-raised meets WCAG 2.1 AA (≥4.5:1)', () => {
     expect(contrastRatio(DARK_TEXT_MUTED, DARK_SURFACE_RAISED)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// CheckBar labels use the badge foregrounds; list rows sit on the surface
+// (#ffffff) or directly on the window background (#f5f5f7).
+const LIGHT_BACKGROUND = '#f5f5f7';
+const LIGHT_SURFACE = '#ffffff';
+const LIGHT_WARNING_BADGE_FG = '#8f620b';
+const LIGHT_ERROR_BADGE_FG = '#bf3552';
+
+describe('light badge foregrounds (CheckBar running / failing labels)', () => {
+  it.each([
+    ['warning', LIGHT_WARNING_BADGE_FG],
+    ['error', LIGHT_ERROR_BADGE_FG],
+  ])('%s badge fg meets 4.5:1 on surface and background', (_name, fg) => {
+    expect(contrastRatio(fg, LIGHT_SURFACE)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(fg, LIGHT_BACKGROUND)).toBeGreaterThanOrEqual(4.5);
   });
 });

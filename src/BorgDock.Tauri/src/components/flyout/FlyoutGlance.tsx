@@ -20,6 +20,8 @@ export interface FlyoutData {
   focusCount: number;
   username: string;
   theme: string;
+  /** `ui.reduceMotion` from the main window's settings. */
+  reduceMotion?: boolean;
   lastSyncAgo: string;
   hotkey: string;
 }

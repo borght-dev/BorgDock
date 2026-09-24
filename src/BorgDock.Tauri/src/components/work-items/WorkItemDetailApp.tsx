@@ -290,6 +290,10 @@ export function WorkItemDetailApp() {
           t === 'dark' ||
           (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.classList.toggle(
+          'reduce-motion',
+          settings.ui?.reduceMotion ?? false,
+        );
 
         if (!workItemId) {
           if (cancelled) return;

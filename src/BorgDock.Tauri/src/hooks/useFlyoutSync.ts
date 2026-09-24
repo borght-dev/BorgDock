@@ -40,6 +40,7 @@ function buildFlyoutPayload(
   hotkey: string,
   lastPollTime: number | null,
   focusCount: number,
+  reduceMotion: boolean,
 ) {
   const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
@@ -85,6 +86,7 @@ function buildFlyoutPayload(
     focusCount,
     username,
     theme,
+    reduceMotion,
     lastSyncAgo,
     hotkey,
   };
@@ -96,6 +98,7 @@ export function useFlyoutSync() {
   const lastPollTimeRaw = usePrStore((s) => s.lastPollTime);
   const lastPollTime = lastPollTimeRaw ? lastPollTimeRaw.getTime() : null;
   const theme = useSettingsStore((s) => s.settings.ui.theme);
+  const reduceMotion = useSettingsStore((s) => s.settings.ui.reduceMotion ?? false);
   const hotkey = useSettingsStore((s) => s.settings.ui.globalHotkey);
   const agentAwaitingCount = useT3SessionStore(
     (s) =>
@@ -127,6 +130,7 @@ export function useFlyoutSync() {
       st.ui.globalHotkey || 'Ctrl+Win+Shift+G',
       pollRaw ? pollRaw.getTime() : null,
       usePrStore.getState().focusCount(),
+      st.ui.reduceMotion ?? false,
     );
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -153,7 +157,7 @@ export function useFlyoutSync() {
       const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
 
       // Cheap hash to skip redundant IPC
-      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${lastPollTime}:${agentAwaitingCount}`;
+      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${reduceMotion}:${lastPollTime}:${agentAwaitingCount}`;
       if (hash === prevHashRef.current) return;
       prevHashRef.current = hash;
 
@@ -183,7 +187,7 @@ export function useFlyoutSync() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [pullRequests, username, theme, hotkey, lastPollTime, agentAwaitingCount]);
+  }, [pullRequests, username, theme, reduceMotion, hotkey, lastPollTime, agentAwaitingCount]);
 
   // Respond to flyout-request-data: re-send the current payload through the
   // same syncFlyout helper so the cache and the broadcast stay in sync.

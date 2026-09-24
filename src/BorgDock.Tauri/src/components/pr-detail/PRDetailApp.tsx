@@ -88,6 +88,10 @@ export function PrDetailApp() {
           (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (cancelled) return;
         document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.classList.toggle(
+          'reduce-motion',
+          settings.ui?.reduceMotion ?? false,
+        );
 
         // Try loading from cache first for instant display
         try {

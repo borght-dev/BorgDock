@@ -57,6 +57,23 @@ export function AppearanceSection({ ui, onChange }: Props) {
             onChange={(v) => update({ prDensity: v as PrDensity })}
           />
         </Field>
+        <div id="field-reduce-motion">
+          <ToggleRow
+            label="Reduce motion"
+            hint="Switch views, filters and lists instantly instead of animating them. BorgDock also follows the reduced-motion setting of your operating system."
+            on={ui.reduceMotion ?? false}
+            onChange={(reduceMotion) => update({ reduceMotion })}
+          />
+        </div>
+        <div id="field-layout-v3">
+          <ToggleRow
+            label="New layout (preview)"
+            hint="Switches to the Workbench layout as it lands. Off keeps the current one."
+            on={ui.layoutV3 ?? false}
+            onChange={(layoutV3) => update({ layoutV3 })}
+            last
+          />
+        </div>
       </Card>
 
       <Card variant="default" padding="md">

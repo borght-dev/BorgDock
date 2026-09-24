@@ -12,11 +12,12 @@ import {
 
 const log = createLogger('FlyoutApp');
 
-function applyTheme(theme: string) {
+function applyTheme(theme: string, reduceMotion?: boolean) {
   const isDark =
     theme === 'dark' ||
     (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.classList.toggle('dark', isDark);
+  document.documentElement.classList.toggle('reduce-motion', reduceMotion ?? false);
 }
 
 async function isFlyoutVisible(): Promise<boolean> {
@@ -66,7 +67,7 @@ export function FlyoutApp() {
             const parsed = JSON.parse(cached) as FlyoutData;
             hasReceivedData.current = true;
             setData(parsed);
-            if (parsed.theme) applyTheme(parsed.theme);
+            if (parsed.theme) applyTheme(parsed.theme, parsed.reduceMotion);
             // The window is built lazily on first open, long after the main
             // window emitted `init-complete` — and Rust's open nudge fires
             // before this webview has listeners. Cached data means main has
@@ -83,7 +84,7 @@ export function FlyoutApp() {
           if (cancelled) return;
           hasReceivedData.current = true;
           setData(event.payload);
-          if (event.payload.theme) applyTheme(event.payload.theme);
+          if (event.payload.theme) applyTheme(event.payload.theme, event.payload.reduceMotion);
         });
         if (cancelled) {
           unlisten?.();
@@ -158,7 +159,7 @@ export function FlyoutApp() {
       if (payload.data) {
         setData((prev) => ({ ...prev, ...payload.data }));
         hasReceivedData.current = true;
-        if (payload.data.theme) applyTheme(payload.data.theme);
+        if (payload.data.theme) applyTheme(payload.data.theme, payload.data.reduceMotion);
       }
       // Always finish init so the splash isn't stuck.
       dispatch({ type: 'init-complete' });

@@ -64,7 +64,7 @@ export default function App() {
   }, [isInitComplete]);
 
   // Apply theme from settings
-  useTheme(settings.ui.theme);
+  useTheme(settings.ui.theme, { reduceMotion: settings.ui.reduceMotion });
 
   // Load settings on mount
   useEffect(() => {

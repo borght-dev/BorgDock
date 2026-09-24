@@ -65,6 +65,10 @@ export interface UiSettings {
   restoreLastSelection: boolean;
   /** PR list row layout in the main window. comfortable = two-line rows, compact = single-line table. */
   prDensity?: PrDensity;
+  /** Collapse every transition to instant, on top of the OS reduced-motion preference. Puts `.reduce-motion` on <html>. */
+  reduceMotion?: boolean;
+  /** Opt in to the Workbench layout (left rail, in-window PR detail) while it is being built. Removed at cutover. */
+  layoutV3?: boolean;
 }
 
 export type PrDensity = 'comfortable' | 'compact';
