@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { isOverlayOpen, showSection } from '@/services/navigation';
+import { isOverlayOpen, pushView, showSection } from '@/services/navigation';
+import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -62,6 +63,28 @@ export function useKeyboardNav() {
         if (e.key === 'r' && useUiStore.getState().activeSection !== 'focus') {
           e.preventDefault();
           dispatchRefresh();
+          return;
+        }
+      }
+
+      // Workbench PR rows: J/K follow the rows as drawn ("Needs you" first,
+      // then the groups; collapsed groups skipped) and Enter opens the
+      // selected one in the detail view.
+      if (layoutV3 && !e.defaultPrevented && isPlainKey(e)) {
+        // A menu, dialog or Quick Review owns the keyboard.
+        if (isOverlayOpen()) return;
+        const rows = live<HTMLElement>(WORKBENCH_ROW_SELECTOR);
+        if (rows.length > 0 && handleWorkbenchRowKey(e, rows, focusedIndexRef)) return;
+      }
+      // Ctrl/Cmd+Enter opens the selected Workbench row in its own window.
+      if (layoutV3 && !e.defaultPrevented && isPopOutShortcut(e) && !isOverlayOpen()) {
+        const row = live<HTMLElement>(WORKBENCH_ROW_SELECTOR).find(
+          (r) => r.dataset.selected === 'true',
+        );
+        const target = row ? rowTarget(row) : null;
+        if (target) {
+          e.preventDefault();
+          void openPrDetail(target);
           return;
         }
       }
@@ -182,6 +205,63 @@ export function useKeyboardNav() {
   }, [pullRequests, filter]);
 
   return { focusedIndex: focusedIndexRef };
+}
+
+const WORKBENCH_ROW_SELECTOR = '.bd-wb-row[data-pr-key]';
+
+/**
+ * J/K/arrows and Enter over the Workbench list's rows, in DOM order. Returns
+ * true when the key was handled.
+ */
+function handleWorkbenchRowKey(
+  e: KeyboardEvent,
+  rows: HTMLElement[],
+  focusedIndexRef: { current: number },
+): boolean {
+  const current = rows.findIndex((row) => row.dataset.selected === 'true');
+  const select = (index: number) => {
+    const row = rows[index];
+    if (!row) return;
+    focusedIndexRef.current = index;
+    useUiStore
+      .getState()
+      .selectPrKey(row.dataset.prKey ?? null, Number(row.dataset.prNumber) || null);
+    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  switch (e.key) {
+    case 'ArrowDown':
+    case 'j':
+      e.preventDefault();
+      select(current < 0 ? 0 : Math.min(current + 1, rows.length - 1));
+      return true;
+    case 'ArrowUp':
+    case 'k':
+      e.preventDefault();
+      select(current < 0 ? 0 : Math.max(current - 1, 0));
+      return true;
+    case 'Enter': {
+      const row = rows[current];
+      const target = row ? rowTarget(row) : null;
+      if (!target) return false;
+      e.preventDefault();
+      void pushView({ kind: 'pr-detail', ...target });
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
+/** The PR a Workbench row stands for, from its data attributes. */
+function rowTarget(row: HTMLElement): { owner: string; repo: string; number: number } | null {
+  const { prOwner: owner, prRepo: repo, prNumber } = row.dataset;
+  if (!owner || !repo || !prNumber) return null;
+  return { owner, repo, number: Number(prNumber) };
+}
+
+/** Ctrl+Enter (Cmd+Enter on macOS): open the selected PR in a pop-out window. */
+function isPopOutShortcut(e: KeyboardEvent): boolean {
+  return e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
 }
 
 /** No modifier that changes what the key means (Shift is allowed: `/` needs it on some layouts). */

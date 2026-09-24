@@ -14,6 +14,9 @@ const mockStartSession = vi.fn();
 const mockSetActiveSection = vi.fn();
 
 const mockShowSection = vi.fn((_section: string) => Promise.resolve());
+const mockPushView = vi.fn((_view: unknown) => Promise.resolve());
+const mockOpenPrDetail = vi.fn((_target: unknown) => Promise.resolve());
+const mockSelectPrKey = vi.fn();
 let mockOverlayOpen = false;
 
 let mockSelectedPrNumber: number | null = null;
@@ -35,6 +38,8 @@ vi.mock('@/stores/ui-store', () => ({
         viewStack: mockViewStack,
         collapseAllRepoGroups: mockCollapseAllRepoGroups,
         setActiveSection: mockSetActiveSection,
+        selectPr: mockSelectPr,
+        selectPrKey: mockSelectPrKey,
       }),
     },
   ),
@@ -68,7 +73,12 @@ vi.mock('@/stores/quick-review-store', () => ({
 
 vi.mock('@/services/navigation', () => ({
   showSection: (section: string) => mockShowSection(section),
+  pushView: (view: unknown) => mockPushView(view),
   isOverlayOpen: () => mockOverlayOpen,
+}));
+
+vi.mock('@/services/windows', () => ({
+  openPrDetail: (target: unknown) => mockOpenPrDetail(target),
 }));
 
 vi.mock('@/stores/settings-store', () => ({
@@ -742,6 +752,149 @@ describe('useKeyboardNav', () => {
       fireKey('ArrowDown');
       expect(second.scrollIntoView).toHaveBeenCalled();
       expect(staleSecond.scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Workbench rows (layoutV3)', () => {
+    beforeEach(() => {
+      mockLayoutV3 = true;
+      // The store order differs from the drawn order on purpose.
+      mockFilteredPrs.mockReturnValue([makePr(3), makePr(2), makePr(1)]);
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    /**
+     * Rows as WorkbenchPrList draws them; `collapsed` ones sit in an inert
+     * group. Rows 10 and 20 of different repos can share a number, so every
+     * row carries its own `owner/repo#number` key.
+     */
+    function mountRows(
+      rows: { n: number; repo?: string; selected?: boolean; collapsed?: boolean }[],
+    ) {
+      for (const { n, repo = `repo${n}`, selected, collapsed } of rows) {
+        const parent = document.createElement('div');
+        if (collapsed) parent.setAttribute('inert', '');
+        const row = document.createElement('div');
+        row.className = 'bd-wb-row';
+        row.setAttribute('data-pr-row', '');
+        row.dataset.prNumber = String(n);
+        row.dataset.prOwner = 'acme';
+        row.dataset.prRepo = repo;
+        row.dataset.prKey = `acme/${repo}#${n}`;
+        if (selected) row.dataset.selected = 'true';
+        parent.appendChild(row);
+        document.body.appendChild(parent);
+      }
+    }
+
+    it('j and ArrowDown follow the drawn order, skipping collapsed groups', () => {
+      mountRows([{ n: 10, selected: true }, { n: 11, collapsed: true }, { n: 12 }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('j');
+      expect(mockSelectPrKey).toHaveBeenLastCalledWith('acme/repo12#12', 12);
+      fireKey('ArrowDown');
+      expect(mockSelectPrKey).toHaveBeenLastCalledWith('acme/repo12#12', 12);
+    });
+
+    it('selects by key, so same-numbered PRs of two repos stay apart', () => {
+      mountRows([
+        { n: 7, repo: 'app', selected: true },
+        { n: 7, repo: 'site' },
+      ]);
+      renderHook(() => useKeyboardNav());
+      fireKey('j');
+      expect(mockSelectPrKey).toHaveBeenLastCalledWith('acme/site#7', 7);
+    });
+
+    it('k and ArrowUp move up and stop at the first row', () => {
+      mountRows([{ n: 10 }, { n: 12, selected: true }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('k');
+      expect(mockSelectPrKey).toHaveBeenLastCalledWith('acme/repo10#10', 10);
+      document.body.innerHTML = '';
+      mountRows([{ n: 10, selected: true }, { n: 12 }]);
+      fireKey('ArrowUp');
+      expect(mockSelectPrKey).toHaveBeenLastCalledWith('acme/repo10#10', 10);
+    });
+
+    it('selects the first row when nothing is selected', () => {
+      mountRows([{ n: 10 }, { n: 12 }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('j');
+      expect(mockSelectPrKey).toHaveBeenLastCalledWith('acme/repo10#10', 10);
+    });
+
+    it('Enter opens the selected row in the detail view', () => {
+      mountRows([
+        { n: 12, repo: 'app' },
+        { n: 12, repo: 'site', selected: true },
+      ]);
+      renderHook(() => useKeyboardNav());
+      fireKey('Enter');
+      expect(mockPushView).toHaveBeenCalledWith({
+        kind: 'pr-detail',
+        owner: 'acme',
+        repo: 'site',
+        number: 12,
+      });
+      expect(mockOpenPrDetail).not.toHaveBeenCalled();
+    });
+
+    it('Ctrl+Enter and Cmd+Enter open the selected row in its own window', () => {
+      mountRows([{ n: 10 }, { n: 12, selected: true }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('Enter', { ctrlKey: true });
+      fireKey('Enter', { metaKey: true });
+      expect(mockOpenPrDetail).toHaveBeenCalledTimes(2);
+      expect(mockOpenPrDetail).toHaveBeenCalledWith({ owner: 'acme', repo: 'repo12', number: 12 });
+      expect(mockPushView).not.toHaveBeenCalled();
+    });
+
+    it('Ctrl+Enter stands down while a menu or dialog is open', () => {
+      mockOverlayOpen = true;
+      mountRows([{ n: 12, selected: true }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('Enter', { ctrlKey: true });
+      expect(mockOpenPrDetail).not.toHaveBeenCalled();
+    });
+
+    it('Enter without a selection does nothing', () => {
+      mountRows([{ n: 10 }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('Enter');
+      fireKey('Enter', { ctrlKey: true });
+      expect(mockPushView).not.toHaveBeenCalled();
+      expect(mockOpenPrDetail).not.toHaveBeenCalled();
+    });
+
+    it('leaves the keys to a row that already handled them', () => {
+      mountRows([{ n: 10, selected: true }]);
+      renderHook(() => useKeyboardNav());
+      for (const ctrlKey of [false, true]) {
+        const event = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          ctrlKey,
+          bubbles: true,
+          cancelable: true,
+        });
+        event.preventDefault();
+        document.dispatchEvent(event);
+      }
+      expect(mockPushView).not.toHaveBeenCalled();
+      expect(mockOpenPrDetail).not.toHaveBeenCalled();
+    });
+
+    it('keeps the store-order navigation in the tab layout', () => {
+      mockLayoutV3 = false;
+      mountRows([{ n: 10 }, { n: 12 }]);
+      renderHook(() => useKeyboardNav());
+      fireKey('j');
+      expect(mockSelectPr).toHaveBeenLastCalledWith(2);
+      fireKey('Enter', { ctrlKey: true });
+      expect(mockOpenPrDetail).not.toHaveBeenCalled();
     });
   });
 });

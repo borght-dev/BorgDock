@@ -30,6 +30,12 @@ const LIST_VIEW: MainView = { kind: 'list' };
 interface UiState {
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
+  /**
+   * The selected PR as `owner/repo#number` (Workbench rows). Numbers collide
+   * across repositories, so the Workbench list selects by key; the tab
+   * layout still reads `selectedPrNumber`, which `selectPrKey` sets as well.
+   */
+  selectedPrKey: string | null;
   workItemsSelectedId: number | null;
   expandedRepoGroups: Set<string>;
   isDragging: boolean;
@@ -45,7 +51,10 @@ interface UiState {
   viewStack: MainView[];
 
   setActiveSection: (section: ActiveSection) => void;
+  /** Select by number (tab layout). Clears the key selection. */
   selectPr: (prNumber: number | null) => void;
+  /** Select one PR by `owner/repo#number` and its number (Workbench rows). */
+  selectPrKey: (key: string | null, prNumber: number | null) => void;
   setWorkItemsSelectedId: (id: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
   collapseAllRepoGroups: () => void;
@@ -76,6 +85,7 @@ export const selectViewDepth = (s: Pick<UiState, 'viewStack'>): number => s.view
 export const useUiStore = create<UiState>()((set, get) => ({
   activeSection: 'focus',
   selectedPrNumber: null,
+  selectedPrKey: null,
   workItemsSelectedId: null,
   expandedRepoGroups: new Set<string>(),
   isDragging: false,
@@ -92,7 +102,9 @@ export const useUiStore = create<UiState>()((set, get) => ({
     );
   },
 
-  selectPr: (prNumber) => set({ selectedPrNumber: prNumber }),
+  selectPr: (prNumber) => set({ selectedPrNumber: prNumber, selectedPrKey: null }),
+
+  selectPrKey: (key, prNumber) => set({ selectedPrKey: key, selectedPrNumber: prNumber }),
 
   setWorkItemsSelectedId: (workItemsSelectedId) => set({ workItemsSelectedId }),
 

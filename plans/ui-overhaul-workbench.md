@@ -141,7 +141,7 @@ Each phase is one pull request, shippable behind the `ui.layoutV3` setting until
 - `src/components/pr/PrFilterControl.tsx`: segmented All / Needs you / Mine / Failing with counts and the sliding highlight. Replaces the seven-chip `PrToolbar` filter row. Group by and sort move into a single menu.
 
 **Modify**
-- `src/components/pr/PrRow.tsx`, `PrCardContainer.tsx`: comfortable and compact densities both render `PrRowCore`; compact drops the meta line. Remove `MergeScoreBadge` and `HoverActionPillBar` from the row. The merge score itself stays in `pr-card-data.ts` and `pr-store.sortBy` keeps its readiness sort; it is no longer drawn. Row click pushes `pr-detail`. Double-click and middle-click keep the pop-out.
+- `src/components/pr/PrRow.tsx`, `PrCardContainer.tsx`: comfortable and compact densities both render `PrRowCore`; compact drops the meta line. Remove `MergeScoreBadge` and `HoverActionPillBar` from the row. The merge score itself stays in `pr-card-data.ts` and `pr-store.sortBy` keeps its readiness sort; it is no longer drawn. Row click pushes `pr-detail` immediately (no double-click delay). Ctrl/Cmd+click, middle-click, Ctrl+Enter and the context menu open the pop-out. Selection is keyed by `owner/repo#number`, never by number alone.
 - `src/components/pr/PrContextMenu.tsx`: keep every action; add "Open in window" for the pop-out.
 - `src/components/pr/RepoGroup.tsx` and `PrList.tsx`: sentence-case group headings with a count and a hairline. "Needs you" group first when the filter is All. FLIP on filter and group changes below the virtualization threshold; crossfade above it.
 - `src/components/pr/PrToolbar.tsx`: becomes the head row: title, `PrFilterControl`, search with `⌘K` hint.

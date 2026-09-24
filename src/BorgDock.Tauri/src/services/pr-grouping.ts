@@ -4,6 +4,9 @@ import type { PullRequestWithChecks } from '@/types';
 /** How the PR tab groups its rows. */
 export type PrGroupBy = 'repo' | 'author' | 'status';
 
+/** Key of the Workbench list's pinned "Needs you" group. */
+export const NEEDS_YOU_GROUP_KEY = 'needs-you';
+
 /** Status buckets, in the order the "Status" grouping renders them. */
 export type PrStatusBucket = 'failing' | 'waitingOnMe' | 'ready' | 'inReview' | 'draft' | 'other';
 
@@ -44,6 +47,8 @@ export interface PrGroup {
   author?: { login: string; avatarUrl: string; isMe: boolean };
   /** Present for status groups. */
   bucket?: PrStatusBucket;
+  /** The Workbench list's pinned "Needs you" group (see `groupWorkbenchPrs`). */
+  pinned?: boolean;
   stats: PrGroupStats;
 }
 
@@ -91,6 +96,29 @@ export function isWaitingOnMe(
   const me = username.toLowerCase();
   if (pr.pullRequest.requestedReviewers.some((r) => r.toLowerCase() === me)) return true;
   return isTeamRequested(pr.pullRequest.requestedTeams, teams);
+}
+
+/**
+ * "Needs you" in the Workbench list (plans/ui-overhaul-workbench.md, phase 2,
+ * after the iteration-2 mockup's `bucket()`): a review is requested from me
+ * (personally or through a team), or it is my PR and its checks fail, or it
+ * is my PR and a reviewer asked for changes or left comments.
+ *
+ * Unlike the mockup's Board bucket, a stale PR still needs you here: the
+ * list filter answers "what is waiting on me", and an old review request is
+ * still waiting. The Board (phase 5) can put stale PRs in their own column.
+ */
+export function isNeedsYou(
+  pr: PullRequestWithChecks,
+  username: string,
+  teams: readonly string[] = [],
+): boolean {
+  if (!username) return false;
+  if (isWaitingOnMe(pr, username, teams)) return true;
+  if (!isMyPr(pr, username)) return false;
+  if (isFailing(pr)) return true;
+  const status = pr.pullRequest.reviewStatus;
+  return status === 'changesRequested' || status === 'commented';
 }
 
 export function classifyPrStatus(
@@ -251,4 +279,39 @@ export function computeAuthorLoad(prs: PullRequestWithChecks[], username: string
     if (b.count !== a.count) return b.count - a.count;
     return a.login.localeCompare(b.login);
   });
+}
+
+/**
+ * The Workbench list's groups: a pinned "Needs you" group first (only when
+ * `pinNeedsYou`, i.e. the filter is All, and only when it has rows), then
+ * the rest grouped by `groupBy`. A PR shows up once: rows in "Needs you" are
+ * left out of the groups below it. Row order inside each group follows `prs`.
+ */
+export function groupWorkbenchPrs(
+  prs: PullRequestWithChecks[],
+  groupBy: PrGroupBy,
+  username: string,
+  teams: readonly string[] = [],
+  pinNeedsYou = true,
+): PrGroup[] {
+  if (!pinNeedsYou) return groupPrs(prs, groupBy, username, teams);
+  const needsYou: PullRequestWithChecks[] = [];
+  const rest: PullRequestWithChecks[] = [];
+  for (const pr of prs) {
+    if (isNeedsYou(pr, username, teams)) needsYou.push(pr);
+    else rest.push(pr);
+  }
+  const groups = groupPrs(rest, groupBy, username, teams);
+  if (needsYou.length === 0) return groups;
+  return [
+    {
+      key: NEEDS_YOU_GROUP_KEY,
+      kind: groupBy,
+      label: 'Needs you',
+      prs: needsYou,
+      pinned: true,
+      stats: summarizePrGroup(needsYou, username, teams),
+    },
+    ...groups,
+  ];
 }

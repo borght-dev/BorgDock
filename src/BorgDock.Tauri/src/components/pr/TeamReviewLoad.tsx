@@ -13,7 +13,17 @@ function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
 }
 
-function ReviewerRow({ reviewer }: { reviewer: ReviewerLoad }) {
+interface ReviewerRowProps {
+  reviewer: ReviewerLoad;
+  /**
+   * What a click does. Default: filter the tab layout's list to "Needs
+   * review" and search for the reviewer. The Workbench list passes its own
+   * so the change goes through its filter control and FLIP.
+   */
+  onSelect?: (reviewer: ReviewerLoad) => void;
+}
+
+export function ReviewerRow({ reviewer, onSelect }: ReviewerRowProps) {
   const setFilter = usePrStore((s) => s.setFilter);
   const setSearchQuery = usePrStore((s) => s.setSearchQuery);
   const color = loadColor(reviewer.pendingReviewCount);
@@ -24,6 +34,10 @@ function ReviewerRow({ reviewer }: { reviewer: ReviewerLoad }) {
     <button
       className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
       onClick={() => {
+        if (onSelect) {
+          onSelect(reviewer);
+          return;
+        }
         setFilter('needsReview');
         setSearchQuery(reviewer.login);
       }}
@@ -54,7 +68,8 @@ function ReviewerRow({ reviewer }: { reviewer: ReviewerLoad }) {
   );
 }
 
-export function TeamReviewLoad() {
+/** Pending reviews per reviewer, re-read whenever the PRs or request times change. */
+export function useTeamReviewers(): ReviewerLoad[] {
   const pullRequests = usePrStore((s) => s.pullRequests);
   const reviewRequestTimestamps = usePrStore((s) => s.reviewRequestTimestamps);
   const teamReviewLoad = usePrStore((s) => s.teamReviewLoad);
@@ -63,7 +78,11 @@ export function TeamReviewLoad() {
   void pullRequests;
   void reviewRequestTimestamps;
 
-  const reviewers = teamReviewLoad();
+  return teamReviewLoad();
+}
+
+export function TeamReviewLoad() {
+  const reviewers = useTeamReviewers();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (reviewers.length === 0) return null;

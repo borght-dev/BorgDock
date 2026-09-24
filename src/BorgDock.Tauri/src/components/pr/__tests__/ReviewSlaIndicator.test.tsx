@@ -58,4 +58,14 @@ describe('ReviewSlaIndicator', () => {
     const dot = container.querySelector('span > span:first-child');
     expect(dot?.className).not.toContain('animate-pulse');
   });
+
+  it('does not pulse when still, at any tier', () => {
+    for (const tier of ['fresh', 'aging', 'stale'] as const) {
+      const { container, unmount } = render(<ReviewSlaIndicator tier={tier} waitTime="2d" still />);
+      const dot = container.querySelector('span > span:first-child');
+      expect(dot?.className).not.toContain('animate-pulse');
+      expect(dot?.className).toContain('rounded-full');
+      unmount();
+    }
+  });
 });

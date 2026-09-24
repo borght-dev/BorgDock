@@ -1,4 +1,4 @@
-import type { PillTone } from '@/components/shared/primitives';
+import type { CheckBarCounts, PillTone } from '@/components/shared/primitives';
 import type { OverallStatus, PullRequestWithChecks } from '@/types';
 
 /** View model for a PR row — shared by the main list, Focus, and the tray flyout. */
@@ -25,6 +25,15 @@ export interface PrCardData {
   commentCount?: number;
   labels?: string[];
   worktreeSlot?: string;
+  /** Check counts for the Workbench row's CheckBar. */
+  checks?: CheckBarCounts;
+  /** ISO timestamp of the last update, for the row's meta line. */
+  updatedAt?: string;
+  /** ISO timestamps of the merge / close, for a closed row's meta line. */
+  mergedAt?: string;
+  closedAt?: string;
+  /** A user or team is still requested as reviewer. */
+  reviewRequested?: boolean;
 }
 
 export const REVIEW_PILL: Record<
@@ -37,6 +46,68 @@ export const REVIEW_PILL: Record<
   pending: { tone: 'warning', label: 'review needed', toneAttr: 'pending' },
   none: null,
 };
+
+/**
+ * The one chip a Workbench row shows (plans/ui-overhaul-workbench.md, phase 2).
+ * Lifecycle and blockers win over the review state: merged, then closed, then
+ * conflicts, then draft, then what the reviewers said.
+ */
+export type RowChipKind =
+  | 'merged'
+  | 'closed'
+  | 'conflicts'
+  | 'draft'
+  | 'approved'
+  | 'changes'
+  | 'requested'
+  | 'commented'
+  | 'none';
+
+export const ROW_CHIP_LABEL: Record<RowChipKind, string> = {
+  merged: 'Merged',
+  closed: 'Closed',
+  conflicts: 'Conflicts',
+  draft: 'Draft',
+  approved: 'Approved',
+  changes: 'Changes requested',
+  requested: 'Review requested',
+  commented: 'Commented',
+  none: 'No review yet',
+};
+
+export function rowChipFor(pr: PrCardData): RowChipKind {
+  if (pr.isMerged) return 'merged';
+  if (pr.isClosed) return 'closed';
+  if (pr.hasConflict) return 'conflicts';
+  if (pr.isDraft) return 'draft';
+  switch (pr.reviewState) {
+    case 'approved':
+      return 'approved';
+    case 'changes':
+      return 'changes';
+    case 'commented':
+      return 'commented';
+    case 'pending':
+      return 'requested';
+    case 'none':
+      return pr.reviewRequested ? 'requested' : 'none';
+  }
+}
+
+/** Check counts of a PR in the shape `CheckBar` takes. */
+export function checkCountsFor(prw: PullRequestWithChecks): CheckBarCounts {
+  return {
+    ok: prw.passedCount,
+    fail: prw.failedCheckNames.length,
+    run: prw.pendingCheckNames.length,
+    total: prw.totalCheckCount,
+  };
+}
+
+/** Stable identity of a PR across repositories: `owner/repo#number`. */
+export function prRowKey(pr: { repoOwner: string; repoName: string; number: number }): string {
+  return `${pr.repoOwner}/${pr.repoName}#${pr.number}`;
+}
 
 export function avatarInitials(login: string): string {
   return login.slice(0, 2).toUpperCase();
@@ -105,5 +176,11 @@ export function toPrCardData(
     commentCount: pr.commentCount,
     labels: pr.labels,
     worktreeSlot,
+    checks: checkCountsFor(prw),
+    updatedAt: pr.updatedAt,
+    mergedAt: pr.mergedAt,
+    closedAt: pr.closedAt,
+    reviewRequested:
+      (pr.requestedReviewers?.length ?? 0) > 0 || (pr.requestedTeams?.length ?? 0) > 0,
   };
 }

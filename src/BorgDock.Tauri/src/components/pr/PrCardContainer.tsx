@@ -10,10 +10,9 @@ import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity, PullRequestWithChecks } from '@/types';
-import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { HoverActionPillBar } from './HoverActionPillBar';
-import { PrContextMenu } from './PrContextMenu';
 import { PrRow } from './PrRow';
+import { PrRowOverlays } from './PrRowOverlays';
 import { toPrCardData } from './pr-card-data';
 import { T3SessionStrip } from './T3SessionStrip';
 
@@ -144,48 +143,7 @@ export const PrCardContainer = memo(function PrCardContainer({
         )}
       </div>
 
-      {/* Context menu */}
-      {actions.contextMenu && (
-        <PrContextMenu
-          pr={prWithChecks}
-          position={actions.contextMenu}
-          onClose={() => actions.setContextMenu(null)}
-          onConfirmAction={actions.setConfirmAction}
-        />
-      )}
-
-      {/* Confirm dialogs */}
-      <ConfirmDialog
-        isOpen={actions.confirmAction === 'close'}
-        title="Close pull request?"
-        message={`This will close PR #${pr.number} without merging. You can reopen it later.`}
-        confirmLabel="Close PR"
-        variant="danger"
-        onConfirm={actions.executeClose}
-        onCancel={() => actions.setConfirmAction(null)}
-      />
-      <ConfirmDialog
-        isOpen={actions.confirmAction === 'bypass'}
-        title="Bypass merge?"
-        message={`This will merge PR #${pr.number} using admin privileges, bypassing branch protection rules.`}
-        confirmLabel="Bypass Merge"
-        variant="danger"
-        onConfirm={actions.executeBypassMerge}
-        onCancel={() => actions.setConfirmAction(null)}
-      />
-      <ConfirmDialog
-        isOpen={actions.confirmAction === 'draft'}
-        title={pr.isDraft ? 'Mark as ready for review?' : 'Convert to draft?'}
-        message={
-          pr.isDraft
-            ? `This will mark PR #${pr.number} as ready for review and request reviewers.`
-            : `This will convert PR #${pr.number} to a draft. Reviewers will not be requested.`
-        }
-        confirmLabel={pr.isDraft ? 'Mark Ready' : 'Convert to Draft'}
-        variant="default"
-        onConfirm={actions.executeToggleDraft}
-        onCancel={() => actions.setConfirmAction(null)}
-      />
+      <PrRowOverlays prWithChecks={prWithChecks} actions={actions} />
     </>
   );
 });

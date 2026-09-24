@@ -15,6 +15,7 @@ import { type PrFilterCounts, PrToolbar } from './PrToolbar';
 import { RepoGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { TeamReviewLoad } from './TeamReviewLoad';
+import { WorkbenchPrList } from './WorkbenchPrList';
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -33,7 +34,17 @@ function SkeletonCard() {
   );
 }
 
+/**
+ * PrList — the Pull requests section. `ui.layoutV3` picks the Workbench list
+ * (`WorkbenchPrList`); otherwise the tab layout's list renders as before.
+ */
 export function PrList() {
+  const layoutV3 = useSettingsStore((s) => s.settings.ui.layoutV3 ?? false);
+  return layoutV3 ? <WorkbenchPrList /> : <ClassicPrList />;
+}
+
+/** The tab layout's PR list: chip toolbar, pinned review queue, repo groups. */
+function ClassicPrList() {
   const isPolling = usePrStore((s) => s.isPolling);
   const lastPollTime = usePrStore((s) => s.lastPollTime);
 

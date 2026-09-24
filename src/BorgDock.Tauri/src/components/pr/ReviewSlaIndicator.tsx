@@ -4,27 +4,38 @@ import type { ReviewSlaTier } from '@/services/review-sla';
 interface ReviewSlaIndicatorProps {
   tier: ReviewSlaTier;
   waitTime: string;
+  /**
+   * No pulse on the aging and stale dots. The Workbench list uses it: there
+   * nothing animates on its own except running checks and the sync state.
+   */
+  still?: boolean;
 }
 
-const tierStyles: Record<ReviewSlaTier, { dot: string; text: string; label: string }> = {
+const tierStyles: Record<
+  ReviewSlaTier,
+  { dot: string; pulse: boolean; text: string; label: string }
+> = {
   fresh: {
     dot: 'bg-[var(--color-status-green)]',
+    pulse: false,
     text: 'text-[var(--color-status-green)]',
     label: 'Requested recently',
   },
   aging: {
-    dot: 'bg-[var(--color-status-yellow)] animate-pulse',
+    dot: 'bg-[var(--color-status-yellow)]',
+    pulse: true,
     text: 'text-[var(--color-status-yellow)]',
     label: 'Waiting for review',
   },
   stale: {
-    dot: 'bg-[var(--color-status-red)] animate-pulse',
+    dot: 'bg-[var(--color-status-red)]',
+    pulse: true,
     text: 'text-[var(--color-status-red)]',
     label: 'Urgent — review overdue',
   },
 };
 
-export function ReviewSlaIndicator({ tier, waitTime }: ReviewSlaIndicatorProps) {
+export function ReviewSlaIndicator({ tier, waitTime, still = false }: ReviewSlaIndicatorProps) {
   const style = tierStyles[tier];
 
   // style: tier-driven color-mix border and background — tier name selects the token used in color-mix, computed per render
@@ -37,7 +48,13 @@ export function ReviewSlaIndicator({ tier, waitTime }: ReviewSlaIndicatorProps) 
       }}
       title={style.label}
     >
-      <span className={clsx('h-1.5 w-1.5 rounded-full', style.dot)} />
+      <span
+        className={clsx(
+          'h-1.5 w-1.5 rounded-full',
+          style.dot,
+          style.pulse && !still && 'animate-pulse',
+        )}
+      />
       <span className={style.text}>{waitTime}</span>
     </span>
   );

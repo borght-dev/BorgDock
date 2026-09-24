@@ -7,35 +7,10 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import clsx from 'clsx';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
+import { BothThemes } from '@/test-support/story-themes';
 import { CheckBar } from './CheckBar';
 import { SlidingHighlight } from './SlidingHighlight';
-
-function ThemePanel({ dark, children }: { dark?: boolean; children: ReactNode }) {
-  return (
-    <div
-      className={clsx(
-        'flex-1 bg-[var(--color-background)] p-6 text-[13px] text-[var(--color-text-primary)]',
-        dark && 'dark',
-      )}
-      style={{ fontFamily: 'var(--font-ui)' }}
-    >
-      <div className="mb-4 text-[12px] font-medium text-[var(--color-text-tertiary)]">
-        {dark ? 'Dark (graphite)' : 'Light (porcelain)'}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function BothThemes({ children }: { children: () => ReactNode }) {
-  return (
-    <div className="flex min-h-screen">
-      <ThemePanel>{children()}</ThemePanel>
-      <ThemePanel dark>{children()}</ThemePanel>
-    </div>
-  );
-}
 
 const meta: Meta = {
   title: 'Shared/Primitives',

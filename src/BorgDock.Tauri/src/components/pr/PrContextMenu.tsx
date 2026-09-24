@@ -58,6 +58,9 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
   const defaultProvider = settings.agents?.defaultProvider ?? 'claude';
   const providerLabel = defaultProvider === 'codex' ? 'Codex' : 'Claude';
+  // In the Workbench layout a click opens the detail inside the main window,
+  // so the pop-out is the explicit "Open in window" action.
+  const popOutLabel = settings.ui?.layoutV3 ? 'Open in window' : 'Open in detail window';
 
   // Close on click outside
   useEffect(() => {
@@ -237,7 +240,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       }}
     >
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
-      <MenuItem label="Open in detail window" onClick={handleOpenInDetailWindow} />
+      <MenuItem label={popOutLabel} onClick={handleOpenInDetailWindow} />
       <MenuItem label="Copy branch name" onClick={handleCopyBranch} />
       <MenuItem label="Copy PR URL" onClick={handleCopyUrl} />
       <MenuItem

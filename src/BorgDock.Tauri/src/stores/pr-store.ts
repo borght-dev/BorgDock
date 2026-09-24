@@ -9,6 +9,7 @@ import {
   groupPrs,
   isFailing,
   isMyPr,
+  isNeedsYou,
   isReady,
   isReviewing,
   isWaitingOnMe,
@@ -46,6 +47,12 @@ export interface PrRefreshedDetail {
   checks?: CheckRun[];
 }
 
+/**
+ * List filters. The tab layout offers every value but `needsYou` as a chip;
+ * the Workbench layout (`ui.layoutV3`) offers `all`, `needsYou`, `mine` and
+ * `failing` as a segmented control. The filter is session state (never
+ * persisted), so adding values needs no migration.
+ */
 export type PrFilter =
   | 'all'
   | 'mine'
@@ -53,6 +60,7 @@ export type PrFilter =
   | 'ready'
   | 'reviewing'
   | 'needsReview'
+  | 'needsYou'
   | 'closed';
 export type SortBy = 'updated' | 'created' | 'title';
 
@@ -162,6 +170,36 @@ interface PrState extends DerivedCache {
   optimisticallyMarkMerged: (owner: string, repo: string, number: number) => void;
 }
 
+/**
+ * Whether an open PR passes `filter`. `closed` never matches an open PR: that
+ * filter swaps the list for the closed PRs instead (see `applyFilter`).
+ */
+export function matchesPrFilter(
+  pr: PullRequestWithChecks,
+  filter: PrFilter,
+  username: string,
+  teams: readonly string[] = [],
+): boolean {
+  switch (filter) {
+    case 'all':
+      return true;
+    case 'mine':
+      return isMyPr(pr, username);
+    case 'failing':
+      return isFailing(pr);
+    case 'ready':
+      return isReady(pr);
+    case 'reviewing':
+      return isReviewing(pr);
+    case 'needsReview':
+      return isWaitingOnMe(pr, username, teams);
+    case 'needsYou':
+      return isNeedsYou(pr, username, teams);
+    case 'closed':
+      return false;
+  }
+}
+
 function applyFilter(
   prs: PullRequestWithChecks[],
   closedPrs: PullRequestWithChecks[],
@@ -169,22 +207,30 @@ function applyFilter(
   username: string,
   teams: string[],
 ): PullRequestWithChecks[] {
-  switch (filter) {
-    case 'all':
-      return prs;
-    case 'mine':
-      return prs.filter((pr) => isMyPr(pr, username));
-    case 'failing':
-      return prs.filter(isFailing);
-    case 'ready':
-      return prs.filter(isReady);
-    case 'reviewing':
-      return prs.filter(isReviewing);
-    case 'needsReview':
-      return prs.filter((pr) => isWaitingOnMe(pr, username, teams));
-    case 'closed':
-      return closedPrs;
-  }
+  if (filter === 'closed') return closedPrs;
+  if (filter === 'all') return prs;
+  return prs.filter((pr) => matchesPrFilter(pr, filter, username, teams));
+}
+
+/**
+ * When my review was first requested on `pr`: the direct request, else the
+ * earliest request to one of the PR's requested teams, else the PR's last
+ * update. The "Needs you" heading and `needsMyReview`'s longest-waiting
+ * order both use it.
+ */
+export function myReviewRequestedAt(
+  pr: PullRequestWithChecks,
+  username: string,
+  timestamps: Record<string, string>,
+): string {
+  const p = pr.pullRequest;
+  const direct = timestamps[reviewRequestKey(p, username)];
+  if (direct) return direct;
+  const viaTeam = (p.requestedTeams ?? [])
+    .map((t) => timestamps[teamReviewRequestKey(p, t)])
+    .filter((ts): ts is string => !!ts)
+    .sort()[0];
+  return viaTeam ?? p.updatedAt;
 }
 
 function sortPrs(
@@ -364,6 +410,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
       ready: prs.filter(isReady).length,
       reviewing: prs.filter(isReviewing).length,
       needsReview: prs.filter((pr) => isWaitingOnMe(pr, username, teams)).length,
+      needsYou: prs.filter((pr) => isNeedsYou(pr, username, teams)).length,
       closed: state.closedPullRequests.length,
     };
     state._cachedCounts = counts;
@@ -376,16 +423,8 @@ export const usePrStore = create<PrState>()((set, get) => ({
     if (!deps.username) return [];
     if (state._cachedNeedsMyReview) return state._cachedNeedsMyReview;
     const { prs, username, timestamps, teams } = deps;
-    const requestedAt = (pr: PullRequestWithChecks): string => {
-      const p = pr.pullRequest;
-      const direct = timestamps[reviewRequestKey(p, username)];
-      if (direct) return direct;
-      const viaTeam = (p.requestedTeams ?? [])
-        .map((t) => timestamps[teamReviewRequestKey(p, t)])
-        .filter((ts): ts is string => !!ts)
-        .sort()[0];
-      return viaTeam ?? p.updatedAt;
-    };
+    const requestedAt = (pr: PullRequestWithChecks): string =>
+      myReviewRequestedAt(pr, username, timestamps);
     const result = prs
       .filter((pr) => isWaitingOnMe(pr, username, teams))
       .sort(
