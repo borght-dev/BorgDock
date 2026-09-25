@@ -642,29 +642,16 @@ export function WorktreeList({
           );
         });
 
-        if (isSection) {
-          return (
-            <div key={repoKey} className="bd-wts__group" role="group" aria-label={repoKey}>
-              <div className="bd-wts__group-head" data-key={`group:${repoKey}`}>
-                <span className="bd-wts__group-label">{repoKey}</span>
-                <span className="bd-wts__group-count">{entries.length}</span>
-                {error && <Pill tone="error">error</Pill>}
-                <span className="bd-wts__group-rule" aria-hidden="true" />
-              </div>
-              {error && <div className="bd-wt-error-detail bd-wts__error">{error}</div>}
-              <div className="bd-wts__rows">{rows}</div>
-            </div>
-          );
-        }
         return (
-          <div key={repoKey} className="bd-wt-group">
-            <div className="bd-wt-group-header">
-              <span className="bd-wt-group-name">{repoKey}</span>
-              <Pill tone="ghost">{entries.length}</Pill>
+          <div key={repoKey} className="bd-wts__group" role="group" aria-label={repoKey}>
+            <div className="bd-wts__group-head" data-key={`group:${repoKey}`}>
+              <span className="bd-wts__group-label">{repoKey}</span>
+              <span className="bd-wts__group-count">{entries.length}</span>
               {error && <Pill tone="error">error</Pill>}
+              <span className="bd-wts__group-rule" aria-hidden="true" />
             </div>
-            {error && <div className="bd-wt-error-detail">{error}</div>}
-            <div className="bd-wt-list">{rows}</div>
+            {error && <div className="bd-wt-error-detail bd-wts__error">{error}</div>}
+            <div className="bd-wts__rows">{rows}</div>
           </div>
         );
       });
@@ -771,7 +758,12 @@ export function WorktreeList({
           )}
         </div>
         <div className="bd-wt-toolbar-actions">
-          <Pill tone="ghost">{filtered.length}</Pill>
+          <span
+            className="bd-wts__count bd-wt-count"
+            aria-label={`${filtered.length} of ${totalCount} worktrees`}
+          >
+            {filtered.length}
+          </span>
           {favoritesOnlyButton}
           <IconButton
             size={26}

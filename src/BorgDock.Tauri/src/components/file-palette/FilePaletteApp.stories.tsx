@@ -13,6 +13,8 @@ import {
   changedFilesNotInRepo,
   contentResultsForFoo,
   largeFileIndexCapped,
+  makeChangedFile,
+  makeFileEntry,
   mediumFileIndex,
   repoBorgDock,
   repoCustomFavs,
@@ -420,6 +422,108 @@ export const EnterOpensViewer: Story = {
     const input = await canvas.findByPlaceholderText(/search/i);
     await userEvent.type(input, 'file-00');
     await userEvent.keyboard('{Enter}');
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Site capture: a real-looking worktree, a query that hits the changes and
+// several filenames, and a result selected with the keyboard (focus stays in
+// the search box, so the row shows the selection bar, not a focus ring).
+// Full viewport so the status bar is in the frame.
+// ---------------------------------------------------------------------------
+
+const MANY_RESULTS_INDEX = [
+  'src/App.tsx',
+  'src/components/pr/PrRowCore.tsx',
+  'src/components/pr/PrRowCore.test.tsx',
+  'src/components/pr/PrList.tsx',
+  'src/components/worktree/WorktreeRows.tsx',
+  'src/components/worktree/WorktreeList.tsx',
+  'src/components/work-items/WorkItemRow.tsx',
+  'src/components/focus/FocusList.tsx',
+  'src/components/sql/ResultsGrid.tsx',
+  'src/hooks/useRowSelection.ts',
+  'src/styles/index.css',
+  'src/styles/rows.css',
+  'src/utils/motion.ts',
+  'docs/row-grammar.md',
+].map((rel, i) => makeFileEntry(rel, 600 + i * 90));
+
+const MANY_RESULTS_CHANGES = {
+  local: [
+    makeChangedFile('src/components/pr/PrRowCore.tsx', 'M', 14, 6),
+    makeChangedFile('src/styles/rows.css', 'A', 38, 0),
+  ],
+  vsBase: [makeChangedFile('src/components/worktree/WorktreeRows.tsx', 'M', 52, 31)],
+  baseRef: 'main',
+  inRepo: true,
+};
+
+const WORK_ITEM_ROW_SAMPLE = `import { Avatar } from '@/components/shared/primitives';
+import type { WorkItem } from '@/types';
+
+interface WorkItemRowProps {
+  item: WorkItem;
+  selected: boolean;
+  onOpen: (id: number) => void;
+}
+
+/** One work item on the row grammar: icon, title, one meta line, one chip. */
+export function WorkItemRow({ item, selected, onOpen }: WorkItemRowProps) {
+  return (
+    <div
+      className="bd-wb-row"
+      data-selected={selected ? 'true' : undefined}
+      onClick={() => onOpen(item.id)}
+    >
+      <Avatar name={item.assignedTo} size={22} />
+      <span className="bd-wb-row__text">
+        <span className="bd-wb-row__title">{item.title}</span>
+        <span className="bd-wb-row__meta">
+          {item.type}, {item.state}, #{item.id}
+        </span>
+      </span>
+      <span className="bd-wb-chip">{item.iteration}</span>
+    </div>
+  );
+}
+`;
+
+function ManyResultsHarness({ params }: { params: FilePaletteStoryParams }) {
+  applyParamsBeforeMount(params);
+  return (
+    <div style={{ width: '100vw', height: '100vh' }}>
+      <FilePaletteApp />
+    </div>
+  );
+}
+
+export const ManyResults: Story = {
+  args: {
+    params: {
+      invokeResponses: loadedPalette({
+        list_root_files: { entries: MANY_RESULTS_INDEX, truncated: false },
+        git_changed_files: MANY_RESULTS_CHANGES,
+        git_file_diff: sampleDiffOutput,
+        read_text_file: WORK_ITEM_ROW_SAMPLE,
+      }),
+    },
+  },
+  parameters: { layout: 'fullscreen' },
+  render: (args) => <ManyResultsHarness {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = await canvas.findByPlaceholderText(/search/i);
+    await userEvent.type(input, 'row');
+    await canvas.findByText('src/components/work-items/WorkItemRow.tsx');
+    // The selection resets when the changes rows arrive; let them land first.
+    await new Promise((r) => setTimeout(r, 400));
+    const rows = canvasElement.querySelectorAll('[data-file-result], .bd-fp-changes-row');
+    const target = Array.from(rows).findIndex((r) =>
+      r.textContent?.includes('src/components/work-items/WorkItemRow.tsx'),
+    );
+    for (let i = 0; i < Math.max(target, 0); i++) await userEvent.keyboard('{ArrowDown}');
+    await canvas.findAllByTestId('code-line-row');
   },
 };
 

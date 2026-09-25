@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { Folder, GitBranch, MessageSquareText, Pencil, Star, Terminal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { checkCountsFor } from '@/components/pr/pr-card-data';
-import { CheckBar, checkBarSummary, IconButton, Pill } from '@/components/shared/primitives';
+import { CheckBar, checkBarSummary, IconButton } from '@/components/shared/primitives';
 import type { PullRequestWithChecks } from '@/types';
 import type { WorktreeInfo } from '@/types/worktree';
 import { formatAgo } from '@/utils/relative-time';
@@ -110,9 +110,12 @@ function RowActions({
 }
 
 /**
- * The tool window's row: star (or the main worktree's branch icon), branch
- * with folder and parent path, and the open actions on hover. Hover selects;
- * a click or Enter opens a terminal. Remote worktrees are read-only.
+ * The tool window's row, on the same `.bd-wb-row` grammar as the section's
+ * row: star (or the main worktree's branch icon), the branch as the title
+ * with one meta line (folder, then the parent path in the code font), one
+ * chip (main or remote) and the open actions on hover, focus and selection.
+ * Hover selects; a click or Enter opens a terminal. Remote worktrees are
+ * read-only.
  *
  * No Open in T3 here: a T3 thread belongs to a pull request, and the tool
  * window has no pull request data (its PR store is never polled), so it
@@ -135,6 +138,7 @@ export function PaletteWorktreeRow({
   const folder = folderName(wt.path);
   const parent = parentFolder(wt.path);
   const isMain = wt.isMainWorktree;
+  const chip = isRemote ? 'remote' : isMain ? 'main' : null;
 
   return (
     <div
@@ -144,11 +148,9 @@ export function PaletteWorktreeRow({
       data-tree-path={wt.path}
       data-key={worktreeKey(entry.repo, wt.path)}
       data-selected={isSelected ? 'true' : undefined}
-      className={clsx(
-        'bd-wt-row',
-        isSelected && 'bd-wt-row--selected',
-        isMain && 'bd-wt-row--main',
-      )}
+      data-favorite={isFavorite ? 'true' : undefined}
+      data-remote={isRemote ? 'true' : undefined}
+      className="bd-wb-row bd-wtr bd-wtr--window"
       role={isRemote ? undefined : 'button'}
       tabIndex={isRemote ? undefined : 0}
       onClick={isRemote ? undefined : onOpenTerminal}
@@ -161,45 +163,46 @@ export function PaletteWorktreeRow({
       }}
       onMouseEnter={onSelect}
     >
-      {isMain && !isRemote ? (
-        <span className="bd-wt-main-icon" aria-hidden>
-          <GitBranch size={14} strokeWidth={2.25} />
-        </span>
-      ) : (
-        <FavoriteStar
-          isFavorite={isFavorite}
-          className="bd-wt-star-btn"
-          onToggle={onToggleFavorite}
-        />
-      )}
-      <div className="bd-wt-row-body">
-        <div className="bd-wt-row-primary">
-          <span
-            className={clsx('bd-wt-branch', !hasBranch && 'bd-wt-branch--detached')}
-            data-worktree-branch
-          >
-            {hasBranch ? wt.branchName : '(detached)'}
+      <span className="bd-wtr__lead">
+        {isMain && !isRemote ? (
+          <span className="bd-wtr__main-icon" title="Main worktree">
+            <GitBranch size={13} strokeWidth={2.25} aria-hidden />
           </span>
-          {isMain && (
-            <Pill tone="success" className="text-[9px] uppercase tracking-wider">
-              main
-            </Pill>
-          )}
-          {isRemote && <Pill tone="neutral">remote</Pill>}
-        </div>
-        <div className="bd-wt-row-secondary">
-          <span className="bd-wt-folder">{folder}</span>
+        ) : (
+          <FavoriteStar
+            isFavorite={isFavorite}
+            className="bd-wtr__star"
+            onToggle={onToggleFavorite}
+          />
+        )}
+      </span>
+      <span className="bd-wtr__text">
+        <span
+          className={clsx('bd-wtr__title', !hasBranch && 'bd-wtr__title--detached')}
+          data-worktree-branch
+        >
+          {hasBranch ? shortBranch(wt.branchName) : '(detached)'}
+        </span>
+        <span className="bd-wb-row__meta bd-wtr__meta">
+          {folder}
+          {isMain && isRemote && ', main worktree'}
           {parent && (
-            <span className="bd-wt-parent" title={parent}>
-              {parent}
-            </span>
+            <>
+              {', '}
+              <span className="bd-wtr__path" title={parent}>
+                {parent}
+              </span>
+            </>
           )}
-        </div>
-      </div>
+        </span>
+      </span>
+      <span className="bd-wtr__chip-cell">
+        {chip && <span className="bd-wb-chip">{chip}</span>}
+      </span>
       {!isRemote && (
         <RowActions
-          className="bd-wt-row-actions"
-          size={26}
+          className="bd-wtr__actions"
+          size={22}
           onOpenTerminal={onOpenTerminal}
           onOpenFolder={onOpenFolder}
           onOpenEditor={onOpenEditor}
@@ -238,10 +241,11 @@ export interface SectionWorktreeRowProps extends WorktreeRowProps {
 
 /**
  * The main window's row, on the `PrRowCore` grammar: 42 px, hover wash,
- * accent selection bar. Star, then the branch with a meta line (repository,
- * folder, working-tree state, last used), then the linked pull request as
- * its check bar and number (a click opens it), and the open actions laid
- * over the right end on hover, focus and selection. The row is a group of
+ * accent selection bar. Star, then the branch with a meta line (folder,
+ * working-tree state, last used; the repository is the group heading),
+ * then the linked pull request as its check bar and number (a click opens
+ * it), and the open actions laid over the right end on hover, focus and
+ * selection. The row is a group of
  * sibling buttons, never a button holding buttons.
  */
 export function SectionWorktreeRow({
@@ -314,20 +318,18 @@ export function SectionWorktreeRow({
           {branch}
         </span>
         <span className="bd-wb-row__meta bd-wtr__meta">
-          <em>{isRemote ? (repo.remote?.label ?? repo.name) : repo.name}</em>
-          {' · '}
           {folderName(wt.path)}
-          {isMain && ' · main worktree'}
-          {isRemote && ' · remote'}
+          {isMain && ', main worktree'}
+          {isRemote && ', remote'}
           {state && (
             <>
-              {' · '}
+              {', '}
               <span className="bd-wtr__state" data-state={state.tone}>
                 {state.text}
               </span>
             </>
           )}
-          {used && ` · used ${used}`}
+          {used && `, used ${used}`}
         </span>
       </button>
       <span className="bd-wtr__pr-cell">

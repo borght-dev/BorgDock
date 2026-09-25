@@ -1,10 +1,11 @@
 /*
- * Worktrees section: head row, repo
- * groups, worktree rows on the `PrRowCore` grammar (42 px, hover wash,
- * accent selection bar) and the changes pane beside the list
- * (plans/ui-overhaul-workbench.md, phase 5). Tokens only. The head row and
- * its search box are `.bd-wb-head*` from index.css; the tool window keeps
- * its `.bd-wt-*` rules there until phase 6.
+ * Worktrees section and tool window: head row, repo groups, worktree rows on
+ * the `PrRowCore` grammar (42 px, hover wash, accent selection bar) and the
+ * changes pane beside the list (plans/ui-overhaul-workbench.md, phases 5 and
+ * 6). Tokens only. The section's head row and its search box are
+ * `.bd-wb-head*` from index.css; the tool window's toolbar and status bar
+ * are its `.bd-wt-*` chrome there. Both hosts share the group headings and
+ * the rows (`.bd-wtr`, `.bd-wtr--window` for the tool window's columns).
  */
 
 @layer components {
@@ -107,7 +108,7 @@
     color: var(--color-text-tertiary);
   }
   /* The star shows on hover, focus and selection, and always once set. */
-  .bd-wts .bd-wtr__star {
+  .bd-wtr .bd-wtr__star {
     opacity: 0;
     transition:
       opacity var(--motion-fast) var(--ease-std),
@@ -119,7 +120,7 @@
   .bd-wtr[data-favorite="true"] .bd-wtr__star {
     opacity: 1;
   }
-  .bd-wts .bd-wtr[data-favorite="true"] .bd-wtr__star {
+  .bd-wtr[data-favorite="true"] .bd-wtr__star {
     color: var(--color-status-yellow);
   }
 
@@ -149,7 +150,6 @@
     white-space: nowrap;
   }
   .bd-wtr__title--detached {
-    font-style: italic;
     color: var(--color-text-tertiary);
   }
   .bd-wtr__state[data-state="dirty"] {
@@ -174,6 +174,29 @@
   .bd-wtr[data-selected="true"] .bd-wtr__actions {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  /* The tool window's row: star, branch and meta, one chip, actions. The
+     whole row is the button (a click or Enter opens a terminal). */
+  .bd-wb-row.bd-wtr--window {
+    grid-template-columns: 22px minmax(0, 1fr) auto auto;
+    column-gap: 12px;
+  }
+  .bd-wtr--window[role="button"] {
+    cursor: pointer;
+  }
+  .bd-wtr__text {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+  }
+  .bd-wtr__path {
+    font-family: var(--font-code);
+    font-size: 11px;
+  }
+  .bd-wtr__chip-cell {
+    display: flex;
+    min-width: 0;
   }
 
   /* The linked pull request: its check bar and number, a click opens it. */

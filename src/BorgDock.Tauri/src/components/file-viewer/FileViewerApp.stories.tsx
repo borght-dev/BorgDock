@@ -44,9 +44,10 @@ interface FileViewerStoryParams {
   saveSettingsResponse?: unknown | ((args: unknown) => unknown);
 }
 
-const ORIGINAL_CLIPBOARD_WRITE_TEXT =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (navigator.clipboard as any)?.writeText?.bind(navigator.clipboard);
+type ClipboardLike = { writeText?: (text: string) => Promise<void> } | undefined;
+const ORIGINAL_CLIPBOARD_WRITE_TEXT = (
+  navigator.clipboard as unknown as ClipboardLike
+)?.writeText?.bind(navigator.clipboard);
 
 function applyParamsBeforeMount(params: FileViewerStoryParams) {
   const ctrl = getControl();
@@ -96,8 +97,8 @@ function restoreAfterMount() {
   // Reset URL — leave only the pathname.
   window.history.replaceState({}, '', window.location.pathname);
   if (ORIGINAL_CLIPBOARD_WRITE_TEXT) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (navigator.clipboard as any).writeText = ORIGINAL_CLIPBOARD_WRITE_TEXT;
+    (navigator.clipboard as unknown as NonNullable<ClipboardLike>).writeText =
+      ORIGINAL_CLIPBOARD_WRITE_TEXT;
   }
 }
 
@@ -109,7 +110,7 @@ function FileViewerHarness({ params }: { params: FileViewerStoryParams }) {
   }, []);
 
   return (
-    <div style={{ width: 1200, height: 720 }}>
+    <div style={{ width: '100vw', height: '100vh' }}>
       <FileViewerApp />
     </div>
   );

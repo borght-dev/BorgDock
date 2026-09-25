@@ -4399,6 +4399,19 @@ body.sql-resizing-v .sql-resize-handle {
     text-align: left;
     font-family: var(--font-code);
   }
+  /* The row's selection is `.bd-list-row` (accent bar and wash on the wrap).
+     A click focuses the inner button: no ring then, only for the keyboard,
+     in the accent at 1.5 px. */
+  .bd-fp-result-row:focus,
+  .bd-fp-changes-row.bd-list-row:focus {
+    outline: none;
+  }
+  .bd-fp-result-row:focus-visible,
+  .bd-fp-changes-row.bd-list-row:focus-visible {
+    outline: 1.5px solid var(--color-accent);
+    outline-offset: -1.5px;
+    border-radius: 4px;
+  }
   .bd-fp-result-copy {
     flex: 0 0 auto;
     display: flex;
@@ -4468,12 +4481,16 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-secondary);
   }
   .bd-fp-changes-count, .bd-fp-changes-stats {
-    font-size: 10px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-fp-changes-count {
+    font-weight: 500;
+    color: var(--color-text-tertiary);
   }
   .bd-fp-changes-stats {
     display: inline-flex;
-    gap: 3px;
-    font-family: var(--font-code);
+    gap: 4px;
     font-weight: 600;
   }
   .bd-fp-changes-spacer { flex: 1; }
@@ -4510,13 +4527,14 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-muted);
   }
   .bd-fp-changes-group-sub {
-    font-family: var(--font-code);
     font-weight: 400;
     color: var(--color-text-faint);
     margin-left: auto;
   }
   .bd-fp-changes-row__add, .bd-fp-changes-row__del {
-    font-size: 9.5px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
     flex-shrink: 0;
   }
   .bd-fp-changes-row {
@@ -4622,13 +4640,14 @@ body.sql-resizing-v .sql-resize-handle {
     outline: none;
     color: var(--color-text-primary);
   }
+  /* Toolbar under the title bar: the filter box (the main window's head-row
+     search), the count, favourites only, prune and refresh. */
   .bd-wt-toolbar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--color-separator);
-    background: var(--color-surface);
+    gap: 10px;
+    padding: 8px 12px 8px 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
     flex-shrink: 0;
   }
   .bd-wt-toolbar .bd-wt-search-wrap {
@@ -4642,33 +4661,41 @@ body.sql-resizing-v .sql-resize-handle {
     gap: 4px;
     flex-shrink: 0;
   }
+  .bd-wt-toolbar .bd-wt-count {
+    margin: 0 4px 0 0;
+  }
   .bd-wt-search-wrap {
     position: relative;
     flex-shrink: 0;
   }
   .bd-wt-search-icon {
     position: absolute;
-    left: 11px;
+    left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--color-text-muted);
+    color: var(--color-text-tertiary);
     pointer-events: none;
   }
   .bd-wt-search {
     width: 100%;
-    padding: 8px 33px;
+    height: 30px;
+    padding: 0 30px 0 31px;
+    font-family: inherit;
     font-size: 13px;
-    border-radius: 8px;
-    border: 1px solid var(--color-input-border);
-    background: var(--color-input-bg);
+    border-radius: 7px;
+    border: 1px solid var(--color-subtle-border);
+    background: transparent;
     color: var(--color-text-primary);
     caret-color: var(--color-accent);
     outline: none;
+    transition: border-color var(--motion-fast) var(--ease-std);
   }
+  .bd-wt-search::placeholder { color: var(--color-text-tertiary); }
+  .bd-wt-search:focus { border-color: var(--color-accent); }
   .bd-wt-search:disabled { opacity: 0.55; }
   .bd-wt-search-clear {
     position: absolute;
-    right: 6px;
+    right: 5px;
     top: 50%;
     transform: translateY(-50%);
     width: 20px;
@@ -4678,10 +4705,13 @@ body.sql-resizing-v .sql-resize-handle {
     justify-content: center;
     border: none;
     background: transparent;
-    color: var(--color-text-muted);
+    color: var(--color-text-tertiary);
     font-size: 11px;
     cursor: pointer;
     border-radius: 4px;
+    transition:
+      background-color var(--motion-fast) var(--ease-std),
+      color var(--motion-fast) var(--ease-std);
   }
   .bd-wt-search-clear:hover {
     background: var(--color-surface-hover);
@@ -4691,10 +4721,9 @@ body.sql-resizing-v .sql-resize-handle {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 6px 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    padding: 2px 0 16px;
+    font-family: var(--font-ui);
+    font-size: 13px;
   }
   .bd-wt-content::-webkit-scrollbar { width: 6px; }
   .bd-wt-content::-webkit-scrollbar-track { background: transparent; }
@@ -4743,20 +4772,6 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-muted);
     font-size: 11px;
   }
-  .bd-wt-group { display: flex; flex-direction: column; }
-  .bd-wt-group + .bd-wt-group { margin-top: 6px; }
-  .bd-wt-group-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px 4px;
-  }
-  .bd-wt-group-name {
-    font-family: var(--font-code);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-text-tertiary);
-  }
   .bd-wt-error-detail {
     font-family: var(--font-code);
     font-size: 10px;
@@ -4767,118 +4782,6 @@ body.sql-resizing-v .sql-resize-handle {
     border: 1px solid var(--color-error-badge-border);
     border-radius: 6px;
   }
-  .bd-wt-list { display: flex; flex-direction: column; gap: 1px; }
-  .bd-wt-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 10px;
-    background: transparent;
-    border-radius: 7px;
-    cursor: pointer;
-    position: relative;
-    transition: background-color 100ms ease;
-  }
-  .bd-wt-row::before {
-    content: "";
-    position: absolute;
-    left: 2px;
-    top: 8px;
-    bottom: 8px;
-    width: 2px;
-    border-radius: 0 2px 2px 0;
-    background: transparent;
-    transition: background-color 100ms ease;
-  }
-  .bd-wt-row:hover { background: var(--color-surface-hover); }
-  .bd-wt-row--selected { background: var(--color-selected-row-bg); }
-  .bd-wt-row--selected::before { background: var(--color-accent); }
-  .bd-wt-row--main::before {
-    background: color-mix(in srgb, var(--color-accent) 55%, transparent);
-  }
-  .bd-wt-row-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding-left: 4px;
-  }
-  .bd-wt-row-primary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-  .bd-wt-row-secondary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    font-family: var(--font-code);
-    font-size: 10px;
-    color: var(--color-text-muted);
-  }
-  .bd-wt-branch {
-    font-family: var(--font-code);
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    flex-shrink: 1;
-  }
-  .bd-wt-branch--detached {
-    color: var(--color-text-muted);
-    font-style: italic;
-    font-weight: 500;
-  }
-  .bd-wt-folder {
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 0;
-  }
-  .bd-wt-parent {
-    color: var(--color-text-faint);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    direction: rtl;
-    text-align: left;
-    min-width: 0;
-  }
-  .bd-wt-row-actions {
-    display: flex;
-    gap: 2px;
-    opacity: 0;
-    transition: opacity 120ms ease;
-    flex-shrink: 0;
-  }
-  .bd-wt-row:hover .bd-wt-row-actions,
-  .bd-wt-row--selected .bd-wt-row-actions {
-    opacity: 1;
-  }
-  .bd-wt-star-placeholder {
-    display: block;
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-  }
-  .bd-wt-main-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    color: var(--color-accent);
-    transform: rotate(180deg);
-  }
-
   /* ── Work Item palette ─────────────────────────────── */
   .bd-wp-palette {
     position: relative;
@@ -4990,7 +4893,12 @@ body.sql-resizing-v .sql-resize-handle {
   font-size: 11px;
 }
 .bd-fp-preview-spacer { flex: 1; }
-.bd-fp-preview-counts { font-size: 10px; color: var(--color-text-muted); }
+.bd-fp-preview-counts {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
 .bd-fp-preview-pill {
   font-size: 9.5px;
   padding: 2px 6px;

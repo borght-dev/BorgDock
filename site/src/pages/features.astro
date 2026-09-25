@@ -14,6 +14,40 @@ const toc = [
   { id: 'fix', label: 'Fix with Claude' },
   { id: 'review', label: 'Quick review' },
   { id: 'work', label: 'Work items and Worktrees' },
+  { id: 'tools', label: 'Tools' },
+];
+
+const tools = [
+  {
+    slug: 'worktrees',
+    name: 'Worktrees',
+    text: 'Every worktree of every repository you watch, grouped by repository, with the checks of the pull request each one is on. Pick one and its changes open beside the list.',
+  },
+  {
+    slug: 'worktrees-window',
+    name: 'Worktrees window',
+    text: 'Press Ctrl+F7 from anywhere for the same list in a small window. Enter opens a terminal in the worktree you picked.',
+  },
+  {
+    slug: 'file-palette',
+    name: 'Files',
+    text: 'Press Ctrl+F8 and start typing. The files you changed come first, then every filename that matches, with a preview of the one you picked.',
+  },
+  {
+    slug: 'file-viewer',
+    name: 'File viewer',
+    text: 'Open a file from Files to read it in its own window, or to see what changed against HEAD or your default branch, unified or split.',
+  },
+  {
+    slug: 'sql',
+    name: 'SQL',
+    text: 'Press Ctrl+F10, write a query and read the results in a grid you can copy straight from.',
+  },
+  {
+    slug: 'settings',
+    name: 'Settings',
+    text: 'Every setting in one window, with the sections on the left and a search at the top when you know what you are after.',
+  },
 ];
 ---
 
@@ -103,28 +137,24 @@ const toc = [
           request each one belongs to.
         </p>
         <p>Press O for a terminal, T to open it in T3 or F to make it a favourite.</p>
-        <div slot="media" class="job__stack">
-          <Capture slug="worktrees" />
-          <Capture slug="work-items" />
-        </div>
+        <Capture slot="media" slug="work-items" />
       </Job>
     </div>
 
-    <section class="also" aria-labelledby="also-title">
-      <h2 id="also-title" class="also__title">Also in the box</h2>
+    <section id="tools" class="also" aria-labelledby="tools-title">
+      <h2 id="tools-title" class="also__title">Tools</h2>
       <div class="also__grid">
-        <figure class="also__item">
-          <Capture slug="worktrees-window" />
-          <figcaption>The worktrees window, one shortcut away.</figcaption>
-        </figure>
-        <figure class="also__item">
-          <Capture slug="file-palette" />
-          <figcaption>Search files in every repository, with a preview.</figcaption>
-        </figure>
-        <figure class="also__item">
-          <Capture slug="sql" />
-          <figcaption>Run a SQL query and read the results in their own window.</figcaption>
-        </figure>
+        {
+          tools.map((t) => (
+            <figure class="also__item">
+              <Capture slug={t.slug} />
+              <figcaption>
+                <strong class="also__name">{t.name}</strong>
+                {t.text}
+              </figcaption>
+            </figure>
+          ))
+        }
       </div>
     </section>
 

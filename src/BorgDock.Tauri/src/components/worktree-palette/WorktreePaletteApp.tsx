@@ -81,7 +81,7 @@ function PaletteStatus({ shown, total, favoritesOnly }: WorktreeListStatus) {
       left={
         <span>
           {shown} of {total} worktree{total === 1 ? '' : 's'}
-          {favoritesOnly && ' · favorites only'}
+          {favoritesOnly && ', favorites only'}
         </span>
       }
       hints={PALETTE_HINTS}

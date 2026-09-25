@@ -714,7 +714,15 @@ html.dark .recording__variant--light {
 .also__item figcaption {
   margin-top: 12px;
   font-size: 14px;
+  line-height: 1.5;
   color: var(--color-text-secondary);
+}
+
+.also__name {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 /* ---- Download block and teaser (home) ---- */

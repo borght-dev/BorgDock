@@ -113,7 +113,7 @@
     },
     "theme": "both",
     "delay": 2000,
-    "alt": "The worktrees window: every worktree of every repository, with favourites at the top",
+    "alt": "The Worktrees window: every worktree of every repository, grouped by repository, with favourites and the main worktree marked",
     "page": "Tools"
   },
   {
@@ -145,14 +145,26 @@
   },
   {
     "slug": "file-palette",
-    "storyId": "file-palette-filepaletteapp--preview-file-ok",
+    "storyId": "file-palette-filepaletteapp--many-results",
     "viewport": {
       "width": 1100,
       "height": 700
     },
     "theme": "both",
-    "delay": 2000,
-    "alt": "The file palette searching every repository, with a highlighted preview of the selected file",
+    "delay": 2500,
+    "alt": "Files searching a worktree: the changed files first, then every filename that matches, with the selected file previewed on the right",
+    "page": "Tools"
+  },
+  {
+    "slug": "file-viewer",
+    "storyId": "file-viewer-fileviewerapp--diff-multi-hunk",
+    "viewport": {
+      "width": 1100,
+      "height": 700
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "The File viewer showing a file's changes against HEAD as a unified diff, with the unified and split switch in the title bar",
     "page": "Tools"
   },
   {

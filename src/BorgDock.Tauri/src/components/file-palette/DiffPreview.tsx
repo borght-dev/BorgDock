@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Kbd } from '@/components/shared/primitives';
-import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
-import { parsePatch } from '@/services/diff-parser';
+import { Clipboard, ExternalLink } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SplitDiffView } from '@/components/pr-detail/diff/SplitDiffView';
 import { UnifiedDiffView } from '@/components/pr-detail/diff/UnifiedDiffView';
+import { IconButton, Kbd } from '@/components/shared/primitives';
+import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
+import { parsePatch } from '@/services/diff-parser';
 import type { AppSettings } from '@/types/settings';
 
 interface DiffOutput {
@@ -74,21 +75,15 @@ export function DiffPreview({ path, relPath, initialBaseline, onPopOut }: Props)
     invoke<DiffOutput>('git_file_diff', { path, baseline })
       .then((d) => setDiff(d))
       .catch((e) =>
-        setError(typeof e === 'string' ? e : (e as { message?: string }).message ?? 'Error'),
+        setError(typeof e === 'string' ? e : ((e as { message?: string }).message ?? 'Error')),
       );
   }, [path, baseline]);
 
   const hunks = useMemo(() => (diff?.patch ? parsePatch(diff.patch) : []), [diff]);
   const syntaxHighlights = useSyntaxHighlight(path, hunks);
 
-  const totalAdd = hunks.reduce(
-    (s, h) => s + h.lines.filter((l) => l.type === 'add').length,
-    0,
-  );
-  const totalDel = hunks.reduce(
-    (s, h) => s + h.lines.filter((l) => l.type === 'delete').length,
-    0,
-  );
+  const totalAdd = hunks.reduce((s, h) => s + h.lines.filter((l) => l.type === 'add').length, 0);
+  const totalDel = hunks.reduce((s, h) => s + h.lines.filter((l) => l.type === 'delete').length, 0);
 
   const scrollToHunk = useCallback((delta: 1 | -1) => {
     const root = bodyRef.current;
@@ -148,16 +143,20 @@ export function DiffPreview({ path, relPath, initialBaseline, onPopOut }: Props)
             { id: 'split', label: 'Split' },
           ]}
         />
-        <button
-          type="button"
+        <IconButton
+          size={22}
+          tooltip="Copy patch"
           aria-label="Copy patch"
           onClick={() => diff?.patch && navigator.clipboard.writeText(diff.patch)}
-        >
-          📋
-        </button>
-        <button type="button" aria-label="Open in window" onClick={() => onPopOut(baseline)}>
-          ↗
-        </button>
+          icon={<Clipboard size={13} strokeWidth={2.1} aria-hidden />}
+        />
+        <IconButton
+          size={22}
+          tooltip="Open in window"
+          aria-label="Open in window"
+          onClick={() => onPopOut(baseline)}
+          icon={<ExternalLink size={13} strokeWidth={2.1} aria-hidden />}
+        />
       </div>
       <div className="bd-fp-preview-hunknav">
         <span className="bd-mono">

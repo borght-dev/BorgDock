@@ -103,7 +103,7 @@ async function renderPalette() {
 }
 
 function branchTexts(): (string | null)[] {
-  return Array.from(document.querySelectorAll('.bd-wt-branch')).map((b) => b.textContent);
+  return Array.from(document.querySelectorAll('[data-worktree-branch]')).map((b) => b.textContent);
 }
 
 describe('WorktreePaletteApp', () => {
@@ -208,8 +208,8 @@ describe('WorktreePaletteApp', () => {
 
     // Main should be pinned to the top of the repo group
     expect(texts[0]).toBe('main');
-    // And flagged with the MAIN pill
-    expect(screen.getByText(/^main$/i, { selector: '.bd-pill' })).toBeTruthy();
+    // And flagged with the main chip
+    expect(screen.getByText(/^main$/i, { selector: '.bd-wb-chip' })).toBeTruthy();
   });
 
   it('sorts by folder name with numeric ordering (worktree1, worktree2, worktree10)', async () => {
@@ -561,15 +561,19 @@ describe('WorktreePaletteApp', () => {
     await act(async () => {
       fireEvent.keyDown(palette!, { key: 'ArrowDown' });
     });
-    expect(document.querySelector('.bd-wt-row--selected')?.getAttribute('data-tree-path')).toBe(
-      '/home/user/repo/.worktrees/feature-a',
-    );
+    expect(
+      document
+        .querySelector('[data-worktree-row][data-selected="true"]')
+        ?.getAttribute('data-tree-path'),
+    ).toBe('/home/user/repo/.worktrees/feature-a');
     await act(async () => {
       fireEvent.keyDown(palette!, { key: 'ArrowUp' });
     });
-    expect(document.querySelector('.bd-wt-row--selected')?.getAttribute('data-tree-path')).toBe(
-      '/home/user/repo',
-    );
+    expect(
+      document
+        .querySelector('[data-worktree-row][data-selected="true"]')
+        ?.getAttribute('data-tree-path'),
+    ).toBe('/home/user/repo');
   });
 
   it('opens terminal on Enter key (on main worktree, since it sorts first)', async () => {
@@ -673,7 +677,7 @@ describe('WorktreePaletteApp', () => {
   it('renders a star button on non-main rows and hides it on main rows', async () => {
     await renderPalette();
 
-    const mainIcons = document.querySelectorAll('.bd-wt-main-icon');
+    const mainIcons = document.querySelectorAll('.bd-wtr__main-icon');
     expect(mainIcons.length).toBe(1);
     const stars = document.querySelectorAll('[data-worktree-row] [aria-pressed]');
     expect(stars.length).toBe(2);

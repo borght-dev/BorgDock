@@ -44,7 +44,7 @@ describe('FilePaletteChangesSection', () => {
     await waitFor(() => expect(screen.getByText('src/foo.ts')).toBeTruthy());
     expect(screen.getByText('src/bar.ts')).toBeTruthy();
     // Group labels are now non-interactive divs, not buttons.
-    expect(screen.getByText(/Local · uncommitted/)).toBeTruthy();
+    expect(screen.getByText(/Local, uncommitted/)).toBeTruthy();
     // Scope to the group label's sub-text — "vs master" also appears in the
     // header mode-switcher button, which would otherwise match too.
     expect(screen.getByText(/vs master/, { selector: '.bd-fp-changes-group-sub' })).toBeTruthy();

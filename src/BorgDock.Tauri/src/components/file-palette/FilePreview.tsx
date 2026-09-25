@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Button, Kbd } from '@/components/shared/primitives';
-import { FilePaletteCodeView, scanFindMatches, type FindMatch } from './FilePaletteCodeView';
+import { Clipboard, ExternalLink } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, IconButton, Kbd } from '@/components/shared/primitives';
+import { FilePaletteCodeView, type FindMatch, scanFindMatches } from './FilePaletteCodeView';
 
 interface ContentHit {
   matches: { line: number }[];
@@ -35,7 +36,14 @@ function normalizeError(err: unknown): LoadState {
   return { kind: 'error', message: String(err) };
 }
 
-export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentifierJump, onPopOut }: Props) {
+export function FilePreview({
+  path,
+  relPath,
+  contentHit,
+  scrollToLine,
+  onIdentifierJump,
+  onPopOut,
+}: Props) {
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
 
   const [findOpen, setFindOpen] = useState(false);
@@ -86,12 +94,15 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
       .catch((err) => {
         if (!cancelled) setState(normalizeError(err));
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [path]);
 
   const ext = relPath?.includes('.') ? relPath.split('.').pop() : 'txt';
   const lines = state.kind === 'ok' && state.content ? state.content.split('\n').length : 0;
-  const sizeKb = state.kind === 'ok' && state.content ? Math.round(state.content.length / 102.4) / 10 : 0;
+  const sizeKb =
+    state.kind === 'ok' && state.content ? Math.round(state.content.length / 102.4) / 10 : 0;
 
   return (
     <div className="bd-fp-preview bd-fp-preview--file">
@@ -100,14 +111,24 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
         <span className="bd-fp-preview-spacer" />
         <span className="bd-fp-preview-pill">{ext}</span>
         {state.kind === 'ok' && (
-          <span className="bd-mono bd-fp-preview-counts">{lines} lines · {sizeKb} KB</span>
+          <span className="bd-mono bd-fp-preview-counts">
+            {lines} lines, {sizeKb} KB
+          </span>
         )}
-        <button
-          type="button"
+        <IconButton
+          size={22}
+          tooltip="Copy contents"
           aria-label="Copy contents"
           onClick={() => state.kind === 'ok' && navigator.clipboard.writeText(state.content)}
-        >📋</button>
-        <button type="button" aria-label="Open in window" onClick={onPopOut}>↗</button>
+          icon={<Clipboard size={13} strokeWidth={2.1} aria-hidden />}
+        />
+        <IconButton
+          size={22}
+          tooltip="Open in window"
+          aria-label="Open in window"
+          onClick={onPopOut}
+          icon={<ExternalLink size={13} strokeWidth={2.1} aria-hidden />}
+        />
       </div>
       {findOpen && (
         <div className="bd-fp-find-strip">
@@ -134,10 +155,22 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
           <span className="bd-mono">
             {matches.length === 0 ? '0' : `${findIdx + 1} of ${matches.length}`}
           </span>
-          <button type="button" aria-label="Previous match" onClick={() => stepFind(-1)}>↑</button>
-          <button type="button" aria-label="Next match" onClick={() => stepFind(1)}>↓</button>
-          <button type="button" aria-label="Close find"
-            onClick={() => { setFindOpen(false); setFindTerm(''); }}>✕</button>
+          <button type="button" aria-label="Previous match" onClick={() => stepFind(-1)}>
+            ↑
+          </button>
+          <button type="button" aria-label="Next match" onClick={() => stepFind(1)}>
+            ↓
+          </button>
+          <button
+            type="button"
+            aria-label="Close find"
+            onClick={() => {
+              setFindOpen(false);
+              setFindTerm('');
+            }}
+          >
+            ✕
+          </button>
           <span className="bd-fp-preview-spacer" />
           <Kbd>Esc</Kbd>
         </div>
@@ -154,7 +187,8 @@ export function FilePreview({ path, relPath, contentHit, scrollToLine, onIdentif
         )}
         {state.kind === 'too_large' && (
           <div className="bd-fp-preview-empty">
-            File too large ({(state.size / 1024).toFixed(0)} KB &gt; {(state.limit / 1024).toFixed(0)} KB).
+            File too large ({(state.size / 1024).toFixed(0)} KB &gt;{' '}
+            {(state.limit / 1024).toFixed(0)} KB).
             <Button variant="primary" size="sm" onClick={() => invoke('open_in_editor', { path })}>
               Open in editor
             </Button>

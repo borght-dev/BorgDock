@@ -167,9 +167,8 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
       >
         {collapsed ? '▸' : '▾'}
       </button>
-      <span style={{ fontSize: 11 }}>●</span>
       <span className="bd-fp-changes-title">Changes</span>
-      {visibleCount > 0 && <span className="bd-fp-changes-count bd-mono">· {visibleCount}</span>}
+      {visibleCount > 0 && <span className="bd-fp-changes-count">{visibleCount}</span>}
       {(visibleAdd > 0 || visibleDel > 0) && (
         <span className="bd-fp-changes-stats">
           <span style={{ color: 'var(--color-status-green)' }}>+{visibleAdd}</span>
@@ -256,16 +255,10 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
           {file.status}
         </span>
         <span className="bd-fp-changes-path">{label}</span>
-        <span
-          className="bd-fp-changes-row__add bd-mono"
-          style={{ color: 'var(--color-status-green)' }}
-        >
+        <span className="bd-fp-changes-row__add" style={{ color: 'var(--color-status-green)' }}>
           +{file.additions}
         </span>
-        <span
-          className="bd-fp-changes-row__del bd-mono"
-          style={{ color: 'var(--color-status-red)' }}
-        >
+        <span className="bd-fp-changes-row__del" style={{ color: 'var(--color-status-red)' }}>
           −{file.deletions}
         </span>
       </button>
@@ -282,7 +275,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
       {showLocal && (
         <>
           <div className="bd-fp-changes-group-label">
-            Local · uncommitted
+            Local, uncommitted
             <span className="bd-fp-changes-group-sub">vs HEAD</span>
           </div>
           {filteredLocal.map((f) => renderRow(f, 'local'))}

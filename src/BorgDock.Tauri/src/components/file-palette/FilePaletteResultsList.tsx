@@ -77,7 +77,7 @@ export function FilePaletteResultsList({
               )}
               {r.line !== undefined && (
                 <span className="bd-fp-result-meta">
-                  {r.symbol ? `${r.symbol} · ` : ''}L{r.line}
+                  {r.symbol ? `${r.symbol}, ` : ''}line {r.line}
                 </span>
               )}
             </button>
