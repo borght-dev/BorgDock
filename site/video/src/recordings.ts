@@ -49,9 +49,6 @@ export const launchScenes: SceneSpec[] = [
     slug: 'focus-merge',
     headline: 'Merge the moment it is ready.',
     detail: 'Focus sorts your work into columns. Merge from the board and the count goes up.',
-    // The current recording turns white after 5.57 s; stop before that
-    // until it is re-recorded (resolveScenes clamps this to the file length).
-    trimEnd: 5.5,
   },
   {
     slug: 'flyout',
@@ -85,7 +82,6 @@ export const shortScenes: SceneSpec[] = [
     headline: 'Merge when it is ready.',
     detail: 'Right from the Focus board. The count goes up.',
     trimStart: 1.0,
-    trimEnd: 5.5,
     crop: { x: 292, y: 0, width: 708, height: 640 },
   },
 ];
