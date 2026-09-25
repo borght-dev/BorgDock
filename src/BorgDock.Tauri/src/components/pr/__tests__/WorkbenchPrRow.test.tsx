@@ -1,9 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { showPrMock, openPrDetailMock } = vi.hoisted(() => ({
+const { showPrMock, openPrDetailMock, mergeMock } = vi.hoisted(() => ({
   showPrMock: vi.fn().mockResolvedValue(undefined),
   openPrDetailMock: vi.fn().mockResolvedValue(undefined),
+  mergeMock: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
@@ -26,15 +27,21 @@ vi.mock('@/services/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/navigation')>()),
   showPr: showPrMock,
 }));
+vi.mock('@/services/pr-actions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/pr-actions')>()),
+  mergePrWithToast: mergeMock,
+}));
 vi.mock('@/services/windows', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/windows')>()),
   openPrDetail: openPrDetailMock,
 }));
 
+import { usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import { listPr } from '../__fixtures__/pr-list-data';
-import { WorkbenchPrRow } from '../WorkbenchPrRow';
+import { FIXTURE_ME, listPr } from '../__fixtures__/pr-list-data';
+import { rowActionFor, WorkbenchPrRow } from '../WorkbenchPrRow';
 
 const PR = listPr({ number: 42, title: 'Add cool feature', repo: 'acme/app' });
 /** Same number, other repository. */
@@ -131,5 +138,128 @@ describe('WorkbenchPrRow', () => {
     act(() => {
       useSettingsStore.setState({ settings });
     });
+  });
+});
+
+describe('WorkbenchPrRow action slot', () => {
+  /** A review is requested from me. */
+  const REVIEW = listPr({
+    number: 7,
+    title: 'Needs my eyes',
+    repo: 'acme/app',
+    author: 'mira',
+    requestedReviewers: [FIXTURE_ME],
+  });
+  /** Approved, green, mergeable. */
+  const MERGE = listPr({
+    number: 8,
+    title: 'Ready to go',
+    repo: 'acme/app',
+    reviewStatus: 'approved',
+  });
+
+  beforeEach(() => {
+    showPrMock.mockClear();
+    mergeMock.mockReset();
+    usePrStore.setState({ username: FIXTURE_ME, teams: [] });
+    useQuickReviewStore.getState().endSession();
+  });
+  afterEach(() => {
+    cleanup();
+    useQuickReviewStore.getState().endSession();
+  });
+
+  const slot = (key: string) =>
+    document.querySelector(`.bd-wb-row[data-pr-key="${key}"] .bd-row-action`);
+
+  it.each([
+    ['a review requested from me', REVIEW, 'review'],
+    ['an approved, green PR', MERGE, 'merge'],
+    [
+      'a failing PR (rerun)',
+      listPr({ number: 1, title: 'x', repo: 'a/b', checks: { total: 3, fail: 1 } }),
+      null,
+    ],
+    ['my PR waiting on review (checkout)', listPr({ number: 2, title: 'x', repo: 'a/b' }), null],
+    [
+      'a PR by someone else (open)',
+      listPr({ number: 3, title: 'x', repo: 'a/b', author: 'sasha' }),
+      null,
+    ],
+    [
+      'a merged PR',
+      listPr({ number: 4, title: 'x', repo: 'a/b', reviewStatus: 'approved', mergedHoursAgo: 1 }),
+      null,
+    ],
+  ] as const)('%s gets %s', (_label, pr, expected) => {
+    expect(rowActionFor(pr, FIXTURE_ME)).toBe(expected);
+    render(<WorkbenchPrRow prWithChecks={pr} />);
+    const key = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`;
+    if (expected)
+      expect(slot(key)?.querySelector(`[data-row-action="${expected}"]`)).not.toBeNull();
+    else expect(slot(key)).toBeNull();
+  });
+
+  it('puts the slot beside the row, never inside its role="button"', () => {
+    render(<WorkbenchPrRow prWithChecks={REVIEW} />);
+    const button = screen.getByRole('button', { name: 'Review #7' });
+    expect(button.closest('[role="button"]')).toBeNull();
+    const wrap = button.closest('.bd-wb-rowwrap');
+    expect(wrap).toHaveAttribute('data-key', 'acme/app#7');
+    expect(wrap?.querySelector('.bd-wb-row')).not.toHaveAttribute('data-key');
+    // Tab order: the row, then its action.
+    const tabbables = [...wrap!.querySelectorAll<HTMLElement>('[tabindex="0"], button')];
+    expect(tabbables.map((el) => el.className.split(' ')[0])).toEqual(['bd-wb-row', 'bd-btn']);
+  });
+
+  it('keeps the wrapper when a PR has no action, so the row does not remount', () => {
+    const own = listPr({ number: 2, title: 'x', repo: 'a/b' });
+    render(<WorkbenchPrRow prWithChecks={own} />);
+    expect(document.querySelector('.bd-wb-rowwrap')).not.toBeNull();
+    expect(document.querySelector('.bd-row-action')).toBeNull();
+  });
+
+  it('Review opens Quick Review for the PR without opening the row', () => {
+    render(<WorkbenchPrRow prWithChecks={REVIEW} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Review #7' }));
+    expect(useQuickReviewStore.getState().state).toBe('reviewing');
+    expect(useQuickReviewStore.getState().queue).toEqual([REVIEW]);
+    expect(showPrMock).not.toHaveBeenCalled();
+  });
+
+  it('Enter on the slot button does not open the row', () => {
+    render(<WorkbenchPrRow prWithChecks={REVIEW} />);
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Review #7' }), { key: 'Enter' });
+    expect(showPrMock).not.toHaveBeenCalled();
+  });
+
+  it('Merge fills while it runs, then reads Merged', async () => {
+    let resolve: (ok: boolean) => void = () => {};
+    mergeMock.mockReturnValue(new Promise<boolean>((r) => (resolve = r)));
+    render(<WorkbenchPrRow prWithChecks={MERGE} />);
+    const button = screen.getByRole('button', { name: 'Merge' });
+    fireEvent.click(button);
+    expect(mergeMock).toHaveBeenCalledWith({
+      repoOwner: 'acme',
+      repoName: 'app',
+      number: 8,
+      title: 'Ready to go',
+      htmlUrl: 'https://github.com/acme/app/pull/8',
+    });
+    expect(button).toHaveAttribute('data-progress', 'busy');
+    expect(button).toHaveTextContent('Merging');
+    expect(showPrMock).not.toHaveBeenCalled();
+    await act(async () => resolve(true));
+    expect(button).toHaveAttribute('data-progress', 'done');
+    expect(button).toHaveTextContent('Merged');
+  });
+
+  it('a failed merge goes back to rest', async () => {
+    mergeMock.mockResolvedValue(false);
+    render(<WorkbenchPrRow prWithChecks={MERGE} />);
+    const button = screen.getByRole('button', { name: 'Merge' });
+    await act(async () => fireEvent.click(button));
+    expect(button).toHaveAttribute('data-progress', 'idle');
+    expect(button).toHaveTextContent('Merge');
   });
 });

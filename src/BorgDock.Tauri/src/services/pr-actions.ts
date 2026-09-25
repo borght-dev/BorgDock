@@ -15,8 +15,10 @@ import { celebrateMerge } from '@/services/merge-celebration';
 import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { CheckRun } from '@/types';
+import { toastError } from '@/stores/toast-store';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
 
 const log = createLogger('pr-actions');
@@ -111,6 +113,17 @@ export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
     reportError('Merge failed', err, opts);
     return false;
   }
+}
+
+/**
+ * Merge from the Workbench row's action slot or the detail view's action bar:
+ * a failure shows as an in-window toast (`stores/toast-store`) next to the
+ * button that started it. Success is announced once, by `celebrateMerge`
+ * (the OS notification, which honours the notification settings); the
+ * button itself flips to "Merged".
+ */
+export async function mergePrWithToast(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
+  return mergePr(pr, { onError: toastError, ...opts });
 }
 
 export async function bypassMergePr(pr: PrRef, opts?: ActionOpts): Promise<boolean> {
@@ -252,6 +265,16 @@ export async function checkoutPrBranch(
     reportError('Checkout failed', err, opts);
     return false;
   }
+}
+
+// ── Review ─────────────────────────────────────────────────────────────
+
+/**
+ * The Review action: opens Quick Review for this one PR, in every layout (the
+ * Workbench row slot, the detail action bar, the tab layout's hover bar).
+ */
+export function reviewPr(pr: PullRequestWithChecks): void {
+  useQuickReviewStore.getState().startSinglePr(pr);
 }
 
 // ── Browser ────────────────────────────────────────────────────────────

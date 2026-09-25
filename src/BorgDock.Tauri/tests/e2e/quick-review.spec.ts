@@ -47,7 +47,16 @@ async function openReview(page: Page) {
     const { useQuickReviewStore } = await import(path);
     useQuickReviewStore.getState().startSinglePr(value);
   }, pr);
-  await expect(page.locator('.qr-next')).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: /^(Review files|Continue reviewing|Review files again)$/ }),
+  ).toBeEnabled();
+}
+/** From the card into the file walk. */
+async function openWalk(page: Page) {
+  await page
+    .getByRole('button', { name: /^(Review files|Continue reviewing|Review files again)$/ })
+    .click();
+  await expect(page.locator('.qr-next')).toBeVisible();
 }
 async function setup(page: Page, state = detail.state) {
   await bootApp(page);
@@ -75,47 +84,48 @@ async function setup(page: Page, state = detail.state) {
   return reviews;
 }
 
-test('marks skipped files reviewed and submits approval from the finish screen', async ({
-  page,
-}) => {
+test('reviews every file in the walk, then approves from the card', async ({ page }) => {
   const reviews = await setup(page, 'OPEN');
-  await page.locator('.qr-next').click();
-  for (let i = 1; i < paths.length; i++) await page.locator('.qr-next').click();
-  await page.locator('.qr-finish').click();
+  const approve = page.getByRole('button', { name: 'Approve' });
+  await expect(approve).toBeDisabled();
+  await expect(page.getByText('5 of 5 to review, 0 generated')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('card-unreviewed.png') });
 
-  await expect(page.getByText('5 of 5 files remain unreviewed.')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('finish-unreviewed.png') });
-  await page.getByRole('button', { name: 'Mark all files reviewed' }).click();
-  await expect(page.getByText('0 of 5 files remain unreviewed.')).toBeVisible();
+  await openWalk(page);
+  for (let i = 0; i < paths.length; i++) await page.keyboard.press('v');
+  await expect(page.getByText('5 of 5 reviewed, 0 to go')).toBeVisible();
+  await expect(page.locator('.qr-finish')).toHaveClass(/bd-btn--primary/);
+  await page.screenshot({ path: test.info().outputPath('walk-all-reviewed.png') });
+  await page.locator('.qr-finish').click();
+  await expect(page.getByRole('button', { name: 'Review files again' })).toBeVisible();
+
+  // Requesting changes needs an explanation.
+  await page.getByRole('button', { name: /^Write review/ }).click();
   await page.getByRole('button', { name: 'Request changes' }).click();
   await expect(page.getByText('Add an overall comment before requesting changes.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Request changes', exact: true }).last()).toBeDisabled();
-  await page.screenshot({ path: test.info().outputPath('finish-disabled-reason.png') });
-  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.locator('.qr-submit')).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath('compose-disabled-reason.png') });
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
-  const submit = page.getByRole('button', { name: 'Submit approval' });
-  await expect(submit).toBeEnabled();
-  await page.screenshot({ path: test.info().outputPath('finish-approval.png') });
-  await submit.click();
+  await expect(approve).toBeEnabled();
+  await page.screenshot({ path: test.info().outputPath('card-approve-enabled.png') });
+  await approve.click();
   await expect(page.getByText('Review Complete', { exact: true })).toBeVisible();
-  expect(reviews).toEqual([
-    { event: 'APPROVE', body: '', commit_id: 'sha42', comments: [] },
-  ]);
+  expect(reviews).toEqual([{ event: 'APPROVE', body: '', commit_id: 'sha42', comments: [] }]);
 });
 
-test('compact next button stays fixed across descriptions, diffs, comments, and widths', async ({
-  page,
-}) => {
+test('walk footer stays fixed across diffs, comments, and widths', async ({ page }) => {
   await setup(page);
+  await openWalk(page);
   const initial = await page.locator('.qr-next').boundingBox();
   expect(initial?.height).toBe(28);
   await page.locator('[data-quick-review-content]').evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
-  await expect(page.getByText('Paragraph 35.', { exact: false })).toBeVisible();
   await page.locator('.qr-next').click();
   expect(await page.locator('.qr-next').boundingBox()).toEqual(initial);
   expect(await page.locator('[data-quick-review-content]').evaluate((el) => el.scrollTop)).toBe(0);
+  await page.locator('.qr-prev').click();
   await page.getByRole('button', { name: 'Comment on new line 110', exact: true }).click();
   await page.getByPlaceholder('Describe the issue or suggest a change...').fill('Handle failure.');
   expect(await page.locator('.qr-next').boundingBox()).toEqual(initial);
@@ -137,16 +147,19 @@ test('persists drafts through reload and submits the whole review against the vi
   page,
 }) => {
   const reviews = await setup(page);
-  await page.locator('.qr-next').click();
+  await openWalk(page);
   await page.getByRole('button', { name: 'Comment on new line 1', exact: true }).click();
   await page.getByPlaceholder('Describe the issue or suggest a change...').fill('Handle failure.');
   await page.getByRole('button', { name: 'Save draft' }).click();
   await page.reload();
   await openReview(page);
+  await expect(page.getByRole('button', { name: 'Continue reviewing' })).toBeVisible();
+  await openWalk(page);
   await expect(page.getByText('Handle failure.', { exact: true })).toBeVisible();
   await page.locator('.qr-finish').click();
+  await page.getByRole('button', { name: 'Write review · 1' }).click();
   await page.getByPlaceholder('Add overall feedback...').fill('Please fix the comment.');
-  await page.locator('.qr-mark').click();
+  await page.locator('.qr-submit').click();
   await expect(page.getByText('Review Complete', { exact: true })).toBeVisible();
   expect(reviews).toEqual([
     {
@@ -211,7 +224,7 @@ test('skims screenshot comments by author and returns to the same diff position'
     meta.content = policy;
     document.head.append(meta);
   }, imagePolicy);
-  await page.locator('.qr-next').click();
+  await openWalk(page);
   await page.locator('[data-quick-review-content]').evaluate((el) => {
     el.scrollTop = 600;
   });
@@ -234,7 +247,7 @@ test('skims screenshot comments by author and returns to the same diff position'
   await page.getByRole('button', { name: 'Other commenters · 1' }).click();
   await expect(page.getByText('Other commenter evidence')).toBeVisible();
   await expect(page.getByText('Browser evidence')).toHaveCount(0);
-  await page.locator('.qr-next').click();
+  await page.getByRole('button', { name: 'Back to diff' }).click();
   expect(await page.locator('[data-quick-review-content]').evaluate((el) => el.scrollTop)).toBe(
     scroll,
   );

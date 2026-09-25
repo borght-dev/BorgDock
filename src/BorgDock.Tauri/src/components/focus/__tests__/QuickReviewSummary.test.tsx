@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { prRowKey } from '@/components/pr/pr-card-data';
 import type { ReviewDecision } from '@/stores/quick-review-store';
 import { QuickReviewSummary } from '../QuickReviewSummary';
 import { makePr, resetSeq } from './helpers';
@@ -41,9 +42,9 @@ describe('QuickReviewSummary', () => {
   it('renders approved count when present', () => {
     const pr1 = makePr();
     const pr2 = makePr();
-    const decisions = new Map<number, ReviewDecision>([
-      [pr1.pullRequest.number, 'approved'],
-      [pr2.pullRequest.number, 'approved'],
+    const decisions = new Map<string, ReviewDecision>([
+      [prRowKey(pr1.pullRequest), 'approved'],
+      [prRowKey(pr2.pullRequest), 'approved'],
     ]);
     render(<QuickReviewSummary queue={[pr1, pr2]} decisions={decisions} onClose={onClose} />);
     expect(screen.getByText('2')).toBeDefined();
@@ -53,7 +54,7 @@ describe('QuickReviewSummary', () => {
 
   it('renders commented count when present', () => {
     const pr1 = makePr();
-    const decisions = new Map<number, ReviewDecision>([[pr1.pullRequest.number, 'commented']]);
+    const decisions = new Map<string, ReviewDecision>([[prRowKey(pr1.pullRequest), 'commented']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     // "Commented" appears in the stats section and the PR list
     expect(screen.getAllByText('Commented').length).toBeGreaterThanOrEqual(1);
@@ -61,7 +62,7 @@ describe('QuickReviewSummary', () => {
 
   it('renders skipped count when present', () => {
     const pr1 = makePr();
-    const decisions = new Map<number, ReviewDecision>([[pr1.pullRequest.number, 'skipped']]);
+    const decisions = new Map<string, ReviewDecision>([[prRowKey(pr1.pullRequest), 'skipped']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     // "Skipped" appears in the stats section and the PR list
     expect(screen.getAllByText('Skipped').length).toBeGreaterThanOrEqual(1);
@@ -69,7 +70,7 @@ describe('QuickReviewSummary', () => {
 
   it('does not render zero-count decision categories in stats', () => {
     const pr1 = makePr();
-    const decisions = new Map<number, ReviewDecision>([[pr1.pullRequest.number, 'approved']]);
+    const decisions = new Map<string, ReviewDecision>([[prRowKey(pr1.pullRequest), 'approved']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     expect(screen.queryByText('Commented')).toBeNull();
     expect(screen.queryByText('Skipped')).toBeNull();
@@ -79,10 +80,10 @@ describe('QuickReviewSummary', () => {
     const pr1 = makePr();
     const pr2 = makePr();
     const pr3 = makePr();
-    const decisions = new Map<number, ReviewDecision>([
-      [pr1.pullRequest.number, 'approved'],
-      [pr2.pullRequest.number, 'commented'],
-      [pr3.pullRequest.number, 'skipped'],
+    const decisions = new Map<string, ReviewDecision>([
+      [prRowKey(pr1.pullRequest), 'approved'],
+      [prRowKey(pr2.pullRequest), 'commented'],
+      [prRowKey(pr3.pullRequest), 'skipped'],
     ]);
     render(<QuickReviewSummary queue={[pr1, pr2, pr3]} decisions={decisions} onClose={onClose} />);
     expect(screen.getAllByText('Approved').length).toBeGreaterThanOrEqual(1);
@@ -93,9 +94,9 @@ describe('QuickReviewSummary', () => {
   it('lists each PR with its number and title', () => {
     const pr1 = makePr({ number: 100, title: 'Fix auth flow' });
     const pr2 = makePr({ number: 200, title: 'Add tests' });
-    const decisions = new Map<number, ReviewDecision>([
-      [100, 'approved'],
-      [200, 'skipped'],
+    const decisions = new Map<string, ReviewDecision>([
+      ['owner/repo#100', 'approved'],
+      ['owner/repo#200', 'skipped'],
     ]);
     render(<QuickReviewSummary queue={[pr1, pr2]} decisions={decisions} onClose={onClose} />);
     expect(screen.getByText(/Fix auth flow/)).toBeDefined();
@@ -104,7 +105,7 @@ describe('QuickReviewSummary', () => {
 
   it('shows decision label for each PR in the list', () => {
     const pr1 = makePr({ number: 100, title: 'Fix auth flow' });
-    const decisions = new Map<number, ReviewDecision>([[100, 'approved']]);
+    const decisions = new Map<string, ReviewDecision>([['owner/repo#100', 'approved']]);
     render(<QuickReviewSummary queue={[pr1]} decisions={decisions} onClose={onClose} />);
     expect(screen.getAllByText('Approved').length).toBeGreaterThanOrEqual(1);
   });

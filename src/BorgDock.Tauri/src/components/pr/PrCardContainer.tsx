@@ -39,6 +39,7 @@ function dispatchPrimaryAction(
     case 'merge':
       return actions.handleMerge(e);
     case 'review':
+      return actions.handleReview(e);
     case 'open':
       return actions.handleOpenInBrowser(e);
     case 'checkout':
@@ -132,7 +133,7 @@ export const PrCardContainer = memo(function PrCardContainer({
               primary={primary}
               onPrimary={(e) => dispatchPrimaryAction(primary, e, actions)}
               onCheckout={actions.repoPath ? actions.handleCheckout : undefined}
-              onReview={actions.handleOpenInBrowser}
+              onReview={actions.handleReview}
               onResolveConflicts={
                 pr.mergeable === false ? actions.handleResolveConflicts : undefined
               }

@@ -89,6 +89,10 @@ export function useKeyboardNav() {
         }
       }
 
+      // The tab layout's keys below. Quick Review (Enter, Esc, J/K in its
+      // file walk), menus and dialogs keep theirs.
+      if (isOverlayOpen()) return;
+
       const filteredPrs = usePrStore.getState().filteredPrs();
       if (filteredPrs.length === 0) return;
 
@@ -240,6 +244,9 @@ function handleWorkbenchRowKey(
       select(current < 0 ? 0 : Math.max(current - 1, 0));
       return true;
     case 'Enter': {
+      // Enter on a row's action button (Review, Merge) presses that button:
+      // handled here so nothing else claims (or prevents) the key.
+      if (e.target instanceof Element && e.target.closest('[data-pr-card-action]')) return true;
       const row = rows[current];
       const target = row ? rowTarget(row) : null;
       if (!target) return false;

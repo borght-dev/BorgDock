@@ -1,11 +1,12 @@
-import { avatarInitials } from '@/components/pr/pr-card-data';
+import { avatarInitials, prRowKey } from '@/components/pr/pr-card-data';
 import { Avatar, Button, Pill, type PillTone } from '@/components/shared/primitives';
 import type { ReviewDecision } from '@/stores/quick-review-store';
 import type { PullRequestWithChecks } from '@/types';
 
 interface QuickReviewSummaryProps {
   queue: PullRequestWithChecks[];
-  decisions: Map<number, ReviewDecision>;
+  /** Keyed `owner/repo#number` (`prRowKey`). */
+  decisions: Map<string, ReviewDecision>;
   onClose: () => void;
 }
 
@@ -56,10 +57,10 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
       {/* PR list */}
       <div className="bd-pr-panel max-h-[300px] overflow-y-auto">
         {queue.map((pr) => {
-          const decision = decisions.get(pr.pullRequest.number);
+          const decision = decisions.get(prRowKey(pr.pullRequest));
           const info = decision ? DECISION_LABELS[decision] : null;
           return (
-            <div key={pr.pullRequest.number} className="bd-pr-mini-row">
+            <div key={prRowKey(pr.pullRequest)} className="bd-pr-mini-row">
               <Avatar initials={avatarInitials(pr.pullRequest.authorLogin)} size="sm" />
               <span className="min-w-0 flex-1 truncate font-medium">{pr.pullRequest.title}</span>
               <span className="bd-pr-item__number">#{pr.pullRequest.number}</span>

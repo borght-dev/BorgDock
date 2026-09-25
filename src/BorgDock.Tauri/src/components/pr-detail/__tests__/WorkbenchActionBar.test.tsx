@@ -10,8 +10,11 @@ const { mergePr, rerunChecks, fixWithClaude, sendOsNotification } = vi.hoisted((
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/services/pr-actions', () => ({
+vi.mock('@/services/pr-actions', async (importOriginal) => ({
   mergePr,
+  // The detail bar merges through the toast variant; both resolve like mergePr.
+  mergePrWithToast: mergePr,
+  reviewPr: (await importOriginal<typeof import('@/services/pr-actions')>()).reviewPr,
   rerunChecks,
   bypassMergePr: vi.fn(),
   closePr: vi.fn(),

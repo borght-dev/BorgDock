@@ -1,6 +1,19 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ToastViewport } from '@/components/shared/Toast';
+import { useToastStore } from '@/stores/toast-store';
 import { MergeToast } from '../MergeToast';
+
+/** MergeToast draws through the shared toast stack, which App mounts beside it. */
+function render(ui: ReactElement) {
+  return rtlRender(
+    <>
+      {ui}
+      <ToastViewport />
+    </>,
+  );
+}
 
 const mockMergePr = vi.fn().mockResolvedValue(true);
 const { mockNotificationShow } = vi.hoisted(() => ({
@@ -36,6 +49,7 @@ describe('MergeToast', () => {
     vi.useFakeTimers();
     mockMergePr.mockClear().mockResolvedValue(true);
     mockNotificationShow.mockClear();
+    useToastStore.getState().clear();
     delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
   });
 
@@ -43,9 +57,9 @@ describe('MergeToast', () => {
     vi.useRealTimers();
   });
 
-  it('renders nothing when there are no toasts', () => {
+  it('shows no toast until a merge is queued', () => {
     const { container } = render(<MergeToast />);
-    expect(container.innerHTML).toBe('');
+    expect(container.querySelectorAll('[data-toast]')).toHaveLength(0);
   });
 
   it('exposes queueMerge on window', () => {
@@ -124,13 +138,13 @@ describe('MergeToast', () => {
     );
   });
 
-  it('uses a PR-specific error title via the onError override', async () => {
+  it('toasts a PR-specific error through the onError override', async () => {
     // Drive the onError path by capturing the opts and invoking it ourselves —
     // pr-actions itself is mocked so it never fails on its own.
     let capturedOpts: { onError?: (title: string, err: unknown) => void } | undefined;
     mockMergePr.mockImplementationOnce((_pr: unknown, opts: typeof capturedOpts) => {
       capturedOpts = opts;
-      return Promise.resolve(true);
+      return Promise.resolve(false);
     });
     render(<MergeToast />);
     act(() => {
@@ -140,13 +154,32 @@ describe('MergeToast', () => {
       await vi.advanceTimersByTimeAsync(3000);
     });
     expect(capturedOpts?.onError).toBeDefined();
-    capturedOpts?.onError?.('ignored', new Error('Merge conflict'));
-    expect(mockNotificationShow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Failed to merge PR #99',
-        severity: 'error',
-      }),
-    );
+    act(() => {
+      capturedOpts?.onError?.('ignored', new Error('Merge conflict'));
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to merge PR #99: Merge conflict');
+    expect(mockNotificationShow).not.toHaveBeenCalled();
+  });
+
+  it('leaves the success to the merge celebration, with no second in-window toast', async () => {
+    const { container } = render(<MergeToast />);
+    act(() => {
+      requireQueueMerge()('owner', 'repo', 7);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(mockMergePr).toHaveBeenCalledTimes(1);
+    expect(container.querySelectorAll('[data-toast]')).toHaveLength(0);
+  });
+
+  it('has no close button: only Undo cancels the merge', () => {
+    render(<MergeToast />);
+    act(() => {
+      requireQueueMerge()('owner', 'repo', 42);
+    });
+    expect(screen.queryByRole('button', { name: 'Dismiss notification' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
   });
 
   it('supports multiple concurrent toasts', () => {

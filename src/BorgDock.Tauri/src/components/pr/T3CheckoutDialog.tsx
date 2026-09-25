@@ -1,4 +1,4 @@
-import FocusTrap from 'focus-trap-react';
+import { FocusTrap } from 'focus-trap-react';
 import { useCallback, useEffect } from 'react';
 import { CheckoutPanel } from '@/components/pr-detail/CheckoutPanel';
 import { sendOsNotification } from '@/services/notification';

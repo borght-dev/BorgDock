@@ -8,6 +8,7 @@ import {
   mergePr,
   openPrInBrowser,
   rerunChecks,
+  reviewPr,
   toggleDraftPr,
 } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
@@ -96,6 +97,15 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
       void openPrInBrowser(pr.htmlUrl);
     },
     [pr.htmlUrl],
+  );
+
+  // Review opens Quick Review for this PR (not the browser).
+  const handleReview = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      reviewPr(prWithChecks);
+    },
+    [prWithChecks],
   );
 
   const handleCopyBranch = useCallback(
@@ -221,6 +231,7 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     handleMonitor,
     handleResolveConflicts,
     handleOpenInBrowser,
+    handleReview,
     handleCopyBranch,
     handleCheckout,
     handleToggleDraft,

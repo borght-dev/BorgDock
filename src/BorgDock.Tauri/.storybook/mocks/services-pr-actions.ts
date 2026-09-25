@@ -11,14 +11,14 @@
 // The 'name' key is the function name (e.g. 'mergePr', 'closePr').
 
 import type {
-  PrRef,
-  MergePrOpts,
   ActionOpts,
+  CheckoutInput,
   CheckoutOpts,
   ClosePrInput,
-  ToggleDraftInput,
+  MergePrOpts,
+  PrRef,
   RerunChecksInput,
-  CheckoutInput,
+  ToggleDraftInput,
 } from '../../src/services/pr-actions';
 import { getControl } from './control';
 
@@ -42,6 +42,16 @@ export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
   return record('mergePr', { pr, opts }, true);
 }
 
+export async function mergePrWithToast(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
+  return record('mergePrWithToast', { pr, opts }, true);
+}
+
+/** Opens Quick Review for the PR, like production (it is not a network call). */
+export function reviewPr(pr: PullRequestWithChecks): void {
+  getControl().invocations.push({ command: 'prAction.reviewPr', args: { pr } });
+  useQuickReviewStore.getState().startSinglePr(pr);
+}
+
 export async function bypassMergePr(pr: PrRef, opts?: ActionOpts): Promise<boolean> {
   return record('bypassMergePr', { pr, opts }, true);
 }
@@ -50,17 +60,11 @@ export async function closePr(pr: ClosePrInput, opts?: ActionOpts): Promise<bool
   return record('closePr', { pr, opts }, true);
 }
 
-export async function toggleDraftPr(
-  pr: ToggleDraftInput,
-  opts?: ActionOpts,
-): Promise<boolean> {
+export async function toggleDraftPr(pr: ToggleDraftInput, opts?: ActionOpts): Promise<boolean> {
   return record('toggleDraftPr', { pr, opts }, true);
 }
 
-export async function rerunChecks(
-  input: RerunChecksInput,
-  opts?: ActionOpts,
-): Promise<boolean> {
+export async function rerunChecks(input: RerunChecksInput, opts?: ActionOpts): Promise<boolean> {
   return record('rerunChecks', { input, opts }, true);
 }
 
@@ -71,9 +75,6 @@ export async function checkoutPrBranch(
   return record('checkoutPrBranch', { input, opts }, true);
 }
 
-export async function openPrInBrowser(
-  htmlUrl: string,
-  opts?: ActionOpts,
-): Promise<boolean> {
+export async function openPrInBrowser(htmlUrl: string, opts?: ActionOpts): Promise<boolean> {
   return record('openPrInBrowser', { htmlUrl, opts }, true);
 }

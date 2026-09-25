@@ -21,6 +21,13 @@ export interface ReviewDocument {
   body: string;
   event: ReviewEvent;
   step: string | null;
+  /**
+   * The reviewer has opened the file walk at least once, so the card's
+   * primary button reads "Continue reviewing" / "Review files again" instead
+   * of "Review files". Optional: documents saved before it existed load as
+   * not walked.
+   */
+  walked?: boolean;
 }
 export interface ReviewFileGroup {
   name: string;
@@ -42,24 +49,153 @@ export const emptyReviewDocument: ReviewDocument = {
   body: '',
   event: 'COMMENT',
   step: null,
+  walked: false,
 };
+
+/** A stored document with every field present, whatever version saved it. */
+export function normalizeReviewDocument(doc: Partial<ReviewDocument> | undefined): ReviewDocument {
+  return doc ? { ...emptyReviewDocument, ...doc } : emptyReviewDocument;
+}
 
 export function reviewDocumentKey(pr: PullRequest, account: string) {
   return `${account.toLowerCase()}:${pr.repoOwner.toLowerCase()}/${pr.repoName.toLowerCase()}#${pr.number}`;
+}
+
+const LOCKFILES = new Set([
+  'bun.lock',
+  'bun.lockb',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'cargo.lock',
+]);
+
+/**
+ * Files nobody reads line by line: lockfiles, generated code, snapshots,
+ * minified bundles and source maps. Quick Review lets the reviewer mark them
+ * all reviewed in one go ("Skip generated") and does not wait for them before
+ * Approve is enabled.
+ *
+ * Matches `bun.lock(b)`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`,
+ * `Cargo.lock`, `*.generated.*`, source-generator output (`*.g.cs`,
+ * `*.g.ts`, `*.g.dart`), anything under a `generated/` folder
+ * (`src/generated/**` included), `*.snap`, `*.min.js`, `*.js.map` and
+ * `*.css.map`, and build output: `dist/` or `obj/` at the repository root or
+ * directly inside a top-level project folder (`App.Api/obj/`), but not
+ * inside `src/` (`src/obj/` is somebody's code).
+ */
+export function isGeneratedPath(path: string): boolean {
+  const normalized = path.replaceAll('\\', '/');
+  const name = normalized.split('/').pop()?.toLowerCase() ?? '';
+  if (LOCKFILES.has(name)) return true;
+  if (/\.generated\./.test(name) || /\.g\.(cs|ts|dart)$/.test(name)) return true;
+  if (/\.snap$|\.min\.js$|\.(js|css)\.map$/.test(name)) return true;
+  if (/(^|\/)generated\//i.test(normalized)) return true;
+  return /^(?:(?!src\/)[^/]+\/)?(dist|obj)\//i.test(normalized);
 }
 
 export function reviewFileCategory(path: string): 'source' | 'docs' | 'generated' | 'tests' {
   const normalized = path.replaceAll('\\', '/');
   if (/(^|\/)[^/]*\.Tests(\/|$)|(^|\/)(tests?|__tests__)(\/|$)|\.(test|spec)\./i.test(normalized))
     return 'tests';
-  if (
-    /(^|\/)(generated|dist|obj|bin)(\/|$)|\.(generated|g)\.|(^|\/)(bun\.lockb?|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock)$/i.test(
-      normalized,
-    )
-  )
-    return 'generated';
+  if (isGeneratedPath(normalized)) return 'generated';
   if (/(^|\/)(docs?|documentation)(\/|$)|\.(md|mdx|rst)$/i.test(normalized)) return 'docs';
   return 'source';
+}
+
+/** The folder a changed file sits in, `/` for the repository root. */
+export function reviewFolderOf(path: string): string {
+  const parts = path.replaceAll('\\', '/').split('/');
+  return parts.length > 1 ? parts.slice(0, -1).join('/') : '/';
+}
+
+export interface ReviewFolderCount {
+  /** The folder, or `generated` for every generated file together. */
+  folder: string;
+  count: number;
+  generated: boolean;
+}
+
+/**
+ * Changed files counted per folder, the card's "Files by folder" line: the
+ * biggest folder first, generated files pooled into one `generated` entry.
+ */
+export function reviewFolderSummary(paths: readonly string[]): ReviewFolderCount[] {
+  const counts = new Map<string, ReviewFolderCount>();
+  for (const path of paths) {
+    const generated = isGeneratedPath(path);
+    const folder = generated ? 'generated' : reviewFolderOf(path);
+    // '' never collides with a folder: the root is '/'.
+    const key = generated ? '' : folder;
+    const entry = counts.get(key) ?? { folder, count: 0, generated };
+    entry.count += 1;
+    counts.set(key, entry);
+  }
+  return [...counts.values()].sort(
+    (a, b) =>
+      Number(a.generated) - Number(b.generated) ||
+      b.count - a.count ||
+      a.folder.localeCompare(b.folder),
+  );
+}
+
+export interface ReviewProgress {
+  /** Every changed file. */
+  total: number;
+  /** Files marked reviewed (generated ones included). */
+  reviewed: number;
+  /** Changed files that are generated. */
+  generated: number;
+  /** Changed files a reviewer has to read: `total - generated`. */
+  toReview: number;
+  /** Of those, the ones not marked reviewed yet. Approve waits for this to reach 0. */
+  left: number;
+  /** Generated files not marked reviewed yet (what "Skip generated" marks). */
+  generatedLeft: number;
+}
+
+export function reviewProgress(
+  paths: readonly string[],
+  reviewedPaths: readonly string[],
+): ReviewProgress {
+  const reviewed = new Set(reviewedPaths);
+  let generated = 0;
+  let left = 0;
+  let generatedLeft = 0;
+  let done = 0;
+  for (const path of paths) {
+    const isDone = reviewed.has(path);
+    if (isDone) done += 1;
+    if (isGeneratedPath(path)) {
+      generated += 1;
+      if (!isDone) generatedLeft += 1;
+    } else if (!isDone) {
+      left += 1;
+    }
+  }
+  return {
+    total: paths.length,
+    reviewed: done,
+    generated,
+    toReview: paths.length - generated,
+    left,
+    generatedLeft,
+  };
+}
+
+/** `doc` with every generated file among `paths` marked reviewed. */
+export function markGeneratedReviewed(
+  doc: ReviewDocument,
+  paths: readonly string[],
+): ReviewDocument {
+  const generated = paths.filter(isGeneratedPath);
+  if (generated.every((p) => doc.reviewed.includes(p))) return doc;
+  return { ...doc, reviewed: [...new Set([...doc.reviewed, ...generated])] };
+}
+
+/** "3 files not reviewed yet", the reason Approve is disabled. */
+export function unreviewedLabel(left: number): string {
+  return `${left} ${left === 1 ? 'file' : 'files'} not reviewed yet`;
 }
 
 export function toReviewDiffFile(file: PullRequestFileChange): DiffFile {

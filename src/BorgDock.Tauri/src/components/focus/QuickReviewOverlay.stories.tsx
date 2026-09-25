@@ -1,8 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import type { PullRequestFileChange } from '@/types';
 import { getControl } from '../../../.storybook/mocks/control';
+import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
 import { makePr } from './__tests__/helpers';
 import { QuickReviewOverlay } from './QuickReviewOverlay';
 
@@ -159,9 +160,18 @@ export const LoadFailure: Story = {
   ],
 };
 
+/** Opens the file walk from the card once the files have loaded. */
+async function openFiles(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const button = await canvas.findByRole('button', { name: 'Review files' });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
+  return canvas;
+}
+
 export const InlineDraft: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = await openFiles(canvasElement);
     const file = await canvas.findByRole('button', { name: /SaveOrderHandler.cs/ });
     await userEvent.click(file);
     await userEvent.click(await canvas.findByRole('button', { name: 'Comment on new line 46' }));
@@ -174,9 +184,77 @@ export const InlineDraft: Story = {
 
 export const ScreenshotComments: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = await openFiles(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Comments' }));
     await userEvent.click(await canvas.findByRole('button', { name: /PR author/ }));
     await waitFor(() => expect(canvas.getByAltText('Browser verification')).toBeVisible());
+  },
+};
+
+/** The iteration 2 mockup's #482: 23 files, two of them generated. */
+const large = makePr({
+  number: 482,
+  repoOwner: 'borght-dev',
+  repoName: 'BorgDock',
+  title: LARGE_PR_TITLE,
+  body: LARGE_PR_BODY,
+  authorLogin: 'koen',
+  headRef: 'feat/t3-sessions',
+  headSha: 't3-head',
+  additions: 1840,
+  deletions: 220,
+  changedFiles: LARGE_PR_FILES.length,
+  commitCount: 11,
+  reviewStatus: 'pending',
+});
+const largeWithChecks = {
+  ...large,
+  passedCount: 78,
+  totalCheckCount: 80,
+  pendingCheckNames: ['E2E (1/2)', 'E2E (2/2)'],
+};
+const queued = [
+  largeWithChecks,
+  makePr({ number: 479, title: 'Flyout: remember the last scroll position', authorLogin: 'mira' }),
+  makePr({
+    number: 3668,
+    title: 'Offer Save & Approve when finishing an order',
+    authorLogin: 'sander',
+  }),
+];
+
+const largeDecorator: Decorator = (Story) => {
+  const control = getControl();
+  control.githubResponses.getPRReviewDetails = { pr: large.pullRequest, baseSha: 'review-base' };
+  control.githubResponses.getPRFiles = LARGE_PR_FILES;
+  return <Story />;
+};
+
+/** The deck: #482 on top with its files by folder and Approve disabled; two PRs peek behind. */
+export const LargePrCard: Story = {
+  decorators: [largeDecorator],
+  beforeEach: () => {
+    useQuickReviewStore.setState({ documents: {} });
+    useQuickReviewStore.getState().startSession(queued);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('21 of 21 to review, 2 generated');
+    await expect(canvas.getByRole('button', { name: 'Approve' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  },
+};
+
+/** "Review files": the walk with the tree, the diff and three files marked. */
+export const LargePrWalk: Story = {
+  decorators: [largeDecorator],
+  beforeEach: LargePrCard.beforeEach,
+  play: async ({ canvasElement }) => {
+    const canvas = await openFiles(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Skip generated' }));
+    await userEvent.keyboard('vv');
+    await canvas.findByText('4 of 23 reviewed, 19 to go');
   },
 };

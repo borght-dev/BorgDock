@@ -146,7 +146,8 @@ describe('WorkbenchPrList', () => {
   it('shows each PR once', () => {
     seed();
     render(<PrList />);
-    const keys = [...list().querySelectorAll('.bd-wb-row[data-key]')].map((r) =>
+    // Each row sits in a wrapper with its action slot; the wrapper carries the key.
+    const keys = [...list().querySelectorAll('.bd-wb-rowwrap[data-key]')].map((r) =>
       r.getAttribute('data-key'),
     );
     expect(keys).toHaveLength(18);
@@ -228,7 +229,7 @@ describe('WorkbenchPrList', () => {
     render(<PrList />);
     const closed = document.querySelector('[data-group-key="recently-closed"]')!;
     expect(closed.querySelector('.bd-wb-group__label')).toHaveTextContent('Recently closed');
-    const rows = closed.querySelectorAll('.bd-wb-row');
+    const rows = closed.querySelectorAll('.bd-wb-rowwrap');
     expect(rows).toHaveLength(3);
     for (const row of rows) expect(row).toHaveAttribute('data-key');
     expect(closed.querySelector('[data-virtual]')).toBeNull();

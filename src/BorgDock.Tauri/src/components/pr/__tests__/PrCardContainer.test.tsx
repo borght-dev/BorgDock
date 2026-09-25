@@ -40,6 +40,7 @@ vi.mock('@/services/pr-actions', () => ({
   rerunChecks: vi.fn().mockResolvedValue(true),
   checkoutPrBranch: vi.fn().mockResolvedValue(true),
   openPrInBrowser: vi.fn().mockResolvedValue(true),
+  reviewPr: vi.fn(),
 }));
 
 // Mock hooks
@@ -487,6 +488,31 @@ describe('PrCardContainer', () => {
       expect(primary).toBeInTheDocument();
       fireEvent.click(primary!);
       expect(openPrInBrowser).toHaveBeenCalledWith('https://github.com/test/repo/pull/42');
+    });
+
+    it('opens Quick Review, not the browser, from the Review buttons', async () => {
+      const { openPrInBrowser, reviewPr } = await import('@/services/pr-actions');
+      vi.mocked(reviewPr).mockClear();
+      vi.mocked(openPrInBrowser).mockClear();
+      const pr = makePr();
+      const { container } = render(<PrCardContainer prWithChecks={pr} />);
+      fireEvent.click(container.querySelector('[data-pr-action="review"]')!);
+      expect(reviewPr).toHaveBeenCalledWith(pr);
+      cleanup();
+
+      // Review as the primary action: a review is pending.
+      const waiting = makePr({
+        pullRequest: {
+          authorLogin: 'someone-else',
+          reviewStatus: 'pending',
+        } as PullRequestWithChecks['pullRequest'],
+      });
+      const view = render(<PrCardContainer prWithChecks={waiting} />);
+      fireEvent.click(view.container.querySelector('[data-pr-primary-action="review"]')!);
+      expect(reviewPr).toHaveBeenLastCalledWith(waiting);
+      expect(openPrInBrowser).not.toHaveBeenCalled();
+      // The tab layout keeps its hover bar: no Workbench action slot.
+      expect(view.container.querySelector('.bd-row-action')).toBeNull();
     });
 
     it('dispatches checkoutPrBranch when secondary Checkout is clicked', async () => {

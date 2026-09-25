@@ -3,22 +3,28 @@ import { submitReview } from '@/services/github/mutations';
 import { getPRReviewDetails } from '@/services/github/pulls';
 import { getClientForRepo } from '@/services/github/singleton';
 import {
-  emptyReviewDocument,
   loadReviewSnapshot,
+  normalizeReviewDocument,
   type ReviewDocument,
+  type ReviewEvent,
   type ReviewSnapshot,
   reconcileReviewDocument,
   reviewDocumentKey,
+  reviewProgress,
 } from '@/services/quick-review';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
+import { toastError } from '@/stores/toast-store';
 import type { PullRequest } from '@/types';
 import { parseError } from '@/utils/parse-error';
 
 export function useQuickReviewDocument(pr: PullRequest) {
   const client = getClientForRepo(pr.repoOwner, pr.repoName);
   const key = reviewDocumentKey(pr, client?.account ?? '');
-  const document = useQuickReviewStore((s) => s.documents[key] ?? emptyReviewDocument);
+  // Normalized outside the selector (a new object per call would loop), so
+  // documents saved before a field existed still load.
+  const stored = useQuickReviewStore((s) => s.documents[key]);
+  const document = normalizeReviewDocument(stored);
   const updateDocument = useQuickReviewStore((s) => s.updateDocument);
   const [snapshot, setSnapshot] = useState<ReviewSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,10 +60,26 @@ export function useQuickReviewDocument(pr: PullRequest) {
   function update(updater: (doc: ReviewDocument) => ReviewDocument) {
     updateDocument(key, updater);
   }
-  async function submit() {
+  /**
+   * Posts the review. `event` overrides the document's decision for this
+   * submission only (the card's Approve); it is never persisted. Approving
+   * waits until every non-generated file is reviewed.
+   */
+  async function submit(event?: ReviewEvent) {
     if (submitting.current || !client || !snapshot || loading || stale || loadError) return;
-    const doc = useQuickReviewStore.getState().documents[key];
+    const stored = useQuickReviewStore.getState().documents[key];
+    // The override is not saved: a failed approval leaves the draft's own
+    // decision as it was.
+    const doc = stored && event ? { ...stored, event } : stored;
     if (!doc || doc.comments.some((c) => !c.saved || c.outdated || !c.body.trim())) return;
+    if (
+      doc.event === 'APPROVE' &&
+      reviewProgress(
+        snapshot.files.map((f) => f.filename),
+        doc.reviewed,
+      ).left > 0
+    )
+      return;
     if (
       doc.event !== 'APPROVE' &&
       !doc.body.trim() &&
@@ -90,6 +112,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
       void usePrStore.getState().refreshPr(pr.repoOwner, pr.repoName, pr.number);
     } catch (error) {
       store.setError(`Review not submitted: ${parseError(error).message}`);
+      toastError('Review not submitted', error);
     } finally {
       submitting.current = false;
     }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { emptyReviewDocument, type ReviewDocument } from '@/services/quick-review';
+import { prRowKey } from '@/components/pr/pr-card-data';
+import { normalizeReviewDocument, type ReviewDocument } from '@/services/quick-review';
 import type { PullRequestWithChecks } from '@/types';
 import { reviewDraftStorage } from '@/utils/review-draft-storage';
 
@@ -11,7 +12,8 @@ interface QuickReviewStoreState {
   state: QuickReviewState;
   queue: PullRequestWithChecks[];
   currentIndex: number;
-  decisions: Map<number, ReviewDecision>;
+  /** Decision per PR, keyed `owner/repo#number` (`prRowKey`): numbers repeat across repos. */
+  decisions: Map<string, ReviewDecision>;
   error: string | null;
   documents: Record<string, ReviewDocument>;
   updateDocument: (key: string, update: (doc: ReviewDocument) => ReviewDocument) => void;
@@ -41,7 +43,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
       documents: {},
       updateDocument: (key, update) =>
         set((s) => ({
-          documents: { ...s.documents, [key]: update(s.documents[key] ?? emptyReviewDocument) },
+          documents: { ...s.documents, [key]: update(normalizeReviewDocument(s.documents[key])) },
         })),
       discardDocument: (key) =>
         set((s) => {
@@ -86,7 +88,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
         const pr = queue[currentIndex];
         if (pr) {
           const next = new Map(decisions);
-          next.set(pr.pullRequest.number, decision);
+          next.set(prRowKey(pr.pullRequest), decision);
 
           if (currentIndex >= queue.length - 1) {
             set({ state: 'complete', decisions: next, error: null });

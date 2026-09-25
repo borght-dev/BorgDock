@@ -110,11 +110,10 @@ test('detail file navigator groups readable names and launches a single PR revie
   await page.getByRole('button', { name: 'Review', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Quick Review', exact: true })).toBeVisible();
   await expect(page.getByText('PR 1 / 1', { exact: true })).toBeVisible();
-  await expect(page.locator('.qr-next')).toBeEnabled();
+  // Quick Review opens on the PR's card; its files are one click away.
+  await expect(page.getByRole('button', { name: 'Review files', exact: true })).toBeEnabled();
   await expect(page.locator('[data-overlay="quick-review"]')).toHaveCount(1);
-  await expect(page.locator('[data-quick-review-content]')).toContainText(
-    'Keep order tooltips hidden',
-  );
+  await expect(page.locator('.qr-card[data-i="0"]')).toContainText('Keep order tooltips hidden');
 });
 
 test('merge-ready PRs keep their enabled Merge action', async ({ page }) => {

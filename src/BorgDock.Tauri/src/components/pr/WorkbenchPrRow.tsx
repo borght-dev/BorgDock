@@ -1,6 +1,12 @@
+import { GitMerge, MessageSquareText } from 'lucide-react';
 import { type MouseEvent, memo, useCallback, useMemo } from 'react';
+import { Button, ProgressButton } from '@/components/shared/primitives';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
+import { useProgressAction } from '@/hooks/useProgressAction';
 import { showPr } from '@/services/navigation';
+import { primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
+import { mergePrWithToast, reviewPr } from '@/services/pr-actions';
+import { isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -11,6 +17,84 @@ import { prRowKey, toPrCardData } from './pr-card-data';
 
 /** Middle mouse button in `MouseEvent.button`. */
 const MIDDLE_BUTTON = 1;
+
+const ICON = { size: 12, strokeWidth: 2.25, 'aria-hidden': true } as const;
+
+/**
+ * The row's trailing action (plans/ui-overhaul-workbench.md, phase 4): only
+ * for the two actions that make sense without opening the PR. `null` for
+ * everything else (failing, own, closed, nothing to do).
+ */
+export function rowActionFor(
+  prWithChecks: PullRequestWithChecks,
+  username: string,
+  teams: readonly string[] = [],
+): 'review' | 'merge' | null {
+  const pr = prWithChecks.pullRequest;
+  if (pr.state !== 'open' || pr.mergedAt) return null;
+  const primary = primaryFor(
+    shapeFromPrWithChecks(
+      prWithChecks,
+      isMyPr(prWithChecks, username),
+      isWaitingOnMe(prWithChecks, username, teams),
+    ),
+  );
+  return primary === 'review' || primary === 'merge' ? primary : null;
+}
+
+/** Merge through the progress fill: "Merging", then "Merged"; the row updates from the store. */
+function RowMergeButton({ prWithChecks }: { prWithChecks: PullRequestWithChecks }) {
+  const p = prWithChecks.pullRequest;
+  const merge = useProgressAction(
+    () =>
+      mergePrWithToast({
+        repoOwner: p.repoOwner,
+        repoName: p.repoName,
+        number: p.number,
+        title: p.title,
+        htmlUrl: p.htmlUrl,
+      }),
+    'Merge failed',
+  );
+  return (
+    <ProgressButton
+      variant="primary"
+      size="sm"
+      leading={<GitMerge {...ICON} />}
+      state={merge.state}
+      onTrigger={() => void merge.trigger()}
+      label="Merge"
+      busyLabel="Merging"
+      doneLabel="Merged"
+      data-row-action="merge"
+    />
+  );
+}
+
+function RowAction({
+  kind,
+  prWithChecks,
+}: {
+  kind: 'review' | 'merge';
+  prWithChecks: PullRequestWithChecks;
+}) {
+  if (kind === 'merge') return <RowMergeButton prWithChecks={prWithChecks} />;
+  return (
+    <Button
+      variant="primary"
+      size="sm"
+      leading={<MessageSquareText {...ICON} />}
+      aria-label={`Review #${prWithChecks.pullRequest.number}`}
+      data-row-action="review"
+      onClick={(e) => {
+        e.stopPropagation();
+        reviewPr(prWithChecks);
+      }}
+    >
+      Review
+    </Button>
+  );
+}
 
 interface WorkbenchPrRowProps {
   prWithChecks: PullRequestWithChecks;
@@ -31,6 +115,9 @@ interface WorkbenchPrRowProps {
  * - Ctrl/Cmd+click, Ctrl/Cmd+Enter and middle-click open the pop-out window
  *   (`openPrDetail`); so does "Open in window" in the context menu.
  * - Right-click opens `PrContextMenu`; its confirm dialogs mount here too.
+ * - A trailing action on hover, focus and selection when the PR's primary
+ *   action is Review (opens Quick Review) or Merge (progress fill, then the
+ *   row updates from the store; the result is a toast).
  */
 export const WorkbenchPrRow = memo(function WorkbenchPrRow({
   prWithChecks,
@@ -42,7 +129,9 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
   const key = prRowKey(pr);
   const selected = useUiStore((s) => s.selectedPrKey === key);
   const username = usePrStore((s) => s.username);
+  const teams = usePrStore((s) => s.teams);
   const actions = usePrCardActions(prWithChecks);
+  const actionKind = rowActionFor(prWithChecks, username, teams);
 
   const isMine = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
   const cardData = useMemo(() => toPrCardData(prWithChecks, isMine), [prWithChecks, isMine]);
@@ -59,6 +148,7 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
 
   const handleClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement).closest?.('[data-pr-card-action]')) return;
       useUiStore.getState().selectPrKey(key, number);
       if (e.ctrlKey || e.metaKey) openPopOut();
       else openInline();
@@ -69,6 +159,7 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
   const handleAuxClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       if (e.button !== MIDDLE_BUTTON) return;
+      if ((e.target as HTMLElement).closest?.('[data-pr-card-action]')) return;
       e.preventDefault();
       useUiStore.getState().selectPrKey(key, number);
       openPopOut();
@@ -91,6 +182,7 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
           if (e.button === MIDDLE_BUTTON) e.preventDefault();
         }}
         onContextMenu={actions.handleContextMenu}
+        action={actionKind ? <RowAction kind={actionKind} prWithChecks={prWithChecks} /> : null}
       />
       <PrRowOverlays prWithChecks={prWithChecks} actions={actions} />
     </>

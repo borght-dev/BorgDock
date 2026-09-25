@@ -3740,6 +3740,96 @@ body.sql-resizing-v .sql-resize-handle {
     }
   }
 
+  /* Toasts (components/shared/Toast.tsx): bottom right, newest last, above
+     Quick Review. Each slides up 16 px and fades in. */
+  .bd-toasts {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: min(420px, calc(100vw - 32px));
+    pointer-events: none;
+  }
+  .bd-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 7px 8px 7px 12px;
+    border: 1px solid var(--color-subtle-border);
+    border-left: 3px solid var(--color-toast-info-stripe);
+    border-radius: 8px;
+    background: var(--color-surface-raised);
+    box-shadow: var(--elevation-2);
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    color: var(--color-text-primary);
+    pointer-events: auto;
+    animation: bd-toast-in var(--motion-base) var(--ease-out) both;
+  }
+  .bd-toast--success {
+    border-left-color: var(--color-toast-success-stripe);
+  }
+  .bd-toast--error {
+    border-left-color: var(--color-toast-error-stripe);
+  }
+  .bd-toast__message {
+    min-width: 0;
+    flex: 1;
+    overflow-wrap: anywhere;
+  }
+  .bd-toast__action {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border: 1px solid var(--color-strong-border);
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    font-weight: 500;
+    color: var(--color-accent);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-toast__action:hover {
+    background: var(--color-accent-subtle);
+  }
+  .bd-toast__close {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-toast__close:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
+  .bd-toast__action:focus-visible,
+  .bd-toast__close:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  @keyframes bd-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   /* Readiness sentence under the title. */
   .bd-readiness {
     display: flex;
@@ -5741,6 +5831,52 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-text-tertiary);
     text-align: right;
   }
+  /* The row's one trailing action, Review or Merge (phase 4). The slot is a
+     sibling of the row (a button must not sit inside its role="button"),
+     laid over the chip and number instead of taking a column, so the row
+     never shifts; it shows on hover, keyboard focus and selection. The
+     gradient repeats the row's own background so the covered cells fade. */
+  .bd-wb-rowwrap {
+    position: relative;
+  }
+  .bd-wb-rowwrap:hover > .bd-wb-row {
+    background: var(--color-surface-hover);
+  }
+  .bd-wb-rowwrap[data-selected='true']:hover > .bd-wb-row {
+    background: var(--color-selected-row-bg);
+  }
+  .bd-row-action {
+    --bd-row-action-bg: var(--color-background);
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 32px;
+    background:
+      linear-gradient(to right, transparent, var(--bd-row-action-wash, transparent) 28px),
+      linear-gradient(to right, transparent, var(--bd-row-action-bg) 28px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-std);
+  }
+  .bd-wb-rowwrap:hover .bd-row-action {
+    --bd-row-action-wash: var(--color-surface-hover);
+  }
+  .bd-wb-rowwrap[data-selected='true'] .bd-row-action {
+    --bd-row-action-wash: var(--color-selected-row-bg);
+  }
+  .bd-wb-rowwrap:hover .bd-row-action,
+  .bd-wb-rowwrap:focus-within .bd-row-action,
+  .bd-wb-rowwrap[data-selected='true'] .bd-row-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .bd-row-action .bd-btn {
+    height: 24px;
+  }
+
   /* View-transition names on the selected row only (phase 3 morphs them into
      the detail header). A covered list drops them so the detail view's
      header is the only element carrying them. */

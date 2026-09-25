@@ -5,6 +5,7 @@ import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
 import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { SplashScreen } from '@/components/SplashScreen';
+import { ToastViewport } from '@/components/shared/Toast';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
@@ -376,6 +377,7 @@ export default function App() {
       </MainWindow>
       <MergeToast />
       <QuickReviewOverlay />
+      <ToastViewport />
       <T3CheckoutDialog />
     </div>
   );

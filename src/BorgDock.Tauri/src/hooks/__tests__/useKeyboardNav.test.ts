@@ -858,6 +858,36 @@ describe('useKeyboardNav', () => {
       expect(mockOpenPrDetail).not.toHaveBeenCalled();
     });
 
+    it("Enter on a row's action button presses the button, not the row", () => {
+      mountRows([{ n: 12, selected: true }]);
+      const slot = document.createElement('span');
+      slot.setAttribute('data-pr-card-action', '');
+      const button = document.createElement('button');
+      slot.appendChild(button);
+      document.querySelector('.bd-wb-row')?.appendChild(slot);
+      renderHook(() => useKeyboardNav());
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      button.dispatchEvent(event);
+      expect(mockShowPr).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('the tab layout leaves the keys to an open overlay (Quick Review)', () => {
+      mockLayoutV3 = false;
+      mockOverlayOpen = true;
+      mountRows([{ n: 10 }, { n: 12 }]);
+      renderHook(() => useKeyboardNav());
+      const event = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+      fireKey('j');
+      expect(event.defaultPrevented).toBe(false);
+      expect(mockSelectPr).not.toHaveBeenCalled();
+    });
+
     it('Enter without a selection does nothing', () => {
       mountRows([{ n: 10 }]);
       renderHook(() => useKeyboardNav());

@@ -80,7 +80,7 @@ describe('quick-review-store', () => {
     });
 
     it('resets decisions from a previous session', () => {
-      useQuickReviewStore.setState({ decisions: new Map([[1, 'approved']]) });
+      useQuickReviewStore.setState({ decisions: new Map([['owner/repo#1', 'approved']]) });
       useQuickReviewStore.getState().startSession([makePr(5)]);
       expect(useQuickReviewStore.getState().decisions.size).toBe(0);
     });
@@ -146,7 +146,7 @@ describe('quick-review-store', () => {
       const s = useQuickReviewStore.getState();
       expect(s.currentIndex).toBe(1);
       expect(s.state).toBe('reviewing');
-      expect(s.decisions.get(1)).toBe('approved');
+      expect(s.decisions.get('owner/repo#1')).toBe('approved');
     });
 
     it('sets state to complete on last PR', () => {
@@ -156,8 +156,8 @@ describe('quick-review-store', () => {
 
       const s = useQuickReviewStore.getState();
       expect(s.state).toBe('complete');
-      expect(s.decisions.get(1)).toBe('approved');
-      expect(s.decisions.get(2)).toBe('commented');
+      expect(s.decisions.get('owner/repo#1')).toBe('approved');
+      expect(s.decisions.get('owner/repo#2')).toBe('commented');
     });
 
     it('handles single PR session', () => {
@@ -165,7 +165,7 @@ describe('quick-review-store', () => {
       useQuickReviewStore.getState().advance('skipped');
 
       expect(useQuickReviewStore.getState().state).toBe('complete');
-      expect(useQuickReviewStore.getState().decisions.get(99)).toBe('skipped');
+      expect(useQuickReviewStore.getState().decisions.get('owner/repo#99')).toBe('skipped');
     });
 
     it('does nothing when queue is empty', () => {

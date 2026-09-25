@@ -18,10 +18,9 @@ import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { useProgressAction } from '@/hooks/useProgressAction';
 import { type PrActionId, primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
-import { mergePr, rerunChecks } from '@/services/pr-actions';
+import { mergePrWithToast, rerunChecks, reviewPr } from '@/services/pr-actions';
 import { isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
 import { usePrStore } from '@/stores/pr-store';
-import { useQuickReviewStore } from '@/stores/quick-review-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import type { PrActions } from './usePrActions';
 
@@ -180,8 +179,9 @@ const ICON = { size: 13, strokeWidth: 2.25, 'aria-hidden': true } as const;
  * close, open in window).
  *
  * Merge, Rerun and Fix fill while the request runs and flip to their result
- * label; a failure toasts (`services/pr-actions` error sink) and the button
- * goes back to rest. Review opens Quick Review for this PR. `R` reruns and
+ * label; a failure toasts (Merge through the in-window toast stack, the others
+ * through the `services/pr-actions` error sink) and the button goes back to
+ * rest. Review opens Quick Review for this PR. `R` reruns and
  * `F` fixes from anywhere in the view (plan section 7).
  */
 export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchActionBarProps) {
@@ -201,7 +201,7 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
 
   const merge = useProgressAction(
     () =>
-      mergePr({
+      mergePrWithToast({
         repoOwner: p.repoOwner,
         repoName: p.repoName,
         number: p.number,
@@ -242,7 +242,7 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
     },
   });
 
-  const review = () => useQuickReviewStore.getState().startSinglePr(pr);
+  const review = () => reviewPr(pr);
 
   let primaryButton: ReactNode = null;
   switch (primary) {

@@ -1,37 +1,39 @@
-import { useState } from 'react';
+import clsx from 'clsx';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
-import type { ReviewDocument, ReviewFileGroup } from '@/services/quick-review';
+import {
+  isGeneratedPath,
+  type ReviewDocument,
+  type ReviewFileGroup,
+} from '@/services/quick-review';
 
 interface Props {
   document: ReviewDocument;
   groups: ReviewFileGroup[];
   currentPath: string | null;
-  finishing: boolean;
-  showingComments: boolean;
-  onComments: () => void;
-  onNavigate: (path: string | null) => void;
+  onNavigate: (path: string) => void;
 }
-export function QuickReviewNavigation({
-  document: doc,
-  groups,
-  currentPath,
-  finishing,
-  showingComments,
-  onComments,
-  onNavigate,
-}: Props) {
+
+/**
+ * The file walk's tree (the iteration 2 mockup's `.qr-tree`): files grouped
+ * by folder (tests, docs and generated files in their own groups, tests
+ * last), a checkbox per file that draws its checkmark once the file is
+ * marked reviewed, the current file highlighted. Clicking a file opens it.
+ */
+export function QuickReviewNavigation({ document: doc, groups, currentPath, onNavigate }: Props) {
   const [open, setOpen] = useState(false);
   const reviewed = new Set(doc.reviewed);
   const commented = new Set(doc.comments.map((c) => c.path));
-  const total = groups.reduce((sum, g) => sum + g.files.length, 0);
-  const go = (path: string | null) => {
-    setOpen(false);
-    onNavigate(path);
-  };
+  const currentRef = useRef<HTMLButtonElement>(null);
+
+  // Keep the current file in view as the walk moves through the tree.
+  useEffect(() => {
+    if (currentPath) currentRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [currentPath]);
+
   return (
-    <nav className={`qr-sidebar ${open ? 'qr-files-open' : ''}`} aria-label="Review path">
-      <div className="qr-row">
-        <strong>Review path</strong>
+    <nav className={clsx('qr-tree', open && 'qr-files-open')} aria-label="Review path">
+      <div className="qr-tree__mobile">
         <Button
           variant="ghost"
           size="sm"
@@ -42,64 +44,54 @@ export function QuickReviewNavigation({
           Files
         </Button>
       </div>
-      <button
-        type="button"
-        className="qr-file"
-        aria-current={!currentPath && !finishing && !showingComments ? 'step' : undefined}
-        onClick={() => go(null)}
-      >
-        PR description
-      </button>
-      <button
-        type="button"
-        className="qr-file"
-        aria-current={showingComments ? 'page' : undefined}
-        onClick={() => {
-          setOpen(false);
-          onComments();
-        }}
-      >
-        Comments
-      </button>
       <div className="qr-file-groups">
         {groups.map((group) => (
-          <details key={group.name} open>
-            <summary>
-              {group.name} · {group.files.length}
-            </summary>
-            {group.files.map((file) => (
-              <button
-                key={file.filename}
-                type="button"
-                className="qr-file"
-                aria-current={
-                  currentPath === file.filename && !finishing && !showingComments
-                    ? 'step'
-                    : undefined
-                }
-                onClick={() => go(file.filename)}
-              >
-                <span aria-label={reviewed.has(file.filename) ? 'Reviewed' : 'Not reviewed'}>
-                  {reviewed.has(file.filename) ? '✓' : '○'}
-                </span>
-                <span className="qr-path">
-                  {file.filename.split('/').pop()}
-                  <small>{file.filename.split('/').slice(0, -1).join('/')}</small>
-                </span>
-                {commented.has(file.filename) && <span aria-label="Has draft comment">•</span>}
-              </button>
-            ))}
-          </details>
+          <div key={group.name} className="qr-fold" role="group" aria-label={group.name}>
+            <div className="qr-fold__head">
+              <span>{group.name}</span>
+              <span>{group.files.length}</span>
+            </div>
+            {group.files.map((file) => {
+              const done = reviewed.has(file.filename);
+              const current = currentPath === file.filename;
+              return (
+                <button
+                  key={file.filename}
+                  ref={current ? currentRef : undefined}
+                  type="button"
+                  className="qr-file"
+                  data-done={done ? 'true' : undefined}
+                  data-generated={isGeneratedPath(file.filename) ? 'true' : undefined}
+                  aria-current={current ? 'step' : undefined}
+                  title={file.filename}
+                  onClick={() => {
+                    setOpen(false);
+                    onNavigate(file.filename);
+                  }}
+                >
+                  <span
+                    className="qr-cb"
+                    role="img"
+                    aria-label={done ? 'Reviewed' : 'Not reviewed'}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m5 12 5 5L20 7" />
+                    </svg>
+                  </span>
+                  <span className="qr-path">{file.filename.split('/').pop()}</span>
+                  <span className="qr-delta">
+                    {commented.has(file.filename) && (
+                      <span className="qr-has-draft" role="img" aria-label="Has draft comment">
+                        •
+                      </span>
+                    )}
+                    <em>+{file.additions}</em> <i>−{file.deletions}</i>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         ))}
-      </div>
-      <div className="qr-progress">
-        {doc.reviewed.length} of {total} files reviewed
-        <progress
-          aria-label="Files reviewed"
-          max={Math.max(total, 1)}
-          value={doc.reviewed.length}
-        />
-        <span className="qr-muted">Tests come last. Next does not mark files reviewed.</span>
       </div>
     </nav>
   );

@@ -1,43 +1,36 @@
 import type { ReactNode } from 'react';
 import { ReviewDecisionPicker } from '@/components/pr-detail/ReviewComposer';
-import { Button } from '@/components/shared/primitives';
-import type { ReviewDocument } from '@/services/quick-review';
+import type { ReviewDocument, ReviewProgress } from '@/services/quick-review';
 
 interface Props {
   document: ReviewDocument;
-  filePaths: string[];
+  progress: ReviewProgress;
   comments: ReactNode;
   submitIssue: string | null;
   update: (updater: (doc: ReviewDocument) => ReviewDocument) => void;
 }
+
+/**
+ * The review composer on the Quick Review card ("Write review"): the draft
+ * comments, the decision (comment, approve, request changes) and the overall
+ * comment, posted together as one GitHub review. Approving here waits for the
+ * same thing the card's Approve does: every non-generated file reviewed.
+ */
 export function QuickReviewFinish({
   document: doc,
-  filePaths,
+  progress,
   comments,
   submitIssue,
   update,
 }: Props) {
-  const reviewed = new Set(doc.reviewed);
-  const unreviewed = filePaths.filter((path) => !reviewed.has(path));
   return (
-    <div className="qr-description">
-      <h3>Finish review</h3>
-      <div className="qr-finish-progress">
-        <p>
-          {unreviewed.length} of {filePaths.length} files remain unreviewed.
-        </p>
-        {unreviewed.length > 0 && (
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() =>
-              update((d) => ({ ...d, reviewed: [...new Set([...d.reviewed, ...filePaths])] }))
-            }
-          >
-            Mark all files reviewed
-          </Button>
-        )}
-      </div>
+    <div className="qr-compose">
+      <h3>Your review</h3>
+      <p className="qr-finish-progress">
+        {progress.left === 0
+          ? `All ${progress.toReview} files reviewed.`
+          : `${progress.left} of ${progress.toReview} files still to review.`}
+      </p>
       {doc.comments.length === 0 ? <p className="qr-muted">No inline comments.</p> : comments}
       <ReviewDecisionPicker
         decision={
