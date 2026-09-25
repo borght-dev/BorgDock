@@ -229,7 +229,7 @@ function FlyoutToastCard({
           className={clsx('w-full', isMerged ? 'h-[4px]' : 'h-[3px]')}
           style={{
             background: isMerged
-              ? `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 80%, #F5B73B), ${config.stripe})`
+              ? `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 80%, var(--color-status-yellow)), ${config.stripe})`
               : `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 60%, transparent))`,
           }}
         />
@@ -313,7 +313,7 @@ function FlyoutToastCard({
             className="h-full origin-left"
             style={{
               background: isMerged
-                ? `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 80%, #F5B73B), ${config.stripe})`
+                ? `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 80%, var(--color-status-yellow)), ${config.stripe})`
                 : `linear-gradient(90deg, ${config.stripe}, color-mix(in srgb, ${config.stripe} 70%, transparent))`,
               transform: 'scaleX(1)',
             }}

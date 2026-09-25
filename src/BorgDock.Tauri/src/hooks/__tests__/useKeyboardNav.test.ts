@@ -18,6 +18,8 @@ const mockPushView = vi.fn((_view: unknown) => Promise.resolve());
 const mockShowPr = vi.fn((_target: unknown) => Promise.resolve());
 const mockOpenPrDetail = vi.fn((_target: unknown) => Promise.resolve());
 const mockSelectPrKey = vi.fn();
+const mockShowWorkItem = vi.fn((_id: number) => Promise.resolve());
+const mockSetWorkItemsSelectedId = vi.fn();
 let mockOverlayOpen = false;
 
 let mockSelectedPrNumber: number | null = null;
@@ -42,6 +44,7 @@ vi.mock('@/stores/ui-store', () => ({
         setActiveSection: mockSetActiveSection,
         selectPr: mockSelectPr,
         selectPrKey: mockSelectPrKey,
+        setWorkItemsSelectedId: mockSetWorkItemsSelectedId,
       }),
     },
   ),
@@ -78,6 +81,7 @@ vi.mock('@/services/navigation', () => ({
   showSection: (section: string) => mockShowSection(section),
   pushView: (view: unknown) => mockPushView(view),
   showPr: (target: unknown) => mockShowPr(target),
+  showWorkItem: (id: number) => mockShowWorkItem(id),
   isOverlayOpen: () => mockOverlayOpen,
 }));
 
@@ -952,5 +956,105 @@ describe('useKeyboardNav', () => {
       fireKey('Enter', { ctrlKey: true });
       expect(mockOpenPrDetail).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('useKeyboardNav on Workbench work item rows (layoutV3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLayoutV3 = true;
+    mockActiveSection = 'workitems';
+    mockViewStack = [{ kind: 'list' }];
+    mockOverlayOpen = false;
+    mockFilteredPrs.mockReturnValue([makePr(1), makePr(2)]);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+    mockLayoutV3 = false;
+  });
+
+  /** Rows as WorkbenchWorkItemsSection draws them; `collapsed` ones sit in an inert group. */
+  function mountWorkItems(rows: { id: number; selected?: boolean; collapsed?: boolean }[]) {
+    for (const { id, selected, collapsed } of rows) {
+      const parent = document.createElement('div');
+      if (collapsed) parent.setAttribute('inert', '');
+      const row = document.createElement('div');
+      row.className = 'bd-wb-row bd-wi-wb-row';
+      row.setAttribute('role', 'button');
+      row.dataset.wiId = String(id);
+      if (selected) row.dataset.selected = 'true';
+      parent.appendChild(row);
+      document.body.appendChild(parent);
+    }
+  }
+
+  it('j / ArrowDown move down the drawn rows, skipping collapsed groups', () => {
+    mountWorkItems([{ id: 101, selected: true }, { id: 102, collapsed: true }, { id: 103 }]);
+    renderHook(() => useKeyboardNav());
+    fireKey('j');
+    expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(103);
+    fireKey('ArrowDown');
+    expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(103);
+    // Work item rows never touch the PR selection or the tab layout's index.
+    expect(mockSelectPr).not.toHaveBeenCalled();
+    expect(mockSelectPrKey).not.toHaveBeenCalled();
+  });
+
+  it('k / ArrowUp move up and stop at the first row', () => {
+    mountWorkItems([{ id: 101 }, { id: 102, selected: true }]);
+    renderHook(() => useKeyboardNav());
+    fireKey('k');
+    expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(101);
+    document.body.innerHTML = '';
+    mountWorkItems([{ id: 101, selected: true }, { id: 102 }]);
+    fireKey('ArrowUp');
+    expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(101);
+  });
+
+  it('selects the first row when nothing is selected', () => {
+    mountWorkItems([{ id: 101 }, { id: 102 }]);
+    renderHook(() => useKeyboardNav());
+    fireKey('j');
+    expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(101);
+  });
+
+  it('Enter opens the selected work item in the detail view', () => {
+    mountWorkItems([{ id: 101 }, { id: 102, selected: true }]);
+    renderHook(() => useKeyboardNav());
+    fireKey('Enter');
+    expect(mockShowWorkItem).toHaveBeenCalledWith(102);
+    expect(mockShowPr).not.toHaveBeenCalled();
+    expect(mockOpenPrDetail).not.toHaveBeenCalled();
+  });
+
+  it("Enter on a row's toggle presses the toggle, not the row", () => {
+    mountWorkItems([{ id: 102, selected: true }]);
+    const toggle = document.createElement('button');
+    toggle.setAttribute('data-wi-toggle', 'track');
+    document.body.appendChild(toggle);
+    renderHook(() => useKeyboardNav());
+    toggle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(mockShowWorkItem).not.toHaveBeenCalled();
+  });
+
+  it('stands down while a menu or dialog is open', () => {
+    mockOverlayOpen = true;
+    mountWorkItems([{ id: 101, selected: true }, { id: 102 }]);
+    renderHook(() => useKeyboardNav());
+    fireKey('j');
+    fireKey('Enter');
+    expect(mockSetWorkItemsSelectedId).not.toHaveBeenCalled();
+    expect(mockShowWorkItem).not.toHaveBeenCalled();
+  });
+
+  it('leaves the rows alone in the tab layout', () => {
+    mockLayoutV3 = false;
+    mountWorkItems([{ id: 101, selected: true }, { id: 102 }]);
+    renderHook(() => useKeyboardNav());
+    fireKey('j');
+    fireKey('Enter');
+    expect(mockSetWorkItemsSelectedId).not.toHaveBeenCalled();
+    expect(mockShowWorkItem).not.toHaveBeenCalled();
   });
 });

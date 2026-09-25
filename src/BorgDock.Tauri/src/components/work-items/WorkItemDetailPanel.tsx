@@ -1,11 +1,15 @@
+import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Kbd, Tabs } from '@/components/shared/primitives';
+import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import type { ProcessTab } from '@/services/ado/layout';
+import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '@/types';
 import { ActivityTab } from './WorkItemDetailPanel/ActivityTab';
 import { AttachmentsTab } from './WorkItemDetailPanel/AttachmentsTab';
 import { DiscussionRail } from './WorkItemDetailPanel/DiscussionRail';
-import { LinksTab } from './WorkItemDetailPanel/LinksTab';
+import { LinksTab, useMentioningPrs } from './WorkItemDetailPanel/LinksTab';
 import { OverviewTab } from './WorkItemDetailPanel/OverviewTab';
+import type { LinkedPR } from './WorkItemDetailPanel/parseLinkedPRs';
 import { buildDetailTabs } from './WorkItemDetailPanel/partitionFields';
 import { RightRail } from './WorkItemDetailPanel/RightRail';
 import { TitleBlock, type TitleBlockChange } from './WorkItemDetailPanel/TitleBlock';
@@ -15,12 +19,7 @@ import {
   type AutoSaveValues,
   useAutoSave,
 } from './WorkItemDetailPanel/useAutoSave';
-import type { LinkedPR } from './WorkItemDetailPanel/parseLinkedPRs';
-import type {
-  DynamicFieldItem,
-  WorkItemAttachment,
-  WorkItemComment,
-} from '@/types';
+import { WorkItemDetailHeader } from './WorkItemDetailPanel/WorkItemDetailHeader';
 
 /** Below this width the right rail collapses behind a drawer. Pairs with the
  * `[data-wi-detail][data-rail-collapsed='true']` rule in styles/index.css. */
@@ -83,6 +82,14 @@ interface Props {
   /** Optional adjacent nav callback — if absent, ↑↓ buttons hide. */
   onArrowNav?: (dir: 'prev' | 'next') => void;
   adjacent?: AdjacentNav;
+  /**
+   * Hosted by the main window's full-screen `WorkItemDetailView`: the
+   * Workbench header (Back, `AB#id`, type and state line, title, the field
+   * pickers and the action bar) replaces the title block, the tabs get the
+   * sliding underline and a crossfade, `J` / `K` step through them, and the
+   * footer drops Close and Open in ADO (Back and the action bar have them).
+   */
+  embedded?: boolean;
 }
 
 export function WorkItemDetailPanel(props: Props) {
@@ -107,6 +114,7 @@ export function WorkItemDetailPanel(props: Props) {
     onAddComment,
     onArrowNav,
     adjacent,
+    embedded = false,
   } = props;
 
   const [tab, setTab] = useState<string>('overview');
@@ -182,6 +190,8 @@ export function WorkItemDetailPanel(props: Props) {
   );
 
   const linkedPRs = useMemo(() => item.linkedPRs ?? [], [item.linkedPRs]);
+  // GitHub pull requests in the main window's list that mention AB#<id>.
+  const mentioningPrs = useMentioningPrs(item.id);
 
   const savedLabel = useMemo(() => {
     if (auto.error) return `Save failed — ${auto.error}`;
@@ -196,8 +206,12 @@ export function WorkItemDetailPanel(props: Props) {
   }, [auto.error, auto.isSaving, auto.lastSavedAt]);
 
   const rootRef = useRef<HTMLDivElement>(null);
+  // The element the rail collapses in: the whole panel, or the body under
+  // the header when embedded.
+  const gridRef = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the grid only mounts once the loading spinner is gone; `isLoading` re-attaches the observer then
   useEffect(() => {
-    const el = rootRef.current;
+    const el = gridRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
@@ -205,7 +219,7 @@ export function WorkItemDetailPanel(props: Props) {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [isLoading]);
 
   const detailSlices = useMemo(
     () =>
@@ -230,6 +244,14 @@ export function WorkItemDetailPanel(props: Props) {
     }
   }, [detailSlices, tab]);
 
+  const tabOrder = [...detailSlices.map((s) => s.id), 'activity', 'links', 'files'];
+  const stepTab = (delta: number) => {
+    const index = tabOrder.indexOf(tab);
+    const next = tabOrder[(index + delta + tabOrder.length) % tabOrder.length];
+    if (next) setTab(next);
+  };
+  useDetailViewKeys(rootRef, { j: () => stepTab(1), k: () => stepTab(-1) }, embedded);
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--color-surface)]">
@@ -241,15 +263,186 @@ export function WorkItemDetailPanel(props: Props) {
   const tabs = [
     ...detailSlices.map((s) => ({ id: s.id, label: s.label })),
     { id: 'activity', label: 'Activity' },
-    { id: 'links', label: 'Links', count: linkedPRs.length || undefined },
+    { id: 'links', label: 'Links', count: linkedPRs.length + mentioningPrs.length || undefined },
     { id: 'files', label: 'Attachments', count: attachments.length || undefined },
   ];
 
   const activeSlice = detailSlices.find((s) => s.id === tab);
 
+  const tabBar = (
+    <div
+      className={embedded ? 'bd-detail__tabs bd-wi-detail__tabs' : undefined}
+      style={
+        embedded
+          ? undefined
+          : {
+              padding: '0 28px',
+              background: 'var(--color-surface)',
+              borderBottom: '1px solid var(--color-subtle-border)',
+            }
+      }
+    >
+      <Tabs
+        value={tab}
+        onChange={(id) => setTab(id as typeof tab)}
+        tabs={tabs}
+        sliding={embedded}
+        aria-keyshortcuts={embedded ? 'J K' : undefined}
+      />
+    </div>
+  );
+
+  const tabContent = (
+    <>
+      {activeSlice && (
+        <OverviewTab
+          richTextFields={activeSlice.fields.richText}
+          standardFields={activeSlice.fields.standard}
+          customFields={activeSlice.fields.custom}
+        />
+      )}
+      {tab === 'activity' && <ActivityTab />}
+      {tab === 'links' && <LinksTab linkedPRs={linkedPRs} mentioningPrs={mentioningPrs} />}
+      {tab === 'files' && (
+        <AttachmentsTab attachments={attachments} onDownload={onDownloadAttachment} />
+      )}
+    </>
+  );
+
+  const footer = (
+    <div
+      className={embedded ? 'bd-wi-detail__footer' : undefined}
+      style={
+        embedded
+          ? undefined
+          : {
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 28px',
+              borderTop: '1px solid var(--color-subtle-border)',
+              background: 'var(--color-status-bar-bg)',
+            }
+      }
+    >
+      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+        {savedLabel}
+        {statusText ? ` · ${statusText}` : ''}
+      </span>
+      {auto.error && (
+        <Button variant="secondary" size="sm" onClick={() => auto.flush(values)}>
+          Retry
+        </Button>
+      )}
+      <span style={{ flex: 1 }} />
+      {!item.isNewItem && onDelete && (
+        <Button variant="danger" size="sm" onClick={onDelete}>
+          Delete
+        </Button>
+      )}
+      {!embedded && item.htmlUrl && (
+        <Button variant="secondary" size="sm" onClick={() => onOpenInBrowser(item.htmlUrl)}>
+          Open in ADO ↗
+        </Button>
+      )}
+      {!embedded && (
+        <Button variant="secondary" size="sm" onClick={onClose}>
+          <Kbd>esc</Kbd> Close
+        </Button>
+      )}
+    </div>
+  );
+
+  const rail = (
+    <div
+      className={clsx('bd-scroll wi-rail', embedded && 'bd-wi-detail__rail')}
+      style={
+        embedded
+          ? undefined
+          : {
+              overflowY: 'auto',
+              background: 'var(--color-surface)',
+              padding: '16px 18px 32px',
+            }
+      }
+    >
+      <RightRail
+        state={values.state}
+        priority={values.priority}
+        severity={item.severity}
+        workItemType={item.workItemType}
+        assignedTo={values.assignedTo}
+        reporter={item.reporter ?? ''}
+        iteration={item.iteration ?? ''}
+        area={item.area ?? ''}
+        backlogPriority={item.backlogPriority}
+        foundIn={item.foundIn}
+        tags={
+          values.tags
+            ? values.tags
+                .split(';')
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : []
+        }
+        linkedPRs={linkedPRs}
+      />
+      {!item.isNewItem && onAddComment && (
+        <DiscussionRail
+          comments={comments ?? []}
+          isLoading={!!isLoadingComments}
+          onAddComment={onAddComment}
+        />
+      )}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div ref={rootRef} className="bd-detail__panel bd-wi-detail">
+        <WorkItemDetailHeader
+          id={item.id}
+          title={values.title}
+          workItemType={item.workItemType}
+          state={values.state}
+          priority={values.priority}
+          assignedTo={values.assignedTo}
+          iteration={values.iteration}
+          availableStates={availableStates}
+          changedAgo={item.changedAgo}
+          htmlUrl={item.htmlUrl}
+          onChange={handleChange}
+          onOpenInBrowser={() => onOpenInBrowser(item.htmlUrl)}
+        />
+        <div
+          ref={gridRef}
+          className="bd-wi-detail__body"
+          data-wi-detail
+          data-rail-collapsed={railCollapsed ? 'true' : 'false'}
+        >
+          <div className="bd-wi-detail__main">
+            {tabBar}
+            <div className="bd-detail__content bd-wi-detail__content">
+              {/* Keyed by tab: each switch mounts a fresh pane, whose
+               *  entrance animation is the crossfade. */}
+              <div key={tab} className="bd-detail__pane bd-wi-detail__pane" role="tabpanel">
+                {tabContent}
+              </div>
+            </div>
+            {footer}
+          </div>
+          {rail}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      ref={rootRef}
+      ref={(el) => {
+        rootRef.current = el;
+        gridRef.current = el;
+      }}
       data-wi-detail
       data-rail-collapsed={railCollapsed ? 'true' : 'false'}
       style={{
@@ -323,15 +516,7 @@ export function WorkItemDetailPanel(props: Props) {
           </div>
         )}
 
-        <div
-          style={{
-            padding: '0 28px',
-            background: 'var(--color-surface)',
-            borderBottom: '1px solid var(--color-subtle-border)',
-          }}
-        >
-          <Tabs value={tab} onChange={(id) => setTab(id as typeof tab)} tabs={tabs} />
-        </div>
+        {tabBar}
 
         <div
           className="bd-scroll"
@@ -342,86 +527,13 @@ export function WorkItemDetailPanel(props: Props) {
             padding: '20px 28px 80px',
           }}
         >
-          {activeSlice && (
-            <OverviewTab
-              richTextFields={activeSlice.fields.richText}
-              standardFields={activeSlice.fields.standard}
-              customFields={activeSlice.fields.custom}
-            />
-          )}
-          {tab === 'activity' && <ActivityTab />}
-          {tab === 'links' && <LinksTab linkedPRs={linkedPRs} />}
-          {tab === 'files' && (
-            <AttachmentsTab attachments={attachments} onDownload={onDownloadAttachment} />
-          )}
+          {tabContent}
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 28px',
-            borderTop: '1px solid var(--color-subtle-border)',
-            background: 'var(--color-status-bar-bg)',
-          }}
-        >
-          <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-            {savedLabel}
-            {statusText ? ` · ${statusText}` : ''}
-          </span>
-          {auto.error && (
-            <Button variant="secondary" size="sm" onClick={() => auto.flush(values)}>
-              Retry
-            </Button>
-          )}
-          <span style={{ flex: 1 }} />
-          {!item.isNewItem && onDelete && (
-            <Button variant="danger" size="sm" onClick={onDelete}>
-              Delete
-            </Button>
-          )}
-          {item.htmlUrl && (
-            <Button variant="secondary" size="sm" onClick={() => onOpenInBrowser(item.htmlUrl)}>
-              Open in ADO ↗
-            </Button>
-          )}
-          <Button variant="secondary" size="sm" onClick={onClose}>
-            <Kbd>esc</Kbd> Close
-          </Button>
-        </div>
+        {footer}
       </div>
 
-      <div
-        className="bd-scroll wi-rail"
-        style={{
-          overflowY: 'auto',
-          background: 'var(--color-surface)',
-          padding: '16px 18px 32px',
-        }}
-      >
-        <RightRail
-          state={values.state}
-          priority={values.priority}
-          severity={item.severity}
-          workItemType={item.workItemType}
-          assignedTo={values.assignedTo}
-          reporter={item.reporter ?? ''}
-          iteration={item.iteration ?? ''}
-          area={item.area ?? ''}
-          backlogPriority={item.backlogPriority}
-          foundIn={item.foundIn}
-          tags={values.tags ? values.tags.split(';').map((t) => t.trim()).filter(Boolean) : []}
-          linkedPRs={linkedPRs}
-        />
-        {!item.isNewItem && onAddComment && (
-          <DiscussionRail
-            comments={comments ?? []}
-            isLoading={!!isLoadingComments}
-            onAddComment={onAddComment}
-          />
-        )}
-      </div>
+      {rail}
     </div>
   );
 }

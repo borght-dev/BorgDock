@@ -1,8 +1,12 @@
-import { HoverActionPillBar } from '@/components/pr/HoverActionPillBar';
-import { PrRow } from '@/components/pr/PrRow';
+import { GitMerge, MessageSquareText, MoreHorizontal } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import { PrRowCore } from '@/components/pr/PrRowCore';
 import { checksStatusLabel, type PrCardData, reviewStateFor } from '@/components/pr/pr-card-data';
-import { type PrActionId, primaryFor } from '@/services/pr-action-resolver';
+import { Button, IconButton } from '@/components/shared/primitives';
+import type { PrActionId } from '@/services/pr-action-resolver';
 import type { FlyoutPr } from './FlyoutGlance';
+
+const ICON = { size: 12, strokeWidth: 2.25, 'aria-hidden': true } as const;
 
 interface FlyoutPrRowProps {
   pr: FlyoutPr;
@@ -11,12 +15,11 @@ interface FlyoutPrRowProps {
   /** Generic action handler — wired by FlyoutGlance to emitTo events.
    *  The DOM event is forwarded so callers (e.g. 'more') can read click coords
    *  and anchor a popup menu. */
-  onAction?: (pr: FlyoutPr, action: PrActionId | 'more', e: React.MouseEvent) => void;
-  /** Show the repo name next to the author. Defaults to true. */
-  showRepo?: boolean;
+  onAction?: (pr: FlyoutPr, action: PrActionId | 'more', e: MouseEvent) => void;
 }
 
-function mapFlyoutPr(pr: FlyoutPr): PrCardData {
+/** The flyout payload's PR in the shape `PrRowCore` draws. */
+export function flyoutCardData(pr: FlyoutPr): PrCardData {
   return {
     number: pr.number,
     title: pr.title,
@@ -40,48 +43,80 @@ function mapFlyoutPr(pr: FlyoutPr): PrCardData {
     additions: pr.additions,
     deletions: pr.deletions,
     labels: pr.labels,
+    checks: {
+      ok: pr.passedCount,
+      fail: pr.failedCount,
+      run: pr.pendingCount,
+      total: pr.totalChecks,
+    },
   };
 }
 
 /**
- * Flyout PR row — the main window's comfortable `PrRow` with the same
- * hover-reveal action bar. Actions are forwarded to the main window, which
- * owns the live pr-store.
+ * Flyout PR row — the main window's compact Workbench row (`PrRowCore`,
+ * 32 px: avatar, title, check bar, chip, number) inside the flyout's own
+ * frame. Its action slot holds the PR's `primaryAction` from the payload
+ * (Review or Merge), and "More" for the flyout's context menu (also on
+ * right-click).
+ * Actions are forwarded to the main window, which owns the live pr-store:
+ * Review brings the main window forward and opens Quick Review there.
  */
-export function FlyoutPrRow({ pr, active, onClick, onAction, showRepo = true }: FlyoutPrRowProps) {
-  const approved = pr.reviewStatus === 'approved';
-  const primary = primaryFor({
-    failing: pr.failedCount > 0 || pr.overallStatus === 'red',
-    approved,
-    reviewing: pr.reviewStatus === 'pending',
-    own: pr.isMine,
-    ready: pr.overallStatus === 'green' && approved && pr.mergeable !== false && !pr.isDraft,
-  });
+export function FlyoutPrRow({ pr, active, onClick, onAction }: FlyoutPrRowProps) {
+  // Worked out by the main window, which knows who you are and your teams.
+  const rowAction = pr.primaryAction ?? null;
 
-  const fire = (action: PrActionId | 'more') => (e: React.MouseEvent) => {
+  const fire = (action: PrActionId | 'more') => (e: MouseEvent) => {
     e.stopPropagation();
     onAction?.(pr, action, e);
   };
 
   return (
-    <div className="bd-pr-row-wrap">
-      <PrRow
-        pr={mapFlyoutPr(pr)}
-        density="comfortable"
-        score={pr.mergeScore}
-        active={active}
-        onClick={() => onClick(pr)}
-        showRepo={showRepo}
-      />
-      <div className="bd-pr-item__actions" data-density="comfortable">
-        <HoverActionPillBar
-          primary={primary}
-          onPrimary={fire(primary)}
-          onCheckout={fire('checkout')}
-          onReview={fire('review')}
-          onMore={fire('more')}
-        />
-      </div>
-    </div>
+    <PrRowCore
+      pr={flyoutCardData(pr)}
+      density="compact"
+      selected={active}
+      className="bd-flyout-row"
+      onClick={() => onClick(pr)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onAction?.(pr, 'more', e);
+      }}
+      action={
+        <>
+          {rowAction === 'review' && (
+            <Button
+              variant="primary"
+              size="sm"
+              leading={<MessageSquareText {...ICON} />}
+              aria-label={`Review #${pr.number}`}
+              data-pr-action="review"
+              onClick={fire('review')}
+            >
+              Review
+            </Button>
+          )}
+          {rowAction === 'merge' && (
+            <Button
+              variant="primary"
+              size="sm"
+              leading={<GitMerge {...ICON} />}
+              aria-label={`Merge #${pr.number}`}
+              data-pr-action="merge"
+              onClick={fire('merge')}
+            >
+              Merge
+            </Button>
+          )}
+          <IconButton
+            icon={<MoreHorizontal size={14} strokeWidth={2.25} aria-hidden="true" />}
+            tooltip="More actions"
+            aria-label={`More actions for #${pr.number}`}
+            size={22}
+            data-pr-action="more"
+            onClick={fire('more')}
+          />
+        </>
+      }
+    />
   );
 }

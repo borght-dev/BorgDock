@@ -362,6 +362,9 @@ export const RailFocusBoard: Story = {
 /** Workbench rail layout on the Worktrees placeholder section. */
 export const RailWorktrees: Story = { args: { section: 'worktrees', layoutV3: true } };
 
+/** The rail layout on Work items: rows grouped by state, query picker in the head row. */
+export const RailWorkItems: Story = { args: { section: 'workitems', layoutV3: true } };
+
 /** The tab layout (`ui.layoutV3` off) on the Pull requests section. */
 export const TabsPrs: Story = { args: { section: 'prs', layoutV3: false } };
 

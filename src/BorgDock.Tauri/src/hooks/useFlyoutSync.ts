@@ -3,8 +3,14 @@ import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { computeMergeScore } from '@/services/merge-score';
 import { OPEN_PR_DETAIL_EVENT, type ShowPrTarget, showPr } from '@/services/navigation';
 import { sendOsNotification } from '@/services/notification';
-import type { PrActionId } from '@/services/pr-action-resolver';
-import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
+import { type PrActionId, workbenchPrimaryAction } from '@/services/pr-action-resolver';
+import {
+  checkoutPrBranch,
+  mergePr,
+  openPrInBrowser,
+  rerunChecks,
+  reviewPr,
+} from '@/services/pr-actions';
 import { requestT3Thread } from '@/services/t3-thread';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -67,8 +73,97 @@ async function bringMainWindowForward(): Promise<void> {
   }
 }
 
-/** Build the payload for the flyout window */
-function buildFlyoutPayload(
+/**
+ * The flyout's Review (its row action and context menu, `flyout-pr-action`
+ * with `action: 'review'`): the main window comes to the front and opens
+ * Quick Review for the PR, the same `reviewPr` the main window's rows use.
+ */
+export async function reviewFromFlyout(prw: PullRequestWithChecks): Promise<void> {
+  await bringMainWindowForward();
+  reviewPr(prw);
+}
+
+/** `flyout-pr-action` payload: a row action or context-menu item in the flyout. */
+export interface FlyoutPrActionPayload {
+  repoOwner: string;
+  repoName: string;
+  number: number;
+  action: PrActionId | 'more';
+  failedCheckNames: string[];
+}
+
+/**
+ * Runs a flyout PR action in the main window, which owns the live pr-store.
+ * The switch dispatches to the same pr-actions module the main window's rows
+ * use, so celebration, refresh and error reporting behave the same whichever
+ * surface fired it. Review opens Quick Review here (the main window comes to
+ * the front); Open goes to GitHub.
+ */
+export async function handleFlyoutPrAction(payload: FlyoutPrActionPayload): Promise<void> {
+  const { repoOwner, repoName, number, action } = payload;
+  const prw = usePrStore
+    .getState()
+    .pullRequests.find(
+      (p) =>
+        p.pullRequest.repoOwner === repoOwner &&
+        p.pullRequest.repoName === repoName &&
+        p.pullRequest.number === number,
+    );
+  if (!prw) return;
+  const pr = prw.pullRequest;
+  const prRef = {
+    repoOwner: pr.repoOwner,
+    repoName: pr.repoName,
+    number: pr.number,
+    title: pr.title,
+    htmlUrl: pr.htmlUrl,
+  };
+  switch (action) {
+    case 'rerun': {
+      if (prw.failedCheckNames.length > 0) {
+        void rerunChecks({
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          ref: pr.headSha || pr.headRef,
+        });
+      }
+      break;
+    }
+    case 'merge': {
+      void mergePr(prRef);
+      break;
+    }
+    case 'review': {
+      await reviewFromFlyout(prw);
+      break;
+    }
+    case 'open': {
+      void openPrInBrowser(pr.htmlUrl);
+      break;
+    }
+    case 'checkout': {
+      void checkoutPrBranch({
+        repoOwner: pr.repoOwner,
+        repoName: pr.repoName,
+        headRef: pr.headRef,
+      });
+      break;
+    }
+    case 'more': {
+      // 'more' is handled entirely in the flyout window (via
+      // FlyoutPrContextMenu). Drop stale events on the floor.
+      break;
+    }
+  }
+}
+
+/**
+ * Build the payload for the flyout window. Each PR carries its
+ * `primaryAction`, worked out here with the main window's rule
+ * (`workbenchPrimaryAction`, which knows the user and their teams), so the
+ * flyout row only draws it.
+ */
+export function buildFlyoutPayload(
   pullRequests: PullRequestWithChecks[],
   username: string,
   theme: string,
@@ -76,6 +171,7 @@ function buildFlyoutPayload(
   lastPollTime: number | null,
   focusCount: number,
   reduceMotion: boolean,
+  teams: readonly string[] = [],
 ) {
   const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
@@ -113,6 +209,7 @@ function buildFlyoutPayload(
       additions: pr.pullRequest.additions ?? 0,
       deletions: pr.pullRequest.deletions ?? 0,
       labels: pr.pullRequest.labels,
+      primaryAction: workbenchPrimaryAction(pr, username, teams),
     })),
     failingCount,
     pendingCount,
@@ -166,6 +263,7 @@ export function useFlyoutSync() {
       pollRaw ? pollRaw.getTime() : null,
       usePrStore.getState().focusCount(),
       st.ui.reduceMotion ?? false,
+      usePrStore.getState().teams,
     );
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -393,69 +491,9 @@ export function useFlyoutSync() {
           },
         );
 
-        const fnAction = await listen<{
-          repoOwner: string;
-          repoName: string;
-          number: number;
-          action: PrActionId | 'more';
-          failedCheckNames: string[];
-        }>('flyout-pr-action', async (event) => {
-          const { repoOwner, repoName, number, action } = event.payload;
-          const prw = usePrStore
-            .getState()
-            .pullRequests.find(
-              (p) =>
-                p.pullRequest.repoOwner === repoOwner &&
-                p.pullRequest.repoName === repoName &&
-                p.pullRequest.number === number,
-            );
-          if (!prw) return;
-          const pr = prw.pullRequest;
-          const prRef = {
-            repoOwner: pr.repoOwner,
-            repoName: pr.repoName,
-            number: pr.number,
-            title: pr.title,
-            htmlUrl: pr.htmlUrl,
-          };
-          // The switch dispatches to the same pr-actions module the sidebar
-          // uses, so celebration / refresh / error reporting behave
-          // identically regardless of which surface fired the event.
-          switch (action) {
-            case 'rerun': {
-              if (prw.failedCheckNames.length > 0) {
-                void rerunChecks({
-                  repoOwner: pr.repoOwner,
-                  repoName: pr.repoName,
-                  ref: pr.headSha || pr.headRef,
-                });
-              }
-              break;
-            }
-            case 'merge': {
-              void mergePr(prRef);
-              break;
-            }
-            case 'review':
-            case 'open': {
-              void openPrInBrowser(pr.htmlUrl);
-              break;
-            }
-            case 'checkout': {
-              void checkoutPrBranch({
-                repoOwner: pr.repoOwner,
-                repoName: pr.repoName,
-                headRef: pr.headRef,
-              });
-              break;
-            }
-            case 'more': {
-              // 'more' is handled entirely in the flyout window (via
-              // FlyoutPrContextMenu). Drop stale events on the floor.
-              break;
-            }
-          }
-        });
+        const fnAction = await listen<FlyoutPrActionPayload>('flyout-pr-action', (event) =>
+          handleFlyoutPrAction(event.payload),
+        );
 
         if (cancelled) {
           fnFix();

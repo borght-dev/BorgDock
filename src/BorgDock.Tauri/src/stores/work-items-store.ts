@@ -82,6 +82,78 @@ function flattenQueries(queries: AdoQuery[]): AdoQuery[] {
   return result;
 }
 
+/** What `filterWorkItems` filters by: the store's filter fields. */
+export type WorkItemFilterCriteria = Pick<
+  WorkItemsState,
+  | 'stateFilter'
+  | 'assignedToFilter'
+  | 'searchQuery'
+  | 'trackingFilter'
+  | 'trackedWorkItemIds'
+  | 'workingOnWorkItemIds'
+  | 'currentUserDisplayName'
+>;
+
+/**
+ * The work items that pass the state, assignee, search and tracking filters,
+ * in query order. Pure, so a list can work out which rows a filter change
+ * will remove before it applies it (the Workbench list fades them out first).
+ */
+export function filterWorkItems(
+  workItems: WorkItem[],
+  criteria: WorkItemFilterCriteria,
+): WorkItem[] {
+  const {
+    stateFilter,
+    assignedToFilter,
+    searchQuery,
+    trackingFilter,
+    trackedWorkItemIds,
+    workingOnWorkItemIds,
+    currentUserDisplayName,
+  } = criteria;
+
+  let result = workItems;
+
+  // State filter
+  if (stateFilter !== 'all') {
+    result = result.filter((item) => getField(item, 'System.State') === stateFilter);
+  }
+
+  // Assigned to filter
+  if (assignedToFilter === '@Me') {
+    result = result.filter(
+      (item) =>
+        getField(item, 'System.AssignedTo').toLowerCase() === currentUserDisplayName.toLowerCase(),
+    );
+  } else if (assignedToFilter !== '') {
+    result = result.filter(
+      (item) =>
+        getField(item, 'System.AssignedTo').toLowerCase() === assignedToFilter.toLowerCase(),
+    );
+  }
+
+  // Search filter
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    result = result.filter((item) => {
+      const title = getField(item, 'System.Title').toLowerCase();
+      const tags = getField(item, 'System.Tags').toLowerCase();
+      const id = item.id.toString();
+      return title.includes(q) || tags.includes(q) || id.includes(q);
+    });
+  }
+
+  // Tracking filter
+  if (trackingFilter === 'tracked') {
+    result = result.filter((item) => trackedWorkItemIds.has(item.id));
+  } else if (trackingFilter === 'workingOn') {
+    result = result.filter((item) => workingOnWorkItemIds.has(item.id));
+  }
+
+  return result;
+}
+
 export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
   queryTree: [],
   selectedQueryId: null,
@@ -104,59 +176,7 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
   witTypeRefs: new Map<string, string>(),
   workItemTypeLayouts: new Map<string, ProcessLayout | null>(),
 
-  filteredWorkItems: () => {
-    const {
-      workItems,
-      stateFilter,
-      assignedToFilter,
-      searchQuery,
-      trackingFilter,
-      trackedWorkItemIds,
-      workingOnWorkItemIds,
-      currentUserDisplayName,
-    } = get();
-
-    let result = workItems;
-
-    // State filter
-    if (stateFilter !== 'all') {
-      result = result.filter((item) => getField(item, 'System.State') === stateFilter);
-    }
-
-    // Assigned to filter
-    if (assignedToFilter === '@Me') {
-      result = result.filter(
-        (item) =>
-          getField(item, 'System.AssignedTo').toLowerCase() ===
-          currentUserDisplayName.toLowerCase(),
-      );
-    } else if (assignedToFilter !== '') {
-      result = result.filter(
-        (item) =>
-          getField(item, 'System.AssignedTo').toLowerCase() === assignedToFilter.toLowerCase(),
-      );
-    }
-
-    // Search filter
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((item) => {
-        const title = getField(item, 'System.Title').toLowerCase();
-        const tags = getField(item, 'System.Tags').toLowerCase();
-        const id = item.id.toString();
-        return title.includes(q) || tags.includes(q) || id.includes(q);
-      });
-    }
-
-    // Tracking filter
-    if (trackingFilter === 'tracked') {
-      result = result.filter((item) => trackedWorkItemIds.has(item.id));
-    } else if (trackingFilter === 'workingOn') {
-      result = result.filter((item) => workingOnWorkItemIds.has(item.id));
-    }
-
-    return result;
-  },
+  filteredWorkItems: () => filterWorkItems(get().workItems, get()),
 
   favoriteQueries: () => {
     const { queryTree, favoriteQueryIds } = get();

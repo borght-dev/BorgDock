@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { Card, Button, SectionHeader } from '@/components/shared/primitives';
+import { useEffect, useState } from 'react';
+import { Button, Card, SectionHeader } from '@/components/shared/primitives';
 import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { SelfTestResultsDialog, type SelfTestResult } from './SelfTestResultsDialog';
+import { type SelfTestResult, SelfTestResultsDialog } from './SelfTestResultsDialog';
 
 function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -23,7 +23,9 @@ export function MaintenanceSection() {
   const [selfTestResults, setSelfTestResults] = useState<SelfTestResult[]>([]);
 
   useEffect(() => {
-    invoke<number>('get_cache_size').then(setCacheBytes).catch(() => setCacheBytes(0));
+    invoke<number>('get_cache_size')
+      .then(setCacheBytes)
+      .catch(() => setCacheBytes(0));
   }, []);
 
   const handleClearCache = async () => {
@@ -89,10 +91,14 @@ export function MaintenanceSection() {
       />
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Worktrees</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Worktrees
+        </h3>
         <div id="field-prune-worktrees" className="flex items-center gap-3.5 py-1">
           <div className="flex-1">
-            <div className="text-xs font-medium text-[var(--color-text-primary)]">Prune worktrees</div>
+            <div className="text-xs font-medium text-[var(--color-text-primary)]">
+              Prune worktrees
+            </div>
             <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
               Remove worktrees whose PRs have been merged or closed.
             </div>
@@ -112,12 +118,18 @@ export function MaintenanceSection() {
           className="flex items-center gap-3.5 border-b border-[var(--color-subtle-border)] py-3"
         >
           <div className="flex-1">
-            <div className="text-xs font-medium text-[var(--color-text-primary)]">Reset onboarding</div>
+            <div className="text-xs font-medium text-[var(--color-text-primary)]">
+              Reset onboarding
+            </div>
             <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
               Replay the welcome wizard on next launch. Settings are kept.
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => useOnboardingStore.getState().resetAll()}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => useOnboardingStore.getState().resetAll()}
+          >
             Reset onboarding
           </Button>
         </div>
@@ -138,7 +150,9 @@ export function MaintenanceSection() {
         </div>
         <div id="field-reset-everything" className="flex items-center gap-3.5 py-3">
           <div className="flex-1">
-            <div className="text-xs font-medium text-[var(--color-text-primary)]">Reset all settings</div>
+            <div className="text-xs font-medium text-[var(--color-text-primary)]">
+              Reset all settings
+            </div>
             <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
               Wipe every preference and connection back to defaults. App will restart.
             </div>
@@ -150,7 +164,9 @@ export function MaintenanceSection() {
       </Card>
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Diagnostics</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Diagnostics
+        </h3>
         <div id="field-diagnostics" className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={handleCopyDiagnostics}>
             Copy diagnostic info
@@ -164,7 +180,11 @@ export function MaintenanceSection() {
         </div>
       </Card>
 
-      <WorktreePruneDialog isOpen={pruneOpen} onClose={() => setPruneOpen(false)} />
+      <WorktreePruneDialog
+        isOpen={pruneOpen}
+        onClose={() => setPruneOpen(false)}
+        prStatusKnown={false}
+      />
       <SelfTestResultsDialog
         isOpen={selfTestOpen}
         results={selfTestResults}
@@ -179,9 +199,12 @@ export function MaintenanceSection() {
           className="fixed inset-0 z-50 grid place-items-center bg-[var(--color-overlay-bg)]"
         >
           <div className="w-[420px] rounded-lg bg-[var(--color-surface)] p-5 shadow-xl">
-            <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Reset everything?</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+              Reset everything?
+            </h3>
             <p className="mb-4 text-xs text-[var(--color-text-tertiary)]">
-              This deletes your settings, GitHub/ADO/SQL credentials, and restarts the app. There is no undo.
+              This deletes your settings, GitHub/ADO/SQL credentials, and restarts the app. There is
+              no undo.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>

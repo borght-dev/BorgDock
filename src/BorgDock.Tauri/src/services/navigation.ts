@@ -240,6 +240,31 @@ export async function showPr(target: ShowPrTarget): Promise<void> {
   });
 }
 
+/**
+ * Open a work item in the main window's full-screen detail view
+ * (plans/ui-overhaul-workbench.md, phase 5). Selects its row first, so the
+ * row's title carries the view-transition name in the old snapshot and
+ * morphs into the header. A work item already on top is replaced, not
+ * stacked; the same one is left alone. The section does not change, so Back
+ * returns to the list the item was opened from.
+ */
+export async function showWorkItem(id: number): Promise<void> {
+  const ui = useUiStore.getState();
+  ui.setWorkItemsSelectedId(id);
+  const top = selectTopView(ui);
+  if (top.kind === 'work-item-detail' && top.id === id) return;
+  const view: MainView = { kind: 'work-item-detail', id };
+  const replacing = top.kind === 'work-item-detail';
+  if (!replacing) {
+    focusBeforePush.push(typeof document === 'undefined' ? null : document.activeElement);
+  }
+  await navigate('push', () => {
+    const state = useUiStore.getState();
+    if (replacing) state.replaceView(view);
+    else state.pushView(view);
+  });
+}
+
 /** True when `document.startViewTransition` exists, so push and pop use it. */
 export function supportsViewTransitions(): boolean {
   return (

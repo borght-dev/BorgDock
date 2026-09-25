@@ -1,5 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+const { emitTo } = vi.hoisted(() => ({ emitTo: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@tauri-apps/api/event', () => ({ emitTo, listen: vi.fn() }));
+
 import { type FlyoutData, FlyoutGlance } from '../FlyoutGlance';
 
 const data: FlyoutData = {
@@ -57,11 +61,34 @@ describe('FlyoutGlance', () => {
     expect(rows).toHaveLength(2);
   });
 
-  it('renders the approved review pill on the second row', () => {
+  it('renders the approved chip on the second row', () => {
     const { container } = render(<FlyoutGlance data={data} onClose={vi.fn()} />);
     expect(
-      container.querySelector('[data-pr-number="714"] [data-pill-tone="approved"]'),
+      container.querySelector('[data-pr-number="714"] [data-chip="approved"]'),
     ).toBeInTheDocument();
+  });
+
+  it('Review asks the main window for Quick Review and closes the flyout', async () => {
+    const onClose = vi.fn();
+    const withReview: FlyoutData = {
+      ...data,
+      pullRequests: [{ ...data.pullRequests[0]!, primaryAction: 'review' }],
+    };
+    const { container } = render(<FlyoutGlance data={withReview} onClose={onClose} />);
+    fireEvent.click(container.querySelector('[data-pr-action="review"]')!);
+    await waitFor(() =>
+      expect(emitTo).toHaveBeenCalledWith(
+        'main',
+        'flyout-pr-action',
+        expect.objectContaining({
+          repoOwner: 'Gomocha-FSP',
+          repoName: 'FSP',
+          number: 715,
+          action: 'review',
+        }),
+      ),
+    );
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('shows the count of open PRs in the header subtitle', () => {
@@ -80,7 +107,7 @@ describe('FlyoutGlance', () => {
     const { container } = render(<FlyoutGlance data={data} onClose={vi.fn()} />);
     // Initial: row 0 is active
     const rows = () => Array.from(container.querySelectorAll('[data-pr-row]'));
-    const activeIndex = () => rows().findIndex((el) => el.matches('[data-active="true"]'));
+    const activeIndex = () => rows().findIndex((el) => el.matches('[data-selected="true"]'));
     expect(activeIndex()).toBe(0);
     fireEvent.keyDown(window, { key: 'j' });
     expect(activeIndex()).toBe(1);

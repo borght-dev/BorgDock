@@ -58,6 +58,13 @@ export interface FlyoutPr {
   additions?: number;
   deletions?: number;
   labels?: string[];
+  /**
+   * The row's one trailing action, by the main window's rule
+   * (`workbenchPrimaryAction`): Review when the PR waits on your review,
+   * Merge when it is ready, null otherwise. Absent in older payloads: no
+   * action is shown.
+   */
+  primaryAction?: 'review' | 'merge' | null;
 }
 
 export function FlyoutGlance({
@@ -72,12 +79,6 @@ export function FlyoutGlance({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { failingCount, pendingCount, passingCount, pullRequests, totalCount, focusCount } = data;
-
-  // Only show the repository slug per row when the user is monitoring more
-  // than one — single-repo setups make every row's "owner/repo" identical and
-  // wastes the space.
-  const uniqueRepos = new Set(pullRequests.map((p) => `${p.repoOwner}/${p.repoName}`));
-  const showRepoPerRow = uniqueRepos.size > 1;
 
   // Active-row tracking for j/k keyboard nav. Initial active row = 0 so e2e
   // assertion `pressing j advances from 0 → 1` holds.
@@ -367,7 +368,10 @@ export function FlyoutGlance({
             fixed max-h-[360px], which could push the header off-screen when
             the window was shorter than header + 360 + footer. */}
       {/* style: scrollbarWidth is a non-standard CSS property with no Tailwind utility */}
-      <div className="bd-pr-rows min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+      <div
+        className="bd-flyout-rows min-h-0 flex-1 overflow-y-auto"
+        style={{ scrollbarWidth: 'thin' }}
+      >
         {pullRequests.map((pr, i) => (
           <FlyoutPrRow
             key={`${pr.repoOwner}/${pr.repoName}#${pr.number}`}
@@ -375,7 +379,6 @@ export function FlyoutGlance({
             active={i === activeIndex}
             onClick={handleClickPr}
             onAction={handlePrAction}
-            showRepo={showRepoPerRow}
           />
         ))}
         {pullRequests.length === 0 && (
@@ -406,15 +409,15 @@ export function FlyoutGlance({
   );
 }
 
+/** The banner's gradient: the severity's status token, deepening to the right. */
 function bannerColor(severity: ToastPayload['severity']): string {
-  switch (severity) {
-    case 'error':
-      return 'linear-gradient(90deg,#dc2646,#b01834)';
-    case 'warning':
-      return 'linear-gradient(90deg,#d97706,#b05800)';
-    case 'success':
-      return 'linear-gradient(90deg,#05966a,#046e4e)';
-    default:
-      return 'linear-gradient(90deg,#7c6af6,#5b45e8)';
-  }
+  const token =
+    severity === 'error'
+      ? 'var(--color-status-red)'
+      : severity === 'warning'
+        ? 'var(--color-status-yellow)'
+        : severity === 'success'
+          ? 'var(--color-status-green)'
+          : 'var(--color-accent)';
+  return `linear-gradient(90deg, ${token}, color-mix(in srgb, ${token} 78%, var(--color-background)))`;
 }

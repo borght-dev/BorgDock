@@ -220,6 +220,8 @@ export function FlyoutPrContextMenu({
         borderColor: 'var(--color-modal-border)',
       }}
     >
+      {/* Quick Review in the main window, which comes to the front. */}
+      <MenuItem label="Review" onClick={runAction('review')} />
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
       {/* Neutral: the main window decides between the in-window view and the pop-out. */}
       <MenuItem label="Open pull request" onClick={handleOpenDetail} />

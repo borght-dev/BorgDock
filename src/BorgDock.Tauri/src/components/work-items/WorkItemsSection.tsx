@@ -1,23 +1,36 @@
-import { invoke } from '@tauri-apps/api/core';
-import { FileText, ListFilter } from 'lucide-react';
+import { ListFilter } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, HoverPopover } from '@/components/shared/primitives';
+import { HoverPopover } from '@/components/shared/primitives';
 import { QueriesRail, type QueryRowData } from '@/components/work-items/QueriesRail';
 import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
 import { QueryBrowser } from '@/components/work-items/QueryBrowser';
 import { WorkItemDetailPanel } from '@/components/work-items/WorkItemDetailPanel';
-import { parseLinkedPRs } from '@/components/work-items/WorkItemDetailPanel/parseLinkedPRs';
 import { useAdjacentNav } from '@/components/work-items/WorkItemDetailPanel/useAdjacentNav';
 import { WorkItemFilterPopover } from '@/components/work-items/WorkItemFilterPopover';
 import { WorkItemRow } from '@/components/work-items/WorkItemRow';
+import { toWorkItemDetailData } from '@/hooks/useWorkItemDetailData';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { classifyFields, extractAttachments } from '@/utils/work-item-fields';
 import { flattenQueries, getField } from '@/utils/work-item-helpers';
+import { AdoNotConfigured } from './AdoNotConfigured';
+import { WorkbenchWorkItemsSection } from './WorkbenchWorkItemsSection';
+import { toggleTrackedWorkItem, toggleWorkingOnWorkItem } from './work-item-toggles';
 
+/**
+ * WorkItemsSection — the Work items section of the main window. With
+ * `ui.layoutV3` it is the Workbench list (`WorkbenchWorkItemsSection`: rows
+ * that open the full-screen detail view); without it, the tab layout's three
+ * panes (queries rail, list, detail panel).
+ */
 export function WorkItemsSection() {
+  const layoutV3 = useSettingsStore((s) => s.settings.ui?.layoutV3 ?? false);
+  return layoutV3 ? <WorkbenchWorkItemsSection /> : <TabWorkItemsSection />;
+}
+
+function TabWorkItemsSection() {
   const settings = useSettingsStore((s) => s.settings);
   const adoSettings = settings.azureDevOps;
 
@@ -191,56 +204,10 @@ export function WorkItemsSection() {
   }, [queryTree, favoriteQueryIds]);
 
   // Detail panel data
-  const detailData = useMemo(() => {
-    if (!detailItem) return null;
-    const htmlUrl =
-      detailItem.htmlUrl ||
-      `https://dev.azure.com/${encodeURIComponent(adoSettings.organization)}/${encodeURIComponent(adoSettings.project)}/_workitems/edit/${detailItem.id}`;
-
-    return {
-      id: detailItem.id,
-      title: getField(detailItem, 'System.Title'),
-      state: getField(detailItem, 'System.State'),
-      workItemType: getField(detailItem, 'System.WorkItemType'),
-      assignedTo: getField(detailItem, 'System.AssignedTo'),
-      priority: Number(detailItem.fields['Microsoft.VSTS.Common.Priority']) || undefined,
-      tags: getField(detailItem, 'System.Tags'),
-      htmlUrl,
-      isNewItem: false,
-      severity:
-        typeof detailItem.fields['Microsoft.VSTS.Common.Severity'] === 'string'
-          ? detailItem.fields['Microsoft.VSTS.Common.Severity']
-          : undefined,
-      reporter: getField(detailItem, 'System.CreatedBy'),
-      iteration: (() => {
-        const p = String(detailItem.fields['System.IterationPath'] ?? '');
-        return p ? (p.split(/[\\/]/).pop() ?? p) : undefined;
-      })(),
-      area: (() => {
-        const p = String(detailItem.fields['System.AreaPath'] ?? '');
-        return p ? (p.split(/[\\/]/).pop() ?? p) : undefined;
-      })(),
-      backlogPriority:
-        (detailItem.fields['Microsoft.VSTS.Common.BacklogPriority'] as
-          | number
-          | string
-          | undefined) ?? undefined,
-      foundIn:
-        typeof detailItem.fields['Microsoft.VSTS.Build.FoundIn'] === 'string'
-          ? detailItem.fields['Microsoft.VSTS.Build.FoundIn']
-          : undefined,
-      changedAgo: (() => {
-        const cd = detailItem.fields['System.ChangedDate'];
-        if (typeof cd !== 'string') return undefined;
-        const seconds = Math.floor((Date.now() - new Date(cd).getTime()) / 1000);
-        if (seconds < 60) return `${seconds}s`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-        if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h`;
-        return `${Math.floor(seconds / 86_400)}d`;
-      })(),
-      linkedPRs: parseLinkedPRs(detailItem.relations),
-    };
-  }, [detailItem, adoSettings.organization, adoSettings.project]);
+  const detailData = useMemo(
+    () => (detailItem ? toWorkItemDetailData(detailItem, adoSettings) : null),
+    [detailItem, adoSettings],
+  );
 
   const { richText, standard, custom } = useMemo(() => {
     if (!detailItem) return { richText: [], standard: [], custom: [] };
@@ -258,53 +225,13 @@ export function WorkItemsSection() {
     return extractAttachments(detailItem);
   }, [detailItem]);
 
-  // Track-toggle: also persist to settings (matches old behavior)
-  const handleToggleTracked = useCallback((id: number) => {
-    useWorkItemsStore.getState().toggleTracked(id);
-    const ids = [...useWorkItemsStore.getState().trackedWorkItemIds];
-    const current = useSettingsStore.getState().settings;
-    useSettingsStore.getState().saveSettings({
-      ...current,
-      azureDevOps: { ...current.azureDevOps, trackedWorkItemIds: ids },
-    });
-  }, []);
-
-  const handleToggleWorking = useCallback((id: number) => {
-    useWorkItemsStore.getState().toggleWorkingOn(id);
-    const ids = [...useWorkItemsStore.getState().workingOnWorkItemIds];
-    const current = useSettingsStore.getState().settings;
-    useSettingsStore.getState().saveSettings({
-      ...current,
-      azureDevOps: { ...current.azureDevOps, workingOnWorkItemIds: ids },
-    });
-  }, []);
+  // Track and working toggles: the store plus the saved settings.
+  const handleToggleTracked = toggleTrackedWorkItem;
+  const handleToggleWorking = toggleWorkingOnWorkItem;
 
   // Not configured state — spans all 3 panes (rendered above the grid).
   const hasCredentials = adoSettings.authMethod === 'azCli' || !!adoSettings.personalAccessToken;
-  if (!adoSettings.organization || !hasCredentials) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-6">
-        <Card padding="lg" className="text-center">
-          <FileText
-            className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-ghost)]"
-            strokeWidth={1.5}
-          />
-          <p className="mb-3 text-[13px] text-[var(--color-text-muted)]">
-            Configure Azure DevOps in Settings to see work items
-          </p>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() =>
-              void invoke('open_settings_window', { section: 'ado' }).catch(console.error)
-            }
-          >
-            Open Settings
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  if (!adoSettings.organization || !hasCredentials) return <AdoNotConfigured />;
 
   return (
     <div className="bd-workitems">

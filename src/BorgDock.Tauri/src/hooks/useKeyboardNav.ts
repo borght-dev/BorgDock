@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { isOverlayOpen, showPr, showSection } from '@/services/navigation';
+import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
 import { isReady } from '@/services/pr-grouping';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
@@ -97,6 +97,12 @@ export function useKeyboardNav() {
         if (isOverlayOpen()) return;
         const rows = live<HTMLElement>(WORKBENCH_ROW_SELECTOR);
         if (rows.length > 0 && handleWorkbenchRowKey(e, rows, focusedIndexRef)) return;
+      }
+      // Workbench work item rows: J/K move the selection, Enter opens the
+      // selected item's full-screen detail view.
+      if (layoutV3 && !e.defaultPrevented && isPlainKey(e) && !isOverlayOpen()) {
+        const wiRows = live<HTMLElement>(WORK_ITEM_ROW_SELECTOR);
+        if (wiRows.length > 0 && handleWorkItemRowKey(e, wiRows)) return;
       }
       // Ctrl/Cmd+Enter opens the selected Workbench row (or Focus card) in its own window.
       if (layoutV3 && !e.defaultPrevented && isPopOutShortcut(e) && !isOverlayOpen()) {
@@ -278,6 +284,48 @@ function handleWorkbenchRowKey(
       if (!target) return false;
       e.preventDefault();
       void showPr(inSection(target));
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
+/** Rows of the Workbench Work items list (`WorkbenchWorkItemRow`). */
+const WORK_ITEM_ROW_SELECTOR = '.bd-wi-wb-row[data-wi-id]';
+
+/**
+ * J/K/arrows over the Work items rows in DOM order (collapsed groups are
+ * inert, so skipped) and Enter to open the selected one. The selection is
+ * `ui-store.workItemsSelectedId`. Returns true when the key was handled.
+ */
+function handleWorkItemRowKey(e: KeyboardEvent, rows: HTMLElement[]): boolean {
+  const current = rows.findIndex((row) => row.dataset.selected === 'true');
+  const select = (index: number) => {
+    const row = rows[index];
+    const id = Number(row?.dataset.wiId);
+    if (!row || !id) return;
+    useUiStore.getState().setWorkItemsSelectedId(id);
+    row.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  };
+  switch (e.key) {
+    case 'ArrowDown':
+    case 'j':
+      e.preventDefault();
+      select(current < 0 ? 0 : Math.min(current + 1, rows.length - 1));
+      return true;
+    case 'ArrowUp':
+    case 'k':
+      e.preventDefault();
+      select(current < 0 ? 0 : Math.max(current - 1, 0));
+      return true;
+    case 'Enter': {
+      // Enter on a row's ★ / ● toggle presses that toggle.
+      if (e.target instanceof Element && e.target.closest('[data-wi-toggle]')) return true;
+      const id = Number(rows[current]?.dataset.wiId);
+      if (!id) return false;
+      e.preventDefault();
+      void showWorkItem(id);
       return true;
     }
     default:

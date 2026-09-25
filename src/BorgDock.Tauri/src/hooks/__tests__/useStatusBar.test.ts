@@ -61,13 +61,13 @@ describe('useStatusBar', () => {
       const { result } = renderHook(() => useStatusBar('prs'));
       expect(result.current.right).toMatch(/^\/ search · R refresh · /);
     });
-    it('shows / search and R refresh on Work items', () => {
+    it('names the row keys on Work items', () => {
       const { result } = renderHook(() => useStatusBar('workitems'));
-      expect(result.current.right).toMatch(/^\/ search · R refresh · /);
+      expect(result.current.right).toBe('/ search · R refresh · J K move · Enter open');
     });
-    it('leaves / search off Worktrees, which has no search box', () => {
+    it('shows / search, R refresh and the row keys on Worktrees, which has a search box', () => {
       const { result } = renderHook(() => useStatusBar('worktrees'));
-      expect(result.current.right).toMatch(/^R refresh · /);
+      expect(result.current.right).toMatch(/^\/ search · R refresh · J K move /);
     });
     it('keeps R for Quick Review in Focus and names Ctrl+R for refresh', () => {
       const { result } = renderHook(() => useStatusBar('focus'));

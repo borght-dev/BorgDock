@@ -1,3 +1,4 @@
+import { WORKTREES_STATUS_HINT } from '@/components/worktree/worktree-list-model';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, selectTopView, useUiStore } from '@/stores/ui-store';
@@ -70,12 +71,17 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
     case 'workitems':
       return {
         left: `ado: ${adoOrg || '—'}/${adoProject || '—'}`,
-        right: keys('Ctrl+F9 command palette'),
+        // The Workbench rows move with J / K and open with Enter.
+        right: layoutV3 ? keys('J K move · Enter open') : 'Ctrl+F9 command palette',
       };
     case 'worktrees':
       return {
-        left: 'worktrees open in their own window for now',
-        right: keys('Ctrl+F7 worktrees', { search: false }),
+        left: layoutV3
+          ? 'worktrees from every watched repository'
+          : 'worktrees open in their own window for now',
+        right: layoutV3
+          ? keys(WORKTREES_STATUS_HINT)
+          : keys('Ctrl+F7 worktrees', { search: false }),
       };
   }
 }

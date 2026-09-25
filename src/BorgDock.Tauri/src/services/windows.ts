@@ -31,21 +31,6 @@ export async function openPrDetail(input: OpenPrDetailInput): Promise<void> {
   }
 }
 
-export interface OpenWorkItemDetailInput {
-  workItemId: number;
-  [key: string]: unknown;
-}
-
-export async function openWorkItemDetail(input: OpenWorkItemDetailInput): Promise<void> {
-  log.info('openWorkItemDetail', { workItemId: input.workItemId });
-  try {
-    await invoke('open_workitem_detail_window', input);
-  } catch (err) {
-    log.error('open_workitem_detail_window failed', err, { workItemId: input.workItemId });
-    throw err;
-  }
-}
-
 export async function openWhatsNew(version: string | null): Promise<void> {
   log.info('openWhatsNew', { version });
   try {

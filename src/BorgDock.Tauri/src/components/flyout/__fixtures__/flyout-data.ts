@@ -179,8 +179,20 @@ export const manyPrs: FlyoutPr[] = Array.from({ length: 28 }, (_, i) =>
 );
 
 export const mergeReadyPrs: FlyoutPr[] = [
-  makeFlyoutPr({ number: 801, mergeScore: 95, mergeable: true, overallStatus: 'green' }),
-  makeFlyoutPr({ number: 802, mergeScore: 88, mergeable: true, overallStatus: 'green' }),
+  makeFlyoutPr({
+    number: 801,
+    mergeScore: 95,
+    mergeable: true,
+    overallStatus: 'green',
+    primaryAction: 'merge',
+  }),
+  makeFlyoutPr({
+    number: 802,
+    mergeScore: 88,
+    mergeable: true,
+    overallStatus: 'green',
+    primaryAction: 'merge',
+  }),
 ];
 
 export const mergeConflictPrs: FlyoutPr[] = [

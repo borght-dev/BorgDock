@@ -5,14 +5,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Card, IconButton, LinearProgress, Pill } from '@/components/shared/primitives';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { WorktreeInfo } from '@/types';
+import type { RepoSettings, WorktreeInfo } from '@/types';
 
 interface WorktreePruneDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * Repositories to scan. Defaults to the settings store's; a window without
+   * a hydrated store (the worktrees tool window) passes the ones it read.
+   */
+  repos?: RepoSettings[];
+  /**
+   * False where this window has no pull request data (the worktrees tool
+   * window): nothing can be called orphaned or closed, so every row reads
+   * "PR unknown" and "Select all orphaned" selects nothing. Default true.
+   */
+  prStatusKnown?: boolean;
 }
 
-type WorktreeStatus = 'open' | 'closed' | 'orphaned';
+type WorktreeStatus = 'open' | 'closed' | 'orphaned' | 'unknown';
 
 interface WorktreeRow {
   worktree: WorktreeInfo;
@@ -30,10 +41,12 @@ function statusLabel(status: WorktreeStatus): string {
       return 'Closed';
     case 'orphaned':
       return 'Orphaned';
+    case 'unknown':
+      return 'PR unknown';
   }
 }
 
-function pillTone(status: WorktreeStatus): 'success' | 'draft' | 'error' {
+function pillTone(status: WorktreeStatus): 'success' | 'draft' | 'error' | 'neutral' {
   switch (status) {
     case 'open':
       return 'success';
@@ -41,6 +54,8 @@ function pillTone(status: WorktreeStatus): 'success' | 'draft' | 'error' {
       return 'draft';
     case 'orphaned':
       return 'error';
+    case 'unknown':
+      return 'neutral';
   }
 }
 
@@ -49,7 +64,12 @@ function truncatePath(path: string, maxLen = 50): string {
   return `...${path.slice(-(maxLen - 3))}`;
 }
 
-export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProps) {
+export function WorktreePruneDialog({
+  isOpen,
+  onClose,
+  repos,
+  prStatusKnown = true,
+}: WorktreePruneDialogProps) {
   const settings = useSettingsStore((s) => s.settings);
   const pullRequests = usePrStore((s) => s.pullRequests);
   const closedPullRequests = usePrStore((s) => s.closedPullRequests);
@@ -73,8 +93,10 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
   prsRef.current = pullRequests;
   const closedRef = useRef(closedPullRequests);
   closedRef.current = closedPullRequests;
-  const reposRef = useRef(settings.repos);
-  reposRef.current = settings.repos;
+  const reposRef = useRef(repos ?? settings.repos);
+  reposRef.current = repos ?? settings.repos;
+  const knownRef = useRef(prStatusKnown);
+  knownRef.current = prStatusKnown;
 
   const classifyWorktree = useCallback(
     (
@@ -82,6 +104,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
       openBranches: Set<string>,
       closedBranches: Set<string>,
     ): WorktreeStatus => {
+      if (!knownRef.current) return 'unknown';
       const shortName = branchName.replace(/^refs\/heads\//, '');
       if (openBranches.has(shortName) || openBranches.has(branchName)) return 'open';
       if (closedBranches.has(shortName) || closedBranches.has(branchName)) return 'closed';
@@ -220,7 +243,7 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                 id="prune-dialog-title"
                 className="text-sm font-semibold text-[var(--color-text-primary)]"
               >
-                Prune Worktrees
+                Prune worktrees
               </h2>
               <IconButton
                 size={22}
@@ -242,6 +265,13 @@ export function WorktreePruneDialog({ isOpen, onClose }: WorktreePruneDialogProp
                 {rows.length} worktree{rows.length !== 1 ? 's' : ''} found
               </span>
             </div>
+
+            {!prStatusKnown && (
+              <p className="border-b border-[var(--color-separator)] px-5 py-2 text-[11px] text-[var(--color-text-muted)]">
+                Pull request states are only known in the main window, so nothing is marked orphaned
+                here. Select the worktrees to remove yourself.
+              </p>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-3">

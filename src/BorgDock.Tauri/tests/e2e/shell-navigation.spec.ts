@@ -133,12 +133,12 @@ test('the Back button and Alt+ArrowLeft pop too', async ({ page }) => {
   const push = () => pushView(page, { kind: 'work-item-detail', id: 9001 });
 
   await push();
-  await expect(page.getByRole('heading', { name: 'AB#9001' })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Work item AB#9001' })).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '1');
 
   await push();
-  await expect(page.getByRole('heading', { name: 'AB#9001' })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Work item AB#9001' })).toBeVisible();
   await page.keyboard.press('Alt+ArrowLeft');
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '1');
 });

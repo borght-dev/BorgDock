@@ -1,6 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
+  avatarToneFor,
+  DEFAULT_STATE_META,
+  getInitials,
   MiniAvatar,
   PrioBars,
   StatePill,
@@ -8,8 +13,6 @@ import {
   WI_PRIO,
   WI_STATES,
   WI_TYPES,
-  avatarToneFor,
-  getInitials,
 } from '../wi-visuals';
 
 describe('wi-visuals maps', () => {
@@ -105,9 +108,7 @@ describe('StatePill', () => {
 
   it('uses warning tone for Testing Failed', () => {
     render(<StatePill state="Testing Failed" />);
-    expect(
-      screen.getByText('Testing Failed').closest('.bd-pill'),
-    ).toHaveClass('bd-pill--warning');
+    expect(screen.getByText('Testing Failed').closest('.bd-pill')).toHaveClass('bd-pill--warning');
   });
 
   it('shrinks height when compact', () => {
@@ -124,5 +125,31 @@ describe('MiniAvatar', () => {
   it('renders initials', () => {
     render(<MiniAvatar initials="KV" />);
     expect(screen.getByText('KV')).toBeInTheDocument();
+  });
+});
+
+describe('wi-visuals colours', () => {
+  const HEX = /#[0-9a-f]{3,8}\b/i;
+
+  it('state dots are --color-wi-state-* tokens, never literal colours', () => {
+    for (const meta of [...Object.values(WI_STATES), DEFAULT_STATE_META]) {
+      expect(meta.dot).toMatch(/^var\(--color-wi-state-[a-z]+\)$/);
+    }
+  });
+
+  it('the source file has no hex colour left', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '..', 'wi-visuals.tsx'), 'utf8');
+    expect(source).not.toMatch(HEX);
+  });
+
+  it('every state token it uses is defined in the work items stylesheet', () => {
+    const css = fs.readFileSync(
+      path.resolve(__dirname, '..', '..', '..', '..', 'styles', 'work-items-workbench.css'),
+      'utf8',
+    );
+    const used = new Set(
+      [...Object.values(WI_STATES), DEFAULT_STATE_META].map((m) => m.dot.slice(4, -1)),
+    );
+    for (const token of used) expect(css).toContain(`${token}:`);
   });
 });

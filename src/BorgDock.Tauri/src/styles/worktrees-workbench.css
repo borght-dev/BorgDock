@@ -1,0 +1,313 @@
+/*
+ * Worktrees section in the Workbench layout (ui.layoutV3): head row, repo
+ * groups, worktree rows on the `PrRowCore` grammar (42 px, hover wash,
+ * accent selection bar) and the changes pane beside the list
+ * (plans/ui-overhaul-workbench.md, phase 5). Tokens only. The head row and
+ * its search box are `.bd-wb-head*` from index.css; the tool window keeps
+ * its `.bd-wt-*` rules there until phase 6.
+ */
+
+@layer components {
+  /* ── Section frame ─────────────────────────────────── */
+  .bd-wts-section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+  }
+  .bd-wts {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    container: bd-wts / inline-size;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--color-text-primary);
+  }
+  .bd-wts__count {
+    margin-left: -6px;
+    font-size: 12px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wts__head-actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+  }
+  .bd-wts__body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .bd-wts__list {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 2px 0 20px;
+    overflow-y: auto;
+    container: bd-wts-list / inline-size;
+  }
+  .bd-wts .bd-wt-empty-title {
+    font-weight: 500;
+  }
+
+  /* ── Repo group heading: label, count, hairline ────── */
+  .bd-wts__group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-wts__group-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wts__group-count {
+    flex-shrink: 0;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wts__group-rule {
+    flex: 1;
+    min-width: 12px;
+    height: 1px;
+    background: var(--color-subtle-border);
+  }
+  .bd-wts .bd-wts__error {
+    margin: 0 16px 6px;
+    font-family: var(--font-code);
+  }
+
+  /* ── The row: star, branch and meta, actions, linked PR ──
+     Height, padding, hover wash and the accent selection bar come from
+     `.bd-wb-row` (index.css); only the columns differ. Two classes so the
+     list-width container queries of `.bd-wb-row` never re-grid it. */
+  .bd-wb-row.bd-wtr {
+    grid-template-columns: 22px minmax(0, 1fr) auto 150px;
+    column-gap: 12px;
+  }
+  .bd-wtr__lead {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bd-wtr__main-icon {
+    display: inline-flex;
+    color: var(--color-text-tertiary);
+  }
+  /* The star shows on hover, focus and selection, and always once set. */
+  .bd-wts .bd-wtr__star {
+    opacity: 0;
+    transition:
+      opacity var(--motion-fast) var(--ease-std),
+      color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wtr:hover .bd-wtr__star,
+  .bd-wtr:focus-within .bd-wtr__star,
+  .bd-wtr[data-selected="true"] .bd-wtr__star,
+  .bd-wtr[data-favorite="true"] .bd-wtr__star {
+    opacity: 1;
+  }
+  .bd-wts .bd-wtr[data-favorite="true"] .bd-wtr__star {
+    color: var(--color-status-yellow);
+  }
+
+  .bd-wtr__body {
+    display: grid;
+    align-content: center;
+    gap: 1px;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: default;
+  }
+  .bd-wtr__body:focus-visible {
+    border-radius: 4px;
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-wtr__title {
+    overflow: hidden;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wtr__title--detached {
+    font-style: italic;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wtr__state[data-state="dirty"] {
+    color: var(--color-status-yellow);
+  }
+  .bd-wtr__state[data-state="conflict"] {
+    color: var(--color-status-red);
+  }
+
+  /* Open actions: their column is always reserved so the row never shifts;
+     they show on hover, keyboard focus and selection. */
+  .bd-wtr__actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-std);
+  }
+  .bd-wtr:hover .bd-wtr__actions,
+  .bd-wtr:focus-within .bd-wtr__actions,
+  .bd-wtr[data-selected="true"] .bd-wtr__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* The linked pull request: its check bar and number, a click opens it. */
+  .bd-wtr__pr-cell {
+    display: flex;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .bd-wtr__pr {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    height: 26px;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition:
+      border-color var(--motion-fast) var(--ease-std),
+      color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wtr__pr:hover {
+    border-color: var(--color-strong-border);
+    color: var(--color-text-primary);
+  }
+  .bd-wtr__pr:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-wtr__checks {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .bd-wtr__pr-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+
+  @container bd-wts-list (max-width: 520px) {
+    .bd-wb-row.bd-wtr {
+      grid-template-columns: 22px minmax(0, 1fr) auto auto;
+      column-gap: 8px;
+    }
+    .bd-wtr .bd-checkbar__label {
+      display: none;
+    }
+  }
+
+  /* ── Changes beside the list ───────────────────────── */
+  .bd-wts__changes {
+    display: flex;
+    flex-direction: column;
+    width: min(46%, 560px);
+    min-width: 300px;
+    min-height: 0;
+    border-left: 1px solid var(--color-subtle-border);
+    background: var(--color-surface);
+    animation: bd-wts-changes-in var(--motion-expand) var(--ease-out) both;
+  }
+  .bd-wts__changes-head {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 8px 0 14px;
+    border-bottom: 1px solid var(--color-subtle-border);
+  }
+  .bd-wts__changes-icon {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wts__changes-title {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wts__changes-folder {
+    margin-right: auto;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .bd-wts__changes-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .bd-wts__changes-body > [data-worktree-changes-panel] {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+  }
+
+  /* Narrow window: the changes go below the list. */
+  @container bd-wts (max-width: 760px) {
+    .bd-wts__body[data-open="true"] {
+      flex-direction: column;
+    }
+    .bd-wts__changes {
+      width: auto;
+      min-width: 0;
+      height: 55%;
+      border-top: 1px solid var(--color-subtle-border);
+      border-left: 0;
+      animation-name: bd-wts-changes-rise;
+    }
+  }
+
+  @keyframes bd-wts-changes-in {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes bd-wts-changes-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

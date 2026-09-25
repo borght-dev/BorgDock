@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { BorgDockLogo } from '@/components/shared/icons';
 import { SlidingHighlight } from '@/components/shared/primitives';
+import { useWorktreeCount } from '@/hooks/useWorktreeMap';
 import { showSection } from '@/services/navigation';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, SECTION_ORDER, useUiStore } from '@/stores/ui-store';
@@ -44,12 +45,14 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   const failing = usePrStore((s) => s.counts().failing);
   const focusCount = usePrStore((s) => s.focusCount());
   const workItemCount = useWorkItemsStore((s) => s.workItems.length);
+  const worktreeCount = useWorktreeCount();
 
   const counts: Partial<Record<ActiveSection, RailCount>> = {
     prs: { value: openCount, hot: failing > 0 },
   };
   if (focusCount > 0) counts.focus = { value: focusCount };
   if (workItemCount > 0) counts.workitems = { value: workItemCount };
+  if (worktreeCount > 0) counts.worktrees = { value: worktreeCount };
   return counts;
 }
 

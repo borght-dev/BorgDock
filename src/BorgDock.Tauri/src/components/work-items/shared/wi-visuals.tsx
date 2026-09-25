@@ -5,24 +5,35 @@ import { Avatar, type AvatarTone } from '@/components/shared/primitives';
 
 export interface StateMeta {
   tone: 'success' | 'warning' | 'neutral' | 'draft';
-  /** Hex color for the leading dot inside the StatePill. */
+  /**
+   * Colour of the leading dot inside the StatePill: a `--color-wi-state-*`
+   * token (styles/work-items-workbench.css), never a literal colour.
+   */
   dot: string;
 }
 
+const STATE_DOT = {
+  new: 'var(--color-wi-state-new)',
+  active: 'var(--color-wi-state-active)',
+  failed: 'var(--color-wi-state-failed)',
+  done: 'var(--color-wi-state-done)',
+  closed: 'var(--color-wi-state-closed)',
+} as const;
+
 export const WI_STATES: Record<string, StateMeta> = {
-  New: { tone: 'neutral', dot: '#8a85a0' },
-  Active: { tone: 'neutral', dot: '#7c6af6' },
-  'Development In Progress': { tone: 'neutral', dot: '#7c6af6' },
-  Committed: { tone: 'neutral', dot: '#7c6af6' },
-  'In Progress': { tone: 'neutral', dot: '#7c6af6' },
-  'Testing Failed': { tone: 'warning', dot: '#b07d09' },
-  Resolved: { tone: 'success', dot: '#3ba68e' },
-  Done: { tone: 'success', dot: '#3ba68e' },
-  Closed: { tone: 'draft', dot: '#8a85a0' },
-  Removed: { tone: 'draft', dot: '#8a85a0' },
+  New: { tone: 'neutral', dot: STATE_DOT.new },
+  Active: { tone: 'neutral', dot: STATE_DOT.active },
+  'Development In Progress': { tone: 'neutral', dot: STATE_DOT.active },
+  Committed: { tone: 'neutral', dot: STATE_DOT.active },
+  'In Progress': { tone: 'neutral', dot: STATE_DOT.active },
+  'Testing Failed': { tone: 'warning', dot: STATE_DOT.failed },
+  Resolved: { tone: 'success', dot: STATE_DOT.done },
+  Done: { tone: 'success', dot: STATE_DOT.done },
+  Closed: { tone: 'draft', dot: STATE_DOT.closed },
+  Removed: { tone: 'draft', dot: STATE_DOT.closed },
 };
 
-export const DEFAULT_STATE_META: StateMeta = { tone: 'neutral', dot: '#8a85a0' };
+export const DEFAULT_STATE_META: StateMeta = { tone: 'neutral', dot: STATE_DOT.new };
 
 export interface TypeMeta {
   glyph: string;

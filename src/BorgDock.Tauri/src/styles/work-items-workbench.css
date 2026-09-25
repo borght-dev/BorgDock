@@ -1,0 +1,350 @@
+/* Work items section and detail view, Workbench layout (phase 5). Tokens only. */
+
+/*
+ * Work items in the Workbench layout (ui.layoutV3; plans/ui-overhaul-workbench.md,
+ * phase 5): the rows (`WorkbenchWorkItemRow`, on the PR row's `.bd-wb-row`
+ * base), the head row's query picker, the full-screen detail view
+ * (`WorkItemDetailView`, on the PR detail's `.bd-detail*` base), the state
+ * colour tokens `wi-visuals` uses, and the flyout's compact rows.
+ *
+ * Imported from index.css before its own layers, so a rule that refines a
+ * shared class carries one more class than the rule it refines.
+ */
+
+/* ── State colour tokens (the StatePill dot) ─────────────── */
+:root {
+  --color-wi-state-new: var(--color-text-tertiary);
+  --color-wi-state-active: var(--color-status-blue);
+  --color-wi-state-failed: var(--color-status-yellow);
+  --color-wi-state-done: var(--color-status-green);
+  --color-wi-state-closed: var(--color-text-tertiary);
+}
+
+@layer components {
+  /* ── Section frame ─────────────────────────────────────── */
+  .bd-wi-wb {
+    height: 100%;
+  }
+  .bd-wi-wb__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .bd-wi-wb__body .bd-queries-rail {
+    flex: none;
+    width: 208px;
+  }
+  .bd-wi-wb__body .bd-wi-wb-list {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Head row: the query picker sits after the title. */
+  .bd-wi-wb-queries {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .bd-wi-wb-queries .bd-filter {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .bd-wi-wb-queries__name {
+    display: block;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wi-wb-head .bd-wb-head__menu-btn[data-active="true"] {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  /* ── The row ───────────────────────────────────────────── */
+  /* Type pill, AB#id, title over the state line, and room at the right end
+     for the ★ / ● toggles, which sit beside the row (see the component). */
+  .bd-wb-row.bd-wi-wb-row {
+    grid-template-columns: 52px 64px minmax(0, 1fr) 60px;
+  }
+  .bd-wi-wb-row__id {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  /* Compact keeps the state line, on the title's line. */
+  .bd-wb-row--compact.bd-wi-wb-row .bd-wb-row__text {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .bd-wb-row--compact.bd-wi-wb-row .bd-wi-wb-row__state {
+    flex: none;
+  }
+
+  /* The type pill: Bug red, Task amber, every other type neutral. */
+  .bd-wi-type {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 1px 6px;
+    border: 1px solid var(--color-strong-border);
+    border-radius: 5px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--color-text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wi-type[data-type-tone="bug"] {
+    border-color: color-mix(in srgb, var(--color-status-red) 40%, transparent);
+    color: var(--color-error-badge-fg);
+  }
+  .bd-wi-type[data-type-tone="task"] {
+    border-color: color-mix(in srgb, var(--color-status-yellow) 45%, transparent);
+    color: var(--color-status-yellow);
+  }
+
+  /* ★ track and ● working: quiet until hover, focus or selection; always
+     shown while on. */
+  .bd-wi-wb-toggles {
+    position: absolute;
+    top: 0;
+    right: 12px;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .bd-wi-wb-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity var(--motion-fast) var(--ease-std),
+      color var(--motion-fast) var(--ease-std),
+      background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wi-wb-rowwrap:hover .bd-wi-wb-toggle,
+  .bd-wi-wb-rowwrap:focus-within .bd-wi-wb-toggle,
+  .bd-wi-wb-rowwrap[data-selected="true"] .bd-wi-wb-toggle,
+  .bd-wi-wb-toggle[data-on="true"] {
+    opacity: 1;
+  }
+  .bd-wi-wb-toggle:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
+  .bd-wi-wb-toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-wi-wb-toggle[data-wi-toggle="track"][data-on="true"] {
+    color: var(--color-status-yellow);
+  }
+  .bd-wi-wb-toggle[data-wi-toggle="working"][data-on="true"] {
+    color: var(--color-status-green);
+  }
+  .bd-wi-wb-toggle__dot {
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+  }
+  .bd-wi-wb-toggle[data-on="true"] .bd-wi-wb-toggle__dot {
+    background: currentColor;
+  }
+
+  /* Narrow list: the id goes before the type pill does. */
+  @container (max-width: 440px) {
+    .bd-wb-row.bd-wi-wb-row {
+      grid-template-columns: 52px minmax(0, 1fr) 60px;
+    }
+    .bd-wi-wb-row .bd-wi-wb-row__id {
+      display: none;
+    }
+  }
+
+  /* ── Detail view ───────────────────────────────────────── */
+  .bd-wi-detail__crumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bd-wi-detail__id {
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+  }
+  .bd-wi-detail__stateline {
+    color: var(--color-text-tertiary);
+  }
+  .bd-wi-detail__title-btn {
+    margin: 0 -4px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-align: left;
+    text-wrap: balance;
+    cursor: text;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wi-detail__title-btn:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-wi-detail__title-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-wi-detail__title-input {
+    width: 100%;
+    margin: 0 -4px;
+    padding: 0 4px;
+    border: 1px solid var(--color-input-border);
+    border-radius: 6px;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+  }
+  .bd-wi-detail__title-input:focus {
+    border-color: var(--color-accent);
+  }
+  .bd-wi-detail__fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    margin-left: -8px;
+    font-family: var(--font-ui);
+  }
+  .bd-wi-detail__field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--color-text-primary);
+  }
+  .bd-wi-detail__changed {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wi-detail__dot {
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+  }
+  .bd-detail-actions__toggle--on .bd-wi-detail__dot {
+    background: currentColor;
+  }
+
+  /* Tabs and panes on the left, properties and discussion on the right. The
+     rail collapses below 760 px ([data-rail-collapsed] in index.css). */
+  .bd-wi-detail__body {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    min-height: 0;
+    container-type: inline-size;
+  }
+  .bd-wi-detail__main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid var(--color-subtle-border);
+  }
+  .bd-detail__tabs.bd-wi-detail__tabs {
+    border-bottom: 1px solid var(--color-subtle-border);
+  }
+  .bd-wi-detail__pane {
+    padding: 20px 24px 40px;
+  }
+  .bd-wi-detail__footer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border-top: 1px solid var(--color-subtle-border);
+    background: var(--color-status-bar-bg);
+    font-family: var(--font-ui);
+  }
+  .bd-wi-detail__rail {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 18px 32px;
+    background: var(--color-surface);
+  }
+
+  /* Links tab: a GitHub pull request that mentions the item opens in place. */
+  .bd-pr-mini-row.bd-wi-link-pr {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-pr-mini-row.bd-wi-link-pr:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-pr-mini-row.bd-wi-link-pr:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-wi-link-pr__meta {
+    flex: none;
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ── Flyout rows: PrRowCore, compact ──────────────────── */
+  .bd-flyout-rows {
+    padding: 2px 0 6px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--color-text-primary);
+    container-type: inline-size;
+  }
+  /* The flyout is narrower than the list's 440 px breakpoint; keep the one
+     chip (the review state) and let the check bar go without its label. */
+  .bd-flyout-rows .bd-wb-row {
+    grid-template-columns: 22px minmax(0, 1fr) auto auto 40px;
+    column-gap: 10px;
+    padding-right: 12px;
+  }
+  .bd-flyout-rows .bd-wb-row .bd-wb-chip {
+    display: inline-block;
+  }
+  .bd-flyout-rows .bd-row-action {
+    --bd-row-action-bg: var(--color-surface);
+    gap: 4px;
+    padding-right: 8px;
+  }
+}
