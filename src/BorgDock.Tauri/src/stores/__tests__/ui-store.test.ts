@@ -6,7 +6,7 @@ describe('ui-store', () => {
     useUiStore.setState({
       activeSection: 'prs',
       selectedPrNumber: null,
-      expandedRepoGroups: new Set<string>(),
+      collapsedGroups: new Set<string>(),
     });
   });
 
@@ -38,36 +38,44 @@ describe('ui-store', () => {
     });
   });
 
-  describe('repo group expansion', () => {
-    it('expands a repo group', () => {
+  describe('group collapse', () => {
+    it('collapses a group', () => {
       useUiStore.getState().toggleRepoGroup('owner/repo');
-      expect(useUiStore.getState().expandedRepoGroups.has('owner/repo')).toBe(true);
+      expect(useUiStore.getState().collapsedGroups.has('owner/repo')).toBe(true);
     });
 
-    it('collapses an expanded repo group', () => {
+    it('opens a collapsed group again', () => {
       useUiStore.getState().toggleRepoGroup('owner/repo');
       useUiStore.getState().toggleRepoGroup('owner/repo');
-      expect(useUiStore.getState().expandedRepoGroups.has('owner/repo')).toBe(false);
+      expect(useUiStore.getState().collapsedGroups.has('owner/repo')).toBe(false);
     });
 
-    it('tracks multiple expanded groups independently', () => {
+    it('tracks multiple collapsed groups independently', () => {
       useUiStore.getState().toggleRepoGroup('a/one');
       useUiStore.getState().toggleRepoGroup('b/two');
-      expect(useUiStore.getState().expandedRepoGroups.has('a/one')).toBe(true);
-      expect(useUiStore.getState().expandedRepoGroups.has('b/two')).toBe(true);
+      expect(useUiStore.getState().collapsedGroups.has('a/one')).toBe(true);
+      expect(useUiStore.getState().collapsedGroups.has('b/two')).toBe(true);
       useUiStore.getState().toggleRepoGroup('a/one');
-      expect(useUiStore.getState().expandedRepoGroups.has('a/one')).toBe(false);
-      expect(useUiStore.getState().expandedRepoGroups.has('b/two')).toBe(true);
+      expect(useUiStore.getState().collapsedGroups.has('a/one')).toBe(false);
+      expect(useUiStore.getState().collapsedGroups.has('b/two')).toBe(true);
     });
   });
 
   describe('collapseAllRepoGroups', () => {
-    it('clears all expanded repo groups', () => {
-      useUiStore.setState({
-        expandedRepoGroups: new Set(['owner/repo1', 'owner/repo2']),
-      });
-      useUiStore.getState().collapseAllRepoGroups();
-      expect(useUiStore.getState().expandedRepoGroups.size).toBe(0);
+    it('collapses every given group and keeps the ones already collapsed', () => {
+      useUiStore.setState({ collapsedGroups: new Set(['owner/repo1']) });
+      useUiStore.getState().collapseAllRepoGroups(['needs-you', 'owner/repo2', 'owner/repo1']);
+      expect([...useUiStore.getState().collapsedGroups].sort()).toEqual([
+        'needs-you',
+        'owner/repo1',
+        'owner/repo2',
+      ]);
+    });
+
+    it('never opens a group', () => {
+      useUiStore.setState({ collapsedGroups: new Set(['a', 'b']) });
+      useUiStore.getState().collapseAllRepoGroups([]);
+      expect(useUiStore.getState().collapsedGroups).toEqual(new Set(['a', 'b']));
     });
   });
 });

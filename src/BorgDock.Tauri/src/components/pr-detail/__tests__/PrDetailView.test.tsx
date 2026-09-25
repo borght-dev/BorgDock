@@ -111,7 +111,7 @@ const settingsBefore = useSettingsStore.getState().settings;
 describe('PrDetailView', () => {
   beforeEach(() => {
     useSettingsStore.setState({
-      settings: { ...settingsBefore, ui: { ...settingsBefore.ui, layoutV3: true } },
+      settings: { ...settingsBefore, ui: { ...settingsBefore.ui } },
     });
     useUiStore.setState({
       viewStack: [{ kind: 'list' }],

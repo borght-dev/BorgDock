@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { CheckBar, checkBarSummary } from '../CheckBar';
+import { CheckBar, checkBarSummary, MIN_SEGMENT_PX } from '../CheckBar';
 
 function segments(container: HTMLElement) {
   const get = (tone: string) =>
@@ -89,5 +89,24 @@ describe('CheckBar', () => {
     const { container } = render(<CheckBar ok={1} fail={0} run={0} total={1} />);
     expect(container.querySelector('.bd-checkbar__bar')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByText('1 passing')).toBeInTheDocument();
+  });
+
+  it('draws a failing or running segment at least 3 px wide (2 failing of 80)', () => {
+    const { container } = render(<CheckBar ok={78} fail={2} run={0} total={80} />);
+    const fail = container.querySelector<HTMLElement>('.bd-checkbar__seg--fail')!;
+    expect(fail.style.width).toBe('2.5%');
+    expect(fail.style.minWidth).toBe(`${MIN_SEGMENT_PX}px`);
+    const { container: running } = render(<CheckBar ok={79} fail={0} run={1} total={80} />);
+    expect(running.querySelector<HTMLElement>('.bd-checkbar__seg--run')!.style.minWidth).toBe(
+      '3px',
+    );
+  });
+
+  it('gives an empty failing or running segment no minimum width', () => {
+    const { container } = render(<CheckBar ok={80} fail={0} run={0} total={80} />);
+    expect(container.querySelector<HTMLElement>('.bd-checkbar__seg--fail')!.style.minWidth).toBe(
+      '',
+    );
+    expect(container.querySelector<HTMLElement>('.bd-checkbar__seg--run')!.style.minWidth).toBe('');
   });
 });

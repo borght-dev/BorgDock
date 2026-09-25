@@ -235,8 +235,8 @@ No layout work. Every window keeps its structure and picks up the graphite and p
 ### Phase 7: cutover and polish (small)
 
 - Remove `ui.layoutV3`; delete the old `PrToolbar` filter row, `MergeScoreBadge` from rows, `HoverActionPillBar`, `MultiSignalIndicator`, and `src/components/review/` (`ClaudeReviewPanel`, `ReviewCommentCard`: exported, imported nowhere).
-- Hero screenshots for the release via `design/whats-new/<version>.heroes.json` and `scripts/screenshot-stories.mjs`. Changelog entry in the Home Assistant voice.
-- Performance check: 200 PRs with virtualization, detail push under 16 ms of layout on a mid laptop, no layout thrash from `SlidingHighlight` (measure once per change, not per frame).
+- Hero screenshots for the release via `design/whats-new/<version>.heroes.json` and `scripts/screenshot-stories.mjs`. Changelog entry in the Home Assistant voice. The 3.0.0 What's new uses Storybook stills only; the recordings come with the site launch (phase 8).
+- Performance check (as asserted): with 200 open PRs, Recently closed stays virtualized and the open list skips FLIP above `FLIP_MAX_ROWS` (150) (`PrList.test.tsx`); `SlidingHighlight` reads no layout per frame or on a same-key re-render (`SlidingHighlight.test.tsx`); and `tests/e2e/perf.spec.ts` seeds 200 PRs, times a row click → `showPr` push → forced layout with `performance.mark/measure` under reduced motion, and asserts the median of three pushes (after one warm-up) stays under 100 ms of script and layout in CI conditions (dev build of React). Measured on 2026-09-25 over four runs: median 33 to 58 ms (single pushes 29 to 83 ms). The 16 ms figure was a laptop frame target, not what is asserted. `SectionView` is memoised so a push no longer re-renders the list under the detail view (it took the push from about 70 to 110 ms down to about 40 ms).
 - Ship as **3.0.0**. The What's new post for it is the first one built from the phase 8 recordings.
 
 ### Phase 8: marketing site overhaul (large, after cutover)
@@ -285,7 +285,7 @@ Dark (Workbench graphite):
 | `surface-hover` | `rgba(255,255,255,.028)` |
 | `subtle-border` | `rgba(255,255,255,.065)` |
 | `strong-border` | `rgba(255,255,255,.12)` |
-| `text-primary` / `secondary` / `tertiary` | `#ededef` / `#9c9da4` / `#67686f` |
+| `text-primary` / `secondary` / `tertiary` | `#ededef` / `#9c9da4` / `#82838a` |
 | `accent` | `#7f7eff` |
 | `status-green` / `red` / `yellow` / `blue` | `#5cc98f` / `#f0616d` / `#e5b454` / `#6fa8ff` |
 
@@ -296,7 +296,7 @@ Light (Porcelain):
 | `background` | `#f5f5f7` |
 | `surface` | `#ffffff` |
 | `subtle-border` | `#e5e6ea` |
-| `text-primary` / `secondary` / `tertiary` | `#17181c` / `#5d606a` / `#8f929c` |
+| `text-primary` / `secondary` / `tertiary` | `#17181c` / `#5d606a` / `#6d707a` |
 | `accent` | `#4f46e5` |
 | `status-green` / `red` / `yellow` / `blue` | `#1f9d6b` / `#d64560` / `#c98a12` / `#2d6be4` |
 

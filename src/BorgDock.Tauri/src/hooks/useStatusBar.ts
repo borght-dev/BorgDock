@@ -33,13 +33,10 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
   const adoOrg = useSettingsStore((s) => s.settings.azureDevOps.organization);
   const adoProject = useSettingsStore((s) => s.settings.azureDevOps.project);
   const top = useUiStore(selectTopView);
-  const layoutV3 = useSettingsStore((s) => s.settings.ui.layoutV3 ?? false);
   const focusBoard = useSettingsStore((s) => s.settings.ui.focusLayout === 'board');
-  // The rail layout's list keys (plan section 7): `/` focuses the section's
-  // search (Focus and Worktrees have none, so it jumps to the PR list's) and
+  // The list keys (plan section 7): `/` focuses the section's search and
   // plain R refreshes everywhere but Focus, where R starts Quick Review.
-  const keys = (hint: string, { search = true } = {}) =>
-    layoutV3 ? [search ? '/ search' : null, 'R refresh', hint].filter(Boolean).join(' · ') : hint;
+  const keys = (hint: string) => ['/ search', 'R refresh', hint].join(' · ');
 
   if (top.kind === 'pr-detail') {
     return { left: `${top.owner}/${top.repo} #${top.number}`, right: BACK_KEYS };
@@ -52,11 +49,9 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
     case 'focus':
       return {
         left: 'focus computed just now · weights from settings',
-        right: !layoutV3
-          ? 'Press R for Quick Review'
-          : focusBoard
-            ? 'J K move · H L columns · R Quick Review · Ctrl+R refresh'
-            : 'R Quick Review · Ctrl+R refresh',
+        right: focusBoard
+          ? 'J K move · H L columns · R Quick Review · Ctrl+R refresh'
+          : 'R Quick Review · Ctrl+R refresh',
       };
     case 'prs': {
       // REST and GraphQL are separate 5000/h pools — say which one this is.
@@ -71,17 +66,13 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
     case 'workitems':
       return {
         left: `ado: ${adoOrg || '—'}/${adoProject || '—'}`,
-        // The Workbench rows move with J / K and open with Enter.
-        right: layoutV3 ? keys('J K move · Enter open') : 'Ctrl+F9 command palette',
+        // The rows move with J / K and open with Enter.
+        right: keys('J K move · Enter open'),
       };
     case 'worktrees':
       return {
-        left: layoutV3
-          ? 'worktrees from every watched repository'
-          : 'worktrees open in their own window for now',
-        right: layoutV3
-          ? keys(WORKTREES_STATUS_HINT)
-          : keys('Ctrl+F7 worktrees', { search: false }),
+        left: 'worktrees from every watched repository',
+        right: keys(WORKTREES_STATUS_HINT),
       };
   }
 }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { groupPrs } from '@/services/pr-grouping';
 import type { OverallStatus, PullRequestWithChecks, ReviewStatus } from '@/types';
 import { PR_REFRESHED_EVENT, type PrRefreshedDetail, usePrStore } from '../pr-store';
 
@@ -298,7 +299,8 @@ describe('pr-store', () => {
           makePr({ number: 2, repoOwner: 'acme', repoName: 'web' }),
           makePr({ number: 3, repoOwner: 'acme', repoName: 'api' }),
         ]);
-      const groups = usePrStore.getState().groupedPrs('repo');
+      const state = usePrStore.getState();
+      const groups = groupPrs(state.filteredPrs(), 'repo', state.username, state.teams);
       expect(groups).toHaveLength(2);
       expect(groups.find((group) => group.label === 'acme/api')?.prs).toHaveLength(2);
       expect(groups.find((group) => group.label === 'acme/web')?.prs).toHaveLength(1);
@@ -312,7 +314,8 @@ describe('pr-store', () => {
           makePr({ number: 1, repoOwner: 'a', repoName: 'first', authorLogin: 'other' }),
           makePr({ number: 2, repoOwner: 'z', repoName: 'last', authorLogin: 'me' }),
         ]);
-      const groups = usePrStore.getState().groupedPrs('repo');
+      const state = usePrStore.getState();
+      const groups = groupPrs(state.filteredPrs(), 'repo', state.username, state.teams);
       expect(groups[0]?.label).toBe('z/last');
       expect(groups[1]?.label).toBe('a/first');
     });

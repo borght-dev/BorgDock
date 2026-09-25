@@ -17,7 +17,7 @@
   /* Text hierarchy — ink */
   --color-text-primary: #17181c;
   --color-text-secondary: #5d606a;
-  --color-text-tertiary: #8f929c;
+  --color-text-tertiary: #6d707a;
   --color-text-muted: #6b6e78;
   --color-text-faint: #c2c4cb;
   --color-text-ghost: #dcdee3;
@@ -344,7 +344,7 @@
 
   --color-text-primary: #ededef;
   --color-text-secondary: #9c9da4;
-  --color-text-tertiary: #67686f;
+  --color-text-tertiary: #82838a;
   --color-text-muted: #8e8f96;
   --color-text-faint: #3f4046;
   --color-text-ghost: #2c2d32;

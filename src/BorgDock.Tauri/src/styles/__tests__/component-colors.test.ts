@@ -9,11 +9,11 @@ import { describe, expect, it } from 'vitest';
  */
 const COMPONENTS = resolve(__dirname, '../../components');
 /**
- * Files allowed to keep literals, each with the reason.
- * - SplashScreen.tsx: the splash keeps its plum brand mark until the phase 7
- *   cutover retints it together with public/entry/splash.css.
+ * Files allowed to keep literals, each with the reason. None since the 3.0.0
+ * cutover: the splash reads the tokens too. (public/entry/splash.css inlines
+ * the few values the static pre-bundle splash needs; it is not a component.)
  */
-const ALLOWED = new Set(['SplashScreen.tsx']);
+const ALLOWED = new Set<string>();
 
 function isExcluded(rel: string): boolean {
   return (

@@ -81,7 +81,7 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 | `text-primary` | `#17181c` | `#ededef` | Titles, row titles, body |
 | `text-secondary` | `#5d606a` | `#9c9da4` | Labels, secondary copy |
 | `text-muted` | `#6b6e78` | `#8e8f96` | Small readable text: hints, counts, status bars, key chips (≥ 4.5:1) |
-| `text-tertiary` | `#8f929c` | `#67686f` | Decoration only (icons, carets); below 4.5:1 in both themes |
+| `text-tertiary` | `#6d707a` | `#82838a` | Tertiary copy, icons, carets (≥ 4.5:1 on background and surface) |
 | `text-faint` | `#c2c4cb` | `#3f4046` | Disabled glyphs |
 | `text-ghost` | `#dcdee3` | `#2c2d32` | Placeholders for shapes |
 
@@ -426,7 +426,7 @@ Candidates for new primitives:
     "surface":        { "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#1b1c1f" } },
     "text-primary":   { "$value": "#17181c", "$type": "color", "$extensions": { "dark": "#ededef" } },
     "text-secondary": { "$value": "#5d606a", "$type": "color", "$extensions": { "dark": "#9c9da4" } },
-    "text-tertiary":  { "$value": "#8f929c", "$type": "color", "$extensions": { "dark": "#67686f" } },
+    "text-tertiary":  { "$value": "#6d707a", "$type": "color", "$extensions": { "dark": "#82838a" } },
     "text-muted":     { "$value": "#6b6e78", "$type": "color", "$extensions": { "dark": "#8e8f96" } },
     "status-green":   { "$value": "#1f9d6b", "$type": "color", "$extensions": { "dark": "#5cc98f" } },
     "status-red":     { "$value": "#d64560", "$type": "color", "$extensions": { "dark": "#f0616d" } },
@@ -477,7 +477,7 @@ Candidates for new primitives:
 - **Semantic utilities are barely used.** Components reach tokens through ~790 `*-[var(--…)]` arbitrary classes and ~330 inline `style` `var()` strings; `text-text-muted` appears 11 times.
 - **Arbitrary sizes win over tokens.** `text-[11px]` (87), `text-[10px]` (63), `text-[13px]` (45), plus off-scale `text-[11.5px]` / `text-[10.5px]`; `text-micro/small/body` utilities have 0 uses. Tailwind default `text-xs`, `rounded-md`, `shadow-xl` are common.
 - **Colours in CSS** — components are literal-free (`src/styles/__tests__/component-colors.test.ts`), but a few CSS rules still carry literals: avatar gradients (`.bd-avatar--*`), the window-close red, the splash (`public/entry/splash.css`).
-- **`text-tertiary` is below AA** in both themes; readable small text must use `text-muted`. Older main-window components still use tertiary for words.
+- **`text-tertiary` passes AA since 3.0.0** (`#6d707a` / `#82838a`, ≥ 4.5:1 on background and surface in both themes, checked by `contrast.test.ts`). On `surface-raised` it is still below 4.5:1 in dark; readable text there uses `text-muted`.
 
 ### Token Hygiene
 - **Unused tokens (~57)**: floating-badge set (`badge-glass`, `badge-surface`, `badge-border`, `badge-glow-*`), all `review-*`, `whats-new-*` fg/bg/border, `tracked-*` / `working-on-*`, `tab-active/inactive`, `pr-badge-*`, `pr-my-badge-*`, `branch-badge-*`, `target-badge-*`, `comment-count-fg`, several `action-*` and `check-*`, `avatar-text`, `expanded-row-bg`, `diff-hunk-header` (duplicate), `syntax-tag/attribute/plain`, `radius-md/xl`, `space-10/12`, `text-title`, `duration-breath`

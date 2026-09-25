@@ -10,8 +10,7 @@ interface PrRowOverlaysProps {
 
 /**
  * The right-click menu and the confirm dialogs (close, bypass merge, draft
- * toggle) that every PR row container mounts next to its row. Shared by the
- * tab layout's `PrCardContainer` and the Workbench `WorkbenchPrRow`.
+ * toggle) that `PrRow` mounts next to its row.
  */
 export function PrRowOverlays({ prWithChecks, actions }: PrRowOverlaysProps) {
   const pr = prWithChecks.pullRequest;

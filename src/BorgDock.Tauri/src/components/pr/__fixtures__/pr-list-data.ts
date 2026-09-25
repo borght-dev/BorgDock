@@ -324,3 +324,28 @@ export function manyClosedPrs(count: number, now: number = Date.now()): PullRequ
     ),
   );
 }
+
+const MANY_REPOS = ['borght-dev/BorgDock', 'Gomocha-FSP/fsp-horizon', 'Gomocha-FSP/fsp-portal'];
+
+/**
+ * `count` open PRs across three repositories: every fifth one failing, every
+ * seventh waiting on my review, every third mine. Enough to push the open
+ * list past `FLIP_MAX_ROWS` (the 200-PR performance fixture).
+ */
+export function manyOpenPrs(count: number, now: number = Date.now()): PullRequestWithChecks[] {
+  return Array.from({ length: count }, (_, i) =>
+    listPr(
+      {
+        number: 2000 + i,
+        title: `Open change ${i + 1}`,
+        repo: MANY_REPOS[i % MANY_REPOS.length]!,
+        author: i % 3 === 0 ? FIXTURE_ME : `dev${i % 11}`,
+        reviewStatus: i % 4 === 0 ? 'approved' : 'pending',
+        requestedReviewers: i % 7 === 0 && i % 3 !== 0 ? [FIXTURE_ME] : [],
+        checks: i % 5 === 0 ? { total: 12, fail: 2 } : { total: 12 },
+        updatedHoursAgo: (i % 48) + 1,
+      },
+      now,
+    ),
+  );
+}

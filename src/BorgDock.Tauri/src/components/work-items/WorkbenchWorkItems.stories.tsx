@@ -1,7 +1,6 @@
 // src/components/work-items/WorkbenchWorkItems.stories.tsx
 //
-// Work items in the Workbench layout (`ui.layoutV3`; plans/ui-overhaul-workbench.md,
-// phase 5): the row matrix (types, tracked, working, selected, compact) and
+// Work items (plans/ui-overhaul-workbench.md, phase 5): the row matrix (types, tracked, working, selected, compact) and
 // the section with its head row, query picker and state groups. Rows open the
 // full-screen detail view in the app; here a click only selects.
 
@@ -11,8 +10,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { AdoQuery, PrDensity, WorkItem } from '@/types';
-import { WorkbenchWorkItemRow } from './WorkbenchWorkItemRow';
-import type { WorkItemRowData } from './WorkItemRow';
+import { WorkItemRow, type WorkItemRowData } from './WorkItemRow';
 import { WorkItemsSection } from './WorkItemsSection';
 
 // ---- Fixtures ----
@@ -128,7 +126,7 @@ function RowMatrix({ density }: { density: PrDensity }) {
       style={{ fontFamily: 'var(--font-ui)', fontSize: 13, background: 'var(--color-background)' }}
     >
       {ROWS.map((row) => (
-        <WorkbenchWorkItemRow
+        <WorkItemRow
           key={row.id}
           item={row}
           density={density}
@@ -162,7 +160,7 @@ function Section({
     useSettingsStore.setState((s) => ({
       settings: {
         ...s.settings,
-        ui: { ...s.settings.ui, layoutV3: true, prDensity: density },
+        ui: { ...s.settings.ui, prDensity: density },
         azureDevOps: {
           ...s.settings.azureDevOps,
           organization: 'storybook-org',

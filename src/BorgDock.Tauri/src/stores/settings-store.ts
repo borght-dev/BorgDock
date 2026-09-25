@@ -32,7 +32,6 @@ const defaultSettings: AppSettings = {
     startMinimizedToTray: false,
     restoreLastSelection: true,
     reduceMotion: false,
-    layoutV3: false,
     focusLayout: 'list',
     staleAfterDays: 7,
   },

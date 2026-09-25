@@ -35,7 +35,6 @@ vi.mock('@/services/navigation', async (importOriginal) => ({
 import { FIXTURE_ME, listPr, workbenchPrs } from '@/components/pr/__fixtures__/pr-list-data';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
 import type { FocusBucketContext } from '@/services/focus-bucket';
-import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -63,7 +62,7 @@ function seed({
   closed = [] as PullRequestWithChecks[],
 } = {}) {
   useSettingsStore.setState({
-    settings: { ...SETTINGS, ui: { ...SETTINGS.ui, layoutV3: true, focusLayout: layout } },
+    settings: { ...SETTINGS, ui: { ...SETTINGS.ui, focusLayout: layout } },
   });
   usePrStore.setState({
     pullRequests: prs,
@@ -84,7 +83,6 @@ function seed({
     selectedPrNumber: null,
     viewStack: [{ kind: 'list' }],
   });
-  useOnboardingStore.setState({ hasSeenFocusOverlay: true });
 }
 
 /** Card numbers per column, top to bottom. */
@@ -407,15 +405,6 @@ describe('Workbench Focus', () => {
     seed({ layout: 'list', closed: [mine, theirs] });
     render(<FocusList />);
     expect(tally()).toBe('1');
-  });
-
-  it('keeps the tab layout Focus when the Workbench layout is off', () => {
-    useSettingsStore.setState({
-      settings: { ...SETTINGS, ui: { ...SETTINGS.ui, layoutV3: false } },
-    });
-    render(<FocusList />);
-    expect(document.querySelector('.bd-focus-wb')).toBeNull();
-    expect(document.querySelector('.bd-focus-hero')).toBeTruthy();
   });
 });
 

@@ -113,7 +113,7 @@ function Harness({
   useState(() => {
     const settings = canonicalSettings();
     useSettingsStore.setState({
-      settings: { ...settings, ui: { ...settings.ui, layoutV3: true } },
+      settings: { ...settings, ui: { ...settings.ui } },
       isLoading: false,
     });
     useWorkItemsStore.setState({

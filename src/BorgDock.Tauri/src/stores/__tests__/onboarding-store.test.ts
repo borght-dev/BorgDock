@@ -32,7 +32,6 @@ describe('onboarding-store', () => {
     mockStoreInstance.get.mockClear();
     mockStoreInstance.save.mockClear();
     useOnboardingStore.setState({
-      hasSeenFocusOverlay: false,
       dismissedBadges: new Set<BadgeId>(),
       dismissedHints: new Set<HintId>(),
     });
@@ -41,16 +40,8 @@ describe('onboarding-store', () => {
   describe('initial state', () => {
     it('starts with defaults', () => {
       const s = useOnboardingStore.getState();
-      expect(s.hasSeenFocusOverlay).toBe(false);
       expect(s.dismissedBadges.size).toBe(0);
       expect(s.dismissedHints.size).toBe(0);
-    });
-  });
-
-  describe('markFocusOverlaySeen', () => {
-    it('sets hasSeenFocusOverlay to true', () => {
-      useOnboardingStore.getState().markFocusOverlaySeen();
-      expect(useOnboardingStore.getState().hasSeenFocusOverlay).toBe(true);
     });
   });
 
@@ -98,14 +89,12 @@ describe('onboarding-store', () => {
 
   describe('resetAll', () => {
     it('resets all state to defaults', () => {
-      useOnboardingStore.getState().markFocusOverlaySeen();
       useOnboardingStore.getState().dismissBadge('focus-mode');
       useOnboardingStore.getState().dismissHint('pr-summary-generate');
 
       useOnboardingStore.getState().resetAll();
 
       const s = useOnboardingStore.getState();
-      expect(s.hasSeenFocusOverlay).toBe(false);
       expect(s.dismissedBadges.size).toBe(0);
       expect(s.dismissedHints.size).toBe(0);
     });
@@ -114,7 +103,6 @@ describe('onboarding-store', () => {
   describe('restoreOnboardingState', () => {
     it('restores state from tauri store', async () => {
       mockStoreInstance.get.mockImplementation(async (key: string) => {
-        if (key === 'hasSeenFocusOverlay') return true;
         if (key === 'dismissedBadges') return ['focus-mode', 'pr-summary'];
         if (key === 'dismissedHints') return ['review-mode-shortcuts'];
         return null;
@@ -123,7 +111,6 @@ describe('onboarding-store', () => {
       await useOnboardingStore.getState().restoreOnboardingState();
 
       const s = useOnboardingStore.getState();
-      expect(s.hasSeenFocusOverlay).toBe(true);
       expect(s.dismissedBadges.has('focus-mode')).toBe(true);
       expect(s.dismissedBadges.has('pr-summary')).toBe(true);
       expect(s.dismissedHints.has('review-mode-shortcuts')).toBe(true);
@@ -135,7 +122,6 @@ describe('onboarding-store', () => {
       await useOnboardingStore.getState().restoreOnboardingState();
 
       const s = useOnboardingStore.getState();
-      expect(s.hasSeenFocusOverlay).toBe(false);
       expect(s.dismissedBadges.size).toBe(0);
       expect(s.dismissedHints.size).toBe(0);
     });
@@ -147,7 +133,6 @@ describe('onboarding-store', () => {
       await useOnboardingStore.getState().restoreOnboardingState();
 
       const s = useOnboardingStore.getState();
-      expect(s.hasSeenFocusOverlay).toBe(false);
       expect(s.dismissedBadges.size).toBe(0);
     });
   });

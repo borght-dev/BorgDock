@@ -1,5 +1,5 @@
 /*
- * Worktrees section in the Workbench layout (ui.layoutV3): head row, repo
+ * Worktrees section: head row, repo
  * groups, worktree rows on the `PrRowCore` grammar (42 px, hover wash,
  * accent selection bar) and the changes pane beside the list
  * (plans/ui-overhaul-workbench.md, phase 5). Tokens only. The head row and

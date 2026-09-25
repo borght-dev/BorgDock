@@ -186,12 +186,9 @@ describe('AppearanceSection', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ reduceMotion: false }));
   });
 
-  it('new layout (preview) toggle writes layoutV3', () => {
+  it('has no layout switch: the Workbench layout is the only one', () => {
     render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
-    const toggle = screen.getByRole('switch', { name: 'New layout (preview)' });
-    expect(toggle.getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(toggle);
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ layoutV3: true }));
+    expect(screen.queryByRole('switch', { name: /new layout/i })).toBeNull();
   });
 
   it('preserves other fields when updating one', () => {

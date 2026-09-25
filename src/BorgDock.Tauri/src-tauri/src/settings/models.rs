@@ -185,9 +185,6 @@ pub struct UiSettings {
     /// Collapse every UI transition to instant (adds `.reduce-motion` to <html>).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reduce_motion: Option<bool>,
-    /// Opt in to the Workbench layout while the UI overhaul is behind a flag.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layout_v3: Option<bool>,
     /// Focus section layout in the Workbench layout ("list" | "board").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focus_layout: Option<String>,
@@ -234,7 +231,6 @@ impl Default for UiSettings {
             restore_last_selection: true,
             pr_density: None,
             reduce_motion: None,
-            layout_v3: None,
             focus_layout: None,
             stale_after_days: None,
         }
@@ -609,7 +605,6 @@ mod redesign_field_tests {
         s.ui.quick_review_hotkey = "Ctrl+Alt+R".to_string();
         s.ui.start_minimized_to_tray = true;
         s.ui.reduce_motion = Some(true);
-        s.ui.layout_v3 = Some(true);
         s.ui.focus_layout = Some("board".to_string());
         s.ui.stale_after_days = Some(10);
         s.notifications.channels.email_digest = true;
@@ -632,9 +627,9 @@ mod redesign_field_tests {
         assert_eq!(back.ui.quick_review_hotkey, "Ctrl+Alt+R");
         assert!(back.ui.start_minimized_to_tray);
         assert_eq!(back.ui.reduce_motion, Some(true));
-        assert_eq!(back.ui.layout_v3, Some(true));
         assert!(json.contains("\"reduceMotion\":true"));
-        assert!(json.contains("\"layoutV3\":true"));
+        // The Workbench flag is gone since 3.0.0; it is never written back.
+        assert!(!json.contains("layoutV3"));
         assert_eq!(back.ui.focus_layout.as_deref(), Some("board"));
         assert_eq!(back.ui.stale_after_days, Some(10));
         assert!(json.contains("\"focusLayout\":\"board\""));
@@ -649,6 +644,18 @@ mod redesign_field_tests {
             back.remote_worktree_repos[0].favorite_worktree_paths.len(),
             1
         );
+    }
+
+    #[test]
+    fn legacy_layout_v3_key_is_ignored() {
+        // Settings saved by 2.x carry `ui.layoutV3` (the Workbench opt-in,
+        // removed at the 3.0.0 cutover). They still load, and the key is
+        // dropped on the next save.
+        let s: AppSettings =
+            serde_json::from_str(r#"{"ui":{"layoutV3":true,"focusLayout":"board"}}"#).unwrap();
+        assert_eq!(s.ui.focus_layout.as_deref(), Some("board"));
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(!json.contains("layoutV3"));
     }
 
     #[test]

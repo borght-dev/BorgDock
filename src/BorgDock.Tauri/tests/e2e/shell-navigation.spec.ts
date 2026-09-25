@@ -1,12 +1,11 @@
 import { expect, type Page, test } from '@playwright/test';
 import { getInvokeLog, type MockHandlers } from './helpers/mock-tauri';
-import { SAMPLE_PRS, seedScenario } from './helpers/seed';
+import { SAMPLE_PRS } from './helpers/seed';
 import { bootApp, seedMainWindow } from './helpers/test-utils';
 
 /**
  * Workbench shell (plans/ui-overhaul-workbench.md, phase 1): the left rail
- * and the main window's view stack, with `ui.layoutV3` switched on through
- * the same `load_settings` mock every main-window spec uses.
+ * and the main window's view stack.
  *
  * The plugin-store commands are backed by sessionStorage so a persisted
  * section survives `page.reload()` the way it survives an app restart
@@ -15,10 +14,7 @@ import { bootApp, seedMainWindow } from './helpers/test-utils';
  */
 
 function railHandlers(): MockHandlers {
-  const happy = seedScenario('happy-path');
-  const settings = happy.load_settings as { ui: Record<string, unknown> };
   return {
-    load_settings: { ...settings, ui: { ...settings.ui, layoutV3: true } },
     'plugin:store|set': (args: Record<string, unknown>) => {
       sessionStorage.setItem(`e2e-store:${String(args.key)}`, JSON.stringify(args.value));
       return null;

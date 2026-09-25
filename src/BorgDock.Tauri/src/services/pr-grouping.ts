@@ -52,14 +52,6 @@ export interface PrGroup {
   stats: PrGroupStats;
 }
 
-export interface AuthorLoad {
-  login: string;
-  avatarUrl: string;
-  isMe: boolean;
-  count: number;
-  failing: number;
-}
-
 // ── predicates (shared with the store filters) ─────────────────────────────
 
 export function isMyPr(pr: PullRequestWithChecks, username: string): boolean {
@@ -248,37 +240,6 @@ export function groupPrs(
       });
     }
   }
-}
-
-/** Per-author roll-up for the summary strip: me first, then by count desc. */
-export function computeAuthorLoad(prs: PullRequestWithChecks[], username: string): AuthorLoad[] {
-  const map = new Map<string, AuthorLoad>();
-  for (const pr of prs) {
-    const login = pr.pullRequest.authorLogin;
-    if (!login) continue;
-    const key = login.toLowerCase();
-    let entry = map.get(key);
-    if (!entry) {
-      entry = {
-        login,
-        avatarUrl: pr.pullRequest.authorAvatarUrl,
-        isMe: isMyPr(pr, username),
-        count: 0,
-        failing: 0,
-      };
-      map.set(key, entry);
-    }
-    if (!entry.avatarUrl && pr.pullRequest.authorAvatarUrl) {
-      entry.avatarUrl = pr.pullRequest.authorAvatarUrl;
-    }
-    entry.count++;
-    if (isFailing(pr)) entry.failing++;
-  }
-  return [...map.values()].sort((a, b) => {
-    if (a.isMe !== b.isMe) return a.isMe ? -1 : 1;
-    if (b.count !== a.count) return b.count - a.count;
-    return a.login.localeCompare(b.login);
-  });
 }
 
 /**

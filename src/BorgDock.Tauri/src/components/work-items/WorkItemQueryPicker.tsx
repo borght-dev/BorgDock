@@ -33,8 +33,8 @@ interface WorkItemQueryPickerProps {
 }
 
 /**
- * WorkItemQueryPicker — the query choice in the Work items head row
- * (`ui.layoutV3`). Segmented: the favourite queries with the sliding fill
+ * WorkItemQueryPicker — the query choice in the Work items head row.
+ * Segmented: the favourite queries with the sliding fill
  * (`SlidingHighlight`), plus the selected query when it is not a favourite.
  * Select: every query in one compact control. Both end with "Browse all
  * queries", the query browser the rail's footer opens.

@@ -1,264 +1,177 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
 import { isReady } from '@/services/pr-grouping';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useSettingsStore } from '@/stores/settings-store';
 import { SECTION_ORDER, useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 
 type QueueMergeFn = (owner: string, repo: string, prNumber: number) => void;
 
-export function useKeyboardNav() {
-  const focusedIndexRef = useRef(0);
-  const selectPr = useUiStore((s) => s.selectPr);
-  const selectedPrNumber = useUiStore((s) => s.selectedPrNumber);
-  const pullRequests = usePrStore((s) => s.pullRequests);
-  const filter = usePrStore((s) => s.filter);
+/**
+ * useKeyboardNav — the main window's list keys (plans/ui-overhaul-workbench.md,
+ * section 7). Search (Ctrl+K, Ctrl+F) and refresh (Ctrl+R) work from any
+ * view; the rest only on the list, not on key repeat, and not while a menu,
+ * dialog or Quick Review owns the keyboard:
+ *
+ * - `1` to `4` pick the rail's sections, `/` focuses the section's search,
+ *   plain R refreshes (in Focus it starts Quick Review for the selected row).
+ * - J/K (down/up) move the selection over the rows as drawn, Enter opens the
+ *   selected one, Ctrl/Cmd+Enter opens it in its own window. The Focus board
+ *   adds H/L (left/right) across its columns.
+ * - M queues the merge of the selected ready PR in Focus, O opens the
+ *   selected PR on GitHub, Shift+R starts Quick Review for every PR waiting
+ *   on my review, E collapses every group, Esc clears the selection.
+ */
+export function useKeyboardNav(): void {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Search and refresh work from any view.
+    if (isSearchShortcut(e)) {
+      e.preventDefault();
+      focusSectionSearch();
+      return;
+    }
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Search and refresh work from any view.
-      if (isSearchShortcut(e)) {
+    // Don't intercept when typing in inputs
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    ) {
+      return;
+    }
+
+    if (isRefreshShortcut(e)) {
+      e.preventDefault();
+      dispatchRefresh();
+      return;
+    }
+
+    // The rest are the list view's keys. A detail view on top of the list
+    // has its own (ViewStack handles Esc / Alt+Left there).
+    if (useUiStore.getState().viewStack.length > 1) return;
+
+    // Enter on a control (a button, a link, the "Why not the others?"
+    // summary, a row's action) is that control's: never the list's.
+    if (e.key === 'Enter' && isOtherControl(e.target)) return;
+
+    // A menu, dialog or Quick Review owns the keyboard (Enter, Esc, J/K in
+    // its file walk).
+    if (isOverlayOpen()) return;
+
+    if (isPlainKey(e) && !e.repeat) {
+      const section = railSectionForKey(e);
+      if (section) {
+        e.preventDefault();
+        void showSection(section);
+        return;
+      }
+      if (e.key === '/') {
         e.preventDefault();
         focusSectionSearch();
         return;
       }
-
-      // Don't intercept when typing in inputs
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      if (isRefreshShortcut(e)) {
+      if (e.key === 'r' && useUiStore.getState().activeSection !== 'focus') {
         e.preventDefault();
         dispatchRefresh();
         return;
       }
-
-      // The rest are the list view's keys. A detail view on top of the list
-      // has its own (ViewStack handles Esc / Alt+Left there).
-      if (useUiStore.getState().viewStack.length > 1) return;
-
-      // Single-key shortcuts of the rail layout (plan section 7): not on key
-      // repeat, and not while a menu, dialog or Quick Review owns the keyboard.
-      const layoutV3 = useSettingsStore.getState().settings.ui.layoutV3 ?? false;
-
-      // Enter on a control (a button, a link, the "Why not the others?"
-      // summary, a row's action) is that control's: never the list's.
-      if (layoutV3 && e.key === 'Enter' && isOtherControl(e.target)) return;
-
-      if (layoutV3 && isPlainKey(e) && !e.repeat && !isOverlayOpen()) {
-        const section = railSectionForKey(e);
-        if (section) {
-          e.preventDefault();
-          void showSection(section);
-          return;
-        }
-        if (e.key === '/') {
-          e.preventDefault();
-          focusSectionSearch();
-          return;
-        }
-        if (e.key === 'r' && useUiStore.getState().activeSection !== 'focus') {
-          e.preventDefault();
-          dispatchRefresh();
-          return;
-        }
-        // R, M and O act on the selected row or card, found by its key.
-        // The tab layout's index (below) is not the Workbench selection: a
-        // filtered list and the Board's columns have their own order.
-        if (isSelectionKey(e)) {
-          const selected = selectedWorkbenchPr();
-          if (selected) actOnSelection(e, selected);
-          return;
-        }
+      // R, M and O act on the selected row or card, found by its key: a
+      // filtered list and the Board's columns have their own order.
+      if (isSelectionKey(e)) {
+        const selected = selectedPr();
+        if (selected) actOnSelection(e, selected);
+        return;
       }
+    }
 
-      // The Focus board: J/K within a column, H/L (or ←/→) across columns,
-      // Enter opens the selected card.
-      if (layoutV3 && !e.defaultPrevented && isPlainKey(e) && !isOverlayOpen()) {
-        const cards = live<HTMLElement>(BOARD_CARD_SELECTOR);
-        if (cards.length > 0 && handleBoardKey(e, cards)) return;
+    // A held R, M or O does nothing.
+    if (isPlainKey(e) && isSelectionKey(e)) return;
+
+    if (!e.defaultPrevented && isPlainKey(e)) {
+      // The Focus board: J/K within a column, H/L (or arrows) across
+      // columns, Enter opens the selected card.
+      const cards = live<HTMLElement>(BOARD_CARD_SELECTOR);
+      if (cards.length > 0 && handleBoardKey(e, cards)) return;
+
+      // PR rows: J/K follow the rows as drawn ("Needs you" first, then the
+      // groups; collapsed groups skipped) and Enter opens the selected one in
+      // the detail view.
+      const rows = live<HTMLElement>(PR_ROW_SELECTOR);
+      if (rows.length > 0 && handlePrRowKey(e, rows)) return;
+
+      // Work item rows: J/K move the selection, Enter opens the selected
+      // item's full-screen detail view.
+      const wiRows = live<HTMLElement>(WORK_ITEM_ROW_SELECTOR);
+      if (wiRows.length > 0 && handleWorkItemRowKey(e, wiRows)) return;
+    }
+
+    // Ctrl/Cmd+Enter opens the selected PR row (or Focus card) in its own window.
+    if (!e.defaultPrevented && isPopOutShortcut(e)) {
+      const row = live<HTMLElement>(`${PR_ROW_SELECTOR}, ${BOARD_CARD_SELECTOR}`).find(
+        (r) => r.dataset.selected === 'true',
+      );
+      const target = row ? rowTarget(row) : null;
+      if (target) {
+        e.preventDefault();
+        void openPrDetail(target);
       }
+      return;
+    }
 
-      // Workbench PR rows: J/K follow the rows as drawn ("Needs you" first,
-      // then the groups; collapsed groups skipped) and Enter opens the
-      // selected one in the detail view.
-      if (layoutV3 && !e.defaultPrevented && isPlainKey(e)) {
-        // A menu, dialog or Quick Review owns the keyboard.
-        if (isOverlayOpen()) return;
-        const rows = live<HTMLElement>(WORKBENCH_ROW_SELECTOR);
-        if (rows.length > 0 && handleWorkbenchRowKey(e, rows, focusedIndexRef)) return;
+    if (e.defaultPrevented) return;
+
+    switch (e.key) {
+      case 'Escape': {
+        const ui = useUiStore.getState();
+        if (ui.selectedPrKey !== null || ui.selectedPrNumber !== null) {
+          e.preventDefault();
+          ui.selectPr(null);
+        }
+        break;
       }
-      // Workbench work item rows: J/K move the selection, Enter opens the
-      // selected item's full-screen detail view.
-      if (layoutV3 && !e.defaultPrevented && isPlainKey(e) && !isOverlayOpen()) {
-        const wiRows = live<HTMLElement>(WORK_ITEM_ROW_SELECTOR);
-        if (wiRows.length > 0 && handleWorkItemRowKey(e, wiRows)) return;
+      case 'R': {
+        // Shift+R: Quick Review for every PR waiting on my review.
+        if (!e.shiftKey || !isPlainKey(e)) break;
+        e.preventDefault();
+        const reviewPrs = usePrStore.getState().needsMyReview();
+        if (reviewPrs.length > 0) useQuickReviewStore.getState().startSession(reviewPrs);
+        break;
       }
-      // Ctrl/Cmd+Enter opens the selected Workbench row (or Focus card) in its own window.
-      if (layoutV3 && !e.defaultPrevented && isPopOutShortcut(e) && !isOverlayOpen()) {
-        const row = live<HTMLElement>(`${WORKBENCH_ROW_SELECTOR}, ${BOARD_CARD_SELECTOR}`).find(
-          (r) => r.dataset.selected === 'true',
-        );
-        const target = row ? rowTarget(row) : null;
-        if (target) {
-          e.preventDefault();
-          void openPrDetail(target);
-          return;
-        }
+      case 'e':
+      case 'E': {
+        if (!isPlainKey(e)) break;
+        e.preventDefault();
+        const keys = live<HTMLElement>('[data-group-key]')
+          .map((group) => group.dataset.groupKey)
+          .filter((key): key is string => !!key);
+        useUiStore.getState().collapseAllRepoGroups(keys);
+        break;
       }
-
-      // R / M / O never reach the tab layout's index-based rules in the
-      // Workbench layout (a held key, an open overlay): nothing happens.
-      if (layoutV3 && isPlainKey(e) && isSelectionKey(e)) return;
-
-      // The tab layout's keys below. Quick Review (Enter, Esc, J/K in its
-      // file walk), menus and dialogs keep theirs.
-      if (isOverlayOpen()) return;
-
-      const filteredPrs = usePrStore.getState().filteredPrs();
-      if (filteredPrs.length === 0) return;
-
-      switch (e.key) {
-        case 'ArrowDown':
-        case 'j': {
-          e.preventDefault();
-          focusedIndexRef.current = Math.min(focusedIndexRef.current + 1, filteredPrs.length - 1);
-          const pr = filteredPrs[focusedIndexRef.current];
-          if (pr) selectPr(pr.pullRequest.number);
-          // Scroll focused card into view
-          scrollFocusedIntoView(focusedIndexRef.current);
-          break;
-        }
-        case 'ArrowUp':
-        case 'k': {
-          e.preventDefault();
-          focusedIndexRef.current = Math.max(focusedIndexRef.current - 1, 0);
-          const pr = filteredPrs[focusedIndexRef.current];
-          if (pr) selectPr(pr.pullRequest.number);
-          scrollFocusedIntoView(focusedIndexRef.current);
-          break;
-        }
-        case 'Enter': {
-          e.preventDefault();
-          // Already selected via arrow keys
-          break;
-        }
-        case 'Escape': {
-          e.preventDefault();
-          if (selectedPrNumber !== null) {
-            selectPr(null);
-          }
-          break;
-        }
-        case 'r': {
-          // Ctrl+R is handled above; plain R in Focus starts Quick Review.
-          if (useUiStore.getState().activeSection === 'focus' && !e.shiftKey) {
-            // R in Focus: start Quick Review for selected PR
-            e.preventDefault();
-            const focusPrs = usePrStore.getState().focusPrs();
-            const selected = focusPrs[focusedIndexRef.current];
-            if (selected) {
-              useQuickReviewStore.getState().startSinglePr(selected);
-            }
-          }
-          break;
-        }
-        case 'R': {
-          // Shift+R: start Quick Review session for all review-requested PRs
-          if (e.shiftKey) {
-            e.preventDefault();
-            const reviewPrs = usePrStore.getState().needsMyReview();
-            if (reviewPrs.length > 0) {
-              useQuickReviewStore.getState().startSession(reviewPrs);
-            }
-          }
-          break;
-        }
-        case 'e':
-        case 'E': {
-          e.preventDefault();
-          useUiStore.getState().collapseAllRepoGroups();
-          break;
-        }
-        case 'm':
-        case 'M': {
-          // Merge with undo toast — only in Focus section
-          if (useUiStore.getState().activeSection !== 'focus') break;
-          e.preventDefault();
-          const focusPrs = usePrStore.getState().focusPrs();
-          const selected = focusPrs[focusedIndexRef.current];
-          if (!selected) break;
-          const p = selected.pullRequest;
-          const queueMerge = (window as unknown as Record<string, unknown>).__borgdockQueueMerge as
-            | QueueMergeFn
-            | undefined;
-          if (queueMerge) {
-            queueMerge(p.repoOwner, p.repoName, p.number);
-          }
-          break;
-        }
-        case 'o': {
-          // Open PR in browser
-          const pr = filteredPrs[focusedIndexRef.current];
-          if (pr) {
-            e.preventDefault();
-            import('@tauri-apps/plugin-opener')
-              .then(({ openUrl }) => openUrl(pr.pullRequest.htmlUrl))
-              .catch(console.error);
-          }
-          break;
-        }
-      }
-    },
-    [selectPr, selectedPrNumber],
-  );
+    }
+  }, []);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
-
-  // Reset focused index when PR list changes. pullRequests + filter are
-  // subscribed via selectors so the component re-renders; we just want this
-  // effect to re-run on those re-renders.
-  useEffect(() => {
-    void pullRequests;
-    void filter;
-    const filteredPrs = usePrStore.getState().filteredPrs();
-    if (focusedIndexRef.current >= filteredPrs.length) {
-      focusedIndexRef.current = Math.max(0, filteredPrs.length - 1);
-    }
-  }, [pullRequests, filter]);
-
-  return { focusedIndex: focusedIndexRef };
 }
 
-const WORKBENCH_ROW_SELECTOR = '.bd-wb-row[data-pr-key]';
+/** Rows of the PR list and the Focus list (`PrRow`). */
+const PR_ROW_SELECTOR = '.bd-wb-row[data-pr-key]';
 
 /**
- * J/K/arrows and Enter over the Workbench list's rows, in DOM order. Returns
- * true when the key was handled.
+ * J/K/arrows and Enter over the PR rows, in DOM order. Returns true when the
+ * key was handled.
  */
-function handleWorkbenchRowKey(
-  e: KeyboardEvent,
-  rows: HTMLElement[],
-  focusedIndexRef: { current: number },
-): boolean {
+function handlePrRowKey(e: KeyboardEvent, rows: HTMLElement[]): boolean {
   const current = rows.findIndex((row) => row.dataset.selected === 'true');
   const select = (index: number) => {
     const row = rows[index];
     if (!row) return;
-    focusedIndexRef.current = index;
     useUiStore
       .getState()
       .selectPrKey(row.dataset.prKey ?? null, Number(row.dataset.prNumber) || null);
@@ -291,7 +204,7 @@ function handleWorkbenchRowKey(
   }
 }
 
-/** Rows of the Workbench Work items list (`WorkbenchWorkItemRow`). */
+/** Rows of the Work items list (`WorkItemRow`). */
 const WORK_ITEM_ROW_SELECTOR = '.bd-wi-wb-row[data-wi-id]';
 
 /**
@@ -341,7 +254,7 @@ function isSelectionKey(e: KeyboardEvent): boolean {
 }
 
 /**
- * The Workbench layout's R / M / O on the selected PR: R starts Quick Review
+ * R / M / O on the selected PR: R starts Quick Review
  * for it, M queues its merge (with the Undo toast) only when it is ready to
  * merge, O opens it on GitHub.
  */
@@ -374,7 +287,7 @@ const LIST_BODY_SELECTOR = '.bd-wb-row, .bd-fb-card__main';
 const CONTROL_SELECTOR =
   'button, a[href], summary, input, select, textarea, [role="button"], [role="link"], [role="tab"]';
 
-/** `target` is a control other than a Workbench row or Focus card body. */
+/** `target` is a control other than a PR row or Focus card body. */
 function isOtherControl(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   const control = target.closest(CONTROL_SELECTOR);
@@ -454,9 +367,9 @@ function inSection<T extends { owner: string; repo: string; number: number }>(ta
     : target;
 }
 
-/** The PR of the selected Workbench row or Focus card on screen, from the store. */
-function selectedWorkbenchPr() {
-  const el = live<HTMLElement>(`${WORKBENCH_ROW_SELECTOR}, ${BOARD_CARD_SELECTOR}`).find(
+/** The PR of the selected row or Focus card on screen, from the store. */
+function selectedPr() {
+  const el = live<HTMLElement>(`${PR_ROW_SELECTOR}, ${BOARD_CARD_SELECTOR}`).find(
     (r) => r.dataset.selected === 'true',
   );
   const key = el?.dataset.prKey;
@@ -468,7 +381,7 @@ function selectedWorkbenchPr() {
   );
 }
 
-/** The PR a Workbench row stands for, from its data attributes. */
+/** The PR a row or card stands for, from its data attributes. */
 function rowTarget(row: HTMLElement): { owner: string; repo: string; number: number } | null {
   const { prOwner: owner, prRepo: repo, prNumber } = row.dataset;
   if (!owner || !repo || !prNumber) return null;
@@ -485,7 +398,7 @@ function isPlainKey(e: KeyboardEvent): boolean {
   return !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-/** `1`–`4` pick the rail's sections (the rail layout only; the caller checks). */
+/** `1`–`4` pick the rail's sections. */
 function railSectionForKey(e: KeyboardEvent) {
   if (e.shiftKey || !/^[1-9]$/.test(e.key)) return null;
   return SECTION_ORDER[Number(e.key) - 1] ?? null;
@@ -547,13 +460,4 @@ function focusSectionSearch(): void {
     return;
   }
   focusPrSearch();
-}
-
-function scrollFocusedIntoView(index: number): void {
-  // PR cards in the live section only; a covered list or a section fading
-  // out keeps its cards in the DOM.
-  const card = live('[data-pr-card]')[index];
-  if (card) {
-    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
 }

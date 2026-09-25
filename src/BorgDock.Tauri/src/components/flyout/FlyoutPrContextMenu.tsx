@@ -125,7 +125,7 @@ export function FlyoutPrContextMenu({
 
   const handleOpenDetail = () => {
     void (async () => {
-      // The main window opens it: in place with `ui.layoutV3`, else the pop-out.
+      // The main window comes to the front and opens it in place.
       const { showPr } = await import('@/services/navigation');
       await showPr({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
     })();

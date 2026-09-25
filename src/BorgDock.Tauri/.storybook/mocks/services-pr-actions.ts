@@ -9,6 +9,11 @@
 //   function    → call it; the function's return value is the result
 //
 // The 'name' key is the function name (e.g. 'mergePr', 'closePr').
+//
+// A successful merge also does what production does to the store: it marks
+// the PR merged at once (`optimisticallyMarkMerged`), so a story shows the
+// card leave, the row move to Recently closed and "Merged today" bump,
+// instead of the PR coming back as still open.
 
 import type {
   ActionOpts,
@@ -20,6 +25,9 @@ import type {
   RerunChecksInput,
   ToggleDraftInput,
 } from '../../src/services/pr-actions';
+import { usePrStore } from '../../src/stores/pr-store';
+import { useQuickReviewStore } from '../../src/stores/quick-review-store';
+import type { PullRequestWithChecks } from '../../src/types';
 import { getControl } from './control';
 
 type Behavior = '__throw__' | '__fail__' | ((args: unknown) => unknown);
@@ -38,12 +46,18 @@ async function record<T>(name: string, args: unknown, defaultResult: T): Promise
   return defaultResult;
 }
 
+/** Production's success path for a merge: the PR leaves the open list at once. */
+function markMerged(pr: PrRef, ok: boolean): boolean {
+  if (ok) usePrStore.getState().optimisticallyMarkMerged(pr.repoOwner, pr.repoName, pr.number);
+  return ok;
+}
+
 export async function mergePr(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
-  return record('mergePr', { pr, opts }, true);
+  return markMerged(pr, await record('mergePr', { pr, opts }, true));
 }
 
 export async function mergePrWithToast(pr: PrRef, opts?: MergePrOpts): Promise<boolean> {
-  return record('mergePrWithToast', { pr, opts }, true);
+  return markMerged(pr, await record('mergePrWithToast', { pr, opts }, true));
 }
 
 /** Opens Quick Review for the PR, like production (it is not a network call). */
@@ -53,7 +67,7 @@ export function reviewPr(pr: PullRequestWithChecks): void {
 }
 
 export async function bypassMergePr(pr: PrRef, opts?: ActionOpts): Promise<boolean> {
-  return record('bypassMergePr', { pr, opts }, true);
+  return markMerged(pr, await record('bypassMergePr', { pr, opts }, true));
 }
 
 export async function closePr(pr: ClosePrInput, opts?: ActionOpts): Promise<boolean> {

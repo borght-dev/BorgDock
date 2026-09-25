@@ -4,16 +4,9 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useStatusBar } from '../useStatusBar';
 
-function setLayoutV3(layoutV3: boolean) {
-  useSettingsStore.setState((s) => ({
-    settings: { ...s.settings, ui: { ...s.settings.ui, layoutV3 } },
-  }));
-}
-
 describe('useStatusBar', () => {
   beforeEach(() => {
     useUiStore.setState({ viewStack: [{ kind: 'list' }] });
-    setLayoutV3(false);
   });
 
   it('returns Focus copy', () => {
@@ -29,12 +22,10 @@ describe('useStatusBar', () => {
   it('returns Work Items copy', () => {
     const { result } = renderHook(() => useStatusBar('workitems'));
     expect(result.current.left).toMatch(/ado:/i);
-    expect(result.current.right).toMatch(/F9/i);
   });
   it('returns Worktrees copy', () => {
     const { result } = renderHook(() => useStatusBar('worktrees'));
-    expect(result.current.left).toMatch(/worktrees/i);
-    expect(result.current.right).toMatch(/Ctrl\+F7/);
+    expect(result.current.left).toBe('worktrees from every watched repository');
   });
   it('shows the back keys and the PR on a pull request detail view', () => {
     useUiStore.setState({
@@ -54,12 +45,13 @@ describe('useStatusBar', () => {
     const { result } = renderHook(() => useStatusBar('prs'));
     expect(result.current.right).not.toMatch(/Esc/);
   });
-  describe('rail layout list keys', () => {
-    beforeEach(() => setLayoutV3(true));
 
+  describe('list keys', () => {
     it('shows / search and R refresh on the PR list', () => {
       const { result } = renderHook(() => useStatusBar('prs'));
-      expect(result.current.right).toMatch(/^\/ search · R refresh · /);
+      expect(result.current.right).toBe(
+        '/ search · R refresh · Ctrl+F7 worktrees · Ctrl+F8 files · Ctrl+F9 ADO',
+      );
     });
     it('names the row keys on Work items', () => {
       const { result } = renderHook(() => useStatusBar('workitems'));
@@ -83,10 +75,5 @@ describe('useStatusBar', () => {
         settings: { ...s.settings, ui: { ...s.settings.ui, focusLayout: 'list' } },
       }));
     });
-  });
-
-  it('adds no new keys in the tab layout', () => {
-    const { result } = renderHook(() => useStatusBar('prs'));
-    expect(result.current.right).toBe('Ctrl+F7 worktrees · Ctrl+F8 files · Ctrl+F9 ADO');
   });
 });

@@ -1,6 +1,6 @@
 // src/components/focus/FocusBoard.stories.tsx
 //
-// Focus in the Workbench layout (`ui.layoutV3`): the Board (four computed
+// Focus: the Board (four computed
 // columns, no drag) and the List (count strip, rows with a reason), over the
 // 18 open PRs of the iteration-2 mockup. Merge on a ready card runs the
 // fill → Merged → fade → tally sequence against the Storybook Tauri mocks;
@@ -14,7 +14,6 @@ import {
   workbenchPrs,
 } from '@/components/pr/__fixtures__/pr-list-data';
 import type { FocusFilter } from '@/services/focus-bucket';
-import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -57,9 +56,8 @@ function Harness({
       selectedPrNumber: selected ? Number(selected.split('#')[1]) : null,
       viewStack: [{ kind: 'list' }],
     });
-    useOnboardingStore.setState({ hasSeenFocusOverlay: true });
     useSettingsStore.setState((s) => ({
-      settings: { ...s.settings, ui: { ...s.settings.ui, layoutV3: true, focusLayout: layout } },
+      settings: { ...s.settings, ui: { ...s.settings.ui, focusLayout: layout } },
     }));
     return null;
   });

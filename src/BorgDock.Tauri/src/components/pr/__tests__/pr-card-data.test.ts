@@ -3,6 +3,7 @@ import { listPr } from '../__fixtures__/pr-list-data';
 import {
   checkCountsFor,
   type PrCardData,
+  passedOfCounted,
   prRowKey,
   ROW_CHIP_LABEL,
   rowChipFor,
@@ -101,5 +102,14 @@ describe('prRowKey', () => {
     expect(prRowKey({ repoOwner: 'a', repoName: 'y', number: 1 })).not.toBe(
       prRowKey({ repoOwner: 'a', repoName: 'x', number: 1 }),
     );
+  });
+});
+
+describe('passedOfCounted', () => {
+  it('leaves skipped checks out of the count', () => {
+    expect(passedOfCounted({ passed: 5, skipped: 1, total: 8 })).toEqual({ passed: 5, counted: 7 });
+  });
+  it('never goes below zero', () => {
+    expect(passedOfCounted({ passed: 0, skipped: 3, total: 2 })).toEqual({ passed: 0, counted: 0 });
   });
 });

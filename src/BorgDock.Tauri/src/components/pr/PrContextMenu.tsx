@@ -58,9 +58,9 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
   const defaultProvider = settings.agents?.defaultProvider ?? 'claude';
   const providerLabel = defaultProvider === 'codex' ? 'Codex' : 'Claude';
-  // In the Workbench layout a click opens the detail inside the main window,
-  // so the pop-out is the explicit "Open in window" action.
-  const popOutLabel = settings.ui?.layoutV3 ? 'Open in window' : 'Open in detail window';
+  // A click opens the detail inside the main window, so the pop-out is the
+  // explicit "Open in window" action.
+  const popOutLabel = 'Open in window';
 
   // Close on click outside
   useEffect(() => {

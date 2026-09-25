@@ -198,6 +198,21 @@ describe('ChecksGrouped', () => {
     );
   });
 
+  it('leaves skipped checks out of the count, like the Checks tab badge', () => {
+    render(
+      <ChecksGrouped
+        checks={[
+          check('CI / unit', 'passed', 2),
+          check('CI / lint', 'failed', 2),
+          check('Release / publish', 'skipped', 4),
+        ]}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: /Checks/ })).toHaveTextContent(
+      '1 of 2 passed in 2 suites, 1 skipped',
+    );
+  });
+
   it('shows rows failed first with the duration on the right', () => {
     render(<ChecksGrouped checks={checks} />);
     const ci = suites()[0]!;

@@ -1,61 +1,141 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { GitPullRequest } from 'lucide-react';
-import { useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { Card } from '@/components/shared/primitives';
+import { groupWorkbenchPrs, NEEDS_YOU_GROUP_KEY, type PrGroupBy } from '@/services/pr-grouping';
 import { matchesSearch } from '@/services/pr-search';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
-import { usePrStore } from '@/stores/pr-store';
+import {
+  matchesPrFilter,
+  myReviewRequestedAt,
+  type PrFilter,
+  type SortBy,
+  usePrStore,
+} from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity, PullRequestWithChecks } from '@/types';
-import { PrCardContainer } from './PrCardContainer';
-import { PrPanel } from './PrRow';
-import { type PrFilterCounts, PrToolbar } from './PrToolbar';
-import { RepoGroup } from './RepoGroup';
+import { EASE_OUT, FLIP_MAX_ROWS, flip, motionMs, motionOK } from '@/utils/motion';
+import { minuteNow } from '@/utils/relative-time';
+import { type WorkbenchFilter, workbenchFilterCounts, workbenchFilterFor } from './PrFilterControl';
+import { PrRow } from './PrRow';
+import { WorkbenchPrHead } from './PrToolbar';
+import { prRowKey } from './pr-card-data';
+import { groupFlipKey, WorkbenchGroup, WorkbenchPrGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
-import { TeamReviewLoad } from './TeamReviewLoad';
-import { WorkbenchPrList } from './WorkbenchPrList';
+import { ReviewerRow, useTeamReviewers } from './TeamReviewLoad';
 
-const VIRTUALIZE_THRESHOLD = 50;
+/** Recently closed switches to a virtualized list above this many PRs. */
+export const VIRTUALIZE_THRESHOLD = 50;
 
-function SkeletonCard() {
+/**
+ * Rows `flip()` follows: every keyed row, i.e. every row a virtualizer does
+ * not recycle. Above `FLIP_MAX_ROWS` of them a change skips FLIP.
+ */
+export const FLIP_ROW_SELECTOR = '[data-key]';
+
+const ROW_HEIGHT: Record<PrDensity, number> = { comfortable: 42, compact: 32 };
+
+const SKELETON_ROWS = ['s1', 's2', 's3', 's4', 's5'];
+
+function SkeletonRows() {
   return (
-    <Card padding="sm">
-      <div className="flex items-start gap-2.5 animate-pulse">
-        <div className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-surface-raised)]" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3 w-3/4 rounded bg-[var(--color-surface-raised)]" />
-          <div className="h-2.5 w-1/2 rounded bg-[var(--color-surface-raised)]" />
-          <div className="h-2 w-1/3 rounded bg-[var(--color-surface-raised)]" />
+    <div className="bd-wb-skeleton" aria-hidden="true">
+      {SKELETON_ROWS.map((id) => (
+        <div key={id} className="bd-wb-skeleton__row">
+          <span className="bd-wb-skeleton__avatar" />
+          <span className="bd-wb-skeleton__line" />
         </div>
-      </div>
-    </Card>
+      ))}
+    </div>
   );
 }
 
 /**
- * PrList — the Pull requests section. `ui.layoutV3` picks the Workbench list
- * (`WorkbenchPrList`); otherwise the tab layout's list renders as before.
+ * The oldest review request waiting on me, for the "Needs you" heading. Uses
+ * the same lookup as `needsMyReview` (direct request, else team request), and
+ * does not pulse: nothing in the Workbench list animates on its own.
  */
-export function PrList() {
-  const layoutV3 = useSettingsStore((s) => s.settings.ui.layoutV3 ?? false);
-  return layoutV3 ? <WorkbenchPrList /> : <ClassicPrList />;
+function OldestRequest({ pr, username }: { pr: PullRequestWithChecks; username: string }) {
+  const timestamps = usePrStore((s) => s.reviewRequestTimestamps);
+  const requestedAt = myReviewRequestedAt(pr, username, timestamps);
+  const tier = getReviewSlaTier(requestedAt);
+  return (
+    <span className="bd-wb-group__aside" data-review-sla={tier}>
+      <ReviewSlaIndicator tier={tier} waitTime={formatReviewWaitTime(requestedAt)} still />
+    </span>
+  );
 }
 
-/** The tab layout's PR list: chip toolbar, pinned review queue, repo groups. */
-function ClassicPrList() {
+/**
+ * Recently closed above `VIRTUALIZE_THRESHOLD` rows. The virtualizer
+ * recycles rows, so they carry no `data-key` and `flip()` leaves them
+ * alone; the block crossfades instead (`data-crossfade`).
+ */
+function VirtualizedClosedRows({
+  prs,
+  density,
+  now,
+}: {
+  prs: PullRequestWithChecks[];
+  density: PrDensity;
+  now: number;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: prs.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT[density],
+    overscan: 10,
+  });
+
+  return (
+    <div ref={parentRef} className="bd-wb-virtual" data-virtual="" data-crossfade="">
+      {/* style: virtualizer total height is computed per render */}
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const pr = prs[item.index]!;
+          return (
+            <div
+              key={prRowKey(pr.pullRequest)}
+              data-index={item.index}
+              className="bd-wb-virtual__item"
+              // style: virtualizer offset computed per row
+              style={{ transform: `translateY(${item.start}px)` }}
+            >
+              <PrRow prWithChecks={pr} density={density} now={now} animateKey={false} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * PrList — the Pull requests section (plans/ui-overhaul-workbench.md,
+ * phase 2).
+ *
+ * - Head row: title, All / Needs you / Mine / Failing, search, and the
+ *   "Group and sort" menu.
+ * - Groups: "Needs you" first when the filter is All, then the rest by
+ *   `prGroupBy`; each PR appears once. Review load and Recently closed
+ *   follow with the same heading style.
+ * - Filter, group and sort changes FLIP the rows (`flip()` from
+ *   utils/motion): rows that leave fade out first, survivors glide to their
+ *   new slot, new rows fade in. A virtualized Recently closed list only
+ *   crossfades.
+ */
+export function PrList() {
   const isPolling = usePrStore((s) => s.isPolling);
   const lastPollTime = usePrStore((s) => s.lastPollTime);
-
-  // Subscribe to state fields that affect derived selectors so the
-  // component re-renders when they change. useShallow performs a
-  // shallow equality check, replacing the old void-statement workaround.
   const {
-    closedPullRequests: allClosedPrs,
+    closedPullRequests: allClosed,
     filter,
     searchQuery,
     username,
+    teams,
   } = usePrStore(
     useShallow((s) => ({
       pullRequests: s.pullRequests,
@@ -64,199 +144,225 @@ function ClassicPrList() {
       searchQuery: s.searchQuery,
       sortBy: s.sortBy,
       username: s.username,
+      teams: s.teams,
       reviewRequestTimestamps: s.reviewRequestTimestamps,
     })),
   );
-
-  const needsMyReview = usePrStore((s) => s.needsMyReview);
-  const groupedPrs = usePrStore((s) => s.groupedPrs);
   const filteredPrs = usePrStore((s) => s.filteredPrs);
   const counts = usePrStore((s) => s.counts);
-  const authorLoad = usePrStore((s) => s.authorLoad);
+  const needsMyReview = usePrStore((s) => s.needsMyReview);
   const groupBy = useUiStore((s) => s.prGroupBy);
   const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
+  const reviewers = useTeamReviewers();
 
-  const groups = groupedPrs(groupBy);
-  const prs = filteredPrs();
-  const reviewQueue = needsMyReview().filter((pr) => matchesSearch(pr, searchQuery));
-  const closedPullRequests = allClosedPrs.filter((pr) => matchesSearch(pr, searchQuery));
-  const authors = authorLoad();
-  const isFirstLoad = !lastPollTime && isPolling;
-
-  // Map the store's PrFilter-keyed counts onto the PrToolbar's UI-keyed counts.
-  // The two key sets diverge by intent: store keys mirror the underlying
-  // filter ids (`needsReview`, `reviewing`); toolbar keys are short labels
-  // (`needs`, `review`).
-  const c = counts();
-  const prFilterCounts = useMemo<PrFilterCounts>(
-    () => ({
-      all: c.all,
-      needs: c.needsReview,
-      mine: c.mine,
-      failing: c.failing,
-      ready: c.ready,
-      review: c.reviewing,
-      closed: c.closed,
-    }),
-    [c.all, c.needsReview, c.mine, c.failing, c.ready, c.reviewing, c.closed],
+  const listRef = useRef<HTMLDivElement>(null);
+  // The segment the user just picked: the control shows it at once while the
+  // leaving rows fade, before the store changes.
+  const [requestedFilter, setRequestedFilter] = useState<PrFilter | null>(null);
+  const changeToken = useRef(0);
+  useEffect(
+    () => () => {
+      changeToken.current++;
+    },
+    [],
   );
 
-  if (isFirstLoad) {
+  const prs = filteredPrs();
+  const groups = useMemo(
+    () => groupWorkbenchPrs(prs, groupBy, username, teams, filter === 'all'),
+    [prs, groupBy, username, teams, filter],
+  );
+  const closed = useMemo(
+    () => allClosed.filter((pr) => matchesSearch(pr, searchQuery)),
+    [allClosed, searchQuery],
+  );
+  const oldestRequest = needsMyReview().find((pr) => matchesSearch(pr, searchQuery));
+  const filterCounts = workbenchFilterCounts(counts());
+  const now = minuteNow();
+
+  /**
+   * Runs a list change through FLIP; a newer change makes an older pending
+   * one a no-op. A list of more than `FLIP_MAX_ROWS` rows skips FLIP (no
+   * measuring, no leave fade, no `flushSync`): it changes at once and
+   * crossfades as one block, like the virtualized Recently closed list.
+   */
+  const animateChange = useCallback((mutate: () => void, leaving: string[] = []) => {
+    const token = ++changeToken.current;
+    const container = listRef.current;
+    if (container && container.querySelectorAll(FLIP_ROW_SELECTOR).length > FLIP_MAX_ROWS) {
+      mutate();
+      if (motionOK() && typeof container.animate === 'function') {
+        container.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: motionMs('--motion-base', 260),
+          easing: EASE_OUT,
+        });
+      }
+      return;
+    }
+    void flip(
+      container,
+      () => {
+        if (token !== changeToken.current) return;
+        flushSync(mutate);
+      },
+      FLIP_ROW_SELECTOR,
+      { leaving },
+    ).then(() => {
+      if (token !== changeToken.current || !container || !motionOK()) return;
+      for (const block of container.querySelectorAll<HTMLElement>('[data-crossfade]')) {
+        if (typeof block.animate !== 'function') continue;
+        block.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: motionMs('--motion-base', 260),
+          easing: EASE_OUT,
+        });
+      }
+    });
+  }, []);
+
+  /**
+   * A filter change through FLIP. `search`, when given, replaces the search
+   * in the same change (the Review load rows filter by a reviewer).
+   */
+  const handleFilterChange = useCallback(
+    (next: WorkbenchFilter, search?: string) => {
+      const state = usePrStore.getState();
+      const { username, teams } = state;
+      const nextSearch = search ?? state.searchQuery;
+      const current = state.filteredPrs();
+      const leavingRows = current
+        .filter(
+          (pr) => !matchesPrFilter(pr, next, username, teams) || !matchesSearch(pr, nextSearch),
+        )
+        .map((pr) => prRowKey(pr.pullRequest));
+      // Group headings that have no rows under the new filter fade with them.
+      const groupBy = useUiStore.getState().prGroupBy;
+      const nextPrs = state.pullRequests.filter(
+        (pr) => matchesSearch(pr, nextSearch) && matchesPrFilter(pr, next, username, teams),
+      );
+      const nextGroups = new Set(
+        groupWorkbenchPrs(nextPrs, groupBy, username, teams, next === 'all').map((g) => g.key),
+      );
+      const leavingGroups = groupWorkbenchPrs(
+        current,
+        groupBy,
+        username,
+        teams,
+        state.filter === 'all',
+      )
+        .filter((g) => !nextGroups.has(g.key))
+        .map((g) => groupFlipKey(g.key));
+      setRequestedFilter(next);
+      animateChange(() => {
+        const store = usePrStore.getState();
+        store.setFilter(next);
+        if (search !== undefined) store.setSearchQuery(search);
+        setRequestedFilter(null);
+      }, [...leavingRows, ...leavingGroups]);
+    },
+    [animateChange],
+  );
+
+  // The control offers four filters. One left over from an older version (or
+  // set elsewhere) maps onto them, in the store, so the highlight, the rows
+  // and FLIP all agree: "Needs review" becomes "Needs you", the rest "All".
+  useLayoutEffect(() => {
+    if (workbenchFilterFor(filter) !== null) return;
+    usePrStore.getState().setFilter(filter === 'needsReview' ? 'needsYou' : 'all');
+  }, [filter]);
+
+  const handleGroupByChange = useCallback(
+    (next: PrGroupBy) => animateChange(() => useUiStore.getState().setPrGroupBy(next)),
+    [animateChange],
+  );
+
+  const handleSortChange = useCallback(
+    (next: SortBy) => animateChange(() => usePrStore.getState().setSortBy(next)),
+    [animateChange],
+  );
+
+  const head = (
+    <WorkbenchPrHead
+      filter={requestedFilter ?? filter}
+      counts={filterCounts}
+      onFilterChange={handleFilterChange}
+      onGroupByChange={handleGroupByChange}
+      onSortChange={handleSortChange}
+    />
+  );
+
+  if (!lastPollTime && isPolling) {
     return (
-      <>
-        <PrToolbar counts={prFilterCounts} />
-        <div className="flex flex-col gap-1.5 p-1">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      </>
+      <div className="bd-wb-prs">
+        {head}
+        <SkeletonRows />
+      </div>
     );
   }
 
-  if (prs.length === 0) {
-    return (
-      <>
-        <PrToolbar counts={prFilterCounts} />
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <GitPullRequest
-            size={32}
-            color="var(--color-text-ghost)"
-            strokeWidth={1.5}
-            className="mb-3"
-          />
-          <p className="text-xs text-[var(--color-text-muted)]">No pull requests found</p>
-        </div>
-      </>
-    );
-  }
-
-  // Show recently closed section at the bottom (unless already filtering to closed)
-  const showRecentlyClosed = filter !== 'closed' && closedPullRequests.length > 0;
-  // Show "Needs Your Review" pinned section in "All" view when there are items
-  const showReviewQueue = filter === 'all' && reviewQueue.length > 0;
+  const showClosed = filter !== 'closed' && closed.length > 0;
+  const showReviewLoad = filter !== 'closed' && reviewers.length > 0;
 
   return (
-    <div className="flex flex-col">
-      <PrToolbar counts={prFilterCounts} authors={filter !== 'closed' ? authors : undefined} />
-      <div className="bd-pr-list">
-        {showReviewQueue && (
-          <>
-            <div className="bd-pr-section-head">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-status-yellow)]">
-                Needs Your Review
-              </span>
-              <span className="h-px flex-1 bg-[var(--color-separator)]" />
-              {/* style: color-mix background + yellow text — no Tailwind utility for color-mix percentage blends */}
-              <span
-                className="rounded-full px-1.5 text-[9px] font-medium tabular-nums"
-                style={{
-                  color: 'var(--color-status-yellow)',
-                  background: 'color-mix(in srgb, var(--color-status-yellow) 15%, transparent)',
-                }}
-              >
-                {reviewQueue.length}
-              </span>
-            </div>
-            <PrPanel density={density}>
-              {reviewQueue.map((pr) => {
-                const prk = `${pr.pullRequest.repoOwner}/${pr.pullRequest.repoName}#${pr.pullRequest.number}`;
-                const requestedAt = usePrStore.getState().getReviewRequestedAt(prk, username);
-                const tier = requestedAt ? getReviewSlaTier(requestedAt) : 'fresh';
-                const waitTime = requestedAt ? formatReviewWaitTime(requestedAt) : '<1h';
-                return (
-                  <PrCardContainer
-                    key={`review-${pr.pullRequest.number}`}
-                    prWithChecks={pr}
-                    density={density}
-                    badge={<ReviewSlaIndicator tier={tier} waitTime={waitTime} />}
-                  />
-                );
-              })}
-            </PrPanel>
-          </>
+    <div className="bd-wb-prs">
+      {head}
+      <div ref={listRef} className="bd-wb-list" data-density={density}>
+        {prs.length === 0 && (
+          <div className="bd-wb-empty">
+            <GitPullRequest size={28} strokeWidth={1.5} aria-hidden="true" />
+            <p>
+              {filter === 'all' && !searchQuery
+                ? 'No open pull requests'
+                : 'No pull requests match this filter'}
+            </p>
+          </div>
         )}
 
         {groups.map((group) => (
-          <RepoGroup key={group.key} group={group} />
+          <WorkbenchPrGroup
+            key={group.key}
+            group={group}
+            density={density}
+            now={now}
+            aside={
+              group.key === NEEDS_YOU_GROUP_KEY && oldestRequest ? (
+                <OldestRequest pr={oldestRequest} username={username} />
+              ) : undefined
+            }
+          />
         ))}
 
-        {filter !== 'closed' && <TeamReviewLoad />}
-
-        {showRecentlyClosed && (
-          <>
-            <div className="bd-pr-section-head mt-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
-                Recently Closed
-              </span>
-              <span className="h-px flex-1 bg-[var(--color-separator)]" />
-              <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]">
-                {closedPullRequests.length}
-              </span>
+        {showReviewLoad && (
+          <WorkbenchGroup groupKey="review-load" label="Review load" count={reviewers.length}>
+            <div className="bd-wb-review-load">
+              {reviewers.map((r) => (
+                <ReviewerRow
+                  key={r.login}
+                  reviewer={r}
+                  onSelect={(reviewer) => handleFilterChange('needsYou', reviewer.login)}
+                />
+              ))}
             </div>
-            <div className="opacity-60">
-              {closedPullRequests.length > VIRTUALIZE_THRESHOLD ? (
-                <VirtualizedPrCards prs={closedPullRequests} density={density} />
+          </WorkbenchGroup>
+        )}
+
+        {showClosed && (
+          <WorkbenchGroup groupKey="recently-closed" label="Recently closed" count={closed.length}>
+            <div className="bd-wb-closed">
+              {closed.length > VIRTUALIZE_THRESHOLD ? (
+                <VirtualizedClosedRows prs={closed} density={density} now={now} />
               ) : (
-                <PrPanel density={density}>
-                  {closedPullRequests.map((pr) => (
-                    <PrCardContainer
-                      key={pr.pullRequest.number}
-                      prWithChecks={pr}
-                      density={density}
-                    />
-                  ))}
-                </PrPanel>
+                closed.map((pr) => (
+                  <PrRow
+                    key={prRowKey(pr.pullRequest)}
+                    prWithChecks={pr}
+                    density={density}
+                    now={now}
+                  />
+                ))
               )}
             </div>
-          </>
+          </WorkbenchGroup>
         )}
-      </div>
-    </div>
-  );
-}
-
-function VirtualizedPrCards({
-  prs,
-  density,
-}: {
-  prs: PullRequestWithChecks[];
-  density: PrDensity;
-}) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: prs.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => (density === 'compact' ? 33 : 58),
-    overscan: 10,
-  });
-
-  return (
-    <div ref={parentRef} className="bd-pr-panel max-h-[400px] overflow-y-auto">
-      {/* style: virtualizer total height is computed per render — cannot be expressed as a Tailwind class */}
-      <div
-        style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
-      >
-        {virtualizer.getVirtualItems().map((virtualRow) => {
-          const pr = prs[virtualRow.index]!;
-          return (
-            <div
-              key={pr.pullRequest.number}
-              ref={virtualizer.measureElement}
-              data-index={virtualRow.index}
-              // style: virtualizer absolute positioning + translateY offset computed per row
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            >
-              <PrCardContainer prWithChecks={pr} density={density} />
-            </div>
-          );
-        })}
       </div>
     </div>
   );

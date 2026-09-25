@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type { HTMLAttributes } from 'react';
+import type { CSSProperties, HTMLAttributes } from 'react';
 
 export type CheckBarState = 'fail' | 'run' | 'ok' | 'none';
 
@@ -39,10 +39,23 @@ function share(part: number, total: number): string {
   return `${Math.min(100, (part / total) * 100)}%`;
 }
 
+/** Narrowest a failing or running segment is drawn, so 2 failing of 80 still shows. */
+export const MIN_SEGMENT_PX = 3;
+
+/**
+ * Width of a failing or running segment: its share, but never thinner than
+ * `MIN_SEGMENT_PX` when there is anything to show. The passing segment gives
+ * way (it may shrink; these two do not).
+ */
+function alertShare(part: number, total: number): CSSProperties {
+  const width = share(part, total);
+  return part > 0 && total > 0 ? { width, minWidth: MIN_SEGMENT_PX } : { width };
+}
+
 /**
  * CheckBar — check count plus a 44px bar split into passing, failing and
  * running segments in proportion to `total`. Skipped checks leave the track
- * showing. The label is red when anything failed and amber while checks run.
+ * showing. Failing and running segments are at least `MIN_SEGMENT_PX` wide. The label is red when anything failed and amber while checks run.
  */
 export function CheckBar({ ok, fail, run, total, className, ...rest }: CheckBarProps) {
   const { state, label } = checkBarSummary({ ok, fail, run, total });
@@ -53,14 +66,8 @@ export function CheckBar({ ok, fail, run, total, className, ...rest }: CheckBarP
           className="bd-checkbar__seg bd-checkbar__seg--ok"
           style={{ width: share(ok, total) }}
         />
-        <span
-          className="bd-checkbar__seg bd-checkbar__seg--fail"
-          style={{ width: share(fail, total) }}
-        />
-        <span
-          className="bd-checkbar__seg bd-checkbar__seg--run"
-          style={{ width: share(run, total) }}
-        />
+        <span className="bd-checkbar__seg bd-checkbar__seg--fail" style={alertShare(fail, total)} />
+        <span className="bd-checkbar__seg bd-checkbar__seg--run" style={alertShare(run, total)} />
       </span>
       <span className="bd-checkbar__label">{label}</span>
     </span>

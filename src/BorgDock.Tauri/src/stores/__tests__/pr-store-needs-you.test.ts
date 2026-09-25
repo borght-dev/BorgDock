@@ -23,7 +23,7 @@ describe('pr-store: the Workbench "Needs you" filter', () => {
     expect(counts.needsYou).toBe(6);
     expect(counts.mine).toBe(6);
     expect(counts.failing).toBe(2);
-    // The tab layout's "Needs review" is only the review requests.
+    // "Needs review" is only the review requests.
     expect(counts.needsReview).toBe(4);
   });
 

@@ -1,11 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
-import { getInvokeLog, type MockHandlers } from './helpers/mock-tauri';
-import { seedScenario } from './helpers/seed';
+import { getInvokeLog } from './helpers/mock-tauri';
 import { bootApp, seedMainWindow } from './helpers/test-utils';
 
 /**
  * Full-screen PR detail inside the main window (plans/ui-overhaul-workbench.md,
- * phase 3) with `ui.layoutV3` on: a row click pushes the detail view (header
+ * phase 3): a row click pushes the detail view (header
  * with the PR's title, readiness sentence, action bar, tabs), Back and Esc
  * return to the list at the same scroll position with the row still
  * selected, and "Open in window" still opens the pop-out.
@@ -56,14 +55,8 @@ function makePr(number: number): unknown {
 
 const PRS = Array.from({ length: 40 }, (_, i) => makePr(i + 1));
 
-function v3Handlers(): MockHandlers {
-  const happy = seedScenario('happy-path');
-  const settings = happy.load_settings as { ui: Record<string, unknown> };
-  return { load_settings: { ...settings, ui: { ...settings.ui, layoutV3: true } } };
-}
-
 async function bootPrList(page: Page) {
-  await bootApp(page, '', 'happy-path', v3Handlers());
+  await bootApp(page, '', 'happy-path');
   await seedMainWindow(page, { prs: PRS });
   await page
     .getByRole('navigation', { name: 'Sections' })

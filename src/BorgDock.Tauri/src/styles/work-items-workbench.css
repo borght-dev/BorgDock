@@ -1,8 +1,8 @@
 /* Work items section and detail view, Workbench layout (phase 5). Tokens only. */
 
 /*
- * Work items in the Workbench layout (ui.layoutV3; plans/ui-overhaul-workbench.md,
- * phase 5): the rows (`WorkbenchWorkItemRow`, on the PR row's `.bd-wb-row`
+ * Work items (plans/ui-overhaul-workbench.md,
+ * phase 5): the rows (`WorkItemRow`, on the PR row's `.bd-wb-row`
  * base), the head row's query picker, the full-screen detail view
  * (`WorkItemDetailView`, on the PR detail's `.bd-detail*` base), the state
  * colour tokens `wi-visuals` uses, and the flyout's compact rows.

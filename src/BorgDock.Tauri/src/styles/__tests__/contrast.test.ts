@@ -106,6 +106,15 @@ function overlay(theme: keyof typeof THEMES, name: string, base: string): string
 }
 
 describe.each(['light', 'dark'] as const)('%s theme', (theme) => {
+  it.each([
+    'color-background',
+    'color-surface',
+  ])('text-tertiary on %s meets 4.5:1 (tertiary copy is readable text)', (surface) => {
+    expect(
+      contrastRatio(token(theme, 'color-text-tertiary'), token(theme, surface)),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('accent-foreground on the accent fill meets 4.5:1 (primary buttons, checkboxes)', () => {
     expect(
       contrastRatio(token(theme, 'color-accent-foreground'), token(theme, 'color-accent')),

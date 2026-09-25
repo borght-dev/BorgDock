@@ -1,6 +1,6 @@
 // src/components/worktree/WorktreesSection.stories.tsx
 //
-// The main window's Worktrees section (`ui.layoutV3`): repo groups, rows on
+// The main window's Worktrees section: repo groups, rows on
 // the Workbench grammar with favourites, a dirty worktree, a conflicted one
 // and one linked to an open pull request (its check bar and number), and
 // the changes pane beside the list. Worktree data comes from the Storybook
@@ -241,7 +241,7 @@ function Harness({ favoritesOnly = false, empty = false }: HarnessProps) {
       settings: {
         ...s.settings,
         repos,
-        ui: { ...s.settings.ui, layoutV3: true, worktreePaletteFavoritesOnly: favoritesOnly },
+        ui: { ...s.settings.ui, worktreePaletteFavoritesOnly: favoritesOnly },
       },
       hasLoaded: true,
     }));

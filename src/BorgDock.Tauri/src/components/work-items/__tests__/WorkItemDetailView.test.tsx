@@ -84,7 +84,7 @@ describe('WorkItemDetailView', () => {
     useSettingsStore.setState({
       settings: {
         ...settingsBefore,
-        ui: { ...settingsBefore.ui, layoutV3: true },
+        ui: { ...settingsBefore.ui },
         azureDevOps: {
           ...settingsBefore.azureDevOps,
           organization: 'org',

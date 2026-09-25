@@ -1,5 +1,4 @@
-import { ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Avatar } from '@/components/shared/primitives';
 import type { ReviewerLoad } from '@/services/team-review-load';
 import { usePrStore } from '@/stores/pr-store';
 
@@ -9,60 +8,53 @@ function loadColor(count: number): string {
   return 'var(--color-status-red)';
 }
 
-function avatarInitials(login: string): string {
-  return login.slice(0, 2).toUpperCase();
-}
-
 interface ReviewerRowProps {
   reviewer: ReviewerLoad;
-  /**
-   * What a click does. Default: filter the tab layout's list to "Needs
-   * review" and search for the reviewer. The Workbench list passes its own
-   * so the change goes through its filter control and FLIP.
-   */
-  onSelect?: (reviewer: ReviewerLoad) => void;
+  /** What a click does: the list filters to the reviewer through its filter control and FLIP. */
+  onSelect: (reviewer: ReviewerLoad) => void;
 }
 
+/** Pending reviews that fill the load bar. */
+const FULL_LOAD = 6;
+
+function pendingLabel(r: ReviewerLoad): string {
+  const pending = `${r.pendingReviewCount} pending review${r.pendingReviewCount === 1 ? '' : 's'}`;
+  return r.stalePrCount > 0 ? `${pending}, ${r.stalePrCount} stale` : pending;
+}
+
+/**
+ * One reviewer under "Review load", on the pull request row's grid: avatar,
+ * login over the pending line, a load bar in the checks column and the count.
+ */
 export function ReviewerRow({ reviewer, onSelect }: ReviewerRowProps) {
-  const setFilter = usePrStore((s) => s.setFilter);
-  const setSearchQuery = usePrStore((s) => s.setSearchQuery);
   const color = loadColor(reviewer.pendingReviewCount);
-  const maxBar = 6; // normalize bar to max 6 reviews
-  const barWidth = Math.min(reviewer.pendingReviewCount / maxBar, 1) * 100;
+  const fill = Math.min(reviewer.pendingReviewCount / FULL_LOAD, 1) * 100;
+  const label = pendingLabel(reviewer);
 
   return (
     <button
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
-      onClick={() => {
-        if (onSelect) {
-          onSelect(reviewer);
-          return;
-        }
-        setFilter('needsReview');
-        setSearchQuery(reviewer.login);
-      }}
-      title={`${reviewer.login}: ${reviewer.pendingReviewCount} pending review${reviewer.pendingReviewCount !== 1 ? 's' : ''}${reviewer.stalePrCount > 0 ? `, ${reviewer.stalePrCount} stale` : ''}`}
+      className="bd-wb-reviewer"
+      type="button"
+      onClick={() => onSelect(reviewer)}
+      title={`${reviewer.login}: ${label}`}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)]">
-        {avatarInitials(reviewer.login)}
+      <Avatar
+        initials={reviewer.login.slice(0, 2).toUpperCase()}
+        size="sm"
+        className="bd-wb-row__avatar"
+        aria-hidden="true"
+      />
+      <span className="bd-wb-row__text">
+        <span className="bd-wb-row__title">{reviewer.login}</span>
+        <span className="bd-wb-row__meta">{label}</span>
       </span>
-      <span className="min-w-0 flex-1">
-        <div className="flex items-center justify-between">
-          <span className="truncate text-[11px] text-[var(--color-text-secondary)]">
-            {reviewer.login}
-          </span>
-          {/* style: load-driven color token (green/yellow/red) varies per reviewer count */}
-          <span className="ml-2 shrink-0 text-[10px] font-medium tabular-nums" style={{ color }}>
-            {reviewer.pendingReviewCount}
-          </span>
-        </div>
-        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-raised)]">
-          {/* style: bar width is computed (pendingReviewCount / maxBar) — dynamic, load-driven color token */}
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${barWidth}%`, background: color }}
-          />
-        </div>
+      <span className="bd-wb-reviewer__bar" aria-hidden="true">
+        {/* style: fill width and load colour are computed per reviewer */}
+        <span style={{ width: `${fill}%`, background: color }} />
+      </span>
+      {/* style: load colour (green / yellow / red) varies per reviewer */}
+      <span className="bd-wb-reviewer__count" style={{ color }}>
+        {reviewer.pendingReviewCount}
       </span>
     </button>
   );
@@ -79,40 +71,4 @@ export function useTeamReviewers(): ReviewerLoad[] {
   void reviewRequestTimestamps;
 
   return teamReviewLoad();
-}
-
-export function TeamReviewLoad() {
-  const reviewers = useTeamReviewers();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  if (reviewers.length === 0) return null;
-
-  return (
-    <div className="mt-2">
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="flex w-full items-center gap-2 px-3 pt-2 pb-1"
-      >
-        <ChevronRight
-          size={10}
-          strokeWidth={3}
-          className={`shrink-0 text-[var(--color-text-ghost)] transition-transform duration-200 ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}
-        />
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-ghost)]">
-          Review Load
-        </span>
-        <span className="h-px flex-1 bg-[var(--color-separator)]" />
-        <span className="rounded-full px-1.5 text-[9px] font-medium tabular-nums text-[var(--color-text-ghost)] bg-[var(--color-surface-raised)]">
-          {reviewers.length}
-        </span>
-      </button>
-      {!isCollapsed && (
-        <div className="flex flex-col gap-0.5 px-1 pt-0.5">
-          {reviewers.map((r) => (
-            <ReviewerRow key={r.login} reviewer={r} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }

@@ -29,7 +29,7 @@ const PRIORITY_OPTIONS = [
   { value: '4', label: 'P4 · Low' },
 ];
 
-/** The view-transition name a work item row gives its title (WorkbenchWorkItemRow). */
+/** The view-transition name a work item row gives its title (WorkItemRow). */
 export function workItemTitleTransitionName(id: number): string {
   return `wi-title-${id}`;
 }

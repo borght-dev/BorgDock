@@ -37,10 +37,9 @@ interface PrFilterControlProps {
 }
 
 /**
- * PrFilterControl — the Workbench list's segmented filter: All / Needs you /
- * Mine / Failing with counts. The fill highlight slides to the chosen segment
- * (`SlidingHighlight`, `--motion-move`). Replaces the tab layout's seven
- * filter chips when `ui.layoutV3` is on.
+ * PrFilterControl — the Pull requests list's segmented filter: All / Needs
+ * you / Mine / Failing with counts. The fill highlight slides to the chosen
+ * segment (`SlidingHighlight`, `--motion-move`).
  */
 export function PrFilterControl({ value, counts, onChange }: PrFilterControlProps) {
   const active = workbenchFilterFor(value);

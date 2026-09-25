@@ -40,7 +40,7 @@ const log = createLogger('useWorkItemDetailData');
 export const NO_WORK_ITEM_ID = 'No work item ID provided';
 export const LOAD_FAILED = 'Failed to load work item';
 
-// ---- Pure helpers (also used by the tab layout's section) ----
+// ---- Pure helpers ----
 
 function lastSegment(path: unknown): string | undefined {
   const p = String(path ?? '');

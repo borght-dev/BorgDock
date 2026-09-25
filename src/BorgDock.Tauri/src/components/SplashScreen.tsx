@@ -47,7 +47,7 @@ function StepIcon({ state }: { state: InitStepState }) {
     return (
       <svg {...p}>
         <circle cx="6" cy="6" r="5.5" fill="var(--color-wizard-step-complete)" />
-        <path d="M3.5 6L5.25 7.75L8.5 4.25" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M3.5 6L5.25 7.75L8.5 4.25" stroke="var(--color-status-fill-foreground)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   if (state === 'active')
@@ -61,7 +61,7 @@ function StepIcon({ state }: { state: InitStepState }) {
     return (
       <svg {...p}>
         <circle cx="6" cy="6" r="5.5" fill="var(--color-status-red)" />
-        <path d="M4.25 4.25L7.75 7.75M7.75 4.25L4.25 7.75" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M4.25 4.25L7.75 7.75M7.75 4.25L4.25 7.75" stroke="var(--color-danger-fill-foreground)" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     );
   return (
@@ -200,9 +200,7 @@ export function SplashScreen() {
       </div>
 
       {/* Version footer */}
-      <div
-        className="shrink-0 text-center p-4 text-[10px] text-[var(--color-text-faint)]"
-      >
+      <div className="shrink-0 text-center p-4 text-[10px] text-[var(--color-text-faint)]">
         {version ? `v${version}` : ''}
       </div>
     </div>

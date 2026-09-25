@@ -1,167 +1,185 @@
-import { ListFilter } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { HoverPopover } from '@/components/shared/primitives';
-import { QueriesRail, type QueryRowData } from '@/components/work-items/QueriesRail';
-import type { AdoQueryTreeNode } from '@/components/work-items/QueryBrowser';
-import { QueryBrowser } from '@/components/work-items/QueryBrowser';
-import { WorkItemDetailPanel } from '@/components/work-items/WorkItemDetailPanel';
-import { useAdjacentNav } from '@/components/work-items/WorkItemDetailPanel/useAdjacentNav';
-import { WorkItemFilterPopover } from '@/components/work-items/WorkItemFilterPopover';
-import { WorkItemRow } from '@/components/work-items/WorkItemRow';
-import { toWorkItemDetailData } from '@/hooks/useWorkItemDetailData';
+import { ListFilter, Search } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { groupFlipKey, WorkbenchGroup } from '@/components/pr/RepoGroup';
+import { HoverPopover, Kbd } from '@/components/shared/primitives';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import { useWorkItemsStore } from '@/stores/work-items-store';
-import { classifyFields, extractAttachments } from '@/utils/work-item-fields';
+import {
+  filterWorkItems,
+  useWorkItemsStore,
+  type WorkItemFilterCriteria,
+} from '@/stores/work-items-store';
+import type { WorkItem } from '@/types';
+import { EASE_OUT, flip, motionMs, motionOK } from '@/utils/motion';
+import { shortcutLabel } from '@/utils/shortcut-label';
 import { flattenQueries, getField } from '@/utils/work-item-helpers';
 import { AdoNotConfigured } from './AdoNotConfigured';
-import { WorkbenchWorkItemsSection } from './WorkbenchWorkItemsSection';
-import { toggleTrackedWorkItem, toggleWorkingOnWorkItem } from './work-item-toggles';
+import { QueriesRail, type QueryRowData } from './QueriesRail';
+import { type AdoQueryTreeNode, QueryBrowser } from './QueryBrowser';
+import { WorkItemFilterPopover } from './WorkItemFilterPopover';
+import { queryPickerMode, WorkItemQueryPicker } from './WorkItemQueryPicker';
+import { WorkItemRow, type WorkItemRowData, workItemRowKey } from './WorkItemRow';
 
-/**
- * WorkItemsSection — the Work items section of the main window. With
- * `ui.layoutV3` it is the Workbench list (`WorkbenchWorkItemsSection`: rows
- * that open the full-screen detail view); without it, the tab layout's three
- * panes (queries rail, list, detail panel).
- */
-export function WorkItemsSection() {
-  const layoutV3 = useSettingsStore((s) => s.settings.ui?.layoutV3 ?? false);
-  return layoutV3 ? <WorkbenchWorkItemsSection /> : <TabWorkItemsSection />;
+/** Rows and group headings `flip()` follows. */
+const FLIP_SELECTOR = '[data-key]';
+
+/** Group heading key of the rows in one state. */
+export function stateGroupKey(state: string): string {
+  return `wi-state:${state || 'none'}`;
 }
 
-function TabWorkItemsSection() {
-  const settings = useSettingsStore((s) => s.settings);
-  const adoSettings = settings.azureDevOps;
+interface StateGroup {
+  state: string;
+  rows: WorkItemRowData[];
+}
 
-  // Work items store
+/** Rows grouped by state, groups in the order their first item appears in the query. */
+export function groupByState(rows: WorkItemRowData[]): StateGroup[] {
+  const groups = new Map<string, StateGroup>();
+  for (const row of rows) {
+    let group = groups.get(row.state);
+    if (!group) {
+      group = { state: row.state, rows: [] };
+      groups.set(row.state, group);
+    }
+    group.rows.push(row);
+  }
+  return [...groups.values()];
+}
+
+function toRow(item: WorkItem, tracked: Set<number>, working: Set<number>): WorkItemRowData {
+  return {
+    id: item.id,
+    type: getField(item, 'System.WorkItemType') || 'Task',
+    title: getField(item, 'System.Title'),
+    state: getField(item, 'System.State'),
+    priority: Number(item.fields['Microsoft.VSTS.Common.Priority']) || undefined,
+    isTracked: tracked.has(item.id),
+    isWorking: working.has(item.id),
+  };
+}
+
+/** The flip keys (rows and headings) of the rows `items` would show. */
+function flipKeysOf(items: WorkItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const item of items) {
+    keys.add(workItemRowKey(item.id));
+    keys.add(groupFlipKey(stateGroupKey(getField(item, 'System.State'))));
+  }
+  return keys;
+}
+
+/**
+ * The selected query once its results have landed: the work item list is a
+ * new one since the query was picked and loading is over. `null` while the
+ * query's results are still on their way (the old rows are showing).
+ */
+export function useQuerySettled(
+  queryId: string | null,
+  workItems: WorkItem[],
+  isLoading: boolean,
+): string | null {
+  // The list that was showing when the query changed.
+  const [pending, setPending] = useState<{ queryId: string | null; items: WorkItem[] | null }>(
+    () => ({ queryId, items: null }),
+  );
+  if (pending.queryId !== queryId) {
+    setPending({ queryId, items: workItems });
+  }
+  const current = pending.queryId === queryId ? pending : { queryId, items: workItems };
+  if (isLoading) return null;
+  if (current.items !== null && current.items === workItems) return null;
+  return queryId;
+}
+
+/**
+ * WorkItemsSection — the Work items section of the main window
+ * (plans/ui-overhaul-workbench.md, phase 5).
+ *
+ * - Head row: title, the query picker (segmented for a few favourites, a
+ *   select for a short list; a long list keeps the queries rail beside the
+ *   list), search with the `⌘K` hint, and the state / assignee / tracking
+ *   filter.
+ * - Rows (`WorkItemRow`) grouped by state under sentence-case
+ *   headings with a count and a hairline. A row opens the full-screen detail
+ *   view; J / K / Enter move and open (useKeyboardNav).
+ * - Filter and search changes FLIP the rows: rows that leave fade first,
+ *   survivors glide, new rows fade in. A new query's results replace the list
+ *   wholesale, so they crossfade in instead.
+ */
+export function WorkItemsSection() {
+  const ado = useSettingsStore((s) => s.settings.azureDevOps);
+  const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
+
   const queryTree = useWorkItemsStore((s) => s.queryTree);
   const selectedQueryId = useWorkItemsStore((s) => s.selectedQueryId);
   const favoriteQueryIds = useWorkItemsStore((s) => s.favoriteQueryIds);
-  const filteredWorkItems = useWorkItemsStore((s) => s.filteredWorkItems);
-  const availableStates = useWorkItemsStore((s) => s.availableStates);
-  const availableAssignees = useWorkItemsStore((s) => s.availableAssignees);
+  const workItems = useWorkItemsStore((s) => s.workItems);
   const stateFilter = useWorkItemsStore((s) => s.stateFilter);
   const assignedToFilter = useWorkItemsStore((s) => s.assignedToFilter);
+  const searchQuery = useWorkItemsStore((s) => s.searchQuery);
   const trackingFilter = useWorkItemsStore((s) => s.trackingFilter);
-  const trackedWorkItemIds = useWorkItemsStore((s) => s.trackedWorkItemIds);
-  const workingOnWorkItemIds = useWorkItemsStore((s) => s.workingOnWorkItemIds);
+  const trackedIds = useWorkItemsStore((s) => s.trackedWorkItemIds);
+  const workingIds = useWorkItemsStore((s) => s.workingOnWorkItemIds);
+  const currentUser = useWorkItemsStore((s) => s.currentUserDisplayName);
   const isLoading = useWorkItemsStore((s) => s.isLoading);
-  const fieldDefinitions = useWorkItemsStore((s) => s.fieldDefinitions);
-  const workItemTypeLayouts = useWorkItemsStore((s) => s.workItemTypeLayouts);
+  const availableStates = useWorkItemsStore((s) => s.availableStates);
+  const availableAssignees = useWorkItemsStore((s) => s.availableAssignees);
+  const selectedId = useUiStore((s) => s.workItemsSelectedId);
 
-  // UI store — persisted selection
-  const persistedSelectedId = useUiStore((s) => s.workItemsSelectedId);
-  const setPersistedSelectedId = useUiStore((s) => s.setWorkItemsSelectedId);
+  // Query selection, favourites and the query browser.
+  const { queryBrowserOpen, setQueryBrowserOpen, handleSelectQuery, handleToggleFavorite } =
+    useWorkItemHandlers();
 
-  // Event handlers hook (owns the detail load lifecycle)
-  const {
-    queryBrowserOpen,
-    setQueryBrowserOpen,
-    selectedWorkItemId,
-    isDetailLoading,
-    statusText,
-    detailItem,
-    detailStates,
-    detailComments,
-    isLoadingComments,
-    handleSelectWorkItem,
-    handleSave,
-    handleDelete,
-    handleAddComment,
-    handleCloseDetail,
-    handleOpenInBrowser,
-    handleDownloadAttachment,
-    handleSelectQuery,
-    handleToggleFavorite,
-  } = useWorkItemHandlers({
-    organization: adoSettings.organization,
-    project: adoSettings.project,
-    personalAccessToken: adoSettings.personalAccessToken,
-    authMethod: adoSettings.authMethod,
-  });
-
-  // Restore persisted selection on mount: if ui-store has a selected id and
-  // the hook hasn't loaded one yet, kick off the load.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only restore — adding deps would re-trigger on every selection change
-  useEffect(() => {
-    if (persistedSelectedId !== null && selectedWorkItemId === null) {
-      void handleSelectWorkItem(persistedSelectedId);
-    }
-  }, []);
-
-  // Mirror hook → ui-store so the selection survives tab switches and reloads.
-  useEffect(() => {
-    if (selectedWorkItemId !== persistedSelectedId) {
-      setPersistedSelectedId(selectedWorkItemId);
-    }
-  }, [selectedWorkItemId, persistedSelectedId, setPersistedSelectedId]);
-
-  // Resolve the selected query name for display
-  const selectedQueryName = useMemo(() => {
-    if (!selectedQueryId) return undefined;
-    const all = flattenQueries(queryTree);
-    const match = all.find((q) => q.id === selectedQueryId);
-    return match?.name;
-  }, [selectedQueryId, queryTree]);
-
-  // Map filtered items to row data
-  const items = filteredWorkItems();
-
-  // Persist navlist so the detail panel can do prev/next navigation
-  useEffect(() => {
-    if (!items || items.length === 0) return;
-    try {
-      localStorage.setItem(
-        'borgdock-palette-navlist',
-        JSON.stringify({ ids: items.map((wi) => wi.id), savedAt: Date.now() }),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [items]);
-
-  // Adjacent nav for the in-app side panel
-  const adjacent = useAdjacentNav(selectedWorkItemId);
-  const handleArrowNav = useCallback(
-    (dir: 'prev' | 'next') => {
-      const target = dir === 'prev' ? adjacent.prevId : adjacent.nextId;
-      if (target == null) return;
-      void handleSelectWorkItem(target);
-    },
-    [adjacent.prevId, adjacent.nextId, handleSelectWorkItem],
-  );
-
-  // Local list-search (sits above store filters; quick text triage only)
-  const [listSearch, setListSearch] = useState('');
-
-  // Filter rows by local search (title or AB#id substring)
-  const visibleItems = useMemo(() => {
-    const q = listSearch.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((it) => {
-      const title = getField(it, 'System.Title').toLowerCase();
-      const idStr = String(it.id);
-      return title.includes(q) || idStr.includes(q);
-    });
-  }, [items, listSearch]);
-
-  // Build row data (lightweight — no card details)
-  const rowItems = useMemo(
+  const visible = useMemo(
     () =>
-      visibleItems.map((it) => ({
-        id: it.id,
-        type: getField(it, 'System.WorkItemType') || 'Task',
-        title: getField(it, 'System.Title'),
-        state: getField(it, 'System.State'),
-        priority: Number(it.fields['Microsoft.VSTS.Common.Priority']) || undefined,
-        isTracked: trackedWorkItemIds.has(it.id),
-        isWorking: workingOnWorkItemIds.has(it.id),
-      })),
-    [visibleItems, trackedWorkItemIds, workingOnWorkItemIds],
+      filterWorkItems(workItems, {
+        stateFilter,
+        assignedToFilter,
+        searchQuery,
+        trackingFilter,
+        trackedWorkItemIds: trackedIds,
+        workingOnWorkItemIds: workingIds,
+        currentUserDisplayName: currentUser,
+      }),
+    [
+      workItems,
+      stateFilter,
+      assignedToFilter,
+      searchQuery,
+      trackingFilter,
+      trackedIds,
+      workingIds,
+      currentUser,
+    ],
   );
+  const rows = useMemo(
+    () => visible.map((item) => toRow(item, trackedIds, workingIds)),
+    [visible, trackedIds, workingIds],
+  );
+  const groups = useMemo(() => groupByState(rows), [rows]);
 
-  // Query browser tree nodes
+  // Queries for the picker, the rail and the browser.
+  const allQueries = useMemo(() => flattenQueries(queryTree), [queryTree]);
+  const favorites: QueryRowData[] = useMemo(
+    () =>
+      allQueries
+        .filter((q) => !q.isFolder && favoriteQueryIds.includes(q.id))
+        .map((q) => ({ id: q.id, name: q.name })),
+    [allQueries, favoriteQueryIds],
+  );
+  const myQueries: QueryRowData[] = useMemo(() => {
+    const fav = new Set(favoriteQueryIds);
+    return allQueries
+      .filter((q) => !q.isFolder && !fav.has(q.id))
+      .slice(0, 50)
+      .map((q) => ({ id: q.id, name: q.name }));
+  }, [allQueries, favoriteQueryIds]);
+  const selectedQueryName = allQueries.find((q) => q.id === selectedQueryId)?.name;
+  const pickerMode = queryPickerMode(favorites.length, myQueries.length);
+
   const queryTreeNodes: AdoQueryTreeNode[] = useMemo(() => {
     function map(qs: typeof queryTree): AdoQueryTreeNode[] {
       return qs.map((q) => ({
@@ -173,68 +191,75 @@ function TabWorkItemsSection() {
     }
     return map(queryTree);
   }, [queryTree, favoriteQueryIds]);
-
-  const favoriteQueriesForBrowser: AdoQueryTreeNode[] = useMemo(() => {
-    const all = flattenQueries(queryTree);
-    return all
-      .filter((q) => favoriteQueryIds.includes(q.id))
-      .map((q) => ({
-        ...q,
-        isFavorite: true,
-        isExpanded: false,
-        children: [],
-      }));
-  }, [queryTree, favoriteQueryIds]);
-
-  // Rail-friendly query lists
-  const favoriteQueriesForRail: QueryRowData[] = useMemo(() => {
-    const all = flattenQueries(queryTree);
-    return all
-      .filter((q) => !q.isFolder && favoriteQueryIds.includes(q.id))
-      .map((q) => ({ id: q.id, name: q.name }));
-  }, [queryTree, favoriteQueryIds]);
-
-  const myQueriesForRail: QueryRowData[] = useMemo(() => {
-    const all = flattenQueries(queryTree);
-    const favSet = new Set(favoriteQueryIds);
-    return all
-      .filter((q) => !q.isFolder && !favSet.has(q.id))
-      .slice(0, 50)
-      .map((q) => ({ id: q.id, name: q.name }));
-  }, [queryTree, favoriteQueryIds]);
-
-  // Detail panel data
-  const detailData = useMemo(
-    () => (detailItem ? toWorkItemDetailData(detailItem, adoSettings) : null),
-    [detailItem, adoSettings],
+  const favoriteNodes: AdoQueryTreeNode[] = useMemo(
+    () =>
+      allQueries
+        .filter((q) => favoriteQueryIds.includes(q.id))
+        .map((q) => ({ ...q, isFavorite: true, isExpanded: false, children: [] })),
+    [allQueries, favoriteQueryIds],
   );
 
-  const { richText, standard, custom } = useMemo(() => {
-    if (!detailItem) return { richText: [], standard: [], custom: [] };
-    return classifyFields(detailItem, fieldDefinitions);
-  }, [detailItem, fieldDefinitions]);
+  // ---- Motion ----
 
-  const detailLayout = useMemo(() => {
-    if (!detailItem) return null;
-    const witType = getField(detailItem, 'System.WorkItemType');
-    return witType ? (workItemTypeLayouts.get(witType) ?? null) : null;
-  }, [detailItem, workItemTypeLayouts]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const changeToken = useRef(0);
+  useEffect(
+    () => () => {
+      changeToken.current++;
+    },
+    [],
+  );
 
-  const attachments = useMemo(() => {
-    if (!detailItem) return [];
-    return extractAttachments(detailItem);
-  }, [detailItem]);
+  /**
+   * Applies a filter change (`patch` to the store's filter fields) through
+   * FLIP: the rows and headings it removes fade out first. Typing in the
+   * search box (`fadeLeaving: false`) applies at once, so the input keeps
+   * up; the rows that stay still glide into place.
+   */
+  const changeFilter = useCallback((patch: Partial<WorkItemFilterCriteria>, fadeLeaving = true) => {
+    const state = useWorkItemsStore.getState();
+    let leaving: string[] = [];
+    if (fadeLeaving) {
+      const before = flipKeysOf(filterWorkItems(state.workItems, state));
+      const after = flipKeysOf(filterWorkItems(state.workItems, { ...state, ...patch }));
+      leaving = [...before].filter((k) => !after.has(k));
+    }
+    const token = ++changeToken.current;
+    void flip(
+      listRef.current,
+      () => {
+        if (token !== changeToken.current) return;
+        flushSync(() => useWorkItemsStore.setState(patch));
+      },
+      FLIP_SELECTOR,
+      { leaving },
+    );
+  }, []);
 
-  // Track and working toggles: the store plus the saved settings.
-  const handleToggleTracked = toggleTrackedWorkItem;
-  const handleToggleWorking = toggleWorkingOnWorkItem;
+  // A new query's results crossfade in (nothing to FLIP between two queries).
+  // They count as landed once, since the query changed, the store holds a new
+  // list *and* is done loading: one "settled" signal, so the fade never runs
+  // on the old rows when only one of the two has happened.
+  const settledQuery = useQuerySettled(selectedQueryId, workItems, isLoading);
+  const shownQueryRef = useRef(selectedQueryId);
+  useLayoutEffect(() => {
+    if (settledQuery === null || shownQueryRef.current === settledQuery) return;
+    shownQueryRef.current = settledQuery;
+    const list = listRef.current;
+    if (!list || !motionOK() || typeof list.animate !== 'function') return;
+    list.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: motionMs('--motion-base', 260),
+      easing: EASE_OUT,
+    });
+  }, [settledQuery]);
 
-  // Not configured state — spans all 3 panes (rendered above the grid).
-  const hasCredentials = adoSettings.authMethod === 'azCli' || !!adoSettings.personalAccessToken;
-  if (!adoSettings.organization || !hasCredentials) return <AdoNotConfigured />;
+  const hasCredentials = ado.authMethod === 'azCli' || !!ado.personalAccessToken;
+  if (!ado.organization || !hasCredentials) return <AdoNotConfigured />;
+
+  const withRail = pickerMode === 'rail';
 
   return (
-    <div className="bd-workitems">
+    <div className="bd-wb-prs bd-wi-wb" data-with-rail={withRail ? 'true' : undefined}>
       {queryBrowserOpen && (
         <div
           className="bd-modal-backdrop"
@@ -249,7 +274,7 @@ function TabWorkItemsSection() {
           >
             <QueryBrowser
               queryTree={queryTreeNodes}
-              favoriteQueries={favoriteQueriesForBrowser}
+              favoriteQueries={favoriteNodes}
               isLoading={isLoading}
               selectedQueryId={selectedQueryId ?? undefined}
               onSelectQuery={handleSelectQuery}
@@ -260,103 +285,115 @@ function TabWorkItemsSection() {
         </div>
       )}
 
-      <QueriesRail
-        favorites={favoriteQueriesForRail}
-        myQueries={myQueriesForRail}
-        selectedId={selectedQueryId ?? undefined}
-        onSelectQuery={handleSelectQuery}
-        onToggleFavorite={handleToggleFavorite}
-        onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
-      />
-
-      <div className="bd-workitems__items">
-        <div className="bd-workitems__items-toolbar">
-          <div className="bd-input bd-workitems__search">
-            <input
-              type="text"
-              placeholder={`Filter ${items.length} items…`}
-              value={listSearch}
-              onChange={(e) => setListSearch(e.target.value)}
-              aria-label="Filter items"
-              data-section-search
+      <header className="bd-wb-head bd-wi-wb-head">
+        <h1 className="bd-wb-head__title">Work items</h1>
+        {!withRail && (
+          <WorkItemQueryPicker
+            mode={pickerMode}
+            favorites={favorites}
+            myQueries={myQueries}
+            selectedId={selectedQueryId ?? undefined}
+            selectedName={selectedQueryName}
+            onSelectQuery={handleSelectQuery}
+            onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
+          />
+        )}
+        <label className="bd-wb-head__search">
+          <Search
+            size={13}
+            strokeWidth={2}
+            aria-hidden="true"
+            className="bd-wb-head__search-icon"
+          />
+          <input
+            aria-label="Filter work items"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => changeFilter({ searchQuery: e.target.value }, false)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape') return;
+              e.preventDefault();
+              if (searchQuery !== '') changeFilter({ searchQuery: '' }, false);
+              else e.currentTarget.blur();
+            }}
+            placeholder="Search work items"
+            data-section-search
+          />
+          <Kbd>{shortcutLabel('K')}</Kbd>
+        </label>
+        <HoverPopover
+          maxWidth={260}
+          maxHeight={320}
+          content={
+            <WorkItemFilterPopover
+              states={availableStates()}
+              assignees={availableAssignees()}
+              selectedState={stateFilter === 'all' ? 'All' : stateFilter}
+              selectedAssignee={assignedToFilter === '' ? 'Anyone' : assignedToFilter}
+              trackingFilter={trackingFilter}
+              onStateChange={(s) => changeFilter({ stateFilter: s === 'All' ? 'all' : s })}
+              onAssigneeChange={(a) => changeFilter({ assignedToFilter: a === 'Anyone' ? '' : a })}
+              onTrackingChange={(t) => changeFilter({ trackingFilter: t })}
             />
-          </div>
-          <HoverPopover
-            maxWidth={260}
-            maxHeight={320}
-            content={
-              <WorkItemFilterPopover
-                states={availableStates()}
-                assignees={availableAssignees()}
-                selectedState={stateFilter === 'all' ? 'All' : stateFilter}
-                selectedAssignee={assignedToFilter === '' ? 'Anyone' : assignedToFilter}
-                trackingFilter={trackingFilter}
-                onStateChange={(s) =>
-                  useWorkItemsStore.getState().setStateFilter(s === 'All' ? 'all' : s)
-                }
-                onAssigneeChange={(a) =>
-                  useWorkItemsStore.getState().setAssignedToFilter(a === 'Anyone' ? '' : a)
-                }
-                onTrackingChange={(t) => useWorkItemsStore.getState().setTrackingFilter(t)}
-              />
+          }
+        >
+          <button
+            type="button"
+            className="bd-wb-head__menu-btn"
+            aria-label="Filter work items"
+            data-active={
+              stateFilter !== 'all' || assignedToFilter !== '' || trackingFilter !== 'all'
+                ? 'true'
+                : undefined
             }
           >
-            <button type="button" className="bd-icon-btn" aria-label="Filter">
-              <ListFilter size={13} strokeWidth={2.1} />
-            </button>
-          </HoverPopover>
-        </div>
-        <div className="bd-workitems__items-list">
-          {isLoading && rowItems.length === 0 && (
-            <div className="bd-empty">Loading work items…</div>
-          )}
-          {!isLoading &&
-            rowItems.map((it) => (
-              <WorkItemRow
-                key={it.id}
-                item={it}
-                selected={selectedWorkItemId === it.id}
-                onClick={() => void handleSelectWorkItem(it.id)}
-                onToggleTracked={() => handleToggleTracked(it.id)}
-                onToggleWorking={() => handleToggleWorking(it.id)}
-              />
-            ))}
-          {!isLoading && rowItems.length === 0 && selectedQueryId && (
-            <div className="bd-empty">No items in {selectedQueryName ?? 'this query'}</div>
-          )}
-          {!isLoading && !selectedQueryId && (
-            <div className="bd-empty">Pick a query from the rail</div>
-          )}
-        </div>
-      </div>
+            <ListFilter size={14} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </HoverPopover>
+      </header>
 
-      <div className="bd-workitems__detail">
-        {selectedWorkItemId !== null && detailData ? (
-          <WorkItemDetailPanel
-            item={detailData}
-            isLoading={isDetailLoading}
-            statusText={statusText}
-            availableStates={detailStates}
-            richTextFields={richText}
-            standardFields={standard}
-            customFields={custom}
-            extraTabs={detailLayout?.extraTabs}
-            detailsFieldKeys={detailLayout?.detailsFieldKeys}
-            attachments={attachments}
-            comments={detailComments}
-            isLoadingComments={isLoadingComments}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onClose={handleCloseDetail}
-            onOpenInBrowser={handleOpenInBrowser}
-            onDownloadAttachment={handleDownloadAttachment}
-            onAddComment={handleAddComment}
-            adjacent={adjacent}
-            onArrowNav={handleArrowNav}
+      <div className="bd-wi-wb__body">
+        {withRail && (
+          <QueriesRail
+            favorites={favorites}
+            myQueries={myQueries}
+            selectedId={selectedQueryId ?? undefined}
+            onSelectQuery={handleSelectQuery}
+            onToggleFavorite={handleToggleFavorite}
+            onOpenQueryBrowser={() => setQueryBrowserOpen(true)}
           />
-        ) : (
-          <div className="bd-empty">Select a work item</div>
         )}
+        <div ref={listRef} className="bd-wb-list bd-wi-wb-list" data-density={density}>
+          {isLoading && rows.length === 0 && <div className="bd-wb-empty">Loading work items…</div>}
+          {!isLoading && rows.length === 0 && (
+            <div className="bd-wb-empty">
+              <p>
+                {!selectedQueryId
+                  ? 'Pick a query to see its work items'
+                  : workItems.length > 0
+                    ? 'No work items match this filter'
+                    : `No work items in ${selectedQueryName ?? 'this query'}`}
+              </p>
+            </div>
+          )}
+          {groups.map((group) => (
+            <WorkbenchGroup
+              key={group.state}
+              groupKey={stateGroupKey(group.state)}
+              label={group.state || 'No state'}
+              count={group.rows.length}
+            >
+              {group.rows.map((row) => (
+                <WorkItemRow
+                  key={row.id}
+                  item={row}
+                  density={density}
+                  selected={selectedId === row.id}
+                />
+              ))}
+            </WorkbenchGroup>
+          ))}
+        </div>
       </div>
     </div>
   );

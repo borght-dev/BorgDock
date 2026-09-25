@@ -148,4 +148,29 @@ describe('SlidingHighlight', () => {
     expect(hl.style.transform).toBe('translateX(60px)');
     expect(hl.style.height).toBe('');
   });
+
+  it('measures on change only, never per frame (no layout reads while idle or re-rendered)', async () => {
+    const rect = vi.mocked(HTMLElement.prototype.getBoundingClientRect);
+    const { container, rerender } = render(<Items active="mine" />);
+    // Settle: the one-frame instant placement flips off.
+    await waitFor(() => expect(highlight(container)).not.toHaveClass('bd-slide__hl--instant'));
+    const settled = rect.mock.calls.length;
+    expect(settled).toBeGreaterThan(0);
+
+    // Twenty animation frames of nothing happening read no layout.
+    for (let i = 0; i < 20; i++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    expect(rect.mock.calls.length).toBe(settled);
+
+    // A parent re-render with the same active key does not measure either.
+    rerender(<Items active="mine" />);
+    rerender(<Items active="mine" />);
+    expect(rect.mock.calls.length).toBe(settled);
+
+    // A real change measures once more (container and the active item).
+    rerender(<Items active="failing" />);
+    expect(rect.mock.calls.length).toBeGreaterThan(settled);
+    expect(rect.mock.calls.length - settled).toBeLessThanOrEqual(2);
+  });
 });

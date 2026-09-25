@@ -92,20 +92,12 @@ export function AppearanceSection({ ui, onChange }: Props) {
             onChange={(v) => update({ theme: v as ThemeMode })}
           />
         </Field>
-        <div id="field-reduce-motion">
+        <div id="field-reduce-motion" className="mb-[18px]">
           <ToggleRow
             label="Reduce motion"
             hint="Views, filters and lists switch instantly. Your system setting counts too."
             on={ui.reduceMotion ?? false}
             onChange={(reduceMotion) => update({ reduceMotion })}
-          />
-        </div>
-        <div id="field-layout-v3" className="mb-[18px]">
-          <ToggleRow
-            label="New layout (preview)"
-            hint="The Workbench layout: a left rail and details inside the window."
-            on={ui.layoutV3 ?? false}
-            onChange={(layoutV3) => update({ layoutV3 })}
             last
           />
         </div>

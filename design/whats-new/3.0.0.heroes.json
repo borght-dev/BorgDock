@@ -1,0 +1,16 @@
+[
+  {"slug":"layout","storyId":"main-window-mainwindow--rail-pr-detail-pushed","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"focus-board","storyId":"focus-focusboard--board","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"quick-review","storyId":"focus-quick-review--large-pr-walk","viewport":{"width":1360,"height":880},"delay":3500},
+  {"slug":"work-items","storyId":"main-window-mainwindow--rail-work-items","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"calm-look","storyId":"pr-prlist--workbench","viewport":{"width":1100,"height":700},"delay":2500},
+  {"slug":"keyboard","storyId":"main-window-mainwindow--rail-focus-board","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"rerun","storyId":"pr-detail-prdetailview--failing","viewport":{"width":1088,"height":908},"delay":2000,"selector":"article.bd-detail"},
+  {"slug":"toast-undo","storyId":"shared-toast--stack","viewport":{"width":720,"height":320},"delay":1500},
+  {"slug":"tools-sql","storyId":"sql-sqlapp--result-success-select","viewport":{"width":1200,"height":760},"delay":2000},
+  {"slug":"tools-file-palette","storyId":"file-palette-filepaletteapp--preview-file-ok","viewport":{"width":1100,"height":700},"delay":2000},
+  {"slug":"tools-file-viewer","storyId":"file-viewer-fileviewerapp--split-diff","viewport":{"width":1200,"height":760},"delay":2500},
+  {"slug":"tools-settings","storyId":"settings-settingsapp--default","viewport":{"width":1100,"height":760},"delay":2000},
+  {"slug":"tools-whats-new","storyId":"whats-new-whatsnewapp--release-rich-summary","viewport":{"width":1000,"height":760},"delay":2500},
+  {"slug":"tools-worktrees","storyId":"worktree-worktreepaletteapp--two-repos-balanced","viewport":{"width":900,"height":640},"delay":2000}
+]

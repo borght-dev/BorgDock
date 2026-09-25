@@ -67,9 +67,7 @@ export interface UiSettings {
   prDensity?: PrDensity;
   /** Collapse every transition to instant, on top of the OS reduced-motion preference. Puts `.reduce-motion` on <html>. */
   reduceMotion?: boolean;
-  /** Opt in to the Workbench layout (left rail, in-window PR detail) while it is being built. Removed at cutover. */
-  layoutV3?: boolean;
-  /** Focus section layout in the Workbench layout: a ranked list or the four-column board. Default `list`. */
+  /** Focus section layout: a ranked list or the four-column board. Default `list`. */
   focusLayout?: FocusLayout;
   /** An open PR with no update for this many days counts as stale (Focus, PR rows). Default 7. */
   staleAfterDays?: number;

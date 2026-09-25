@@ -1,1 +1,0 @@
-export { WhatsNewApp } from './WhatsNewApp';

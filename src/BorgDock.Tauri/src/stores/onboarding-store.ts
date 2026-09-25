@@ -4,33 +4,29 @@ export type HintId = 'focus-priority-ranking' | 'pr-summary-generate' | 'review-
 export type BadgeId = 'focus-mode' | 'pr-summary' | 'review-mode';
 
 interface OnboardingState {
-  hasSeenFocusOverlay: boolean;
   dismissedBadges: Set<BadgeId>;
   dismissedHints: Set<HintId>;
 
-  markFocusOverlaySeen: () => void;
   dismissBadge: (id: BadgeId) => void;
   dismissHint: (id: HintId) => void;
   resetAll: () => void;
   restoreOnboardingState: () => Promise<void>;
 }
 
-function persist(state: {
-  hasSeenFocusOverlay: boolean;
-  dismissedBadges: Set<BadgeId>;
-  dismissedHints: Set<HintId>;
-}) {
+function persist(state: { dismissedBadges: Set<BadgeId>; dismissedHints: Set<HintId> }) {
   // Skip when the Tauri runtime isn't available (jsdom under vitest, browser
   // preview, etc.). Without this guard the fire-and-forget dynamic import can
   // resolve to the real module after the test env is torn down, causing
   // unhandled rejections inside @tauri-apps/api/core's invoke().
-  if (typeof window === 'undefined' || !(window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
+  if (
+    typeof window === 'undefined' ||
+    !(window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
+  ) {
     return;
   }
   import('@tauri-apps/plugin-store')
     .then(({ load }) =>
       load('onboarding-state.json').then(async (store) => {
-        await store.set('hasSeenFocusOverlay', state.hasSeenFocusOverlay);
         await store.set('dismissedBadges', [...state.dismissedBadges]);
         await store.set('dismissedHints', [...state.dismissedHints]);
         await store.save();
@@ -40,15 +36,8 @@ function persist(state: {
 }
 
 export const useOnboardingStore = create<OnboardingState>()((set, get) => ({
-  hasSeenFocusOverlay: false,
   dismissedBadges: new Set<BadgeId>(),
   dismissedHints: new Set<HintId>(),
-
-  markFocusOverlaySeen: () => {
-    set({ hasSeenFocusOverlay: true });
-    const s = get();
-    persist(s);
-  },
 
   dismissBadge: (id) => {
     set((state) => {
@@ -72,7 +61,6 @@ export const useOnboardingStore = create<OnboardingState>()((set, get) => ({
 
   resetAll: () => {
     set({
-      hasSeenFocusOverlay: false,
       dismissedBadges: new Set<BadgeId>(),
       dismissedHints: new Set<HintId>(),
     });
@@ -84,11 +72,9 @@ export const useOnboardingStore = create<OnboardingState>()((set, get) => ({
     try {
       const { load } = await import('@tauri-apps/plugin-store');
       const store = await load('onboarding-state.json');
-      const hasSeenFocusOverlay = await store.get<boolean>('hasSeenFocusOverlay');
       const dismissedBadges = await store.get<BadgeId[]>('dismissedBadges');
       const dismissedHints = await store.get<HintId[]>('dismissedHints');
       set({
-        hasSeenFocusOverlay: hasSeenFocusOverlay ?? false,
         dismissedBadges: new Set(dismissedBadges ?? []),
         dismissedHints: new Set(dismissedHints ?? []),
       });

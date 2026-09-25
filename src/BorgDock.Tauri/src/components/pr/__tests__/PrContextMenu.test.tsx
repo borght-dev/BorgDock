@@ -141,7 +141,7 @@ describe('PrContextMenu', () => {
       />,
     );
     expect(screen.getByText('Open in GitHub')).toBeInTheDocument();
-    expect(screen.getByText('Open in detail window')).toBeInTheDocument();
+    expect(screen.getByText('Open in window')).toBeInTheDocument();
     expect(screen.getByText('Copy branch name')).toBeInTheDocument();
     expect(screen.getByText('Copy PR URL')).toBeInTheDocument();
     expect(screen.getByText('Copy errors for Claude')).toBeInTheDocument();
@@ -454,7 +454,7 @@ describe('PrContextMenu', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('dispatches openPrDetail when "Open in detail window" is clicked', async () => {
+  it('dispatches openPrDetail when "Open in window" is clicked', async () => {
     render(
       <PrContextMenu
         pr={makePr()}
@@ -463,7 +463,7 @@ describe('PrContextMenu', () => {
         onConfirmAction={onConfirmAction}
       />,
     );
-    fireEvent.click(screen.getByText('Open in detail window'));
+    fireEvent.click(screen.getByText('Open in window'));
     expect(mockOpenPrDetail).toHaveBeenCalledWith({ owner: 'test', repo: 'repo', number: 42 });
     expect(onClose).toHaveBeenCalled();
   });

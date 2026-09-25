@@ -4,17 +4,12 @@ import { getClient, getClientForRepo } from '@/services/github/singleton';
 import { syncViewerTeams } from '@/services/github/teams';
 import { createLogger } from '@/services/logger';
 import {
-  type AuthorLoad,
-  computeAuthorLoad,
-  groupPrs,
   isFailing,
   isMyPr,
   isNeedsYou,
   isReady,
   isReviewing,
   isWaitingOnMe,
-  type PrGroup,
-  type PrGroupBy,
 } from '@/services/pr-grouping';
 import { matchesSearch } from '@/services/pr-search';
 import {
@@ -48,10 +43,11 @@ export interface PrRefreshedDetail {
 }
 
 /**
- * List filters. The tab layout offers every value but `needsYou` as a chip;
- * the Workbench layout (`ui.layoutV3`) offers `all`, `needsYou`, `mine` and
- * `failing` as a segmented control. The filter is session state (never
- * persisted), so adding values needs no migration.
+ * List filters. The Pull requests list offers `all`, `needsYou`, `mine` and
+ * `failing` as a segmented control; the other values remain for the counts
+ * and callers that filter the store directly (a leftover one maps onto the
+ * control, see `PrList`). The filter is session state (never persisted), so
+ * adding values needs no migration.
  */
 export type PrFilter =
   | 'all'
@@ -103,10 +99,8 @@ interface DerivedCache {
   _cachedCounts: Record<PrFilter, number> | null;
   _cachedNeedsMyReview: PullRequestWithChecks[] | null;
   _cachedFocusPrs: PullRequestWithChecks[] | null;
-  _cachedAuthorLoad: AuthorLoad[] | null;
   _viewDeps: ViewDeps | null;
   _cachedFilteredPrs: PullRequestWithChecks[] | null;
-  _cachedGroups: { groupBy: PrGroupBy; source: PullRequestWithChecks[]; groups: PrGroup[] } | null;
 }
 
 interface PrState extends DerivedCache {
@@ -128,7 +122,6 @@ interface PrState extends DerivedCache {
 
   filteredPrs: () => PullRequestWithChecks[];
   /** Filtered + sorted PRs bucketed for the PR tab. */
-  groupedPrs: (groupBy: PrGroupBy) => PrGroup[];
   counts: () => Record<PrFilter, number>;
   /** PRs waiting on the current user's review (directly or via a team), longest-waiting first */
   needsMyReview: () => PullRequestWithChecks[];
@@ -136,8 +129,6 @@ interface PrState extends DerivedCache {
   getReviewRequestedAt: (prKey: string, reviewer: string) => string | undefined;
   /** Team review load — aggregate pending reviews per reviewer */
   teamReviewLoad: () => ReviewerLoad[];
-  /** Per-author roll-up for the PR tab summary strip */
-  authorLoad: () => AuthorLoad[];
   /** Priority scores for Focus Mode, keyed by `owner/repo#number` */
   priorityScores: () => Map<string, PriorityScore>;
   /** PRs sorted by priority for Focus Mode */
@@ -302,7 +293,6 @@ function ensureDataCache(state: PrState): DataDeps {
   state._cachedCounts = null;
   state._cachedNeedsMyReview = null;
   state._cachedFocusPrs = null;
-  state._cachedAuthorLoad = null;
   return deps;
 }
 
@@ -356,10 +346,8 @@ export const usePrStore = create<PrState>()((set, get) => ({
   _cachedCounts: null,
   _cachedNeedsMyReview: null,
   _cachedFocusPrs: null,
-  _cachedAuthorLoad: null,
   _viewDeps: null,
   _cachedFilteredPrs: null,
-  _cachedGroups: null,
 
   // ── View slice ──
   filter: 'all',
@@ -384,18 +372,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
     const result = sortPrs(searched, deps.sortBy, deps.username);
     state._cachedFilteredPrs = result;
     state._viewDeps = deps;
-    state._cachedGroups = null;
     return result;
-  },
-
-  groupedPrs: (groupBy) => {
-    const state = get();
-    const prs = state.filteredPrs();
-    const cached = state._cachedGroups;
-    if (cached && cached.groupBy === groupBy && cached.source === prs) return cached.groups;
-    const groups = groupPrs(prs, groupBy, state.username, state.teams);
-    state._cachedGroups = { groupBy, source: prs, groups };
-    return groups;
   },
 
   counts: () => {
@@ -446,15 +423,6 @@ export const usePrStore = create<PrState>()((set, get) => ({
     if (state._cachedTeamReviewLoad) return state._cachedTeamReviewLoad;
     const result = computeTeamReviewLoad(deps.prs, deps.timestamps);
     state._cachedTeamReviewLoad = result;
-    return result;
-  },
-
-  authorLoad: () => {
-    const state = get();
-    const deps = ensureDataCache(state);
-    if (state._cachedAuthorLoad) return state._cachedAuthorLoad;
-    const result = computeAuthorLoad(deps.prs, deps.username);
-    state._cachedAuthorLoad = result;
     return result;
   },
 

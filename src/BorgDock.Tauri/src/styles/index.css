@@ -299,7 +299,7 @@
   /* Text hierarchy — ink */
   --color-text-primary: #17181c;
   --color-text-secondary: #5d606a;
-  --color-text-tertiary: #8f929c;
+  --color-text-tertiary: #6d707a;
   --color-text-muted: #6b6e78;
   --color-text-faint: #c2c4cb;
   --color-text-ghost: #dcdee3;
@@ -627,7 +627,7 @@
 
   --color-text-primary: #ededef;
   --color-text-secondary: #9c9da4;
-  --color-text-tertiary: #67686f;
+  --color-text-tertiary: #82838a;
   --color-text-muted: #8e8f96;
   --color-text-faint: #3f4046;
   --color-text-ghost: #2c2d32;
@@ -2909,13 +2909,6 @@ body.sql-resizing-v .sql-resize-handle {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  /* Tighten the label when the ring is rendered small enough that
-     11px would clip — used for the score badge under the avatar in the
-     flyout (22px ring). */
-  .bd-ring--xs .bd-ring__label {
-    font-size: 8px;
-    letter-spacing: -0.04em;
-  }
 
   /* ── LinearProgress ──────────────────────────────── */
   .bd-linear {
@@ -2984,9 +2977,11 @@ body.sql-resizing-v .sql-resize-handle {
     background: var(--color-status-green);
   }
   .bd-checkbar__seg--fail {
+    flex-shrink: 0;
     background: var(--color-status-red);
   }
   .bd-checkbar__seg--run {
+    flex-shrink: 0;
     background: var(--color-status-yellow);
   }
 
@@ -3257,11 +3252,8 @@ body.sql-resizing-v .sql-resize-handle {
   .bd-status-dot--red {
     background: var(--color-status-red);
   }
-  .bd-spacer {
-    flex: 1;
-  }
 
-  /* ── MainWindow rail layout (ui.layoutV3) ────────────── */
+  /* ── MainWindow rail layout ──────────────────────────── */
   .bd-mainwindow--rail {
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);
@@ -3490,72 +3482,6 @@ body.sql-resizing-v .sql-resize-handle {
       opacity: 0;
       transform: translateY(4px);
     }
-  }
-
-  /* Placeholder body for a section that has not moved in yet (Worktrees). */
-  .bd-section-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    max-width: 380px;
-    margin: auto;
-    padding: 32px 24px;
-    text-align: center;
-    font-family: var(--font-ui);
-    font-size: 13px;
-    color: var(--color-text-secondary);
-  }
-  .bd-section-placeholder__icon {
-    color: var(--color-text-tertiary);
-  }
-  .bd-section-placeholder__title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-  .bd-section-placeholder__text {
-    line-height: 1.5;
-  }
-  .bd-section-placeholder__hint {
-    font-size: 11.5px;
-    color: var(--color-text-tertiary);
-  }
-
-  /* ── Detail views pushed on the view stack ───────────── */
-  .bd-detail-view {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    font-family: var(--font-reading);
-    font-size: 14px;
-    color: var(--color-text-primary);
-  }
-  .bd-detail-view__head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--color-subtle-border);
-    font-family: var(--font-ui);
-    font-size: 13px;
-  }
-  .bd-detail-view__crumb {
-    color: var(--color-text-secondary);
-    font-variant-numeric: tabular-nums;
-  }
-  .bd-detail-view__body {
-    display: grid;
-    gap: 8px;
-    padding: 24px 16px;
-  }
-  .bd-detail-view__title {
-    font-size: 20px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-  .bd-detail-view__note {
-    color: var(--color-text-tertiary);
   }
 
   /* ── PR detail, full screen in the main window (phase 3) ── */
@@ -5165,7 +5091,7 @@ body.sql-resizing-v .sql-resize-handle {
   }
 }
 
-/* ── RepoGroup header (chevron + section label + hr + count pill) ── */
+/* ── Section label ── */
 @layer components {
   .bd-section-label {
     font-size: 11px;
@@ -5175,159 +5101,11 @@ body.sql-resizing-v .sql-resize-handle {
     flex-shrink: 0;
     white-space: nowrap;
   }
-  .bd-repo-group__header {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 0 6px;
-    background: transparent;
-    border: 0;
-    text-align: left;
-    cursor: pointer;
-    color: inherit;
-  }
-  .bd-repo-group__header:hover .bd-section-label {
-    color: var(--color-text-primary);
-  }
-  .bd-repo-group__chevron {
-    flex-shrink: 0;
-    color: var(--color-text-tertiary);
-    transition: transform 200ms;
-  }
-  .bd-repo-group__hr {
-    flex: 1;
-    height: 1px;
-    background: var(--color-subtle-border);
-  }
-  .bd-repo-group__count {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-  }
 }
 
-/* ── PrToolbar (filter chips, group/sort, search, author strip) ── */
+/* ── PR panels: bordered lists of one-line PR rows (Quick Review summary,
+   work item links) ── */
 @layer components {
-  .bd-pr-toolbar {
-    display: flex;
-    flex-direction: column;
-    border-bottom: 1px solid var(--color-subtle-border);
-    background: var(--color-surface);
-  }
-  .bd-pr-toolbar__row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px 6px;
-  }
-  .bd-pr-toolbar__pills {
-    display: inline-flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .bd-pr-toolbar__view-control {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-  }
-  .bd-pr-toolbar__sort {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 26px;
-    padding: 0 8px;
-    border: 1px solid var(--color-input-border);
-    border-radius: 5px;
-    background: var(--color-input-bg);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    white-space: nowrap;
-  }
-  .bd-pr-toolbar__sort:focus-within {
-    border-color: var(--color-accent);
-  }
-  .bd-pr-toolbar__sort select {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    opacity: 0;
-    cursor: pointer;
-  }
-  .bd-pr-toolbar__search {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    width: 220px;
-    height: 26px;
-    margin-left: 4px;
-    padding: 0 8px;
-    border: 1px solid var(--color-input-border);
-    background: var(--color-input-bg);
-    border-radius: 5px;
-    color: var(--color-text-muted);
-  }
-  .bd-pr-toolbar__search:focus-within {
-    border-color: var(--color-accent);
-  }
-  .bd-pr-toolbar__search input {
-    flex: 1;
-    min-width: 0;
-    background: transparent;
-    border: 0;
-    outline: none;
-    font-size: 11px;
-    color: var(--color-text-primary);
-  }
-  .bd-pr-toolbar__search input::placeholder {
-    color: var(--color-text-muted);
-  }
-  .bd-pr-toolbar__search-icon {
-    flex-shrink: 0;
-  }
-  .bd-pr-toolbar__authors {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 12px 8px;
-    overflow-x: auto;
-  }
-  .bd-pr-author-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 22px;
-    padding: 0 8px 0 3px;
-    border-radius: 9999px;
-    background: var(--color-surface-hover);
-    font-size: 11px;
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-  }
-  .bd-pr-author-chip .bd-avatar {
-    width: 16px;
-    height: 16px;
-    font-size: 7px;
-  }
-}
-
-/* ── PR list panels + rows (comfortable = two-line, compact = table) ── */
-@layer components {
-  .bd-pr-list {
-    padding: 0 12px 12px;
-  }
-  .bd-pr-section-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 0 6px;
-  }
   .bd-pr-panel {
     container-type: inline-size;
     overflow: hidden;
@@ -5335,16 +5113,8 @@ body.sql-resizing-v .sql-resize-handle {
     border-radius: 8px;
     background: var(--color-surface);
   }
-  /* .bd-pr-rows = hairline-separated rows without the panel chrome (flyout). */
-  .bd-pr-rows {
-    container-type: inline-size;
-  }
-  :is(.bd-pr-panel, .bd-pr-rows) > :is(.bd-pr-row-wrap, .bd-pr-mini-row) + :is(.bd-pr-row-wrap, .bd-pr-mini-row),
-  .bd-pr-table-head + .bd-pr-row-wrap {
+  .bd-pr-panel > .bd-pr-mini-row + .bd-pr-mini-row {
     border-top: 1px solid var(--color-subtle-border);
-  }
-  .bd-pr-row-wrap {
-    position: relative;
   }
   /* One-line row for PR lists that only carry a number + note or decision
      (Quick Review summary, work-item linked PRs). */
@@ -5357,176 +5127,15 @@ body.sql-resizing-v .sql-resize-handle {
     font-size: 12px;
     color: var(--color-text-primary);
   }
-  .bd-pr-item {
-    position: relative;
-    cursor: pointer;
-    transition: background var(--duration-color) ease;
-  }
-  .bd-pr-item:hover,
-  .bd-pr-item[data-active='true'] {
-    background: var(--color-surface-hover);
-  }
-  .bd-pr-item[data-selected='true'] {
-    box-shadow: inset 0 0 0 2px var(--color-accent);
-  }
-  .bd-pr-item--comfortable {
-    display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) auto;
-    column-gap: 10px;
-    align-items: start;
-    padding: 9px 12px;
-  }
-  .bd-pr-item__headline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    height: 20px;
-  }
-  .bd-pr-item__title {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--color-text-primary);
-  }
-  /* Chips wrap instead of shrinking; the fixed height + overflow hides any
-     chip that lands on the second line, so none are ever cut in half. */
-  .bd-pr-item__chips {
-    display: flex;
-    /* Don't shrink: the title truncates first. max-width caps the group, and
-       chips past it wrap onto the hidden second line. */
-    flex: 0 0 auto;
-    flex-wrap: wrap;
-    align-items: center;
-    align-content: flex-start;
-    gap: 6px;
-    min-width: 0;
-    max-width: 60%;
-    height: 18px;
-    overflow: hidden;
-  }
-  .bd-pr-item__chips > *,
-  .bd-pr-item__chips [data-t3-sessions] > * {
-    flex-shrink: 0;
-    max-width: 100%;
-  }
-  .bd-pr-item__chips .bd-pill {
-    overflow: hidden;
-  }
-  .bd-pr-item__chips [data-t3-sessions] button {
-    display: inline-flex;
-    align-items: center;
-    height: 18px;
-    padding-block: 0;
-    line-height: 1;
-  }
-  .bd-pr-item__meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    height: 18px;
-    overflow: hidden;
-    font-size: 11px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-  }
-  .bd-pr-item .bd-pill {
-    box-sizing: border-box;
-    height: 18px;
-    padding: 0 7px;
-    gap: 4px;
-    font-size: 10.5px;
-    line-height: 1;
-    flex-shrink: 0;
-  }
-  .bd-pr-item__status {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .bd-pr-item__status::before {
-    content: '';
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-  }
-  .bd-pr-item__delta {
-    display: inline-flex;
-    gap: 5px;
-    font-family: var(--font-code);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
   .bd-pr-item__number {
     font-family: var(--font-code);
     font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-text-muted);
   }
-  .bd-pr-item__ring .bd-ring__label {
-    font-size: 9.5px;
-  }
-  .bd-pr-item__actions {
-    position: absolute;
-    right: 100px;
-    bottom: 6px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 150ms;
-  }
-  .bd-pr-item__actions[data-density='compact'] {
-    right: 112px;
-    top: 50%;
-    bottom: auto;
-    transform: translateY(-50%);
-  }
-  .bd-pr-row-wrap:hover .bd-pr-item__actions,
-  .bd-pr-row-wrap:focus-within .bd-pr-item__actions {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /* Compact table: header + rows share one column template. */
-  .bd-pr-table-head,
-  .bd-pr-item--compact {
-    display: grid;
-    grid-template-columns: 20px 168px minmax(0, 1fr) 92px 112px 108px 48px 40px;
-    column-gap: 12px;
-    align-items: center;
-    padding: 0 12px;
-  }
-  .bd-pr-item--compact {
-    height: 32px;
-  }
-  .bd-pr-table-head {
-    height: 24px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-text-muted);
-    background: var(--color-surface-raised);
-  }
-  /* Narrow window: drop the author-name and Δ columns before squeezing titles. */
-  @container (max-width: 760px) {
-    .bd-pr-table-head,
-    .bd-pr-item--compact {
-      grid-template-columns: 20px minmax(0, 1fr) 92px 112px 48px 40px;
-    }
-    /* !important: the cells also carry Tailwind display utilities, which sit
-       in a later cascade layer. */
-    .bd-pr-col--wide {
-      display: none !important;
-    }
-  }
 }
 
-/* ── Workbench PR list (ui.layoutV3): head row, filter, groups, rows ──
+/* ── Workbench PR list: head row, filter, groups, rows ──
    plans/ui-overhaul-workbench.md, phase 2; the `.wb-*` rules of the
    iteration-2 mockup. Sentence case throughout, no uppercase labels. */
 @layer components {
@@ -6020,9 +5629,51 @@ body.sql-resizing-v .sql-resize-handle {
   .bd-wb-review-load {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    max-width: 520px;
-    padding: 0 10px;
+  }
+  /* A reviewer under "Review load": the pull request row's grid and type
+     sizes, with the load bar in the checks column. */
+  .bd-wb-reviewer {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) 150px 52px;
+    align-items: center;
+    column-gap: 14px;
+    width: 100%;
+    height: 42px;
+    padding: 0 16px 0 14px;
+    border: 0;
+    border-left: 2px solid transparent;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wb-reviewer:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-wb-reviewer:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-wb-reviewer__bar {
+    display: block;
+    height: 4px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-hover);
+  }
+  .bd-wb-reviewer__bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transition: width var(--motion-move) var(--ease-std);
+  }
+  .bd-wb-reviewer__count {
+    font-size: 12px;
+    font-weight: 500;
+    text-align: right;
   }
 
   .bd-wb-empty {
@@ -6172,74 +5823,6 @@ body.sql-resizing-v .sql-resize-handle {
     font-variant-numeric: tabular-nums;
   }
 
-  /* ---------------- Work Items: compact row ---------------- */
-  .bd-wi-row {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--color-subtle-border);
-    border-left: 2px solid transparent;
-    cursor: pointer;
-  }
-  .bd-wi-row:hover {
-    background: var(--color-surface-hover);
-  }
-  .bd-wi-row--selected {
-    background: var(--color-selected-row-bg);
-    border-left-color: var(--color-accent);
-  }
-  .bd-wi-row__top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
-  .bd-wi-row__id {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  }
-  .bd-wi-row__title {
-    font-size: 12.5px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    line-height: 1.35;
-  }
-  .bd-wi-row__meta {
-    margin-top: 6px;
-    font-size: 11px;
-    color: var(--color-text-muted);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .bd-wi-row__meta .sep {
-    opacity: 0.6;
-  }
-  .bd-wi-row__actions {
-    display: inline-flex;
-    gap: 2px;
-    opacity: 0;
-  }
-  .bd-wi-row:hover .bd-wi-row__actions,
-  .bd-wi-row__actions:has(.bd-wi-row__action--on) {
-    opacity: 1;
-  }
-  .bd-wi-row__action {
-    background: transparent;
-    border: 0;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    padding: 2px 4px;
-    font-size: 12px;
-    border-radius: 3px;
-  }
-  .bd-wi-row__action:hover {
-    color: var(--color-text-primary);
-    background: var(--color-surface-hover);
-  }
-  .bd-wi-row__action--on {
-    color: var(--color-accent);
-  }
-
   /* ---------------- Work Items: filter popover ---------------- */
   .bd-wi-filter-popover {
     display: flex;
@@ -6257,49 +5840,7 @@ body.sql-resizing-v .sql-resize-handle {
     margin-bottom: 0;
   }
 
-  /* ---------------- Work Items: 3-pane grid shell ---------------- */
-  .bd-workitems {
-    display: grid;
-    grid-template-columns: 240px 380px 1fr;
-    flex: 1;
-    min-height: 0;
-    min-width: 0;
-    position: relative;
-    overflow: hidden;
-  }
-  .bd-workitems__items {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    border-right: 1px solid var(--color-subtle-border);
-    background: var(--color-background);
-  }
-  .bd-workitems__items-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--color-subtle-border);
-    background: var(--color-surface);
-  }
-  .bd-workitems__search {
-    flex: 1;
-  }
-  .bd-workitems__items-list {
-    flex: 1;
-    overflow-y: auto;
-  }
-  .bd-workitems__detail {
-    overflow: auto;
-    background: var(--color-background);
-    min-width: 0;
-  }
-  .bd-empty {
-    padding: 32px 24px;
-    color: var(--color-text-muted);
-    font-size: 12px;
-    text-align: center;
-  }
+  /* ---------------- Work Items: query browser modal ---------------- */
   .bd-modal-backdrop {
     position: absolute;
     inset: 0;
@@ -6325,45 +5866,5 @@ body.sql-resizing-v .sql-resize-handle {
   .bd-modal > * {
     flex: 1;
     min-height: 0;
-  }
-
-  /* ── Focus tab ──────────────────────────────────────────────────────────── */
-
-  .bd-focus-hero {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--color-subtle-border);
-    background: linear-gradient(180deg, var(--color-purple-soft, rgba(102, 85, 212, 0.08)), transparent);
-  }
-
-  .bd-focus-hero__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    border-radius: 10px;
-    background: var(--color-accent-subtle);
-    color: var(--color-accent);
-  }
-
-  .bd-focus-hero__text {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .bd-focus-hero__title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .bd-focus-hero__sub {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    margin-top: 2px;
   }
 }

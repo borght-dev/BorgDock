@@ -1,329 +1,220 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-// ---- Mocks (before component import) ----
 
 vi.mock('@/services/ado/client', () => ({
   AdoClient: vi.fn(function MockAdoClient() {
-    return {
-      get: vi.fn(),
-      getStream: vi.fn(),
-    };
+    return { get: vi.fn(), getStream: vi.fn() };
   }),
 }));
-
-vi.mock('@/services/ado/queries', () => ({
-  executeQuery: vi.fn().mockResolvedValue([]),
-}));
-
+vi.mock('@/services/ado/queries', () => ({ executeQuery: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/services/ado/workitems', () => ({
-  getWorkItem: vi.fn(),
+  getWorkItem: vi.fn(() => new Promise(() => {})),
   getWorkItemComments: vi.fn().mockResolvedValue([]),
-  getWorkItemTypeStates: vi.fn().mockResolvedValue(['New', 'Active']),
+  getWorkItemTypeStates: vi.fn().mockResolvedValue([]),
   updateWorkItem: vi.fn(),
   deleteWorkItem: vi.fn(),
   addWorkItemComment: vi.fn(),
   downloadAttachment: vi.fn(),
 }));
-
-vi.mock('@/hooks/useAdoImageAuth', () => ({
-  useAdoImageAuth: vi.fn(),
+vi.mock('@/hooks/useAdoImageAuth', () => ({ useAdoImageAuth: vi.fn() }));
+vi.mock('@/utils/tauri-persist', () => ({
+  persistToTauriStore: vi.fn(() => Promise.resolve()),
+  readFromTauriStore: vi.fn(() => Promise.resolve(undefined)),
 }));
 
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type { WorkItem } from '@/types';
-import { WorkItemsSection } from '../WorkItemsSection';
+import type { AdoQuery, WorkItem } from '@/types';
+import { queryPickerMode } from '../WorkItemQueryPicker';
+import { useQuerySettled, WorkItemsSection } from '../WorkItemsSection';
 
-// ---------- factories ----------
+const settingsBefore = useSettingsStore.getState().settings;
 
-function makeWorkItem(id: number, overrides: Record<string, unknown> = {}): WorkItem {
+function makeItem(id: number, type: string, state: string, title = `Item ${id}`): WorkItem {
   return {
     id,
     rev: 1,
-    url: `https://dev.azure.com/org/proj/_apis/wit/workItems/${id}`,
+    url: '',
     fields: {
-      'System.Title': `Item ${id}`,
-      'System.State': 'Active',
-      'System.WorkItemType': 'Task',
+      'System.Title': title,
+      'System.State': state,
+      'System.WorkItemType': type,
       'System.AssignedTo': 'Alice',
-      'System.Tags': '',
       'Microsoft.VSTS.Common.Priority': 2,
-      'System.CreatedDate': '2025-01-01T00:00:00Z',
-      ...overrides,
     },
     relations: [],
     htmlUrl: '',
   };
 }
 
-function setupStores(
-  opts: { configured?: boolean; items?: WorkItem[]; queryId?: string | null } = {},
-) {
-  const { configured = true, items = [], queryId = null } = opts;
+function query(id: string, name: string): AdoQuery {
+  return { id, name, path: `Shared/${name}`, isFolder: false, hasChildren: false, children: [] };
+}
 
-  // Settings store
+const ITEMS = [
+  makeItem(101, 'Bug', 'Active', 'Quote footer broken'),
+  makeItem(102, 'Task', 'New', 'Wire the export'),
+  makeItem(103, 'User Story', 'Active', 'Price list per customer'),
+];
+
+function setup(opts: { favorites?: string[]; queries?: AdoQuery[]; items?: WorkItem[] } = {}) {
+  const {
+    favorites = ['q1', 'q2'],
+    queries = [query('q1', 'My bugs'), query('q2', 'Sprint'), query('q3', 'Team backlog')],
+    items = ITEMS,
+  } = opts;
   useSettingsStore.setState({
     settings: {
-      ...useSettingsStore.getState().settings,
+      ...settingsBefore,
+      ui: { ...settingsBefore.ui, prDensity: 'comfortable' },
       azureDevOps: {
-        organization: configured ? 'myorg' : '',
-        project: configured ? 'myproj' : '',
-        personalAccessToken: configured ? 'fake-pat' : '',
-        authMethod: 'pat' as const,
-        authAutoDetected: true,
-        pollIntervalSeconds: 120,
-        favoriteQueryIds: [],
-        trackedWorkItemIds: [],
-        workingOnWorkItemIds: [],
-        workItemWorktreePaths: {},
-        recentWorkItemIds: [],
-        linkMatchBy: 'branch' as const,
-        showWorkItemStateOnPrCard: true,
-        updatePrStatusWhenWiDone: false,
+        ...settingsBefore.azureDevOps,
+        organization: 'org',
+        project: 'proj',
+        personalAccessToken: 'pat',
+        authMethod: 'pat',
+        favoriteQueryIds: favorites,
       },
     },
     isLoading: false,
   });
-
-  // Work items store
   useWorkItemsStore.setState({
-    queryTree: [],
-    selectedQueryId: queryId,
-    favoriteQueryIds: [],
+    queryTree: queries,
+    selectedQueryId: 'q1',
+    favoriteQueryIds: favorites,
     workItems: items,
     stateFilter: 'all',
     assignedToFilter: '',
     searchQuery: '',
     trackingFilter: 'all',
-    trackedWorkItemIds: new Set(),
+    trackedWorkItemIds: new Set([103]),
     workingOnWorkItemIds: new Set(),
-    workItemWorktreePaths: {},
-    recentWorkItemIds: [],
-    currentUserDisplayName: '',
     isLoading: false,
   });
-
-  // Ui store — clear any prior selection
-  useUiStore.setState({ workItemsSelectedId: null });
+  useUiStore.setState({ viewStack: [{ kind: 'list' }], workItemsSelectedId: null });
 }
 
-describe('WorkItemsSection (3-pane)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setupStores();
+describe('WorkItemsSection', () => {
+  beforeEach(() => setup());
+  afterEach(() => {
+    useSettingsStore.setState({ settings: settingsBefore });
+    useWorkItemsStore.setState({ workItems: [], queryTree: [], selectedQueryId: null });
+    useUiStore.setState({ viewStack: [{ kind: 'list' }], workItemsSelectedId: null });
   });
 
-  afterEach(cleanup);
+  it('renders rows grouped by state under sentence-case headings with counts', () => {
+    const { container } = render(<WorkItemsSection />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Work items' })).toBeInTheDocument();
+    const heads = [...container.querySelectorAll('.bd-wb-group__head')].map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(heads).toEqual(['Active2', 'New1']);
+    expect(container.querySelectorAll('.bd-wi-wb-row')).toHaveLength(3);
+    // No queries rail | list | detail panes: rows only.
+    expect(container.querySelector('.bd-workitems__detail')).not.toBeInTheDocument();
+    expect(screen.queryByText('Favorites')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Untrack AB#103' })).toHaveAttribute(
+      'data-on',
+      'true',
+    );
+  });
 
-  // ---- Not configured state ----
-
-  it('shows configuration message when ADO not configured', () => {
-    setupStores({ configured: false });
+  it('offers a few favourite queries as a segmented control', () => {
     render(<WorkItemsSection />);
-    expect(
-      screen.getByText('Configure Azure DevOps in Settings to see work items'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open Settings' })).toBeInTheDocument();
+    const picker = screen.getByRole('group', { name: 'Query' });
+    expect(within(picker).getByRole('button', { name: 'My bugs' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(within(picker).getByRole('button', { name: 'Sprint' }));
+    expect(useWorkItemsStore.getState().selectedQueryId).toBe('q2');
+    expect(screen.getByRole('button', { name: 'Browse all queries' })).toBeInTheDocument();
   });
 
-  // ---- 3-pane shell ----
-
-  it('renders the queries rail with Favorites and My Queries headings', () => {
-    setupStores({ configured: true });
+  it('keeps the queries rail when there are many queries', () => {
+    const many = Array.from({ length: 20 }, (_, i) => query(`m${i}`, `Query ${i}`));
+    setup({ favorites: [], queries: many });
     render(<WorkItemsSection />);
     expect(screen.getByText('Favorites')).toBeInTheDocument();
-    expect(screen.getByText('My Queries')).toBeInTheDocument();
-    expect(screen.getByText(/Browse all queries/)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Query' })).not.toBeInTheDocument();
   });
 
-  it('shows "Pick a query from the rail" when no query is selected', () => {
-    setupStores({ configured: true, queryId: null });
-    render(<WorkItemsSection />);
-    expect(screen.getByText('Pick a query from the rail')).toBeInTheDocument();
+  it('picks the query control by how many queries there are', () => {
+    expect(queryPickerMode(2, 30)).toBe('segmented');
+    expect(queryPickerMode(0, 8)).toBe('select');
+    expect(queryPickerMode(6, 4)).toBe('select');
+    expect(queryPickerMode(6, 10)).toBe('rail');
   });
 
-  it('shows "Select a work item" empty state in detail pane when nothing selected', () => {
-    setupStores({ configured: true });
-    render(<WorkItemsSection />);
-    expect(screen.getByText('Select a work item')).toBeInTheDocument();
+  it('search filters the rows through the store and names the ⌘K shortcut', () => {
+    const { container } = render(<WorkItemsSection />);
+    const search = screen.getByRole('textbox', { name: 'Filter work items' });
+    expect(search).toHaveAttribute('data-section-search');
+    expect(search.parentElement?.querySelector('.bd-kbd')?.textContent).toMatch(/K$/);
+    fireEvent.change(search, { target: { value: 'export' } });
+    expect(useWorkItemsStore.getState().searchQuery).toBe('export');
+    expect(container.querySelectorAll('.bd-wi-wb-row')).toHaveLength(1);
+    expect(screen.getByText('Wire the export')).toBeInTheDocument();
   });
 
-  it('shows the items toolbar with a filter input', () => {
-    setupStores({ configured: true });
-    render(<WorkItemsSection />);
-    expect(screen.getByLabelText('Filter items')).toBeInTheDocument();
-    expect(screen.getByLabelText('Filter')).toBeInTheDocument();
-  });
-
-  // ---- Items list ----
-
-  it('renders work items as compact rows', () => {
-    const items = [makeWorkItem(1), makeWorkItem(2)];
-    setupStores({ configured: true, items, queryId: 'q-1' });
-    useWorkItemsStore.setState({
-      queryTree: [
-        {
-          id: 'q-1',
-          name: 'My Query',
-          path: 'Shared/My Query',
-          isFolder: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
+  it('a filter change updates the rows (FLIP runs the change)', async () => {
+    const { container } = render(<WorkItemsSection />);
+    await act(async () => {
+      useWorkItemsStore.setState({ trackingFilter: 'tracked' });
     });
-    render(<WorkItemsSection />);
-    expect(screen.getByText('Item 1')).toBeInTheDocument();
-    expect(screen.getByText('Item 2')).toBeInTheDocument();
-    expect(screen.getByText('AB#1')).toBeInTheDocument();
-    expect(screen.getByText('AB#2')).toBeInTheDocument();
+    expect(container.querySelectorAll('.bd-wi-wb-row')).toHaveLength(1);
   });
 
-  it('shows "No items in {queryName}" when query selected but empty', () => {
-    setupStores({ configured: true, items: [], queryId: 'q-1' });
-    useWorkItemsStore.setState({
-      queryTree: [
-        {
-          id: 'q-1',
-          name: 'Active Bugs',
-          path: 'Shared/Active Bugs',
-          isFolder: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
-    });
-    render(<WorkItemsSection />);
-    expect(screen.getByText(/No items in Active Bugs/)).toBeInTheDocument();
-  });
-
-  // ---- Local search ----
-
-  it('filters rows client-side by typing in the search input', () => {
-    const items = [
-      makeWorkItem(101, { 'System.Title': 'Quote footer broken' }),
-      makeWorkItem(202, { 'System.Title': 'Header alignment' }),
-    ];
-    setupStores({ configured: true, items, queryId: 'q-1' });
-    useWorkItemsStore.setState({
-      queryTree: [
-        {
-          id: 'q-1',
-          name: 'All',
-          path: 'All',
-          isFolder: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
-    });
-    render(<WorkItemsSection />);
-    const input = screen.getByLabelText('Filter items') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'header' } });
-    expect(screen.queryByText('Quote footer broken')).toBeNull();
-    expect(screen.getByText('Header alignment')).toBeInTheDocument();
-  });
-
-  // ---- Detail load on click ----
-
-  it('opens detail panel when a work item is selected', async () => {
-    const { getWorkItem, getWorkItemComments, getWorkItemTypeStates } = await import(
-      '@/services/ado/workitems'
+  it('clicking a row pushes its detail view and keeps it selected', async () => {
+    const { container } = render(<WorkItemsSection />);
+    fireEvent.click(container.querySelector('[data-wi-id="102"]')!);
+    await waitFor(() =>
+      expect(useUiStore.getState().viewStack.slice(-1)[0]).toEqual({
+        kind: 'work-item-detail',
+        id: 102,
+      }),
     );
-    const fullItem = makeWorkItem(1, {
-      'System.Description': '<p>Description here</p>',
-    });
-    vi.mocked(getWorkItem).mockResolvedValue(fullItem);
-    vi.mocked(getWorkItemComments).mockResolvedValue([]);
-    vi.mocked(getWorkItemTypeStates).mockResolvedValue(['New', 'Active', 'Resolved']);
-
-    const items = [makeWorkItem(1)];
-    setupStores({ configured: true, items, queryId: 'q-1' });
-    useWorkItemsStore.setState({
-      queryTree: [
-        {
-          id: 'q-1',
-          name: 'Test',
-          path: 'Test',
-          isFolder: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
-    });
-    render(<WorkItemsSection />);
-
-    fireEvent.click(screen.getByText('Item 1'));
-
-    await waitFor(() => {
-      expect(getWorkItem).toHaveBeenCalledWith(expect.anything(), 1);
-    });
+    expect(useUiStore.getState().workItemsSelectedId).toBe(102);
+    expect(container.querySelector('[data-wi-id="102"]')).toHaveAttribute('data-selected', 'true');
   });
 
-  // ---- Persistence to ui-store ----
-
-  it('writes the selected id to ui-store on selection', async () => {
-    const { getWorkItem } = await import('@/services/ado/workitems');
-    const fullItem = makeWorkItem(7);
-    vi.mocked(getWorkItem).mockResolvedValue(fullItem);
-
-    const items = [makeWorkItem(7)];
-    setupStores({ configured: true, items, queryId: 'q-1' });
-    useWorkItemsStore.setState({
-      queryTree: [
-        {
-          id: 'q-1',
-          name: 'Test',
-          path: 'Test',
-          isFolder: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
-    });
+  it('asks for a query when none is selected', () => {
+    useWorkItemsStore.setState({ selectedQueryId: null, workItems: [] });
     render(<WorkItemsSection />);
-
-    fireEvent.click(screen.getByText('Item 7'));
-
-    await waitFor(() => {
-      expect(useUiStore.getState().workItemsSelectedId).toBe(7);
-    });
+    expect(screen.getByText('Pick a query to see its work items')).toBeInTheDocument();
   });
+});
 
-  // ---- Query browser opens as modal ----
+describe('useQuerySettled', () => {
+  it('settles a new query only once its new list has landed and loading is over', () => {
+    const oldItems = [makeItem(1, 'Bug', 'Active')];
+    const newItems = [makeItem(2, 'Task', 'New')];
+    const { result, rerender } = renderHook(
+      ({ q, items, loading }) => useQuerySettled(q, items, loading),
+      { initialProps: { q: 'a' as string | null, items: oldItems, loading: false } },
+    );
+    expect(result.current).toBe('a');
 
-  it('opens the query browser as a modal when "Browse all queries…" is clicked', () => {
-    setupStores({ configured: true });
-    useWorkItemsStore.setState({
-      queryTree: [
-        {
-          id: 'q-1',
-          name: 'My Query',
-          path: 'Shared/My Query',
-          isFolder: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
-    });
-    render(<WorkItemsSection />);
-
-    fireEvent.click(screen.getByText(/Browse all queries/));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('Saved Queries')).toBeInTheDocument();
-  });
-
-  it('closes the query browser modal when the backdrop is clicked', () => {
-    setupStores({ configured: true });
-    render(<WorkItemsSection />);
-    fireEvent.click(screen.getByText(/Browse all queries/));
-    const dialog = screen.getByRole('dialog');
-    expect(dialog).toBeInTheDocument();
-    // Click the presentation (backdrop) directly
-    const backdrop = screen.getByRole('presentation');
-    fireEvent.click(backdrop);
-    expect(screen.queryByRole('dialog')).toBeNull();
+    // Picked, still loading: the old rows show.
+    rerender({ q: 'b', items: oldItems, loading: true });
+    expect(result.current).toBeNull();
+    // Loading over but the list not yet replaced: still not settled.
+    rerender({ q: 'b', items: oldItems, loading: false });
+    expect(result.current).toBeNull();
+    // New list in, loading still on: not yet.
+    rerender({ q: 'b', items: newItems, loading: true });
+    expect(result.current).toBeNull();
+    // Both: settled.
+    rerender({ q: 'b', items: newItems, loading: false });
+    expect(result.current).toBe('b');
   });
 });

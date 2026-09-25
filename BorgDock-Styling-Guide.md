@@ -18,14 +18,14 @@ Workbench direction (`plans/ui-overhaul-workbench.md`). Graphite surfaces in dar
 | Strong border | `#d4d6dc` | `rgba(255,255,255,.12)` |
 | Text primary / secondary | `#17181c` / `#5d606a` | `#ededef` / `#9c9da4` |
 | Text muted (small readable text) | `#6b6e78` | `#8e8f96` |
-| Text tertiary (decoration only) | `#8f929c` | `#67686f` |
+| Text tertiary (≥ 4.5:1 on background and surface) | `#6d707a` | `#82838a` |
 | Accent | `#4f46e5` | `#7f7eff` |
 | Text on accent (`accent-foreground`) | `#ffffff` | `#12121a` |
 | Accent as text on a wash (`purple`) | `#4f46e5` | `#9d9cff` |
 | Status green / red / yellow / blue | `#1f9d6b` / `#d64560` / `#c98a12` / `#2d6be4` | `#5cc98f` / `#f0616d` / `#e5b454` / `#6fa8ff` |
 
 Contrast rules, enforced by `src/styles/__tests__/contrast.test.ts` and `tests/e2e/tool-windows-a11y.spec.ts`:
-- Readable small text uses `text-muted` or stronger. `text-tertiary` is below 4.5:1 in both themes; use it for icons, rules and decoration, not for words someone has to read.
+- Readable small text uses `text-tertiary`, `text-muted` or stronger on the background and the surface: all of them pass 4.5:1 in both themes. On `surface-raised` use `text-muted` (tertiary is 4.2:1 there in dark).
 - Text on an accent fill uses `accent-foreground` (dark ink in dark mode; white on `#7f7eff` is 3.3:1).
 - Accent-coloured text on an accent wash (active chip, selected row id) uses `purple`, which is lighter than the accent in dark mode.
 

@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { ArrowRight, ExternalLink, GitBranch, LoaderCircle, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { QuickReviewOverlay } from '@/components/focus/QuickReviewOverlay';
+import { passedOfCounted } from '@/components/pr/pr-card-data';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { WindowControls } from '@/components/shared/chrome';
 import type { TabDef } from '@/components/shared/primitives';
@@ -248,8 +249,11 @@ export function PrDetailPanel({
   const isTerminal = isMerged || p.state === 'closed';
   const score = computeMergeScore(pr);
   const reviewLabel = reviewStatusLabel(p.reviewStatus);
-  const passedCount = pr.passedCount;
-  const totalChecks = pr.totalCheckCount - pr.skippedCount;
+  const checkTally = passedOfCounted({
+    passed: pr.passedCount,
+    skipped: pr.skippedCount,
+    total: pr.totalCheckCount,
+  });
 
   const tabDefs: TabDef[] = [
     { id: 'Overview', label: 'Overview' },
@@ -258,7 +262,7 @@ export function PrDetailPanel({
     {
       id: 'Checks',
       label: 'Checks',
-      count: `${pr.passedCount}/${totalChecks}`,
+      count: `${checkTally.passed}/${checkTally.counted}`,
       indicator:
         pr.pendingCheckNames.length > 0 ? (
           <LoaderCircle size={10} strokeWidth={2.4} className="animate-spin" aria-hidden="true" />
@@ -360,7 +364,9 @@ export function PrDetailPanel({
                 {!isMerged && p.state === 'closed' && <Pill tone="neutral">Closed</Pill>}
                 {!isTerminal && p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
                 {!isTerminal && p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
-                {!isTerminal && totalChecks > 0 && <Pill tone="success">{passedCount} passed</Pill>}
+                {!isTerminal && checkTally.counted > 0 && (
+                  <Pill tone="success">{checkTally.passed} passed</Pill>
+                )}
                 {!isTerminal && pr.pendingCheckNames.length > 0 && (
                   <Pill
                     tone="warning"
@@ -465,7 +471,7 @@ export function PrDetailPanel({
             passed={pr.passedCount}
             running={pr.pendingCheckNames.length}
             failing={pr.failedCheckNames.length}
-            total={totalChecks}
+            total={checkTally.counted}
             onJumpToChecks={() => setActiveTab('Checks')}
           />
         </div>

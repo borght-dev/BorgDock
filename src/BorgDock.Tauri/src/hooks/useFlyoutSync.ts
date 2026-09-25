@@ -51,9 +51,7 @@ export async function openPrFromEvent(payload: OpenPrDetailPayload): Promise<voi
     owner = prw.pullRequest.repoOwner;
     repo = prw.pullRequest.repoName;
   }
-  if (useSettingsStore.getState().settings.ui?.layoutV3 ?? false) {
-    await bringMainWindowForward();
-  }
+  await bringMainWindowForward();
   await showPr({ owner, repo, number, ...(tab ? { tab } : {}) });
 }
 
@@ -380,9 +378,9 @@ export function useFlyoutSync() {
   }, []);
 
   // Listen for open-pr-detail events from other windows (the flyout's
-  // `showPr`). With `ui.layoutV3` the main window comes to the front and
-  // pushes the detail view; without it the pop-out opens as before. Emitters
-  // that only send a number get owner/repo from the in-memory PR list.
+  // `showPr`): the main window comes to the front and pushes the detail
+  // view. Emitters that only send a number get owner/repo from the
+  // in-memory PR list.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;

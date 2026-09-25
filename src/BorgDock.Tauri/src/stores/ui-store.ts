@@ -48,15 +48,15 @@ interface UiState {
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
   /**
-   * The selected PR as `owner/repo#number` (Workbench rows). Numbers collide
-   * across repositories, so the Workbench list selects by key; the tab
-   * layout still reads `selectedPrNumber`, which `selectPrKey` sets as well.
+   * The selected PR as `owner/repo#number`. Numbers collide across
+   * repositories, so the rows select by key; `selectPrKey` sets
+   * `selectedPrNumber` as well for callers that only know the number.
    */
   selectedPrKey: string | null;
   workItemsSelectedId: number | null;
-  expandedRepoGroups: Set<string>;
+  /** Keys of the list groups that are collapsed (`WorkbenchGroup`); every other group is open. */
+  collapsedGroups: Set<string>;
   isDragging: boolean;
-  pendingWorkItemId: number | null;
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
   prGroupBy: PrGroupBy;
@@ -76,15 +76,15 @@ interface UiState {
   focusSnoozes: Record<string, number>;
 
   setActiveSection: (section: ActiveSection) => void;
-  /** Select by number (tab layout). Clears the key selection. */
+  /** Select by number only (clears the key selection); `null` clears both. */
   selectPr: (prNumber: number | null) => void;
   /** Select one PR by `owner/repo#number` and its number (Workbench rows). */
   selectPrKey: (key: string | null, prNumber: number | null) => void;
   setWorkItemsSelectedId: (id: number | null) => void;
   toggleRepoGroup: (repoKey: string) => void;
-  collapseAllRepoGroups: () => void;
+  /** Collapse every group in `groupKeys` (the groups on screen); the others keep their state. */
+  collapseAllRepoGroups: (groupKeys: Iterable<string>) => void;
   setDragging: (dragging: boolean) => void;
-  setPendingWorkItemId: (id: number | null) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
   setPrGroupBy: (groupBy: PrGroupBy) => void;
   restorePersistedSection: () => void;
@@ -118,9 +118,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   selectedPrNumber: null,
   selectedPrKey: null,
   workItemsSelectedId: null,
-  expandedRepoGroups: new Set<string>(),
+  collapsedGroups: new Set<string>(),
   isDragging: false,
-  pendingWorkItemId: null,
   worktreeBranchMap: new Map(),
   prGroupBy: 'author',
   _hasUserNavigated: false,
@@ -143,20 +142,19 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   toggleRepoGroup: (repoKey) =>
     set((state) => {
-      const next = new Set(state.expandedRepoGroups);
+      const next = new Set(state.collapsedGroups);
       if (next.has(repoKey)) {
         next.delete(repoKey);
       } else {
         next.add(repoKey);
       }
-      return { expandedRepoGroups: next };
+      return { collapsedGroups: next };
     }),
 
-  collapseAllRepoGroups: () => set({ expandedRepoGroups: new Set() }),
+  collapseAllRepoGroups: (groupKeys) =>
+    set((state) => ({ collapsedGroups: new Set([...state.collapsedGroups, ...groupKeys]) })),
 
   setDragging: (dragging) => set({ isDragging: dragging }),
-
-  setPendingWorkItemId: (id) => set({ pendingWorkItemId: id }),
 
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 

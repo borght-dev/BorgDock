@@ -130,10 +130,8 @@ describe('installTestSeed', () => {
       _cachedPriorityScores: null,
       _cachedTeamReviewLoad: null,
       _cachedCounts: null,
-      _cachedAuthorLoad: null,
       _viewDeps: null,
       _cachedFilteredPrs: null,
-      _cachedGroups: null,
       _cachedNeedsMyReview: null,
       _cachedFocusPrs: null,
     });

@@ -104,6 +104,19 @@ export function checkCountsFor(prw: PullRequestWithChecks): CheckBarCounts {
   };
 }
 
+/**
+ * "Passed of counted" for a PR's checks, the one rule for every place that
+ * says how many passed (the Checks tab badge, the Checks panel heading):
+ * skipped checks are left out of the count, so 5 passed of 8 with 1 skipped
+ * reads 5 of 7.
+ */
+export function passedOfCounted(c: { passed: number; skipped: number; total: number }): {
+  passed: number;
+  counted: number;
+} {
+  return { passed: c.passed, counted: Math.max(0, c.total - c.skipped) };
+}
+
 /** Stable identity of a PR across repositories: `owner/repo#number`. */
 export function prRowKey(pr: { repoOwner: string; repoName: string; number: number }): string {
   return `${pr.repoOwner}/${pr.repoName}#${pr.number}`;

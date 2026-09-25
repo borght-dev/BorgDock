@@ -270,8 +270,8 @@ export async function checkoutPrBranch(
 // ── Review ─────────────────────────────────────────────────────────────
 
 /**
- * The Review action: opens Quick Review for this one PR, in every layout (the
- * Workbench row slot, the detail action bar, the tab layout's hover bar).
+ * The Review action: opens Quick Review for this one PR, from the row's
+ * action slot, the Focus board, the detail action bar and the flyout.
  */
 export function reviewPr(pr: PullRequestWithChecks): void {
   useQuickReviewStore.getState().startSinglePr(pr);

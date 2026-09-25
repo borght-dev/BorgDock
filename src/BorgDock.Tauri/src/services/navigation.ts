@@ -1,8 +1,6 @@
 import { flushSync } from 'react-dom';
 import { createLogger } from '@/services/logger';
-import { openPrDetail } from '@/services/windows';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useSettingsStore } from '@/stores/settings-store';
 import {
   type ActiveSection,
   type MainView,
@@ -185,12 +183,10 @@ function samePr(view: MainView, target: ShowPrTarget): boolean {
  * "open this PR" path goes through here; only the explicit "Open in window"
  * actions call `openPrDetail` themselves.
  *
- * - In the main window with `ui.layoutV3` on: switch to Pull requests
- *   (unless `keepSection`), select the PR's row and push the full-screen
- *   detail view. A PR detail
+ * - In the main window: switch to Pull requests (unless `keepSection`),
+ *   select the PR's row and push the full-screen detail view. A PR detail
  *   already on top is replaced, not stacked; the same PR on the same tab is
  *   left alone.
- * - In the main window with the flag off: the pop-out window, as before.
  * - In another window (the tray flyout): ask the main window, which applies
  *   the same rules and, when it pushes the view, brings itself to the front.
  *
@@ -205,15 +201,6 @@ export async function showPr(target: ShowPrTarget): Promise<void> {
       await emitTo(MAIN_WINDOW_LABEL, OPEN_PR_DETAIL_EVENT, target);
     } catch (err) {
       log.error('open-pr-detail emit failed', err, { owner, repo, number });
-    }
-    return;
-  }
-
-  if (!(useSettingsStore.getState().settings.ui?.layoutV3 ?? false)) {
-    try {
-      await openPrDetail({ owner, repo, number });
-    } catch {
-      // openPrDetail logs the failure.
     }
     return;
   }

@@ -14,15 +14,8 @@ vi.mock('@/components/worktree/WorktreesSection', () => ({
   WorktreesSection: () => <div>worktrees body</div>,
 }));
 
-import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { SectionView } from '../SectionView';
-
-function setLayoutV3(layoutV3: boolean) {
-  useSettingsStore.setState((s) => ({
-    settings: { ...s.settings, ui: { ...s.settings.ui, layoutV3 } },
-  }));
-}
 
 function pane(text: string) {
   return screen.getByText(text).closest('.bd-section');
@@ -40,7 +33,6 @@ function endAnimation(el: Element) {
 describe('SectionView', () => {
   beforeEach(() => {
     useUiStore.setState({ activeSection: 'focus' });
-    setLayoutV3(true);
   });
 
   afterEach(() => {
@@ -100,24 +92,5 @@ describe('SectionView', () => {
     act(() => useUiStore.getState().setActiveSection('prs'));
     expect(screen.queryByText('focus body')).not.toBeInTheDocument();
     expect(pane('prs body')).not.toHaveClass('bd-section--entering');
-  });
-
-  describe('tab layout (layoutV3 off)', () => {
-    beforeEach(() => setLayoutV3(false));
-
-    it('switches sections instantly, with no overlapping mount', () => {
-      render(<SectionView />);
-      act(() => useUiStore.getState().setActiveSection('prs'));
-      expect(screen.queryByText('focus body')).not.toBeInTheDocument();
-      expect(document.querySelectorAll('.bd-section')).toHaveLength(1);
-      expect(pane('prs body')).not.toHaveClass('bd-section--entering');
-    });
-
-    it('shows Focus for a saved Worktrees section, which has no tab', () => {
-      useUiStore.setState({ activeSection: 'worktrees' });
-      render(<SectionView />);
-      expect(screen.getByText('focus body')).toBeInTheDocument();
-      expect(screen.queryByText('worktrees body')).not.toBeInTheDocument();
-    });
   });
 });

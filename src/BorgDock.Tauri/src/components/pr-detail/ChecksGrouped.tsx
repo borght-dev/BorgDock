@@ -1,6 +1,7 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { ChevronRight } from 'lucide-react';
+import { passedOfCounted } from '@/components/pr/pr-card-data';
 import { ProgressButton } from '@/components/shared/primitives';
 import { useProgressAction } from '@/hooks/useProgressAction';
 import type { FirstFailure } from '@/services/first-failure';
@@ -153,14 +154,19 @@ function Suite({
  */
 export function ChecksGrouped({ checks, onFix, onRerun, firstFailure }: ChecksGroupedProps) {
   const groups = groupChecks(checks);
-  const passed = checks.filter((c) => checkStateOf(c) === 'passed').length;
+  const skipped = checks.filter((c) => checkStateOf(c) === 'skipped').length;
+  const { passed, counted } = passedOfCounted({
+    passed: checks.filter((c) => checkStateOf(c) === 'passed').length,
+    skipped,
+    total: checks.length,
+  });
   return (
     <div className="bd-checks-grouped" data-checks-grouped="">
       <h3 className="bd-checks-grouped__heading">
         Checks
         <span>
-          {passed} of {checks.length} passed in {groups.length}{' '}
-          {groups.length === 1 ? 'suite' : 'suites'}
+          {passed} of {counted} passed in {groups.length} {groups.length === 1 ? 'suite' : 'suites'}
+          {skipped > 0 && `, ${skipped} skipped`}
         </span>
       </h3>
       <div className="bd-checks-grouped__suites">

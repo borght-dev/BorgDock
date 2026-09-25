@@ -4,9 +4,8 @@
 // replacement). App.tsx renders <MainWindow><ViewStack /></MainWindow>; this
 // harness renders the same tree, so Storybook and the app cannot drift, and
 // seeds the stores directly so the Focus, PRs, and Work Items sections render
-// with realistic data — the source for the "What's new" hero screenshots.
-// `layoutV3` switches between the tab layout and the Workbench rail layout;
-// `view` pushes a detail view on the stack.
+// with realistic data — the source for the "What's new" hero screenshots and
+// the site's captures. `view` pushes a detail view on the stack.
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
@@ -19,6 +18,7 @@ import {
   taskMinimalFields,
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
+import { reviewRequestKey } from '@/services/priority-scoring';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -161,6 +161,31 @@ const OPEN_PRS: PullRequestWithChecks[] = [
     additions: 95,
     deletions: 12,
   }),
+  // Mine, waiting on someone else's review: Focus's "Waiting on others".
+  pr({
+    number: 476,
+    title: 'Flyout: open pull requests in the main window',
+    repoName: 'BorgDock',
+    author: ME,
+    status: 'green',
+    reviewStatus: 'none',
+    requestedReviewers: ['mira'],
+    updatedHoursAgo: 20,
+    additions: 140,
+    deletions: 62,
+  }),
+  // No update in over a week: Focus's "Stale".
+  pr({
+    number: 452,
+    title: 'Docs: document the release checklist',
+    repoName: 'BorgDock',
+    author: ME,
+    status: 'green',
+    reviewStatus: 'commented',
+    updatedHoursAgo: 12 * 24,
+    additions: 48,
+    deletions: 6,
+  }),
   pr({
     number: 84,
     title: 'Bump deps: Vite 8, Vitest 4, Storybook 10',
@@ -189,8 +214,16 @@ function seedPrStore() {
   s.setClosedPullRequests(CLOSED_PRS);
   s.setPollingState(false, new Date());
   s.setRateLimit({ remaining: 4837, limit: 5000, resetAt: new Date(Date.now() + 30 * HOUR) });
+  // When each review was requested from me, so Focus reads "mira asked for
+  // your review 2 d ago." instead of "just now" (first seen on this poll).
+  usePrStore.setState((state) => ({
+    reviewRequestTimestamps: {
+      ...state.reviewRequestTimestamps,
+      [reviewRequestKey(OPEN_PRS[1]!.pullRequest, ME)]: ago(50),
+      [reviewRequestKey(OPEN_PRS[3]!.pullRequest, ME)]: ago(5),
+    },
+  }));
   useOnboardingStore.setState({
-    hasSeenFocusOverlay: true,
     dismissedBadges: new Set(['focus-mode', 'review-mode', 'pr-summary']),
     dismissedHints: new Set([
       'focus-priority-ranking',
@@ -285,16 +318,13 @@ function Harness({
   section,
   groupBy = 'repo',
   density = 'comfortable',
-  layoutV3 = false,
   focusLayout = 'list',
   view,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
   density?: PrDensity;
-  /** Workbench rail layout instead of the title-bar tabs. */
-  layoutV3?: boolean;
-  /** Focus as a list or as the board (Workbench layout). */
+  /** Focus as a list or as the board. */
   focusLayout?: FocusLayout;
   /** A detail view pushed on top of the list. */
   view?: MainView;
@@ -312,7 +342,7 @@ function Harness({
     useSettingsStore.setState((s) => ({
       settings: {
         ...s.settings,
-        ui: { ...s.settings.ui, prDensity: density, layoutV3, focusLayout },
+        ui: { ...s.settings.ui, prDensity: density, focusLayout },
       },
     }));
     return null;
@@ -333,46 +363,31 @@ export default meta;
 
 type Story = StoryObj<typeof Harness>;
 
-/** The PRs tab — grouped list, "Needs Your Review" queue, toolbar, recently closed. */
-export const PrsTab: Story = { args: { section: 'prs' } };
+/** Pull requests: "Needs you" first, then the repositories, Review load and Recently closed. */
+export const RailPrs: Story = { args: { section: 'prs' } };
 
-/** The PR tab grouped by author, with the current user first. */
+/** Pull requests grouped by author, with the current user first. */
 export const PrsByAuthor: Story = { args: { section: 'prs', groupBy: 'author' } };
 
-/** Compact density — single-line table rows for high-volume review queues. */
+/** Compact density: one 32 px line per pull request. */
 export const PrsCompact: Story = { args: { section: 'prs', density: 'compact' } };
 
-/** The Focus tab — ranked "what needs you" queue with the Quick Review CTA. */
-export const FocusTab: Story = { args: { section: 'focus' } };
+/** Focus as a list: the count strip and the ranked rows with a reason each. */
+export const RailFocus: Story = { args: { section: 'focus' } };
 
-/** The Work Items tab — the 3-pane queries rail | list | detail workspace. */
-export const WorkItemsTab: Story = { args: { section: 'workitems' } };
+/** Focus as the board: four computed columns, no drag. */
+export const RailFocusBoard: Story = { args: { section: 'focus', focusLayout: 'board' } };
 
-/** Workbench rail layout (`ui.layoutV3`) on the Pull requests section. */
-export const RailPrs: Story = { args: { section: 'prs', layoutV3: true } };
+/** The Worktrees section. */
+export const RailWorktrees: Story = { args: { section: 'worktrees' } };
 
-/** Workbench rail layout on the Focus section. */
-export const RailFocus: Story = { args: { section: 'focus', layoutV3: true } };
+/** Work items: rows grouped by state, query picker in the head row. */
+export const RailWorkItems: Story = { args: { section: 'workitems' } };
 
-/** Workbench rail layout on Focus as the board: four computed columns, no drag. */
-export const RailFocusBoard: Story = {
-  args: { section: 'focus', layoutV3: true, focusLayout: 'board' },
-};
-
-/** Workbench rail layout on the Worktrees placeholder section. */
-export const RailWorktrees: Story = { args: { section: 'worktrees', layoutV3: true } };
-
-/** The rail layout on Work items: rows grouped by state, query picker in the head row. */
-export const RailWorkItems: Story = { args: { section: 'workitems', layoutV3: true } };
-
-/** The tab layout (`ui.layoutV3` off) on the Pull requests section. */
-export const TabsPrs: Story = { args: { section: 'prs', layoutV3: false } };
-
-/** A pull request pushed on the view stack (placeholder detail view with Back). */
+/** A pull request pushed on the view stack: the full-screen detail with Back. */
 export const RailPrDetailPushed: Story = {
   args: {
     section: 'prs',
-    layoutV3: true,
     view: { kind: 'pr-detail', owner: 'borght-dev', repo: 'BorgDock', number: 482 },
   },
 };

@@ -5,8 +5,6 @@ import { useKeyboardNav } from '../useKeyboardNav';
 
 // Mock the stores
 const mockSelectPr = vi.fn();
-const mockFilteredPrs = vi.fn<() => PullRequestWithChecks[]>(() => []);
-const mockFocusPrs = vi.fn<() => PullRequestWithChecks[]>(() => []);
 const mockNeedsMyReview = vi.fn<() => PullRequestWithChecks[]>(() => []);
 const mockCollapseAllRepoGroups = vi.fn();
 const mockStartSinglePr = vi.fn();
@@ -25,7 +23,6 @@ let mockOverlayOpen = false;
 let mockSelectedPrNumber: number | null = null;
 let mockActiveSection = 'prs';
 let mockViewStack: { kind: string }[] = [{ kind: 'list' }];
-let mockLayoutV3 = false;
 let mockPullRequests: PullRequestWithChecks[] = [];
 
 vi.mock('@/stores/ui-store', () => ({
@@ -38,6 +35,8 @@ vi.mock('@/stores/ui-store', () => ({
       }),
     {
       getState: () => ({
+        selectedPrNumber: mockSelectedPrNumber,
+        selectedPrKey: mockSelectedPrNumber === null ? null : `test/repo#${mockSelectedPrNumber}`,
         activeSection: mockActiveSection,
         viewStack: mockViewStack,
         collapseAllRepoGroups: mockCollapseAllRepoGroups,
@@ -60,8 +59,6 @@ vi.mock('@/stores/pr-store', () => ({
     {
       getState: () => ({
         pullRequests: mockPullRequests,
-        filteredPrs: mockFilteredPrs,
-        focusPrs: mockFocusPrs,
         needsMyReview: mockNeedsMyReview,
       }),
     },
@@ -87,12 +84,6 @@ vi.mock('@/services/navigation', () => ({
 
 vi.mock('@/services/windows', () => ({
   openPrDetail: (target: unknown) => mockOpenPrDetail(target),
-}));
-
-vi.mock('@/stores/settings-store', () => ({
-  useSettingsStore: {
-    getState: () => ({ settings: { ui: { layoutV3: mockLayoutV3 } } }),
-  },
 }));
 
 vi.mock('@tauri-apps/plugin-opener', () => ({
@@ -146,296 +137,158 @@ describe('useKeyboardNav', () => {
     mockSelectedPrNumber = null;
     mockActiveSection = 'prs';
     mockViewStack = [{ kind: 'list' }];
-    mockLayoutV3 = false;
     mockOverlayOpen = false;
     mockPullRequests = [];
-    mockFilteredPrs.mockReturnValue([]);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    document.body.innerHTML = '';
   });
 
-  it('returns a focusedIndex ref', () => {
-    const { result } = renderHook(() => useKeyboardNav());
-    expect(result.current.focusedIndex).toBeDefined();
-    expect(result.current.focusedIndex.current).toBe(0);
-  });
+  /** A selected PR row on screen for `pr`, as `PrRow` draws it. */
+  function mountSelectedRow(pr: PullRequestWithChecks) {
+    const row = document.createElement('div');
+    row.className = 'bd-wb-row';
+    row.dataset.prKey = `test/repo#${pr.pullRequest.number}`;
+    row.dataset.prNumber = String(pr.pullRequest.number);
+    row.dataset.selected = 'true';
+    document.body.appendChild(row);
+  }
 
-  it('navigates down with ArrowDown', () => {
-    const prs = [makePr(1), makePr(2), makePr(3)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const { result } = renderHook(() => useKeyboardNav());
-
-    fireKey('ArrowDown');
-    expect(mockSelectPr).toHaveBeenCalledWith(2);
-    expect(result.current.focusedIndex.current).toBe(1);
-  });
-
-  it('navigates down with j key', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    renderHook(() => useKeyboardNav());
-    fireKey('j');
-    expect(mockSelectPr).toHaveBeenCalledWith(2);
-  });
-
-  it('navigates up with ArrowUp', () => {
-    const prs = [makePr(1), makePr(2), makePr(3)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const { result } = renderHook(() => useKeyboardNav());
-
-    // Move down first
-    fireKey('ArrowDown');
-    fireKey('ArrowDown');
-    expect(result.current.focusedIndex.current).toBe(2);
-
-    fireKey('ArrowUp');
-    expect(result.current.focusedIndex.current).toBe(1);
-    expect(mockSelectPr).toHaveBeenCalledWith(2);
-  });
-
-  it('navigates up with k key', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const { result } = renderHook(() => useKeyboardNav());
-    fireKey('ArrowDown');
-    fireKey('k');
-    expect(result.current.focusedIndex.current).toBe(0);
-  });
-
-  it('does not go below the last PR', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const { result } = renderHook(() => useKeyboardNav());
-    fireKey('ArrowDown');
-    fireKey('ArrowDown');
-    fireKey('ArrowDown');
-    expect(result.current.focusedIndex.current).toBe(1);
-  });
-
-  it('does not go above index 0', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const { result } = renderHook(() => useKeyboardNav());
-    fireKey('ArrowUp');
-    expect(result.current.focusedIndex.current).toBe(0);
-  });
-
-  it('clears selection on Escape when a PR is selected', () => {
+  it('clears the selection on Escape when a PR is selected', () => {
     mockSelectedPrNumber = 42;
-
-    const prs = [makePr(1)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    // Re-render so the hook picks up the updated selectedPrNumber
     renderHook(() => useKeyboardNav());
     fireKey('Escape');
     expect(mockSelectPr).toHaveBeenCalledWith(null);
   });
 
-  it('does nothing when no PRs exist', () => {
-    mockFilteredPrs.mockReturnValue([]);
+  it('leaves Escape alone when nothing is selected', () => {
+    renderHook(() => useKeyboardNav());
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(mockSelectPr).not.toHaveBeenCalled();
+  });
 
+  it('does nothing on J/K when no rows are on screen', () => {
     renderHook(() => useKeyboardNav());
     fireKey('ArrowDown');
+    fireKey('j');
     expect(mockSelectPr).not.toHaveBeenCalled();
+    expect(mockSelectPrKey).not.toHaveBeenCalled();
   });
 
-  it('does not intercept when typing in an input', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
+  it.each([
+    ['an input', () => document.createElement('input')],
+    ['a textarea', () => document.createElement('textarea')],
+    [
+      'contentEditable',
+      () => {
+        const div = document.createElement('div');
+        div.contentEditable = 'true';
+        // jsdom may not implement isContentEditable, so override it
+        Object.defineProperty(div, 'isContentEditable', { value: true });
+        return div;
+      },
+    ],
+  ])('does not intercept when typing in %s', (_name, make) => {
+    const row = document.createElement('div');
+    row.className = 'bd-wb-row';
+    row.dataset.prKey = 'test/repo#1';
+    row.dataset.prNumber = '1';
+    document.body.appendChild(row);
     renderHook(() => useKeyboardNav());
-
-    const input = document.createElement('input');
-    document.body.appendChild(input);
-    input.focus();
-
-    const event = new KeyboardEvent('keydown', {
-      key: 'ArrowDown',
-      bubbles: true,
-    });
-    Object.defineProperty(event, 'target', { value: input });
-    document.dispatchEvent(event);
-
-    expect(mockSelectPr).not.toHaveBeenCalled();
-    document.body.removeChild(input);
+    const field = make();
+    document.body.appendChild(field);
+    for (const key of ['j', 'k', 'ArrowDown', '2', 'r']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true });
+      Object.defineProperty(event, 'target', { value: field });
+      document.dispatchEvent(event);
+    }
+    expect(mockSelectPrKey).not.toHaveBeenCalled();
+    expect(mockShowSection).not.toHaveBeenCalled();
   });
 
-  it('does not intercept when typing in a textarea', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
+  it.each(['e', 'E'])('collapses every group on screen on %s', (key) => {
+    for (const groupKey of ['needs-you', 'acme/app']) {
+      const group = document.createElement('section');
+      group.dataset.groupKey = groupKey;
+      document.body.appendChild(group);
+    }
+    const hidden = document.createElement('div');
+    hidden.setAttribute('inert', '');
+    const covered = document.createElement('section');
+    covered.dataset.groupKey = 'covered';
+    hidden.appendChild(covered);
+    document.body.appendChild(hidden);
     renderHook(() => useKeyboardNav());
-
-    const textarea = document.createElement('textarea');
-    document.body.appendChild(textarea);
-
-    const event = new KeyboardEvent('keydown', {
-      key: 'j',
-      bubbles: true,
-    });
-    Object.defineProperty(event, 'target', { value: textarea });
-    document.dispatchEvent(event);
-
-    expect(mockSelectPr).not.toHaveBeenCalled();
-    document.body.removeChild(textarea);
-  });
-
-  it('does not intercept when typing in contentEditable', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    renderHook(() => useKeyboardNav());
-
-    const div = document.createElement('div');
-    div.contentEditable = 'true';
-    // jsdom may not implement isContentEditable, so override it
-    Object.defineProperty(div, 'isContentEditable', { value: true });
-    document.body.appendChild(div);
-
-    const event = new KeyboardEvent('keydown', {
-      key: 'k',
-      bubbles: true,
-    });
-    Object.defineProperty(event, 'target', { value: div });
-    document.dispatchEvent(event);
-
-    expect(mockSelectPr).not.toHaveBeenCalled();
-    document.body.removeChild(div);
-  });
-
-  it('collapses all repo groups on e key', () => {
-    const prs = [makePr(1)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    renderHook(() => useKeyboardNav());
-    fireKey('e');
-    expect(mockCollapseAllRepoGroups).toHaveBeenCalled();
-  });
-
-  it('collapses all repo groups on E key', () => {
-    const prs = [makePr(1)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    renderHook(() => useKeyboardNav());
-    fireKey('E');
-    expect(mockCollapseAllRepoGroups).toHaveBeenCalled();
+    fireKey(key);
+    expect(mockCollapseAllRepoGroups).toHaveBeenCalledWith(['needs-you', 'acme/app']);
   });
 
   it('dispatches refresh event on Ctrl+R', () => {
-    const prs = [makePr(1)];
-    mockFilteredPrs.mockReturnValue(prs);
-
     const listener = vi.fn();
     document.addEventListener('borgdock-refresh', listener);
-
     renderHook(() => useKeyboardNav());
     fireKey('r', { ctrlKey: true });
-
     expect(listener).toHaveBeenCalled();
     document.removeEventListener('borgdock-refresh', listener);
   });
 
-  it('starts quick review for single PR on r in focus section', () => {
-    mockActiveSection = 'focus';
-    const pr = makePr(1);
-    mockFilteredPrs.mockReturnValue([pr]);
-    mockFocusPrs.mockReturnValue([pr]);
-
-    renderHook(() => useKeyboardNav());
-    fireKey('r');
-    expect(mockStartSinglePr).toHaveBeenCalledWith(pr);
-  });
-
   it('starts quick review session for all on Shift+R', () => {
     const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
     mockNeedsMyReview.mockReturnValue(prs);
-
     renderHook(() => useKeyboardNav());
     fireKey('R', { shiftKey: true });
     expect(mockStartSession).toHaveBeenCalledWith(prs);
   });
 
   it('does not start review session on Shift+R when no review PRs', () => {
-    const prs = [makePr(1)];
-    mockFilteredPrs.mockReturnValue(prs);
     mockNeedsMyReview.mockReturnValue([]);
-
     renderHook(() => useKeyboardNav());
     fireKey('R', { shiftKey: true });
     expect(mockStartSession).not.toHaveBeenCalled();
   });
 
-  it('handles Enter key without error', () => {
-    const prs = [makePr(1)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    renderHook(() => useKeyboardNav());
-    expect(() => fireKey('Enter')).not.toThrow();
-  });
-
-  it('calls queueMerge on m key in focus section', () => {
+  it('M in Focus queues the merge of the selected ready PR', () => {
     mockActiveSection = 'focus';
-    const pr = makePr(42);
-    mockFilteredPrs.mockReturnValue([pr]);
-    mockFocusPrs.mockReturnValue([pr]);
-
-    const mockQueueMerge = vi.fn();
-    (window as unknown as Record<string, unknown>).__borgdockQueueMerge = mockQueueMerge;
-
+    const base = makePr(42);
+    const pr = { ...base, pullRequest: { ...base.pullRequest, reviewStatus: 'approved' as const } };
+    mockPullRequests = [pr];
+    mountSelectedRow(pr);
+    const queueMerge = vi.fn();
+    (window as unknown as Record<string, unknown>).__borgdockQueueMerge = queueMerge;
     renderHook(() => useKeyboardNav());
     fireKey('m');
-
-    expect(mockQueueMerge).toHaveBeenCalledWith('test', 'repo', 42);
-
     delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
+    expect(queueMerge).toHaveBeenCalledWith('test', 'repo', 42);
+  });
+
+  it('M in Focus leaves a PR that is not ready alone', () => {
+    mockActiveSection = 'focus';
+    const pr = makePr(42);
+    mockPullRequests = [pr];
+    mountSelectedRow(pr);
+    const queueMerge = vi.fn();
+    (window as unknown as Record<string, unknown>).__borgdockQueueMerge = queueMerge;
+    renderHook(() => useKeyboardNav());
+    fireKey('m');
+    delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
+    expect(queueMerge).not.toHaveBeenCalled();
   });
 
   it('does not call queueMerge on m key outside focus section', () => {
     mockActiveSection = 'prs';
     const pr = makePr(42);
-    mockFilteredPrs.mockReturnValue([pr]);
-
-    const mockQueueMerge = vi.fn();
-    (window as unknown as Record<string, unknown>).__borgdockQueueMerge = mockQueueMerge;
-
+    mockPullRequests = [pr];
+    mountSelectedRow(pr);
+    const queueMerge = vi.fn();
+    (window as unknown as Record<string, unknown>).__borgdockQueueMerge = queueMerge;
     renderHook(() => useKeyboardNav());
     fireKey('m');
-
-    expect(mockQueueMerge).not.toHaveBeenCalled();
-
     delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
-  });
-
-  it('scrolls focused card into view', () => {
-    const prs = [makePr(1), makePr(2)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const card = document.createElement('div');
-    card.setAttribute('data-pr-card', '');
-    card.scrollIntoView = vi.fn();
-    const card2 = document.createElement('div');
-    card2.setAttribute('data-pr-card', '');
-    card2.scrollIntoView = vi.fn();
-    document.body.appendChild(card);
-    document.body.appendChild(card2);
-
-    renderHook(() => useKeyboardNav());
-    fireKey('ArrowDown');
-
-    expect(card2.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' });
-
-    document.body.removeChild(card);
-    document.body.removeChild(card2);
+    expect(queueMerge).not.toHaveBeenCalled();
   });
 
   it('removes event listener on unmount', () => {
@@ -444,24 +297,6 @@ describe('useKeyboardNav', () => {
     unmount();
     expect(spy).toHaveBeenCalledWith('keydown', expect.any(Function));
     spy.mockRestore();
-  });
-
-  it('resets focused index when PR list shrinks', () => {
-    const prs = [makePr(1), makePr(2), makePr(3)];
-    mockFilteredPrs.mockReturnValue(prs);
-
-    const { result, rerender } = renderHook(() => useKeyboardNav());
-
-    // Move to last item
-    fireKey('ArrowDown');
-    fireKey('ArrowDown');
-    expect(result.current.focusedIndex.current).toBe(2);
-
-    // Now shrink the list
-    mockFilteredPrs.mockReturnValue([makePr(1)]);
-    rerender();
-
-    expect(result.current.focusedIndex.current).toBe(0);
   });
 
   describe('search shortcut', () => {
@@ -526,29 +361,25 @@ describe('useKeyboardNav', () => {
     });
   });
 
-  describe('rail section keys (layoutV3)', () => {
+  describe('rail section keys', () => {
     it.each([
       ['1', 'focus'],
       ['2', 'prs'],
       ['3', 'workitems'],
       ['4', 'worktrees'],
     ])('%s switches to %s', (key, section) => {
-      mockLayoutV3 = true;
       renderHook(() => useKeyboardNav());
       fireKey(key);
       expect(mockShowSection).toHaveBeenCalledWith(section);
     });
 
     it('works with an empty PR list', () => {
-      mockLayoutV3 = true;
-      mockFilteredPrs.mockReturnValue([]);
       renderHook(() => useKeyboardNav());
       fireKey('2');
       expect(mockShowSection).toHaveBeenCalledWith('prs');
     });
 
     it('ignores keys past the last section and modified digits', () => {
-      mockLayoutV3 = true;
       renderHook(() => useKeyboardNav());
       fireKey('5');
       fireKey('1', { ctrlKey: true });
@@ -556,15 +387,7 @@ describe('useKeyboardNav', () => {
       expect(mockShowSection).not.toHaveBeenCalled();
     });
 
-    it('stays unbound in the tab layout', () => {
-      mockLayoutV3 = false;
-      renderHook(() => useKeyboardNav());
-      fireKey('1');
-      expect(mockShowSection).not.toHaveBeenCalled();
-    });
-
     it('does not switch while typing in an input', () => {
-      mockLayoutV3 = true;
       renderHook(() => useKeyboardNav());
       const input = document.createElement('input');
       document.body.appendChild(input);
@@ -578,10 +401,8 @@ describe('useKeyboardNav', () => {
 
   describe('with a detail view on top of the list', () => {
     it('leaves list keys alone', () => {
-      mockLayoutV3 = true;
       mockViewStack = [{ kind: 'list' }, { kind: 'pr-detail' }];
       mockSelectedPrNumber = 1;
-      mockFilteredPrs.mockReturnValue([makePr(1), makePr(2)]);
       renderHook(() => useKeyboardNav());
       fireKey('ArrowDown');
       fireKey('Escape');
@@ -591,11 +412,7 @@ describe('useKeyboardNav', () => {
     });
   });
 
-  describe('single-key guards (layoutV3)', () => {
-    beforeEach(() => {
-      mockLayoutV3 = true;
-    });
-
+  describe('single-key guards', () => {
     it('ignores a held-down digit (key repeat)', () => {
       renderHook(() => useKeyboardNav());
       fireKey('2', { repeat: true });
@@ -615,7 +432,7 @@ describe('useKeyboardNav', () => {
     });
   });
 
-  describe('slash and R in the rail layout', () => {
+  describe('slash and R', () => {
     afterEach(() => {
       document.body.innerHTML = '';
     });
@@ -628,7 +445,6 @@ describe('useKeyboardNav', () => {
     }
 
     it('/ focuses the section search and is not typed into it', () => {
-      mockLayoutV3 = true;
       const input = mountSearch();
       renderHook(() => useKeyboardNav());
       const event = new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true });
@@ -637,15 +453,7 @@ describe('useKeyboardNav', () => {
       expect(event.defaultPrevented).toBe(true);
     });
 
-    it('/ is unbound in the tab layout', () => {
-      const input = mountSearch();
-      renderHook(() => useKeyboardNav());
-      fireKey('/');
-      expect(document.activeElement).not.toBe(input);
-    });
-
     it('plain R refreshes outside Focus', () => {
-      mockLayoutV3 = true;
       mockActiveSection = 'prs';
       const listener = vi.fn();
       document.addEventListener('borgdock-refresh', listener);
@@ -656,13 +464,10 @@ describe('useKeyboardNav', () => {
     });
 
     it('plain R in Focus still starts Quick Review instead, for the selected row', () => {
-      mockLayoutV3 = true;
       mockActiveSection = 'focus';
       const pr = makePr(1);
       const other = makePr(2);
       mockPullRequests = [other, pr];
-      mockFilteredPrs.mockReturnValue([other, pr]);
-      mockFocusPrs.mockReturnValue([other, pr]);
       const row = document.createElement('div');
       row.className = 'bd-wb-row';
       row.dataset.prKey = 'test/repo#1';
@@ -678,13 +483,10 @@ describe('useKeyboardNav', () => {
       expect(mockStartSinglePr).toHaveBeenCalledWith(pr);
     });
 
-    it('R, M and O in the Workbench Focus do nothing without a selected row', () => {
-      mockLayoutV3 = true;
+    it('R, M and O in Focus do nothing without a selected row', () => {
       mockActiveSection = 'focus';
       const pr = makePr(1);
       mockPullRequests = [pr];
-      mockFilteredPrs.mockReturnValue([pr]);
-      mockFocusPrs.mockReturnValue([pr]);
       const queueMerge = vi.fn();
       (window as unknown as Record<string, unknown>).__borgdockQueueMerge = queueMerge;
       renderHook(() => useKeyboardNav());
@@ -694,16 +496,6 @@ describe('useKeyboardNav', () => {
       delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
       expect(mockStartSinglePr).not.toHaveBeenCalled();
       expect(queueMerge).not.toHaveBeenCalled();
-    });
-
-    it('plain R does not refresh in the tab layout', () => {
-      const listener = vi.fn();
-      document.addEventListener('borgdock-refresh', listener);
-      mockFilteredPrs.mockReturnValue([makePr(1)]);
-      renderHook(() => useKeyboardNav());
-      fireKey('r');
-      document.removeEventListener('borgdock-refresh', listener);
-      expect(listener).not.toHaveBeenCalled();
     });
   });
 
@@ -750,13 +542,6 @@ describe('useKeyboardNav', () => {
       return input;
     }
 
-    function card() {
-      const el = document.createElement('div');
-      el.setAttribute('data-pr-card', '');
-      el.scrollIntoView = vi.fn();
-      return el;
-    }
-
     it('skips a search box inside an inert layer', () => {
       inertLayerWith(searchInput());
       const live = searchInput();
@@ -773,36 +558,15 @@ describe('useKeyboardNav', () => {
       fireKey('k', { ctrlKey: true });
       expect(mockSetActiveSection).toHaveBeenCalledWith('prs');
     });
-
-    it('scrolls the card in the live section, not one in an inert layer', () => {
-      mockFilteredPrs.mockReturnValue([makePr(1), makePr(2)]);
-      const staleFirst = card();
-      const staleSecond = card();
-      inertLayerWith(staleFirst, staleSecond);
-      const first = card();
-      const second = card();
-      document.body.append(first, second);
-
-      renderHook(() => useKeyboardNav());
-      fireKey('ArrowDown');
-      expect(second.scrollIntoView).toHaveBeenCalled();
-      expect(staleSecond.scrollIntoView).not.toHaveBeenCalled();
-    });
   });
 
-  describe('Workbench rows (layoutV3)', () => {
-    beforeEach(() => {
-      mockLayoutV3 = true;
-      // The store order differs from the drawn order on purpose.
-      mockFilteredPrs.mockReturnValue([makePr(3), makePr(2), makePr(1)]);
-    });
-
+  describe('PR rows', () => {
     afterEach(() => {
       document.body.innerHTML = '';
     });
 
     /**
-     * Rows as WorkbenchPrList draws them; `collapsed` ones sit in an inert
+     * Rows as PrList draws them; `collapsed` ones sit in an inert
      * group. Rows 10 and 20 of different repos can share a number, so every
      * row carries its own `owner/repo#number` key.
      */
@@ -905,9 +669,9 @@ describe('useKeyboardNav', () => {
       expect(event.defaultPrevented).toBe(false);
     });
 
-    it('the tab layout leaves the keys to an open overlay (Quick Review)', () => {
-      mockLayoutV3 = false;
+    it('leaves the keys to an open overlay (Quick Review)', () => {
       mockOverlayOpen = true;
+      mockSelectedPrNumber = 10;
       mountRows([{ n: 10 }, { n: 12 }]);
       renderHook(() => useKeyboardNav());
       const event = new KeyboardEvent('keydown', {
@@ -919,6 +683,7 @@ describe('useKeyboardNav', () => {
       fireKey('j');
       expect(event.defaultPrevented).toBe(false);
       expect(mockSelectPr).not.toHaveBeenCalled();
+      expect(mockSelectPrKey).not.toHaveBeenCalled();
     });
 
     it('Enter without a selection does nothing', () => {
@@ -946,35 +711,22 @@ describe('useKeyboardNav', () => {
       expect(mockPushView).not.toHaveBeenCalled();
       expect(mockOpenPrDetail).not.toHaveBeenCalled();
     });
-
-    it('keeps the store-order navigation in the tab layout', () => {
-      mockLayoutV3 = false;
-      mountRows([{ n: 10 }, { n: 12 }]);
-      renderHook(() => useKeyboardNav());
-      fireKey('j');
-      expect(mockSelectPr).toHaveBeenLastCalledWith(2);
-      fireKey('Enter', { ctrlKey: true });
-      expect(mockOpenPrDetail).not.toHaveBeenCalled();
-    });
   });
 });
 
-describe('useKeyboardNav on Workbench work item rows (layoutV3)', () => {
+describe('useKeyboardNav on work item rows', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLayoutV3 = true;
     mockActiveSection = 'workitems';
     mockViewStack = [{ kind: 'list' }];
     mockOverlayOpen = false;
-    mockFilteredPrs.mockReturnValue([makePr(1), makePr(2)]);
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
-    mockLayoutV3 = false;
   });
 
-  /** Rows as WorkbenchWorkItemsSection draws them; `collapsed` ones sit in an inert group. */
+  /** Rows as WorkItemsSection draws them; `collapsed` ones sit in an inert group. */
   function mountWorkItems(rows: { id: number; selected?: boolean; collapsed?: boolean }[]) {
     for (const { id, selected, collapsed } of rows) {
       const parent = document.createElement('div');
@@ -996,7 +748,7 @@ describe('useKeyboardNav on Workbench work item rows (layoutV3)', () => {
     expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(103);
     fireKey('ArrowDown');
     expect(mockSetWorkItemsSelectedId).toHaveBeenLastCalledWith(103);
-    // Work item rows never touch the PR selection or the tab layout's index.
+    // Work item rows never touch the PR selection.
     expect(mockSelectPr).not.toHaveBeenCalled();
     expect(mockSelectPrKey).not.toHaveBeenCalled();
   });
@@ -1040,16 +792,6 @@ describe('useKeyboardNav on Workbench work item rows (layoutV3)', () => {
 
   it('stands down while a menu or dialog is open', () => {
     mockOverlayOpen = true;
-    mountWorkItems([{ id: 101, selected: true }, { id: 102 }]);
-    renderHook(() => useKeyboardNav());
-    fireKey('j');
-    fireKey('Enter');
-    expect(mockSetWorkItemsSelectedId).not.toHaveBeenCalled();
-    expect(mockShowWorkItem).not.toHaveBeenCalled();
-  });
-
-  it('leaves the rows alone in the tab layout', () => {
-    mockLayoutV3 = false;
     mountWorkItems([{ id: 101, selected: true }, { id: 102 }]);
     renderHook(() => useKeyboardNav());
     fireKey('j');
