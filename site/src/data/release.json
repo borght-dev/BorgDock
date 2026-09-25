@@ -1,0 +1,29 @@
+{
+  "repo": "borght-dev/BorgDock",
+  "tag": "v2.4.3",
+  "version": "2.4.3",
+  "name": "BorgDock v2.4.3",
+  "date": "2026-09-21",
+  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v2.4.3",
+  "fetchedAt": "2026-09-25T03:17:20.302Z",
+  "assets": [
+    {
+      "name": "BorgDock_2.4.3_x64-setup.exe",
+      "size": 17397433,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v2.4.3/BorgDock_2.4.3_x64-setup.exe",
+      "digest": "sha256:f1f3699525232449972b1891f89c4ad21d9c589c98f843b5a8eb1743f877d4f7"
+    },
+    {
+      "name": "BorgDock_2.4.3_x64-setup.exe.sig",
+      "size": 420,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v2.4.3/BorgDock_2.4.3_x64-setup.exe.sig",
+      "digest": "sha256:e1b51fcb69a37edcc4fc4fb5cdf6a7da42ac79ad6be7a33d86a2fb9a7f5e7851"
+    },
+    {
+      "name": "latest.json",
+      "size": 1886,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v2.4.3/latest.json",
+      "digest": "sha256:f18a96f4b9678f7f6edbd14d3d4d3811b5a73c1e5e169c9c51effb921232c84f"
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+[
+  {
+    "slug": "workbench-list",
+    "storyId": "main-window-mainwindow--rail-prs",
+    "viewport": {
+      "width": 1100,
+      "height": 660
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "The Pull requests section: one row per pull request, with checks drawn as a bar and one review chip",
+    "page": "Pull requests",
+    "selector": "main.bd-mainwindow__body"
+  },
+  {
+    "slug": "focus-list",
+    "storyId": "main-window-mainwindow--rail-focus",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Focus as a list: the pull requests that need you, each with the reason why",
+    "page": "Focus"
+  },
+  {
+    "slug": "focus-board",
+    "storyId": {
+      "light": "focus-focusboard--board-light",
+      "dark": "focus-focusboard--board"
+    },
+    "viewport": {
+      "width": 1000,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Focus as a board with four columns: Needs you, Waiting on others, Ready to merge and Stale",
+    "page": "Focus"
+  },
+  {
+    "slug": "pr-detail-failing",
+    "storyId": "pr-detail-prdetailview--failing",
+    "viewport": {
+      "width": 1088,
+      "height": 908
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "A pull request with failing checks, open full screen with Rerun failed and Fix with Claude in the action bar",
+    "page": "Detail",
+    "selector": "article.bd-detail"
+  },
+  {
+    "slug": "pr-detail-ready",
+    "storyId": "pr-detail-prdetailview--ready-to-merge",
+    "viewport": {
+      "width": 1088,
+      "height": 908
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "A pull request that is ready to merge, with the readiness sentence in the header and Merge as the main action",
+    "page": "Detail",
+    "selector": "article.bd-detail"
+  },
+  {
+    "slug": "quick-review-card",
+    "storyId": "focus-quick-review--large-pr-card",
+    "viewport": {
+      "width": 1360,
+      "height": 880
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Quick review showing the next pull request as a card, with its files grouped by folder",
+    "page": "Quick review"
+  },
+  {
+    "slug": "quick-review-walk",
+    "storyId": "focus-quick-review--large-pr-walk",
+    "viewport": {
+      "width": 1360,
+      "height": 880
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "Quick review walking through the changes one file at a time, with reviewed files ticked off",
+    "page": "Quick review"
+  },
+  {
+    "slug": "worktrees",
+    "storyId": {
+      "light": "worktree-worktreessection--light",
+      "dark": "worktree-worktreessection--default"
+    },
+    "viewport": {
+      "width": 1100,
+      "height": 600
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "The Worktrees section: every worktree of every repository you watch, with favourites and the branch each one is on",
+    "page": "Tools"
+  },
+  {
+    "slug": "worktrees-window",
+    "storyId": "worktree-worktreepaletteapp--two-repos-balanced",
+    "viewport": {
+      "width": 900,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "The worktrees window: every worktree of every repository, with favourites at the top",
+    "page": "Tools"
+  },
+  {
+    "slug": "work-items",
+    "storyId": "main-window-mainwindow--rail-prs",
+    "args": {
+      "section": "workitems"
+    },
+    "viewport": {
+      "width": 1440,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "The Work items section: your Azure DevOps queries, the items in them and the details of the one you picked",
+    "page": "Tools"
+  },
+  {
+    "slug": "sql",
+    "storyId": "sql-sqlapp--result-success-select",
+    "viewport": {
+      "width": 1200,
+      "height": 760
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "The SQL window with a query and its results",
+    "page": "Tools"
+  },
+  {
+    "slug": "file-palette",
+    "storyId": "file-palette-filepaletteapp--preview-file-ok",
+    "viewport": {
+      "width": 1100,
+      "height": 700
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "The file palette searching every repository, with a highlighted preview of the selected file",
+    "page": "Tools"
+  },
+  {
+    "slug": "settings",
+    "storyId": "settings-settingsapp--default",
+    "viewport": {
+      "width": 1100,
+      "height": 760
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "Settings, with sections on the left and search at the top",
+    "page": "Tools"
+  }
+]

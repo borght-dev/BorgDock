@@ -1,0 +1,17 @@
+---
+// The heading at the top of a subpage: a small eyebrow, the title and a lede.
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  align?: 'left' | 'center';
+}
+const { eyebrow, title, lede, align = 'left' } = Astro.props;
+---
+
+<header class:list={['page-heading', { 'page-heading--center': align === 'center' }]}>
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+  <h1 class="page-heading__title">{title}</h1>
+  {lede && <p class="page-heading__lede">{lede}</p>}
+  <slot />
+</header>

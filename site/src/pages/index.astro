@@ -2,34 +2,50 @@
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
-
-import { Hero } from '~/components/sections/Hero';
-import { ShowcaseStrip } from '~/components/sections/ShowcaseStrip';
-import { FocusFeature } from '~/components/sections/FocusFeature';
-import { DiffFeature } from '~/components/sections/DiffFeature';
-import { CiClaudeFeature } from '~/components/sections/CiClaudeFeature';
-import { FilePaletteFeature } from '~/components/sections/FilePaletteFeature';
-import { DetailAndWork } from '~/components/sections/DetailAndWork';
-import { SqlFeature } from '~/components/sections/SqlFeature';
-import { BadgeFeature } from '~/components/sections/BadgeFeature';
-import { ShortcutsFeature } from '~/components/sections/ShortcutsFeature';
-import { ChangelogTeaser } from '~/components/sections/ChangelogTeaser';
-import { FinalCta } from '~/components/sections/FinalCta';
+import Hero from '~/components/sections/Hero.astro';
+import Job from '~/components/sections/Job.astro';
+import DownloadBlock from '~/components/sections/DownloadBlock.astro';
+import ChangelogTeaser from '~/components/sections/ChangelogTeaser.astro';
+import Capture from '~/components/ui/Capture.astro';
+import Recording from '~/components/ui/Recording.astro';
 ---
 
-<Layout title="BorgDock — Less context switching. More shipping.">
+<Layout title="BorgDock: every pull request, one window">
   <SiteNav current="home" />
-  <Hero />
-  <ShowcaseStrip />
-  <FocusFeature />
-  <DiffFeature />
-  <CiClaudeFeature />
-  <FilePaletteFeature />
-  <DetailAndWork />
-  <SqlFeature />
-  <BadgeFeature />
-  <ShortcutsFeature />
-  <ChangelogTeaser />
-  <FinalCta />
+  <main id="main">
+    <Hero />
+
+    <div class="jobs">
+      <Job id="watch" eyebrow="Watch" title="See every check at a glance">
+        <p>
+          Every open pull request gets one row: who opened it, where it stands, and its checks as a
+          single bar. Red means something failed, amber means it is still running.
+        </p>
+        <p>Pick Needs you, Mine or Failing and the list rearranges itself in place.</p>
+        <Recording slot="media" slug="filter-flip" />
+      </Job>
+
+      <Job id="decide" eyebrow="Decide" title="Know what needs you next" reverse>
+        <p>
+          Focus picks out the pull requests that are waiting on you and tells you why each one is
+          there. Switch to the board to see them in Needs you, Waiting on others, Ready to merge and
+          Stale.
+        </p>
+        <Capture slot="media" slug="focus-board" />
+      </Job>
+
+      <Job id="act" eyebrow="Act" title="Review, fix and merge in the same place">
+        <p>
+          Press Review to open Quick review, which walks you through the changes one file at a time.
+          A failing check goes to Claude with Fix with Claude, and a green pull request merges from
+          the board.
+        </p>
+        <Recording slot="media" slug="quick-review" />
+      </Job>
+    </div>
+
+    <DownloadBlock />
+    <ChangelogTeaser />
+  </main>
   <SiteFooter />
 </Layout>

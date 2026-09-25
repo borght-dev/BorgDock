@@ -1,0 +1,16 @@
+---
+import DownloadButton from '~/components/DownloadButton.astro';
+import { formatDate, latestRelease } from '~/data/site';
+---
+
+<section class="download-block" aria-labelledby="download-block-title">
+  <h2 id="download-block-title" class="download-block__title">Put it on the side of your screen.</h2>
+  <p class="download-block__lede">
+    Version {latestRelease.version}, released {formatDate(latestRelease.date)}. Install it once
+    and it keeps itself up to date.
+  </p>
+  <div class="download-block__actions">
+    <DownloadButton size="md" />
+    <a class="link" href="/download">Other downloads and checksums</a>
+  </div>
+</section>

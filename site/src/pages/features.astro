@@ -2,73 +2,133 @@
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
-import { SectionHeading } from '~/components/SectionHeading';
+import PageHeading from '~/components/PageHeading.astro';
+import Job from '~/components/sections/Job.astro';
+import DownloadBlock from '~/components/sections/DownloadBlock.astro';
+import Capture from '~/components/ui/Capture.astro';
+import Recording from '~/components/ui/Recording.astro';
 
-import { FocusFeature } from '~/components/sections/FocusFeature';
-import { CiClaudeFeature } from '~/components/sections/CiClaudeFeature';
-import { WorktreeFeature } from '~/components/sections/WorktreeFeature';
-import { FilePaletteFeature } from '~/components/sections/FilePaletteFeature';
-import { SqlFeature } from '~/components/sections/SqlFeature';
-import { WorkItemsFeature } from '~/components/sections/WorkItemsFeature';
-import { BadgeFeature } from '~/components/sections/BadgeFeature';
-import { ShortcutsFeature } from '~/components/sections/ShortcutsFeature';
-import { FinalCta } from '~/components/sections/FinalCta';
-
-interface Boring {
-  t: string;
-  d: string;
-}
-
-const boring: Boring[] = [
-  { t: 'Token bucket polling', d: "Respects GitHub's per-user + per-installation rate limits. Never hammers." },
-  { t: 'Offline-first cache', d: 'SQLite WAL local cache. The sidebar works on the plane; syncs when you land.' },
-  { t: 'Per-repo priorities', d: 'Weight a repo up or down globally. Quiet vendor forks. Loud prod monorepo.' },
-  { t: 'Native notifications', d: 'Tray + OS notifications for reviews requested, CI flips, merges.' },
-  { t: 'Auto-updates', d: 'Signed, delta updates on all three platforms. Roll back any release with one click.' },
-  { t: 'No telemetry by default', d: 'Off out of the box. Opt in from Settings if you want to help us prioritize.' },
+const toc = [
+  { id: 'watch', label: 'Pull requests' },
+  { id: 'decide', label: 'Focus' },
+  { id: 'fix', label: 'Fix with Claude' },
+  { id: 'review', label: 'Quick review' },
+  { id: 'work', label: 'Work items and Worktrees' },
 ];
 ---
 
-<Layout title="Features — BorgDock">
+<Layout
+  title="Features: BorgDock"
+  description="What BorgDock does for you: watch your pull requests, decide what needs you, hand failures to Claude, review and merge, and keep your work items and worktrees close."
+>
   <SiteNav current="features" />
+  <main id="main">
+    <PageHeading
+      eyebrow="Features"
+      title="Five jobs, one window."
+      lede="BorgDock sits beside your editor and does the parts of pull request work that usually cost you a browser tab."
+    >
+      <nav class="toc" aria-label="On this page">
+        {toc.map((t) => <a href={`#${t.id}`}>{t.label}</a>)}
+      </nav>
+    </PageHeading>
 
-  <section class="section section--first" style="max-width: 1200px;">
-    <SectionHeading
-      eyebrow="The full tour"
-      title={{ lead: 'Seven surfaces. ', em: 'One dock.' }}
-      lede="BorgDock is a Tauri desktop app. Each surface is a dedicated window you can summon by keybinding, sized to fit beside your editor, not cover it."
-    />
-  </section>
+    <div class="jobs">
+      <Job id="watch" eyebrow="Pull requests" title="Watch every pull request" reading>
+        <p>
+          The Pull requests section lists every open pull request across your repositories, with one
+          row each and the checks drawn as a single bar.
+        </p>
+        <p>
+          Filter to Needs you, Mine or Failing, or group by repository or author, and the rows slide
+          to their new place.
+        </p>
+        <p>
+          Click a row and the pull request opens full screen in the same window; Back or Esc takes
+          you straight back to where you were.
+        </p>
+        <Recording slot="media" slug="pr-detail-push" />
+      </Job>
 
-  <FocusFeature />
-  <CiClaudeFeature />
-  <WorktreeFeature />
-  <FilePaletteFeature />
-  <SqlFeature />
-  <WorkItemsFeature />
-  <BadgeFeature />
-  <ShortcutsFeature />
+      <Job id="decide" eyebrow="Focus" title="Decide what needs you" reverse reading>
+        <p>
+          Focus shows only the pull requests that need something from you, and says why: a review
+          request, a failing check, a conflict.
+        </p>
+        <p>
+          Work down the list, or switch to the board to see everything in Needs you, Waiting on
+          others, Ready to merge and Stale.
+        </p>
+        <p>
+          Merge a green pull request right from the board, and Later snoozes a review until tomorrow.
+        </p>
+        <Recording slot="media" slug="focus-merge" />
+      </Job>
 
-  <section class="section" style="max-width: 1200px; margin-top: 140px;">
-    <SectionHeading
-      eyebrow="And the parts you don't see"
-      title={{ lead: 'The ', em: 'boring stuff', trail: ' we got right.' }}
-      align="center"
-    />
-    <div class="card-grid-3" style="margin-top: 48px;">
-      {
-        boring.map((f) => (
-          <div
-            style="padding: 22px; border-radius: 12px; background: var(--color-card-background); border: 1px solid var(--color-card-border);"
-          >
-            <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">{f.t}</div>
-            <div style="font-size: 13px; color: var(--color-text-tertiary); line-height: 1.55;">{f.d}</div>
-          </div>
-        ))
-      }
+      <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>
+        <p>
+          When a check fails, the pull request shows the first error from its log, so you see what
+          broke without scrolling.
+        </p>
+        <p>
+          Fix with Claude starts Claude Code on that branch with the error as its prompt, in its own
+          worktree, so your checkout stays as it is.
+        </p>
+        <p>Prefer T3 Code? Open in T3 starts a new thread that is linked to the pull request.</p>
+        <Capture slot="media" slug="pr-detail-failing" />
+      </Job>
+
+      <Job id="review" eyebrow="Quick review" title="Review and merge without a browser" reverse reading>
+        <p>
+          Review opens Quick review: read the description, then go through the changes one file at a
+          time, with the tests at the end.
+        </p>
+        <p>
+          Press V to mark a file reviewed and leave comments beside the code; your drafts wait for you
+          if you step away.
+        </p>
+        <p>
+          When everything is green, merge from the pull request or right from the Focus board.
+        </p>
+        <Recording slot="media" slug="quick-review" />
+      </Job>
+
+      <Job id="work" eyebrow="Work items and Worktrees" title="Keep the rest of your work close" reading>
+        <p>
+          Work items brings your Azure DevOps queries into the same window, so you can open an item
+          and change it without a browser.
+        </p>
+        <p>
+          Worktrees lists every worktree of every repository you watch, with the checks of the pull
+          request each one belongs to.
+        </p>
+        <p>Press O for a terminal, T to open it in T3 or F to make it a favourite.</p>
+        <div slot="media" class="job__stack">
+          <Capture slug="worktrees" />
+          <Capture slug="work-items" />
+        </div>
+      </Job>
     </div>
-  </section>
 
-  <FinalCta />
+    <section class="also" aria-labelledby="also-title">
+      <h2 id="also-title" class="also__title">Also in the box</h2>
+      <div class="also__grid">
+        <figure class="also__item">
+          <Capture slug="worktrees-window" />
+          <figcaption>The worktrees window, one shortcut away.</figcaption>
+        </figure>
+        <figure class="also__item">
+          <Capture slug="file-palette" />
+          <figcaption>Search files in every repository, with a preview.</figcaption>
+        </figure>
+        <figure class="also__item">
+          <Capture slug="sql" />
+          <figcaption>Run a SQL query and read the results in their own window.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <DownloadBlock />
+  </main>
   <SiteFooter />
 </Layout>

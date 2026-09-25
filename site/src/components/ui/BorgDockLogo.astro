@@ -1,0 +1,24 @@
+---
+interface Props {
+  size?: number;
+}
+const { size = 22 } = Astro.props;
+// One gradient id per instance so two logos on a page never share one.
+const id = `bd-logo-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" class="bd-logo">
+  <defs>
+    <linearGradient id={id} x1="0" y1="0" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color: var(--color-logo-gradient-start)"></stop>
+      <stop offset="100%" style="stop-color: var(--color-logo-gradient-end)"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="16" height="16" rx="4.5" fill={`url(#${id})`}></rect>
+  <path
+    d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
+    style="stroke: var(--color-accent-foreground)"
+    stroke-width="1.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"></path>
+</svg>

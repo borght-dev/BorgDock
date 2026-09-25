@@ -1,0 +1,37 @@
+---
+// The last three releases, straight from /CHANGELOG.md: each with its first
+// highlight (or first line) so the teaser never goes stale.
+import { KIND_LABEL, type Kind, formatShortDate, releases } from '~/data/changelog';
+
+const order: Kind[] = ['new', 'improved', 'fixed'];
+const recent = releases.slice(0, 3).map((r) => {
+  const kind = order.find((k) => (r.groups[k]?.length ?? 0) > 0) ?? 'fixed';
+  const first = r.groups[kind]?.[0];
+  const count = order.reduce((n, k) => n + (r.groups[k]?.length ?? 0), 0);
+  return { v: r.v, date: r.date, kind, title: first?.title ?? '', count };
+});
+---
+
+<section class="teaser" aria-labelledby="teaser-title">
+  <div class="teaser__head">
+    <h2 id="teaser-title" class="teaser__title">Recently shipped</h2>
+    <a class="link" href="/changelog">Full changelog</a>
+  </div>
+  <ol class="teaser__list">
+    {
+      recent.map((r) => (
+        <li class="teaser__row">
+          <div class="teaser__meta">
+            <span class={`kind kind--${r.kind}`}>{KIND_LABEL[r.kind]}</span>
+            <span class="teaser__version">{r.v}</span>
+            <span class="teaser__date">{formatShortDate(r.date)}</span>
+          </div>
+          <p class="teaser__text">
+            {r.title}
+            {r.count > 1 && <span class="teaser__more"> and {r.count - 1} more</span>}
+          </p>
+        </li>
+      ))
+    }
+  </ol>
+</section>

@@ -9,7 +9,7 @@ interface Props {
 
 const {
   title,
-  description = "BorgDock is a docked developer cockpit. PRs, CI, Claude Code, worktrees, ADO work items, SQL, file search — every tab you'd otherwise have open, one keybinding away.",
+  description = 'BorgDock keeps every pull request in one window: it watches your checks, tells you what needs you, hands failures to Claude, and lets you review and merge without a browser tab.',
 } = Astro.props;
 ---
 
@@ -21,17 +21,10 @@ const {
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-    />
-
-    {/* Apply theme before paint. System preference by default; explicit
-        localStorage value ('light' | 'dark') overrides. Track system changes
-        only when no explicit override is set. */}
+    {/* Theme before first paint: the saved choice wins, otherwise the system
+        preference, which is then followed live. */}
     <script is:inline>
       (function () {
         try {
@@ -52,41 +45,23 @@ const {
       })();
     </script>
 
-    {/* Detect platform and rewrite the hero download CTA before paint.
-        Defaults (in markup) target macOS; overridden client-side for
-        Windows/Linux. Sizes mirror the cards on /download. */}
+    {/* Platform on <html data-os>, read by the download buttons and page. */}
     <script is:inline>
       (function () {
-        function apply() {
-          try {
-            var ua = navigator.userAgent || '';
-            var uaPlat = (navigator.userAgentData && navigator.userAgentData.platform) || '';
-            var plat = (uaPlat || navigator.platform || '').toLowerCase();
-            var os = 'mac';
-            if (/win/.test(plat) || /windows/i.test(ua)) os = 'win';
-            else if (/linux/.test(plat) || /linux/i.test(ua)) os = 'linux';
-            if (os === 'mac') return;
-            var labels = { win: 'Download for Windows', linux: 'Download for Linux' };
-            var sizes = { win: '42 MB', linux: '46 MB' };
-            var others = { win: 'macOS · Linux', linux: 'macOS · Windows' };
-            var label = document.querySelector('[data-download-label]');
-            var size = document.querySelector('[data-download-size]');
-            var other = document.querySelector('[data-download-other]');
-            if (label) label.textContent = labels[os];
-            if (size) size.textContent = sizes[os];
-            if (other) other.textContent = others[os];
-          } catch (e) {}
-        }
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', apply);
-        } else {
-          apply();
-        }
+        try {
+          var ua = navigator.userAgent || '';
+          var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '').toLowerCase();
+          var os = /win/.test(p) || /windows/i.test(ua) ? 'win'
+            : /mac|iphone|ipad/.test(p) || /mac os/i.test(ua) ? 'mac'
+            : /linux|x11|cros/.test(p) || /linux/i.test(ua) ? 'linux' : 'win';
+          document.documentElement.dataset.os = os;
+        } catch (e) {}
       })();
     </script>
   </head>
 
   <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <slot />
   </body>
 </html>

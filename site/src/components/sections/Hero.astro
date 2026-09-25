@@ -1,0 +1,29 @@
+---
+// The home page hero: the job in one line, one recording, one button.
+// Its entrance is the only orchestrated motion on the site (see `.reveal` in
+// global.css); reduced motion skips it.
+import DownloadButton from '~/components/DownloadButton.astro';
+import Recording from '~/components/ui/Recording.astro';
+import { latestRelease } from '~/data/site';
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero__copy">
+    <a class="hero__badge reveal" style="--i: 0" href="/changelog">
+      <span class="hero__badge-dot" aria-hidden="true"></span>
+      New in {latestRelease.version}: see what changed
+    </a>
+    <h1 id="hero-title" class="hero__title reveal" style="--i: 1">Every pull request, one window.</h1>
+    <p class="hero__lede reveal" style="--i: 2">
+      BorgDock watches your checks, tells you what needs you, hands failures to Claude, and lets you
+      review and merge without opening a browser tab.
+    </p>
+    <div class="hero__actions reveal" style="--i: 3">
+      <DownloadButton />
+      <a class="hero__secondary" href="/features">See how it works</a>
+    </div>
+  </div>
+  <div class="hero__media reveal reveal--media" style="--i: 4">
+    <Recording slug="pr-detail-push" eager />
+  </div>
+</section>

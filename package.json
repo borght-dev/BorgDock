@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "src/BorgDock.Tauri",
-    "site"
+    "site",
+    "site/video"
   ],
   "packageManager": "bun@1.3.10",
   "scripts": {
@@ -17,7 +18,10 @@
     "tauri": "cd src/BorgDock.Tauri && bun run tauri",
     "storybook": "cd src/BorgDock.Tauri && bun run storybook",
     "site:dev": "cd site && bun run dev",
-    "site:build": "cd site && bun run build"
+    "site:build": "bun scripts/site-tokens-check.ts && cd site && bun run build && bun scripts/check-links.mjs",
+    "site:tokens-check": "bun scripts/site-tokens-check.ts",
+    "site:release": "cd site && bun scripts/fetch-release.mjs",
+    "site:assets": "cd site && node scripts/assets.mjs"
   },
   "devDependencies": {
     "lefthook": "^1.7.0"

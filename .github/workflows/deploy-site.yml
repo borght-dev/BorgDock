@@ -5,7 +5,16 @@ on:
     branches: [master]
     paths:
       - "site/**"
+      - "CHANGELOG.md"
+      - "design/site/**"
+      - "src/BorgDock.Tauri/package.json"
+      - "src/BorgDock.Tauri/src/styles/index.css"
+      - "src/BorgDock.Tauri/src/styles/motion.css"
+      - "scripts/site-tokens-check.ts"
       - ".github/workflows/deploy-site.yml"
+  # A new release changes the download page: refresh it as soon as it is out.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +37,11 @@ jobs:
           bun-version: "1.3.10"
 
       - run: bun install --frozen-lockfile
+      # Refresh site/src/data/release.json from the GitHub releases API. On any
+      # error it keeps the committed file, so the build never depends on it.
+      - run: bun run site:release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: bun run site:build
 
       - uses: actions/configure-pages@v5

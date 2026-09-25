@@ -1,0 +1,17 @@
+{
+  "name": "borgdock-video",
+  "private": true,
+  "type": "module",
+  "description": "Remotion compositions for the BorgDock launch video, rendered from the site's mock-data recordings.",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render Launch ../public/video/launch.mp4",
+    "render:short": "remotion render Short ../public/video/short.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "remotion": "^4.0.0"
+  }
+}

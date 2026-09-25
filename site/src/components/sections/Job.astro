@@ -1,0 +1,28 @@
+---
+// One job on the home or features page: a short heading, two or three
+// sentences, and one capture or recording (the `media` slot). `reverse`
+// puts the media on the left.
+interface Props {
+  id: string;
+  eyebrow: string;
+  title: string;
+  reverse?: boolean;
+  /** Long-form reading font (features page). */
+  reading?: boolean;
+}
+const { id, eyebrow, title, reverse = false, reading = false } = Astro.props;
+---
+
+<section id={id} class:list={['job', { 'job--reverse': reverse }]} aria-labelledby={`${id}-title`}>
+  <div class:list={['job__copy', { reading }]}>
+    <p class="eyebrow">{eyebrow}</p>
+    <h2 id={`${id}-title`} class="job__title">{title}</h2>
+    <div class="job__body">
+      <slot />
+    </div>
+  </div>
+  {/* Focusable because it scrolls sideways on narrow screens. */}
+  <div class="job__media" tabindex="0" role="region" aria-label={`${title}: picture`}>
+    <slot name="media" />
+  </div>
+</section>

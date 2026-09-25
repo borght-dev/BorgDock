@@ -1,135 +1,98 @@
 ---
+// The download page, built from src/data/release.json (refresh it with
+// `bun run site:release`). The visitor's platform decides the primary button
+// (see DownloadButton); every other asset is listed below it with its size
+// and SHA-256 when the release publishes one.
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
-import { SectionHeading } from '~/components/SectionHeading';
+import PageHeading from '~/components/PageHeading.astro';
+import DownloadButton from '~/components/DownloadButton.astro';
+import Capture from '~/components/ui/Capture.astro';
+import { whatsNewPosts } from '~/data/changelog';
+import {
+  OS_NAME,
+  type Os,
+  formatDate,
+  formatSize,
+  installers,
+  latestRelease,
+} from '~/data/site';
 
-type PlatformKey = 'apple' | 'win' | 'linux';
-
-interface Platform {
-  name: string;
-  arch: string;
-  size: string;
-  file: string;
-  icon: PlatformKey;
-}
-
-const platforms: Platform[] = [
-  { name: 'macOS', arch: 'Apple silicon + Intel · universal', size: '38 MB', file: 'BorgDock-0.14.0.dmg', icon: 'apple' },
-  { name: 'Windows', arch: 'x64 · MSI installer', size: '42 MB', file: 'BorgDock-0.14.0.msi', icon: 'win' },
-  { name: 'Linux', arch: 'x64 · AppImage + .deb + .rpm', size: '46 MB', file: 'BorgDock-0.14.0.AppImage', icon: 'linux' },
-];
-
-const installCmds: readonly [string, string][] = [
-  ['macOS', 'brew install --cask borgdock'],
-  ['Windows', 'winget install borgdock'],
-  ['Linux', 'curl -fsSL https://borgdock.dev/install.sh | sh'],
-];
+const oses: Os[] = ['win', 'mac', 'linux'];
+const missing = oses.filter((os) => !installers.some((i) => i.os === os));
+const notesHref = whatsNewPosts[latestRelease.version] ?? `/changelog#v${latestRelease.version}`;
 ---
 
-<Layout title="Download — BorgDock">
+<Layout
+  title="Download BorgDock"
+  description={`Download BorgDock ${latestRelease.version}. Install it once and it keeps itself up to date.`}
+>
   <SiteNav current="download" />
-
-  <section class="section section--first" style="max-width: 1000px;">
-    <SectionHeading
-      eyebrow="Download"
-      title="BorgDock v0.14.0"
-      lede="Signed installers for all three platforms. Auto-updates in place."
+  <main id="main" class="download">
+    <PageHeading
+      eyebrow={`Version ${latestRelease.version}, released ${formatDate(latestRelease.date)}`}
+      title="Download BorgDock"
+      lede="Install it once and BorgDock keeps itself up to date."
       align="center"
-    />
-    <div class="card-grid-3" style="margin-top: 48px;">
-      {
-        platforms.map((p) => (
-          <div
-            style="padding: 28px; border-radius: 14px; background: var(--color-card-background); border: 1px solid var(--color-card-border); display: flex; flex-direction: column; align-items: center; text-align: center;"
-          >
-            <div
-              style="width: 56px; height: 56px; border-radius: 14px; background: var(--color-accent-subtle); border: 1px solid var(--color-purple-border); display: inline-flex; align-items: center; justify-content: center; color: var(--color-accent); margin-bottom: 18px;"
-            >
-              {p.icon === 'apple' && (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M17.5 12.5c0-2.5 2-3.7 2.1-3.8-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-2-.8-3.3-.8-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.5 1.3-.1 1.8-.8 3.3-.8s2 .8 3.3.8c1.4 0 2.2-1.2 3.1-2.5.9-1.3 1.3-2.6 1.4-2.7-.1 0-2.6-1-2.6-3.8zM15.2 5c.7-.9 1.2-2.1 1-3.3-1 0-2.3.7-3 1.5-.6.8-1.2 2-1 3.2 1.1.1 2.3-.6 3-1.4z" />
-                </svg>
-              )}
-              {p.icon === 'win' && (
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M3 5.5L10.5 4.4V11.5H3V5.5zM11.5 4.3L21 3V11.5H11.5V4.3zM3 12.5H10.5V19.6L3 18.5V12.5zM11.5 12.5H21V21L11.5 19.7V12.5z" />
-                </svg>
-              )}
-              {p.icon === 'linux' && (
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2c-1.5 0-2.5 1.5-2.5 3 0 .8.3 1.5.7 2-.5.5-.7 1.2-.7 2 0 1 .5 2 .5 3s-1 2-1.5 3-1 2-1 3 0 2 1 3 2 1 3 1 2-.5 2.5-1 1-1 2-1 1.5.5 2.5 1 2.5 1 3-1c.5-1 .5-2 0-3s-.5-2-1-3-.5-2-.5-3c0-.8-.2-1.5-.7-2 .4-.5.7-1.2.7-2 0-1.5-1-3-2.5-3S12 2 12 2zm-1 3c.3-.3.7-.5 1-.5s.7.2 1 .5-.3 1-1 1-1.3-.7-1-1zm-.5 3.5c.3-.5.8-1 1.5-1s1.2.5 1.5 1c-.3.5-.8 1-1.5 1s-1.2-.5-1.5-1z" />
-                </svg>
-              )}
-            </div>
-            <div style="font-size: 18px; font-weight: 600;">{p.name}</div>
-            <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 6px;">
-              {p.arch}
-            </div>
-            <a
-              href="#"
-              style="margin-top: 20px; padding: 11px 20px; border-radius: 8px; background: var(--color-accent); color: white; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;"
-            >
-              Download · <span style="font-family: var(--font-code); font-weight: 500; opacity: 0.75;">
-                {p.size}
-              </span>
-            </a>
-            <div style="margin-top: 12px; font-size: 10px; font-family: var(--font-code); color: var(--color-text-muted);">
-              {p.file}
-            </div>
-          </div>
-        ))
-      }
-    </div>
-  </section>
-
-  <section class="download-section download-section--install">
-    <div
-      style="font-size: 11px; font-family: var(--font-code); color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;"
     >
-      Or from your terminal
-    </div>
-    <div style="display: grid; gap: 10px;">
-      {
-        installCmds.map(([os, cmd]) => (
-          <div class="install-row">
-            <span class="install-row__os">{os}</span>
-            <span style="color: var(--color-syntax-keyword);">$</span>
-            <span class="install-row__cmd">{cmd}</span>
-            <button type="button" class="install-row__copy">
-              copy
-            </button>
-          </div>
-        ))
-      }
-    </div>
-  </section>
-
-  <section class="download-section">
-    <div
-      style="padding: 22px; border-radius: 12px; background: var(--color-surface-raised); border: 1px solid var(--color-subtle-border); display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start;"
-    >
-      <div
-        style="width: 36px; height: 36px; border-radius: 8px; background: var(--color-success-badge-bg); color: var(--color-status-green); display: inline-flex; align-items: center; justify-content: center;"
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
-          <path d="M10 2l7 3v5c0 4.5-3 7.5-7 8-4-.5-7-3.5-7-8V5l7-3zM7 10l2 2 4-4" />
-        </svg>
+      <div class="download__primary">
+        <DownloadButton />
+        <p class="download__notes">
+          <a class="link" href={notesHref}>What's new in {latestRelease.version}</a>
+          <span aria-hidden="true">·</span>
+          <a class="link" href={latestRelease.url}>Release on GitHub</a>
+        </p>
+        {
+          missing.length > 0 && (
+            <p class="download__platforms" data-missing={missing.join(' ')}>
+              BorgDock is built for {installers.length > 0 ? [...new Set(installers.map((i) => OS_NAME[i.os]))].join(' and ') : 'no platform'} today.
+              There is no {missing.map((os) => OS_NAME[os]).join(' or ')} build yet.
+            </p>
+          )
+        }
       </div>
-      <div>
-        <div style="font-size: 14px; font-weight: 600;">Signed by BorgDock Inc.</div>
-        <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 4px; line-height: 1.55;">
-          Apple-notarized on macOS. Authenticode signed on Windows. SHA-256 checksums and
-          GPG signatures available alongside every release on GitHub.
-        </div>
-        <div
-          style="margin-top: 12px; font-family: var(--font-code); font-size: 10px; color: var(--color-text-muted);"
-        >
-          sha256(BorgDock-0.14.0.dmg) = 8f3a2d…c71e
-        </div>
-      </div>
-    </div>
-  </section>
+    </PageHeading>
 
+    <section class="assets" aria-labelledby="assets-title">
+      <h2 id="assets-title" class="assets__title">All files in this release</h2>
+      <ul class="assets__list">
+        {
+          installers.map((i) => (
+            <li class="asset" data-os={i.os}>
+              <div class="asset__main">
+                <span class="asset__os">{OS_NAME[i.os]}</span>
+                <span class="asset__kind">{i.kind}</span>
+                <a class="asset__name" href={i.url}>
+                  {i.name}
+                </a>
+                <span class="asset__size">{formatSize(i.size)}</span>
+              </div>
+              {i.sha256 && (
+                <p class="asset__sum">
+                  <span>SHA-256</span>
+                  <code>{i.sha256}</code>
+                </p>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+      <p class="assets__foot">
+        Check a download on Windows with <code>Get-FileHash &lt;file&gt;</code> in PowerShell, or
+        <code>shasum -a 256 &lt;file&gt;</code> elsewhere, and compare it with the line above. Older
+        versions are on the <a class="link" href={`https://github.com/${latestRelease.repo}/releases`}>releases page</a>.
+      </p>
+    </section>
+
+    <section class="download__after" aria-labelledby="after-title">
+      <h2 id="after-title" class="assets__title">After you install</h2>
+      <p>
+        The setup wizard connects BorgDock to GitHub and helps you pick the repositories to watch.
+        Your pull requests show up in the Pull requests section right after.
+      </p>
+      <Capture slug="workbench-list" />
+    </section>
+  </main>
   <SiteFooter />
 </Layout>

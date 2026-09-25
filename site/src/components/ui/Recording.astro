@@ -1,0 +1,150 @@
+---
+// A recording from design/site/recordings.json.
+//
+// Each theme variant renders its poster as a lazy <img> plus an empty
+// <video muted loop playsinline preload="metadata"> whose URLs sit in data-*
+// attributes. The script below attaches `poster` and the sources only to the
+// variant of the current theme (again when the theme toggles), then plays it
+// while it is on screen and pauses it when it leaves. So the hidden theme
+// downloads nothing: its <img> is display:none (a lazy image that is never
+// fetched) and its <video> has no URL.
+//
+// Until a video is attached the poster shows, which also covers no-JS and
+// reduced motion: under prefers-reduced-motion nothing is attached and the
+// poster stays. There is no `autoplay` attribute, because that would start
+// the download before the video is near the viewport. With no MP4/WebM yet,
+// the poster is shown on its own; with no poster either, the entry's
+// `fallback` capture is used, so the site builds before any recording exists.
+import Capture from './Capture.astro';
+import WindowFrame from './WindowFrame.astro';
+import { getRecording, type RecordingVariant, type Theme } from '~/data/media';
+
+interface Props {
+  slug: string;
+  alt?: string;
+  frame?: boolean;
+  /** Load the poster eagerly (above the fold). Only applies to a single-theme
+   *  recording: an eager image loads even when hidden, so with two themes both
+   *  posters stay lazy and only the visible one is fetched. */
+  eager?: boolean;
+  class?: string;
+}
+
+const { slug, alt, frame = true, eager = false, class: className } = Astro.props;
+const rec = getRecording(slug);
+const text = alt ?? rec.alt;
+
+const entries = Object.entries(rec.variants) as [Theme, RecordingVariant][];
+const shown: { theme: Theme | 'any'; v: RecordingVariant }[] =
+  entries.length === 2
+    ? entries.map(([theme, v]) => ({ theme, v }))
+    : entries.map(([, v]) => ({ theme: 'any' as const, v }));
+const hasVideo = shown.some((s) => s.v.mp4 || s.v.webm);
+const frameClass = ['recording', frame ? '' : 'window-frame--bare', className ?? '']
+  .filter(Boolean)
+  .join(' ');
+---
+
+{
+  shown.length === 0 ? (
+    rec.fallback ? (
+      <Capture slug={rec.fallback} alt={text} frame={frame} eager={eager} class={className} />
+    ) : null
+  ) : (
+    <WindowFrame class={frameClass}>
+      {shown.map(({ theme, v }) => (
+        <div class={`recording__variant recording__variant--${theme}`} data-variant-theme={theme}>
+          {v.poster && (
+            <img
+              class="recording__poster"
+              src={v.poster.src}
+              width={v.poster.width}
+              height={v.poster.height}
+              alt={text}
+              loading={eager && theme === 'any' ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          )}
+          {(v.mp4 || v.webm) && (
+            <video
+              class="recording__video"
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              width={v.poster?.width}
+              height={v.poster?.height}
+              aria-label={text}
+              data-recording
+              data-poster={v.poster?.src}
+              data-mp4={v.mp4}
+              data-webm={v.webm}
+            />
+          )}
+        </div>
+      ))}
+    </WindowFrame>
+  )
+}
+
+{
+  hasVideo && (
+    <script>
+      const root = document.documentElement;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const videos = [...document.querySelectorAll<HTMLVideoElement>('video[data-recording]')];
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            const v = e.target as HTMLVideoElement;
+            if (e.isIntersecting && !reduce.matches) void v.play().catch(() => {});
+            else v.pause();
+          }
+        },
+        { threshold: 0.15 },
+      );
+
+      function attach(v: HTMLVideoElement) {
+        if (v.dataset.attached) return;
+        v.dataset.attached = 'true';
+        if (v.dataset.poster) v.poster = v.dataset.poster;
+        for (const [key, type] of [
+          ['mp4', 'video/mp4'],
+          ['webm', 'video/webm'],
+        ] as const) {
+          const src = v.dataset[key];
+          if (!src) continue;
+          const source = document.createElement('source');
+          source.src = src;
+          source.type = type;
+          v.append(source);
+        }
+        v.load();
+      }
+
+      /** Attach and observe the current theme's videos; pause and forget the rest. */
+      function sync() {
+        const dark = root.classList.contains('dark');
+        for (const v of videos) {
+          const variant = v.closest<HTMLElement>('[data-variant-theme]');
+          const theme = variant?.dataset.variantTheme ?? 'any';
+          const active = theme === 'any' || (theme === 'dark') === dark;
+          if (active && !reduce.matches) {
+            attach(v);
+            variant?.classList.add('is-live');
+            io.observe(v);
+          } else {
+            v.pause();
+            io.unobserve(v);
+            variant?.classList.remove('is-live');
+          }
+        }
+      }
+
+      sync();
+      new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['class'] });
+      reduce.addEventListener('change', sync);
+    </script>
+  )
+}

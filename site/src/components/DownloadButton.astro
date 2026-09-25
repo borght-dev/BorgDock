@@ -1,0 +1,68 @@
+---
+// The one download button. Server-rendered for Windows (every release ships
+// a Windows installer), then switched to the visitor's platform by the script
+// below using <html data-os>. A platform without an installer in the release
+// gets "See all downloads", linking to the GitHub release (never to /download
+// itself, where this button also appears).
+import { OS_NAME, type Os, RELEASES_URL, formatSize, primaryInstaller } from '~/data/site';
+
+interface Props {
+  size?: 'lg' | 'md';
+}
+const { size = 'lg' } = Astro.props;
+
+const oses: Os[] = ['win', 'mac', 'linux'];
+const choice = Object.fromEntries(
+  oses.map((os) => {
+    const inst = primaryInstaller(os);
+    return [
+      os,
+      inst
+        ? { href: inst.url, label: `Download for ${OS_NAME[os]}`, meta: formatSize(inst.size) }
+        : { href: `${RELEASES_URL}/latest`, label: 'See all downloads', meta: `No ${OS_NAME[os]} build yet` },
+    ];
+  }),
+) as Record<Os, { href: string; label: string; meta: string }>;
+const initial = choice.win;
+---
+
+<a
+  class:list={['btn btn--primary', `btn--${size}`]}
+  href={initial.href}
+  data-download
+  data-choices={JSON.stringify(choice)}
+>
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"></path>
+  </svg>
+  <span data-download-label>{initial.label}</span>
+  <span class="btn__meta" data-download-meta>{initial.meta}</span>
+</a>
+
+<script>
+  const os = document.documentElement.dataset.os ?? 'win';
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('a[data-download]')) {
+    try {
+      const choices = JSON.parse(a.dataset.choices ?? '{}');
+      const c = choices[os];
+      if (!c) continue;
+      a.href = c.href;
+      const label = a.querySelector('[data-download-label]');
+      const meta = a.querySelector('[data-download-meta]');
+      if (label) label.textContent = c.label;
+      if (meta) meta.textContent = c.meta;
+    } catch {
+      /* keep the server-rendered Windows link */
+    }
+  }
+</script>

@@ -1,0 +1,76 @@
+---
+// A screenshot from design/site/screens.json, in the theme the page is in.
+//
+// Both theme variants are rendered as lazy <img>s and CSS shows the one that
+// matches `.dark` on <html>. A display:none lazy image is never fetched, so a
+// visitor downloads one theme only, and the ThemeToggle swaps instantly.
+// (A <picture> can only switch on prefers-color-scheme, not on the class the
+// site's theme toggle sets.) The files are 2×, so each image carries
+// `srcset="… 2x"` with its CSS size as width/height.
+import WindowFrame from './WindowFrame.astro';
+import { getCapture, type Image, type Theme } from '~/data/media';
+
+interface Props {
+  slug: string;
+  /** Overrides the manifest's alt text. */
+  alt?: string;
+  /** Draw the window frame around it (default true). */
+  frame?: boolean;
+  /** Load eagerly (above the fold). Single-theme captures only: an eager image
+   *  loads even when hidden, so theme pairs stay lazy. */
+  eager?: boolean;
+  /** Only show this theme's variant, whatever the page theme. */
+  theme?: Theme;
+  class?: string;
+}
+
+const { slug, alt, frame = true, eager = false, theme, class: className } = Astro.props;
+const capture = getCapture(slug);
+const text = alt ?? capture.alt;
+
+const variants: { theme: Theme | 'any'; img: Image }[] = [];
+if (theme) {
+  const img = capture.images[theme];
+  if (img) variants.push({ theme: 'any', img });
+} else {
+  const { light, dark } = capture.images;
+  if (light && dark) {
+    variants.push({ theme: 'light', img: light }, { theme: 'dark', img: dark });
+  } else if (light || dark) {
+    variants.push({ theme: 'any', img: (light ?? dark) as Image });
+  }
+}
+---
+
+{
+  variants.length > 0 &&
+    (frame ? (
+      <WindowFrame class={className}>
+        {variants.map((v) => (
+          <img
+            class={`capture capture--${v.theme}`}
+            src={v.img.src}
+            srcset={`${v.img.src} 2x`}
+            width={v.img.width}
+            height={v.img.height}
+            alt={text}
+            loading={eager && v.theme === 'any' ? 'eager' : 'lazy'}
+            decoding="async"
+          />
+        ))}
+      </WindowFrame>
+    ) : (
+      variants.map((v) => (
+        <img
+          class:list={[`capture capture--${v.theme}`, className]}
+          src={v.img.src}
+          srcset={`${v.img.src} 2x`}
+          width={v.img.width}
+          height={v.img.height}
+          alt={text}
+          loading={eager && v.theme === 'any' ? 'eager' : 'lazy'}
+          decoding="async"
+        />
+      ))
+    ))
+}

@@ -55,3 +55,17 @@ jobs:
           name: playwright-test-results
           path: src/BorgDock.Tauri/test-results
           retention-days: 14
+
+  site:
+    name: site (build and link check)
+    # Pull requests only: master pushes are built by deploy-site.yml.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.10'
+      - run: bun install --frozen-lockfile
+      # Tokens check, astro check, astro build and the internal link check.
+      - run: bun run site:build

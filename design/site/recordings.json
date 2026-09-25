@@ -1,0 +1,198 @@
+[
+  {
+    "slug": "pr-detail-push",
+    "storyId": "main-window-mainwindow--rail-prs",
+    "viewport": {
+      "width": 1280,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Clicking a pull request opens it full screen in the same window, and Back returns to the list",
+    "page": "Detail",
+    "fallback": "workbench-list",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 600
+      },
+      {
+        "do": "hover",
+        "selector": "[data-pr-row][role=button] >> nth=1",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": "[data-pr-row][role=button] >> nth=1",
+        "ms": 2200
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"Back\"]",
+        "ms": 1600
+      }
+    ]
+  },
+  {
+    "slug": "filter-flip",
+    "storyId": "main-window-mainwindow--rail-prs",
+    "viewport": {
+      "width": 1100,
+      "height": 660
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Switching the filter from All to Needs you to Failing; the rows that stay slide to their new place",
+    "page": "Pull requests",
+    "fallback": "workbench-list",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 600
+      },
+      {
+        "do": "click",
+        "selector": "role=group[name=\"Filter pull requests\"] >> text=Needs you",
+        "ms": 1400
+      },
+      {
+        "do": "click",
+        "selector": "role=group[name=\"Filter pull requests\"] >> text=Failing",
+        "ms": 1400
+      },
+      {
+        "do": "click",
+        "selector": "role=group[name=\"Filter pull requests\"] >> text=All",
+        "ms": 1400
+      }
+    ],
+    "crop": "main.bd-mainwindow__body"
+  },
+  {
+    "slug": "quick-review",
+    "storyId": "focus-quick-review--large-pr-card",
+    "viewport": {
+      "width": 1360,
+      "height": 880
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Quick review opens on the next pull request; Review files walks the changes and V marks two files reviewed",
+    "page": "Quick review",
+    "fallback": "quick-review-card",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"Review files\"]",
+        "ms": 1500
+      },
+      {
+        "do": "press",
+        "key": "v",
+        "ms": 900
+      },
+      {
+        "do": "press",
+        "key": "v",
+        "ms": 1500
+      }
+    ]
+  },
+  {
+    "slug": "fix-with-claude",
+    "storyId": "pr-detail-prdetailview--failing",
+    "viewport": {
+      "width": 1088,
+      "height": 908
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "A failing check handed to Claude with Fix with Claude, straight from the pull request",
+    "page": "Detail",
+    "fallback": "pr-detail-failing",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 600
+      },
+      {
+        "do": "hover",
+        "selector": "role=button[name=\"Fix with Claude\"] >> nth=0",
+        "ms": 600
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"Fix with Claude\"] >> nth=0",
+        "ms": 2400
+      }
+    ],
+    "draft": true,
+    "note": "The Storybook mocks show no visible result after the click yet; record once the story shows the launch (toast or progress label)."
+  },
+  {
+    "slug": "focus-merge",
+    "storyId": {
+      "light": "focus-focusboard--board-light",
+      "dark": "focus-focusboard--board"
+    },
+    "viewport": {
+      "width": 1000,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Merging from the Focus board: the card shows Merged, fades out and the Merged today count goes up",
+    "page": "Focus",
+    "fallback": "focus-board",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 600
+      },
+      {
+        "do": "hover",
+        "selector": "[data-card-action=\"merge\"]",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": "[data-card-action=\"merge\"]",
+        "ms": 3200
+      }
+    ]
+  },
+  {
+    "slug": "flyout",
+    "storyId": "flyout-flyoutapp--glance-mixed",
+    "viewport": {
+      "width": 540,
+      "height": 600
+    },
+    "theme": "both",
+    "delay": 1500,
+    "alt": "The tray flyout: a glance at your pull requests without opening the main window",
+    "page": "Tools",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "hover",
+        "selector": "text=Mixed: red",
+        "ms": 900
+      },
+      {
+        "do": "hover",
+        "selector": "text=Mixed: green",
+        "ms": 1200
+      }
+    ],
+    "draft": true,
+    "note": "The FlyoutApp stories render the panel inside a 460x512 frame with an h-screen/w-screen child, so the panel lands partly off-screen at any viewport; record once a story shows the flyout on its own."
+  }
+]
