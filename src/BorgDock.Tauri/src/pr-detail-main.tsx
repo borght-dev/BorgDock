@@ -5,6 +5,11 @@ import { PrDetailApp } from './components/pr-detail/PRDetailApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { attachConsoleBridge, createLogger } from './services/logger';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
+import { startWindowTheme } from './utils/theme';
+
+// Theme and reduced motion follow the saved settings (and later changes from
+// any window); public/theme-boot.js already set them before first paint.
+startWindowTheme();
 
 disableDefaultContextMenu();
 

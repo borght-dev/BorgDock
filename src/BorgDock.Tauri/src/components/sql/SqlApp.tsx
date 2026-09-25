@@ -5,11 +5,12 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
-import { Button, Kbd, Pill } from '@/components/shared/primitives';
+import { Button, Kbd, Pill, ProgressButton } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { shortcutLabel } from '@/utils/shortcut-label';
+import { revealWindow } from '@/utils/window-reveal';
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -26,6 +27,12 @@ import { SqlEditor, type SqlEditorHandle } from './SqlEditor';
 import type { SqlSnippet } from './snippet-types';
 import { useSnippets } from './use-snippets';
 import { useSqlSchema } from './use-sql-schema';
+
+const SQL_HINTS = [
+  { keys: 'Ctrl+S', label: 'save' },
+  { keys: 'Ctrl+Shift+S', label: 'save as' },
+  { keys: 'Ctrl+↵', label: 'run' },
+];
 
 interface ResultSet {
   columns: string[];
@@ -145,12 +152,6 @@ export function SqlApp() {
     const settings = await invoke<AppSettings>('load_settings');
     setSqlSettings(settings.sql);
 
-    const t = settings.ui?.theme ?? 'system';
-    const isDark =
-      t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.classList.toggle('dark', isDark);
-    document.documentElement.classList.toggle('reduce-motion', settings.ui?.reduceMotion ?? false);
-
     setSelectedConnection((current) => {
       if (current && settings.sql.connections.some((c) => c.name === current)) return current;
       const lastUsed = settings.sql.lastUsedConnection;
@@ -166,7 +167,7 @@ export function SqlApp() {
       .finally(() => {
         setAppReady(true);
         requestAnimationFrame(() => {
-          void invoke('window_ready').catch(() => {});
+          void revealWindow();
         });
       });
 
@@ -599,20 +600,27 @@ export function SqlApp() {
 
         <span className="sql-toolbar__spacer" />
 
-        <span className="sql-toolbar__hint">execute selection or full query</span>
-        <Button
+        <span className="sql-toolbar__hint">Runs the selection, or the whole query</span>
+        {/* Progress semantics (ProgressButton): the fill runs while the query
+            does, a second click while busy does nothing. */}
+        <ProgressButton
           variant="primary"
           size="sm"
           data-action="run-query"
           leading={isRunning ? <SpinnerIcon size={11} /> : <PlayIcon size={11} />}
-          disabled={isRunning || !hasConnections || !query.trim()}
-          onClick={() => {
+          disabled={!hasConnections || !query.trim()}
+          state={isRunning ? 'busy' : 'idle'}
+          onTrigger={() => {
             void runQuery();
           }}
-        >
-          {isRunning ? 'Running' : 'Run'}
-          <Kbd>Ctrl+Enter</Kbd>
-        </Button>
+          label={
+            <>
+              Run <Kbd>Ctrl+Enter</Kbd>
+            </>
+          }
+          busyLabel="Running"
+          doneLabel="Run"
+        />
       </div>
 
       {/* ── Split layout ────────────────────────────────── */}
@@ -729,12 +737,12 @@ export function SqlApp() {
         left={
           result && !error ? (
             result.rowsAffected != null ? (
-              <span className="sql-status-meta bd-mono">
+              <span className="sql-status-meta">
                 {result.rowsAffected.toLocaleString()} row
                 {result.rowsAffected === 1 ? '' : 's'} affected · {result.executionTimeMs} ms
               </span>
             ) : (
-              <span className="sql-status-meta bd-mono">
+              <span className="sql-status-meta">
                 {totalRows.toLocaleString()} row{totalRows === 1 ? '' : 's'} ·{' '}
                 {result.executionTimeMs} ms · {totalCols} col{totalCols === 1 ? '' : 's'}
                 {totalSelectedRows > 0 && (
@@ -749,17 +757,13 @@ export function SqlApp() {
               </span>
             )
           ) : (
-            <span className="sql-status-meta bd-mono">
+            <span className="sql-status-meta">
               {snippets.length} snippet{snippets.length === 1 ? '' : 's'} ·{' '}
               {selectedConnection || 'no connection'}
             </span>
           )
         }
-        right={
-          <span className="sql-status-shortcuts bd-mono">
-            <Kbd>Ctrl+S</Kbd> save · <Kbd>Ctrl+Shift+S</Kbd> save as · <Kbd>Ctrl+↵</Kbd> run
-          </span>
-        }
+        hints={SQL_HINTS}
       />
 
       {savingNew && (

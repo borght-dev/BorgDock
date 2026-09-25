@@ -1,11 +1,11 @@
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
-import { WindowControls } from '@/components/shared/chrome';
-import { Button, TitleBar } from '@/components/shared/primitives';
+import { Button } from '@/components/shared/primitives';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { RELEASES } from '@/generated/changelog';
 import { createLogger } from '@/services/logger';
 import { useWhatsNewStore } from '@/stores/whats-new-store';
+import { revealWindow } from '@/utils/window-reveal';
 import { ReleaseAccordion } from './ReleaseAccordion';
 import { useReleasesToShow } from './useReleasesToShow';
 
@@ -32,7 +32,7 @@ export function WhatsNewApp() {
     if (revealedRef.current) return;
     revealedRef.current = true;
     requestAnimationFrame(() => {
-      void invoke('window_ready').catch(() => {});
+      void revealWindow();
     });
   }, []);
 
@@ -54,23 +54,6 @@ export function WhatsNewApp() {
       log.error('window close failed', err);
     }
   }, [ready, currentVersion, setLastSeenVersion]);
-
-  const handleMinimize = useCallback(() => {
-    getCurrentWindow()
-      .minimize()
-      .catch((err) => log.error('minimize failed', err));
-  }, []);
-
-  const handleToggleMaximize = useCallback(async () => {
-    try {
-      const win = getCurrentWindow();
-      const isMax = await win.isMaximized();
-      if (isMax) await win.unmaximize();
-      else await win.maximize();
-    } catch (err) {
-      log.error('toggle maximize failed', err);
-    }
-  }, []);
 
   const handleDisable = useCallback(
     async (checked: boolean) => {
@@ -95,30 +78,14 @@ export function WhatsNewApp() {
     <div
       data-whats-new-app
       data-app-ready={ready ? 'true' : undefined}
-      className="h-screen w-full flex flex-col bg-background text-text-primary font-sans"
+      className="bd-whats-new h-screen w-full flex flex-col bg-background text-text-primary font-reading"
     >
-      {/* Title bar — mirrors PrDetailPanel's pop-out header so it feels like
-       *  the same app. The X button routes through handleGotIt so closing via
-       *  the title bar marks lastSeenVersion the same way the footer "Got it"
-       *  button does (can't delegate to WindowTitleBar which owns its close). */}
-      <TitleBar
-        data-tauri-drag-region
-        left={
-          <span data-tauri-drag-region className="bd-title-bar__title">
-            What's new in BorgDock
-          </span>
-        }
-        right={
-          <WindowControls
-            onMinimize={handleMinimize}
-            onMaximize={handleToggleMaximize}
-            onClose={handleGotIt}
-          />
-        }
-      />
+      {/* Closing from the title bar goes through handleGotIt, so it marks
+       *  lastSeenVersion the same way the footer "Got it" button does. */}
+      <WindowTitleBar title="What's new in BorgDock" onClose={handleGotIt} />
       <header className="px-6 pt-6 pb-3.5">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10.5px] uppercase tracking-[0.14em] text-text-muted inline-flex items-center gap-2 before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-status-green">
+          <span className="text-[12px] font-medium text-text-muted inline-flex items-center gap-2 before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-status-green">
             Release notes
           </span>
           <span className="text-[11px] text-text-muted tabular-nums">
@@ -163,7 +130,7 @@ export function WhatsNewApp() {
         )}
       </div>
 
-      <footer className="px-6 py-3 border-t border-subtle-border bg-surface-raised flex items-center justify-between">
+      <footer className="font-sans px-6 py-3 border-t border-subtle-border bg-surface-raised flex items-center justify-between">
         {/*
          * Deviation from plan: aria-label moved from <label> to <input>.
          *

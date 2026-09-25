@@ -1,11 +1,13 @@
+import clsx from 'clsx';
 import { useCallback, useMemo, useState } from 'react';
+import { Button, Card, Seg2 } from '@/components/shared/primitives';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings, RepoSettings, ThemeMode } from '@/types';
-import { Button, Card, Chip, Dot } from '@/components/shared/primitives';
 import { AuthStep } from './AuthStep';
 import { RepoStep } from './RepoStep';
 
-const STEPS = ['Auth', 'Repos', 'Appearance'] as const;
+/** Step labels under the progress track. */
+const STEPS = ['Connect', 'Repositories', 'Look'] as const;
 
 interface DiscoveredRepo {
   owner: string;
@@ -114,30 +116,46 @@ export function SetupWizard() {
         className="flex w-[580px] flex-col rounded-2xl overflow-hidden"
         style={{ maxHeight: '520px' }} // style: dynamic max-height constraint
       >
-        {/* Step indicators */}
-        <div className="flex items-center justify-center gap-2 px-6 py-4">
-          {STEPS.map((label, i) => (
-            <div key={label} className="flex items-center gap-2">
-              <Dot
-                tone={i === currentStep ? 'green' : i < currentStep ? 'green' : 'gray'}
-                size={i === currentStep ? 20 : 8}
-                className="transition-all"
-              />
-              {i < STEPS.length - 1 && (
-                <div
-                  className={
-                    i < currentStep
-                      ? 'h-px w-8 bg-[var(--color-wizard-step-complete)]'
-                      : 'h-px w-8 bg-[var(--color-wizard-step-track)]'
-                  }
-                />
-              )}
-            </div>
-          ))}
+        {/* Progress: the fill slides to the current step (--motion-move). */}
+        <div className="px-8 pt-2 pb-3" data-wizard-progress>
+          <div
+            className="bd-wizard-progress"
+            role="progressbar"
+            aria-label="Setup progress"
+            aria-valuemin={1}
+            aria-valuemax={STEPS.length}
+            aria-valuenow={currentStep + 1}
+          >
+            <span
+              className="bd-wizard-progress__fill"
+              style={{ transform: `scaleX(${(currentStep + 1) / STEPS.length})` }}
+            />
+          </div>
+          <ol className="bd-wizard-steps">
+            {STEPS.map((label, i) => (
+              <li
+                key={label}
+                className={clsx(
+                  'bd-wizard-steps__item',
+                  i === currentStep && 'bd-wizard-steps__item--active',
+                  i < currentStep && 'bd-wizard-steps__item--done',
+                )}
+                aria-current={i === currentStep ? 'step' : undefined}
+              >
+                <span className="bd-dot bd-wizard-steps__dot" aria-hidden="true" />
+                {label}
+              </li>
+            ))}
+          </ol>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-4" data-wizard-step={currentStep}>
+        {/* Keyed by step so each step fades in as the last one goes (--motion-base). */}
+        <div
+          key={currentStep}
+          className="bd-fade-in flex-1 overflow-y-auto px-8 py-4"
+          data-wizard-step={currentStep}
+        >
           {currentStep === 0 && (
             <AuthStep
               authMethod={authMethod}
@@ -157,10 +175,12 @@ export function SetupWizard() {
                   });
                   setUsername(detectedUser);
                   setIsAuthValid(true);
-                  setAuthStatus(`Authenticated as ${detectedUser}`);
+                  setAuthStatus(`Connected as ${detectedUser}`);
                 } catch {
                   setIsAuthValid(false);
-                  setAuthStatus('Authentication failed');
+                  setAuthStatus(
+                    "Couldn't connect. Check the token, or sign in with gh auth login.",
+                  );
                 }
               }}
               onUsernameChange={setUsername}
@@ -185,38 +205,30 @@ export function SetupWizard() {
             />
           )}
           {currentStep === 2 && (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6" data-wizard-step="appearance">
               <div>
                 <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-                  Customize Appearance
+                  Pick your look
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                  You can change these any time in Settings.
+                  You can change it any time in Settings.
                 </p>
               </div>
 
-              {/* Theme */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-[var(--color-text-secondary)]">
                   Theme
                 </span>
-                <div className="flex gap-2">
-                  {(
-                    [
-                      { value: 'system', label: 'System' },
-                      { value: 'light', label: 'Light' },
-                      { value: 'dark', label: 'Dark' },
-                    ] as { value: ThemeMode; label: string }[]
-                  ).map(({ value, label }) => (
-                    <Chip
-                      key={value}
-                      active={theme === value}
-                      onClick={() => setTheme(value)}
-                    >
-                      {label}
-                    </Chip>
-                  ))}
-                </div>
+                <Seg2
+                  ariaLabel="Theme"
+                  value={theme}
+                  options={[
+                    { value: 'system', label: 'System' },
+                    { value: 'light', label: 'Light' },
+                    { value: 'dark', label: 'Dark' },
+                  ]}
+                  onChange={(v) => setTheme(v as ThemeMode)}
+                />
               </div>
             </div>
           )}
@@ -225,12 +237,7 @@ export function SetupWizard() {
         {/* Navigation */}
         <div className="flex items-center justify-between border-t border-[var(--color-separator)] px-6 py-3">
           {currentStep > 0 ? (
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={handleBack}
-              data-wizard-action="back"
-            >
+            <Button variant="ghost" size="md" onClick={handleBack} data-wizard-action="back">
               Back
             </Button>
           ) : (

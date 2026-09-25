@@ -1,8 +1,8 @@
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
-import type { Highlight, Kind } from '@/types/whats-new';
 import { Pill, type PillTone } from '@/components/shared/primitives/Pill';
+import type { Highlight, Kind } from '@/types/whats-new';
 import { HeroBanner } from './HeroBanner';
 
 const KIND_LABEL: Record<Kind, string> = {
@@ -19,19 +19,17 @@ const KIND_TONE: Record<Kind, PillTone> = {
 
 interface Props {
   highlight: Highlight;
+  /** Play the hero's reveal (only the first hero of the current release). */
+  revealHero?: boolean;
 }
 
-export function HighlightCard({ highlight }: Props) {
+export function HighlightCard({ highlight, revealHero = false }: Props) {
   const { kind, title, description, hero, keyboard } = highlight;
   return (
     <div className="mb-4 last:mb-1">
-      <HeroBanner hero={hero} kind={kind} />
+      <HeroBanner hero={hero} kind={kind} reveal={revealHero} />
       <div className="flex flex-wrap items-center gap-2 mb-1">
-        <Pill
-          tone={KIND_TONE[kind]}
-          data-highlight-kind={kind}
-          data-pill-tone={KIND_TONE[kind]}
-        >
+        <Pill tone={KIND_TONE[kind]} data-highlight-kind={kind} data-pill-tone={KIND_TONE[kind]}>
           {KIND_LABEL[kind]}
         </Pill>
         <span className="text-[14px] font-medium text-[var(--color-text-primary)]">{title}</span>

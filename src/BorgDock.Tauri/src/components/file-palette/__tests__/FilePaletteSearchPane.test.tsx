@@ -18,11 +18,11 @@ const baseProps = {
 describe('FilePaletteSearchPane scope chips', () => {
   it('renders all 5 chips', () => {
     render(<FilePaletteSearchPane {...baseProps} />);
-    expect(screen.getByRole('button', { name: /All/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Changes/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Filename/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Content/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Symbol/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /All/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Changes/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Filename/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Content/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Symbol/ })).toBeInTheDocument();
   });
 
   it('clicking Content chip rewrites query with > prefix', () => {
@@ -37,7 +37,7 @@ describe('FilePaletteSearchPane scope chips', () => {
         onScopeChange={onScopeChange}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Content/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /Content/ }));
     expect(onQueryChange).toHaveBeenCalledWith('>foo');
     expect(onScopeChange).toHaveBeenCalledWith('content');
   });
@@ -54,7 +54,7 @@ describe('FilePaletteSearchPane scope chips', () => {
         scope="content"
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /All/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /All/ }));
     expect(onQueryChange).toHaveBeenCalledWith('foo');
   });
 

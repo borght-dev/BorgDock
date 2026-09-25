@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
 import type { AppSettings } from '@/types/settings';
+import { playWindowEnter } from '@/utils/window-reveal';
 import { FilePaletteCodeView } from '../file-palette/FilePaletteCodeView';
 import { SplitDiffView } from '../pr-detail/diff/SplitDiffView';
 import { UnifiedDiffView } from '../pr-detail/diff/UnifiedDiffView';
@@ -50,6 +51,12 @@ export function FileViewerApp() {
   // roundtrip resolves (success OR failure — either way the app is mounted
   // with the right view mode).
   const [appReady, setAppReady] = useState(false);
+
+  // The viewer window is built visible (no window_ready), so its entrance
+  // plays on mount.
+  useEffect(() => {
+    playWindowEnter();
+  }, []);
 
   useEffect(() => {
     invoke<AppSettings>('load_settings')

@@ -2,7 +2,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterChip } from '../FilterChip';
-import { GroupSeg } from '../GroupSeg';
 
 describe('FilterChip', () => {
   it('renders children', () => {
@@ -18,20 +17,11 @@ describe('FilterChip', () => {
   });
 
   it('marks active state via aria-pressed', () => {
-    render(<FilterChip active onClick={() => {}}>Open</FilterChip>);
-    expect(screen.getByText('Open').closest('button')).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    render(
+      <FilterChip active onClick={() => {}}>
+        Open
+      </FilterChip>,
     );
-  });
-});
-
-describe('GroupSeg', () => {
-  it('marks active', () => {
-    render(<GroupSeg active onClick={() => {}}>State</GroupSeg>);
-    expect(screen.getByText('State').closest('button')).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByText('Open').closest('button')).toHaveAttribute('aria-pressed', 'true');
   });
 });

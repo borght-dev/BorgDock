@@ -1,10 +1,6 @@
 import type { CSSProperties, MouseEvent } from 'react';
 import { Button } from '@/components/shared/primitives';
-import {
-  ACTION_LABEL,
-  type PrActionId,
-  primaryTone,
-} from '@/services/pr-action-resolver';
+import { ACTION_LABEL, type PrActionId, primaryTone } from '@/services/pr-action-resolver';
 import { PrActionIcon, type PrActionIconKind } from './PrActionIcons';
 
 const ACTION_ICON: Record<PrActionId, PrActionIconKind> = {
@@ -18,17 +14,18 @@ const ACTION_ICON: Record<PrActionId, PrActionIconKind> = {
 // Inline style is used (not Tailwind `!text-white`) because Tailwind v4 does
 // not honour the v3 `!`-prefix important syntax — the override silently
 // dropped through to `bd-btn`'s default secondary text colour, which is why
-// the Re-run pill rendered with dark text on the warning fill.
+// the Re-run pill rendered with dark text on the warning fill. The foreground
+// is a token: dark ink clears 4.5:1 on the green and amber fills in both themes.
 const TONE_STYLE: Record<string, CSSProperties | undefined> = {
   success: {
     background: 'var(--color-status-green)',
     borderColor: 'var(--color-status-green)',
-    color: '#fff',
+    color: 'var(--color-status-fill-foreground)',
   },
   warning: {
     background: 'var(--color-status-yellow)',
     borderColor: 'var(--color-status-yellow)',
-    color: '#fff',
+    color: 'var(--color-status-fill-foreground)',
   },
 };
 

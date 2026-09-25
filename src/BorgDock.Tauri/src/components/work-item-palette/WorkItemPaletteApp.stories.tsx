@@ -1,9 +1,8 @@
 // src/components/work-item-palette/WorkItemPaletteApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { useMemo } from 'react';
-import { WorkItemPaletteApp } from './WorkItemPaletteApp';
+import { fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { getControl, type WorkItemPaletteScenario } from '../../../.storybook/mocks/control';
 import {
   canonicalSettings,
@@ -16,6 +15,7 @@ import {
   searchRejectScenario,
   workingOnIds,
 } from './__fixtures__/work-item-palette-data';
+import { WorkItemPaletteApp } from './WorkItemPaletteApp';
 
 interface PaletteParams {
   scenario: WorkItemPaletteScenario;
@@ -128,9 +128,7 @@ export const SearchTypeTooShortText: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'a');
       await waitFor(() => {
         const text = canvasElement.textContent ?? '';
@@ -147,9 +145,7 @@ export const SearchTypeTooShortNumeric: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, '5');
       await waitFor(() => {
         const text = canvasElement.textContent ?? '';
@@ -166,9 +162,7 @@ export const SearchInFlight: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'auth');
       await waitFor(
         () => {
@@ -193,9 +187,7 @@ export const SearchNoResults: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'missing');
       await waitFor(
         () => {
@@ -220,9 +212,7 @@ export const SearchOneResult: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'login');
       await waitFor(
         () => {
@@ -244,9 +234,7 @@ export const SearchByIdPrefix: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, '12');
       await waitFor(
         () => {
@@ -267,9 +255,7 @@ export const SearchByTextTitle: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'auth');
       await waitFor(
         () => {
@@ -290,9 +276,7 @@ export const SearchByTextAssignee: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'alex');
       await waitFor(
         () => {
@@ -315,9 +299,7 @@ export const SearchFailed: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'work');
       await waitFor(
         () => {
@@ -340,9 +322,7 @@ export const AdoNotConfigured: Story = story(
   {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      const input = await canvas.findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      const input = await canvas.findByPlaceholderText('Search by ID, title, or assigned to...');
       await userEvent.type(input, 'work');
       // With an empty organization the AdoClient still constructs (no
       // null-guard), so the search proceeds normally and returns the
@@ -430,9 +410,7 @@ export const EscapeHidesPalette: Story = story(
   {
     play: async ({ canvasElement }) => {
       // Wait for input to mount so the global keydown listener is wired.
-      await within(canvasElement).findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      await within(canvasElement).findByPlaceholderText('Search by ID, title, or assigned to...');
       fireEvent.keyDown(document, { key: 'Escape' });
       await waitFor(
         () => {
@@ -449,9 +427,7 @@ export const DragRegionPresent: Story = story(
   { scenario: emptyBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      await within(canvasElement).findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      await within(canvasElement).findByPlaceholderText('Search by ID, title, or assigned to...');
       // After the WindowTitleBar refactor (master at e864f267), the
       // 3-dot grip + onMouseDown -> startDragging() pattern was replaced
       // by an OS-level data-tauri-drag-region attribute on the title bar.
@@ -471,9 +447,7 @@ export const WindowReadyOnMount: Story = story(
   { scenario: emptyBrowseScenario() },
   {
     play: async ({ canvasElement }) => {
-      await within(canvasElement).findByPlaceholderText(
-        'Search by ID, title, or assigned to...',
-      );
+      await within(canvasElement).findByPlaceholderText('Search by ID, title, or assigned to...');
       await waitFor(
         () => {
           const found = getControl().invocations.some((i) => i.command === 'window_ready');
@@ -507,3 +481,11 @@ export const PaletteShownEventResetsState: Story = story(
     },
   },
 );
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...BrowseFullSections, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...BrowseFullSections, globals: { theme: 'dark' } };

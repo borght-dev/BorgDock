@@ -631,7 +631,7 @@ describe('WorktreePaletteApp', () => {
   it('renders the status bar with keyboard hints and worktree counts', async () => {
     await renderPalette();
 
-    expect(screen.getByText(/nav/)).toBeTruthy();
+    expect(screen.getByText('move')).toBeTruthy();
     expect(screen.getByText(/open/)).toBeTruthy();
     expect(screen.getByText(/of \d+ worktrees?/)).toBeTruthy();
   });

@@ -168,7 +168,7 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
         {collapsed ? '▸' : '▾'}
       </button>
       <span style={{ fontSize: 11 }}>●</span>
-      <span className="bd-fp-changes-title">CHANGES</span>
+      <span className="bd-fp-changes-title">Changes</span>
       {visibleCount > 0 && <span className="bd-fp-changes-count bd-mono">· {visibleCount}</span>}
       {(visibleAdd > 0 || visibleDel > 0) && (
         <span className="bd-fp-changes-stats">
@@ -236,7 +236,9 @@ export function FilePaletteChangesSection(props: FilePaletteFilePaletteChangesSe
         key={`${group}:${file.path}`}
         type="button"
         ref={(el) => rowRef?.(el, globalIdx)}
-        className={`bd-fp-changes-row${selected ? ' bd-fp-changes-row--selected' : ''}`}
+        data-key={`c:${group}:${file.path}`}
+        data-selected={selected ? 'true' : 'false'}
+        className={`bd-fp-changes-row bd-list-row${selected ? ' bd-fp-changes-row--selected' : ''}`}
         onMouseEnter={() => onHover(globalIdx)}
         // Single click selects (previews the diff); double click opens a window.
         onClick={() => onHover(globalIdx)}

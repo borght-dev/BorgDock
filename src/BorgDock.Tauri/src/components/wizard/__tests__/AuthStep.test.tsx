@@ -18,19 +18,23 @@ describe('AuthStep', () => {
   it('renders the heading and description', () => {
     render(<AuthStep {...defaultProps} />);
     expect(screen.getByText('Connect to GitHub')).toBeTruthy();
-    expect(screen.getByText('Choose how BorgDock authenticates with GitHub')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'BorgDock reads your pull requests and checks from GitHub. Pick how you sign in.',
+      ),
+    ).toBeTruthy();
   });
 
   it('renders auth method buttons', () => {
     render(<AuthStep {...defaultProps} />);
     expect(screen.getByText('GitHub CLI')).toBeTruthy();
-    expect(screen.getByText('Access Token')).toBeTruthy();
+    expect(screen.getByText('Access token')).toBeTruthy();
   });
 
   it('calls onAuthMethodChange when clicking Access Token button', () => {
     const onAuthMethodChange = vi.fn();
     render(<AuthStep {...defaultProps} onAuthMethodChange={onAuthMethodChange} />);
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     expect(onAuthMethodChange).toHaveBeenCalledWith('pat');
   });
 
@@ -74,13 +78,13 @@ describe('AuthStep', () => {
 
   it('renders Verify Connection button', () => {
     render(<AuthStep {...defaultProps} />);
-    expect(screen.getByText('Verify Connection')).toBeTruthy();
+    expect(screen.getByText('Check connection')).toBeTruthy();
   });
 
   it('calls onValidateAuth when Verify Connection is clicked', () => {
     const onValidateAuth = vi.fn();
     render(<AuthStep {...defaultProps} onValidateAuth={onValidateAuth} />);
-    fireEvent.click(screen.getByText('Verify Connection'));
+    fireEvent.click(screen.getByText('Check connection'));
     expect(onValidateAuth).toHaveBeenCalledTimes(1);
   });
 

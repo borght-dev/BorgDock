@@ -43,7 +43,7 @@ export function ReviewerRow({ reviewer, onSelect }: ReviewerRowProps) {
       }}
       title={`${reviewer.login}: ${reviewer.pendingReviewCount} pending review${reviewer.pendingReviewCount !== 1 ? 's' : ''}${reviewer.stalePrCount > 0 ? `, ${reviewer.stalePrCount} stale` : ''}`}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-white bg-[#534AB7]">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-[var(--color-accent-foreground)] bg-[var(--color-accent)]">
         {avatarInitials(reviewer.login)}
       </span>
       <span className="min-w-0 flex-1">

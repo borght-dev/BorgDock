@@ -31,7 +31,7 @@ export function RailSearchInput({ value, onChange }: Props) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search settings…"
-        className="flex-1 bg-transparent text-[11.5px] outline-none placeholder:text-[var(--color-text-faint)]"
+        className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[var(--color-text-tertiary)]"
       />
       <Kbd>{shortcutLabel('K')}</Kbd>
     </div>

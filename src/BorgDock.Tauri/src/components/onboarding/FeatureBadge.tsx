@@ -17,7 +17,7 @@ export function FeatureBadge({ badgeId, label = 'NEW' }: FeatureBadgeProps) {
         e.stopPropagation();
         dismissBadge(badgeId);
       }}
-      className="ml-1.5 inline-flex items-center rounded-full bg-[var(--color-accent)] px-1.5 py-px text-[8px] font-bold uppercase leading-tight tracking-wide text-white hover:opacity-80 transition-opacity"
+      className="ml-1.5 inline-flex items-center rounded-full bg-[var(--color-accent)] px-1.5 py-px text-[8px] font-bold uppercase leading-tight tracking-wide text-[var(--color-accent-foreground)] hover:opacity-80 transition-opacity"
       data-feature-badge
       data-badge-id={badgeId}
     >

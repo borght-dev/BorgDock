@@ -70,9 +70,10 @@ export function RepoStep({
   return (
     <div className="flex flex-col gap-4" data-wizard-step="repos">
       <div className="text-center">
-        <h2 className="text-lg font-semibold text-text-primary">Select Repositories</h2>
-        <p className="mt-1 text-xs text-text-tertiary">
-          Add repos by path or owner/name, or select from discovered repos
+        <h2 className="text-lg font-semibold text-text-primary">Pick the repositories to watch</h2>
+        <p className="mt-1 text-xs text-text-muted">
+          You see pull requests and checks from these. Add a local path or owner/name, or pick from
+          what BorgDock found.
         </p>
       </div>
 
@@ -98,13 +99,15 @@ export function RepoStep({
       {/* Bulk actions */}
       <div className="flex items-center gap-2">
         <Button variant="secondary" size="sm" onClick={onSelectAll}>
-          Select All
+          Select all
         </Button>
         <Button variant="secondary" size="sm" onClick={onDeselectAll}>
-          Deselect All
+          Clear all
         </Button>
         {isScanning && (
-          <span className="text-[11px] text-text-muted animate-pulse">Scanning...</span>
+          <span className="text-[11px] text-text-muted animate-pulse">
+            Looking for repositories…
+          </span>
         )}
       </div>
 
@@ -130,9 +133,7 @@ export function RepoStep({
               <div
                 className={clsx(
                   'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                  repo.isSelected
-                    ? 'border-accent bg-accent'
-                    : 'border-input-border',
+                  repo.isSelected ? 'border-accent bg-accent' : 'border-input-border',
                 )}
               >
                 {repo.isSelected && (
@@ -154,7 +155,7 @@ export function RepoStep({
 
         {!isScanning && repos.length === 0 && (
           <div className="py-6 text-center text-xs text-text-muted">
-            No repositories discovered. Add repos manually in Settings.
+            No repositories found. Add one above, or later in Settings.
           </div>
         )}
       </div>

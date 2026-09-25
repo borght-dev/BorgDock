@@ -476,3 +476,11 @@ export const PaletteReshown: Story = {
     });
   },
 };
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...TwoReposBalanced, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...TwoReposBalanced, globals: { theme: 'dark' } };

@@ -128,7 +128,7 @@ export function ResultsPanel({
           <span className="sql-results__hint">run a query to see results</span>
         )}
         {summary && <span className="sql-results__summary">{summary}</span>}
-        {anyTruncated && !error && <span className="sql-results__truncated">truncated</span>}
+        {anyTruncated && !error && <span className="sql-results__truncated">Truncated</span>}
         <span className="sql-results__spacer" />
         {copyFlash && <span className="sql-results__copy-flash">{copyFlash}</span>}
         {showCopy && (

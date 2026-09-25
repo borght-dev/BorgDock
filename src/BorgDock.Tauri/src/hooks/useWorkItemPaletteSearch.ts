@@ -116,15 +116,6 @@ export function useWorkItemPaletteSearch() {
         setAdoSettings(settings.azureDevOps);
         setRecentIds(settings.azureDevOps.recentWorkItemIds ?? []);
         setWorkingOnIds(new Set(settings.azureDevOps.workingOnWorkItemIds ?? []));
-        const t = settings.ui?.theme ?? 'system';
-        const isDark =
-          t === 'dark' ||
-          (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', isDark);
-        document.documentElement.classList.toggle(
-          'reduce-motion',
-          settings.ui?.reduceMotion ?? false,
-        );
       } catch (err) {
         console.error('Failed to load settings:', err);
       }

@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FLIP_LEAVE_MS, flip, motionMs, motionOK, withViewTransition } from '../motion';
+import {
+  FLIP_LEAVE_MS,
+  flip,
+  flipIfSmall,
+  motionMs,
+  motionOK,
+  withViewTransition,
+} from '../motion';
 
 function mockReducedMotionQuery(matches: boolean) {
   vi.spyOn(window, 'matchMedia').mockImplementation(
@@ -393,5 +400,48 @@ describe('withViewTransition', () => {
 
     expect(start).not.toHaveBeenCalled();
     expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('flipIfSmall', () => {
+  beforeEach(() => {
+    document.documentElement.classList.remove('reduce-motion');
+    mockReducedMotionQuery(false);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('animates a short list like flip', async () => {
+    const positions = new Map([
+      ['a', rect(0)],
+      ['b', rect(20)],
+    ]);
+    const { container, animate } = buildList(['a', 'b'], positions);
+    await flipIfSmall(container, () => {
+      positions.set('a', rect(20));
+      positions.set('b', rect(0));
+    });
+    expect(animate).toHaveBeenCalledTimes(2);
+  });
+
+  it('changes a long list without measuring or animating', async () => {
+    const positions = new Map([
+      ['a', rect(0)],
+      ['b', rect(20)],
+      ['c', rect(40)],
+    ]);
+    const { container, animate } = buildList(['a', 'b', 'c'], positions);
+    const mutate = vi.fn();
+    const plain = vi.fn(() => {
+      positions.set('a', rect(40));
+      positions.set('c', rect(0));
+    });
+    expect(await flipIfSmall(container, mutate, { maxRows: 2, plain })).toEqual([]);
+    // The long list takes the plain update, not the flushSync one.
+    expect(plain).toHaveBeenCalledTimes(1);
+    expect(mutate).not.toHaveBeenCalled();
+    expect(animate).not.toHaveBeenCalled();
   });
 });

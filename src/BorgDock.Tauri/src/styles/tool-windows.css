@@ -1,0 +1,326 @@
+/*
+ * Tool windows on the Workbench style (plans/ui-overhaul-workbench.md,
+ * phase 6): the pieces the settings, setup wizard, What's new, work item
+ * palette and flyout share with the main window's grammar. Tokens only; every
+ * duration is a --motion-* token, so reduced motion collapses all of it.
+ * The window chrome (.bd-title-bar, .bd-statusbar), the list-row state
+ * (.bd-list-row) and the older .sql-* / .bd-fp-* / .bd-fv-* families live in
+ * index.css; the tool-window entrance is in motion.css.
+ */
+
+@layer components {
+  /* ── Shared fade: a keyed element fades and rises in (section and step switches) ── */
+  .bd-fade-in {
+    animation: bd-section-in var(--motion-base) var(--ease-out) both;
+  }
+
+  /* ── Segmented control (Seg2): the .bd-filter control at two sizes ── */
+  /* Two classes: tool-windows.css loads before the .bd-filter rules in index.css. */
+  .bd-filter.bd-seg {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+  .bd-filter.bd-seg--full {
+    display: grid;
+    align-self: stretch;
+  }
+  .bd-seg--full .bd-filter__item {
+    justify-content: center;
+  }
+  .bd-seg .bd-filter__item {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .bd-seg .bd-filter__item--active {
+    font-weight: 600;
+  }
+  .bd-filter.bd-seg--sm {
+    padding: 2px;
+    border-radius: 6px;
+  }
+  .bd-seg--sm .bd-slide__hl--fill,
+  .bd-seg--sm .bd-filter__item {
+    border-radius: 4px;
+  }
+  .bd-seg--sm .bd-filter__item {
+    padding: 2px 9px;
+    font-size: 11.5px;
+  }
+
+  /* ── Toggle: the knob slides and the track recolours over --motion-fast ── */
+  .bd-toggle {
+    transition:
+      background-color var(--motion-fast) var(--ease-std),
+      border-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-toggle__knob {
+    box-shadow: var(--elevation-1);
+    transition: transform var(--motion-fast) var(--ease-std);
+  }
+
+  /* ── Settings: the section list's sliding wash ── */
+  .bd-settings-rail__hl.bd-slide__hl--fill {
+    border-radius: var(--radius-md);
+    background: var(--color-accent-subtle);
+    box-shadow: none;
+  }
+  .bd-settings-rail__item {
+    transition:
+      color var(--motion-fast) var(--ease-std),
+      background-color var(--motion-fast) var(--ease-std);
+  }
+
+  /* ── Setup wizard: a progress track whose fill slides to the step ── */
+  .bd-wizard-progress {
+    position: relative;
+    height: 4px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--color-wizard-step-track);
+  }
+  .bd-wizard-progress__fill {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--color-wizard-step-active);
+    transform-origin: left;
+    transition: transform var(--motion-move) var(--ease-std);
+  }
+  .bd-wizard-steps {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+  .bd-wizard-steps__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wizard-steps__dot {
+    width: 6px;
+    height: 6px;
+    background: var(--color-wizard-step-inactive);
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wizard-steps__item--done {
+    color: var(--color-text-secondary);
+  }
+  .bd-wizard-steps__item--done .bd-wizard-steps__dot {
+    background: var(--color-wizard-step-complete);
+  }
+  .bd-wizard-steps__item--active {
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+  .bd-wizard-steps__item--active .bd-wizard-steps__dot {
+    background: var(--color-wizard-step-active);
+  }
+
+  /* ── What's new: the hero is the window's one orchestrated reveal ── */
+  .bd-wn-hero--reveal {
+    animation: bd-wn-hero-in var(--motion-push) var(--ease-out) var(--motion-fast) both;
+  }
+  @keyframes bd-wn-hero-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* Placeholder for a highlight without a screenshot: a quiet tinted panel. */
+  .bd-wn-fallback {
+    background: var(--color-surface-raised);
+    color: var(--color-text-secondary);
+  }
+  .bd-wn-fallback--new {
+    background:
+      radial-gradient(
+        ellipse 360px 180px at 50% 0%,
+        color-mix(in srgb, var(--color-status-green) 18%, transparent),
+        transparent 60%
+      ),
+      var(--color-surface-raised);
+    color: var(--color-whats-new-new-fg);
+  }
+  .bd-wn-fallback--improved {
+    background:
+      radial-gradient(
+        ellipse 360px 180px at 50% 0%,
+        color-mix(in srgb, var(--color-status-yellow) 18%, transparent),
+        transparent 60%
+      ),
+      var(--color-surface-raised);
+    color: var(--color-whats-new-improved-fg);
+  }
+  .bd-wn-fallback--fixed {
+    background:
+      radial-gradient(
+        ellipse 360px 180px at 50% 50%,
+        color-mix(in srgb, var(--color-accent) 20%, transparent),
+        transparent 65%
+      ),
+      var(--color-surface-raised);
+    color: var(--color-whats-new-fixed-fg);
+  }
+
+  /* ── Work item palette ── */
+  .bd-wp-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .bd-wp-toolbar__spacer {
+    flex: 1;
+  }
+  .bd-wp-toolbar__label {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+  }
+  .bd-wp-filters {
+    display: inline-flex;
+    gap: 2px;
+  }
+  .bd-wp-filters .bd-wp-filters__hl.bd-slide__hl--fill {
+    border-radius: 6px;
+    background: var(--color-accent-subtle);
+    box-shadow: inset 0 0 0 1px var(--color-purple-border);
+  }
+  .bd-wp-filters .bd-wp-filters__hl--warn.bd-slide__hl--fill {
+    background: var(--color-warning-badge-bg);
+    box-shadow: inset 0 0 0 1px var(--color-warning-badge-border);
+  }
+  .bd-wp-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wp-filter:hover {
+    color: var(--color-text-primary);
+  }
+  /* --color-purple: the accent as text, readable on the accent wash in both themes. */
+  .bd-wp-filter--on {
+    color: var(--color-purple);
+    font-weight: 600;
+  }
+  .bd-wp-filter--on.bd-wp-filter--warn {
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-wp-filter:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  .bd-wp-group {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--color-subtle-border);
+    background: var(--color-surface);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .bd-wp-group__caret {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    transition: transform var(--motion-fast) var(--ease-std);
+  }
+  .bd-wp-group__caret--collapsed {
+    transform: rotate(-90deg);
+  }
+  .bd-wp-group__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  .bd-wp-group__count {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-muted);
+  }
+
+  /* Rows: the compact list height with one hairline between rows; hover,
+     selection and numerals come from .bd-list-row. */
+  .bd-wp-row {
+    display: grid;
+    grid-template-columns: 16px 14px 78px minmax(0, 1fr) auto auto 18px;
+    align-items: center;
+    column-gap: 10px;
+    min-height: 32px;
+    padding: 0 14px 0 12px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    cursor: pointer;
+  }
+  .bd-wp-row__id {
+    font-family: var(--font-code);
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+  }
+  .bd-wp-row__id--selected {
+    font-weight: 600;
+    color: var(--color-purple);
+  }
+  .bd-wp-row__title {
+    overflow: hidden;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-list-row[data-selected="true"] .bd-wp-row__title {
+    font-weight: 500;
+  }
+  .bd-wp-row__comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 14px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+
+  /* ── Flyout: the glance panel's surface, shadow and entrance ── */
+  .bd-flyout-panel {
+    background: var(--color-surface);
+    border-color: var(--color-strong-border);
+    box-shadow: var(--elevation-2);
+    animation: bd-flyout-in var(--motion-base) var(--ease-std);
+  }
+  @keyframes bd-flyout-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

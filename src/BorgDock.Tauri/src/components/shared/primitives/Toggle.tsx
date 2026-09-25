@@ -17,15 +17,16 @@ export function Toggle({ on, onChange, disabled, ariaLabel }: ToggleProps) {
       disabled={disabled}
       onClick={() => onChange(!on)}
       className={clsx(
-        'inline-flex h-[18px] w-[32px] items-center rounded-full border transition-colors',
+        'bd-toggle inline-flex h-[18px] w-[32px] items-center rounded-full border',
         on
           ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
           : 'bg-[var(--color-surface-hover)] border-[var(--color-strong-border)]',
         disabled && 'opacity-50 cursor-not-allowed',
       )}
     >
+      {/* The knob slides and the track recolours over --motion-fast (.bd-toggle in tool-windows.css). */}
       <span
-        className="block h-[14px] w-[14px] shrink-0 rounded-full bg-[var(--color-toggle-knob)] shadow transition-transform"
+        className="bd-toggle__knob block h-[14px] w-[14px] shrink-0 rounded-full bg-[var(--color-toggle-knob)]"
         style={{ transform: `translateX(${on ? 15 : 1}px)` }}
       />
     </button>

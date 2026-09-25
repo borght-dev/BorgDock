@@ -2,12 +2,15 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
 import { Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { AppSettings } from '@/types/settings';
 import { copyToClipboard } from '@/utils/clipboard';
+import { flipIfSmall } from '@/utils/motion';
 import { parseError } from '@/utils/parse-error';
+import { revealWindow } from '@/utils/window-reveal';
 import { FilePaletteChangesSection, type VisibleRow } from './FilePaletteChangesSection';
 import { FilePaletteContextMenu } from './FilePaletteContextMenu';
 import { FilePalettePreviewPane } from './FilePalettePreviewPane';
@@ -21,6 +24,15 @@ import { useContentSearch } from './use-content-search';
 import { useFileIndex } from './use-file-index';
 import { mergeSymbolHits } from './use-symbol-index';
 import { useWorktreeChangeCounts } from './use-worktree-change-counts';
+
+const FILE_PALETTE_HINTS = [
+  { keys: '↑↓', label: 'move' },
+  { keys: '↵', label: 'open' },
+  { keys: 'Ctrl+C', label: 'copy path' },
+  { keys: 'Tab', label: 'roots' },
+  { keys: 'Ctrl+/', label: 'diff' },
+  { keys: 'Esc', label: 'close' },
+];
 
 interface WorktreeEntry {
   path: string;
@@ -61,6 +73,13 @@ export function FilePaletteApp() {
     null,
   );
   const copiedTimerRef = useRef<number | null>(null);
+  // The search pane's rows (Changes and results), for FLIP on query change.
+  const middleRef = useRef<HTMLDivElement>(null);
+  const changeQuery = useCallback((value: string) => {
+    void flipIfSmall(middleRef.current, () => flushSync(() => setQuery(value)), {
+      plain: () => setQuery(value),
+    });
+  }, []);
   const rowRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
 
   const fileIndex = useFileIndex(activeRoot);
@@ -79,7 +98,7 @@ export function FilePaletteApp() {
     if (revealedRef.current) return;
     revealedRef.current = true;
     requestAnimationFrame(() => {
-      void invoke('window_ready').catch(() => {});
+      void revealWindow();
     });
   }, []);
 
@@ -577,10 +596,10 @@ export function FilePaletteApp() {
           onRemoveCustomRoot={removeCustomRoot}
           changeCounts={changeCounts}
         />
-        <div className="bd-fp-middle">
+        <div className="bd-fp-middle" ref={middleRef}>
           <FilePaletteSearchPane
             query={query}
-            onQueryChange={setQuery}
+            onQueryChange={changeQuery}
             parsed={parsed}
             resultCount={results.length}
             scope={scope}
@@ -686,7 +705,7 @@ export function FilePaletteApp() {
       </div>
       <WindowStatusBar
         left={
-          <span className="bd-mono bd-fp-status">
+          <span className="bd-fp-status">
             {activeRootLabel} · {indexedCount.toLocaleString()} indexed
             {activeRootCount && (
               <>
@@ -711,16 +730,10 @@ export function FilePaletteApp() {
         }
         right={
           copiedPath ? (
-            <span className="bd-mono" style={{ color: 'var(--color-status-green)' }}>
-              ✓ Copied relative path
-            </span>
-          ) : (
-            <span className="bd-mono">
-              <Kbd>↑↓</Kbd> nav · <Kbd>↵</Kbd> open · <Kbd>Ctrl+C</Kbd> copy path · <Kbd>Tab</Kbd>{' '}
-              roots · <Kbd>Ctrl+/</Kbd> diff · <Kbd>Esc</Kbd>
-            </span>
-          )
+            <span style={{ color: 'var(--color-status-green)' }}>✓ Copied relative path</span>
+          ) : undefined
         }
+        hints={copiedPath ? undefined : FILE_PALETTE_HINTS}
       />
       {menu && (
         <FilePaletteContextMenu

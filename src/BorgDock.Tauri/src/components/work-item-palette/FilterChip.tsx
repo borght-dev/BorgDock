@@ -1,4 +1,5 @@
 // src/components/work-item-palette/FilterChip.tsx
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
 export interface FilterChipProps {
@@ -7,43 +8,34 @@ export interface FilterChipProps {
   children: ReactNode;
   icon?: ReactNode;
   tone?: 'default' | 'warning';
+  /** `data-highlight-key` for the palette's SlidingHighlight. */
+  highlightKey?: string;
 }
 
-export function FilterChip({ active, onClick, children, icon, tone = 'default' }: FilterChipProps) {
-  const isWarn = tone === 'warning';
+/**
+ * A state filter tab in the work item palette. The wash behind the active tab
+ * is the palette's SlidingHighlight (`.bd-wp-filters__hl`), so the chip itself
+ * only changes its text colour.
+ */
+export function FilterChip({
+  active,
+  onClick,
+  children,
+  icon,
+  tone = 'default',
+  highlightKey,
+}: FilterChipProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active ? 'true' : 'false'}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        height: 22,
-        padding: '0 9px',
-        fontSize: 11,
-        fontWeight: 500,
-        border: '1px solid',
-        borderColor: active
-          ? isWarn
-            ? 'var(--color-warning-badge-border)'
-            : 'var(--color-purple-border)'
-          : 'var(--color-subtle-border)',
-        background: active
-          ? isWarn
-            ? 'var(--color-warning-badge-bg)'
-            : 'var(--color-accent-subtle)'
-          : 'transparent',
-        color: active
-          ? isWarn
-            ? 'var(--color-warning-badge-fg)'
-            : 'var(--color-accent)'
-          : 'var(--color-text-tertiary)',
-        borderRadius: 4,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
+      data-highlight-key={highlightKey}
+      className={clsx(
+        'bd-wp-filter',
+        active && 'bd-wp-filter--on',
+        tone === 'warning' && 'bd-wp-filter--warn',
+      )}
     >
       {icon}
       {children}

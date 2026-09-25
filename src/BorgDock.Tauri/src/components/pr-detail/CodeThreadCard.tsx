@@ -46,9 +46,9 @@ function SnippetLine({ line }: { line: ReviewThreadSnippetLine }) {
   const bg = line.isAnchor
     ? 'var(--color-warning-badge-bg)'
     : line.marker === '+'
-      ? 'rgba(63,159,124,0.10)'
+      ? 'var(--color-success-badge-bg)'
       : line.marker === '-'
-        ? 'rgba(229,64,101,0.10)'
+        ? 'var(--color-error-badge-bg)'
         : 'transparent';
   const markerColor =
     line.marker === '+'

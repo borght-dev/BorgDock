@@ -1,7 +1,7 @@
 // src/components/settings/SettingsApp.stories.tsx
 
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect } from 'react';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import { type ReactElement, useEffect } from 'react';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
   configuredSettings,
@@ -130,4 +130,25 @@ export const DeepLinkArrival: Story = {
     await new Promise((r) => requestAnimationFrame(() => r(undefined)));
     getControl().emit('settings:deep-link', 'ado');
   },
+};
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+/** Opens the window on the Appearance panel (theme, motion and layout in one place). */
+function onAppearance(Story: () => ReactElement) {
+  localStorage.setItem('settings.lastSection', 'appearance');
+  history.replaceState(null, '', '#section=appearance');
+  return <Story />;
+}
+
+export const ThemeLight: Story = {
+  decorators: [...(Default.decorators as Decorator[]), onAppearance],
+  globals: { theme: 'light' },
+};
+export const ThemeDark: Story = {
+  decorators: [...(Default.decorators as Decorator[]), onAppearance],
+  globals: { theme: 'dark' },
 };

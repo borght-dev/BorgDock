@@ -57,7 +57,7 @@ describe('Chip', () => {
     );
     const badge = screen.getByRole('button').querySelector('.bd-chip__count') as HTMLElement;
     expect(badge).toBeInTheDocument();
-    expect(badge.style.background).toMatch(/rgba\(0,\s*0,\s*0,\s*0\.08\)/);
+    expect(badge.style.background).toBe('var(--color-chip-count-on-bg)');
   });
 
   it('fires onClick', () => {

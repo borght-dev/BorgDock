@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Kbd } from '@/components/shared/primitives';
+import { Kbd, SlidingHighlight } from '@/components/shared/primitives';
 import type { ParsedQuery } from './parse-query';
 import { parseQuery } from './parse-query';
 
@@ -16,8 +16,13 @@ interface Props {
 }
 
 export function FilePaletteSearchPane({
-  query, onQueryChange, parsed: _parsed, resultCount,
-  scope, onScopeChange, changesCount,
+  query,
+  onQueryChange,
+  parsed: _parsed,
+  resultCount,
+  scope,
+  onScopeChange,
+  changesCount,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
@@ -52,16 +57,31 @@ export function FilePaletteSearchPane({
           <Kbd>↵</Kbd>
         </span>
       </div>
-      <div className="bd-fp-scope-chips" role="tablist">
+      {/* The scope wash slides to the chosen tab (SlidingHighlight, --motion-move). */}
+      <SlidingHighlight
+        activeKey={scope}
+        className="bd-fp-scope-chips"
+        highlightClassName="bd-fp-scope-hl"
+        role="tablist"
+        aria-label="Search scope"
+      >
         <ScopeChip v="all" label="All" active={scope} onClick={setScope} />
-        <ScopeChip v="changes" label="Changes" active={scope} onClick={setScope}
-          count={changesCount} tone="warn" />
+        <ScopeChip
+          v="changes"
+          label="Changes"
+          active={scope}
+          onClick={setScope}
+          count={changesCount}
+          tone="warn"
+        />
         <ScopeChip v="filename" label="Filename" active={scope} onClick={setScope} />
         <ScopeChip v="content" label="Content" active={scope} onClick={setScope} hint=">" />
         <ScopeChip v="symbol" label="Symbol" active={scope} onClick={setScope} hint="@" />
         <span className="bd-fp-scope-spacer" />
-        <span className="bd-fp-scope-count bd-mono">{resultCount} result{resultCount === 1 ? '' : 's'}</span>
-      </div>
+        <span className="bd-fp-scope-count">
+          {resultCount} result{resultCount === 1 ? '' : 's'}
+        </span>
+      </SlidingHighlight>
     </div>
   );
 }
@@ -81,6 +101,8 @@ function ScopeChip({ v, label, active, onClick, count, tone, hint }: ScopeChipPr
   return (
     <button
       type="button"
+      role="tab"
+      data-highlight-key={v}
       aria-selected={isOn}
       className={`bd-fp-scope-chip${isOn ? ' bd-fp-scope-chip--on' : ''}`}
       onClick={() => onClick(v)}
@@ -88,7 +110,9 @@ function ScopeChip({ v, label, active, onClick, count, tone, hint }: ScopeChipPr
       {hint && <span className="bd-mono bd-fp-scope-chip__hint">{hint}</span>}
       {label}
       {count != null && count > 0 && (
-        <span className={`bd-fp-scope-chip__count${tone === 'warn' ? ' bd-fp-scope-chip__count--warn' : ''}`}>
+        <span
+          className={`bd-fp-scope-chip__count${tone === 'warn' ? ' bd-fp-scope-chip__count--warn' : ''}`}
+        >
           {count}
         </span>
       )}

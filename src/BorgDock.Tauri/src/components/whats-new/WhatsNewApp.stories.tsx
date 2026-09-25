@@ -1,8 +1,8 @@
 // src/components/whats-new/WhatsNewApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import type { Release } from '@/types/whats-new';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
@@ -377,3 +377,11 @@ export const StoreHydrationFailed = story({
   storeBehavior: 'reject',
   appVersion: '1.2.0',
 });
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...OneVersionBehind, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...OneVersionBehind, globals: { theme: 'dark' } };

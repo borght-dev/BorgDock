@@ -7,22 +7,19 @@ import { useWorkItemDetailData } from '@/hooks/useWorkItemDetailData';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { WorkItem, WorkItemAttachment } from '@/types';
 import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
+import { revealWindow } from '@/utils/window-reveal';
 import { getField } from '@/utils/work-item-helpers';
 import { WorkItemDetailPanel } from './WorkItemDetailPanel';
 import { useAdjacentNav } from './WorkItemDetailPanel/useAdjacentNav';
 
 /**
  * The pop-out window has its own stores: load the settings, fill its
- * settings store (useAdoImageAuth reads the PAT there) and apply the theme.
+ * settings store (useAdoImageAuth reads the PAT there). The theme is the
+ * entry's job (startWindowTheme in workitem-detail-main.tsx).
  */
 async function preparePopOut(): Promise<AzureDevOpsSettings> {
   const settings = await invoke<AppSettings>('load_settings');
   useSettingsStore.setState({ settings, isLoading: false });
-  const t = settings.ui?.theme ?? 'system';
-  const isDark =
-    t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark);
-  document.documentElement.classList.toggle('reduce-motion', settings.ui?.reduceMotion ?? false);
   return settings.azureDevOps;
 }
 
@@ -50,7 +47,7 @@ export function WorkItemDetailApp() {
     if (revealedRef.current) return;
     revealedRef.current = true;
     requestAnimationFrame(() => {
-      void invoke('window_ready')?.catch(() => {});
+      void revealWindow();
     });
   }, []);
 

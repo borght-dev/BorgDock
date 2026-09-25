@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ThemeMode } from '../types';
 import { REDUCE_MOTION_CLASS } from '../utils/motion';
-
-type EffectiveTheme = 'light' | 'dark';
+import { applyTheme, type EffectiveTheme, resolveTheme, watchSystemTheme } from '../utils/theme';
 
 interface UseThemeReturn {
   theme: ThemeMode;
@@ -11,107 +10,51 @@ interface UseThemeReturn {
   isDark: boolean;
 }
 
-function getSystemPreference(): EffectiveTheme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function resolveEffectiveTheme(mode: ThemeMode): EffectiveTheme {
-  return mode === 'system' ? getSystemPreference() : mode;
-}
-
-function applyTheme(effective: EffectiveTheme) {
-  if (effective === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-  // Persist so the inline <script> in HTML can read it synchronously on next load
-  try {
-    localStorage.setItem('borgdock-theme', effective);
-  } catch {
-    /* quota exceeded */
-  }
-}
-
 export interface UseThemeOptions {
   /** The `ui.reduceMotion` setting. Toggles `.reduce-motion` on <html> (see styles/motion.css). */
   reduceMotion?: boolean;
+  /**
+   * False until the settings have loaded. Until then nothing is applied or
+   * stored, so the state public/theme-boot.js set before first paint survives
+   * the splash instead of flipping to the defaults and back. Default true.
+   */
+  enabled?: boolean;
 }
 
+/**
+ * The main window's theme: applies `ui.theme` and `ui.reduceMotion` to <html>
+ * through `applyTheme` (src/utils/theme.ts, shared with every tool window) and
+ * follows the OS while the theme is `system`.
+ */
 export function useTheme(
   initial: ThemeMode = 'system',
   options: UseThemeOptions = {},
 ): UseThemeReturn {
   const reduceMotion = options.reduceMotion ?? false;
+  const enabled = options.enabled ?? true;
   const [theme, setThemeState] = useState<ThemeMode>(initial);
-  const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(
-    resolveEffectiveTheme(initial),
-  );
+  const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(() => resolveTheme(initial));
 
-  const updateEffective = useCallback((mode: ThemeMode) => {
-    const effective = resolveEffectiveTheme(mode);
-    setEffectiveTheme(effective);
-    applyTheme(effective);
-  }, []);
-
-  const setTheme = useCallback(
-    (mode: ThemeMode) => {
-      setThemeState(mode);
-      updateEffective(mode);
-    },
-    [updateEffective],
-  );
-
-  // Sync when the external setting changes
+  // Sync when the external setting changes.
   useEffect(() => {
     setThemeState(initial);
-    updateEffective(initial);
-  }, [initial, updateEffective]);
+  }, [initial]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle(REDUCE_MOTION_CLASS, reduceMotion);
-    return () => document.documentElement.classList.remove(REDUCE_MOTION_CLASS);
-  }, [reduceMotion]);
+    if (!enabled) return;
+    setEffectiveTheme(applyTheme({ theme, reduceMotion }));
+  }, [enabled, theme, reduceMotion]);
 
-  // Listen for OS theme changes when in system mode
+  // Follow OS theme changes while in system mode.
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      if (theme === 'system') {
-        updateEffective('system');
-      }
-    };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [theme, updateEffective]);
+    if (!enabled || theme !== 'system') return;
+    return watchSystemTheme(() => setEffectiveTheme(applyTheme({ theme, reduceMotion })));
+  }, [enabled, theme, reduceMotion]);
 
-  // Apply theme on mount
-  useEffect(() => {
-    applyTheme(effectiveTheme);
-  }, [effectiveTheme]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reduced motion belongs to the mounted app; drop it when the app goes.
+  useEffect(() => () => document.documentElement.classList.remove(REDUCE_MOTION_CLASS), []);
 
-  // Try Tauri window theme detection
-  useEffect(() => {
-    if (theme !== 'system') return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const tauriTheme = await getCurrentWindow().theme();
-        if (!cancelled && tauriTheme) {
-          const effective: EffectiveTheme = tauriTheme === 'dark' ? 'dark' : 'light';
-          setEffectiveTheme(effective);
-          applyTheme(effective);
-        }
-      } catch {
-        // Not in Tauri context — matchMedia fallback already applied
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [theme]);
+  const setTheme = useCallback((mode: ThemeMode) => setThemeState(mode), []);
 
   return {
     theme,

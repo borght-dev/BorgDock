@@ -2,21 +2,21 @@
 
 A reference for BorgDock's visual language — for designers, design tools (Claude Design, Figma plugins, token translators), and anyone building UI in `src/BorgDock.Tauri`.
 
-BorgDock is a dense, desktop-native developer tool. The visual language is tuned for lots of information (many PRs, checks, rows) while still feeling warm and distinctive — never "bootstrap gray." The signature is **deep plum backgrounds with a violet accent** plus a muted aquamarine / ruby / amber status palette.
+BorgDock is a dense, desktop-native developer tool. The visual language is the **Workbench** direction (`plans/ui-overhaul-workbench.md`): graphite surfaces in dark, porcelain in light, one indigo accent used for selection and the single primary action, and a three-colour status palette. Inter for the shell and lists, Instrument Sans for reading views, JetBrains Mono only in code.
 
-Current as of **2.3.1** (2026-09-15). Origin spec: `docs/superpowers/specs/2026-04-24-shared-components-design.md`; canonical mockup: `design/mockups/borgdock-streamline-redesign.html`.
+Current as of the phase 6 UI overhaul (2026-09-25). Mockups: `design/mockups/borgdock-redesign-iteration-2.html`. The short version of this document is `BorgDock-Styling-Guide.md`.
 
 ---
 
 ## 1. Design Principles
 
-1. **Dense but breathable.** Text is small (10–13px), padding is tight (4–10px), but whitespace separates logical groups. Don't hide information behind hover if it fits.
-2. **Violet is the only chromatic accent.** Buttons, tabs, selection, and focus rings use the purple scale. Other hues carry meaning (status, diffs, merged).
-3. **Status is duochrome.** Success = aquamarine, error = ruby, warning = amber — rendered as a soft tint (6–10% alpha) with a matching border (14–25% alpha) and full-strength foreground. No saturated fills.
-4. **Surfaces over shadows.** Depth comes from `surface-raised` / `surface-hover` tints. Shadows (`--elevation-*`) are for floating UI: flyout, toasts, modals.
-5. **Dark theme is first-class.** Every color token has a `.dark` override. Go through a token; don't hard-code hex.
-6. **Tactile micro-motion.** Pressables scale to 0.90–0.97 with an 80ms transform and 120ms color transition.
-7. **Primitives first.** Use `components/shared/primitives` before writing a new button, pill, card, or input.
+1. **Dense but breathable.** Lists and chrome at 13 px, status bars at 11 px, tight padding, hairlines between groups.
+2. **The accent has one job.** Indigo marks selection and the one primary action. Other hues carry meaning (status, diffs, merged).
+3. **Status has three colours.** Success green, error red, warning amber, rendered as a soft tint with a matching border and full-strength foreground.
+4. **Surfaces over shadows.** Depth comes from `surface-raised` / `surface-hover` and 1 px hairlines. Shadows (`--elevation-*`) are for floating UI: flyout, toasts, modals, popovers.
+5. **Both themes are first-class.** Every colour is a token with a `.dark` value; components never carry literals (a unit test enforces it).
+6. **Motion answers the user.** Every transition uses a `--motion-*` token and collapses under reduced motion.
+7. **Primitives first.** Use `components/shared/primitives` and the shared chrome before writing a new control.
 
 ---
 
@@ -24,157 +24,143 @@ Current as of **2.3.1** (2026-09-15). Origin spec: `docs/superpowers/specs/2026-
 
 | Layer | Where | What |
 |---|---|---|
-| Tokens | `src/styles/index.css` `:root` / `.dark` | ~196 custom properties (167 colors, 3 elevations, 26 scale tokens) |
-| Tailwind bridge | `src/styles/index.css` `@theme inline` | Re-exports 166 colors + spacing, radius, text, duration, fonts as utilities |
+| Tokens | `src/styles/index.css` `:root` / `.dark` | Colour, elevation and scale custom properties |
+| Motion tokens | `src/styles/motion.css` | `--motion-*`, `--ease-*`, reduced motion, view-transition and window-entrance keyframes |
+| Tailwind bridge | `src/styles/index.css` `@theme inline` | Re-exports colours, spacing, radius, text, duration, fonts as utilities |
 | Component classes | `src/styles/index.css` `@layer components` | `.bd-*` classes backing the primitives, plus feature families (`bd-fp-*`, `bd-fv-*`, `bd-wt-*`, `bd-wp-*`, `bd-wi-*`, `bd-code-*`) |
+| Workbench stylesheets | `src/styles/{focus,work-items,worktrees}-workbench.css`, `src/styles/tool-windows.css` | Main-window sections; tool-window pieces (segmented control, toggle, wizard progress, What's new hero, work item palette, flyout panel) |
 | Legacy / unlayered | `src/styles/index.css` | `.sql-*` (SQL window), `.markdown-body`, `.tactile-icon-btn`, diff preview / find strip |
 | Feature stylesheet | `src/components/focus/quick-review.css` | `.qr-*` for the Quick Review overlay |
 | Primitives | `src/components/shared/primitives/` | React components selecting `.bd-*` classes via `clsx` |
 
-**Theme switching:** the `.dark` class on `<html>` (`hooks/useTheme.ts`; setting = system / light / dark, following `prefers-color-scheme` live). `.dark` also sets `color-scheme: dark`. No `data-theme`.
+**Theme switching** (`src/utils/theme.ts`, one helper for every window):
+
+- `applyTheme(settings | { theme, reduceMotion })` sets `.dark`, `.reduce-motion` and `color-scheme` on `<html>`, and writes `localStorage['borgdock-theme']` (the setting: `light`, `dark` or `system`) and `localStorage['borgdock-reduce-motion']` (`1` / `0`).
+- `resolveTheme(setting)` resolves `system` through `matchMedia('(prefers-color-scheme: dark)')`; `watchSystemTheme(cb)` reports OS changes.
+- `startWindowTheme()` is called once in every tool-window entry (`*-main.tsx`): it applies the saved settings, re-applies on `settings:ui-changed` (emitted by the settings store on save, from any window) and follows the OS while the theme is `system`. The Settings window also previews edits before they save; the flyout applies the theme its payload carries.
+- `public/theme-boot.js` is the pre-paint script every HTML entry (including `settings.html`) loads in `<head>`. It reads the two keys with the same rules, so a window never flashes the other theme; `src/utils/__tests__/theme.test.ts` runs it against `applyTheme`.
+- The main window uses `hooks/useTheme.ts`, a thin hook over the same helper.
 
 ---
 
 ## 3. Color Tokens
 
-All names below omit the `--color-` prefix. Values are **light / dark**.
+All names below omit the `--color-` prefix. Values are **light (porcelain) / dark (graphite)**, from `index.css`.
 
-### 3.1 Accent & Purple
+### 3.1 Accent
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `accent` | `#6655d4` | `#7c6af6` | Primary interactive color |
-| `accent-foreground` | `#ffffff` | `#ffffff` | Text/icon on accent |
-| `accent-subtle` | `rgba(124,106,246,.10)` | `rgba(124,106,246,.15)` | Hover / selection wash |
-| `accent-soft` | `rgba(102,85,212,.06)` | `rgba(124,106,246,.08)` | Faint accent tint |
-| `purple` | `#6655d4` | `#9384f7` | Purple scale anchor |
-| `purple-soft` | `rgba(124,106,246,.06)` | `rgba(147,132,247,.08)` | Tinted surface |
-| `purple-border` | `rgba(124,106,246,.14)` | `rgba(147,132,247,.20)` | Tinted border |
+| `accent` | `#4f46e5` | `#7f7eff` | Selection bar, primary button fill, focus ring |
+| `accent-foreground` | `#ffffff` | `#12121a` | Text / icon on an accent fill |
+| `accent-subtle` | `rgba(79,70,229,.10)` | `rgba(127,126,255,.15)` | Selection / active wash |
+| `accent-soft` | `rgba(79,70,229,.06)` | `rgba(127,126,255,.08)` | Faint accent tint |
+| `purple` | `#4f46e5` | `#9d9cff` | The accent as text on a wash (active chip, selected id) |
+| `purple-soft` | `rgba(79,70,229,.06)` | `rgba(127,126,255,.08)` | Tinted surface |
+| `purple-border` | `rgba(79,70,229,.16)` | `rgba(127,126,255,.22)` | Tinted border |
+
+**Accent foreground.** White on the dark accent `#7f7eff` is only 3.3:1, so in dark mode `accent-foreground` is a dark ink (`#12121a`, 5.6:1); light mode keeps white on `#4f46e5` (6.3:1). Every surface that puts text on the accent (primary buttons and their `Kbd` hints, checkboxes, the CodeMirror autocomplete selection, confirm buttons, badges) uses `accent-foreground`, never a literal white. `contrast.test.ts` checks it in both themes.
 
 ### 3.2 Surfaces
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `background` | `#f7f5fb` | `#110f1a` | Window background |
-| `bg-primary` | `#f7f5fb` | `#110f1a` | Alias of `background` |
-| `surface` | `#ffffff` | `#1a1726` | Panels, cards |
-| `surface-raised` | `rgba(90,86,112,.03)` | `rgba(138,133,160,.03)` | Subtle lift |
-| `surface-hover` | `rgba(90,86,112,.05)` | `rgba(138,133,160,.05)` | Row hover |
-| `card-background` | `#ffffff` | `#1a1726` | Card fill |
-| `card-border` | `rgba(90,86,112,.08)` | `rgba(138,133,160,.08)` | Card edge |
-| `card-border-my-pr` | `rgba(124,106,246,.22)` | same | Own-PR card edge (`.bd-card--own`) |
+| `background` | `#f5f5f7` | `#151618` | Window background |
+| `surface` | `#ffffff` | `#1b1c1f` | Panels, cards, bars |
+| `surface-raised` | `rgba(23,24,28,.03)` | `#212226` | Subtle lift |
+| `surface-hover` | `rgba(23,24,28,.04)` | `rgba(255,255,255,.028)` | Row hover wash |
+| `card-background` | `#ffffff` | `#1b1c1f` | Card fill |
+| `card-border` | `#e5e6ea` | `rgba(255,255,255,.065)` | Card edge |
+| `seg-highlight` | `#ffffff` | `#28292e` | Sliding highlight fill (segmented controls, rail) |
+| `selected-row-bg` | `rgba(79,70,229,.07)` | `rgba(127,126,255,.10)` | Selected row |
 
 ### 3.3 Text
 
-Six steps; drop one per level of emphasis. `text-muted` is contrast-tested at 4.5:1 (`src/styles/__tests__/contrast.test.ts`).
-
-| Token | Light | Dark |
-|---|---|---|
-| `text-primary` | `#1a1726` | `#edeaf4` |
-| `text-secondary` | `#3a3550` | `#c8c4d6` |
-| `text-tertiary` | `#5a5670` | `#8a85a0` |
-| `text-muted` | `#6a6580` | `#9490a8` |
-| `text-faint` | `#b8b0c8` | `#3a3650` |
-| `text-ghost` | `#d8d4e3` | `#2a2640` |
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `text-primary` | `#17181c` | `#ededef` | Titles, row titles, body |
+| `text-secondary` | `#5d606a` | `#9c9da4` | Labels, secondary copy |
+| `text-muted` | `#6b6e78` | `#8e8f96` | Small readable text: hints, counts, status bars, key chips (≥ 4.5:1) |
+| `text-tertiary` | `#8f929c` | `#67686f` | Decoration only (icons, carets); below 4.5:1 in both themes |
+| `text-faint` | `#c2c4cb` | `#3f4046` | Disabled glyphs |
+| `text-ghost` | `#dcdee3` | `#2c2d32` | Placeholders for shapes |
 
 ### 3.4 Borders
 
 | Token | Light | Dark |
 |---|---|---|
-| `subtle-border` | `rgba(90,86,112,.08)` | `rgba(138,133,160,.08)` |
-| `separator` | `rgba(90,86,112,.08)` | `rgba(138,133,160,.08)` |
-| `strong-border` | `rgba(90,86,112,.14)` | `rgba(138,133,160,.14)` |
+| `subtle-border` / `separator` | `#e5e6ea` | `rgba(255,255,255,.065)` |
+| `strong-border` | `#d4d6dc` | `rgba(255,255,255,.12)` |
+| `input-border` | `#dcdee4` | `rgba(255,255,255,.09)` |
 
 ### 3.5 Status
 
 | Token | Light | Dark | Meaning |
 |---|---|---|---|
-| `status-green` | `#3ba68e` | `#7dd3c0` | Passing, approved, success |
-| `status-red` | `#c7324f` | `#e54065` | Failing, changes requested, error |
-| `status-yellow` | `#b07d09` | `#f5b73b` | Pending, review required, warning |
-| `status-gray` | `#8a85a0` | `#5a5670` | Neutral, skipped |
+| `status-green` | `#1f9d6b` | `#5cc98f` | Passing, approved, success |
+| `status-red` | `#d64560` | `#f0616d` | Failing, changes requested, error |
+| `status-yellow` | `#c98a12` | `#e5b454` | Running, review required, warning |
+| `status-gray` | `#8f929c` | `#67686f` | Neutral, skipped |
 | `status-merged` | `#8250df` | `#a371f7` | Merged PRs |
-| `status-amber` | `#d97706` | `#f59e0b` | Aging / attention |
-| `status-blue` | `#2563eb` | `#60a5fa` | Informational |
+| `status-amber` | `#d97706` | `#f0a04b` | Aging / attention |
+| `status-blue` | `#2d6be4` | `#6fa8ff` | Informational |
 
-**Tone triples** — `{tone}-badge-{bg,fg,border}`:
+**Solid status fills** (action pills, the flyout banner) put `status-fill-foreground` (dark ink, both themes) on the green and amber fills, and `danger-fill-foreground` on the error red (`error-badge-fg`); white on the porcelain green or amber is under 4.5:1.
 
-| Tone | bg | fg | border |
-|---|---|---|---|
-| `success` | `rgba(59,166,142,.07)` / `rgba(125,211,192,.10)` | status-green | `.18` / `.25` |
-| `warning` | `rgba(176,125,9,.06)` / `rgba(245,183,59,.10)` | status-yellow | `.14` / `.15` |
-| `error` | `rgba(199,50,79,.06)` / `rgba(229,64,101,.10)` | status-red | `.14` / `.20` |
-| `neutral` | `rgba(124,106,246,.06)` / `rgba(147,132,247,.08)` | `#6655d4` / `#9384f7` | `.14` / `.20` |
-| `draft` | `rgba(90,86,112,.05)` / `rgba(138,133,160,.08)` | `#8a85a0` / `#5a5670` | `.14` / `.20` |
+**Tone triples** — `{success,warning,error,neutral,draft}-badge-{bg,fg,border}`: a 7–10% tint, a full-strength foreground (light warning and error foregrounds are darkened to clear 4.5:1) and a 16–25% border.
 
-**Glows & check rows:** `green-glow`, `red-glow`; `check-{passed,failed}-{bg,border}` (4–6% tint, 10–14% border).
-
-### 3.6 Interactive
+### 3.6 Chrome, overlays and tool windows
 
 | Token | Light | Dark |
 |---|---|---|
-| `icon-btn-hover` | `rgba(90,86,112,.06)` | `rgba(138,133,160,.08)` |
-| `icon-btn-pressed` | `rgba(90,86,112,.10)` | `rgba(138,133,160,.12)` |
-| `icon-btn-fg` | `#5a5670` | `#8a85a0` |
-| `action-secondary-fg` | `#6655d4` | `#9384f7` |
-| `action-danger-bg` | `rgba(199,50,79,.06)` | `rgba(229,64,101,.10)` |
-| `action-danger-fg` | `#c7324f` | `#e54065` |
-| `input-bg` | `#ffffff` | `rgba(138,133,160,.04)` |
-| `input-border` | `rgba(90,86,112,.12)` | `rgba(138,133,160,.10)` |
-| `selected-row-bg` | `rgba(124,106,246,.06)` | same |
+| `title-bar-bg` | `rgba(255,255,255,.88)` | `rgba(27,28,31,.85)` |
+| `status-bar-bg` | `rgba(245,245,247,.88)` | `rgba(21,22,24,.70)` |
+| `overlay-bg` | `rgba(16,18,27,.35)` | `rgba(0,0,0,.60)` |
+| `modal-bg` | `#ffffff` | `#1b1c1f` |
+| `input-bg` | `#ffffff` | `rgba(255,255,255,.035)` |
 | `toggle-knob` | `#ffffff` | `#ffffff` |
+| `code-block-bg` | `#f0f1f4` | `#151618` |
+| `code-selection` | `rgba(79,70,229,.16)` | `rgba(127,126,255,.28)` |
+| `chip-count-on-bg` | `rgba(23,24,28,.08)` | `rgba(255,255,255,.10)` |
+| `stripe-overlay` | `rgba(255,255,255,.40)` | `rgba(255,255,255,.28)` |
+| `find-match-bg` / `find-match-current-bg` | `rgba(201,138,18,.28)` / `.55` | `rgba(229,180,84,.26)` / `.50` |
+| `status-fill-foreground` | `#12121a` | `#12121a` |
+| `danger-fill-foreground` | `#ffffff` | `#12121a` |
 
-### 3.7 Chrome & Overlays
+### 3.7 Diff
 
-| Token | Light | Dark |
-|---|---|---|
-| `title-bar-bg` | `rgba(247,245,251,.88)` | `rgba(26,23,38,.80)` |
-| `status-bar-bg` | `rgba(247,245,251,.88)` | `rgba(17,15,26,.60)` |
-| `overlay-bg` | `rgba(0,0,0,.35)` | `rgba(0,0,0,.65)` |
-| `modal-bg` | `#ffffff` | `#1a1726` |
-| `modal-border` | `rgba(90,86,112,.10)` | `rgba(138,133,160,.10)` |
+- Added — `diff-added-{bg,bg-highlight,gutter-bg}`: tints of `status-green` (the word highlight is 14% light / 16% dark so syntax colours stay above 4.5:1)
+- Deleted — `diff-deleted-{bg,bg-highlight,gutter-bg}`: tints of `status-red`
+- `diff-context-bg` (transparent), `diff-hunk-header-bg`, `diff-hunk-header-text`, `diff-line-number`, `diff-file-header-{bg,border}`, `diff-border`
 
-### 3.8 Toasts
+### 3.8 Syntax (Tree-sitter diff view, file viewer, SQL editor)
 
-- `toast-bg` — `rgba(255,255,255,.96)` / `rgba(26,23,38,.96)`
-- Per severity `success | error | warning | info | merged`: `toast-{sev}-glow`, `toast-{sev}-stripe`, `toast-{sev}-icon-bg`
-  - Stripes: `#3ba68e`/`#7dd3c0`, `#c7324f`/`#e54065`, `#d4960d`/`#f5b73b`, `#6655d4`/`#9384f7`, `#8250df`/`#a371f7`
-  - Merged also has `toast-merged-icon-fg` and an animated `toast-merged-shimmer` gradient (not exported to Tailwind)
-
-### 3.9 Diff
-
-- Added — `diff-added-{bg,bg-highlight,gutter-bg}`: 7/20/5% green light, 10/25/6% dark
-- Deleted — `diff-deleted-{bg,bg-highlight,gutter-bg}`: 6/18/4% red light, 10/22/6% dark
-- `diff-context-bg` (transparent), `diff-hunk-header-bg`, `diff-hunk-header-text`, `diff-line-number`
-- `diff-file-header-{bg,border}`, `diff-border`
-- `code-block-bg` — `#f0ecf9` / `#110f1a`
-
-### 3.10 Syntax (Tree-sitter)
+Tuned for graphite and porcelain: every token clears 4.5:1 on `background`, `surface` and `code-block-bg`, and on the added / deleted diff lines including the word highlights, in its theme (`contrast.test.ts` composites the diff overlays over the background).
 
 | Token | Role | Light | Dark |
 |---|---|---|---|
-| `syntax-keyword` | `if`, `fn`… | `#6655d4` | `#b8b0f8` |
-| `syntax-string` | strings | `#3ba68e` | `#7dd3c0` |
-| `syntax-comment` | comments | `#8a85a0` | `#5a5670` |
-| `syntax-number` | numbers | `#b07d09` | `#f5b73b` |
-| `syntax-type` | types, classes | `#c7324f` | `#e54065` |
-| `syntax-function` | functions | `#3a3550` | `#c8c4d6` |
-| `syntax-variable` | identifiers | `#1a1726` | `#edeaf4` |
-| `syntax-operator` | operators | `#5a5670` | `#8a85a0` |
-| `syntax-punctuation` | punctuation | `#8a85a0` | `#5a5670` |
-| `syntax-constant` | `true`, `null` | `#6655d4` | `#b8b0f8` |
-| `syntax-property` | properties | `#3a3550` | `#c8c4d6` |
-| `syntax-tag` | JSX/HTML tags | `#c7324f` | `#e54065` |
-| `syntax-attribute` | attributes | `#b07d09` | `#f5b73b` |
-| `syntax-plain` | fallback | `#1a1726` | `#edeaf4` |
+| `syntax-keyword` | `if`, `fn`… | `#6b3fd4` | `#b4a8ff` |
+| `syntax-string` | strings | `#136c49` | `#7fd6a8` |
+| `syntax-comment` | comments | `#5d5f68` | `#9698a0` |
+| `syntax-number` | numbers | `#8b5200` | `#f0bd6b` |
+| `syntax-type` | types, classes | `#0a6879` | `#6cc6d8` |
+| `syntax-function` | functions | `#2d56c8` | `#8fb4ff` |
+| `syntax-variable` | identifiers | `#17181c` | `#ededef` |
+| `syntax-operator` | operators | `#5d606a` | `#9c9da4` |
+| `syntax-punctuation` | punctuation | `#5d5f68` | `#97989e` |
+| `syntax-constant` | `true`, `null` | `#aa2f65` | `#f08bb6` |
+| `syntax-property` | properties | `#1d5c96` | `#a9c7f0` |
+| `syntax-tag` | JSX/HTML tags | `#af2c48` | `#f07d8c` |
+| `syntax-attribute` | attributes | `#8b5200` | `#f0bd6b` |
+| `syntax-plain` | fallback | `#17181c` | `#ededef` |
 
-### 3.11 Small Groups
+### 3.9 Small Groups
 
-- **What's New** — `whats-new-{new,improved,fixed}-{fg,bg,border}` (green / amber / purple), `whats-new-rail`
+- **Toasts** — `toast-bg`, and per severity `toast-{success,error,warning,info,merged}-{glow,stripe,icon-bg}`
+- **What's New** — `whats-new-{new,improved,fixed}-{fg,bg,border}`, `whats-new-rail`
 - **Scrollbar** — `scrollbar-thumb`, `scrollbar-thumb-hover`
-- **Wizard** — `wizard-step-{active,complete,inactive,track}`
+- **Wizard** — `wizard-step-{active,complete,inactive,track}` (the sliding progress track)
 - **Brand gradients** — `splash-gradient-end`, `logo-gradient-{start,end}`
-- **Other** — `avatar-text`, `badge-progress-track`
 
 ---
 
@@ -196,65 +182,73 @@ Scale tokens live on `:root` and are not themed (except elevation).
 | `--space-10` | 20px | `p-10` |
 | `--space-12` | 24px | `p-12` |
 
-> ⚠️ Only these nine steps are overridden. Any other step falls back to Tailwind's 4px multiplier (`p-1.5` = 6px, `p-2.5` = 10px, `p-7` = 28px, `p-9` = 36px), so the scale isn't monotonic (`p-7` 28px > `p-8` 16px). Stick to the steps above.
+> Only these nine steps are overridden. Any other step falls back to Tailwind's 4px multiplier (`p-1.5` = 6px, `p-7` = 28px), so the scale isn't monotonic. Stick to the steps above.
 
 ### 4.2 Radius
 
 | Token | Value | Usage |
 |---|---|---|
 | `--radius-sm` | 5px | Buttons, chips, inputs |
-| `--radius-md` | 6px | Window controls |
+| `--radius-md` | 6px | Window controls, segmented items |
 | `--radius-lg` | 8px | Cards, panels |
 | `--radius-xl` | 12px | Large surfaces |
 | `--radius-pill` | 9999px | Pills, dots, avatars |
 
-Modals and Focus rows use a literal 10px.
-
 ### 4.3 Typography
 
-System fonts only; no webfonts.
+Self-hosted variable fonts via `@fontsource-variable` (bundled into `dist/`, no network).
 
-| Token | Value |
-|---|---|
-| `--font-ui` → `font-sans` | `-apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif` |
-| `--font-code` → `font-mono` | `"Cascadia Code", "Cascadia Mono", "Consolas", "Courier New", monospace` |
+| Token | Family | Where |
+|---|---|---|
+| `--font-ui` → `font-sans` | Inter | `body`; the shell, lists, chrome and every tool window |
+| `--font-reading` → `font-reading` | Instrument Sans | PR detail, work item detail, Quick Review, the What's new reading view |
+| `--font-code` → `font-mono` | JetBrains Mono | Code, diffs, paths, SQL results, `Kbd` chips |
 
 | Token | Size | Usage |
 |---|---|---|
-| `--text-micro` | 10px | Counters, dense meta |
-| `--text-small` | 11px | Pills, toolbars, chips |
-| `--text-body` | 12px | Buttons, card body, tabs |
-| `--text-base` | 13px | Expanded content, card headings |
-| `--text-title` | 18px | Window / page titles |
+| `--text-micro` | 10px | Key chips, dense meta |
+| `--text-small` | 11px | Status bars, pills, meta |
+| `--text-body` | 12px | Buttons, secondary copy |
+| `--text-base` | 13px | Lists, title bars, body |
+| `--text-title` | 18px | Page titles |
 
-Weights (no tokens): 400 body, 500 labels and buttons, 600 pills and emphasis, 700 titles. Code views use `--code-line-height: 1.5`.
+Labels are sentence case; there are no uppercase tracked headings. Numbers in lists and status bars use tabular numerals.
 
 ### 4.4 Motion
 
+`src/styles/motion.css`:
+
 | Token | Value | Usage |
 |---|---|---|
-| `--duration-press` | 80ms | Press scale transform |
-| `--duration-color` | 120ms | Background / color on pressables |
-| `--duration-ui` | 150ms | Border, opacity |
-| `--duration-tab` | 200ms | Tab underline (`ease-out`) |
-| `--duration-breath` | 2600ms | Pulse / settle loops |
+| `--motion-fast` | 150ms | Hover, press, chip colour, toggle knob |
+| `--motion-base` | 260ms | Fades, section / settings / wizard-step crossfades, tool-window entrance |
+| `--motion-move` | 320ms | Sliding highlights, FLIP reorders, wizard progress |
+| `--motion-push` | 360ms | View push / pop, the What's new hero reveal |
+| `--motion-expand` | 340ms | Grid-row expansion |
+| `--ease-out` | `cubic-bezier(.16,1,.3,1)` | Enter, expand, push |
+| `--ease-std` | `cubic-bezier(.2,.8,.2,1)` | Move, reflow, highlight |
+| `--ease-in` | `cubic-bezier(.4,0,1,1)` | Leave, dismiss, pop |
 
-Press scales: `0.90` icon buttons, `0.92` window controls, `0.97` buttons. Easing is literal `ease` / `ease-out` (no tokens).
+The older `--duration-press` (80ms), `--duration-color` (120ms), `--duration-ui` (150ms), `--duration-tab` (200ms) and `--duration-breath` (2600ms) stay for components not yet migrated.
+
+**Reduced motion:** `@media (prefers-reduced-motion: reduce)` and `html.reduce-motion` (Settings → Appearance → Reduce motion) set every `--motion-*` to 0.01ms and stop looping animations. `motionOK()` in `src/utils/motion.ts` reads the same two signals and gates `flip()`, `flipIfSmall()` (FLIP that skips lists over 150 rows) and `withViewTransition()`.
+
+**Tool-window entrance:** `revealWindow()` in `src/utils/window-reveal.ts` invokes `window_ready` and, once it settles, plays `.bd-window-enter` on `#root` (fade and scale from 0.98 over `--motion-base`). Until then `#root` holds the first frame (`.bd-window-pending`). The file viewer, built visible, calls `playWindowEnter()` on mount. Nothing is added under reduced motion.
 
 ### 4.5 Elevation
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
-| `--elevation-1` | `0 1px 2px rgba(0,0,0,.04)` | `…rgba(0,0,0,.2)` | Interactive card hover |
-| `--elevation-2` | `0 8px 32px rgba(26,23,38,.14)` | `…rgba(0,0,0,.4)` | Floating panels |
-| `--elevation-3` | `0 20px 60px rgba(26,23,38,.28)` | `…rgba(0,0,0,.6)` | Modals |
+| `--elevation-1` | `0 1px 2px rgba(16,18,27,.04)` | `…rgba(0,0,0,.2)` | Toggle knob, card hover |
+| `--elevation-2` | `0 8px 32px rgba(16,18,27,.14)` | `…rgba(0,0,0,.4)` | Flyout panel, popovers, pickers |
+| `--elevation-3` | `0 20px 60px rgba(16,18,27,.28)` | `…rgba(0,0,0,.6)` | Modals, menus |
 
 Elevation isn't exported to Tailwind; use `shadow-[var(--elevation-2)]` or CSS.
 
 ### 4.6 Focus
 
-- Pressables: `outline: 2px solid var(--color-accent); outline-offset: 1px` (`-2px` on window controls)
-- Inputs: border color shifts to `--color-accent`
+- Pressables: `outline: 2px solid var(--color-accent)`; `outline-offset: -2px` inside rows and segmented controls, `1px` elsewhere
+- Inputs: border colour shifts to `--color-accent`
 
 ---
 
@@ -295,12 +289,15 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | `LinearProgress` | `value`, `tone` accent / success / warning / error | `.bd-linear` — 4px |
 | `SegmentedProgress` | `passed`, `running`, `total`; striped running segment | — |
 | `Tabs` | `value`, `onChange`, `tabs: {id,label,count,indicator}[]`, `dense` | `.bd-tabs` — 2px underline, 200ms |
-| `Seg2` | two-option segmented control | — |
+| `Seg2` | segmented control: `value`, `options`, `size` sm / md, `full`, `ariaLabel`; the highlight slides (`SlidingHighlight`) | `.bd-filter.bd-seg` |
+| `SlidingHighlight` | `activeKey`, `variant` fill / underline; items carry `data-highlight-key` | `.bd-slide` |
+| `ProgressButton` | `Button` that fills while `state` is busy and flips to `doneLabel` (`useProgressAction`) | `.bd-progress-btn` |
+| `CheckBar` | check count plus proportional bar | `.bd-checkbar` |
 | `Input` | native input + `leading` / `trailing` | `.bd-input` — 28px |
 | `TextInput` | controlled; `type` text / password / number; `mono`, `suffix` | `.bd-input` |
 | `Select` | native select with Lucide chevron | — |
 | `Checkbox` | `checked`, `label`, `hint` | — |
-| `Toggle` / `ToggleRow` | switch; row adds `label`, `hint` | — |
+| `Toggle` / `ToggleRow` | switch, knob slides over `--motion-fast`; row adds `label`, `hint` | `.bd-toggle` |
 | `Slider` | `min`, `max`, `step`, `suffix`, `format` | — |
 | `Field` | `label`, `hint`, `dense`, `anchorId` (settings search target) | — |
 | `SectionHeader` | `title`, `subtitle`, `badge` | — |
@@ -314,8 +311,8 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | Component | Notes |
 |---|---|
 | `chrome/WindowControls` | Callback-based min / max / close for pop-out windows |
-| `chrome/WindowStatusBar` | `left`, `right` slots; `.bd-statusbar` 26px |
-| `WindowTitleBar` | Title + meta + window controls for pop-outs |
+| `chrome/WindowStatusBar` | `left`, `right`, `hints` (`Kbd` chips with a label); `.bd-statusbar` 28px, one top hairline, Inter 11px, tabular numerals. Shared with the main window. |
+| `WindowTitleBar` | Every tool window's title bar: logo, `title` (string or node), `meta`, `actions`, window controls, optional `onClose`. `.bd-title-bar` 36px, Inter 13px, one bottom hairline, the same bar as the main window's. |
 | `ConfirmDialog` | `variant` danger / default; focus-trapped |
 | `Markdown` / `MarkdownImage` | `.markdown-body`; images open full size |
 | `ErrorBoundary` | Per-window error boundary |
@@ -361,7 +358,7 @@ Candidates for new primitives:
 | Skeleton | `FlyoutInitializing`, `PrList`, `WorktreePaletteApp` |
 | Toast | `FlyoutToast` and `MergeToast` |
 | Badges | `LabelBadge`, `MergeScoreBadge`, `LinkedWorkItemBadge` beside `Pill` |
-| Chips / segmented | `work-item-palette/FilterChip`, `ChipInput`, `GroupSeg` duplicate `Chip` / `Seg2` |
+| Chips | `work-item-palette/FilterChip` and `ChipInput` beside `Chip` |
 | Window controls | `primitives/WindowControls` and `chrome/WindowControls` overlap |
 
 ---
@@ -411,10 +408,10 @@ Candidates for new primitives:
 
 ## 8. Storybook
 
-- Config: `src/BorgDock.Tauri/.storybook/` — Tauri APIs mocked via `.storybook/mocks/`, `index.css` loaded, light / dark / system theme toolbar
-- 31 app- and feature-level stories: main window (`layout/MainWindow.stories.tsx`), flyout, Quick Review, palettes, file viewer, SQL, What's New, work items, PR detail (app, panel, every tab, checkout, checklist, composer), settings (app, every section, dialogs)
+- Config: `src/BorgDock.Tauri/.storybook/` — Tauri APIs mocked via `.storybook/mocks/`, `index.css` loaded, light / dark / system theme toolbar applied through the same `applyTheme` as the app
+- Every window has a `ThemeLight` / `ThemeDark` pair (`globals: { theme }`): settings (Appearance panel), SQL, file palette, file viewer, work item palette, worktree window, flyout, work item detail and PR detail pop-outs, What's new; the setup wizard has one story per step in both themes (`wizard/SetupWizard.stories.tsx`)
+- Side by side in both themes (`BothThemes` from `src/test-support/story-themes.tsx`): `Shared/Primitives`, `Shared/WindowChrome` (title and status bars), `Settings/AppearanceSection`
 - Hero screenshots for release notes come from these stories (`scripts/screenshot-stories.mjs` + `design/whats-new/<version>.heroes.json`)
-- No primitive or token stories yet
 
 ---
 
@@ -423,19 +420,20 @@ Candidates for new primitives:
 ```json
 {
   "color": {
-    "accent":         { "$value": "#6655d4", "$type": "color", "$extensions": { "dark": "#7c6af6" } },
-    "background":     { "$value": "#f7f5fb", "$type": "color", "$extensions": { "dark": "#110f1a" } },
-    "surface":        { "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#1a1726" } },
-    "text-primary":   { "$value": "#1a1726", "$type": "color", "$extensions": { "dark": "#edeaf4" } },
-    "text-secondary": { "$value": "#3a3550", "$type": "color", "$extensions": { "dark": "#c8c4d6" } },
-    "text-tertiary":  { "$value": "#5a5670", "$type": "color", "$extensions": { "dark": "#8a85a0" } },
-    "text-muted":     { "$value": "#6a6580", "$type": "color", "$extensions": { "dark": "#9490a8" } },
-    "status-green":   { "$value": "#3ba68e", "$type": "color", "$extensions": { "dark": "#7dd3c0" } },
-    "status-red":     { "$value": "#c7324f", "$type": "color", "$extensions": { "dark": "#e54065" } },
-    "status-yellow":  { "$value": "#b07d09", "$type": "color", "$extensions": { "dark": "#f5b73b" } },
+    "accent":         { "$value": "#4f46e5", "$type": "color", "$extensions": { "dark": "#7f7eff" } },
+    "accent-foreground": { "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#12121a" } },
+    "background":     { "$value": "#f5f5f7", "$type": "color", "$extensions": { "dark": "#151618" } },
+    "surface":        { "$value": "#ffffff", "$type": "color", "$extensions": { "dark": "#1b1c1f" } },
+    "text-primary":   { "$value": "#17181c", "$type": "color", "$extensions": { "dark": "#ededef" } },
+    "text-secondary": { "$value": "#5d606a", "$type": "color", "$extensions": { "dark": "#9c9da4" } },
+    "text-tertiary":  { "$value": "#8f929c", "$type": "color", "$extensions": { "dark": "#67686f" } },
+    "text-muted":     { "$value": "#6b6e78", "$type": "color", "$extensions": { "dark": "#8e8f96" } },
+    "status-green":   { "$value": "#1f9d6b", "$type": "color", "$extensions": { "dark": "#5cc98f" } },
+    "status-red":     { "$value": "#d64560", "$type": "color", "$extensions": { "dark": "#f0616d" } },
+    "status-yellow":  { "$value": "#c98a12", "$type": "color", "$extensions": { "dark": "#e5b454" } },
     "status-merged":  { "$value": "#8250df", "$type": "color", "$extensions": { "dark": "#a371f7" } },
-    "subtle-border":  { "$value": "rgba(90,86,112,0.08)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.08)" } },
-    "strong-border":  { "$value": "rgba(90,86,112,0.14)", "$type": "color", "$extensions": { "dark": "rgba(138,133,160,0.14)" } }
+    "subtle-border":  { "$value": "#e5e6ea", "$type": "color", "$extensions": { "dark": "rgba(255,255,255,0.065)" } },
+    "strong-border":  { "$value": "#d4d6dc", "$type": "color", "$extensions": { "dark": "rgba(255,255,255,0.12)" } }
   },
   "dimension": {
     "space-1": { "$value": "2px",  "$type": "dimension" },
@@ -461,7 +459,12 @@ Candidates for new primitives:
     "color":  { "$value": "120ms",  "$type": "duration" },
     "ui":     { "$value": "150ms",  "$type": "duration" },
     "tab":    { "$value": "200ms",  "$type": "duration" },
-    "breath": { "$value": "2600ms", "$type": "duration" }
+    "breath": { "$value": "2600ms", "$type": "duration" },
+    "motion-fast":   { "$value": "150ms", "$type": "duration" },
+    "motion-base":   { "$value": "260ms", "$type": "duration" },
+    "motion-move":   { "$value": "320ms", "$type": "duration" },
+    "motion-push":   { "$value": "360ms", "$type": "duration" },
+    "motion-expand": { "$value": "340ms", "$type": "duration" }
   }
 }
 ```
@@ -473,24 +476,21 @@ Candidates for new primitives:
 ### Adoption
 - **Semantic utilities are barely used.** Components reach tokens through ~790 `*-[var(--…)]` arbitrary classes and ~330 inline `style` `var()` strings; `text-text-muted` appears 11 times.
 - **Arbitrary sizes win over tokens.** `text-[11px]` (87), `text-[10px]` (63), `text-[13px]` (45), plus off-scale `text-[11.5px]` / `text-[10.5px]`; `text-micro/small/body` utilities have 0 uses. Tailwind default `text-xs`, `rounded-md`, `shadow-xl` are common.
-- **Hard-coded colors** — 26 six-digit hex in component TSX, mostly `work-items/shared/wi-visuals.tsx` (state dots) and `flyout/FlyoutGlance.tsx` (off-palette gradients); avatar gradients, window-close red, and find highlights are literals in CSS.
-- **Theme logic duplicated** in `FlyoutApp`, `PRDetailApp`, `SqlApp`, `WorkItemDetailApp`, and `useWorkItemPaletteSearch` instead of `useTheme`.
-- **No enforcement** — no lint rule for hex or arbitrary values; the contrast test uses hand-copied hex values.
+- **Colours in CSS** — components are literal-free (`src/styles/__tests__/component-colors.test.ts`), but a few CSS rules still carry literals: avatar gradients (`.bd-avatar--*`), the window-close red, the splash (`public/entry/splash.css`).
+- **`text-tertiary` is below AA** in both themes; readable small text must use `text-muted`. Older main-window components still use tertiary for words.
 
 ### Token Hygiene
 - **Unused tokens (~57)**: floating-badge set (`badge-glass`, `badge-surface`, `badge-border`, `badge-glow-*`), all `review-*`, `whats-new-*` fg/bg/border, `tracked-*` / `working-on-*`, `tab-active/inactive`, `pr-badge-*`, `pr-my-badge-*`, `branch-badge-*`, `target-badge-*`, `comment-count-fg`, several `action-*` and `check-*`, `avatar-text`, `expanded-row-bg`, `diff-hunk-header` (duplicate), `syntax-tag/attribute/plain`, `radius-md/xl`, `space-10/12`, `text-title`, `duration-breath`
 - **Dead CSS**: `.sidebar-*` block (and its `sidebar-gradient-*` tokens), `.field-input`, and six unused keyframes (`toast-progress-shrink`, `notifPop`, `scale-in`, `comment-enter`, `fadeSlideIn`, `slideInRight`)
 - **Aliases**: `bg-primary` duplicates `background`
-- **Undefined references**: `--color-app-background` (PR detail fixture); `--flyout-shadow` defined inline in `FlyoutFrame.tsx`
-- **Two body font stacks**: `body` doesn't use `--font-ui`
+- **Undefined references**: `--color-app-background` (PR detail fixture)
 - **Two window-control families**: `.bd-wc` (36×28) and `.bd-window-control` (28×24)
 
 ### Missing
-- No `prefers-reduced-motion` or `forced-colors` handling
-- No line-height, font-weight, easing, or focus-ring tokens
+- No `forced-colors` handling
+- No line-height, font-weight or focus-ring tokens
 - Spacing scale gaps (see §4.1)
 - No `dark:` variant bound to `.dark`
-- No primitive / token stories in Storybook
 - Primitives still missing for Dialog, Menu, Tooltip, Skeleton, Toast (see §6.5)
 
 ---
@@ -500,7 +500,8 @@ Candidates for new primitives:
 - Tokens, `@theme`, component classes: `src/BorgDock.Tauri/src/styles/index.css`
 - Quick Review styles: `src/BorgDock.Tauri/src/components/focus/quick-review.css`
 - Primitives: `src/BorgDock.Tauri/src/components/shared/primitives/`
-- Theme hook: `src/BorgDock.Tauri/src/hooks/useTheme.ts`
-- Contrast test: `src/BorgDock.Tauri/src/styles/__tests__/contrast.test.ts`
+- Motion tokens and helpers: `src/BorgDock.Tauri/src/styles/motion.css`, `src/BorgDock.Tauri/src/utils/motion.ts`, `src/BorgDock.Tauri/src/utils/window-reveal.ts`
+- Theme helper: `src/BorgDock.Tauri/src/utils/theme.ts` (hook: `src/hooks/useTheme.ts`; pre-paint: `public/theme-boot.js`)
+- Contrast checks: `src/BorgDock.Tauri/src/styles/__tests__/contrast.test.ts` (reads `index.css`), `tests/e2e/tool-windows-a11y.spec.ts` (axe, both themes); token-only guard: `src/styles/__tests__/component-colors.test.ts`
 - Design specs & mockups: `docs/superpowers/specs/2026-04-24-shared-components-design.md`, `design/mockups/`, `design/quick-review/`
 - Tray icons: rendered at runtime in `src-tauri/src/platform/tray.rs`; static icon assets in `src-tauri/icons/`

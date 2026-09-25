@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings } from '@/types';
+import { SETTINGS_UI_CHANGED_EVENT } from './settings-events';
 
 interface SettingsState {
   settings: AppSettings;
@@ -114,7 +115,7 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 
 let _saveTimer: ReturnType<typeof setTimeout> | undefined;
 
-export const SETTINGS_UI_CHANGED_EVENT = 'settings:ui-changed';
+export { SETTINGS_UI_CHANGED_EVENT };
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: defaultSettings,

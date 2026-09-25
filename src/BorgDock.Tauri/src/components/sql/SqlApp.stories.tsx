@@ -1,18 +1,17 @@
 // src/components/sql/SqlApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useEffect } from 'react';
-import { getControl } from '../../../.storybook/mocks/control';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { AppSettings } from '@/types/settings';
 import type { SqlSchemaPayload } from '@/types/sql-schema';
-import type { SqlSnippet } from './snippet-types';
-import { SqlApp } from './SqlApp';
+import { getControl } from '../../../.storybook/mocks/control';
 import {
   connBorgDockDev,
   connHorizonProd,
   connLongName,
   makeSettings,
+  type QueryResult,
   resultMultiSet,
   resultSmallSelect,
   resultTruncated,
@@ -22,8 +21,9 @@ import {
   snippetActiveQuery,
   snippetsEmpty,
   snippetsFew,
-  type QueryResult,
 } from './__fixtures__/sql-data';
+import { SqlApp } from './SqlApp';
+import type { SqlSnippet } from './snippet-types';
 
 // Keys SqlApp persists state to. Cleared before every story so stories
 // don't bleed layout / position / snippet selections into each other.
@@ -46,7 +46,9 @@ interface SqlStoryParams {
   schemaResponse?:
     | SqlSchemaPayload
     | null
-    | ((args: { connectionName: string }) => SqlSchemaPayload | null | Promise<SqlSchemaPayload | null>);
+    | ((args: {
+        connectionName: string;
+      }) => SqlSchemaPayload | null | Promise<SqlSchemaPayload | null>);
   /** Cached schema returned from cache_load_sql_schema. */
   cachedSchema?: SqlSchemaPayload | null;
   /** Static result OR fn returning a result, value, or rejection. */
@@ -135,10 +137,7 @@ function SqlHarness({ params }: { params: SqlStoryParams }) {
 
   if (params.savedPosition) {
     try {
-      localStorage.setItem(
-        'borgdock-sql-position',
-        JSON.stringify(params.savedPosition),
-      );
+      localStorage.setItem('borgdock-sql-position', JSON.stringify(params.savedPosition));
     } catch {
       /* ignore */
     }
@@ -311,7 +310,8 @@ export const ResultMultiSet: Story = {
     params: {
       settings: makeSettings([connBorgDockDev]),
       cachedSchema: schemaSmall,
-      initialQuery: 'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
+      initialQuery:
+        'SELECT COUNT(*) FROM dbo.Customer;\nSELECT Status, COUNT(*) FROM dbo.[Order] GROUP BY Status;',
       executeResponse: resultMultiSet,
     },
   },
@@ -438,3 +438,11 @@ export const PositionPersistedAfterMove: Story = {
     });
   },
 };
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...ResultSuccessSelect, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...ResultSuccessSelect, globals: { theme: 'dark' } };

@@ -225,7 +225,7 @@ export function WorktreePruneDialog({
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-[var(--color-overlay-bg)]" onClick={onClose} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">

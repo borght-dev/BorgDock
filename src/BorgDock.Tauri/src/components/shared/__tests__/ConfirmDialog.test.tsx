@@ -58,7 +58,7 @@ describe('ConfirmDialog', () => {
   it('calls onCancel when overlay is clicked', () => {
     const { container } = render(<ConfirmDialog {...defaultProps} />);
     // The overlay is the first child div with fixed inset-0
-    const overlay = container.querySelector('.fixed.inset-0.bg-black\\/50') as HTMLElement;
+    const overlay = container.querySelector('[data-confirm-overlay]') as HTMLElement;
     fireEvent.click(overlay);
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
   });

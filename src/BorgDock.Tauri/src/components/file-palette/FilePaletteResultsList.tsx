@@ -49,8 +49,12 @@ export function FilePaletteResultsList({
           <div
             key={`${r.rel_path}:${r.line ?? 0}`}
             data-file-result
+            data-key={`r:${r.rel_path}:${r.line ?? 0}`}
             data-selected={selected ? 'true' : 'false'}
-            className={clsx('bd-fp-result-row-wrap', selected && 'bd-fp-result-row-wrap--selected')}
+            className={clsx(
+              'bd-fp-result-row-wrap bd-list-row',
+              selected && 'bd-fp-result-row-wrap--selected',
+            )}
             onMouseEnter={() => onHover(i)}
             onContextMenu={(e) => {
               e.preventDefault();

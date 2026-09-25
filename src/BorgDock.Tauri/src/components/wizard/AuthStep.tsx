@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, Dot, Pill } from '../shared/primitives';
-import { Input } from '../shared/primitives';
+import { Button, Card, Dot, Input, Pill } from '../shared/primitives';
 
 interface AuthStepProps {
   authMethod: 'ghCli' | 'pat';
@@ -37,8 +36,8 @@ export function AuthStep({
     <div className="flex flex-col items-center gap-6" data-wizard-step="auth">
       <div className="text-center">
         <h2 className="text-lg font-semibold text-text-primary">Connect to GitHub</h2>
-        <p className="mt-1 text-xs text-text-tertiary">
-          Choose how BorgDock authenticates with GitHub
+        <p className="mt-1 text-xs text-text-muted">
+          BorgDock reads your pull requests and checks from GitHub. Pick how you sign in.
         </p>
       </div>
 
@@ -46,13 +45,7 @@ export function AuthStep({
       {authStatus && (
         <Pill
           tone={authStatusTone}
-          icon={
-            <Dot
-              tone={dotTone}
-              pulse={authStatus === 'Checking...'}
-              className="shrink-0"
-            />
-          }
+          icon={<Dot tone={dotTone} pulse={authStatus === 'Checking...'} className="shrink-0" />}
           className="w-full max-w-sm"
           data-auth-status={
             isAuthValid ? 'valid' : authStatus === 'Checking...' ? 'pending' : 'invalid'
@@ -79,10 +72,12 @@ export function AuthStep({
               className="pointer-events-none w-full text-center"
             >
               <div className="text-sm font-medium text-text-primary">
-                {method === 'ghCli' ? 'GitHub CLI' : 'Access Token'}
+                {method === 'ghCli' ? 'GitHub CLI' : 'Access token'}
               </div>
               <div className="mt-0.5 text-[10px] text-text-muted">
-                {method === 'ghCli' ? 'Use existing gh login' : 'Paste your GitHub token'}
+                {method === 'ghCli'
+                  ? 'Use your existing gh login'
+                  : 'Paste a personal access token'}
               </div>
             </Card>
           </button>
@@ -92,8 +87,8 @@ export function AuthStep({
       {/* PAT input */}
       {authMethod === 'pat' && (
         <div className="w-full max-w-sm">
-          <label className="text-[11px] font-medium text-text-tertiary">
-            Personal Access Token
+          <label className="text-[11px] font-medium text-text-secondary">
+            Personal access token
           </label>
           <Input
             className="mt-1"
@@ -116,7 +111,7 @@ export function AuthStep({
 
       {/* Verify Connection button */}
       <Button variant="primary" size="md" onClick={onValidateAuth}>
-        Verify Connection
+        Check connection
       </Button>
     </div>
   );

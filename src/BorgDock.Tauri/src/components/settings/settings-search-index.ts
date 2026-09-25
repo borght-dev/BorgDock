@@ -74,6 +74,18 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   { sectionId: 'appearance', anchorId: 'pr-density', label: 'Pull request density' },
   {
     sectionId: 'appearance',
+    anchorId: 'focus-layout',
+    label: 'Focus layout',
+    keywords: ['board', 'list', 'columns'],
+  },
+  {
+    sectionId: 'appearance',
+    anchorId: 'stale-after-days',
+    label: 'Stale after',
+    keywords: ['stale'],
+  },
+  {
+    sectionId: 'appearance',
     anchorId: 'reduce-motion',
     label: 'Reduce motion',
     keywords: ['animation', 'transition'],

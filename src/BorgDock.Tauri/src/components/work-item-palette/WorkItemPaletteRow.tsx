@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { MessageSquare } from 'lucide-react';
 import {
   avatarToneFor,
@@ -16,63 +17,29 @@ interface Props {
   onSelect: (id: number) => void;
 }
 
+/**
+ * One work item in the palette, on the shared list-row grammar
+ * (`.bd-list-row`: hover wash, accent selection bar, tabular numerals).
+ * `data-key` lets the palette FLIP rows when the query changes.
+ */
 export function WorkItemPaletteRow({ item, isSelected, onMouseEnter, onSelect }: Props) {
   const initials = getInitials(item.assignedTo);
   return (
     <div
       data-palette-row
+      data-key={`wi-${item.id}`}
+      data-selected={isSelected ? 'true' : 'false'}
+      className="bd-wp-row bd-list-row"
       onMouseEnter={onMouseEnter}
       onMouseDown={() => onSelect(item.id)}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '16px 14px 78px 1fr auto auto 18px',
-        columnGap: 10,
-        alignItems: 'center',
-        padding: '7px 14px',
-        paddingLeft: isSelected ? 12 : 14,
-        cursor: 'pointer',
-        background: isSelected ? 'var(--color-selected-row-bg)' : 'transparent',
-        borderLeft: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent',
-        borderBottom: '1px solid var(--color-subtle-border)',
-      }}
     >
       <PrioBars prio={item.priority} />
       <TypeGlyph type={item.workItemType} />
-      <span
-        className="bd-mono"
-        style={{
-          fontSize: 11.5,
-          color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)',
-          fontWeight: isSelected ? 600 : 400,
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
+      <span className={clsx('bd-wp-row__id', isSelected && 'bd-wp-row__id--selected')}>
         #{item.id}
       </span>
-      <span
-        style={{
-          fontSize: 12.5,
-          color: 'var(--color-text-primary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          fontWeight: isSelected ? 500 : 400,
-        }}
-      >
-        {item.title}
-      </span>
-      <span
-        aria-label={item.commentCount ? 'Comments' : undefined}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          fontSize: 10,
-          color: 'var(--color-text-faint)',
-          fontVariantNumeric: 'tabular-nums',
-          minWidth: 14,
-        }}
-      >
+      <span className="bd-wp-row__title">{item.title}</span>
+      <span className="bd-wp-row__comments" aria-label={item.commentCount ? 'Comments' : undefined}>
         {item.commentCount ? (
           <>
             <MessageSquare size={10} strokeWidth={2} />

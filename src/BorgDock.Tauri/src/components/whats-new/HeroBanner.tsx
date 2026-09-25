@@ -1,15 +1,8 @@
+import clsx from 'clsx';
 import type React from 'react';
 import { useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { Kind } from '@/types/whats-new';
-
-const KIND_GRADIENTS: Record<Kind, string> = {
-  new: 'bg-[radial-gradient(ellipse_360px_180px_at_50%_0%,rgba(59,166,142,0.16),transparent_60%),linear-gradient(160deg,#1a1335_0%,#2a1f5e_100%)]',
-  improved:
-    'bg-[radial-gradient(ellipse_360px_180px_at_50%_0%,rgba(245,183,59,0.14),transparent_60%),linear-gradient(160deg,#2a1f5e_0%,#3a3015_100%)]',
-  fixed:
-    'bg-[radial-gradient(ellipse_360px_180px_at_50%_50%,rgba(124,106,246,0.22),transparent_65%),linear-gradient(160deg,#1a1335_0%,#2a2066_50%,#1a1335_100%)]',
-};
 
 const KIND_ICON: Record<Kind, React.ReactElement> = {
   new: (
@@ -62,9 +55,14 @@ const KIND_ICON: Record<Kind, React.ReactElement> = {
 interface Props {
   hero: { src: string; alt: string } | null;
   kind: Kind;
+  /**
+   * The window's one orchestrated moment: the hero rises and fades in once as
+   * the window opens (`.bd-wn-hero--reveal`, instant under reduced motion).
+   */
+  reveal?: boolean;
 }
 
-export function HeroBanner({ hero, kind }: Props) {
+export function HeroBanner({ hero, kind, reveal = false }: Props) {
   const [errored, setErrored] = useState(false);
   if (hero && !errored) {
     // Heroes are now full screenshots captured from Storybook (≈16:10), not the
@@ -72,7 +70,12 @@ export function HeroBanner({ hero, kind }: Props) {
     // width, capped in height so a tall capture can't dominate the card. Legacy
     // wide banner images (≈6:1) still look right under the same `h-auto` rule.
     return (
-      <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] shadow-sm">
+      <div
+        className={clsx(
+          'mb-3 overflow-hidden rounded-lg border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] shadow-sm',
+          reveal && 'bd-wn-hero--reveal',
+        )}
+      >
         <img
           src={hero.src}
           alt={hero.alt}
@@ -87,7 +90,11 @@ export function HeroBanner({ hero, kind }: Props) {
   return (
     <div
       data-fallback={kind}
-      className={`h-[74px] overflow-hidden rounded-md border border-[var(--color-subtle-border)] mb-2.5 flex items-center justify-center text-[rgba(237,234,244,0.9)] ${KIND_GRADIENTS[kind]}`}
+      className={clsx(
+        'bd-wn-fallback h-[74px] overflow-hidden rounded-md border border-[var(--color-subtle-border)] mb-2.5 flex items-center justify-center',
+        `bd-wn-fallback--${kind}`,
+        reveal && 'bd-wn-hero--reveal',
+      )}
       aria-hidden="true"
     >
       {KIND_ICON[kind]}

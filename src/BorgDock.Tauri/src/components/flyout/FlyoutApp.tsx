@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { createLogger } from '@/services/logger';
+import type { ThemeMode } from '@/types/settings';
+import { updateTheme } from '@/utils/theme';
 import { type FlyoutData, FlyoutGlance } from './FlyoutGlance';
 import { FlyoutInitializing } from './FlyoutInitializing';
 import { FlyoutToast } from './FlyoutToast';
@@ -12,12 +14,10 @@ import {
 
 const log = createLogger('FlyoutApp');
 
-function applyTheme(theme: string, reduceMotion?: boolean) {
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark);
-  document.documentElement.classList.toggle('reduce-motion', reduceMotion ?? false);
+/** The flyout's theme comes with each payload from the main window. */
+function applyPayloadTheme(data: Partial<Pick<FlyoutData, 'theme' | 'reduceMotion'>>) {
+  // updateTheme: a payload without `reduceMotion` keeps the current value.
+  updateTheme({ theme: data.theme as ThemeMode, reduceMotion: data.reduceMotion });
 }
 
 async function isFlyoutVisible(): Promise<boolean> {
@@ -67,7 +67,7 @@ export function FlyoutApp() {
             const parsed = JSON.parse(cached) as FlyoutData;
             hasReceivedData.current = true;
             setData(parsed);
-            if (parsed.theme) applyTheme(parsed.theme, parsed.reduceMotion);
+            if (parsed.theme) applyPayloadTheme(parsed);
             // The window is built lazily on first open, long after the main
             // window emitted `init-complete` — and Rust's open nudge fires
             // before this webview has listeners. Cached data means main has
@@ -84,7 +84,7 @@ export function FlyoutApp() {
           if (cancelled) return;
           hasReceivedData.current = true;
           setData(event.payload);
-          if (event.payload.theme) applyTheme(event.payload.theme, event.payload.reduceMotion);
+          if (event.payload.theme) applyPayloadTheme(event.payload);
         });
         if (cancelled) {
           unlisten?.();
@@ -159,7 +159,7 @@ export function FlyoutApp() {
       if (payload.data) {
         setData((prev) => ({ ...prev, ...payload.data }));
         hasReceivedData.current = true;
-        if (payload.data.theme) applyTheme(payload.data.theme, payload.data.reduceMotion);
+        if (payload.data.theme) applyPayloadTheme(payload.data);
       }
       // Always finish init so the splash isn't stuck.
       dispatch({ type: 'init-complete' });

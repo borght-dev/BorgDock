@@ -56,6 +56,26 @@ describe('useTheme', () => {
     expect(document.documentElement.classList.contains('reduce-motion')).toBe(false);
   });
 
+  it('leaves <html> and the stored theme alone until enabled (settings loaded)', () => {
+    localStorage.clear();
+    document.documentElement.classList.add('dark');
+    const { rerender } = renderHook(({ enabled }) => useTheme('light', { enabled }), {
+      initialProps: { enabled: false },
+    });
+    // The pre-paint state (dark here) survives while the settings load.
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(localStorage.getItem('borgdock-theme')).toBeNull();
+
+    rerender({ enabled: true });
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+    expect(localStorage.getItem('borgdock-theme')).toBe('light');
+  });
+
+  it('does not follow the OS before it is enabled', () => {
+    renderHook(() => useTheme('system', { enabled: false }));
+    expect(matchMediaListeners).toHaveLength(0);
+  });
+
   it('applies dark class when initial is "dark"', () => {
     renderHook(() => useTheme('dark'));
     expect(document.documentElement.classList.contains('dark')).toBe(true);

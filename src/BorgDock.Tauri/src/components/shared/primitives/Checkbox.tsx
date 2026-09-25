@@ -22,7 +22,7 @@ export function Checkbox({ checked, onChange, label, hint }: CheckboxProps) {
         className={clsx(
           'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border',
           checked
-            ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
+            ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-accent-foreground)]'
             : 'bg-[var(--color-input-bg)] border-[var(--color-strong-border)]',
         )}
       >

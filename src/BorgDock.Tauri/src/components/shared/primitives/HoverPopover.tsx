@@ -123,7 +123,7 @@ export function HoverPopover({
             background: 'var(--color-card-background)',
             border: '1px solid var(--color-strong-border)',
             borderRadius: 8,
-            boxShadow: '0 10px 32px rgba(0,0,0,0.35)',
+            boxShadow: 'var(--elevation-2)',
             padding: '12px 14px',
             color: 'var(--color-text-primary)',
             fontSize: 13,

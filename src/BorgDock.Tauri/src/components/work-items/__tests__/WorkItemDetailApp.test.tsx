@@ -366,23 +366,6 @@ describe('WorkItemDetailApp', () => {
     });
   });
 
-  it('applies dark theme from settings', async () => {
-    const settings = makeSettings({ ui: { ...makeSettings().ui, theme: 'dark' } });
-    mockInvoke.mockResolvedValueOnce(settings);
-    vi.mocked(getWorkItem).mockResolvedValueOnce(makeWorkItem(42));
-
-    Object.defineProperty(window, 'location', {
-      value: { search: '?id=42', href: 'http://localhost/?id=42' },
-      writable: true,
-    });
-
-    render(<WorkItemDetailApp />);
-
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains('dark')).toBe(true);
-    });
-  });
-
   it('shows "Work Item" title when no ID and no detail data', () => {
     mockInvoke.mockReturnValue(new Promise(() => {}));
     Object.defineProperty(window, 'location', {

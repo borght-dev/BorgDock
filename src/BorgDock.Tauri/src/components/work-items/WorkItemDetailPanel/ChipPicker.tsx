@@ -110,7 +110,7 @@ export function ChipPicker({
             background: 'var(--color-surface)',
             border: '1px solid var(--color-subtle-border)',
             borderRadius: 6,
-            boxShadow: '0 6px 20px rgba(0,0,0,0.18)',
+            boxShadow: 'var(--elevation-2)',
             padding: 4,
           }}
         >
@@ -155,7 +155,7 @@ export function ChipPicker({
             background: 'var(--color-surface)',
             border: '1px solid var(--color-subtle-border)',
             borderRadius: 6,
-            boxShadow: '0 6px 20px rgba(0,0,0,0.18)',
+            boxShadow: 'var(--elevation-2)',
             padding: 6,
           }}
         >

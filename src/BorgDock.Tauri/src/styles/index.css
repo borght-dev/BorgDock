@@ -7,6 +7,7 @@
 @import "./focus-workbench.css";
 @import "./work-items-workbench.css";
 @import "./worktrees-workbench.css";
+@import "./tool-windows.css";
 
 /*
  * @theme inline — promote every runtime CSS custom property into a Tailwind
@@ -455,7 +456,7 @@
 
   /* Diff — tints of the status colours on neutral ink */
   --color-diff-added-bg: rgba(31, 157, 107, 0.08);
-  --color-diff-added-bg-highlight: rgba(31, 157, 107, 0.2);
+  --color-diff-added-bg-highlight: rgba(31, 157, 107, 0.14);
   --color-diff-added-gutter-bg: rgba(31, 157, 107, 0.05);
   --color-diff-deleted-bg: rgba(214, 69, 96, 0.07);
   --color-diff-deleted-bg-highlight: rgba(214, 69, 96, 0.18);
@@ -472,21 +473,23 @@
   --color-tab-inactive: #5d606a;
   --color-code-block-bg: #f0f1f4;
 
-  /* Syntax — retinted in phase 6 */
-  --color-syntax-keyword: #6655d4;
-  --color-syntax-string: #3ba68e;
-  --color-syntax-comment: #8a85a0;
-  --color-syntax-number: #b07d09;
-  --color-syntax-type: #c7324f;
-  --color-syntax-function: #3a3550;
-  --color-syntax-variable: #1a1726;
-  --color-syntax-operator: #5a5670;
-  --color-syntax-punctuation: #8a85a0;
-  --color-syntax-constant: #6655d4;
-  --color-syntax-property: #3a3550;
-  --color-syntax-tag: #c7324f;
-  --color-syntax-attribute: #b07d09;
-  --color-syntax-plain: #1a1726;
+  /* Syntax — tuned for porcelain: every token clears 4.5:1 on the surface,
+     the background, the code-block fill and the added / deleted diff lines,
+     word highlights included (src/styles/__tests__/contrast.test.ts). */
+  --color-syntax-keyword: #6b3fd4;
+  --color-syntax-string: #136c49;
+  --color-syntax-comment: #5d5f68;
+  --color-syntax-number: #8b5200;
+  --color-syntax-type: #0a6879;
+  --color-syntax-function: #2d56c8;
+  --color-syntax-variable: #17181c;
+  --color-syntax-operator: #5d606a;
+  --color-syntax-punctuation: #5d5f68;
+  --color-syntax-constant: #aa2f65;
+  --color-syntax-property: #1d5c96;
+  --color-syntax-tag: #af2c48;
+  --color-syntax-attribute: #8b5200;
+  --color-syntax-plain: #17181c;
 
   /* Code font — JetBrains Mono, self-hosted via @fontsource-variable */
   --font-code: "JetBrains Mono Variable", "Cascadia Code", "Cascadia Mono", "Consolas",
@@ -595,6 +598,23 @@
   --color-status-blue: #2d6be4;
   --color-accent-soft: rgba(79, 70, 229, 0.06);
   --color-bg-primary: #f5f5f7;
+
+  /* ── Tool-window tokens (phase 6) ── */
+  /* Text on a solid status fill (green / amber action pills). Same ink in both
+     themes: white on the porcelain green or amber is under 4.5:1. */
+  --color-status-fill-foreground: #12121a;
+  /* Text on the error-red fill (--color-error-badge-fg): white on the darker
+     porcelain red, ink on the graphite one. */
+  --color-danger-fill-foreground: #ffffff;
+  /* Count bubble inside an active (tinted) chip. */
+  --color-chip-count-on-bg: rgba(23, 24, 28, 0.08);
+  /* Light stripes over the running segment of a progress bar. */
+  --color-stripe-overlay: rgba(255, 255, 255, 0.4);
+  /* Selected text in code editors (SQL editor). */
+  --color-code-selection: rgba(79, 70, 229, 0.16);
+  /* Find-in-file matches (file palette preview, code view). */
+  --color-find-match-bg: rgba(201, 138, 18, 0.28);
+  --color-find-match-current-bg: rgba(201, 138, 18, 0.55);
 }
 
 /* ---- Dark theme overrides ---- */
@@ -613,7 +633,8 @@
   --color-text-ghost: #2c2d32;
 
   --color-accent: #7f7eff;
-  --color-accent-foreground: #ffffff;
+  /* Dark ink on the light indigo: white on #7f7eff is only 3.3:1. */
+  --color-accent-foreground: #12121a;
   --color-accent-subtle: rgba(127, 126, 255, 0.15);
 
   --color-purple: #9d9cff;
@@ -733,7 +754,7 @@
   --color-badge-progress-track: rgba(255, 255, 255, 0.06);
 
   --color-diff-added-bg: rgba(92, 201, 143, 0.1);
-  --color-diff-added-bg-highlight: rgba(92, 201, 143, 0.24);
+  --color-diff-added-bg-highlight: rgba(92, 201, 143, 0.16);
   --color-diff-added-gutter-bg: rgba(92, 201, 143, 0.06);
   --color-diff-deleted-bg: rgba(240, 97, 109, 0.1);
   --color-diff-deleted-bg-highlight: rgba(240, 97, 109, 0.22);
@@ -750,21 +771,22 @@
   --color-tab-inactive: #9c9da4;
   --color-code-block-bg: #151618;
 
-  /* Syntax — retinted in phase 6 */
-  --color-syntax-keyword: #b8b0f8;
-  --color-syntax-string: #7dd3c0;
-  --color-syntax-comment: #5a5670;
-  --color-syntax-number: #f5b73b;
-  --color-syntax-type: #e54065;
-  --color-syntax-function: #c8c4d6;
-  --color-syntax-variable: #edeaf4;
-  --color-syntax-operator: #8a85a0;
-  --color-syntax-punctuation: #5a5670;
-  --color-syntax-constant: #b8b0f8;
-  --color-syntax-property: #c8c4d6;
-  --color-syntax-tag: #e54065;
-  --color-syntax-attribute: #f5b73b;
-  --color-syntax-plain: #edeaf4;
+  /* Syntax — tuned for graphite: every token clears 4.5:1 on the
+     background, the surface, the code-block fill and the diff lines. */
+  --color-syntax-keyword: #b4a8ff;
+  --color-syntax-string: #7fd6a8;
+  --color-syntax-comment: #9698a0;
+  --color-syntax-number: #f0bd6b;
+  --color-syntax-type: #6cc6d8;
+  --color-syntax-function: #8fb4ff;
+  --color-syntax-variable: #ededef;
+  --color-syntax-operator: #9c9da4;
+  --color-syntax-punctuation: #97989e;
+  --color-syntax-constant: #f08bb6;
+  --color-syntax-property: #a9c7f0;
+  --color-syntax-tag: #f07d8c;
+  --color-syntax-attribute: #f0bd6b;
+  --color-syntax-plain: #ededef;
 
   --color-wizard-step-active: #7f7eff;
   --color-wizard-step-complete: #5cc98f;
@@ -826,6 +848,14 @@
   --color-status-blue: #6fa8ff;
   --color-accent-soft: rgba(127, 126, 255, 0.08);
   --color-bg-primary: #151618;
+
+  /* ── Tool-window tokens (phase 6) — dark ── */
+  --color-danger-fill-foreground: #12121a;
+  --color-chip-count-on-bg: rgba(255, 255, 255, 0.1);
+  --color-stripe-overlay: rgba(255, 255, 255, 0.28);
+  --color-code-selection: rgba(127, 126, 255, 0.28);
+  --color-find-match-bg: rgba(229, 180, 84, 0.26);
+  --color-find-match-current-bg: rgba(229, 180, 84, 0.5);
 }
 
 /* ════════════════════════════════════════════════════════
@@ -1666,7 +1696,7 @@ body.sql-resizing .sql-split__handle {
   pointer-events: none;
 }
 .sql-split__handle:hover .sql-split__handle-grip {
-  background: #fff;
+  background: var(--color-accent-foreground);
   opacity: 1;
 }
 
@@ -1965,7 +1995,7 @@ body.sql-resizing .sql-split__handle {
 .sql-editor-cm .cm-gutters {
   background: var(--color-surface);
   border-right: 1px solid var(--color-subtle-border);
-  color: var(--color-text-faint);
+  color: var(--color-text-tertiary);
 }
 .sql-editor-cm .cm-activeLineGutter,
 .sql-editor-cm .cm-activeLine {
@@ -2025,7 +2055,7 @@ body.sql-resizing-v .sql-resize-handle {
 }
 .sql-resize-handle:hover .sql-resize-grip {
   opacity: 1;
-  background: #fff;
+  background: var(--color-accent-foreground);
 }
 
 /* ── Results panel ──────────────────────────────────── */
@@ -2057,11 +2087,9 @@ body.sql-resizing-v .sql-resize-handle {
   color: var(--color-text-tertiary);
 }
 .sql-results__truncated {
-  font-size: 10px;
-  color: var(--color-status-yellow);
+  font-size: 11px;
+  color: var(--color-warning-badge-fg);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .sql-results__spacer {
   flex: 1;
@@ -2172,6 +2200,9 @@ body.sql-resizing-v .sql-resize-handle {
   top: 0;
   z-index: 10;
   background: var(--color-surface);
+  /* The rows carry .bd-list-row's 2px selection bar; the same transparent
+     edge here keeps the header's column hairlines over the rows'. */
+  border-left: 2px solid transparent;
 }
 .sql-grid-body {
   /* height + position set inline by the virtualizer */
@@ -2179,26 +2210,28 @@ body.sql-resizing-v .sql-resize-handle {
 .sql-row-num-header {
   width: 42px;
   min-width: 42px;
-  padding: 8px 8px 8px 12px;
+  padding: 0 8px 0 12px;
+  line-height: 31px;
   text-align: right;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-faint);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-strong-border);
+  border-bottom: 1px solid var(--color-subtle-border);
   border-right: 1px solid var(--color-subtle-border);
   user-select: none;
 }
 .sql-col-header {
-  padding: 8px 14px;
+  padding: 0 14px;
+  line-height: 31px;
   text-align: left;
-  font-size: 11px;
+  font-family: var(--font-ui);
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text-secondary);
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-strong-border);
+  border-bottom: 1px solid var(--color-subtle-border);
   white-space: nowrap;
   position: relative;
   user-select: none;
@@ -2210,35 +2243,30 @@ body.sql-resizing-v .sql-resize-handle {
   text-overflow: ellipsis;
   vertical-align: middle;
 }
+/* Row state (hover wash, selection bar) comes from `.bd-list-row`; rows are
+   the compact list height (32 px) with one hairline between them. */
 .sql-data-row {
   cursor: pointer;
-  border-left: 2px solid transparent;
-  transition: background 0.08s;
-}
-.sql-data-row:hover:not(.sql-data-row--selected) {
-  background: var(--color-surface-hover);
-}
-.sql-data-row--selected {
-  background: var(--color-selected-row-bg);
-  border-left-color: var(--color-accent);
 }
 .sql-data-row--selected .sql-row-num {
-  color: var(--color-accent);
-  font-weight: 700;
+  color: var(--color-purple);
+  font-weight: 600;
 }
 .sql-row-num {
   width: 42px;
   min-width: 42px;
-  padding: 6px 8px 6px 12px;
+  padding: 0 8px 0 12px;
+  line-height: 31px;
   text-align: right;
-  font-size: 10px;
-  color: var(--color-text-faint);
+  font-size: 11px;
+  color: var(--color-text-muted);
   border-right: 1px solid var(--color-subtle-border);
   border-bottom: 1px solid var(--color-subtle-border);
   user-select: none;
 }
 .sql-cell {
-  padding: 6px 14px;
+  padding: 0 14px;
+  line-height: 31px;
   white-space: nowrap;
   border-bottom: 1px solid var(--color-subtle-border);
   color: var(--color-text-primary);
@@ -2247,13 +2275,8 @@ body.sql-resizing-v .sql-resize-handle {
   text-overflow: ellipsis;
 }
 .sql-cell--null {
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
   font-style: italic;
-  opacity: 0.7;
-}
-/* Highlight first cell in selected row with accent color (matches design) */
-.sql-data-row--selected .sql-cell:first-of-type {
-  color: var(--color-accent);
 }
 
 /* ── Copy controls ───────────────────────────────────── */
@@ -2292,9 +2315,7 @@ body.sql-resizing-v .sql-resize-handle {
 /* ── Status bar ──────────────────────────────────────── */
 
 .sql-status-meta {
-  font-size: 10px;
   color: var(--color-text-muted);
-  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2307,25 +2328,12 @@ body.sql-resizing-v .sql-resize-handle {
   color: var(--color-status-yellow);
   font-weight: 600;
 }
-.sql-status-shortcuts {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-.sql-status-shortcuts .bd-kbd {
-  font-size: 9px;
-  padding: 1px 4px;
-  min-height: 14px;
-}
-
 /* ── Save snippet modal ──────────────────────────────── */
 
 .sql-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 11, 30, 0.45);
+  background: var(--color-overlay-bg);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -2587,7 +2595,7 @@ body.sql-resizing-v .sql-resize-handle {
   }
   .bd-btn--ghost {
     border-color: transparent;
-    color: var(--color-text-tertiary);
+    color: var(--color-text-muted);
   }
   .bd-btn--ghost:hover:not(:disabled) {
     background: var(--color-surface-hover);
@@ -3032,16 +3040,16 @@ body.sql-resizing-v .sql-resize-handle {
     border: 1px solid var(--color-subtle-border);
     font-family: var(--font-code);
     font-size: var(--text-micro);
-    color: var(--color-text-tertiary);
+    color: var(--color-text-muted);
     min-height: 18px;
   }
   /* On filled accent surfaces (primary buttons), the default kbd colors
      read as dark grey on the accent fill — force a light, high-contrast
      treatment so the shortcut hint stays legible. */
   .bd-btn--primary .bd-kbd {
-    background: rgba(255, 255, 255, 0.22);
-    border-color: rgba(255, 255, 255, 0.35);
-    color: #ffffff;
+    background: color-mix(in srgb, var(--color-accent-foreground) 16%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent-foreground) 30%, transparent);
+    color: var(--color-accent-foreground);
   }
 
   /* ── Card ────────────────────────────────────────── */
@@ -3120,40 +3128,61 @@ body.sql-resizing-v .sql-resize-handle {
   }
 
   /* ── StatusBar ───────────────────────────────────── */
+  /* Shared by the main window and every tool window (WindowStatusBar). */
   .bd-statusbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    min-height: 26px;
-    padding: 0 var(--space-3);
+    gap: var(--space-6);
+    min-height: 28px;
+    padding: 0 var(--space-6) 0 var(--space-8);
     background: var(--color-status-bar-bg);
     border-top: 1px solid var(--color-separator);
-    font-family: var(--font-mono);
-    font-size: var(--text-micro);
+    font-family: var(--font-ui);
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
     color: var(--color-text-muted);
     flex-shrink: 0;
   }
   .bd-statusbar__side {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-4);
     min-width: 0;
   }
   .bd-statusbar__side--end {
     flex-shrink: 0;
   }
+  .bd-statusbar__hints {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+  .bd-statusbar__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+  }
+  .bd-statusbar .bd-kbd {
+    min-height: 16px;
+    padding: 0 5px;
+  }
 
   /* ── TitleBar ────────────────────────────────────── */
+  /* Shared by the main window and every tool window (WindowTitleBar). */
   .bd-title-bar {
     display: flex;
     align-items: center;
     gap: var(--space-4);
     height: 36px;
-    padding: 0 var(--space-3) 0 var(--space-4);
+    flex-shrink: 0;
+    padding: 0 var(--space-3) 0 var(--space-6);
     background: var(--color-title-bar-bg);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--color-subtle-border);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
     user-select: none;
   }
   .bd-title-bar__logo {
@@ -3164,15 +3193,20 @@ body.sql-resizing-v .sql-resize-handle {
     line-height: 0;
   }
   .bd-title-bar__title {
-    font-size: var(--text-body);
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-base);
     font-weight: 600;
     color: var(--color-text-primary);
     letter-spacing: -0.005em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .bd-title-bar__count {
     font-size: var(--text-small);
     color: var(--color-text-tertiary);
     font-weight: 500;
+    font-variant-numeric: tabular-nums;
   }
   .bd-title-bar__spacer {
     flex: 1;
@@ -3183,6 +3217,12 @@ body.sql-resizing-v .sql-resize-handle {
     gap: var(--space-3);
     color: var(--color-text-tertiary);
     font-size: var(--text-small);
+  }
+  .bd-title-bar__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    -webkit-app-region: no-drag;
   }
 
   /* ── MainWindow shell ────────────────────────────────── */
@@ -4197,18 +4237,16 @@ body.sql-resizing-v .sql-resize-handle {
     margin-bottom: 4px;
   }
   .bd-fp-roots-toolbar-title {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.08em;
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
   }
   .bd-fp-roots-toolbar-actions { display: flex; gap: 2px; }
   .bd-fp-roots-section { padding: 4px 0; }
   .bd-fp-roots-heading {
     padding: 4px 10px 4px 32px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--color-text-muted);
   }
   .bd-fp-root-row-wrap {
@@ -4362,26 +4400,34 @@ body.sql-resizing-v .sql-resize-handle {
     flex-wrap: wrap;
   }
   .bd-fp-scope-chip {
-    height: 22px;
-    padding: 0 8px;
+    height: 24px;
+    padding: 0 9px;
     display: inline-flex;
     align-items: center;
     gap: 5px;
     border-radius: 999px;
     border: 1px solid transparent;
     background: transparent;
-    color: var(--color-text-tertiary);
-    font-size: 10.5px;
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
     font-weight: 500;
-    letter-spacing: 0.02em;
     cursor: pointer;
     font-family: inherit;
+    transition: color var(--motion-fast) var(--ease-std);
   }
+  .bd-fp-scope-chip:hover {
+    color: var(--color-text-primary);
+  }
+  /* --color-purple: the accent as text, readable on the accent wash in both themes. */
   .bd-fp-scope-chip--on {
-    border-color: var(--color-purple-border);
-    background: var(--color-accent-subtle);
-    color: var(--color-accent);
+    color: var(--color-purple);
     font-weight: 600;
+  }
+  /* The sliding wash behind the active scope (SlidingHighlight). */
+  .bd-fp-scope-chips .bd-fp-scope-hl {
+    border-radius: 999px;
+    background: var(--color-accent-subtle);
+    box-shadow: inset 0 0 0 1px var(--color-purple-border);
   }
   .bd-fp-scope-chip__hint {
     font-size: 10px;
@@ -4399,7 +4445,7 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-status-yellow);
   }
   .bd-fp-scope-spacer { flex: 1; }
-  .bd-fp-scope-count { font-size: 10px; opacity: 0.7; }
+  .bd-fp-scope-count { font-size: 11px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
   .bd-fp-results {
     flex: 1 1 0;
     min-height: 0;
@@ -4411,8 +4457,6 @@ body.sql-resizing-v .sql-resize-handle {
     align-items: stretch;
     width: 100%;
   }
-  .bd-fp-result-row-wrap:hover,
-  .bd-fp-result-row-wrap--selected { background: var(--color-accent-subtle); }
   .bd-fp-result-row {
     display: flex;
     justify-content: space-between;
@@ -4420,7 +4464,7 @@ body.sql-resizing-v .sql-resize-handle {
     gap: 8px;
     flex: 1;
     min-width: 0;
-    padding: 6px 10px;
+    padding: 7px 12px 7px 10px;
     background: transparent;
     border: none;
     color: inherit;
@@ -4454,7 +4498,13 @@ body.sql-resizing-v .sql-resize-handle {
     overflow-wrap: anywhere;
     line-height: 1.4;
   }
-  .bd-fp-result-meta { font-size: 10px; opacity: 0.65; flex-shrink: 0; margin-top: 2px; }
+  .bd-fp-result-meta {
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
   .bd-fp-empty { padding: 14px; opacity: 0.55; font-size: 12px; }
   .bd-fp-preview-empty {
     padding: 18px;
@@ -4487,8 +4537,8 @@ body.sql-resizing-v .sql-resize-handle {
     font-family: inherit;
   }
   .bd-fp-changes-title {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--color-text-secondary);
   }
   .bd-fp-changes-count, .bd-fp-changes-stats {
@@ -4557,8 +4607,6 @@ body.sql-resizing-v .sql-resize-handle {
     text-align: left;
     font-family: var(--font-code);
   }
-  .bd-fp-changes-row:hover,
-  .bd-fp-changes-row--selected { background: var(--color-accent-subtle); }
   .bd-fp-changes-status {
     flex-shrink: 0;
     width: 14px;
@@ -4585,37 +4633,21 @@ body.sql-resizing-v .sql-resize-handle {
     height: 100vh;
     color: var(--color-text-primary);
     background: var(--color-background);
+    font-family: var(--font-ui);
     font-size: 13px;
   }
-  .bd-fv-toolbar {
-    height: 40px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 10px;
-    background: var(--color-card-background);
-    border-bottom: 1px solid var(--color-separator);
-    cursor: grab;
-    -webkit-app-region: drag;
-    user-select: none;
-    flex-shrink: 0;
-  }
-  .bd-fv-toolbar:active { cursor: grabbing; }
-  .bd-fv-toolbar > * {
-    -webkit-app-region: no-drag;
-  }
   .bd-fv-path {
-    font-family: var(--font-code);
-    font-size: 12px;
+    min-width: 0;
     flex: 1;
     overflow: hidden;
+    font-family: var(--font-code);
+    font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--color-text-secondary);
   }
-  .bd-fv-actions { display: flex; gap: 6px; align-items: center; }
   .bd-fv-body { flex: 1; min-height: 0; overflow: auto; }
-  .bd-fv-empty { padding: 18px; opacity: 0.55; font-size: 12px; }
+  .bd-fv-empty { padding: 18px; font-size: 12px; color: var(--color-text-muted); }
 
   /* ── Code view (was components/file-palette/CodeView.css) ── */
   .bd-code-view {
@@ -5039,7 +5071,6 @@ body.sql-resizing-v .sql-resize-handle {
   border-radius: 4px;
   background: var(--color-surface-hover);
   color: var(--color-text-tertiary);
-  text-transform: uppercase;
 }
 .bd-fp-preview-hunknav {
   display: flex;
@@ -5083,11 +5114,11 @@ body.sql-resizing-v .sql-resize-handle {
   font-weight: 600;
 }
 .bd-fp-find-match {
-  background: rgba(255, 220, 0, 0.35);
+  background: var(--color-find-match-bg);
   border-radius: 2px;
 }
 .bd-fp-find-match--current {
-  background: rgba(255, 165, 0, 0.6);
+  background: var(--color-find-match-current-bg);
   outline: 1px solid var(--color-status-yellow);
 }
 .bd-fp-find-strip {
@@ -5778,23 +5809,33 @@ body.sql-resizing-v .sql-resize-handle {
     column-gap: 14px;
     height: 42px;
     padding: 0 16px 0 14px;
-    border-left: 2px solid transparent;
     cursor: default;
-    transition:
-      background-color var(--motion-fast) var(--ease-std),
-      border-color var(--motion-fast) var(--ease-std);
   }
   .bd-wb-row--compact {
     height: 32px;
   }
-  .bd-wb-row:hover {
+  /* Row state, shared by the Workbench rows and every tool-window list
+     (`.bd-list-row`: file palette, work item palette): hover wash, accent
+     selection bar on `data-selected="true"`, tabular numerals. */
+  .bd-wb-row,
+  .bd-list-row {
+    border-left: 2px solid transparent;
+    font-variant-numeric: tabular-nums;
+    transition:
+      background-color var(--motion-fast) var(--ease-std),
+      border-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wb-row:hover,
+  .bd-list-row:hover {
     background: var(--color-surface-hover);
   }
-  .bd-wb-row[data-selected='true'] {
+  .bd-wb-row[data-selected='true'],
+  .bd-list-row[data-selected='true'] {
     border-left-color: var(--color-accent);
     background: var(--color-selected-row-bg);
   }
-  .bd-wb-row:focus-visible {
+  .bd-wb-row:focus-visible,
+  .bd-list-row:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }

@@ -56,8 +56,8 @@ export function ConfirmDialog({
 
   const confirmClasses =
     variant === 'danger'
-      ? 'bg-[var(--color-action-danger-bg,#dc2626)] text-[var(--color-action-danger-fg,white)] hover:opacity-90'
-      : 'bg-[var(--color-accent)] text-white hover:opacity-90';
+      ? 'bg-[var(--color-action-danger-bg)] text-[var(--color-action-danger-fg)] hover:opacity-90'
+      : 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90';
 
   return (
     <FocusTrap
@@ -69,7 +69,11 @@ export function ConfirmDialog({
     >
       <div>
         {/* Overlay */}
-        <div className="fixed inset-0 z-50 bg-black/50" onClick={handleCancel} />
+        <div
+          data-confirm-overlay
+          className="fixed inset-0 z-50 bg-[var(--color-overlay-bg)]"
+          onClick={handleCancel}
+        />
 
         {/* Modal */}
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">

@@ -58,7 +58,7 @@ export function ActivityStrip({
       style={{
         background: bg,
         border: `1px solid ${border}`,
-        boxShadow: tone === 'yellow' ? '0 0 0 4px rgba(218,158,32,0.08)' : 'none',
+        boxShadow: tone === 'yellow' ? '0 0 0 4px var(--color-warning-badge-bg)' : 'none',
         transition: 'box-shadow 200ms ease',
       }}
       className="flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-left font-[inherit] text-[var(--color-text-primary)]"

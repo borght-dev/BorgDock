@@ -90,7 +90,7 @@ describe('SetupWizard', () => {
 
   it('enables Next when PAT method has a token entered', () => {
     render(<SetupWizard />);
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     const input = screen.getByPlaceholderText('ghp_...');
     fireEvent.change(input, { target: { value: 'ghp_test123' } });
 
@@ -104,7 +104,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -112,7 +112,7 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
     });
   });
 
@@ -122,7 +122,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -139,7 +139,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -161,7 +161,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -171,14 +171,14 @@ describe('SetupWizard', () => {
     // discover_repos resolves async, and clicking Next before it lands hits
     // a disabled button on slow CI runners.
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
       expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Customize Appearance')).toBeTruthy();
+      expect(screen.getByText('Pick your look')).toBeTruthy();
     });
   });
 
@@ -190,7 +190,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -200,7 +200,7 @@ describe('SetupWizard', () => {
     // discover_repos resolves async, and clicking Next before it lands hits
     // a disabled button on slow CI runners.
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
       expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
@@ -219,7 +219,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -229,14 +229,14 @@ describe('SetupWizard', () => {
     // discover_repos resolves async, and clicking Next before it lands hits
     // a disabled button on slow CI runners.
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
       expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Customize Appearance')).toBeTruthy();
+      expect(screen.getByText('Pick your look')).toBeTruthy();
       expect(screen.getByRole('button', { name: 'System' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Light' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Dark' })).toBeTruthy();
@@ -251,7 +251,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -268,14 +268,14 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
     });
   });
 
@@ -285,14 +285,14 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Verify Connection'));
+    fireEvent.click(screen.getByText('Check connection'));
 
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith('check_github_auth', {
         method: 'ghCli',
         pat: undefined,
       });
-      expect(screen.getByText('Authenticated as testuser')).toBeTruthy();
+      expect(screen.getByText('Connected as testuser')).toBeTruthy();
     });
   });
 
@@ -302,10 +302,10 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Verify Connection'));
+    fireEvent.click(screen.getByText('Check connection'));
 
     await waitFor(() => {
-      expect(screen.getByText('Authentication failed')).toBeTruthy();
+      expect(screen.getByText(/Couldn't connect/)).toBeTruthy();
     });
   });
 
@@ -318,7 +318,7 @@ describe('SetupWizard', () => {
     render(<SetupWizard />);
 
     // Go to Repos step with PAT auth
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -328,7 +328,7 @@ describe('SetupWizard', () => {
     // discover_repos resolves async, and clicking Next before it lands hits
     // a disabled button on slow CI runners.
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
       expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
@@ -354,7 +354,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -372,11 +372,11 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_mytoken' },
     });
-    fireEvent.click(screen.getByText('Verify Connection'));
+    fireEvent.click(screen.getByText('Check connection'));
 
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith('check_github_auth', {
@@ -393,10 +393,10 @@ describe('SetupWizard', () => {
     render(<SetupWizard />);
 
     // Default is ghCli, so just click verify
-    fireEvent.click(screen.getByText('Verify Connection'));
+    fireEvent.click(screen.getByText('Check connection'));
 
     await waitFor(() => {
-      expect(screen.getByText('Authenticated as testuser')).toBeTruthy();
+      expect(screen.getByText('Connected as testuser')).toBeTruthy();
     });
 
     const nextBtn = screen.getByText('Next');
@@ -416,7 +416,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -445,7 +445,7 @@ describe('SetupWizard', () => {
 
     render(<SetupWizard />);
 
-    fireEvent.click(screen.getByText('Access Token'));
+    fireEvent.click(screen.getByText('Access token'));
     fireEvent.change(screen.getByPlaceholderText('ghp_...'), {
       target: { value: 'ghp_test' },
     });
@@ -455,14 +455,14 @@ describe('SetupWizard', () => {
     // discover_repos resolves async, and clicking Next before it lands hits
     // a disabled button on slow CI runners.
     await waitFor(() => {
-      expect(screen.getByText('Select Repositories')).toBeTruthy();
+      expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
       expect(screen.getByText('test/repo')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText('Next'));
 
     await waitFor(() => {
-      expect(screen.getByText('Customize Appearance')).toBeTruthy();
+      expect(screen.getByText('Pick your look')).toBeTruthy();
     });
 
     // Change theme to 'dark'

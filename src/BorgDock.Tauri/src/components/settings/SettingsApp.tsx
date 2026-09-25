@@ -1,9 +1,10 @@
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings } from '@/types/settings';
+import { applyTheme } from '@/utils/theme';
+import { revealWindow } from '@/utils/window-reveal';
 import { AdoSection } from './AdoSection';
 import { AgentSection } from './AgentSection';
 import { AppearanceSection } from './AppearanceSection';
@@ -51,6 +52,26 @@ export function SettingsApp() {
     }
   }, [hasLoaded]);
 
+  // Preview theme and reduced motion as they are edited here, before the
+  // debounced save broadcasts them to every window. The saved values are
+  // applied by startWindowTheme (settings-main.tsx), so only an edit after
+  // the first load goes through here. applyTheme records the preview as the
+  // window's current theme, so an OS switch during the save keeps it.
+  const uiTheme = settings.ui.theme;
+  const uiReduceMotion = settings.ui.reduceMotion;
+  const loadedThemeRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hasLoaded) return;
+    const key = `${uiTheme}|${uiReduceMotion ?? false}`;
+    if (loadedThemeRef.current === null) {
+      loadedThemeRef.current = key;
+      return;
+    }
+    if (loadedThemeRef.current === key) return;
+    loadedThemeRef.current = key;
+    applyTheme({ theme: uiTheme, reduceMotion: uiReduceMotion });
+  }, [hasLoaded, uiTheme, uiReduceMotion]);
+
   // The Rust side builds the window invisible to avoid a flash of the
   // unstyled default chrome at the wrong size. Reveal it after settings
   // hydrate and the first frame paints, so the user only ever sees the
@@ -60,7 +81,7 @@ export function SettingsApp() {
     if (revealedRef.current || !hasLoaded) return;
     revealedRef.current = true;
     requestAnimationFrame(() => {
-      void invoke('window_ready').catch(() => {});
+      void revealWindow();
     });
   }, [hasLoaded]);
 
@@ -224,7 +245,10 @@ export function SettingsApp() {
             </div>
           </aside>
           <main className="overflow-auto bg-[var(--color-background)]">
-            <div className="mx-auto max-w-[720px] px-9 pb-16 pt-7">{sectionContent}</div>
+            {/* Keyed by section so a switch fades the new section in (--motion-base). */}
+            <div key={active} className="bd-fade-in mx-auto max-w-[720px] px-9 pb-16 pt-7">
+              {sectionContent}
+            </div>
           </main>
         </div>
       </div>

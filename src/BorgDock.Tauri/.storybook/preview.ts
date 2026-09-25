@@ -2,19 +2,14 @@
 
 import type { Preview } from '@storybook/react-vite';
 import '../src/styles/index.css';
+import type { ThemeMode } from '../src/types/settings';
+import { applyTheme } from '../src/utils/theme';
 import { getControl } from './mocks/control';
-
-function applyTheme(theme: string) {
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark);
-}
 
 const preview: Preview = {
   globalTypes: {
     theme: {
-      description: 'Color theme (mirrors FlyoutApp.applyTheme)',
+      description: 'Color theme (the same applyTheme every window uses)',
       defaultValue: 'system',
       toolbar: {
         title: 'Theme',
@@ -37,8 +32,8 @@ const preview: Preview = {
     (Story, ctx) => {
       // Reset Tauri mock state and apply the toolbar theme before every story.
       getControl().reset();
-      const theme = (ctx.globals as { theme?: string }).theme ?? 'system';
-      applyTheme(theme);
+      const theme = (ctx.globals as { theme?: ThemeMode }).theme ?? 'system';
+      applyTheme({ theme });
       return Story();
     },
   ],

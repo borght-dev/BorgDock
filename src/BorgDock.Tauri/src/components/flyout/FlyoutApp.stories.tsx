@@ -549,3 +549,31 @@ export const ToastOverflow = story({
     severity: 'success',
   }),
 });
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+// The glance applies the theme its payload carries, so the payload names it.
+function themedGlance(theme: 'light' | 'dark'): Story {
+  return {
+    ...story({
+      seed: {
+        mode: 'glance',
+        data: makeFlyoutData({
+          pullRequests: mixedPrs,
+          failingCount: 1,
+          pendingCount: 1,
+          passingCount: 1,
+          totalCount: mixedPrs.length,
+          theme,
+        }),
+      },
+    }),
+    globals: { theme },
+  };
+}
+
+export const ThemeLight = themedGlance('light');
+export const ThemeDark = themedGlance('dark');

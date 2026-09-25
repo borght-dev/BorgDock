@@ -1,8 +1,8 @@
 // src/components/work-items/WorkItemDetailApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import { AdoClient } from '@/services/ado/client';
 import type { WorkItem, WorkItemComment } from '@/types/work-item';
 import { getControl, type WorkItemScenario } from '../../../.storybook/mocks/control';
@@ -65,13 +65,9 @@ function applyParamsBeforeMount(params: WorkItemStoryParams) {
 
   // Set the URL ?id=… so URLSearchParams picks it up.
   const desiredId =
-    params.id === null
-      ? null
-      : (params.id ?? scenario.workItem?.id ?? userStoryFreshlyLoaded.id);
+    params.id === null ? null : (params.id ?? scenario.workItem?.id ?? userStoryFreshlyLoaded.id);
   const url =
-    desiredId !== null
-      ? `${window.location.pathname}?id=${desiredId}`
-      : window.location.pathname;
+    desiredId !== null ? `${window.location.pathname}?id=${desiredId}` : window.location.pathname;
   window.history.replaceState({}, '', url);
 }
 
@@ -387,3 +383,11 @@ export const V2DefaultLayout: Story = {
     params: { scenario: loadedScenario(userStoryFreshlyLoaded) },
   },
 };
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...LoadedClean, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...LoadedClean, globals: { theme: 'dark' } };

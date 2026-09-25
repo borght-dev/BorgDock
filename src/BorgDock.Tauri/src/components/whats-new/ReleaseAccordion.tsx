@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { useState } from 'react';
-import type { Release } from '@/types/whats-new';
 import { Pill } from '@/components/shared/primitives';
+import type { Release } from '@/types/whats-new';
 import { AlsoFixedList } from './AlsoFixedList';
 import { HighlightCard } from './HighlightCard';
 
@@ -47,9 +47,7 @@ export function ReleaseAccordion({ release, defaultExpanded, isCurrent }: Props)
           >
             {release.version}
           </span>
-          {open && isCurrent && (
-            <Pill tone="success">Current</Pill>
-          )}
+          {open && isCurrent && <Pill tone="success">Current</Pill>}
           {!open && release.summary && (
             <span className="text-[12px] text-[var(--color-text-muted)] truncate">
               {release.summary}
@@ -64,7 +62,12 @@ export function ReleaseAccordion({ release, defaultExpanded, isCurrent }: Props)
       {open && (
         <div className="pt-2 pb-1 pl-4 ml-[3px] border-l-2 border-[var(--color-whats-new-rail)]">
           {release.highlights.map((h, i) => (
-            <HighlightCard key={i} highlight={h} />
+            // The current release's first hero is the window's one reveal.
+            <HighlightCard
+              key={i}
+              highlight={h}
+              revealHero={isCurrent && defaultExpanded && i === 0}
+            />
           ))}
           <AlsoFixedList items={release.alsoFixed} />
         </div>

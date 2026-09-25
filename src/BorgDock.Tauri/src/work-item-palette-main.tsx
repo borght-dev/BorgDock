@@ -1,9 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';
-import { WorkItemPaletteApp } from './components/work-item-palette/WorkItemPaletteApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
+import { WorkItemPaletteApp } from './components/work-item-palette/WorkItemPaletteApp';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
+import { startWindowTheme } from './utils/theme';
+
+// Theme and reduced motion follow the saved settings (and later changes from
+// any window); public/theme-boot.js already set them before first paint.
+startWindowTheme();
 
 disableDefaultContextMenu();
 

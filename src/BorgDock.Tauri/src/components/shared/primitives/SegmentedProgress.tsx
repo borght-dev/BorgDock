@@ -67,8 +67,8 @@ export function SegmentedProgress({
               'repeating-linear-gradient(45deg,' +
               ' var(--color-status-yellow) 0,' +
               ' var(--color-status-yellow) 6px,' +
-              ' rgba(255,255,255,0.4) 6px,' +
-              ' rgba(255,255,255,0.4) 12px)',
+              ' var(--color-stripe-overlay) 6px,' +
+              ' var(--color-stripe-overlay) 12px)',
             backgroundSize: '17px 17px',
             animationName: 'bd-stripe-march',
             animationDuration: '900ms',

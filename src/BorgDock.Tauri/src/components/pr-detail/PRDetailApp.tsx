@@ -9,6 +9,7 @@ import { getGitHubToken } from '@/services/github/auth';
 import { initClient } from '@/services/github/singleton';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings } from '@/types';
+import { revealWindow } from '@/utils/window-reveal';
 import { PrDetailPanel } from './PRDetailPanel';
 
 /**
@@ -37,18 +38,13 @@ function readPrParams(): { owner: string; repo: string; number: number } {
 
 /**
  * The pop-out window's own setup: it has its own stores, so it loads the
- * settings, applies the theme and creates the GitHub client itself before
- * `usePrDetailData` fetches anything.
+ * settings and creates the GitHub client itself before `usePrDetailData`
+ * fetches anything. The theme is the entry's job (startWindowTheme in
+ * pr-detail-main.tsx).
  */
 async function preparePopOut() {
   const settings = await invoke<AppSettings>('load_settings');
   useSettingsStore.setState({ settings, isLoading: false });
-
-  const t = settings.ui?.theme ?? 'system';
-  const isDark =
-    t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark);
-  document.documentElement.classList.toggle('reduce-motion', settings.ui?.reduceMotion ?? false);
 
   try {
     await invoke('cache_init');
@@ -68,7 +64,7 @@ export function PrDetailApp() {
     if (revealedRef.current) return;
     revealedRef.current = true;
     requestAnimationFrame(() => {
-      void invoke('window_ready')?.catch(() => {});
+      void revealWindow();
     });
   }, []);
 

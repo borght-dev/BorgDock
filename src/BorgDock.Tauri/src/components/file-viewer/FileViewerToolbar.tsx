@@ -1,9 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { X } from 'lucide-react';
 import { useState } from 'react';
-import { Button, Chip, IconButton } from '@/components/shared/primitives';
+import { Button, Chip, Seg2 } from '@/components/shared/primitives';
+import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import type { Baseline, Mode, ViewMode } from './types';
+
+const VIEW_MODES: ReadonlyArray<{ value: ViewMode; label: string }> = [
+  { value: 'unified', label: 'Unified' },
+  { value: 'split', label: 'Split' },
+];
 
 interface Props {
   path: string;
@@ -18,6 +22,10 @@ interface Props {
   defaultBranchLabel: string | null;
 }
 
+/**
+ * The file viewer's title bar: the shared `WindowTitleBar` with the file path as
+ * its title (JetBrains Mono, it is code) and the view controls as its actions.
+ */
 export function FileViewerToolbar({
   path,
   content,
@@ -48,76 +56,66 @@ export function FileViewerToolbar({
   const defaultLabel = defaultBranchLabel ?? 'default';
 
   return (
-    <div className="bd-fv-toolbar" data-tauri-drag-region>
-      <span data-titlebar-path className="bd-fv-path" title={path}>
-        {path}
-      </span>
-      <div className="bd-fv-actions">
-        <div
-          role="group"
-          aria-label="View mode"
-          className="flex items-center gap-1"
-          title={inRepo ? undefined : 'Not in a git repository'}
-        >
-          <Chip
-            active={diffVsHeadActive}
-            onClick={() => onSelectBaseline('HEAD')}
-            disabled={!inRepo}
+    <WindowTitleBar
+      title={
+        <span data-titlebar-path className="bd-fv-path" title={path} data-tauri-drag-region>
+          {path}
+        </span>
+      }
+      actions={
+        <>
+          <div
+            role="group"
+            aria-label="View mode"
+            className="flex items-center gap-1"
+            title={inRepo ? undefined : 'Not in a git repository'}
           >
-            vs HEAD
-          </Chip>
-          <Chip
-            active={diffVsDefaultActive}
-            onClick={() => onSelectBaseline('mergeBaseDefault')}
-            disabled={!inRepo}
-            title={`Diff against merge-base with origin/${defaultLabel}`}
-          >
-            vs {defaultLabel}
-          </Chip>
-          <Chip active={contentActive} onClick={onSelectContent}>
-            File
-          </Chip>
-        </div>
-
-        {mode === 'diff' && (
-          <div role="group" aria-label="Diff layout" className="flex items-center gap-1">
             <Chip
-              active={viewMode === 'unified'}
-              onClick={() => onSelectViewMode('unified')}
-              title="Unified diff (Ctrl+Shift+M)"
+              active={diffVsHeadActive}
+              onClick={() => onSelectBaseline('HEAD')}
+              disabled={!inRepo}
             >
-              Unified
+              vs HEAD
             </Chip>
             <Chip
-              active={viewMode === 'split'}
-              onClick={() => onSelectViewMode('split')}
-              title="Split diff (Ctrl+Shift+M)"
+              active={diffVsDefaultActive}
+              onClick={() => onSelectBaseline('mergeBaseDefault')}
+              disabled={!inRepo}
+              title={`Diff against merge-base with origin/${defaultLabel}`}
             >
-              Split
+              vs {defaultLabel}
+            </Chip>
+            <Chip active={contentActive} onClick={onSelectContent}>
+              File
             </Chip>
           </div>
-        )}
 
-        <Button
-          variant="secondary"
-          size="sm"
-          data-action="copy-contents"
-          onClick={copyAll}
-          disabled={!content}
-        >
-          {copied ? 'Copied' : 'Copy all'}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => invoke('open_in_editor', { path })}>
-          Open in editor
-        </Button>
-        <IconButton
-          icon={<X size={13} strokeWidth={2.4} aria-hidden />}
-          tooltip="Close"
-          aria-label="Close"
-          size={22}
-          onClick={() => getCurrentWindow().close()}
-        />
-      </div>
-    </div>
+          {mode === 'diff' && (
+            <span title="Unified or split diff (Ctrl+Shift+M)">
+              <Seg2
+                ariaLabel="Diff layout"
+                size="sm"
+                value={viewMode}
+                options={VIEW_MODES}
+                onChange={onSelectViewMode}
+              />
+            </span>
+          )}
+
+          <Button
+            variant="secondary"
+            size="sm"
+            data-action="copy-contents"
+            onClick={copyAll}
+            disabled={!content}
+          >
+            {copied ? 'Copied' : 'Copy all'}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => invoke('open_in_editor', { path })}>
+            Open in editor
+          </Button>
+        </>
+      }
+    />
   );
 }

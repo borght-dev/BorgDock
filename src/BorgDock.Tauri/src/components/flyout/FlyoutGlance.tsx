@@ -1,5 +1,5 @@
 import { PanelRightOpen, Zap } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { WindowLauncher } from '@/components/shared/WindowLauncher';
@@ -353,9 +353,9 @@ export function FlyoutGlance({
 
       {banner && (
         <div
-          className="shrink-0 px-4 py-2 text-[11px] font-semibold text-white"
-          // style: severity-driven gradient background — bannerColor() returns a CSS gradient string computed at render
-          style={{ background: bannerColor(banner.severity) }}
+          className="shrink-0 px-4 py-2 text-[11px] font-semibold"
+          // style: severity-driven gradient and foreground — bannerStyle() picks both from tokens at render
+          style={bannerStyle(banner.severity)}
           data-testid="flyout-glance-banner"
         >
           {banner.title}
@@ -410,14 +410,24 @@ export function FlyoutGlance({
 }
 
 /** The banner's gradient: the severity's status token, deepening to the right. */
-function bannerColor(severity: ToastPayload['severity']): string {
-  const token =
+/**
+ * The banner's fill and text for a severity, both from tokens so the pair
+ * clears 4.5:1 in both themes: dark ink on the green and amber fills, the
+ * accent pair on info, and on errors the darker error red with
+ * `danger-fill-foreground` (white in light, ink in dark). The gradient fades
+ * 10% toward the background, which keeps the far end above 4.5:1 too.
+ */
+function bannerStyle(severity: ToastPayload['severity']): CSSProperties {
+  const [fill, color] =
     severity === 'error'
-      ? 'var(--color-status-red)'
+      ? ['var(--color-error-badge-fg)', 'var(--color-danger-fill-foreground)']
       : severity === 'warning'
-        ? 'var(--color-status-yellow)'
+        ? ['var(--color-status-yellow)', 'var(--color-status-fill-foreground)']
         : severity === 'success'
-          ? 'var(--color-status-green)'
-          : 'var(--color-accent)';
-  return `linear-gradient(90deg, ${token}, color-mix(in srgb, ${token} 78%, var(--color-background)))`;
+          ? ['var(--color-status-green)', 'var(--color-status-fill-foreground)']
+          : ['var(--color-accent)', 'var(--color-accent-foreground)'];
+  return {
+    background: `linear-gradient(90deg, ${fill}, color-mix(in srgb, ${fill} 90%, var(--color-background)))`,
+    color,
+  };
 }

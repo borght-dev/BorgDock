@@ -26,18 +26,12 @@ export function Chip({
   children,
   ...rest
 }: ChipProps) {
-  const activeToneClass =
-    tone === 'error' ? 'bd-pill--error' : 'bd-pill--neutral';
+  const activeToneClass = tone === 'error' ? 'bd-pill--error' : 'bd-pill--neutral';
   return (
     <button
       type="button"
       aria-pressed={active}
-      className={clsx(
-        'bd-pill',
-        'bd-chip',
-        active ? activeToneClass : 'bd-pill--ghost',
-        className,
-      )}
+      className={clsx('bd-pill', 'bd-chip', active ? activeToneClass : 'bd-pill--ghost', className)}
       {...rest}
     >
       {children}
@@ -48,7 +42,7 @@ export function Chip({
             fontSize: 10,
             padding: '0 5px',
             borderRadius: 999,
-            background: active ? 'rgba(0,0,0,0.08)' : 'var(--color-surface-hover)',
+            background: active ? 'var(--color-chip-count-on-bg)' : 'var(--color-surface-hover)',
             color: 'inherit',
             fontWeight: 600,
           }}

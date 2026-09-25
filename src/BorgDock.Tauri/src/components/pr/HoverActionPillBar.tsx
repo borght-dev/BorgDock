@@ -54,9 +54,9 @@ export function HoverActionPillBar({
           // so an override like `!bg-...` is silently ignored. Inline style
           // wins reliably and gives the design's purple "fix-me" treatment.
           style={{
-            background: 'var(--color-purple, #6655d4)',
-            borderColor: 'var(--color-purple, #6655d4)',
-            color: '#fff',
+            background: 'var(--color-accent)',
+            borderColor: 'var(--color-accent)',
+            color: 'var(--color-accent-foreground)',
           }}
           onClick={(e) => {
             e.stopPropagation();

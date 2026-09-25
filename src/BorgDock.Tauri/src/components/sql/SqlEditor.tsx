@@ -310,6 +310,9 @@ export const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function Sq
           '&': { height: '100%', fontSize: '13px' },
           '.cm-scroller': { fontFamily: 'var(--font-mono, monospace)' },
           '.cm-content': { caretColor: 'var(--color-text-primary)' },
+          // CodeMirror's default selection is a light grey even on graphite.
+          '.cm-selectionLayer .cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground':
+            { background: 'var(--color-code-selection)' },
         }),
       ],
     });

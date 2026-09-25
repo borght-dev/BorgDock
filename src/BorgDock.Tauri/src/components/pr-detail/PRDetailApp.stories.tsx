@@ -91,3 +91,11 @@ export const LoadSettingsRejects: Story = {
     }),
   ],
 };
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...Default, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...Default, globals: { theme: 'dark' } };

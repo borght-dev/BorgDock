@@ -1,8 +1,9 @@
 // src/components/file-viewer/FileViewerApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import type { AppSettings } from '@/types/settings';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
   DIFF_IN_REPO_NO_CHANGES,
@@ -11,15 +12,14 @@ import {
   ERR_NOT_FOUND,
   ERR_TOO_LARGE,
   LARGE_TS_SAMPLE,
+  makeSettings,
   PATCH_ADD_ONLY_TS,
   PATCH_DELETE_ONLY_TS,
   PATCH_MULTI_HUNK_TS,
   PATCH_SINGLE_HUNK_TS,
   TSX_SAMPLE,
-  makeSettings,
 } from './__fixtures__/file-viewer-data';
 import { FileViewerApp } from './FileViewerApp';
-import type { AppSettings } from '@/types/settings';
 
 interface DiffOutput {
   patch: string;
@@ -33,9 +33,7 @@ interface FileViewerStoryParams {
   /** ?baseline query-string param. */
   baseline?: 'HEAD' | 'mergeBaseDefault';
   /** Static content OR fn returning content / promise / rejection. */
-  contentResponse?:
-    | string
-    | ((args: { path: string }) => string | Promise<string>);
+  contentResponse?: string | ((args: { path: string }) => string | Promise<string>);
   /** Custom load_settings response. Defaults to makeSettings(). */
   settings?: AppSettings;
   /** Static diff OR fn keyed on baseline. */
@@ -59,11 +57,7 @@ function applyParamsBeforeMount(params: FileViewerStoryParams) {
   if (path !== null) search.set('path', path);
   if (params.baseline) search.set('baseline', params.baseline);
   const qs = search.toString();
-  window.history.replaceState(
-    {},
-    '',
-    `${window.location.pathname}${qs ? `?${qs}` : ''}`,
-  );
+  window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
 
   // Canned invoke responses.
   ctrl.invokeResponses.load_settings = params.settings ?? makeSettings();
@@ -230,9 +224,11 @@ export const UnifiedToSplitToggle: Story = {
     const splitChip = await canvas.findByRole('button', { name: 'Split' });
     await userEvent.click(splitChip);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+        }
+      ).__borgdock_storybook_tauri;
       const saved = ctrl.invocations.find((i) => i.command === 'save_settings');
       expect(saved).toBeTruthy();
     });
@@ -281,9 +277,11 @@ export const BaselineSwitchInteraction: Story = {
     const defaultChip = await canvas.findByRole('button', { name: /vs (default|main)/ });
     await userEvent.click(defaultChip);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+        }
+      ).__borgdock_storybook_tauri;
       const calls = ctrl.invocations.filter(
         (i) =>
           i.command === 'git_file_diff' &&
@@ -345,9 +343,11 @@ export const OpenInEditorClicked: Story = {
     const btn = await canvas.findByRole('button', { name: 'Open in editor' });
     await userEvent.click(btn);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string; args?: unknown }> };
+        }
+      ).__borgdock_storybook_tauri;
       const call = ctrl.invocations.find((i) => i.command === 'open_in_editor');
       expect(call).toBeTruthy();
       expect((call?.args as { path?: string } | undefined)?.path).toBeTruthy();
@@ -367,9 +367,11 @@ export const CloseClicked: Story = {
     const closeBtn = await canvas.findByRole('button', { name: /close/i });
     await userEvent.click(closeBtn);
     await waitFor(() => {
-      const ctrl = (window as unknown as {
-        __borgdock_storybook_tauri: { invocations: Array<{ command: string }> };
-      }).__borgdock_storybook_tauri;
+      const ctrl = (
+        window as unknown as {
+          __borgdock_storybook_tauri: { invocations: Array<{ command: string }> };
+        }
+      ).__borgdock_storybook_tauri;
       const call = ctrl.invocations.find((i) => i.command === 'window.close');
       expect(call).toBeTruthy();
     });
@@ -433,3 +435,11 @@ export const ContentTSXSyntaxProbe: Story = {
     );
   },
 };
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...UnifiedDiff, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...UnifiedDiff, globals: { theme: 'dark' } };

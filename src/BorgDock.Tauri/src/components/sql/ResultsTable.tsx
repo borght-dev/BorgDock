@@ -9,7 +9,8 @@ interface ResultsTableProps {
   onSelectionChange: (selected: Set<number>) => void;
 }
 
-const ROW_HEIGHT = 30;
+/** The compact list row height (`.bd-wb-row--compact`), so the grid reads like every other list. */
+const ROW_HEIGHT = 32;
 const ROW_NUM_WIDTH = 42;
 const CELL_MIN_WIDTH = 120;
 const CELL_MAX_WIDTH = 360;
@@ -98,7 +99,8 @@ function ResultsTableImpl({ columns, rows, selectedRows, onSelectionChange }: Re
             return (
               <div
                 key={ri}
-                className={clsx('sql-data-row', isSelected && 'sql-data-row--selected')}
+                data-selected={isSelected ? 'true' : 'false'}
+                className={clsx('sql-data-row bd-list-row', isSelected && 'sql-data-row--selected')}
                 style={{
                   position: 'absolute',
                   top: 0,

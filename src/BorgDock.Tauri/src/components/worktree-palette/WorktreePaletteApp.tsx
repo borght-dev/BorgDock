@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { listen } from '@tauri-apps/api/event';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
@@ -18,6 +17,8 @@ export {
   compareFolderNames,
   flattenSnapshot,
 } from '@/components/worktree/worktree-list-model';
+
+import { revealWindow } from '@/utils/window-reveal';
 
 // Minimum window height so a small worktree list doesn't leave a cramped window.
 const MIN_PALETTE_HEIGHT = 420;
@@ -68,20 +69,22 @@ async function fitWindowToContent(): Promise<void> {
   }
 }
 
+const PALETTE_HINTS = [
+  { keys: '↑↓', label: 'move' },
+  { keys: '↵', label: 'open' },
+  { keys: 'Esc', label: 'close' },
+];
+
 function PaletteStatus({ shown, total, favoritesOnly }: WorktreeListStatus) {
   return (
     <WindowStatusBar
       left={
-        <span className="bd-mono">
+        <span>
           {shown} of {total} worktree{total === 1 ? '' : 's'}
           {favoritesOnly && ' · favorites only'}
         </span>
       }
-      right={
-        <span className="bd-mono">
-          <Kbd>{'↑↓'}</Kbd> nav {'·'} <Kbd>{'⏎'}</Kbd> open {'·'} <Kbd>esc</Kbd>
-        </span>
-      }
+      hints={PALETTE_HINTS}
     />
   );
 }
@@ -99,7 +102,7 @@ export function WorktreePaletteApp() {
   const reveal = useCallback(async ({ focusSearch }: { focusSearch: () => void }) => {
     await fitWindowToContent();
     focusSearch();
-    invoke('window_ready').catch(() => {});
+    void revealWindow();
   }, []);
 
   // Hide rather than close: the WebView2 stays alive across opens so

@@ -1,8 +1,8 @@
 // src/components/file-palette/FilePaletteApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent, within } from 'storybook/test';
 import { useEffect } from 'react';
+import { userEvent, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
   binaryError,
@@ -393,16 +393,12 @@ export const WindowFocusRefresh: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByPlaceholderText(/search/i);
-    const before = getControl().invocations.filter((i) => i.command === 'git_changed_files')
-      .length;
+    const before = getControl().invocations.filter((i) => i.command === 'git_changed_files').length;
     getControl().emit('__window.onFocusChanged', true);
     await new Promise((r) => setTimeout(r, 0));
-    const after = getControl().invocations.filter((i) => i.command === 'git_changed_files')
-      .length;
+    const after = getControl().invocations.filter((i) => i.command === 'git_changed_files').length;
     if (after <= before) {
-      console.warn(
-        '[storybook] WindowFocusRefresh: no new git_changed_files invocation observed',
-      );
+      console.warn('[storybook] WindowFocusRefresh: no new git_changed_files invocation observed');
     }
   },
 };
@@ -426,3 +422,11 @@ export const EnterOpensViewer: Story = {
     await userEvent.keyboard('{Enter}');
   },
 };
+
+// ---------------------------------------------------------------------------
+// Both themes (plans/ui-overhaul-workbench.md, phase 6): the window on
+// porcelain and on graphite, for the tool-window screenshots.
+// ---------------------------------------------------------------------------
+
+export const ThemeLight: Story = { ...DefaultMixed, globals: { theme: 'light' } };
+export const ThemeDark: Story = { ...DefaultMixed, globals: { theme: 'dark' } };

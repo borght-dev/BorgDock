@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { SlidingHighlight } from './SlidingHighlight';
 
 export interface Seg2Option<T extends string = string> {
   value: T;
@@ -12,23 +13,30 @@ export interface Seg2Props<T extends string = string> {
   full?: boolean;
   /** sm = 26px toolbar control. Default md. */
   size?: 'sm' | 'md';
+  /** Accessible name for the group. */
+  ariaLabel?: string;
 }
 
+/**
+ * Seg2 — segmented control. The same control as the Pull requests filter
+ * (`.bd-filter`): a sliding highlight moves to the chosen option over
+ * `--motion-move` (instant under reduced motion). Each option is a button
+ * with `aria-pressed`.
+ */
 export function Seg2<T extends string = string>({
   value,
   options,
   onChange,
   full,
   size = 'md',
+  ariaLabel,
 }: Seg2Props<T>) {
   return (
-    <div
-      className={clsx(
-        size === 'sm'
-          ? 'h-[26px] p-[2px] gap-[1px] rounded-[5px] border border-[var(--color-input-border)] bg-[var(--color-input-bg)]'
-          : 'p-[3px] gap-[2px] rounded-[7px] border border-[var(--color-subtle-border)] bg-[var(--color-surface-hover)]',
-        full ? 'grid' : 'inline-flex',
-      )}
+    <SlidingHighlight
+      activeKey={value}
+      role="group"
+      aria-label={ariaLabel}
+      className={clsx('bd-filter bd-seg', size === 'sm' && 'bd-seg--sm', full && 'bd-seg--full')}
       style={full ? { gridTemplateColumns: `repeat(${options.length}, 1fr)` } : undefined}
     >
       {options.map((o) => {
@@ -38,21 +46,14 @@ export function Seg2<T extends string = string>({
             key={o.value}
             type="button"
             aria-pressed={active}
+            data-highlight-key={o.value}
             onClick={() => onChange(o.value)}
-            className={clsx(
-              'transition-colors',
-              size === 'sm'
-                ? 'rounded-[3px] px-[9px] text-[11px]'
-                : 'rounded-[5px] px-[14px] py-[6px] text-[11.5px]',
-              active
-                ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)] font-semibold'
-                : 'text-[var(--color-text-tertiary)] font-medium hover:text-[var(--color-text-secondary)]',
-            )}
+            className={clsx('bd-filter__item', active && 'bd-filter__item--active')}
           >
             {o.label}
           </button>
         );
       })}
-    </div>
+    </SlidingHighlight>
   );
 }

@@ -10,10 +10,11 @@ export function AlsoFixedList({ items }: Props) {
   if (items.length === 0) return null;
   return (
     <div className="mt-4 pt-4 border-t border-dashed border-[var(--color-subtle-border)]">
-      <div className="text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)] mb-2">
-        Also fixed
-      </div>
-      <ul data-also-fixed-list className="list-disc pl-4 text-[12.5px] leading-[1.7] text-[var(--color-text-secondary)]">
+      <div className="text-[12px] font-medium text-[var(--color-text-muted)] mb-2">Also fixed</div>
+      <ul
+        data-also-fixed-list
+        className="list-disc pl-4 text-[12.5px] leading-[1.7] text-[var(--color-text-secondary)]"
+      >
         {items.map((body, i) => (
           <li key={i}>
             <ReactMarkdown

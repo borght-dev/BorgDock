@@ -166,6 +166,33 @@ export function flip(
   );
 }
 
+/**
+ * Lists longer than this skip FLIP and just change, the same way a virtualized
+ * list crossfades instead: measuring and animating hundreds of rows on every
+ * keystroke costs more than the motion is worth.
+ */
+export const FLIP_MAX_ROWS = 150;
+
+/**
+ * `flip` for a list whose rows can number in the hundreds (palette results).
+ * When the list holds more than `maxRows` rows before the change it neither
+ * measures nor animates: it runs `plain` (default `mutate`) instead. Pass the
+ * bare state update as `plain` so a long list skips the `flushSync` that
+ * `mutate` needs for FLIP and React batches the change as usual.
+ */
+export function flipIfSmall(
+  container: HTMLElement | null,
+  mutate: () => void,
+  options: { selector?: string; maxRows?: number; plain?: () => void } = {},
+): Promise<Animation[]> {
+  const { selector = DEFAULT_FLIP_SELECTOR, maxRows = FLIP_MAX_ROWS, plain = mutate } = options;
+  if (container && container.querySelectorAll(selector).length > maxRows) {
+    plain();
+    return Promise.resolve([]);
+  }
+  return flip(container, mutate, selector);
+}
+
 interface ViewTransitionLike {
   updateCallbackDone: Promise<void>;
   ready?: Promise<void>;

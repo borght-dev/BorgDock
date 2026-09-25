@@ -72,7 +72,7 @@ export function FilePaletteRootsColumn({
   return (
     <div className="bd-fp-roots">
       <div className="bd-fp-roots-toolbar">
-        <span className="bd-fp-roots-toolbar-title">ROOTS</span>
+        <span className="bd-fp-roots-toolbar-title">Roots</span>
         <div className="bd-fp-roots-toolbar-actions">
           <IconButton
             icon={<Plus size={12} strokeWidth={2.25} aria-hidden />}
@@ -108,7 +108,7 @@ export function FilePaletteRootsColumn({
 
       {visibleWorktrees.length > 0 && (
         <div className="bd-fp-roots-section">
-          <div className="bd-fp-roots-heading">WORKTREES</div>
+          <div className="bd-fp-roots-heading">Worktrees</div>
           {visibleWorktrees.map((root) => (
             <RootRow
               key={root.path}
@@ -128,7 +128,7 @@ export function FilePaletteRootsColumn({
       )}
       {(custom.length > 0 || roots.length > 0) && (
         <div className="bd-fp-roots-section">
-          <div className="bd-fp-roots-heading">CUSTOM</div>
+          <div className="bd-fp-roots-heading">Custom</div>
           {custom.map((root) => (
             <RootRow
               key={root.path}

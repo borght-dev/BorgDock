@@ -27,10 +27,8 @@ describe('RepoStep', () => {
 
   it('renders the heading and description', () => {
     render(<RepoStep {...defaultProps} />);
-    expect(screen.getByText('Select Repositories')).toBeTruthy();
-    expect(
-      screen.getByText('Add repos by path or owner/name, or select from discovered repos'),
-    ).toBeTruthy();
+    expect(screen.getByText('Pick the repositories to watch')).toBeTruthy();
+    expect(screen.getByText(/Add a local path or owner\/name, or pick/)).toBeTruthy();
   });
 
   it('renders the manual add input and button', () => {
@@ -41,21 +39,21 @@ describe('RepoStep', () => {
 
   it('renders Select All and Deselect All buttons', () => {
     render(<RepoStep {...defaultProps} />);
-    expect(screen.getByText('Select All')).toBeTruthy();
-    expect(screen.getByText('Deselect All')).toBeTruthy();
+    expect(screen.getByText('Select all')).toBeTruthy();
+    expect(screen.getByText('Clear all')).toBeTruthy();
   });
 
   it('calls onSelectAll when clicking Select All', () => {
     const onSelectAll = vi.fn();
     render(<RepoStep {...defaultProps} onSelectAll={onSelectAll} />);
-    fireEvent.click(screen.getByText('Select All'));
+    fireEvent.click(screen.getByText('Select all'));
     expect(onSelectAll).toHaveBeenCalledTimes(1);
   });
 
   it('calls onDeselectAll when clicking Deselect All', () => {
     const onDeselectAll = vi.fn();
     render(<RepoStep {...defaultProps} onDeselectAll={onDeselectAll} />);
-    fireEvent.click(screen.getByText('Deselect All'));
+    fireEvent.click(screen.getByText('Clear all'));
     expect(onDeselectAll).toHaveBeenCalledTimes(1);
   });
 
@@ -82,20 +80,20 @@ describe('RepoStep', () => {
 
   it('shows scanning indicator when isScanning is true', () => {
     render(<RepoStep {...defaultProps} isScanning={true} />);
-    expect(screen.getByText('Scanning...')).toBeTruthy();
+    expect(screen.getByText('Looking for repositories…')).toBeTruthy();
   });
 
   it('shows empty message when no repos and not scanning', () => {
     render(<RepoStep {...defaultProps} repos={[]} isScanning={false} />);
     expect(
-      screen.getByText('No repositories discovered. Add repos manually in Settings.'),
+      screen.getByText('No repositories found. Add one above, or later in Settings.'),
     ).toBeTruthy();
   });
 
   it('does not show empty message when scanning', () => {
     render(<RepoStep {...defaultProps} repos={[]} isScanning={true} />);
     expect(
-      screen.queryByText('No repositories discovered. Add repos manually in Settings.'),
+      screen.queryByText('No repositories found. Add one above, or later in Settings.'),
     ).toBeNull();
   });
 

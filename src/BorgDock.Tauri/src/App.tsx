@@ -62,8 +62,13 @@ export default function App() {
     if (isInitComplete) initCompletedRef.current = true;
   }, [isInitComplete]);
 
-  // Apply theme from settings
-  useTheme(settings.ui.theme, { reduceMotion: settings.ui.reduceMotion });
+  // Apply theme from settings once they have loaded; before that the
+  // pre-paint state from public/theme-boot.js stands.
+  const settingsLoaded = useSettingsStore((s) => s.hasLoaded);
+  useTheme(settings.ui.theme, {
+    reduceMotion: settings.ui.reduceMotion,
+    enabled: settingsLoaded,
+  });
 
   // Load settings on mount
   useEffect(() => {

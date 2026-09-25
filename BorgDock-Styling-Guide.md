@@ -1,180 +1,72 @@
-Design Philosophy
+# BorgDock styling guide
 
-  Purple-slate aesthetic with soft, translucent surfaces. The
-  palette avoids harsh blacks/whites in favor of deep
-  purple-tinted neutrals. Both themes use the same hue family
-  (violet/purple) for brand consistency, shifting luminance for
-  dark mode rather than inverting.
+The short version of `DESIGN-SYSTEM.md`: what the app looks like and the rules for keeping it that way. Values come from `src/BorgDock.Tauri/src/styles/index.css` (`:root` is light, `.dark` is dark); regenerate the tables from there when a token changes.
 
-  ---
-  Color Palette
+## Look
 
-  Primary Brand — Violet
+Workbench direction (`plans/ui-overhaul-workbench.md`). Graphite surfaces in dark, porcelain in light, one indigo accent that marks selection and the single primary action. Status has three colours (green, red, amber) plus merged violet and informational blue. Depth comes from surfaces and hairlines; shadows are only for floating UI.
 
-  ┌───────────────┬───────────────────┬───────────────────┐
-  │     Role      │       Light       │       Dark        │
-  ├───────────────┼───────────────────┼───────────────────┤
-  │ Accent        │ #6655D4           │ #7C6AF6           │
-  ├───────────────┼───────────────────┼───────────────────┤
-  │ Purple        │ #6655D4           │ #9384F7           │
-  ├───────────────┼───────────────────┼───────────────────┤
-  │ Logo gradient │ #6655D4 → #7C6AF6 │ #7C6AF6 → #9384F7 │
-  └───────────────┴───────────────────┴───────────────────┘
+## Palette
 
-  Backgrounds
+| Role | Light (porcelain) | Dark (graphite) |
+|---|---|---|
+| Background | `#f5f5f7` | `#151618` |
+| Surface / card | `#ffffff` | `#1b1c1f` |
+| Surface raised | `rgba(23,24,28,.03)` | `#212226` |
+| Hover wash | `rgba(23,24,28,.04)` | `rgba(255,255,255,.028)` |
+| Hairline (`subtle-border`) | `#e5e6ea` | `rgba(255,255,255,.065)` |
+| Strong border | `#d4d6dc` | `rgba(255,255,255,.12)` |
+| Text primary / secondary | `#17181c` / `#5d606a` | `#ededef` / `#9c9da4` |
+| Text muted (small readable text) | `#6b6e78` | `#8e8f96` |
+| Text tertiary (decoration only) | `#8f929c` | `#67686f` |
+| Accent | `#4f46e5` | `#7f7eff` |
+| Text on accent (`accent-foreground`) | `#ffffff` | `#12121a` |
+| Accent as text on a wash (`purple`) | `#4f46e5` | `#9d9cff` |
+| Status green / red / yellow / blue | `#1f9d6b` / `#d64560` / `#c98a12` / `#2d6be4` | `#5cc98f` / `#f0616d` / `#e5b454` / `#6fa8ff` |
 
-  ┌──────────────┬────────────────────┬─────────────────────┐
-  │     Role     │       Light        │        Dark         │
-  ├──────────────┼────────────────────┼─────────────────────┤
-  │ Page         │ #F7F5FB (lavender  │ #110F1A (deep       │
-  │ background   │ white)             │ indigo)             │
-  ├──────────────┼────────────────────┼─────────────────────┤
-  │ Card /       │ #ffffff            │ #1A1726             │
-  │ Surface      │                    │                     │
-  ├──────────────┼────────────────────┼─────────────────────┤
-  │ Sidebar      │ #F7F5FB → #EDEAF4  │ #110F1A → #1A1726   │
-  │ gradient     │                    │                     │
-  ├──────────────┼────────────────────┼─────────────────────┤
-  │ Surface      │ rgba(90,86,112,    │ rgba(138,133,160,   │
-  │ raised       │ 0.03)              │ 0.03)               │
-  ├──────────────┼────────────────────┼─────────────────────┤
-  │ Surface      │ rgba(90,86,112,    │ rgba(138,133,160,   │
-  │ hover        │ 0.05)              │ 0.05)               │
-  └──────────────┴────────────────────┴─────────────────────┘
+Contrast rules, enforced by `src/styles/__tests__/contrast.test.ts` and `tests/e2e/tool-windows-a11y.spec.ts`:
+- Readable small text uses `text-muted` or stronger. `text-tertiary` is below 4.5:1 in both themes; use it for icons, rules and decoration, not for words someone has to read.
+- Text on an accent fill uses `accent-foreground` (dark ink in dark mode; white on `#7f7eff` is 3.3:1).
+- Accent-coloured text on an accent wash (active chip, selected row id) uses `purple`, which is lighter than the accent in dark mode.
 
-  Text Hierarchy — Purple Slate
+## Type
 
-  ┌───────────┬─────────┬─────────┐
-  │   Level   │  Light  │  Dark   │
-  ├───────────┼─────────┼─────────┤
-  │ Primary   │ #1A1726 │ #EDEAF4 │
-  ├───────────┼─────────┼─────────┤
-  │ Secondary │ #3A3550 │ #C8C4D6 │
-  ├───────────┼─────────┼─────────┤
-  │ Tertiary  │ #5A5670 │ #8A85A0 │
-  ├───────────┼─────────┼─────────┤
-  │ Muted     │ #8A85A0 │ #5A5670 │
-  ├───────────┼─────────┼─────────┤
-  │ Faint     │ #B8B0C8 │ #3A3650 │
-  ├───────────┼─────────┼─────────┤
-  │ Ghost     │ #D8D4E3 │ #2A2640 │
-  └───────────┴─────────┴─────────┘
+| Font | Token | Where |
+|---|---|---|
+| Inter | `--font-ui` (`font-sans`) | Shell, lists, chrome, every tool window. Set on `body`. |
+| Instrument Sans | `--font-reading` (`font-reading`) | PR detail, work item detail, Quick Review, the What's new reading view |
+| JetBrains Mono | `--font-code` (`font-mono`) | Code, diffs, paths, key chips (`Kbd`) |
 
-  Status Colors
+All three are self-hosted through `@fontsource-variable` (no network). Lists and chrome are 13 px; status bars 11 px with tabular numerals. Labels are sentence case; no uppercase tracked headings.
 
-  ┌──────────────────┬──────────────────────┬─────────┐
-  │      Status      │        Light         │  Dark   │
-  ├──────────────────┼──────────────────────┼─────────┤
-  │ Green (success)  │ #3BA68E (aquamarine) │ #7DD3C0 │
-  ├──────────────────┼──────────────────────┼─────────┤
-  │ Red (error)      │ #C7324F (ruby)       │ #E54065 │
-  ├──────────────────┼──────────────────────┼─────────┤
-  │ Yellow (warning) │ #B07D09 (amber)      │ #F5B73B │
-  ├──────────────────┼──────────────────────┼─────────┤
-  │ Gray (neutral)   │ #8A85A0              │ #5A5670 │
-  ├──────────────────┼──────────────────────┼─────────┤
-  │ Merged (purple)  │ #8250DF              │ #A371F7 │
-  └──────────────────┴──────────────────────┴─────────┘
+## Motion
 
-  Review States
+Tokens in `src/styles/motion.css`; helpers in `src/utils/motion.ts`.
 
-  ┌───────────────────┬─────────┬─────────┐
-  │       State       │  Light  │  Dark   │
-  ├───────────────────┼─────────┼─────────┤
-  │ Approved          │ #3BA68E │ #7DD3C0 │
-  ├───────────────────┼─────────┼─────────┤
-  │ Changes requested │ #C7324F │ #E54065 │
-  ├───────────────────┼─────────┼─────────┤
-  │ Review required   │ #B07D09 │ #F5B73B │
-  ├───────────────────┼─────────┼─────────┤
-  │ Commented         │ #5A5670 │ #8A85A0 │
-  └───────────────────┴─────────┴─────────┘
+| Token | Value | Use |
+|---|---|---|
+| `--motion-fast` | 150 ms | hover, press, colour, toggle knob |
+| `--motion-base` | 260 ms | fades, section and step crossfades, window entrance |
+| `--motion-move` | 320 ms | sliding highlights, FLIP reorders, progress fills |
+| `--motion-push` | 360 ms | push / pop of a view, the What's new hero reveal |
+| `--motion-expand` | 340 ms | grid-row expansion |
+| `--ease-out` / `--ease-std` / `--ease-in` | `cubic-bezier(.16,1,.3,1)` / `(.2,.8,.2,1)` / `(.4,0,1,1)` | enter / move / leave |
 
-  ---
-  Borders & Separators
+Reduced motion (the OS setting or Settings → Appearance → Reduce motion, which puts `.reduce-motion` on `<html>`) sets every `--motion-*` to 0.01 ms and stops loops; `motionOK()` gates FLIP and View Transitions. Nothing animates on its own except running checks and the sync spinner.
 
-  All borders use the purple-slate base with low opacity rather
-  than gray:
-  - Subtle: rgba(90,86,112, 0.08) / rgba(138,133,160, 0.08)
-  - Strong: rgba(90,86,112, 0.14) / rgba(138,133,160, 0.14)
-  - Card (own PR): rgba(124,106,246, 0.22) (accent-tinted left
-  border)
+## Theme in every window
 
-  ---
-  Badge System
+`src/utils/theme.ts` owns the theme for all windows:
+- `applyTheme(settings | { theme, reduceMotion })` sets `.dark`, `.reduce-motion` and `color-scheme` on `<html>` and writes `localStorage['borgdock-theme']` (the setting) and `['borgdock-reduce-motion']`.
+- `resolveTheme(setting)` turns `system` into light or dark through `matchMedia`; `watchSystemTheme(cb)` follows OS changes.
+- `startWindowTheme()` runs once in every tool-window entry (`*-main.tsx`): applies the saved settings, re-applies on `settings:ui-changed` from any window, follows the OS while the theme is `system`.
+- `public/theme-boot.js` is the pre-paint script every HTML entry loads in `<head>`; it reads the two keys with the same rules, so no window flashes the other theme.
+- The main window uses `hooks/useTheme.ts`, a thin hook over the same helper.
 
-  Badges use a consistent pattern: tinted background + solid
-  foreground + subtle border, all derived from the status color
-  at low opacity (4-10% bg, 12-25% border).
+## Rules
 
-  ┌─────────┬────────────────────────────────────────────────┐
-  │  Type   │                    Pattern                     │
-  ├─────────┼────────────────────────────────────────────────┤
-  │ Success │ Green bg 0.07 / Green fg / Green border 0.18   │
-  ├─────────┼────────────────────────────────────────────────┤
-  │ Warning │ Yellow bg 0.06 / Yellow fg / Yellow border     │
-  │         │ 0.14                                           │
-  ├─────────┼────────────────────────────────────────────────┤
-  │ Error   │ Red bg 0.06 / Red fg / Red border 0.14         │
-  ├─────────┼────────────────────────────────────────────────┤
-  │ Neutral │ Purple bg 0.06 / Purple fg / Purple border     │
-  │         │ 0.14                                           │
-  ├─────────┼────────────────────────────────────────────────┤
-  │ Draft   │ Gray bg 0.05 / Muted fg / Gray border 0.14     │
-  └─────────┴────────────────────────────────────────────────┘
-
-  ---
-  Typography
-
-  - Code font: "Cascadia Code", "Cascadia Mono", "Consolas",
-  "Courier New", monospace
-  - Body text uses Tailwind defaults (system font stack)
-
-  Syntax Highlighting
-
-  ┌──────────┬─────────┬─────────┐
-  │  Token   │  Light  │  Dark   │
-  ├──────────┼─────────┼─────────┤
-  │ Keyword  │ #6655D4 │ #B8B0F8 │
-  ├──────────┼─────────┼─────────┤
-  │ String   │ #3BA68E │ #7DD3C0 │
-  ├──────────┼─────────┼─────────┤
-  │ Comment  │ #8A85A0 │ #5A5670 │
-  ├──────────┼─────────┼─────────┤
-  │ Number   │ #B07D09 │ #F5B73B │
-  ├──────────┼─────────┼─────────┤
-  │ Type     │ #C7324F │ #E54065 │
-  ├──────────┼─────────┼─────────┤
-  │ Function │ #3A3550 │ #C8C4D6 │
-  └──────────┴─────────┴─────────┘
-
-  ---
-  Theme Mechanism
-
-  - Light is the default (:root variables)
-  - Dark is activated by adding .dark class to <html>
-  - Supports "system" mode (follows OS preference), "dark", or
-  "light"
-  - CSS framework: Tailwind CSS v4 via @import "tailwindcss"
-  with custom CSS variables
-
-  ---
-  Animations
-
-  Toast notifications use spring-style physics:
-  - Slide in: translateX(120%) → overshoot to -4% → settle at 0
-  (bouncy entrance)
-  - Slide out: translateX(0) → translateX(120%) (quick exit)
-  - Icon pop: scale(0) → scale(1.2) → scale(1)
-  - Glow pulse: opacity oscillates 0.6 → 1 → 0.6
-  - Merged shimmer: diagonal gradient sweep for merged PR toasts
-
-  ---
-  Surface Pattern
-
-  The app uses a layered glass approach:
-  - Title bar: semi-transparent (0.88 light / 0.8 dark)
-  - Status bar: semi-transparent (0.88 light / 0.6 dark)
-  - Floating badge: near-opaque (0.97)
-  - Modal overlay: rgba(0,0,0, 0.35) light / rgba(0,0,0, 0.65)
-  dark
+1. Colours come from tokens. No hex, `rgb()`/`hsl()` or Tailwind `*-black` / `*-white` utilities in `src/components/**` (`src/styles/__tests__/component-colors.test.ts` fails on any; `SplashScreen.tsx` is the one listed exception until phase 7). The palette reset makes `text-white` and `bg-black/50` render nothing anyway. Missing a token? Add it to `:root` and `.dark` in `index.css`.
+2. Reuse the primitives in `components/shared/primitives/` and the chrome in `components/shared/` (`WindowTitleBar`, `chrome/WindowStatusBar`) before writing a new control.
+3. Lists use the row grammar: `.bd-wb-row` in the main window, `.bd-list-row` in tool windows (hover wash, accent bar on `data-selected="true"`, tabular numerals).
+4. Every transition uses a motion token and collapses under reduced motion.
+5. Check a change in Storybook in both themes (`globals: { theme: 'dark' }`, or `BothThemes` from `src/test-support/story-themes.tsx` for side by side).

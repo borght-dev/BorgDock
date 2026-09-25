@@ -1,14 +1,23 @@
-import { Card, Button } from '@/components/shared/primitives';
-import { Field, SectionHeader, Select, ToggleRow } from '@/components/shared/primitives';
+import {
+  Button,
+  Card,
+  Field,
+  SectionHeader,
+  Select,
+  ToggleRow,
+} from '@/components/shared/primitives';
 import { sendOsNotification } from '@/services/notification';
 import type { NotificationSettings } from '@/types/settings';
 
-interface Props { notifications: NotificationSettings; onChange: (n: NotificationSettings) => void }
+interface Props {
+  notifications: NotificationSettings;
+  onChange: (n: NotificationSettings) => void;
+}
 
 const NUDGE_OPTIONS = [
-  { value: '15',  label: '15 minutes' },
-  { value: '30',  label: '30 minutes' },
-  { value: '60',  label: '1 hour' },
+  { value: '15', label: '15 minutes' },
+  { value: '30', label: '30 minutes' },
+  { value: '60', label: '1 hour' },
   { value: '120', label: '2 hours' },
   { value: '240', label: '4 hours' },
 ];
@@ -96,10 +105,15 @@ export function NotificationSection({ notifications, onChange }: Props) {
             onChange={(reviewNudgeEnabled) => update({ reviewNudgeEnabled })}
           />
         </div>
-        <div id="field-remind-every" className="grid grid-cols-[1fr_130px] items-center gap-4 border-b border-[var(--color-subtle-border)] py-3">
+        <div
+          id="field-remind-every"
+          className="grid grid-cols-[1fr_130px] items-center gap-4 border-b border-[var(--color-subtle-border)] py-3"
+        >
           <div>
             <div className="text-xs font-medium text-[var(--color-text-primary)]">Remind every</div>
-            <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">Cadence for the nudge above.</div>
+            <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+              Cadence for the nudge above.
+            </div>
           </div>
           <Select
             ariaLabel="Review nudge interval"
@@ -125,38 +139,59 @@ export function NotificationSection({ notifications, onChange }: Props) {
         </h3>
         <Field label="Send via" anchorId="channels">
           <div className="flex flex-wrap gap-2">
-            <ChannelChip label="Tray balloon"   on={notifications.channels.tray}        onChange={toggleChannel('tray')} />
-            <ChannelChip label="System (toast)" on={notifications.channels.system}      onChange={toggleChannel('system')} />
-            <ChannelChip label="Sound"          on={notifications.channels.sound}       onChange={toggleChannel('sound')} />
-            <ChannelChip label="Email digest"   on={notifications.channels.emailDigest} onChange={toggleChannel('emailDigest')} />
+            <ChannelChip
+              label="Tray balloon"
+              on={notifications.channels.tray}
+              onChange={toggleChannel('tray')}
+            />
+            <ChannelChip
+              label="System (toast)"
+              on={notifications.channels.system}
+              onChange={toggleChannel('system')}
+            />
+            <ChannelChip
+              label="Sound"
+              on={notifications.channels.sound}
+              onChange={toggleChannel('sound')}
+            />
+            <ChannelChip
+              label="Email digest"
+              on={notifications.channels.emailDigest}
+              onChange={toggleChannel('emailDigest')}
+            />
           </div>
         </Field>
         <div className="flex items-center gap-2.5">
-          <Button variant="secondary" size="sm" onClick={() => {
-            void sendOsNotification({
-              title: 'Test notification',
-              body: 'If you can see this, BorgDock notifications are working.',
-              severity: 'info',
-            }).catch(() => {});
-            update({ lastTestFiredAt: Date.now() });
-          }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              void sendOsNotification({
+                title: 'Test notification',
+                body: 'If you can see this, BorgDock notifications are working.',
+                severity: 'info',
+              }).catch(() => {});
+              update({ lastTestFiredAt: Date.now() });
+            }}
+          >
             Test notification
           </Button>
           {typeof notifications.lastTestFiredAt === 'number' && (
             <span className="text-[10.5px] text-[var(--color-text-muted)]">
-              last fired {Math.max(0, Math.round((Date.now() - notifications.lastTestFiredAt) / 1000))}s ago
+              last fired{' '}
+              {Math.max(0, Math.round((Date.now() - notifications.lastTestFiredAt) / 1000))}s ago
             </span>
           )}
         </div>
 
         {import.meta.env.DEV && (
           <div className="mt-4 border-t pt-3 border-[var(--color-subtle-border)]">
-            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
+            <div className="mb-1.5 text-[12px] font-medium text-[var(--color-text-secondary)]">
               Dev: fire by severity
             </div>
             <div className="mb-2 text-[10.5px] text-[var(--color-text-muted)]">
-              Stripped from production builds. Merged plays the tada sound when the
-              "Play sound on merge" toggle above is on.
+              Stripped from production builds. Merged plays the tada sound when the "Play sound on
+              merge" toggle above is on.
             </div>
             <div className="flex flex-wrap gap-1.5">
               {(['info', 'success', 'warning', 'error', 'merged'] as const).map((sev) => (
@@ -167,9 +202,10 @@ export function NotificationSection({ notifications, onChange }: Props) {
                   onClick={() => {
                     void sendOsNotification({
                       title: `Dev test: ${sev}`,
-                      body: sev === 'merged'
-                        ? '🎉 Pretend a PR just merged.'
-                        : `A ${sev}-severity notification — tests visual + dismiss + actions.`,
+                      body:
+                        sev === 'merged'
+                          ? '🎉 Pretend a PR just merged.'
+                          : `A ${sev}-severity notification — tests visual + dismiss + actions.`,
                       severity: sev,
                       actions: [
                         { label: 'Open in GitHub', action: 'open-url', url: 'https://github.com' },
@@ -189,7 +225,15 @@ export function NotificationSection({ notifications, onChange }: Props) {
   );
 }
 
-function ChannelChip({ label, on, onChange }: { label: string; on: boolean; onChange: (b: boolean) => void }) {
+function ChannelChip({
+  label,
+  on,
+  onChange,
+}: {
+  label: string;
+  on: boolean;
+  onChange: (b: boolean) => void;
+}) {
   return (
     <button
       type="button"

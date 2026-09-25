@@ -4,6 +4,11 @@ import './styles/index.css';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { WorkItemDetailApp } from './components/work-items/WorkItemDetailApp';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
+import { startWindowTheme } from './utils/theme';
+
+// Theme and reduced motion follow the saved settings (and later changes from
+// any window); public/theme-boot.js already set them before first paint.
+startWindowTheme();
 
 disableDefaultContextMenu();
 

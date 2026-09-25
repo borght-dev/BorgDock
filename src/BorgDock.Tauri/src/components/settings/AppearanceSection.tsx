@@ -12,7 +12,7 @@ import {
   ToggleRow,
 } from '@/components/shared/primitives';
 import { STALE_AFTER_DAYS_MAX, staleAfterDaysOf } from '@/services/focus-bucket';
-import type { PrDensity, ThemeMode, UiSettings } from '@/types/settings';
+import type { FocusLayout, PrDensity, ThemeMode, UiSettings } from '@/types/settings';
 import { HotkeyRecorder } from './HotkeyRecorder';
 
 interface Props {
@@ -71,15 +71,18 @@ export function AppearanceSection({ ui, onChange }: Props) {
     <>
       <SectionHeader
         title="Appearance"
-        subtitle="Theme, hotkeys and the always-on-top tray flyout."
+        subtitle="How BorgDock looks and moves, plus hotkeys and startup."
       />
 
+      {/* One panel for everything visual: theme and motion first, then the
+          layout choices. Hints stay to one short line. */}
       <Card variant="default" padding="md">
         <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
-          Theme & layout
+          Look and layout
         </h3>
-        <Field label="Theme" anchorId="theme">
+        <Field label="Theme" hint="System follows your Windows setting." anchorId="theme">
           <Seg2
+            ariaLabel="Theme"
             value={ui.theme}
             options={[
               { value: 'system', label: 'System' },
@@ -89,12 +92,45 @@ export function AppearanceSection({ ui, onChange }: Props) {
             onChange={(v) => update({ theme: v as ThemeMode })}
           />
         </Field>
+        <div id="field-reduce-motion">
+          <ToggleRow
+            label="Reduce motion"
+            hint="Views, filters and lists switch instantly. Your system setting counts too."
+            on={ui.reduceMotion ?? false}
+            onChange={(reduceMotion) => update({ reduceMotion })}
+          />
+        </div>
+        <div id="field-layout-v3" className="mb-[18px]">
+          <ToggleRow
+            label="New layout (preview)"
+            hint="The Workbench layout: a left rail and details inside the window."
+            on={ui.layoutV3 ?? false}
+            onChange={(layoutV3) => update({ layoutV3 })}
+            last
+          />
+        </div>
+        <Field
+          label="Focus layout"
+          hint="A ranked list, or a board in four columns."
+          anchorId="focus-layout"
+        >
+          <Seg2
+            ariaLabel="Focus layout"
+            value={ui.focusLayout ?? 'list'}
+            options={[
+              { value: 'list', label: 'List' },
+              { value: 'board', label: 'Board' },
+            ]}
+            onChange={(v) => update({ focusLayout: v as FocusLayout })}
+          />
+        </Field>
         <Field
           label="Pull request density"
-          hint="Comfortable shows two-line rows. Compact fits a single-line table with twice the PRs on screen."
+          hint="Compact fits twice as many pull requests on screen."
           anchorId="pr-density"
         >
           <Seg2
+            ariaLabel="Pull request density"
             value={ui.prDensity ?? 'comfortable'}
             options={[
               { value: 'comfortable', label: 'Comfortable' },
@@ -105,31 +141,15 @@ export function AppearanceSection({ ui, onChange }: Props) {
         </Field>
         <Field
           label="Stale after"
-          hint="An open pull request with no update for this many days moves to Stale in Focus and is marked stale in the list."
+          hint="Pull requests with no update for this long move to Stale."
           anchorId="stale-after-days"
+          dense
         >
           <StaleDaysField
             value={staleAfterDaysOf(ui.staleAfterDays)}
             onChange={(staleAfterDays) => update({ staleAfterDays })}
           />
         </Field>
-        <div id="field-reduce-motion">
-          <ToggleRow
-            label="Reduce motion"
-            hint="Switch views, filters and lists instantly instead of animating them. BorgDock also follows the reduced-motion setting of your operating system."
-            on={ui.reduceMotion ?? false}
-            onChange={(reduceMotion) => update({ reduceMotion })}
-          />
-        </div>
-        <div id="field-layout-v3">
-          <ToggleRow
-            label="New layout (preview)"
-            hint="Switches to the Workbench layout as it lands. Off keeps the current one."
-            on={ui.layoutV3 ?? false}
-            onChange={(layoutV3) => update({ layoutV3 })}
-            last
-          />
-        </div>
       </Card>
 
       <Card variant="default" padding="md">
