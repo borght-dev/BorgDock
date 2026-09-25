@@ -196,6 +196,10 @@ Hero images are **real screenshots captured from Storybook**, written large (not
 
 Voice: emulate the Home Assistant release blog — benefit-first, "you", per-feature, not root-cause engineering prose. The marketing site's `site/src/pages/changelog.astro` now parses `/CHANGELOG.md` at build time, and `site/src/pages/whats-new/<v>.astro` is the long-form post. The main window (Focus / PRs / Work Items) Storybook catalog is `src/components/layout/MainWindow.stories.tsx`.
 
+## Vitest: a hook that returns a function
+
+`beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`.
+
 ## Self-Improvement
 
 Whenever you learn something new that is important to remember, run into the same issue twice, or encounter an issue that might happen again — update this CLAUDE.md so the next session avoids the same pitfalls.

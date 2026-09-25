@@ -1,6 +1,6 @@
 import { type MouseEvent, memo, useCallback, useMemo } from 'react';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
-import { pushView } from '@/services/navigation';
+import { showPr } from '@/services/navigation';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -27,7 +27,7 @@ interface WorkbenchPrRowProps {
  *
  * - Click (or Enter / Space on the focused row) selects the row by its
  *   `owner/repo#number` key and pushes the in-window detail view
- *   (`navigation.pushView`) at once.
+ *   (`navigation.showPr`) at once.
  * - Ctrl/Cmd+click, Ctrl/Cmd+Enter and middle-click open the pop-out window
  *   (`openPrDetail`); so does "Open in window" in the context menu.
  * - Right-click opens `PrContextMenu`; its confirm dialogs mount here too.
@@ -50,7 +50,7 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
   const { repoOwner: owner, repoName: repo, number } = pr;
 
   const openInline = useCallback(() => {
-    void pushView({ kind: 'pr-detail', owner, repo, number });
+    void showPr({ owner, repo, number });
   }, [owner, repo, number]);
 
   const openPopOut = useCallback(() => {

@@ -29,6 +29,8 @@ export type { LinearProgressProps, LinearProgressTone } from './LinearProgress';
 export { LinearProgress } from './LinearProgress';
 export type { PillProps, PillTone } from './Pill';
 export { Pill } from './Pill';
+export type { ProgressButtonProps } from './ProgressButton';
+export { ProgressButton } from './ProgressButton';
 export type { RingProps } from './Ring';
 export { Ring } from './Ring';
 export type { SectionHeaderProps } from './SectionHeader';

@@ -22,3 +22,18 @@ export async function getCheckRunsForRef(
   if (typeof r === 'function') return r({ ref });
   return r ?? [];
 }
+
+/** Job log for the Checks tab's "First failure" excerpt. Stories set `githubResponses.getJobLog`. */
+export async function getJobLog(
+  _client: unknown,
+  _owner: string,
+  _repo: string,
+  jobId: number,
+): Promise<string> {
+  const r = getControl().githubResponses.getJobLog;
+  if (typeof r === 'function') return r({ jobId });
+  if (typeof r === 'string') return r;
+  throw new Error('services-github-checks mock: no getJobLog response');
+}
+
+export async function rerunWorkflow(): Promise<void> {}

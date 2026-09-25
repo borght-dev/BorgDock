@@ -183,12 +183,9 @@ export function FlyoutGlance({
 
   const handleClickPr = useCallback(
     async (pr: FlyoutPr) => {
-      const { openPrDetail } = await import('@/services/windows');
-      try {
-        await openPrDetail({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
-      } catch {
-        // openPrDetail logs the failure already; swallow so the flyout still closes.
-      }
+      // The main window opens it: in place with `ui.layoutV3`, else the pop-out.
+      const { showPr } = await import('@/services/navigation');
+      await showPr({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
       onClose();
     },
     [onClose],

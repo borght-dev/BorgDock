@@ -67,7 +67,12 @@ vi.mock('@/stores/settings-store', () => {
   fn.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
     selector({ settings: { repos: [{ owner: 'test', name: 'repo' }] } }),
   );
-  return { useSettingsStore: fn };
+  // showPr reads the layout flag (off: the pop-out) outside React.
+  return {
+    useSettingsStore: Object.assign(fn, {
+      getState: () => ({ settings: { repos: [], ui: {} } }),
+    }),
+  };
 });
 
 import { PrCardContainer } from '../PrCardContainer';

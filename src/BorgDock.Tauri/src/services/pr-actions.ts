@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { rerunWorkflow } from '@/services/github/checks';
+import { isFailedRun } from '@/services/github/check-runs';
+import { getCheckRunsForRef, rerunFailedChecks } from '@/services/github/checks';
 import {
   bypassMergePullRequest,
   closePullRequest,
@@ -15,6 +16,7 @@ import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import type { CheckRun } from '@/types';
 import { parseError } from '@/utils/parse-error';
 
 const log = createLogger('pr-actions');
@@ -169,15 +171,36 @@ export async function toggleDraftPr(pr: ToggleDraftInput, opts?: ActionOpts): Pr
 export interface RerunChecksInput {
   repoOwner: string;
   repoName: string;
-  /** A check-suite ID for one of the failed checks — GitHub re-runs the suite. */
-  checkSuiteId: number;
+  /**
+   * The PR's check runs (or just the failed ones), when the caller has them:
+   * the detail view and a single suite. Their failed runs are rerun.
+   */
+  checks?: CheckRun[];
+  /**
+   * Otherwise the head commit (sha, or the branch) whose failed check runs
+   * are fetched first: the list row, its context menu, the flyout.
+   */
+  ref?: string;
 }
 
+/**
+ * Rerun a PR's failed checks: the failed jobs of each GitHub Actions workflow
+ * run, and a rerequest of each other app's check suite
+ * (`services/github/checks.rerunFailedChecks`). Fails, through the error
+ * sink, when there is nothing failed to rerun.
+ */
 export async function rerunChecks(input: RerunChecksInput, opts?: ActionOpts): Promise<boolean> {
   const client = getClientForRepo(input.repoOwner, input.repoName);
   if (!client) return false;
   try {
-    await rerunWorkflow(client, input.repoOwner, input.repoName, input.checkSuiteId);
+    const runs =
+      input.checks ??
+      (input.ref
+        ? await getCheckRunsForRef(client, input.repoOwner, input.repoName, input.ref)
+        : []);
+    const failed = runs.filter(isFailedRun);
+    if (failed.length === 0) throw new Error('No failed checks to re-run');
+    await rerunFailedChecks(client, input.repoOwner, input.repoName, failed);
     return true;
   } catch (err) {
     reportError('Failed to re-run checks', err, opts);

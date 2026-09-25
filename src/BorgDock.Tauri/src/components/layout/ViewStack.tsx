@@ -66,30 +66,33 @@ export function ViewStack() {
   const fallback = !supportsViewTransitions();
 
   // The detail view that was just popped, kept for the fallback's exit
-  // animation.
+  // animation. Worked out while rendering (not in an effect), so the popped
+  // view never leaves the tree: it stays the same mounted instance until its
+  // animation ends, instead of being unmounted and mounted again.
   const [leaving, setLeaving] = useState<DetailView | null>(null);
-  const previousRef = useRef<{ detail: DetailView | null; depth: number }>({ detail, depth });
+  const [shown, setShown] = useState<{ detail: DetailView | null; depth: number }>({
+    detail,
+    depth,
+  });
   const detailLayerRef = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => {
-    const previous = previousRef.current;
-    previousRef.current = { detail, depth };
+  if (shown.detail !== detail || shown.depth !== depth) {
     // Only a pop that removes the view on screen animates out; a push or a
-    // replace just brings the new view in.
+    // replace just brings the new view in. `detail` only changes identity
+    // when the stack changes (the store is immutable).
     const popped =
-      previous.detail !== null &&
-      depth < previous.depth &&
-      (detailKey === null || viewKey(previous.detail) !== detailKey);
-    if (!popped || !fallback || !motionOK()) {
-      setLeaving(null);
-      return;
-    }
-    setLeaving(previous.detail);
+      shown.detail !== null &&
+      depth < shown.depth &&
+      (detailKey === null || viewKey(shown.detail) !== detailKey);
+    setShown({ detail, depth });
+    setLeaving(popped && fallback && motionOK() ? shown.detail : null);
+  }
+
+  useEffect(() => {
+    if (leaving === null) return;
     const timer = window.setTimeout(() => setLeaving(null), motionMs('--motion-push', 360));
     return () => window.clearTimeout(timer);
-    // `detail` only changes identity when the stack changes (the store is
-    // immutable), so listing it does not re-run this on unrelated renders.
-  }, [detail, detailKey, depth, fallback]);
+  }, [leaving]);
 
   // Move focus into a newly shown detail view so keyboard users land in it
   // (focus inside the list is dropped anyway once the list turns inert).
@@ -102,6 +105,14 @@ export function ViewStack() {
   useEffect(() => {
     if (!canPop) return;
 
+    // Keys that arrived while a menu, dialog or Quick Review was open. The
+    // check runs in the capture phase, before any handler below can close
+    // the overlay (React would have removed it by the bubble phase).
+    const overlayAtKeydown = new WeakSet<KeyboardEvent>();
+    const onKeyDownCapture = (e: KeyboardEvent) => {
+      if (isOverlayOpen()) overlayAtKeydown.add(e);
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
       const back =
@@ -109,7 +120,7 @@ export function ViewStack() {
         (e.key === 'ArrowLeft' && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey);
       if (!back) return;
       if (isEditable(e.target) || isEditable(document.activeElement)) return;
-      if (isOverlayOpen()) return;
+      if (overlayAtKeydown.has(e) || isOverlayOpen()) return;
       e.preventDefault();
       void popView();
     };
@@ -121,11 +132,15 @@ export function ViewStack() {
       void popView();
     };
 
-    // On window, so document-level handlers (menus, useKeyboardNav) run
-    // first and can claim the key with preventDefault.
+    // Pop on window in the bubble phase, so document-level handlers (menus,
+    // dialogs, useKeyboardNav) run first and can claim the key with
+    // preventDefault; the capture listener remembers an overlay that such a
+    // handler closes on the way.
+    window.addEventListener('keydown', onKeyDownCapture, { capture: true });
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('mouseup', onMouseUp);
     return () => {
+      window.removeEventListener('keydown', onKeyDownCapture, { capture: true });
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -148,8 +163,10 @@ export function ViewStack() {
         <SectionView />
       </div>
       {exiting !== null && (
+        // Same key as while it was on top: React keeps the view mounted for
+        // its exit animation instead of mounting a copy (which would refetch).
         <div
-          key={`leaving:${viewKey(exiting)}`}
+          key={viewKey(exiting)}
           className="bd-viewstack__layer bd-viewstack__detail bd-viewstack__detail--leaving"
           aria-hidden="true"
           inert

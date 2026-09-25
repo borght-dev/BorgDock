@@ -65,8 +65,11 @@ describe('ConfirmDialog', () => {
 
   it('calls onCancel when Escape key is pressed', () => {
     render(<ConfirmDialog {...defaultProps} />);
-    fireEvent.keyDown(document, { key: 'Escape' });
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(esc);
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
+    // Claimed, so a detail view under the dialog does not pop as well.
+    expect(esc.defaultPrevented).toBe(true);
   });
 
   it('does not call onCancel on Escape when dialog is closed', () => {

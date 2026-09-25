@@ -1,8 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { pushViewMock, openPrDetailMock } = vi.hoisted(() => ({
-  pushViewMock: vi.fn().mockResolvedValue(undefined),
+const { showPrMock, openPrDetailMock } = vi.hoisted(() => ({
+  showPrMock: vi.fn().mockResolvedValue(undefined),
   openPrDetailMock: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -24,7 +24,7 @@ vi.mock('@/hooks/useClaudeActions', () => ({
 }));
 vi.mock('@/services/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/navigation')>()),
-  pushView: pushViewMock,
+  showPr: showPrMock,
 }));
 vi.mock('@/services/windows', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/windows')>()),
@@ -39,7 +39,7 @@ import { WorkbenchPrRow } from '../WorkbenchPrRow';
 const PR = listPr({ number: 42, title: 'Add cool feature', repo: 'acme/app' });
 /** Same number, other repository. */
 const TWIN = listPr({ number: 42, title: 'Site change', repo: 'acme/site' });
-const DETAIL = { kind: 'pr-detail', owner: 'acme', repo: 'app', number: 42 };
+const DETAIL = { owner: 'acme', repo: 'app', number: 42 };
 const POP_OUT = { owner: 'acme', repo: 'app', number: 42 };
 
 function row(key = 'acme/app#42') {
@@ -48,7 +48,7 @@ function row(key = 'acme/app#42') {
 
 describe('WorkbenchPrRow', () => {
   beforeEach(() => {
-    pushViewMock.mockClear();
+    showPrMock.mockClear();
     openPrDetailMock.mockClear();
     useUiStore.setState({ selectedPrNumber: null, selectedPrKey: null });
     render(
@@ -61,14 +61,14 @@ describe('WorkbenchPrRow', () => {
 
   afterEach(cleanup);
 
-  it('selects and pushes the in-window detail view on click, at once', () => {
+  it('selects and opens the PR (showPr) on click, at once', () => {
     fireEvent.click(row());
     expect(useUiStore.getState().selectedPrKey).toBe('acme/app#42');
     // The tab layout still reads the number.
     expect(useUiStore.getState().selectedPrNumber).toBe(42);
     expect(row()).toHaveAttribute('data-selected', 'true');
-    expect(pushViewMock).toHaveBeenCalledTimes(1);
-    expect(pushViewMock).toHaveBeenCalledWith(DETAIL);
+    expect(showPrMock).toHaveBeenCalledTimes(1);
+    expect(showPrMock).toHaveBeenCalledWith(DETAIL);
     expect(openPrDetailMock).not.toHaveBeenCalled();
   });
 
@@ -80,11 +80,11 @@ describe('WorkbenchPrRow', () => {
     expect(row()).not.toHaveAttribute('data-selected');
   });
 
-  it('pushes on Enter and Space from the focused row', () => {
+  it('opens the PR on Enter and Space from the focused row', () => {
     fireEvent.keyDown(row(), { key: 'Enter' });
     fireEvent.keyDown(row(), { key: ' ' });
-    expect(pushViewMock).toHaveBeenCalledTimes(2);
-    expect(pushViewMock).toHaveBeenCalledWith(DETAIL);
+    expect(showPrMock).toHaveBeenCalledTimes(2);
+    expect(showPrMock).toHaveBeenCalledWith(DETAIL);
   });
 
   it('opens the pop-out on Ctrl+click and Cmd+click, and selects the row', () => {
@@ -92,20 +92,20 @@ describe('WorkbenchPrRow', () => {
     fireEvent.click(row(), { metaKey: true });
     expect(openPrDetailMock).toHaveBeenCalledTimes(2);
     expect(openPrDetailMock).toHaveBeenCalledWith(POP_OUT);
-    expect(pushViewMock).not.toHaveBeenCalled();
+    expect(showPrMock).not.toHaveBeenCalled();
     expect(row()).toHaveAttribute('data-selected', 'true');
   });
 
   it('opens the pop-out on Ctrl+Enter from the focused row', () => {
     fireEvent.keyDown(row(), { key: 'Enter', ctrlKey: true });
     expect(openPrDetailMock).toHaveBeenCalledWith(POP_OUT);
-    expect(pushViewMock).not.toHaveBeenCalled();
+    expect(showPrMock).not.toHaveBeenCalled();
   });
 
   it('opens the pop-out on middle-click', () => {
     fireEvent(row(), new MouseEvent('auxclick', { bubbles: true, button: 1 }));
     expect(openPrDetailMock).toHaveBeenCalledWith(POP_OUT);
-    expect(pushViewMock).not.toHaveBeenCalled();
+    expect(showPrMock).not.toHaveBeenCalled();
   });
 
   it('ignores other auxiliary buttons', () => {

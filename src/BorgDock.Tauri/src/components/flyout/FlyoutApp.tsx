@@ -239,8 +239,8 @@ export function FlyoutApp() {
         switch (action) {
           case 'open-pr':
             if (toast.prOwner && toast.prRepo && toast.prNumber) {
-              const { openPrDetail } = await import('@/services/windows');
-              await openPrDetail({
+              const { showPr } = await import('@/services/navigation');
+              await showPr({
                 owner: toast.prOwner,
                 repo: toast.prRepo,
                 number: toast.prNumber,

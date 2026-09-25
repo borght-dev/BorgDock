@@ -4,6 +4,7 @@ import {
   getCheckRunsForRef,
   getCheckSuites,
   getJobLog,
+  rerunFailedChecks,
   rerunWorkflow,
 } from '../checks';
 import type { GitHubClient } from '../client';
@@ -217,6 +218,127 @@ describe('getCheckRunsForRef', () => {
     const result = await getCheckRunsForRef(client, 'owner', 'repo', 'abc123');
 
     expect(result[0]!.checkSuiteId).toBe(0);
+  });
+});
+
+describe('getCheckRunsForRef workflow names', () => {
+  it('names Actions runs after their workflow, looked up once for the head commit', async () => {
+    const client = createMockClient();
+    const dto = (id: number, suite: number, url: string) => ({
+      id,
+      name: `job ${id}`,
+      status: 'completed',
+      conclusion: 'success',
+      started_at: null,
+      completed_at: null,
+      html_url: url,
+      check_suite: { id: suite },
+      head_sha: 'sha9',
+    });
+    vi.mocked(client.get)
+      .mockResolvedValueOnce({
+        total_count: 3,
+        check_runs: [
+          dto(1, 11, 'https://github.com/o/r/actions/runs/70/job/1'),
+          dto(2, 12, 'https://github.com/o/r/actions/runs/71/job/2'),
+          dto(3, 13, 'https://codecov.io/x'),
+        ],
+      })
+      .mockResolvedValueOnce({
+        total_count: 2,
+        workflow_runs: [
+          { id: 70, name: 'CI', check_suite_id: 11 },
+          { id: 71, name: 'Docs', check_suite_id: 12 },
+        ],
+      });
+
+    const runs = await getCheckRunsForRef(client, 'o', 'r', 'feature/x');
+
+    expect(client.get).toHaveBeenLastCalledWith(
+      'repos/o/r/actions/runs?head_sha=sha9&per_page=100',
+    );
+    expect(runs.map((r) => r.workflowName)).toEqual(['CI', 'Docs', undefined]);
+  });
+
+  it('keeps the runs when the lookup fails, and skips it without Actions runs', async () => {
+    const client = createMockClient();
+    const run = {
+      id: 1,
+      name: 'job',
+      status: 'completed',
+      conclusion: 'success',
+      started_at: null,
+      completed_at: null,
+      html_url: 'https://github.com/o/r/actions/runs/70/job/1',
+      check_suite: { id: 11 },
+      head_sha: 'sha9',
+    };
+    vi.mocked(client.get)
+      .mockResolvedValueOnce({ total_count: 1, check_runs: [run] })
+      .mockRejectedValueOnce(new Error('403'));
+    expect(await getCheckRunsForRef(client, 'o', 'r', 'x')).toHaveLength(1);
+
+    vi.mocked(client.get).mockReset();
+    vi.mocked(client.get).mockResolvedValueOnce({
+      total_count: 1,
+      check_runs: [{ ...run, html_url: 'https://github.com/o/r/runs/1' }],
+    });
+    await getCheckRunsForRef(client, 'o', 'r', 'x');
+    expect(client.get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('rerunFailedChecks', () => {
+  const failed = (id: number, htmlUrl: string, checkSuiteId = 50) => ({
+    id,
+    name: `check ${id}`,
+    status: 'completed',
+    conclusion: 'failure',
+    htmlUrl,
+    checkSuiteId,
+  });
+
+  it('reruns the failed jobs of each Actions workflow run once', async () => {
+    const client = createMockClient();
+    vi.mocked(client.post).mockResolvedValue(undefined);
+    const plan = await rerunFailedChecks(client, 'o', 'r', [
+      failed(1, 'https://github.com/o/r/actions/runs/70/job/1'),
+      failed(2, 'https://github.com/o/r/actions/runs/70/job/2'),
+      failed(3, 'https://github.com/o/r/actions/runs/71/job/3'),
+    ]);
+    expect(plan).toEqual({ workflowRunIds: [70, 71], checkSuiteIds: [] });
+    expect(vi.mocked(client.post).mock.calls).toEqual([
+      ['repos/o/r/actions/runs/70/rerun-failed-jobs', {}],
+      ['repos/o/r/actions/runs/71/rerun-failed-jobs', {}],
+    ]);
+  });
+
+  it('rerequests the check suite of checks from other apps', async () => {
+    const client = createMockClient();
+    vi.mocked(client.post).mockResolvedValue(undefined);
+    await rerunFailedChecks(client, 'o', 'r', [
+      failed(1, 'https://codecov.io/gh/o/r', 90),
+      failed(2, 'https://vercel.com/o/r', 90),
+    ]);
+    expect(vi.mocked(client.post).mock.calls).toEqual([
+      ['repos/o/r/check-suites/90/rerequest', {}],
+    ]);
+  });
+
+  it('does both for a mix, tries every request and rethrows the first failure', async () => {
+    const client = createMockClient();
+    vi.mocked(client.post).mockRejectedValueOnce(new Error('403')).mockResolvedValueOnce(undefined);
+    await expect(
+      rerunFailedChecks(client, 'o', 'r', [
+        failed(1, 'https://github.com/o/r/actions/runs/70/job/1', 11),
+        failed(2, 'https://codecov.io/gh/o/r', 90),
+        failed(3, 'no url', 0),
+      ]),
+    ).rejects.toThrow('403');
+    expect(vi.mocked(client.post).mock.calls).toEqual([
+      ['repos/o/r/actions/runs/70/rerun-failed-jobs', {}],
+      ['repos/o/r/check-suites/90/rerequest', {}],
+    ]);
   });
 });
 

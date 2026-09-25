@@ -15,6 +15,7 @@ const mockSetActiveSection = vi.fn();
 
 const mockShowSection = vi.fn((_section: string) => Promise.resolve());
 const mockPushView = vi.fn((_view: unknown) => Promise.resolve());
+const mockShowPr = vi.fn((_target: unknown) => Promise.resolve());
 const mockOpenPrDetail = vi.fn((_target: unknown) => Promise.resolve());
 const mockSelectPrKey = vi.fn();
 let mockOverlayOpen = false;
@@ -74,6 +75,7 @@ vi.mock('@/stores/quick-review-store', () => ({
 vi.mock('@/services/navigation', () => ({
   showSection: (section: string) => mockShowSection(section),
   pushView: (view: unknown) => mockPushView(view),
+  showPr: (target: unknown) => mockShowPr(target),
   isOverlayOpen: () => mockOverlayOpen,
 }));
 
@@ -834,12 +836,7 @@ describe('useKeyboardNav', () => {
       ]);
       renderHook(() => useKeyboardNav());
       fireKey('Enter');
-      expect(mockPushView).toHaveBeenCalledWith({
-        kind: 'pr-detail',
-        owner: 'acme',
-        repo: 'site',
-        number: 12,
-      });
+      expect(mockShowPr).toHaveBeenCalledWith({ owner: 'acme', repo: 'site', number: 12 });
       expect(mockOpenPrDetail).not.toHaveBeenCalled();
     });
 
@@ -850,7 +847,7 @@ describe('useKeyboardNav', () => {
       fireKey('Enter', { metaKey: true });
       expect(mockOpenPrDetail).toHaveBeenCalledTimes(2);
       expect(mockOpenPrDetail).toHaveBeenCalledWith({ owner: 'acme', repo: 'repo12', number: 12 });
-      expect(mockPushView).not.toHaveBeenCalled();
+      expect(mockShowPr).not.toHaveBeenCalled();
     });
 
     it('Ctrl+Enter stands down while a menu or dialog is open', () => {
@@ -866,7 +863,7 @@ describe('useKeyboardNav', () => {
       renderHook(() => useKeyboardNav());
       fireKey('Enter');
       fireKey('Enter', { ctrlKey: true });
-      expect(mockPushView).not.toHaveBeenCalled();
+      expect(mockShowPr).not.toHaveBeenCalled();
       expect(mockOpenPrDetail).not.toHaveBeenCalled();
     });
 

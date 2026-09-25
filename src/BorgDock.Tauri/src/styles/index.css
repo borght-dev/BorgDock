@@ -1218,6 +1218,28 @@ select.field-input option {
   line-height: 1.3;
   color: var(--color-text-muted);
 }
+/* In the full-screen detail (and every clamped description), Markdown
+   headings read as headings: a step above the 12px body, in the primary
+   text colour. Other Markdown surfaces keep the soft section labels. */
+.bd-md-clamp.markdown-body {
+  font-size: 12.5px;
+}
+.bd-detail .markdown-body h1,
+.bd-detail .markdown-body h2,
+.bd-md-clamp.markdown-body h1,
+.bd-md-clamp.markdown-body h2 {
+  margin: 16px 0 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-text-primary);
+}
+.bd-detail .markdown-body :is(h3, h4, h5, h6),
+.bd-md-clamp.markdown-body :is(h3, h4, h5, h6) {
+  margin: 14px 0 4px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--color-text-primary);
+}
 
 /* Paragraphs */
 .markdown-body p {
@@ -3491,6 +3513,519 @@ body.sql-resizing-v .sql-resize-handle {
   }
   .bd-detail-view__note {
     color: var(--color-text-tertiary);
+  }
+
+  /* ── PR detail, full screen in the main window (phase 3) ── */
+  .bd-detail {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    font-family: var(--font-reading);
+    font-size: 14px;
+    color: var(--color-text-primary);
+    background: var(--color-background);
+  }
+  .bd-detail__panel {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .bd-detail__head {
+    display: grid;
+    gap: 10px;
+    padding: 10px 24px 14px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    background: var(--color-surface);
+  }
+  .bd-detail__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: -8px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+  .bd-detail__crumb {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-detail__num {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-detail__popout {
+    margin-left: auto;
+  }
+  .bd-detail__titlerow {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .bd-detail__avatar {
+    flex: none;
+    margin-top: 2px;
+  }
+  .bd-detail__title {
+    margin: 0;
+    min-width: 0;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .bd-detail__meta {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+  .bd-detail__meta em {
+    font-style: normal;
+    color: var(--color-text-primary);
+  }
+  .bd-detail__meta code {
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-hover);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--color-text-primary);
+  }
+  .bd-detail__stats {
+    margin-left: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-detail__add {
+    color: var(--color-status-green);
+  }
+  .bd-detail__del {
+    color: var(--color-status-red);
+  }
+  .bd-detail__tabs {
+    padding: 0 24px;
+    background: var(--color-surface);
+  }
+  /* The sliding underline replaces the per-tab one. */
+  .bd-tabs--sliding .bd-tab--active::after {
+    content: none;
+  }
+  .bd-detail__content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--color-background);
+  }
+  /* A tab pane fades in each time it is shown (display: none → block
+     restarts the animation), so switching tabs crossfades the content. */
+  .bd-detail__pane {
+    animation: bd-detail-pane-in var(--motion-base) var(--ease-out) both;
+  }
+  @keyframes bd-detail-pane-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .bd-detail__pane-body {
+    padding: 16px 24px 24px;
+  }
+  /* The Overview tab brings its own 12 px padding; line it up with the header. */
+  .bd-detail__pane--inset {
+    padding-inline: 12px;
+  }
+  .bd-detail__state {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-detail__spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--color-subtle-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: bd-detail-spin 0.8s linear infinite;
+  }
+
+  @keyframes bd-detail-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Action row of the detail header. */
+  .bd-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+  }
+  .bd-detail-actions__toggle--on {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .bd-detail-actions__more {
+    margin-left: 2px;
+  }
+
+  /* A button that fills while its request runs, then shows the result. */
+  .bd-progress-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .bd-progress-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0.16;
+    transform: scaleX(0);
+    transform-origin: left;
+    pointer-events: none;
+  }
+  .bd-progress-btn[data-progress="busy"] {
+    cursor: progress;
+  }
+  .bd-progress-btn[data-progress="busy"]::after {
+    animation: bd-progress-fill calc(var(--motion-base) * 5) var(--ease-out) forwards;
+  }
+  .bd-progress-btn[data-progress="done"]::after {
+    transform: scaleX(1);
+    opacity: 0;
+    transition:
+      transform var(--motion-fast) var(--ease-out),
+      opacity var(--motion-base) var(--ease-std) var(--motion-fast);
+  }
+  .bd-progress-btn__label {
+    position: relative;
+    display: inline-block;
+    animation: bd-progress-label var(--motion-fast) var(--ease-out) both;
+  }
+  /* The fill approaches the end while the request runs; it completes on done. */
+  @keyframes bd-progress-fill {
+    to {
+      transform: scaleX(0.9);
+    }
+  }
+  @keyframes bd-progress-label {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Readiness sentence under the title. */
+  .bd-readiness {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    font-size: 13px;
+  }
+  .bd-readiness__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-status-yellow);
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-readiness[data-tone="ok"] .bd-readiness__dot {
+    background: var(--color-status-green);
+  }
+  .bd-readiness[data-tone="bad"] .bd-readiness__dot {
+    background: var(--color-status-red);
+  }
+  .bd-readiness[data-tone="neutral"] .bd-readiness__dot {
+    background: var(--color-status-gray);
+  }
+  .bd-readiness__text {
+    font-weight: 600;
+  }
+
+  /* Checks grouped by suite. */
+  .bd-checks-grouped {
+    display: grid;
+    gap: 8px;
+  }
+  .bd-checks-grouped__heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 2px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+  .bd-checks-grouped__heading span {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-checks-grouped__suites {
+    display: grid;
+    gap: 2px;
+  }
+  .bd-checks-grouped__suite {
+    border-radius: var(--radius-md);
+  }
+  /* The rows fold on a grid-row transition (like the list's groups). */
+  .bd-checks-grouped__suite::details-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition:
+      grid-template-rows var(--motion-expand) var(--ease-out),
+      content-visibility var(--motion-expand) allow-discrete;
+  }
+  .bd-checks-grouped__suite[open]::details-content {
+    grid-template-rows: 1fr;
+  }
+  .bd-checks-grouped__body {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .bd-checks-grouped__summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: var(--radius-md);
+    list-style: none;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-checks-grouped__summary::-webkit-details-marker {
+    display: none;
+  }
+  .bd-checks-grouped__summary:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-checks-grouped__summary:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-checks-grouped__caret {
+    flex: none;
+    color: var(--color-text-tertiary);
+    transition: transform var(--motion-fast) var(--ease-std);
+  }
+  .bd-checks-grouped__suite[open] .bd-checks-grouped__caret {
+    transform: rotate(90deg);
+  }
+  .bd-checks-grouped__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-checks-grouped__count {
+    margin-left: auto;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .bd-checks-grouped__count[data-state="failed"] {
+    color: var(--color-status-red);
+  }
+  .bd-checks-grouped__count[data-state="running"] {
+    color: var(--color-status-yellow);
+  }
+  .bd-checks-grouped__actions {
+    display: inline-flex;
+  }
+  .bd-checks-grouped__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-status-green);
+  }
+  .bd-checks-grouped__dot[data-state="failed"] {
+    background: var(--color-status-red);
+  }
+  .bd-checks-grouped__dot[data-state="running"] {
+    background: var(--color-status-yellow);
+    animation: bd-checks-pulse var(--duration-breath, 2600ms) ease-in-out infinite;
+  }
+  .bd-checks-grouped__dot[data-state="skipped"] {
+    background: var(--color-status-gray);
+  }
+  @keyframes bd-checks-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  .bd-checks-grouped__rows {
+    display: grid;
+    gap: 1px;
+    padding: 2px 0 6px;
+  }
+  .bd-checks-grouped__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding: 0 10px 0 32px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-checks-grouped__row:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-checks-grouped__row--failed {
+    color: var(--color-text-primary);
+  }
+  .bd-checks-grouped__run {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .bd-checks-grouped__run:hover {
+    text-decoration: underline;
+  }
+  .bd-checks-grouped__fix {
+    padding: 2px 6px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    font: inherit;
+    font-size: 12px;
+    color: var(--color-accent);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-checks-grouped__fix:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-checks-grouped__fix:hover {
+    background: var(--color-accent-subtle);
+  }
+  .bd-checks-grouped__time {
+    min-width: 52px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+    text-align: right;
+  }
+  .bd-checks-grouped__failure {
+    margin-top: 12px;
+  }
+  .bd-checks-grouped__log {
+    max-height: 200px;
+    margin: 0;
+    padding: 10px 12px;
+    overflow: auto;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--color-text-secondary);
+    white-space: pre-wrap;
+  }
+  .bd-checks-grouped__log-head {
+    font-weight: 500;
+    color: var(--color-status-red);
+  }
+
+  /* Overview: headings and the clamped description. */
+  .bd-overview__section {
+    display: grid;
+    gap: 6px;
+  }
+  .bd-overview__heading {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+  .bd-md-clamp-wrap {
+    display: grid;
+    justify-items: start;
+  }
+  .bd-md-clamp {
+    position: relative;
+    justify-self: stretch;
+    /* Six lines of the description's 1.6 line height. */
+    max-height: calc(1.6em * 6);
+    overflow: hidden;
+    font-size: 12.5px;
+    transition: max-height var(--motion-expand) var(--ease-out);
+  }
+  .bd-md-clamp[data-overflows="true"]:not([data-open])::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 40px;
+    background: linear-gradient(transparent, var(--color-background));
+    pointer-events: none;
+  }
+  .bd-md-clamp[data-open="true"] {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .bd-md-clamp__more {
+    margin-top: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--color-accent);
+    cursor: pointer;
+  }
+  .bd-md-clamp__more:hover {
+    text-decoration: underline;
   }
 
   /* ── WindowControls ──────────────────────────────────── */

@@ -112,7 +112,8 @@ test('a pushed detail view pops with Esc and returns to the same list', async ({
   await pushView(page, { kind: 'pr-detail', owner: 'test-org', repo: 'borgdock', number: 42 });
 
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '2');
-  await expect(page.getByRole('heading', { name: '#42' })).toBeVisible();
+  // PR #42 is in the list, so the detail shows its title straight away.
+  await expect(page.getByRole('heading', { level: 1, name: 'Add cool feature' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
   // The list stays mounted underneath, inert.
   await expect(page.locator('.bd-viewstack__list')).toHaveAttribute('inert', '');
@@ -120,7 +121,7 @@ test('a pushed detail view pops with Esc and returns to the same list', async ({
   await page.keyboard.press('Escape');
 
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '1');
-  await expect(page.getByRole('heading', { name: '#42' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1, name: 'Add cool feature' })).toHaveCount(0);
   // The push/pop direction marker is cleared once the view transition ends.
   await expect(page.locator('html')).not.toHaveAttribute('data-view-transition', /.*/);
   await expect(railButton(page, /^Pull requests/)).toHaveAttribute('aria-current', 'page');

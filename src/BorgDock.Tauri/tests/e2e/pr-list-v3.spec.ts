@@ -7,7 +7,7 @@ import { bootApp, seedMainWindow } from './helpers/test-utils';
  * Workbench pull request list (plans/ui-overhaul-workbench.md, phase 2) with
  * `ui.layoutV3` on: the shared row grammar, the All / Needs you / Mine /
  * Failing filter, and a row click that pushes the in-window detail view
- * (still the phase 1 placeholder) and comes back to the same scroll
+ * (phase 3's full-screen PR detail) and comes back to the same scroll
  * position and selection.
  *
  * The seeded user is `test-user` (the happy-path `check_github_auth`).
@@ -164,7 +164,7 @@ test('a row click pushes the detail view; Esc returns to the same scroll and sel
   await target.click();
 
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '2');
-  await expect(page.getByRole('heading', { name: '#30' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Workbench change 30' })).toBeVisible();
   // The click opened the in-window view, not the pop-out.
   const log = await getInvokeLog(page);
   expect(log.some((e) => e.cmd === 'open_pr_detail_window')).toBe(false);
@@ -217,7 +217,9 @@ test('J moves the selection down the rows as drawn and Enter opens it', async ({
 
   await page.keyboard.press('Enter');
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '2');
-  await expect(page.getByRole('heading', { name: `#${number}` })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: `Workbench change ${number}` }),
+  ).toBeVisible();
 });
 
 test('Ctrl+Enter opens the selected row in its own window', async ({ page }) => {

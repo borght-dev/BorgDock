@@ -89,7 +89,14 @@ test('detail file navigator groups readable names and launches a single PR revie
   await expect(longName).toBeVisible();
   expect(await longName.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   expect(await nav.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await page.screenshot({ path: '../../design/quick-review/pr-detail-files.png' });
+  // The tracked design shot is only rewritten on request; a normal run writes
+  // to test-results/ and leaves the working tree alone.
+  await page.screenshot({
+    path:
+      process.env.UPDATE_DESIGN_SHOTS === '1'
+        ? '../../design/quick-review/pr-detail-files.png'
+        : test.info().outputPath('pr-detail-files.png'),
+  });
   await nav.getByRole('button', { name: /Tests, 3 files/ }).click();
   await expect(longName).toHaveCount(0);
   await nav.getByRole('textbox').fill('drag-suppression');

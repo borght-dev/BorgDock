@@ -108,6 +108,8 @@ export type GithubResponses = {
   getCheckRunsForRef?:
     | CheckRun[]
     | ((args: { ref: string }) => CheckRun[] | Promise<CheckRun[]> | Promise<never>);
+  /** Raw job log for the Checks tab's first-failure excerpt. */
+  getJobLog?: string | ((args: { jobId: number }) => string | Promise<string>);
   pollOpenPrsAggregate?:
     | PullRequestWithChecks[]
     | ((args: {

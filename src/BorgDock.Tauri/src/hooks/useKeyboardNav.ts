@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { isOverlayOpen, pushView, showSection } from '@/services/navigation';
+import { isOverlayOpen, showPr, showSection } from '@/services/navigation';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -244,7 +244,7 @@ function handleWorkbenchRowKey(
       const target = row ? rowTarget(row) : null;
       if (!target) return false;
       e.preventDefault();
-      void pushView({ kind: 'pr-detail', ...target });
+      void showPr(target);
       return true;
     }
     default:

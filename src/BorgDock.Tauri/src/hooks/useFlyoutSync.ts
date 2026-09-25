@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { computeMergeScore } from '@/services/merge-score';
+import { OPEN_PR_DETAIL_EVENT, type ShowPrTarget, showPr } from '@/services/navigation';
 import { sendOsNotification } from '@/services/notification';
 import type { PrActionId } from '@/services/pr-action-resolver';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { requestT3Thread } from '@/services/t3-thread';
-import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useT3SessionStore } from '@/stores/t3-session-store';
@@ -30,6 +30,41 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+/** `open-pr-detail` payload: `showPr`'s target, or just a number from older emitters. */
+type OpenPrDetailPayload = Partial<ShowPrTarget> & { number: number };
+
+/** Opens the PR another window asked for; see the `open-pr-detail` listener. */
+export async function openPrFromEvent(payload: OpenPrDetailPayload): Promise<void> {
+  const { number, tab } = payload;
+  let { owner, repo } = payload;
+  if (!owner || !repo) {
+    const prw = usePrStore.getState().pullRequests.find((p) => p.pullRequest.number === number);
+    if (!prw) return;
+    owner = prw.pullRequest.repoOwner;
+    repo = prw.pullRequest.repoName;
+  }
+  if (useSettingsStore.getState().settings.ui?.layoutV3 ?? false) {
+    await bringMainWindowForward();
+  }
+  await showPr({ owner, repo, number, ...(tab ? { tab } : {}) });
+}
+
+/**
+ * Show, restore and focus this (the main) window. Not `show_or_focus_main`:
+ * that command toggles, and hides a window that is already focused.
+ */
+async function bringMainWindowForward(): Promise<void> {
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const win = getCurrentWindow();
+    await win.unminimize().catch(() => {});
+    await win.show();
+    await win.setFocus();
+  } catch {
+    // Still push the view; the window may already be showing.
+  }
 }
 
 /** Build the payload for the flyout window */
@@ -246,26 +281,18 @@ export function useFlyoutSync() {
     };
   }, []);
 
-  // Listen for open-pr-detail events — pop out the detail window. Owner/repo
-  // are derived from the in-memory PR list because external emitters only
-  // include the PR number.
+  // Listen for open-pr-detail events from other windows (the flyout's
+  // `showPr`). With `ui.layoutV3` the main window comes to the front and
+  // pushes the detail view; without it the pop-out opens as before. Emitters
+  // that only send a number get owner/repo from the in-memory PR list.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        const fn = await listen<{ number: number }>('open-pr-detail', (event) => {
-          const number = event.payload.number;
-          const prw = usePrStore
-            .getState()
-            .pullRequests.find((p) => p.pullRequest.number === number);
-          if (!prw) return;
-          void openPrDetail({
-            owner: prw.pullRequest.repoOwner,
-            repo: prw.pullRequest.repoName,
-            number,
-          });
+        const fn = await listen<OpenPrDetailPayload>(OPEN_PR_DETAIL_EVENT, (event) => {
+          void openPrFromEvent(event.payload);
         });
         if (cancelled) {
           fn();
@@ -396,12 +423,11 @@ export function useFlyoutSync() {
           // identically regardless of which surface fired the event.
           switch (action) {
             case 'rerun': {
-              const failedSuiteId = prw.failedCheckSuiteIds[0];
-              if (failedSuiteId !== undefined) {
+              if (prw.failedCheckNames.length > 0) {
                 void rerunChecks({
                   repoOwner: pr.repoOwner,
                   repoName: pr.repoName,
-                  checkSuiteId: failedSuiteId,
+                  ref: pr.headSha || pr.headRef,
                 });
               }
               break;

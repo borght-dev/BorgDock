@@ -6,8 +6,8 @@ import { PrCardContainer } from '@/components/pr/PrCardContainer';
 import { PrPanel } from '@/components/pr/PrRow';
 import { Button } from '@/components/shared/primitives';
 import { formatFocusHeadline, summarizeFocus } from '@/services/focus-summary';
+import { showPr } from '@/services/navigation';
 import { prScoreKey } from '@/services/priority-scoring';
-import { openPrDetail } from '@/services/windows';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -18,7 +18,7 @@ import { FocusEmptyState } from './FocusEmptyState';
 // ── component ──────────────────────────────────────────────────────────────
 
 function openPrDetailFor(prw: PullRequestWithChecks): void {
-  void openPrDetail({
+  void showPr({
     owner: prw.pullRequest.repoOwner,
     repo: prw.pullRequest.repoName,
     number: prw.pullRequest.number,

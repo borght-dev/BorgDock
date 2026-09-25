@@ -125,12 +125,9 @@ export function FlyoutPrContextMenu({
 
   const handleOpenDetail = () => {
     void (async () => {
-      const { openPrDetail } = await import('@/services/windows');
-      try {
-        await openPrDetail({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
-      } catch {
-        // ignore — openPrDetail already logs.
-      }
+      // The main window opens it: in place with `ui.layoutV3`, else the pop-out.
+      const { showPr } = await import('@/services/navigation');
+      await showPr({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
     })();
     onClose();
     onCloseFlyout();
@@ -224,7 +221,8 @@ export function FlyoutPrContextMenu({
       }}
     >
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
-      <MenuItem label="Open detail window" onClick={handleOpenDetail} />
+      {/* Neutral: the main window decides between the in-window view and the pop-out. */}
+      <MenuItem label="Open pull request" onClick={handleOpenDetail} />
       <MenuItem label="Copy branch name" disabled={!pr.headRef} onClick={handleCopyBranch} />
       <MenuItem label="Copy PR URL" disabled={!pr.htmlUrl} onClick={handleCopyUrl} />
       <MenuItem label="Copy errors for Claude" disabled={!hasFailing} onClick={handleCopyErrors} />

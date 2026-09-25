@@ -129,6 +129,26 @@ describe('ViewStack', () => {
       dialog.remove();
     });
 
+    it('Esc that closes a menu on the way (without claiming it) does not pop', () => {
+      render(<ViewStack />);
+      push(PR);
+      const menu = document.createElement('div');
+      menu.setAttribute('role', 'menu');
+      document.body.appendChild(menu);
+      // Like a menu that closes on a document keydown and forgets preventDefault.
+      const close = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') menu.remove();
+      };
+      document.addEventListener('keydown', close);
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      document.removeEventListener('keydown', close);
+      expect(menu.isConnected).toBe(false);
+      expect(depth()).toBe(2);
+      // With the menu gone, the next Esc pops.
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      expect(depth()).toBe(1);
+    });
+
     it('a dialog left open inside the inert list does not block Esc', () => {
       render(<ViewStack />);
       push(PR);

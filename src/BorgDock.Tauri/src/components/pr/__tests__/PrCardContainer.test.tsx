@@ -82,7 +82,12 @@ vi.mock('@/stores/settings-store', () => {
       },
     });
   });
-  return { useSettingsStore: fn };
+  // showPr reads the layout flag (off: the pop-out) outside React.
+  return {
+    useSettingsStore: Object.assign(fn, {
+      getState: () => ({ settings: { repos: [], ui: {} } }),
+    }),
+  };
 });
 
 // Mock child components that are complex

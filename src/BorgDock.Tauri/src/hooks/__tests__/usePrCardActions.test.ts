@@ -177,6 +177,37 @@ describe('usePrCardActions', () => {
     );
   });
 
+  it('handleRerun reruns the failed checks of the head commit', async () => {
+    const { result } = renderHook(() =>
+      usePrCardActions(
+        makePrWithChecks({
+          pullRequest: makePr({ headSha: 'sha42' }),
+          overallStatus: 'red',
+          failedCheckNames: ['build'],
+          failedCheckSuiteIds: [7],
+        }),
+      ),
+    );
+    await act(async () => {
+      result.current.handleRerun(fakeMouseEvent);
+      await Promise.resolve();
+    });
+    expect(mockRerunChecks).toHaveBeenCalledWith({
+      repoOwner: 'owner',
+      repoName: 'repo',
+      ref: 'sha42',
+    });
+  });
+
+  it('handleRerun does nothing without a failed check', async () => {
+    const { result } = renderHook(() => usePrCardActions(makePrWithChecks()));
+    await act(async () => {
+      result.current.handleRerun(fakeMouseEvent);
+      await Promise.resolve();
+    });
+    expect(mockRerunChecks).not.toHaveBeenCalled();
+  });
+
   it('handleOpenInBrowser dispatches openPrInBrowser', async () => {
     const { result } = renderHook(() => usePrCardActions(makePrWithChecks()));
     await act(async () => {

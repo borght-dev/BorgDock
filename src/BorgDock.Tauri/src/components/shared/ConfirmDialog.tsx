@@ -26,7 +26,11 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') {
+        // Claim the key: Esc cancels the dialog, not the view under it.
+        e.preventDefault();
+        onCancel();
+      }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);

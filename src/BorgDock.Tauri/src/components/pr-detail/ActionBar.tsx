@@ -1,6 +1,28 @@
 import clsx from 'clsx';
-import { Copy, ExternalLink, GitBranch, GitMerge, MessageSquareText, Pencil } from 'lucide-react';
-import { Button } from '@/components/shared/primitives';
+import {
+  Copy,
+  Ellipsis,
+  ExternalLink,
+  GitBranch,
+  GitMerge,
+  MessageSquareText,
+  Pencil,
+  RotateCw,
+  Sparkles,
+} from 'lucide-react';
+import { type ReactNode, useRef } from 'react';
+import { PrRowOverlays } from '@/components/pr/PrRowOverlays';
+import { Button, IconButton, ProgressButton } from '@/components/shared/primitives';
+import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
+import { usePrCardActions } from '@/hooks/usePrCardActions';
+import { useProgressAction } from '@/hooks/useProgressAction';
+import { type PrActionId, primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
+import { mergePr, rerunChecks } from '@/services/pr-actions';
+import { isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
+import { usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
+import type { CheckRun, PullRequestWithChecks } from '@/types';
 import type { PrActions } from './usePrActions';
 
 interface ActionBarProps {
@@ -131,6 +153,254 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+interface WorkbenchActionBarProps {
+  pr: PullRequestWithChecks;
+  /** The detail panel's actions: Checkout's panel, Open in T3 and GitHub, conflicts. */
+  actions: PrActions;
+  /**
+   * The view's check runs. Rerun uses their failed runs; without them the
+   * rerun service fetches the head commit's.
+   */
+  checks?: CheckRun[];
+}
+
+const ICON = { size: 13, strokeWidth: 2.25, 'aria-hidden': true } as const;
+
+/**
+ * WorkbenchActionBar — the action row in the full-screen detail view's
+ * header (plans/ui-overhaul-workbench.md, phase 3). The primary action is
+ * `primaryFor` (Rerun failed, Merge, Review, Checkout or Open in GitHub),
+ * then Fix with Claude for failing PRs, Checkout, Open in T3 and Open in
+ * GitHub (skipping whichever is already primary), Resolve conflicts when
+ * there are any, and "More" for the row's context menu (copy, draft, bypass,
+ * close, open in window).
+ *
+ * Merge, Rerun and Fix fill while the request runs and flip to their result
+ * label; a failure toasts (`services/pr-actions` error sink) and the button
+ * goes back to rest. Review opens Quick Review for this PR. `R` reruns and
+ * `F` fixes from anywhere in the view (plan section 7).
+ */
+export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchActionBarProps) {
+  const p = pr.pullRequest;
+  const isOpen = p.state === 'open' && !p.mergedAt;
+  const username = usePrStore((s) => s.username);
+  const teams = usePrStore((s) => s.teams);
+  const mine = isMyPr(pr, username);
+  const primary: PrActionId | null = isOpen
+    ? primaryFor(shapeFromPrWithChecks(pr, mine, isWaitingOnMe(pr, username, teams)))
+    : null;
+  const failing = isOpen && pr.failedCheckNames.length > 0;
+
+  const barRef = useRef<HTMLDivElement>(null);
+  const { fixWithClaude } = useClaudeActions();
+  const more = usePrCardActions(pr);
+
+  const merge = useProgressAction(
+    () =>
+      mergePr({
+        repoOwner: p.repoOwner,
+        repoName: p.repoName,
+        number: p.number,
+        title: p.title,
+        htmlUrl: p.htmlUrl,
+      }),
+    'Merge failed',
+  );
+  const rerun = useProgressAction(
+    () =>
+      rerunChecks({
+        repoOwner: p.repoOwner,
+        repoName: p.repoName,
+        ...(checks.length > 0 ? { checks } : { ref: p.headSha || p.headRef }),
+      }),
+    'Failed to re-run checks',
+  );
+  const fix = useProgressAction(async () => {
+    await fixWithClaude(
+      pr,
+      pr.failedCheckNames.length > 0 ? pr.failedCheckNames : ['unknown'],
+      [],
+      [],
+      '',
+    );
+    return true;
+  }, 'Fix with Claude failed');
+
+  const canRerun = failing;
+  useDetailViewKeys(barRef, {
+    r: () => {
+      if (!canRerun) return false;
+      void rerun.trigger();
+    },
+    f: () => {
+      if (!failing) return false;
+      void fix.trigger();
+    },
+  });
+
+  const review = () => useQuickReviewStore.getState().startSinglePr(pr);
+
+  let primaryButton: ReactNode = null;
+  switch (primary) {
+    case 'rerun':
+      primaryButton = (
+        <ProgressButton
+          variant="primary"
+          size="md"
+          leading={<RotateCw {...ICON} />}
+          state={rerun.state}
+          onTrigger={() => void rerun.trigger()}
+          disabled={!canRerun}
+          label="Rerun failed"
+          busyLabel="Rerunning"
+          doneLabel="Rerun started"
+          aria-keyshortcuts="R"
+          data-action-bar-action="rerun"
+        />
+      );
+      break;
+    case 'merge':
+      primaryButton = (
+        <ProgressButton
+          variant="primary"
+          size="md"
+          leading={<GitMerge {...ICON} />}
+          state={merge.state}
+          onTrigger={() => void merge.trigger()}
+          label="Merge"
+          busyLabel="Merging"
+          doneLabel="Merged"
+          data-action-bar-action="merge"
+        />
+      );
+      break;
+    case 'review':
+      primaryButton = (
+        <Button
+          variant="primary"
+          size="md"
+          leading={<MessageSquareText {...ICON} />}
+          onClick={review}
+          data-action-bar-action="review"
+        >
+          Review
+        </Button>
+      );
+      break;
+    case 'checkout':
+      primaryButton = (
+        <Button
+          variant="primary"
+          size="md"
+          leading={<GitBranch {...ICON} />}
+          onClick={actions.onCheckoutToggle}
+          aria-expanded={actions.checkoutOpen}
+          data-action-bar-action="checkout"
+        >
+          Checkout
+        </Button>
+      );
+      break;
+    case 'open':
+      primaryButton = (
+        <Button
+          variant="primary"
+          size="md"
+          leading={<ExternalLink {...ICON} />}
+          onClick={actions.onOpenInBrowser}
+          data-action-bar-action="browser"
+        >
+          Open in GitHub
+        </Button>
+      );
+      break;
+    default:
+      break;
+  }
+
+  return (
+    <div
+      ref={barRef}
+      className="bd-detail-actions"
+      data-action-bar=""
+      data-primary={primary ?? undefined}
+    >
+      {primaryButton}
+      {failing && (
+        <ProgressButton
+          variant="secondary"
+          size="md"
+          leading={<Sparkles {...ICON} />}
+          state={fix.state}
+          onTrigger={() => void fix.trigger()}
+          label="Fix with Claude"
+          busyLabel="Starting Claude"
+          doneLabel="Claude is on it"
+          aria-keyshortcuts="F"
+          data-action-bar-action="fix"
+        />
+      )}
+      {primary !== 'checkout' && (
+        <Button
+          variant="secondary"
+          size="md"
+          leading={<GitBranch {...ICON} />}
+          onClick={actions.onCheckoutToggle}
+          aria-expanded={actions.checkoutOpen}
+          className={clsx(actions.checkoutOpen && 'bd-detail-actions__toggle--on')}
+          data-action-bar-action="checkout"
+        >
+          Checkout
+        </Button>
+      )}
+      <Button
+        variant="secondary"
+        size="md"
+        leading={<MessageSquareText {...ICON} />}
+        onClick={actions.onOpenInT3}
+        data-action-bar-action="t3"
+      >
+        Open in T3
+      </Button>
+      {primary !== 'open' && (
+        <Button
+          variant="secondary"
+          size="md"
+          leading={<ExternalLink {...ICON} />}
+          onClick={actions.onOpenInBrowser}
+          data-action-bar-action="browser"
+        >
+          Open in GitHub
+        </Button>
+      )}
+      {isOpen && p.mergeable === false && (
+        <Button
+          variant="ghost"
+          size="md"
+          onClick={actions.onResolveConflicts}
+          data-action-bar-action="resolve"
+        >
+          Resolve conflicts
+        </Button>
+      )}
+      <IconButton
+        icon={<Ellipsis size={15} strokeWidth={2.25} aria-hidden="true" />}
+        tooltip="More actions"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={more.contextMenu !== null}
+        className="bd-detail-actions__more"
+        onClick={(e) => {
+          const box = e.currentTarget.getBoundingClientRect();
+          more.setContextMenu({ x: box.left, y: box.bottom + 4 });
+        }}
+        data-action-bar-action="more"
+      />
+      <PrRowOverlays prWithChecks={pr} actions={more} />
     </div>
   );
 }

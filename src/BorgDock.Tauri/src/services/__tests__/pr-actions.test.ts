@@ -6,7 +6,8 @@ const mockMergePullRequest = vi.fn();
 const mockBypassMergePullRequest = vi.fn();
 const mockClosePullRequest = vi.fn();
 const mockToggleDraft = vi.fn();
-const mockRerunWorkflow = vi.fn();
+const mockRerunFailedChecks = vi.fn();
+const mockGetCheckRunsForRef = vi.fn();
 const mockOpenUrl = vi.fn();
 const mockInvoke = vi.fn();
 const mockCelebrate = vi.fn();
@@ -24,7 +25,8 @@ vi.mock('@/services/github/mutations', () => ({
 }));
 
 vi.mock('@/services/github/checks', () => ({
-  rerunWorkflow: (...args: unknown[]) => mockRerunWorkflow(...args),
+  rerunFailedChecks: (...args: unknown[]) => mockRerunFailedChecks(...args),
+  getCheckRunsForRef: (...args: unknown[]) => mockGetCheckRunsForRef(...args),
 }));
 
 vi.mock('@/services/github/singleton', () => ({
@@ -88,7 +90,6 @@ beforeEach(() => {
   mockBypassMergePullRequest.mockReset().mockResolvedValue(undefined);
   mockClosePullRequest.mockReset().mockResolvedValue(undefined);
   mockToggleDraft.mockReset().mockResolvedValue(undefined);
-  mockRerunWorkflow.mockReset().mockResolvedValue(undefined);
   mockOpenUrl.mockReset().mockResolvedValue(undefined);
   mockInvoke.mockReset().mockResolvedValue(undefined);
   mockCelebrate.mockReset();
@@ -201,9 +202,65 @@ describe('toggleDraftPr', () => {
 });
 
 describe('rerunChecks', () => {
-  it('forwards the check-suite ID', async () => {
-    await rerunChecks({ repoOwner: 'owner', repoName: 'repo', checkSuiteId: 99 });
-    expect(mockRerunWorkflow).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', 99);
+  const run = (id: number, conclusion: string, htmlUrl = `https://x/actions/runs/7/job/${id}`) => ({
+    id,
+    name: `job ${id}`,
+    status: 'completed',
+    conclusion,
+    htmlUrl,
+    checkSuiteId: 3,
+  });
+
+  beforeEach(() => {
+    mockRerunFailedChecks.mockReset().mockResolvedValue({ workflowRunIds: [7], checkSuiteIds: [] });
+    mockGetCheckRunsForRef.mockReset();
+  });
+
+  it('reruns the failed runs the caller passes', async () => {
+    const failed = run(1, 'failure');
+    expect(
+      await rerunChecks({
+        repoOwner: 'owner',
+        repoName: 'repo',
+        checks: [failed, run(2, 'success')],
+      }),
+    ).toBe(true);
+    expect(mockGetCheckRunsForRef).not.toHaveBeenCalled();
+    expect(mockRerunFailedChecks).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', [
+      failed,
+    ]);
+  });
+
+  it('fetches the head commit’s runs when the caller has none', async () => {
+    const failed = run(4, 'timed_out');
+    mockGetCheckRunsForRef.mockResolvedValue([run(3, 'success'), failed]);
+    expect(await rerunChecks({ repoOwner: 'owner', repoName: 'repo', ref: 'sha1' })).toBe(true);
+    expect(mockGetCheckRunsForRef).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', 'sha1');
+    expect(mockRerunFailedChecks).toHaveBeenCalledWith(expect.anything(), 'owner', 'repo', [
+      failed,
+    ]);
+  });
+
+  it('reports "nothing to rerun" when no run failed', async () => {
+    mockGetCheckRunsForRef.mockResolvedValue([run(3, 'success')]);
+    expect(await rerunChecks({ repoOwner: 'owner', repoName: 'repo', ref: 'sha1' })).toBe(false);
+    expect(mockRerunFailedChecks).not.toHaveBeenCalled();
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Failed to re-run checks',
+        body: 'No failed checks to re-run',
+      }),
+    );
+  });
+
+  it('reports a failed rerun request', async () => {
+    mockRerunFailedChecks.mockRejectedValue(new Error('403'));
+    expect(
+      await rerunChecks({ repoOwner: 'owner', repoName: 'repo', checks: [run(1, 'failure')] }),
+    ).toBe(false);
+    expect(mockShow).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Failed to re-run checks' }),
+    );
   });
 });
 

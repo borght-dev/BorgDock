@@ -10,7 +10,7 @@ import {
   LoaderCircle,
   Plus,
 } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -19,11 +19,22 @@ import {
   Pill,
 } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { type FirstFailure, loadFirstFailure } from '@/services/first-failure';
+import { sendOsNotification } from '@/services/notification';
+import { rerunChecks } from '@/services/pr-actions';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
+import { parseError } from '@/utils/parse-error';
+import { ChecksGrouped } from './ChecksGrouped';
+import type { CheckGroup } from './check-groups';
 
 interface ChecksTabProps {
   checks: CheckRun[];
   pr?: PullRequestWithChecks;
+  /**
+   * Suites as `<details>` with the first failure's log excerpt (the main
+   * window's full-screen detail view). The pop-out keeps the flat list.
+   */
+  grouped?: boolean;
 }
 
 /* ── Helpers ────────────────────────────────────────── */
@@ -231,15 +242,52 @@ function CheckRow({ run, state, onFixClick }: CheckRowProps) {
 
 /* ── Main component ────────────────────────────────── */
 
-export function ChecksTab({ checks, pr }: ChecksTabProps) {
+/**
+ * The first failure's log excerpt, fetched once the grouped list shows a
+ * failed GitHub Actions job (one request per job, cached).
+ */
+function useFirstFailure(
+  pr: PullRequestWithChecks | undefined,
+  checks: CheckRun[],
+  enabled: boolean,
+): FirstFailure | null {
+  const [excerpt, setExcerpt] = useState<FirstFailure | null>(null);
+  const owner = pr?.pullRequest.repoOwner ?? '';
+  const repo = pr?.pullRequest.repoName ?? '';
+  const failed = checks.filter((c) => classifyCheck(c) === 'failed');
+  const failedKey = failed.map((c) => c.id).join(',');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `failedKey` stands for `failed`, which is rebuilt every render
+  useEffect(() => {
+    if (!enabled || !owner || !repo || failed.length === 0) {
+      setExcerpt(null);
+      return;
+    }
+    let cancelled = false;
+    void loadFirstFailure(owner, repo, failed).then((result) => {
+      if (!cancelled) setExcerpt(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, owner, repo, failedKey]);
+  return excerpt;
+}
+
+export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
   const { fixWithClaude } = useClaudeActions();
+  const firstFailure = useFirstFailure(pr, checks, grouped);
 
   const handleFixCheck = useCallback(
     (checkName: string) => {
       if (!pr) return;
-      fixWithClaude(pr, [checkName], [], [], '').catch((err) =>
-        console.error('Fix with Claude failed:', err),
-      );
+      fixWithClaude(pr, [checkName], [], [], '').catch((err) => {
+        console.error('Fix with Claude failed:', err);
+        void sendOsNotification({
+          title: 'Fix with Claude failed',
+          body: parseError(err).message,
+          severity: 'error',
+        }).catch(() => {});
+      });
     },
     [pr, fixWithClaude],
   );
@@ -253,6 +301,29 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
     );
   }
 
+  if (grouped) {
+    const p = pr?.pullRequest;
+    return (
+      <div className="bd-detail__pane-body" data-checks-tab="">
+        <ChecksGrouped
+          checks={checks}
+          onFix={pr ? (run) => handleFixCheck(run.name) : undefined}
+          onRerun={
+            p
+              ? (group: CheckGroup) =>
+                  rerunChecks({
+                    repoOwner: p.repoOwner,
+                    repoName: p.repoName,
+                    checks: group.runs,
+                  })
+              : undefined
+          }
+          firstFailure={firstFailure}
+        />
+      </div>
+    );
+  }
+
   const pendingRuns = checks.filter((c) => classifyCheck(c) === 'pending');
   const sortOrder: Record<CheckState, number> = {
     failed: 0,
@@ -261,8 +332,8 @@ export function ChecksTab({ checks, pr }: ChecksTabProps) {
     cancelled: 3,
     skipped: 4,
   };
-  const grouped = groupBySuite(checks);
-  const sortedEntries = [...grouped.entries()].sort(
+  const bySuite = groupBySuite(checks);
+  const sortedEntries = [...bySuite.entries()].sort(
     ([, a], [, b]) => sortOrder[suiteStatus(a)] - sortOrder[suiteStatus(b)],
   );
 

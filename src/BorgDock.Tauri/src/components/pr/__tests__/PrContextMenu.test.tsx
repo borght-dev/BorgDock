@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { PrContextMenu } from '../PrContextMenu';
@@ -307,8 +307,11 @@ describe('PrContextMenu', () => {
         onConfirmAction={onConfirmAction}
       />,
     );
-    fireEvent.keyDown(document, { key: 'Escape' });
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(esc);
     expect(onClose).toHaveBeenCalled();
+    // Claimed, so the detail view under the menu does not pop as well.
+    expect(esc.defaultPrevented).toBe(true);
   });
 
   it('closes on click outside', () => {
@@ -499,6 +502,26 @@ describe('PrContextMenu', () => {
       />,
     );
     expect(screen.getByText('Rerun failed checks')).not.toBeDisabled();
+  });
+
+  it('reruns the failed checks of the head commit', async () => {
+    const pr = makePr({ failedCheckNames: ['build'] });
+    render(
+      <PrContextMenu
+        pr={pr}
+        position={defaultPosition}
+        onClose={onClose}
+        onConfirmAction={onConfirmAction}
+      />,
+    );
+    fireEvent.click(screen.getByText('Rerun failed checks'));
+    await waitFor(() =>
+      expect(mockRerunChecks).toHaveBeenCalledWith({
+        repoOwner: pr.pullRequest.repoOwner,
+        repoName: pr.pullRequest.repoName,
+        ref: pr.pullRequest.headSha || pr.pullRequest.headRef,
+      }),
+    );
   });
 
   it('works without onConfirmAction prop', () => {

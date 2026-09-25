@@ -1,7 +1,18 @@
 import { flushSync } from 'react-dom';
+import { createLogger } from '@/services/logger';
+import { openPrDetail } from '@/services/windows';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { type ActiveSection, type MainView, useUiStore } from '@/stores/ui-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import {
+  type ActiveSection,
+  type MainView,
+  type PrDetailTab,
+  selectTopView,
+  useUiStore,
+} from '@/stores/ui-store';
 import { withViewTransition } from '@/utils/motion';
+
+const log = createLogger('navigation');
 
 /**
  * In-window navigation for the main window's view stack
@@ -113,6 +124,114 @@ export function showSection(section: ActiveSection): Promise<void> {
     },
     () => restoreFocus(target),
   );
+}
+
+export interface ShowPrTarget {
+  owner: string;
+  repo: string;
+  number: number;
+  /** Tab to open on. Default Overview. */
+  tab?: PrDetailTab;
+}
+
+/** Tauri label of the main window (`tauri.conf.json`). */
+export const MAIN_WINDOW_LABEL = 'main';
+
+/** Event another window sends the main window to open a PR (useFlyoutSync listens). */
+export const OPEN_PR_DETAIL_EVENT = 'open-pr-detail';
+
+/**
+ * Label of the window this code runs in, read from the metadata Tauri
+ * injects; null outside Tauri (unit tests, Storybook), which count as the
+ * main window.
+ */
+function currentWindowLabel(): string | null {
+  if (typeof window === 'undefined') return null;
+  const internals = (
+    window as unknown as {
+      __TAURI_INTERNALS__?: { metadata?: { currentWindow?: { label?: string } } };
+    }
+  ).__TAURI_INTERNALS__;
+  return internals?.metadata?.currentWindow?.label ?? null;
+}
+
+export function isMainWindow(): boolean {
+  const label = currentWindowLabel();
+  return label === null || label === MAIN_WINDOW_LABEL;
+}
+
+function prDetailView({ owner, repo, number, tab }: ShowPrTarget): MainView {
+  return tab
+    ? { kind: 'pr-detail', owner, repo, number, initialTab: tab }
+    : { kind: 'pr-detail', owner, repo, number };
+}
+
+function samePr(view: MainView, target: ShowPrTarget): boolean {
+  return (
+    view.kind === 'pr-detail' &&
+    view.owner === target.owner &&
+    view.repo === target.repo &&
+    view.number === target.number
+  );
+}
+
+/**
+ * Open a pull request (plans/ui-overhaul-workbench.md, section 3). Every
+ * "open this PR" path goes through here; only the explicit "Open in window"
+ * actions call `openPrDetail` themselves.
+ *
+ * - In the main window with `ui.layoutV3` on: switch to Pull requests,
+ *   select the PR's row and push the full-screen detail view. A PR detail
+ *   already on top is replaced, not stacked; the same PR on the same tab is
+ *   left alone.
+ * - In the main window with the flag off: the pop-out window, as before.
+ * - In another window (the tray flyout): ask the main window, which applies
+ *   the same rules and, when it pushes the view, brings itself to the front.
+ *
+ * The selection is set before the transition starts, so the row carries the
+ * view-transition names in the old snapshot and morphs into the header.
+ */
+export async function showPr(target: ShowPrTarget): Promise<void> {
+  const { owner, repo, number } = target;
+  if (!isMainWindow()) {
+    try {
+      const { emitTo } = await import('@tauri-apps/api/event');
+      await emitTo(MAIN_WINDOW_LABEL, OPEN_PR_DETAIL_EVENT, target);
+    } catch (err) {
+      log.error('open-pr-detail emit failed', err, { owner, repo, number });
+    }
+    return;
+  }
+
+  if (!(useSettingsStore.getState().settings.ui?.layoutV3 ?? false)) {
+    try {
+      await openPrDetail({ owner, repo, number });
+    } catch {
+      // openPrDetail logs the failure.
+    }
+    return;
+  }
+
+  const ui = useUiStore.getState();
+  const top = selectTopView(ui);
+  ui.selectPrKey(`${owner}/${repo}#${number}`, number);
+  const view = prDetailView(target);
+  if (top.kind === 'pr-detail' && samePr(top, target)) {
+    // Already showing: at most switch the tab, in place.
+    if (target.tab !== undefined && top.initialTab !== target.tab) ui.replaceView(view);
+    return;
+  }
+
+  const replacing = top.kind === 'pr-detail';
+  if (!replacing) {
+    focusBeforePush.push(typeof document === 'undefined' ? null : document.activeElement);
+  }
+  await navigate('push', () => {
+    const state = useUiStore.getState();
+    if (state.activeSection !== 'prs') state.setActiveSection('prs');
+    if (replacing) state.replaceView(view);
+    else state.pushView(view);
+  });
 }
 
 /** True when `document.startViewTransition` exists, so push and pop use it. */

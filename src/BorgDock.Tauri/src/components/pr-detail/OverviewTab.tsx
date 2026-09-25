@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { T3SessionStrip } from '@/components/pr/T3SessionStrip';
 import { Markdown } from '@/components/shared/Markdown';
@@ -18,6 +18,63 @@ import { MergeReadinessChecklist } from './MergeReadinessChecklist';
 
 interface OverviewTabProps {
   pr: PullRequestWithChecks;
+}
+
+/**
+ * The PR description, clamped to six lines with a fade. "Show more" opens it
+ * into a box of at most 320 px that scrolls on its own (the iteration-2
+ * mockup's `.md.clamp` and `.more`); the button only appears when the text
+ * is longer than the clamp.
+ */
+export function ClampedDescription({ body }: { body: string }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const id = useId();
+
+  // `body` re-measures when the text changes: the clamped box keeps its
+  // height, so the ResizeObserver alone would not notice.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el || open) return;
+    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [open, body]);
+
+  const toggle = () => {
+    if (open && boxRef.current) boxRef.current.scrollTop = 0;
+    setOpen(!open);
+  };
+
+  return (
+    <div className="bd-md-clamp-wrap">
+      <div
+        ref={boxRef}
+        id={id}
+        className="bd-md-clamp markdown-body"
+        data-open={open ? 'true' : undefined}
+        data-overflows={overflows ? 'true' : undefined}
+      >
+        <Markdown>{body}</Markdown>
+      </div>
+      {(overflows || open) && (
+        <button
+          type="button"
+          className="bd-md-clamp__more"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={toggle}
+        >
+          {open ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  );
 }
 
 const DEFAULT_SUMMARY_SETTINGS = {
@@ -103,9 +160,33 @@ export function OverviewTab({ pr }: OverviewTabProps) {
     <div className="px-6 py-5 space-y-5">
       {!isOpen && <MergedCard pr={p} />}
 
+      {/* Description, then what it links to: work items and agent sessions */}
+      {p.body && (
+        <section className="bd-overview__section" aria-label="Description">
+          <h3 className="bd-overview__heading">Description</h3>
+          <ClampedDescription body={p.body} />
+        </section>
+      )}
+
+      {workItemIds.length > 0 && (
+        <section className="bd-overview__section" aria-label="Linked work items">
+          <h3 className="bd-overview__heading">Linked work items</h3>
+          {workItemIds.map((id) => (
+            <LinkedWorkItemBadge
+              key={id}
+              workItemId={id}
+              workItem={workItems.find((w) => w.id === id)}
+            />
+          ))}
+          {workItemsLoading && (
+            <div className="text-[10px] text-[var(--color-text-muted)]">Loading work items...</div>
+          )}
+        </section>
+      )}
+      <T3SessionStrip pr={p} />
+
       {/* Merge Readiness Checklist */}
       <MergeReadinessChecklist pr={pr} />
-      <T3SessionStrip pr={p} />
 
       {/* AI Summary */}
       {summarySettings.enabled ? (
@@ -151,9 +232,9 @@ export function OverviewTab({ pr }: OverviewTabProps) {
               <button
                 type="button"
                 onClick={() => setSummaryExpanded(!summaryExpanded)}
-                className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]"
+                className="bd-overview__heading flex w-full items-center justify-between"
               >
-                AI Summary
+                AI summary
                 {summaryExpanded ? (
                   <ChevronUp size={10} strokeWidth={3} />
                 ) : (
@@ -184,32 +265,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
       ) : (
         <div className="text-[10px] text-[var(--color-text-ghost)]">
           Enable CLI summaries in Settings → Agents
-        </div>
-      )}
-
-      {/* Linked Work Items */}
-      {workItemIds.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-            Linked Work Items
-          </div>
-          {workItemIds.map((id) => (
-            <LinkedWorkItemBadge
-              key={id}
-              workItemId={id}
-              workItem={workItems.find((w) => w.id === id)}
-            />
-          ))}
-          {workItemsLoading && (
-            <div className="text-[10px] text-[var(--color-text-muted)]">Loading work items...</div>
-          )}
-        </div>
-      )}
-
-      {/* Description */}
-      {p.body && (
-        <div className="markdown-body">
-          <Markdown>{p.body}</Markdown>
         </div>
       )}
     </div>

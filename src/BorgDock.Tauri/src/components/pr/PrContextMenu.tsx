@@ -77,6 +77,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        // Claim the key: Esc closes the menu, not the view under it.
+        e.preventDefault();
         onClose();
       }
     }
@@ -113,7 +115,6 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     !pullRequest.isDraft && overallStatus === 'green' && pullRequest.state === 'open';
 
   // Pick the first failed check's suite for rerun.
-  const failedSuiteId: number | undefined = pr.failedCheckSuiteIds[0];
 
   const handleAction = useCallback(
     (action: () => Promise<void>, errorTitle?: string) => {
@@ -167,8 +168,11 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, [onClose, onConfirmAction]);
 
   const handleRerunFailed = handleAction(async () => {
-    if (failedSuiteId === undefined) return;
-    await rerunChecks({ repoOwner: owner, repoName: repo, checkSuiteId: failedSuiteId });
+    await rerunChecks({
+      repoOwner: owner,
+      repoName: repo,
+      ref: pullRequest.headSha || pullRequest.headRef,
+    });
   }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
@@ -269,7 +273,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
       <MenuItem
         label="Rerun failed checks"
         onClick={handleRerunFailed}
-        disabled={!hasFailingChecks || failedSuiteId === undefined}
+        disabled={!hasFailingChecks}
       />
       <MenuItem label={`Fix with ${providerLabel}`} onClick={handleFixWithClaude} />
       <MenuItem label={`Monitor with ${providerLabel}`} onClick={handleMonitorWithClaude} />

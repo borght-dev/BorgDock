@@ -1,18 +1,21 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import clsx from 'clsx';
 import { ArrowRight, ExternalLink, GitBranch, LoaderCircle, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { QuickReviewOverlay } from '@/components/focus/QuickReviewOverlay';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { WindowControls } from '@/components/shared/chrome';
 import type { TabDef } from '@/components/shared/primitives';
 import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
+import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
+import { popView } from '@/services/navigation';
 import { openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useUiStore } from '@/stores/ui-store';
+import { type PrDetailTab, useUiStore } from '@/stores/ui-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { ActionBar } from './ActionBar';
 import { ActivityStrip } from './ActivityStrip';
@@ -22,6 +25,7 @@ import { CommitsTab } from './CommitsTab';
 import { DiscussionTab } from './DiscussionTab';
 import { FilesTab } from './FilesTab';
 import { OverviewTab } from './OverviewTab';
+import { PrDetailHeader } from './PrDetailHeader';
 import { usePrActions } from './usePrActions';
 
 const log = createLogger('PrDetailPanel');
@@ -95,6 +99,17 @@ function initialsFor(login: string): string {
 const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Discussion'] as const;
 type Tab = (typeof tabs)[number];
 
+/** Tab order of the full-screen view: what you check first comes first. */
+const EMBEDDED_TAB_ORDER: readonly Tab[] = ['Overview', 'Checks', 'Files', 'Commits', 'Discussion'];
+
+const TAB_FOR_VIEW: Record<PrDetailTab, Tab> = {
+  overview: 'Overview',
+  commits: 'Commits',
+  files: 'Files',
+  checks: 'Checks',
+  discussion: 'Discussion',
+};
+
 interface PrDetailPanelProps {
   pr: PullRequestWithChecks;
   /** Raw check runs for the Checks tab. The pop-out window fetches these via
@@ -105,9 +120,25 @@ interface PrDetailPanelProps {
    *  shows native-style min/max/close controls, and routes the × button
    *  to close the window instead of clearing the sidebar selection. */
   popOutWindow?: boolean;
+  /**
+   * Hosted by the main window's full-screen detail view (`PrDetailView`):
+   * the Workbench header (Back, readiness, action bar, "Open in window")
+   * replaces the pop-out chrome, the ring, the pills and the close button;
+   * the tabs run Overview, Checks, Files, Commits, Discussion with a sliding
+   * underline, the Checks tab groups by suite, and `J` / `K` switch tabs.
+   */
+  embedded?: boolean;
+  /** Tab to open on (a `pr-detail` view's `initialTab`). Default Overview. */
+  initialTab?: PrDetailTab;
 }
 
-export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelProps) {
+export function PrDetailPanel({
+  pr,
+  checks = [],
+  popOutWindow,
+  embedded = false,
+  initialTab,
+}: PrDetailPanelProps) {
   const selectPr = useUiStore((s) => s.selectPr);
   const handleClose = useCallback(() => {
     if (popOutWindow) {
@@ -133,8 +164,33 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
       log.error('toggle maximize failed', err);
     }
   }, []);
-  const [activeTab, setActiveTab] = useState<Tab>('Overview');
-  const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['Overview']));
+  const firstTab: Tab = initialTab ? TAB_FOR_VIEW[initialTab] : 'Overview';
+  const [activeTab, setActiveTab] = useState<Tab>(firstTab);
+  const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['Overview', firstTab]));
+
+  // A new `initialTab` for the PR on screen (showPr with another tab) switches to it.
+  const initialTabRef = useRef(initialTab);
+  useEffect(() => {
+    if (initialTabRef.current === initialTab) return;
+    initialTabRef.current = initialTab;
+    if (initialTab) setActiveTab(TAB_FOR_VIEW[initialTab]);
+  }, [initialTab]);
+
+  // J / K step through the tabs of the full-screen view.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const stepTab = (delta: number) => {
+    const order = EMBEDDED_TAB_ORDER;
+    const next = order[(order.indexOf(activeTab) + delta + order.length) % order.length];
+    if (next) setActiveTab(next);
+  };
+  useDetailViewKeys(
+    rootRef,
+    {
+      j: () => stepTab(1),
+      k: () => stepTab(-1),
+    },
+    embedded,
+  );
 
   // Mount tabs lazily on first activation, keep cached afterwards
   useEffect(() => {
@@ -156,6 +212,17 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
         // openPrDetail logs the failure; nothing else to do here.
       });
   }, [pr, selectPr]);
+
+  // "Open in window" from the full-screen view: the pop-out takes over, so
+  // the view returns to the list.
+  const handleOpenInWindow = useCallback(() => {
+    const { repoOwner: owner, repoName: repo, number } = pr.pullRequest;
+    openPrDetail({ owner, repo, number })
+      .then(() => popView())
+      .catch(() => {
+        // openPrDetail logs the failure; the view stays.
+      });
+  }, [pr.pullRequest]);
 
   const handleOpenInBrowser = useCallback(async () => {
     try {
@@ -199,9 +266,23 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
     },
     { id: 'Discussion', label: 'Discussion' },
   ];
+  const shownTabs = embedded
+    ? EMBEDDED_TAB_ORDER.map((id) => tabDefs.find((t) => t.id === id)).filter(
+        (t): t is TabDef => t !== undefined,
+      )
+    : tabDefs;
+  const pane = (tab: Tab, extra?: string) =>
+    activeTab === tab ? clsx(embedded && 'bd-detail__pane', extra) : 'hidden';
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col bg-[var(--color-background)]">
+    <div
+      ref={rootRef}
+      className={
+        embedded
+          ? 'bd-detail__panel'
+          : 'absolute inset-0 z-10 flex flex-col bg-[var(--color-background)]'
+      }
+    >
       {/* Pop-out window: unified BorgDock titlebar with logo + controls.
        *  Inline mode skips this — the sidebar already has its own Header. */}
       {popOutWindow && (
@@ -239,133 +320,146 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
         />
       )}
 
+      {embedded && (
+        <PrDetailHeader
+          pr={pr}
+          actions={actions}
+          checks={checks}
+          onOpenInWindow={handleOpenInWindow}
+        />
+      )}
+
       {/* Header — PR title + meta on the surface card */}
-      <div className="relative border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] pt-[18px] pb-[14px]">
-        {/* Inline-mode pop-out button — pop-out window mode hides this */}
-        {!popOutWindow && (
-          <div className="absolute right-3 top-3">
-            <IconButton
-              icon={<ExternalLink size={14} strokeWidth={3} aria-hidden="true" />}
-              tooltip="Open in new window"
-              size={22}
-              aria-label="Pop out"
-              onClick={handlePopOut}
-              data-pr-detail-panel-popout
-            />
-          </div>
-        )}
-
-        <div className="flex items-start gap-3.5">
-          {/* Merge readiness gauge */}
-          <Ring value={score} size={44} stroke={3} data-pr-header-score={score} />
-
-          <div className="min-w-0 flex-1">
-            {/* Status pills row */}
-            <div className="flex flex-wrap items-center gap-2 pr-20">
-              <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
-                #{p.number}
-              </span>
-              {isMerged && <Pill tone="merged">Merged</Pill>}
-              {!isMerged && p.state === 'closed' && <Pill tone="neutral">Closed</Pill>}
-              {!isTerminal && p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
-              {!isTerminal && p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
-              {!isTerminal && totalChecks > 0 && <Pill tone="success">{passedCount} passed</Pill>}
-              {!isTerminal && pr.pendingCheckNames.length > 0 && (
-                <Pill
-                  tone="warning"
-                  icon={
-                    <LoaderCircle
-                      size={10}
-                      strokeWidth={2.4}
-                      className="animate-spin"
-                      aria-hidden="true"
-                    />
-                  }
-                >
-                  {pr.pendingCheckNames.length} running
-                </Pill>
-              )}
-              {p.isDraft && <Pill tone="draft">Draft</Pill>}
-              {!isTerminal && reviewLabel && <Pill tone="neutral">{reviewLabel}</Pill>}
+      {!embedded && (
+        <div className="relative border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] pt-[18px] pb-[14px]">
+          {/* Inline-mode pop-out button — pop-out window mode hides this */}
+          {!popOutWindow && (
+            <div className="absolute right-3 top-3">
+              <IconButton
+                icon={<ExternalLink size={14} strokeWidth={3} aria-hidden="true" />}
+                tooltip="Open in new window"
+                size={22}
+                aria-label="Pop out"
+                onClick={handlePopOut}
+                data-pr-detail-panel-popout
+              />
             </div>
+          )}
 
-            {/* Title */}
-            <h2 className="mt-1 text-[16px] font-semibold leading-[1.3] tracking-[-0.01em] text-[var(--color-text-primary)]">
-              {p.title}
-            </h2>
+          <div className="flex items-start gap-3.5">
+            {/* Merge readiness gauge */}
+            <Ring value={score} size={44} stroke={3} data-pr-header-score={score} />
 
-            {/* Author + date + branches */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--color-text-tertiary)]">
-              <Avatar initials={initialsFor(p.authorLogin)} size="sm" />
-              <span className="font-medium text-[var(--color-text-secondary)]">
-                {p.authorLogin}
-              </span>
-              <span aria-hidden>·</span>
-              <span>{formatDate(p.createdAt)}</span>
-              <span aria-hidden>·</span>
-              <span title="Age" className="text-[var(--color-text-muted)]">
-                {formatAge(p.createdAt)} old
-              </span>
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1">
-                <GitBranch size={12} strokeWidth={2.25} aria-hidden="true" />
-                <span className="font-mono text-[11px]">{p.headRef}</span>
-                <ArrowRight size={12} strokeWidth={2.25} aria-hidden="true" />
-                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
-                  {p.baseRef}
+            <div className="min-w-0 flex-1">
+              {/* Status pills row */}
+              <div className="flex flex-wrap items-center gap-2 pr-20">
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
+                  #{p.number}
                 </span>
-              </span>
-            </div>
+                {isMerged && <Pill tone="merged">Merged</Pill>}
+                {!isMerged && p.state === 'closed' && <Pill tone="neutral">Closed</Pill>}
+                {!isTerminal && p.mergeable === true && <Pill tone="success">Mergeable</Pill>}
+                {!isTerminal && p.mergeable === false && <Pill tone="error">Conflicts</Pill>}
+                {!isTerminal && totalChecks > 0 && <Pill tone="success">{passedCount} passed</Pill>}
+                {!isTerminal && pr.pendingCheckNames.length > 0 && (
+                  <Pill
+                    tone="warning"
+                    icon={
+                      <LoaderCircle
+                        size={10}
+                        strokeWidth={2.4}
+                        className="animate-spin"
+                        aria-hidden="true"
+                      />
+                    }
+                  >
+                    {pr.pendingCheckNames.length} running
+                  </Pill>
+                )}
+                {p.isDraft && <Pill tone="draft">Draft</Pill>}
+                {!isTerminal && reviewLabel && <Pill tone="neutral">{reviewLabel}</Pill>}
+              </div>
 
-            {/* Stats + close X */}
-            <div className="mt-2.5 flex items-center gap-2.5 text-[11px] text-[var(--color-text-tertiary)]">
-              <span className="font-medium text-[var(--color-status-green)]">+{p.additions}</span>
-              <span className="font-medium text-[var(--color-status-red)]">−{p.deletions}</span>
-              <span aria-hidden className="text-[var(--color-text-faint)]">
-                ·
-              </span>
-              <span>
-                {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
-              </span>
-              <span aria-hidden className="text-[var(--color-text-faint)]">
-                ·
-              </span>
-              <span>
-                {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
-              </span>
-              <span aria-hidden className="text-[var(--color-text-faint)]">
-                ·
-              </span>
-              <span>
-                {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
-              </span>
-              {!popOutWindow && (
-                <IconButton
-                  icon={<X size={14} strokeWidth={3} aria-hidden="true" />}
-                  tooltip="Close"
-                  size={22}
-                  aria-label="Close"
-                  className="ml-auto"
-                  onClick={handleClose}
-                  data-pr-detail-panel-close
-                />
-              )}
+              {/* Title */}
+              <h2 className="mt-1 text-[16px] font-semibold leading-[1.3] tracking-[-0.01em] text-[var(--color-text-primary)]">
+                {p.title}
+              </h2>
+
+              {/* Author + date + branches */}
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--color-text-tertiary)]">
+                <Avatar initials={initialsFor(p.authorLogin)} size="sm" />
+                <span className="font-medium text-[var(--color-text-secondary)]">
+                  {p.authorLogin}
+                </span>
+                <span aria-hidden>·</span>
+                <span>{formatDate(p.createdAt)}</span>
+                <span aria-hidden>·</span>
+                <span title="Age" className="text-[var(--color-text-muted)]">
+                  {formatAge(p.createdAt)} old
+                </span>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1">
+                  <GitBranch size={12} strokeWidth={2.25} aria-hidden="true" />
+                  <span className="font-mono text-[11px]">{p.headRef}</span>
+                  <ArrowRight size={12} strokeWidth={2.25} aria-hidden="true" />
+                  <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                    {p.baseRef}
+                  </span>
+                </span>
+              </div>
+
+              {/* Stats + close X */}
+              <div className="mt-2.5 flex items-center gap-2.5 text-[11px] text-[var(--color-text-tertiary)]">
+                <span className="font-medium text-[var(--color-status-green)]">+{p.additions}</span>
+                <span className="font-medium text-[var(--color-status-red)]">−{p.deletions}</span>
+                <span aria-hidden className="text-[var(--color-text-faint)]">
+                  ·
+                </span>
+                <span>
+                  {p.changedFiles} file{p.changedFiles !== 1 ? 's' : ''}
+                </span>
+                <span aria-hidden className="text-[var(--color-text-faint)]">
+                  ·
+                </span>
+                <span>
+                  {p.commitCount} commit{p.commitCount !== 1 ? 's' : ''}
+                </span>
+                <span aria-hidden className="text-[var(--color-text-faint)]">
+                  ·
+                </span>
+                <span>
+                  {p.commentCount} comment{p.commentCount !== 1 ? 's' : ''}
+                </span>
+                {!popOutWindow && (
+                  <IconButton
+                    icon={<X size={14} strokeWidth={3} aria-hidden="true" />}
+                    tooltip="Close"
+                    size={22}
+                    aria-label="Close"
+                    className="ml-auto"
+                    onClick={handleClose}
+                    data-pr-detail-panel-close
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Action bar — sticky, all PR actions */}
-      <ActionBar
-        onReview={() => useQuickReviewStore.getState().startSinglePr(pr)}
-        actions={actions}
-        prState={p.state}
-        isDraft={p.isDraft}
-        mergeable={p.mergeable}
-      />
+      {!embedded && (
+        <ActionBar
+          onReview={() => useQuickReviewStore.getState().startSinglePr(pr)}
+          actions={actions}
+          prState={p.state}
+          isDraft={p.isDraft}
+          mergeable={p.mergeable}
+        />
+      )}
 
       {/* Activity strip — persistent checks summary, click-to-jump */}
-      {pr.totalCheckCount > 0 && (
+      {!embedded && pr.totalCheckCount > 0 && (
         <div className="border-b border-[var(--color-subtle-border)] bg-[var(--color-surface)] px-[22px] py-2.5">
           <ActivityStrip
             passed={pr.passedCount}
@@ -378,17 +472,36 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
       )}
 
       {/* Tab bar — sits on the same surface card as the header */}
-      <div className="bg-[var(--color-surface)] border-b border-[var(--color-subtle-border)] px-[22px]">
-        <Tabs value={activeTab} onChange={(id) => setActiveTab(id as Tab)} tabs={tabDefs} />
+      <div
+        className={
+          embedded
+            ? 'bd-detail__tabs'
+            : 'bg-[var(--color-surface)] border-b border-[var(--color-subtle-border)] px-[22px]'
+        }
+      >
+        <Tabs
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as Tab)}
+          tabs={shownTabs}
+          sliding={embedded}
+          aria-keyshortcuts={embedded ? 'J K' : undefined}
+        />
       </div>
 
-      {/* Tab content — tabs mount lazily on first activation, cached afterwards */}
-      <div className="flex-1 overflow-y-auto flex flex-col min-h-0 bg-[var(--color-background)]">
-        <div className={activeTab === 'Overview' ? '' : 'hidden'}>
+      {/* Tab content — tabs mount lazily on first activation, cached afterwards.
+       *  In the full-screen view a pane fades in each time it is shown. */}
+      <div
+        className={
+          embedded
+            ? 'bd-detail__content'
+            : 'flex-1 overflow-y-auto flex flex-col min-h-0 bg-[var(--color-background)]'
+        }
+      >
+        <div className={pane('Overview', embedded ? 'bd-detail__pane--inset' : undefined)}>
           <OverviewTab pr={pr} />
         </div>
         {mountedTabs.has('Commits') && (
-          <div className={activeTab === 'Commits' ? '' : 'hidden'}>
+          <div className={pane('Commits')}>
             <CommitsTab
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}
@@ -398,7 +511,7 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
           </div>
         )}
         {mountedTabs.has('Files') && (
-          <div className={activeTab === 'Files' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
+          <div className={pane('Files', 'flex-1 flex flex-col min-h-0')}>
             <FilesTab
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}
@@ -409,12 +522,12 @@ export function PrDetailPanel({ pr, checks = [], popOutWindow }: PrDetailPanelPr
           </div>
         )}
         {mountedTabs.has('Checks') && (
-          <div className={activeTab === 'Checks' ? '' : 'hidden'}>
-            <ChecksTab checks={checks} pr={pr} />
+          <div className={pane('Checks')}>
+            <ChecksTab checks={checks} pr={pr} grouped={embedded} />
           </div>
         )}
         {mountedTabs.has('Discussion') && (
-          <div className={activeTab === 'Discussion' ? '' : 'hidden'}>
+          <div className={pane('Discussion')}>
             <DiscussionTab
               prNumber={pr.pullRequest.number}
               repoOwner={pr.pullRequest.repoOwner}

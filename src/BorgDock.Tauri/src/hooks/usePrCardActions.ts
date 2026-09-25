@@ -33,9 +33,6 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const repoConfig = findRepoConfig(settings.repos, pr.repoOwner, pr.repoName);
   const repoPath = repoConfig?.worktreeBasePath || '';
 
-  // First failed check's suite — what the rerun action targets.
-  const failedSuiteId: number | undefined = prWithChecks.failedCheckSuiteIds[0];
-
   const showError = useCallback((title: string, err: unknown) => {
     void sendOsNotification({
       title,
@@ -52,14 +49,15 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
   const handleRerun = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (failedSuiteId === undefined) return;
+      if (failedCheckNames.length === 0) return;
+      // The service fetches the failed runs for the head commit.
       void rerunChecks({
         repoOwner: pr.repoOwner,
         repoName: pr.repoName,
-        checkSuiteId: failedSuiteId,
+        ref: pr.headSha || pr.headRef,
       });
     },
-    [failedSuiteId, pr.repoOwner, pr.repoName],
+    [failedCheckNames.length, pr.repoOwner, pr.repoName, pr.headSha, pr.headRef],
   );
 
   const handleFix = useCallback(
@@ -215,7 +213,6 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
     confirmAction,
     setConfirmAction,
     repoPath,
-    failedSuiteId,
 
     // Handlers
     handleContextMenu,

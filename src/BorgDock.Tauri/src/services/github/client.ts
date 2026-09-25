@@ -217,7 +217,14 @@ export class GitHubClient {
       );
     }
 
-    return (await response.json()) as T;
+    // Some POSTs answer with an empty body (201 from the rerun and
+    // rerequest endpoints, 204 elsewhere); those resolve to undefined.
+    if (response.status === 204) return undefined as T;
+    try {
+      return (await response.json()) as T;
+    } catch {
+      return undefined as T;
+    }
   }
 
   async put<T>(path: string, body: unknown): Promise<T> {

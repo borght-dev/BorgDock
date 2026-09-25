@@ -3,9 +3,9 @@ import { PriorityReasonLabel } from '@/components/focus/PriorityReasonLabel';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { computeMergeScore } from '@/services/merge-score';
+import { showPr } from '@/services/navigation';
 import { type PrActionId, primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
 import type { PriorityFactor } from '@/services/priority-scoring';
-import { openPrDetail } from '@/services/windows';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -73,14 +73,15 @@ export const PrCardContainer = memo(function PrCardContainer({
     [prWithChecks, isMyPr, worktreeMatch?.slotName],
   );
 
-  // Whole-card click opens the pop-out detail window. Inner action buttons
+  // Whole-card click opens the PR (`showPr`: the pop-out detail window, or
+  // the in-window detail view with `ui.layoutV3`). Inner action buttons
   // either stop propagation themselves (HoverActionPillBar, expand toggle,
   // confirm dialogs) or carry a `data-pr-card-action` ancestor that this
   // handler skips via closest(). Falls back to no-op on click of inner action.
   const handleCardClick = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
       if ((e.target as HTMLElement).closest('[data-pr-card-action]')) return;
-      void openPrDetail({
+      void showPr({
         owner: pr.repoOwner,
         repo: pr.repoName,
         number: pr.number,

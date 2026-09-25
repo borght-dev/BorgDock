@@ -7,6 +7,12 @@ export interface CheckRun {
   completedAt?: string;
   htmlUrl: string;
   checkSuiteId: number;
+  /**
+   * Name of the GitHub Actions workflow that ran this check (its check
+   * suite's workflow run), when the fetch looked it up. The check-runs API
+   * names a run by its job alone.
+   */
+  workflowName?: string;
 }
 
 export interface CheckSuite {
