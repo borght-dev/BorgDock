@@ -2,8 +2,15 @@
 // The home page hero: the job in one line, one recording, one button.
 // Its entrance is the only orchestrated motion on the site (see `.reveal` in
 // global.css); reduced motion skips it.
+//
+// The media is the hero cut of the launch video (site/video, `bun run
+// site:video`) when it has been rendered, in the page's theme and played like
+// any recording: in view only, poster under reduced motion. It is unframed,
+// because the video draws its own window frames on the page's background.
+// Without it, the pr-detail-push recording stands in.
 import DownloadButton from '~/components/DownloadButton.astro';
 import Recording from '~/components/ui/Recording.astro';
+import { launchVideo } from '~/data/media';
 import { latestRelease } from '~/data/site';
 ---
 
@@ -24,6 +31,12 @@ import { latestRelease } from '~/data/site';
     </div>
   </div>
   <div class="hero__media reveal reveal--media" style="--i: 4">
-    <Recording slug="pr-detail-push" eager />
+    {
+      launchVideo ? (
+        <Recording recording={launchVideo} frame={false} eager />
+      ) : (
+        <Recording slug="pr-detail-push" eager />
+      )
+    }
   </div>
 </section>

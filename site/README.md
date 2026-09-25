@@ -20,11 +20,14 @@ Run these from the repo root.
 | `bun run site:tokens-check` | Fails when `src/styles/tokens.css` differs from the app's tokens, or a hex colour appears outside it. |
 | `bun run site:release` | Refreshes `src/data/release.json` from the latest GitHub release. |
 | `bun run site:assets` | Starts Storybook on :6006, regenerates every capture and recording, stops it. Refuses a server already on :6006 unless you pass `-- --reuse`; `-- --screens` or `-- --recordings` runs one half. |
+| `bun run site:video` | Renders the launch video, the portrait short and the hero cut (dark and light) from the recordings, with a poster for each, into `public/video/`. Run it after `site:assets`, locally, once per release. |
+| `bun run site:video:typecheck` | Type-checks the video project. CI runs it next to `site:build`. |
 
 ## Layout
 
 ```
 site/
+├── video/                  # Remotion project (workspace member borgdock-video): the launch video
 ├── scripts/
 │   ├── assets.mjs          # site:assets: boots Storybook, runs both capture scripts, stops it
 │   ├── fetch-release.mjs   # site:release: GitHub releases API → src/data/release.json
@@ -32,6 +35,7 @@ site/
 ├── public/
 │   ├── screens/            # <slug>-<light|dark>@2x.png   (generated, committed)
 │   ├── recordings/         # <slug>-<theme>.mp4 and .webp poster  (generated, committed)
+│   ├── video/              # launch, short, launch-hero, launch-hero-light: .mp4 + .webp poster  (site:video, committed)
 │   └── whats-new/<version>/  # images for the long-form release posts
 └── src/
     ├── data/
@@ -129,6 +133,57 @@ capture the site shows while a recording does not exist yet. Run it on its own w
 when named with `--only`.
 
 The generated files are committed: CI builds the site and never starts Storybook or a browser.
+
+## Launch video
+
+`site/video/` is a Remotion project (workspace member `borgdock-video`) with three compositions
+built from the recordings above:
+
+- `Launch`, 1920×1080 at 30 fps, 45 to 60 s: a title card with the hero headline, one scene per
+  recording (each in a window frame with a two-line caption), then a download card. For YouTube
+  and anywhere the video stands on its own.
+- `LaunchHero`, 1920×1080: the same scenes without the title and download cards, fading to the
+  background at the end so it loops cleanly. The home page hero plays it, in the page's theme.
+- `Short`, 1080×1920 at 30 fps, about 20 s: three of the scenes, trimmed to the action and
+  cropped for portrait, under the headline, then the download card. For social.
+
+The scenes and captions live in `site/video/src/recordings.ts`. Each names a recording slug;
+the video reads `public/recordings/<slug>-<theme>.mp4` (or `.webm` when there is no MP4) through
+`staticFile`, because the Remotion public dir is this site's `public/`. A scene lasts as long as its
+recording (or its `trimStart`/`trimEnd` window, clamped to the file) plus a short hold on each
+end, so a longer recording makes a longer video. A slug without a file is skipped:
+`fix-with-claude` and `flyout` join the video once they are recorded. The colours in
+`src/theme.ts` are copied from `src/styles/tokens.css` by hand, since Remotion cannot read the
+site's CSS; update both when the tokens change.
+
+The release order is `site:assets`, then `site:video`, then `site:build`:
+
+```bash
+bun run site:assets   # recordings from Storybook
+bun run site:video    # everything in public/video/
+bun run site:build
+```
+
+`site:video` runs `bun run render:all` in `site/video`, which is four renders, each followed by
+its poster (the first scene once it has settled, `.webp`):
+
+| Script (in `site/video`) | Output in `public/video/` |
+| --- | --- |
+| `bun run render` | `launch.mp4`, `launch.webp` |
+| `bun run render:short` | `short.mp4`, `short.webp` |
+| `bun run render:hero` | `launch-hero.mp4`, `launch-hero.webp` |
+| `bun run render:hero-light` | `launch-hero-light.mp4`, `launch-hero-light.webp` (`--props=props/light.json`) |
+
+Every render is H.264 at CRF 18 with no audio track. The first run downloads Remotion's headless
+Chrome (about 110 MB); the whole set takes a few minutes. Any composition renders light with
+`--props=props/light.json`. To preview and tweak timing, `bun run studio` in `site/video` opens
+Remotion Studio.
+
+It is rendered locally per release, not in CI; the rendered files are committed like the
+recordings. The hero shows `launch-hero.mp4` / `launch-hero-light.mp4` through `Recording.astro`,
+unframed (the video draws its own window frames), playing while on screen and showing the poster
+under reduced motion. When neither file exists the hero falls back to the `pr-detail-push`
+recording, so the site builds either way.
 
 ## Releases and the download page
 

@@ -35,6 +35,10 @@ node_modules/
 ## Marketing assets (separate repo: borgdock-marketing)
 promo-video/
 
+## Launch video (site/video): Remotion scratch output. The rendered
+## site/public/video/* files are committed.
+site/video/out/
+
 ## Claude Code worktrees (temporary agent workspaces)
 .claude/worktrees/
 ## Implementation worktrees

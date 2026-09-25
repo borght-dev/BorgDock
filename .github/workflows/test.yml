@@ -69,3 +69,6 @@ jobs:
       - run: bun install --frozen-lockfile
       # Tokens check, astro check, astro build and the internal link check.
       - run: bun run site:build
+      # The launch video project (site/video) is rendered locally, but its
+      # TypeScript is checked here so it cannot rot between releases.
+      - run: bun run site:video:typecheck

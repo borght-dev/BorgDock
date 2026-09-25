@@ -15,12 +15,19 @@
 // the download before the video is near the viewport. With no MP4/WebM yet,
 // the poster is shown on its own; with no poster either, the entry's
 // `fallback` capture is used, so the site builds before any recording exists.
+//
+// Pass `recording` instead of `slug` for media outside recordings.json (the
+// launch video in the hero); it plays under the same rules.
 import Capture from './Capture.astro';
 import WindowFrame from './WindowFrame.astro';
-import { getRecording, type RecordingVariant, type Theme } from '~/data/media';
+import {
+  getRecording,
+  type Recording as RecordingEntry,
+  type RecordingVariant,
+  type Theme,
+} from '~/data/media';
 
-interface Props {
-  slug: string;
+type Props = {
   alt?: string;
   frame?: boolean;
   /** Load the poster eagerly (above the fold). Only applies to a single-theme
@@ -28,10 +35,10 @@ interface Props {
    *  posters stay lazy and only the visible one is fetched. */
   eager?: boolean;
   class?: string;
-}
+} & ({ slug: string; recording?: never } | { recording: RecordingEntry; slug?: never });
 
-const { slug, alt, frame = true, eager = false, class: className } = Astro.props;
-const rec = getRecording(slug);
+const { alt, frame = true, eager = false, class: className } = Astro.props;
+const rec = Astro.props.recording ?? getRecording(Astro.props.slug as string);
 const text = alt ?? rec.alt;
 
 const entries = Object.entries(rec.variants) as [Theme, RecordingVariant][];

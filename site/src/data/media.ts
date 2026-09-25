@@ -147,6 +147,39 @@ export const recordings: Recording[] = (
   };
 });
 
+/**
+ * The hero cut of the launch video (site/video, composition `LaunchHero`),
+ * rendered locally per release with `bun run site:video` into public/video/:
+ * `launch-hero.mp4` (dark) and `launch-hero-light.mp4`, each with a `.webp`
+ * poster. With both themes, Recording shows the one matching the page; with
+ * one, it shows that one everywhere. Null until rendered, so the hero falls
+ * back to a recording and the site builds either way.
+ */
+export const launchVideo: Recording | null = (() => {
+  const variants: Recording['variants'] = {};
+  for (const [t, base] of [
+    ['dark', '/video/launch-hero'],
+    ['light', '/video/launch-hero-light'],
+  ] as const) {
+    const v: RecordingVariant = {
+      mp4: exists(`${base}.mp4`) ? `${base}.mp4` : undefined,
+      webm: exists(`${base}.webm`) ? `${base}.webm` : undefined,
+      poster: image(`${base}.webp`, 1) ?? image(`${base}.png`, 1),
+    };
+    if (v.mp4 || v.webm) variants[t] = v;
+  }
+  if (!variants.dark && !variants.light) return null;
+  return {
+    slug: 'launch-hero',
+    alt:
+      'BorgDock in under a minute: open a pull request full screen, filter to what needs you, ' +
+      'review file by file and merge from Focus',
+    page: 'Tools',
+    draft: false,
+    variants,
+  };
+})();
+
 export function getCapture(slug: string): Capture {
   const c = captures.find((x) => x.slug === slug);
   if (!c) throw new Error(`No capture "${slug}" in design/site/screens.json`);

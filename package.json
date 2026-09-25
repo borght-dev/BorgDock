@@ -21,7 +21,9 @@
     "site:build": "bun scripts/site-tokens-check.ts && cd site && bun run build && bun scripts/check-links.mjs",
     "site:tokens-check": "bun scripts/site-tokens-check.ts",
     "site:release": "cd site && bun scripts/fetch-release.mjs",
-    "site:assets": "cd site && node scripts/assets.mjs"
+    "site:assets": "cd site && node scripts/assets.mjs",
+    "site:video": "cd site/video && bun run render:all",
+    "site:video:typecheck": "cd site/video && bunx tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "lefthook": "^1.7.0"
