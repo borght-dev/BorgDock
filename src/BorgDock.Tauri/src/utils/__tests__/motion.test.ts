@@ -184,6 +184,114 @@ describe('flip', () => {
     expect(animate).toHaveBeenCalledTimes(1);
   });
 
+  it('fades a row that would cross its neighbours instead of sliding it', async () => {
+    // a, b, c → b, c, a: b and c keep their order (they slide up); a would
+    // have to pass through both, so it fades in at its new slot.
+    const positions = new Map([
+      ['a', rect(0)],
+      ['b', rect(20)],
+      ['c', rect(40)],
+    ]);
+    const { container, animate } = buildList(['a', 'b', 'c'], positions);
+    const a = container.querySelector('[data-key="a"]') as HTMLElement;
+
+    await flip(container, () => {
+      container.appendChild(a);
+      positions.set('b', rect(0));
+      positions.set('c', rect(20));
+      positions.set('a', rect(40));
+    });
+
+    const calls = animate.mock.calls as unknown as Array<[Keyframe[], KeyframeAnimationOptions]>;
+    const slides = calls.filter(([k]) => 'transform' in (k[0] ?? {}));
+    const fades = calls.filter(([k]) => 'opacity' in (k[0] ?? {}));
+    expect(slides).toHaveLength(2);
+    expect(fades).toHaveLength(1);
+    // The crossing row waits for the slides to finish before it appears.
+    expect(fades[0]?.[1]?.delay).toBe(320);
+    expect(fades[0]?.[1]?.fill).toBe('backwards');
+  });
+
+  it('shows newcomers at once when nothing slides', () => {
+    const positions = new Map([['a', rect(0)]]);
+    const { container, animate, addRow } = buildList(['a'], positions);
+
+    flip(container, () => {
+      positions.set('b', rect(20));
+      addRow('b');
+    });
+
+    const options = (animate.mock.calls[0] as unknown as [Keyframe[], KeyframeAnimationOptions])[1];
+    expect(options.delay).toBe(0);
+  });
+
+  it('delays newcomers until the surviving rows have slid into place', () => {
+    const positions = new Map([
+      ['a', rect(0)],
+      ['b', rect(20)],
+    ]);
+    const { container, animate, addRow } = buildList(['a', 'b'], positions);
+    const b = container.querySelector('[data-key="b"]') as HTMLElement;
+
+    flip(container, () => {
+      // A new heading appears above b and pushes it down.
+      positions.set('b', rect(40));
+      const heading = addRow('h');
+      container.insertBefore(heading, b);
+      positions.set('h', rect(20));
+    });
+
+    const calls = animate.mock.calls as unknown as Array<[Keyframe[], KeyframeAnimationOptions]>;
+    const fade = calls.find(([k]) => 'opacity' in (k[0] ?? {}));
+    const slide = calls.find(([k]) => 'transform' in (k[0] ?? {}));
+    expect(slide).toBeDefined();
+    expect(fade?.[1]?.delay).toBe(320);
+  });
+
+  it('does not delay a newcomer that no slider passes over', () => {
+    const positions = new Map([
+      ['a', rect(0)],
+      ['b', rect(20)],
+    ]);
+    const { container, animate, addRow } = buildList(['a', 'b'], positions);
+
+    flip(container, () => {
+      // a leaves, b slides up into a's slot; c appears far below, off b's path.
+      container.querySelector('[data-key="a"]')?.remove();
+      positions.set('b', rect(0));
+      addRow('c');
+      positions.set('c', rect(200));
+    });
+
+    const calls = animate.mock.calls as unknown as Array<[Keyframe[], KeyframeAnimationOptions]>;
+    const fade = calls.find(([k]) => 'opacity' in (k[0] ?? {}));
+    expect(fade?.[1]?.delay).toBe(0);
+  });
+
+  it('crossfades instead of sliding when newcomers outnumber survivors', () => {
+    const positions = new Map([['a', rect(0)]]);
+    const { container, animate, addRow } = buildList(['a'], positions);
+
+    flip(container, () => {
+      // a slides far down while three new rows appear above it.
+      for (const [key, top] of [
+        ['b', 0],
+        ['c', 20],
+        ['d', 40],
+      ] as const) {
+        const row = addRow(key);
+        container.insertBefore(row, container.firstChild);
+        positions.set(key, rect(top));
+      }
+      positions.set('a', rect(60));
+    });
+
+    const calls = animate.mock.calls as unknown as Array<[Keyframe[], KeyframeAnimationOptions]>;
+    expect(calls).toHaveLength(4);
+    expect(calls.every(([k]) => 'opacity' in (k[0] ?? {}))).toBe(true);
+    expect(calls.every(([, o]) => !o.delay)).toBe(true);
+  });
+
   it('is a no-op under reduced motion but still mutates', async () => {
     document.documentElement.classList.add('reduce-motion');
     const positions = new Map([

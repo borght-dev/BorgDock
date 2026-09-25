@@ -60,16 +60,69 @@ function cancelRunning(el: HTMLElement) {
   for (const animation of el.getAnimations()) animation.cancel();
 }
 
-function measure(container: HTMLElement, selector: string): Map<string, DOMRect> {
-  const rects = new Map<string, DOMRect>();
+interface FirstSlot {
+  rect: DOMRect;
+  /** Position in document order before `mutate`; decides who may slide. */
+  index: number;
+}
+
+function measure(container: HTMLElement, selector: string): Map<string, FirstSlot> {
+  const slots = new Map<string, FirstSlot>();
+  let index = 0;
   for (const el of container.querySelectorAll(selector)) {
     const key = keyOf(el);
-    if (key !== null) rects.set(key, el.getBoundingClientRect());
+    if (key !== null) slots.set(key, { rect: el.getBoundingClientRect(), index: index++ });
   }
-  return rects;
+  return slots;
+}
+
+/**
+ * The largest set of survivors whose document order is the same before and
+ * after `mutate` (a longest increasing subsequence of their old indexes, taken
+ * in new order). Those rows can slide without ever crossing each other: when
+ * two rows keep their order at both ends, a linear interpolation of their
+ * positions keeps it at every frame. Every other survivor would have to pass
+ * through a neighbour, so it fades in at its new slot instead.
+ */
+function orderKeepers(oldIndexesInNewOrder: number[]): Set<number> {
+  const n = oldIndexesInNewOrder.length;
+  const tailIndex: number[] = []; // index (into the input) of the smallest tail of each LIS length
+  const prev = new Array<number>(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    const value = oldIndexesInNewOrder[i] ?? 0;
+    let lo = 0;
+    let hi = tailIndex.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((oldIndexesInNewOrder[tailIndex[mid] ?? 0] ?? 0) < value) lo = mid + 1;
+      else hi = mid;
+    }
+    prev[i] = lo > 0 ? (tailIndex[lo - 1] ?? -1) : -1;
+    tailIndex[lo] = i;
+  }
+  const keep = new Set<number>();
+  let at = tailIndex.length > 0 ? (tailIndex[tailIndex.length - 1] ?? -1) : -1;
+  while (at !== -1) {
+    keep.add(at);
+    at = prev[at] ?? -1;
+  }
+  return keep;
 }
 
 /** First, mutate, last, invert, play — for the rows that survive `mutate`. */
+/** The area a sliding row sweeps: the box around where it was and where it ends. */
+function union(a: DOMRect, b: DOMRect): DOMRect {
+  const left = Math.min(a.left, b.left);
+  const top = Math.min(a.top, b.top);
+  const right = Math.max(a.right, b.right);
+  const bottom = Math.max(a.bottom, b.bottom);
+  return new DOMRect(left, top, right - left, bottom - top);
+}
+
+function intersects(a: DOMRect, b: DOMRect): boolean {
+  return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
 function play(container: HTMLElement, mutate: () => void, selector: string): Animation[] {
   // "First" includes any transform still in flight, so an interrupted
   // reorder continues from where the row is on screen.
@@ -80,31 +133,67 @@ function play(container: HTMLElement, mutate: () => void, selector: string): Ani
   const fadeDuration = motionMs('--motion-base', 260);
   const animations: Animation[] = [];
 
-  for (const el of container.querySelectorAll<HTMLElement>(selector)) {
-    if (typeof el.animate !== 'function') continue;
-    const key = keyOf(el);
-    if (key === null) continue;
+  // Choreography (plan section 4): rows that keep their relative order slide;
+  // rows that would cross a neighbour, and rows that are new, fade in at
+  // their final slot once the slides have finished. Nothing overlaps.
+  const rows = [...container.querySelectorAll<HTMLElement>(selector)].filter(
+    (el) => typeof el.animate === 'function' && keyOf(el) !== null,
+  );
+  const survivors = rows.filter((el) => before.has(keyOf(el) as string));
+  // When most of the list is new it is a different list, not a reorder: the
+  // few survivors would sweep across everything that is appearing. Fade the
+  // whole list in at once instead of sliding anything.
+  if (rows.length - survivors.length > survivors.length) {
+    for (const el of rows) {
+      cancelRunning(el);
+      animations.push(
+        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: fadeDuration, easing: EASE_OUT }),
+      );
+    }
+    return animations;
+  }
+  const keepers = orderKeepers(
+    survivors.map((el) => (before.get(keyOf(el) as string) as FirstSlot).index),
+  );
+  const sliders = new Set(survivors.filter((_, i) => keepers.has(i)));
+
+  const moves: Array<{ el: HTMLElement; dx: number; dy: number; path: DOMRect }> = [];
+  const faders: HTMLElement[] = [];
+  for (const el of rows) {
     // Drop an earlier FLIP (or a leave fade React kept the node for) so
     // "last" is the resting position, not a mid-animation one.
     cancelRunning(el);
-    const first = before.get(key);
-    if (!first) {
-      animations.push(
-        el.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: fadeDuration,
-          easing: EASE_OUT,
-        }),
-      );
+    if (!sliders.has(el)) {
+      faders.push(el);
       continue;
     }
+    const first = (before.get(keyOf(el) as string) as FirstSlot).rect;
     const last = el.getBoundingClientRect();
     const dx = first.left - last.left;
     const dy = first.top - last.top;
-    if (dx === 0 && dy === 0) continue;
+    if (dx !== 0 || dy !== 0) moves.push({ el, dx, dy, path: union(first, last) });
+  }
+
+  for (const { el, dx, dy } of moves) {
     animations.push(
       el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], {
         duration,
         easing: EASE_STD,
+      }),
+    );
+  }
+  // A newcomer (or crossing row) whose slot lies on a slider's path appears
+  // after the slides, so nothing is ever drawn over it; the others appear at
+  // once. `fill: 'backwards'` keeps a delayed row invisible until its turn.
+  for (const el of faders) {
+    const slot = el.getBoundingClientRect();
+    const crossed = moves.some(({ path }) => intersects(path, slot));
+    animations.push(
+      el.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: fadeDuration,
+        delay: crossed ? duration : 0,
+        easing: EASE_OUT,
+        fill: 'backwards',
       }),
     );
   }
