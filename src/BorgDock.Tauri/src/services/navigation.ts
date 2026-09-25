@@ -132,6 +132,11 @@ export interface ShowPrTarget {
   number: number;
   /** Tab to open on. Default Overview. */
   tab?: PrDetailTab;
+  /**
+   * Stay in the current section instead of switching to Pull requests, so
+   * Back returns to it (Focus opens its rows and cards this way).
+   */
+  keepSection?: boolean;
 }
 
 /** Tauri label of the main window (`tauri.conf.json`). */
@@ -180,8 +185,9 @@ function samePr(view: MainView, target: ShowPrTarget): boolean {
  * "open this PR" path goes through here; only the explicit "Open in window"
  * actions call `openPrDetail` themselves.
  *
- * - In the main window with `ui.layoutV3` on: switch to Pull requests,
- *   select the PR's row and push the full-screen detail view. A PR detail
+ * - In the main window with `ui.layoutV3` on: switch to Pull requests
+ *   (unless `keepSection`), select the PR's row and push the full-screen
+ *   detail view. A PR detail
  *   already on top is replaced, not stacked; the same PR on the same tab is
  *   left alone.
  * - In the main window with the flag off: the pop-out window, as before.
@@ -228,7 +234,7 @@ export async function showPr(target: ShowPrTarget): Promise<void> {
   }
   await navigate('push', () => {
     const state = useUiStore.getState();
-    if (state.activeSection !== 'prs') state.setActiveSection('prs');
+    if (state.activeSection !== 'prs' && !target.keepSection) state.setActiveSection('prs');
     if (replacing) state.replaceView(view);
     else state.pushView(view);
   });

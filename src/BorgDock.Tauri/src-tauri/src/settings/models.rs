@@ -188,6 +188,12 @@ pub struct UiSettings {
     /// Opt in to the Workbench layout while the UI overhaul is behind a flag.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout_v3: Option<bool>,
+    /// Focus section layout in the Workbench layout ("list" | "board").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus_layout: Option<String>,
+    /// Days without an update after which an open PR counts as stale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stale_after_days: Option<u32>,
 }
 
 fn default_theme() -> String {
@@ -229,6 +235,8 @@ impl Default for UiSettings {
             pr_density: None,
             reduce_motion: None,
             layout_v3: None,
+            focus_layout: None,
+            stale_after_days: None,
         }
     }
 }
@@ -602,6 +610,8 @@ mod redesign_field_tests {
         s.ui.start_minimized_to_tray = true;
         s.ui.reduce_motion = Some(true);
         s.ui.layout_v3 = Some(true);
+        s.ui.focus_layout = Some("board".to_string());
+        s.ui.stale_after_days = Some(10);
         s.notifications.channels.email_digest = true;
         s.remote_worktree_repos.push(RemoteWorktreeRepoSettings {
             id: "mac-fsp".to_string(),
@@ -625,6 +635,10 @@ mod redesign_field_tests {
         assert_eq!(back.ui.layout_v3, Some(true));
         assert!(json.contains("\"reduceMotion\":true"));
         assert!(json.contains("\"layoutV3\":true"));
+        assert_eq!(back.ui.focus_layout.as_deref(), Some("board"));
+        assert_eq!(back.ui.stale_after_days, Some(10));
+        assert!(json.contains("\"focusLayout\":\"board\""));
+        assert!(json.contains("\"staleAfterDays\":10"));
         assert!(back.notifications.channels.email_digest);
         assert_eq!(back.remote_worktree_repos.len(), 1);
         assert_eq!(

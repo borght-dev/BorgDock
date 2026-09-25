@@ -9,9 +9,24 @@ export interface TextInputProps {
   mono?: boolean;
   suffix?: ReactNode;
   ariaLabel?: string;
+  /** Bounds of a `number` input. */
+  min?: number;
+  max?: number;
+  onBlur?: () => void;
 }
 
-export function TextInput({ value, onChange, placeholder, type = 'text', mono, suffix, ariaLabel }: TextInputProps) {
+export function TextInput({
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  mono,
+  suffix,
+  ariaLabel,
+  min,
+  max,
+  onBlur,
+}: TextInputProps) {
   return (
     <div className="flex h-[30px] items-center gap-2 rounded-[5px] border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-[10px]">
       <input
@@ -19,7 +34,10 @@ export function TextInput({ value, onChange, placeholder, type = 'text', mono, s
         aria-label={ariaLabel}
         value={value}
         placeholder={placeholder}
+        min={min}
+        max={max}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         className={clsx(
           'flex-1 bg-transparent text-xs text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-faint)]',
           mono && 'font-mono text-[11.5px]',

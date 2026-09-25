@@ -17,6 +17,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity, PullRequestWithChecks } from '@/types';
 import { EASE_OUT, flip, motionMs, motionOK } from '@/utils/motion';
+import { minuteNow } from '@/utils/relative-time';
 import { type WorkbenchFilter, workbenchFilterCounts, workbenchFilterFor } from './PrFilterControl';
 import { WorkbenchPrHead } from './PrToolbar';
 import { prRowKey } from './pr-card-data';
@@ -32,13 +33,6 @@ export const VIRTUALIZE_THRESHOLD = 50;
 export const FLIP_ROW_SELECTOR = '[data-key]';
 
 const ROW_HEIGHT: Record<PrDensity, number> = { comfortable: 42, compact: 32 };
-
-const MINUTE = 60 * 1000;
-
-/** Now, to the minute: rows only re-render for their "updated … ago" once a minute. */
-function minuteNow(): number {
-  return Math.floor(Date.now() / MINUTE) * MINUTE;
-}
 
 const SKELETON_ROWS = ['s1', 's2', 's3', 's4', 's5'];
 

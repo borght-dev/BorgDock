@@ -1,0 +1,440 @@
+/*
+ * Focus in the Workbench layout (ui.layoutV3): head row with the "Merged
+ * today" tally and the List / Board toggle, the count strip, the list pane
+ * and the Board (plans/ui-overhaul-workbench.md, phase 5; the iteration-2
+ * mockup's `.tl-sum` and `.bd-*` rules). Tokens only. The row itself is
+ * `.bd-wb-row` from index.css.
+ *
+ * Imported from index.css before its own layers, so selectors that restyle
+ * a shared class (the sliding highlight) carry one more class than the
+ * rule they refine.
+ */
+
+@layer components {
+  /* ── Section frame ─────────────────────────────────── */
+  .bd-focus-wb {
+    height: 100%;
+  }
+
+  /* Bucket colours: one dot, one tint. */
+  [data-col="you"],
+  [data-focus-filter="you"],
+  .bd-focus-strip[data-active="you"] {
+    --bd-fc: var(--color-status-red);
+  }
+  [data-col="wait"],
+  [data-focus-filter="wait"],
+  .bd-focus-strip[data-active="wait"] {
+    --bd-fc: var(--color-status-yellow);
+  }
+  [data-col="ready"],
+  [data-focus-filter="ready"],
+  .bd-focus-strip[data-active="ready"] {
+    --bd-fc: var(--color-status-green);
+  }
+  [data-col="stale"],
+  [data-focus-filter="stale"],
+  .bd-focus-strip[data-active="stale"] {
+    --bd-fc: var(--color-text-tertiary);
+  }
+  .bd-focus-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bd-fc, var(--color-text-tertiary));
+  }
+
+  /* ── Head row: title, Merged today, List / Board ───── */
+  .bd-focus-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .bd-focus-done__count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--color-success-badge-bg);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-success-badge-fg);
+  }
+  .bd-focus-layout .bd-filter__item {
+    gap: 5px;
+  }
+
+  /* ── Summary: one sentence and Start Quick Review ──── */
+  .bd-focus-summary {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
+  }
+  .bd-focus-summary__text {
+    flex: 1;
+    min-width: 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+  }
+  .bd-focus-summary__why {
+    display: inline;
+    margin-left: 6px;
+  }
+  .bd-focus-summary__why > summary {
+    display: inline;
+    color: var(--color-text-tertiary);
+    text-decoration: underline;
+    text-decoration-color: var(--color-strong-border);
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: color var(--motion-fast) var(--ease-std);
+  }
+  .bd-focus-summary__why > summary:hover {
+    color: var(--color-text-primary);
+  }
+  .bd-focus-summary__why > summary::-webkit-details-marker {
+    display: none;
+  }
+  .bd-focus-summary__why ul {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ── Body: List and Board crossfade ────────────────── */
+  .bd-focus-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .bd-focus-pane {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .bd-focus-pane--entering {
+    animation: bd-focus-fade-in var(--motion-base) var(--ease-out) both;
+  }
+  .bd-focus-pane--leaving {
+    pointer-events: none;
+    animation: bd-focus-fade-out var(--motion-base) var(--ease-in) both;
+  }
+  @keyframes bd-focus-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes bd-focus-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* ── Count strip ───────────────────────────────────── */
+  .bd-focus-strip {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px 6px;
+  }
+  .bd-focus-strip .bd-focus-strip__hl {
+    border: 1px solid var(--bd-fc, var(--color-strong-border));
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--bd-fc, var(--color-text-tertiary)) 10%, transparent);
+    box-shadow: none;
+  }
+  .bd-focus-strip[data-active="all"] .bd-focus-strip__hl {
+    border-color: var(--color-strong-border);
+    background: var(--color-surface-hover);
+  }
+  .bd-focus-strip__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 12px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 9px;
+    background: transparent;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color var(--motion-fast) var(--ease-std),
+      border-color var(--motion-fast) var(--ease-std),
+      background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-focus-strip__item:hover {
+    background: var(--color-surface-hover);
+  }
+  .bd-focus-strip__item--active {
+    border-color: transparent;
+    color: var(--color-text-primary);
+  }
+  .bd-focus-strip__item--active:hover {
+    background: transparent;
+  }
+  .bd-focus-strip__item:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-focus-strip__item[data-focus-filter="all"] {
+    margin-left: auto;
+    border-color: transparent;
+  }
+  .bd-focus-strip__count {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+  }
+
+  /* ── List pane ─────────────────────────────────────── */
+  .bd-focus-list [data-focus-reason] {
+    color: var(--color-text-secondary);
+  }
+  /* Review and "Bring back" side by side in a snoozed row's action slot. */
+  .bd-focus-list .bd-row-action {
+    gap: 6px;
+  }
+
+  /* ── Board ─────────────────────────────────────────── */
+  .bd-fb-cols {
+    display: grid;
+    flex: 1;
+    grid-template-columns:
+      minmax(230px, 1.15fr) minmax(210px, 1fr) minmax(210px, 1fr)
+      minmax(170px, 0.8fr);
+    gap: 12px;
+    min-height: 0;
+    padding: 14px 16px 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Narrower than four columns: they scroll sideways, a column at a time. */
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px;
+  }
+  .bd-fb-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 10px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 14px;
+    background: var(--color-surface-hover);
+    scroll-snap-align: start;
+  }
+  .bd-fb-col__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .bd-fb-col__hint {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .bd-fb-col__count {
+    display: inline-block;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-fb-col__stack {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 8px;
+    min-height: 0;
+    padding: 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .bd-fb-col__empty {
+    margin: 0;
+    padding: 18px 6px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    text-align: center;
+  }
+
+  /* Card: repo and number, chip, title, reason, author and checks, actions. */
+  .bd-fb-card {
+    display: grid;
+    gap: 9px;
+    min-width: 0;
+    /* The card's content adapts to the column's width (see the query below). */
+    container-type: inline-size;
+    padding: 11px 12px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 11px;
+    background: var(--color-surface);
+    cursor: default;
+    transition:
+      border-color var(--motion-fast) var(--ease-std),
+      background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-fb-card:hover {
+    border-color: var(--color-strong-border);
+  }
+  .bd-fb-card[data-selected="true"] {
+    border-color: var(--color-accent);
+    background: var(--color-selected-row-bg);
+  }
+  .bd-fb-card__main {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+    border-radius: 6px;
+    outline: none;
+  }
+  .bd-fb-card__main:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+  .bd-fb-card__repo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  .bd-fb-card__repo > span:first-child {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .bd-fb-card__repo .bd-wb-chip {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .bd-fb-card__title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+    color: var(--color-text-primary);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .bd-fb-card__why {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--color-text-secondary);
+  }
+  .bd-fb-card__foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-fb-card__avatar {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 7px;
+  }
+  .bd-fb-card__author {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-fb-card__checks {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-size: 11px;
+  }
+  .bd-fb-card__acts {
+    display: flex;
+    gap: 6px;
+  }
+  .bd-fb-card__acts .bd-btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+    height: 28px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  /* A narrow column: the check count keeps its bar (and tooltip) but drops
+     the words, and the action buttons drop their icons. */
+  @container (max-width: 200px) {
+    .bd-fb-card__checks .bd-checkbar__label,
+    .bd-fb-card__acts .bd-btn svg {
+      display: none;
+    }
+  }
+  .bd-fb-card--compact {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+  .bd-fb-card--compact .bd-fb-card__main {
+    gap: 4px;
+  }
+  .bd-fb-card--compact .bd-fb-card__title {
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .bd-fb-card__age {
+    flex: none;
+  }
+
+  /* View-transition names on the selected card only, as on the rows. */
+  .bd-fb-card[data-selected="true"] .bd-fb-card__title {
+    view-transition-name: var(--bd-vt-title);
+  }
+  .bd-fb-card[data-selected="true"] .bd-fb-card__avatar {
+    view-transition-name: var(--bd-vt-avatar);
+  }
+  .bd-viewstack__list--covered .bd-fb-card[data-selected="true"] .bd-fb-card__title,
+  .bd-viewstack__list--covered .bd-fb-card[data-selected="true"] .bd-fb-card__avatar {
+    view-transition-name: none;
+  }
+
+  /* A pane fading out never carries the view-transition names. */
+  .bd-focus-pane--leaving .bd-wb-row[data-selected="true"] .bd-wb-row__title,
+  .bd-focus-pane--leaving .bd-wb-row[data-selected="true"] .bd-wb-row__avatar,
+  .bd-focus-pane--leaving .bd-fb-card[data-selected="true"] .bd-fb-card__title,
+  .bd-focus-pane--leaving .bd-fb-card[data-selected="true"] .bd-fb-card__avatar {
+    view-transition-name: none;
+  }
+}

@@ -49,6 +49,7 @@ export type {
   AuthMethod,
   AzureDevOpsSettings,
   ClaudeReviewSettings,
+  FocusLayout,
   GitHubSettings,
   NotificationSettings,
   PostFixAction,

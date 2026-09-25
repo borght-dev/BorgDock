@@ -2,6 +2,7 @@ import {
   disable as disableAutostart,
   enable as enableAutostart,
 } from '@tauri-apps/plugin-autostart';
+import { useState } from 'react';
 import {
   Card,
   Field,
@@ -10,12 +11,57 @@ import {
   TextInput,
   ToggleRow,
 } from '@/components/shared/primitives';
+import { STALE_AFTER_DAYS_MAX, staleAfterDaysOf } from '@/services/focus-bucket';
 import type { PrDensity, ThemeMode, UiSettings } from '@/types/settings';
 import { HotkeyRecorder } from './HotkeyRecorder';
 
 interface Props {
   ui: UiSettings;
   onChange: (u: UiSettings) => void;
+}
+
+/**
+ * Days without an update before an open PR counts as stale, 1 to
+ * `STALE_AFTER_DAYS_MAX`. A whole number in range saves as it is typed; on
+ * blur anything else is clamped into range (or put back when it is not a
+ * number), so the field never keeps a value that was not saved.
+ */
+function StaleDaysField({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  // The saved value last seen: a new one (saved here or elsewhere) replaces the draft.
+  const [seen, setSeen] = useState(value);
+  if (seen !== value) {
+    setSeen(value);
+    setDraft(String(value));
+  }
+  return (
+    <TextInput
+      type="number"
+      ariaLabel="Stale after days"
+      value={draft}
+      min={1}
+      max={STALE_AFTER_DAYS_MAX}
+      suffix="days"
+      onChange={(next) => {
+        setDraft(next);
+        const days = Number(next);
+        if (Number.isInteger(days) && days >= 1 && days <= STALE_AFTER_DAYS_MAX) {
+          onChange(days);
+        }
+      }}
+      onBlur={() => {
+        const typed = Number(draft);
+        const days =
+          draft.trim() === '' || !Number.isFinite(typed)
+            ? value
+            : Math.min(STALE_AFTER_DAYS_MAX, Math.max(1, Math.round(typed)));
+        setDraft(String(days));
+        if (days !== value) {
+          onChange(days);
+        }
+      }}
+    />
+  );
 }
 
 export function AppearanceSection({ ui, onChange }: Props) {
@@ -55,6 +101,16 @@ export function AppearanceSection({ ui, onChange }: Props) {
               { value: 'compact', label: 'Compact' },
             ]}
             onChange={(v) => update({ prDensity: v as PrDensity })}
+          />
+        </Field>
+        <Field
+          label="Stale after"
+          hint="An open pull request with no update for this many days moves to Stale in Focus and is marked stale in the list."
+          anchorId="stale-after-days"
+        >
+          <StaleDaysField
+            value={staleAfterDaysOf(ui.staleAfterDays)}
+            onChange={(staleAfterDays) => update({ staleAfterDays })}
           />
         </Field>
         <div id="field-reduce-motion">

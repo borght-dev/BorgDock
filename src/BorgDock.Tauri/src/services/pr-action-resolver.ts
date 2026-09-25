@@ -1,3 +1,4 @@
+import { isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
 import type { PullRequestWithChecks } from '@/types';
 
 export type PrActionId = 'rerun' | 'merge' | 'review' | 'checkout' | 'open';
@@ -66,4 +67,25 @@ export function shapeFromPrWithChecks(
     own: isMine,
     ready,
   };
+}
+
+/**
+ * The one action a Workbench row (and a Focus card's primary button) offers
+ * without opening the PR: Review or Merge, else nothing. `primaryFor`, with
+ * one change: a review still requested from me wins over Merge, so a ready
+ * PR that waits on my review asks for the review first, on the row and on
+ * the card alike.
+ */
+export function workbenchPrimaryAction(
+  prWithChecks: PullRequestWithChecks,
+  username: string,
+  teams: readonly string[] = [],
+): 'review' | 'merge' | null {
+  const pr = prWithChecks.pullRequest;
+  if (pr.state !== 'open' || pr.mergedAt) return null;
+  const reviewing = isWaitingOnMe(prWithChecks, username, teams);
+  const shape = shapeFromPrWithChecks(prWithChecks, isMyPr(prWithChecks, username), reviewing);
+  const primary = primaryFor(shape);
+  if (primary === 'merge' && reviewing) return 'review';
+  return primary === 'review' || primary === 'merge' ? primary : null;
 }

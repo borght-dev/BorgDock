@@ -41,6 +41,43 @@ describe('AppearanceSection', () => {
     expect(screen.getByText('Dark').closest('button')!.getAttribute('aria-pressed')).toBe('false');
   });
 
+  it('edits the stale threshold, saving whole days from 1 to 90 only', () => {
+    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
+    const input = screen.getByLabelText('Stale after days') as HTMLInputElement;
+    expect(input.value).toBe('7');
+    expect(input.min).toBe('1');
+    expect(input.max).toBe('90');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input.value).toBe('');
+    fireEvent.change(input, { target: { value: '0' } });
+    fireEvent.change(input, { target: { value: '120' } });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: '10' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ staleAfterDays: 10 }));
+  });
+
+  it('clamps the stale threshold into range on blur', () => {
+    render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
+    const input = screen.getByLabelText('Stale after days') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '120' } });
+    fireEvent.blur(input);
+    expect(input.value).toBe('90');
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ staleAfterDays: 90 }));
+    fireEvent.change(input, { target: { value: '0' } });
+    fireEvent.blur(input);
+    expect(input.value).toBe('1');
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ staleAfterDays: 1 }));
+  });
+
+  it('puts the stale threshold back when the field is left empty', () => {
+    render(<AppearanceSection ui={makeUi({ staleAfterDays: 12 })} onChange={onChange} />);
+    const input = screen.getByLabelText('Stale after days') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+    expect(input.value).toBe('12');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('switches theme to dark', () => {
     render(<AppearanceSection ui={makeUi()} onChange={onChange} />);
     fireEvent.click(screen.getByText('Dark'));

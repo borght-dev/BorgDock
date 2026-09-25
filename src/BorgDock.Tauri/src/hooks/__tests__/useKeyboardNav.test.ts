@@ -24,6 +24,7 @@ let mockSelectedPrNumber: number | null = null;
 let mockActiveSection = 'prs';
 let mockViewStack: { kind: string }[] = [{ kind: 'list' }];
 let mockLayoutV3 = false;
+let mockPullRequests: PullRequestWithChecks[] = [];
 
 vi.mock('@/stores/ui-store', () => ({
   SECTION_ORDER: ['focus', 'prs', 'workitems', 'worktrees'],
@@ -55,6 +56,7 @@ vi.mock('@/stores/pr-store', () => ({
       }),
     {
       getState: () => ({
+        pullRequests: mockPullRequests,
         filteredPrs: mockFilteredPrs,
         focusPrs: mockFocusPrs,
         needsMyReview: mockNeedsMyReview,
@@ -142,6 +144,7 @@ describe('useKeyboardNav', () => {
     mockViewStack = [{ kind: 'list' }];
     mockLayoutV3 = false;
     mockOverlayOpen = false;
+    mockPullRequests = [];
     mockFilteredPrs.mockReturnValue([]);
   });
 
@@ -648,19 +651,45 @@ describe('useKeyboardNav', () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it('plain R in Focus still starts Quick Review instead', () => {
+    it('plain R in Focus still starts Quick Review instead, for the selected row', () => {
       mockLayoutV3 = true;
       mockActiveSection = 'focus';
       const pr = makePr(1);
-      mockFilteredPrs.mockReturnValue([pr]);
-      mockFocusPrs.mockReturnValue([pr]);
+      const other = makePr(2);
+      mockPullRequests = [other, pr];
+      mockFilteredPrs.mockReturnValue([other, pr]);
+      mockFocusPrs.mockReturnValue([other, pr]);
+      const row = document.createElement('div');
+      row.className = 'bd-wb-row';
+      row.dataset.prKey = 'test/repo#1';
+      row.dataset.selected = 'true';
+      document.body.appendChild(row);
       const listener = vi.fn();
       document.addEventListener('borgdock-refresh', listener);
       renderHook(() => useKeyboardNav());
       fireKey('r');
       document.removeEventListener('borgdock-refresh', listener);
+      row.remove();
       expect(listener).not.toHaveBeenCalled();
       expect(mockStartSinglePr).toHaveBeenCalledWith(pr);
+    });
+
+    it('R, M and O in the Workbench Focus do nothing without a selected row', () => {
+      mockLayoutV3 = true;
+      mockActiveSection = 'focus';
+      const pr = makePr(1);
+      mockPullRequests = [pr];
+      mockFilteredPrs.mockReturnValue([pr]);
+      mockFocusPrs.mockReturnValue([pr]);
+      const queueMerge = vi.fn();
+      (window as unknown as Record<string, unknown>).__borgdockQueueMerge = queueMerge;
+      renderHook(() => useKeyboardNav());
+      fireKey('r');
+      fireKey('m');
+      fireKey('m', { repeat: true });
+      delete (window as unknown as Record<string, unknown>).__borgdockQueueMerge;
+      expect(mockStartSinglePr).not.toHaveBeenCalled();
+      expect(queueMerge).not.toHaveBeenCalled();
     });
 
     it('plain R does not refresh in the tab layout', () => {

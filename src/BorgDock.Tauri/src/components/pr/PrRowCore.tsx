@@ -1,8 +1,9 @@
 import clsx from 'clsx';
 import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { Avatar, CheckBar, checkBarSummary } from '@/components/shared/primitives';
+import { isStaleUpdate } from '@/services/focus-bucket';
 import type { PrDensity } from '@/types';
-import { formatAgo, isOlderThanDays, STALE_AFTER_DAYS } from '@/utils/relative-time';
+import { formatAgo, STALE_AFTER_DAYS } from '@/utils/relative-time';
 import {
   avatarInitials,
   type PrCardData,
@@ -21,6 +22,13 @@ export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'ch
   selected?: boolean;
   /** Clock for the meta line's age and the stale rule. Defaults to now. */
   now?: number;
+  /** Days without an update after which the meta line says "stale" (`ui.staleAfterDays`). */
+  staleAfterDays?: number;
+  /**
+   * Replaces the meta line's content (comfortable density only). Focus puts
+   * the reason a PR is there in this slot.
+   */
+  meta?: ReactNode;
   /**
    * Put `data-key` on the row (or on its wrapper, with an action slot) so
    * `flip()` follows it (default). Rows a virtualizer recycles pass `false`:
@@ -48,12 +56,19 @@ function metaEvent(pr: PrCardData): { verb: string; at: string } | null {
  * "koen in BorgDock, updated 2 h ago, stale" — the author is emphasised. A
  * merged or closed PR says when it was merged or closed instead.
  */
-function MetaLine({ pr, now }: { pr: PrCardData; now: number }) {
+function MetaLine({
+  pr,
+  now,
+  staleAfterDays,
+}: {
+  pr: PrCardData;
+  now: number;
+  staleAfterDays: number;
+}) {
   const event = metaEvent(pr);
   const ago = event ? formatAgo(event.at, now) : '';
   const open = !pr.isMerged && !pr.isClosed;
-  const stale =
-    open && pr.updatedAt !== undefined && isOlderThanDays(pr.updatedAt, STALE_AFTER_DAYS, now);
+  const stale = isStaleUpdate({ open, updatedAt: pr.updatedAt }, staleAfterDays, now);
   return (
     <span className="bd-wb-row__meta" data-stale={stale ? 'true' : undefined}>
       <em>{pr.authorLogin}</em> in {pr.repoName}
@@ -85,6 +100,8 @@ export function PrRowCore({
   density = 'comfortable',
   selected = false,
   now = Date.now(),
+  staleAfterDays = STALE_AFTER_DAYS,
+  meta,
   animateKey = true,
   action,
   className,
@@ -149,7 +166,12 @@ export function PrRowCore({
         <span className="bd-wb-row__title" title={pr.title}>
           {pr.title}
         </span>
-        {density === 'comfortable' && <MetaLine pr={pr} now={now} />}
+        {density === 'comfortable' &&
+          (meta !== undefined ? (
+            <span className="bd-wb-row__meta">{meta}</span>
+          ) : (
+            <MetaLine pr={pr} now={now} staleAfterDays={staleAfterDays} />
+          ))}
       </span>
       <CheckBar
         className="bd-wb-row__checks"

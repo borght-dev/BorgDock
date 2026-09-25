@@ -4,6 +4,7 @@
 @import "@fontsource-variable/instrument-sans";
 @import "@fontsource-variable/jetbrains-mono";
 @import "./motion.css";
+@import "./focus-workbench.css";
 
 /*
  * @theme inline — promote every runtime CSS custom property into a Tailwind

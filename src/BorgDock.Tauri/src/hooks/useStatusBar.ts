@@ -33,6 +33,7 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
   const adoProject = useSettingsStore((s) => s.settings.azureDevOps.project);
   const top = useUiStore(selectTopView);
   const layoutV3 = useSettingsStore((s) => s.settings.ui.layoutV3 ?? false);
+  const focusBoard = useSettingsStore((s) => s.settings.ui.focusLayout === 'board');
   // The rail layout's list keys (plan section 7): `/` focuses the section's
   // search (Focus and Worktrees have none, so it jumps to the PR list's) and
   // plain R refreshes everywhere but Focus, where R starts Quick Review.
@@ -50,7 +51,11 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
     case 'focus':
       return {
         left: 'focus computed just now · weights from settings',
-        right: layoutV3 ? 'R Quick Review · Ctrl+R refresh' : 'Press R for Quick Review',
+        right: !layoutV3
+          ? 'Press R for Quick Review'
+          : focusBoard
+            ? 'J K move · H L columns · R Quick Review · Ctrl+R refresh'
+            : 'R Quick Review · Ctrl+R refresh',
       };
     case 'prs': {
       // REST and GraphQL are separate 5000/h pools — say which one this is.

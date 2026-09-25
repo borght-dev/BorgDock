@@ -14,6 +14,7 @@ import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 import { FocusEmptyState } from './FocusEmptyState';
+import { WorkbenchFocus } from './WorkbenchFocus';
 
 // ── component ──────────────────────────────────────────────────────────────
 
@@ -25,7 +26,16 @@ function openPrDetailFor(prw: PullRequestWithChecks): void {
   });
 }
 
+/**
+ * FocusList — the Focus section. `ui.layoutV3` picks the Workbench Focus
+ * (count strip, List / Board); off keeps the tab layout's ranked list.
+ */
 export function FocusList() {
+  const layoutV3 = useSettingsStore((s) => s.settings.ui?.layoutV3 ?? false);
+  return layoutV3 ? <WorkbenchFocus /> : <ClassicFocusList />;
+}
+
+function ClassicFocusList() {
   const { pullRequests, username, teams } = usePrStore(
     useShallow((s) => ({
       pullRequests: s.pullRequests,

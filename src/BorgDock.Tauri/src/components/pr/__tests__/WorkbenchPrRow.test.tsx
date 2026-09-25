@@ -176,6 +176,18 @@ describe('WorkbenchPrRow action slot', () => {
     ['a review requested from me', REVIEW, 'review'],
     ['an approved, green PR', MERGE, 'merge'],
     [
+      'an approved, green PR still waiting on my review (review first)',
+      listPr({
+        number: 5,
+        title: 'x',
+        repo: 'a/b',
+        author: 'mira',
+        reviewStatus: 'approved',
+        requestedReviewers: [FIXTURE_ME],
+      }),
+      'review',
+    ],
+    [
       'a failing PR (rerun)',
       listPr({ number: 1, title: 'x', repo: 'a/b', checks: { total: 3, fail: 1 } }),
       null,

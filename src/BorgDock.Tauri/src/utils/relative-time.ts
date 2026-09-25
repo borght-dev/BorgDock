@@ -5,6 +5,14 @@ const DAY = 24 * HOUR;
 /** A pull request with no update for this long is stale (plan section 5, phase 5). */
 export const STALE_AFTER_DAYS = 7;
 
+/**
+ * Now, to the minute: lists pass it to every row so "updated … ago" (and the
+ * stale rule) only change once a minute, not on every render.
+ */
+export function minuteNow(): number {
+  return Math.floor(Date.now() / MINUTE) * MINUTE;
+}
+
 function timeOf(iso: string): number {
   return new Date(iso).getTime();
 }

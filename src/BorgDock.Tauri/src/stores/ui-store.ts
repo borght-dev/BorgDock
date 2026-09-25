@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
+import type { FocusFilter } from '@/services/focus-bucket';
 import type { PrGroupBy } from '@/services/pr-grouping';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
@@ -27,6 +28,22 @@ export type MainView =
 
 const LIST_VIEW: MainView = { kind: 'list' };
 
+/** Tauri-store key of the Focus snoozes ("Later" on the Board). */
+export const FOCUS_SNOOZES_STORE_KEY = 'focusSnoozes';
+
+/** Snoozes that have not run out yet. */
+function liveSnoozes(snoozes: Record<string, number>, now: number): Record<string, number> {
+  const live: Record<string, number> = {};
+  for (const [key, until] of Object.entries(snoozes)) {
+    if (typeof until === 'number' && until > now) live[key] = until;
+  }
+  return live;
+}
+
+function persistSnoozes(snoozes: Record<string, number>) {
+  persistToTauriStore('ui-state.json', FOCUS_SNOOZES_STORE_KEY, snoozes).catch(() => {});
+}
+
 interface UiState {
   activeSection: ActiveSection;
   selectedPrNumber: number | null;
@@ -49,6 +66,14 @@ interface UiState {
    * never drops below it. Not persisted: a restart opens on the list.
    */
   viewStack: MainView[];
+  /** The Focus count strip's filter. Session state, not persisted. */
+  focusFilter: FocusFilter;
+  /**
+   * PRs snoozed with "Later" on the Focus board, `owner/repo#number` →
+   * snoozed until (epoch ms). `bucketFor` moves a snoozed PR from Needs
+   * you to Waiting until then. Persisted, expired entries dropped.
+   */
+  focusSnoozes: Record<string, number>;
 
   setActiveSection: (section: ActiveSection) => void;
   /** Select by number (tab layout). Clears the key selection. */
@@ -73,6 +98,12 @@ interface UiState {
    * returns to the list.
    */
   replaceView: (view: MainView) => void;
+  setFocusFilter: (filter: FocusFilter) => void;
+  /** Snooze a PR until `until` (epoch ms). */
+  snoozeFocusPr: (key: string, until: number) => void;
+  unsnoozeFocusPr: (key: string) => void;
+  /** Read the persisted snoozes back (called by `restorePersistedSection`). */
+  restoreFocusSnoozes: () => void;
 }
 
 /** The view the main window is showing. */
@@ -94,6 +125,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   prGroupBy: 'author',
   _hasUserNavigated: false,
   viewStack: [LIST_VIEW],
+  focusFilter: 'all',
+  focusSnoozes: {},
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });
@@ -133,6 +166,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   },
 
   restorePersistedSection: () => {
+    get().restoreFocusSnoozes();
     if (get()._hasUserNavigated) return;
     Promise.all([
       readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection'),
@@ -165,4 +199,35 @@ export const useUiStore = create<UiState>()((set, get) => ({
       if (state.viewStack.length <= 1) return { viewStack: [...state.viewStack, view] };
       return { viewStack: [...state.viewStack.slice(0, -1), view] };
     }),
+
+  setFocusFilter: (focusFilter) => set({ focusFilter }),
+
+  snoozeFocusPr: (key, until) => {
+    const focusSnoozes = { ...liveSnoozes(get().focusSnoozes, Date.now()), [key]: until };
+    set({ focusSnoozes });
+    persistSnoozes(focusSnoozes);
+  },
+
+  unsnoozeFocusPr: (key) => {
+    if (!(key in get().focusSnoozes)) return;
+    const focusSnoozes = { ...get().focusSnoozes };
+    delete focusSnoozes[key];
+    set({ focusSnoozes });
+    persistSnoozes(focusSnoozes);
+  },
+
+  restoreFocusSnoozes: () => {
+    Promise.resolve()
+      .then(() =>
+        readFromTauriStore<Record<string, number>>('ui-state.json', FOCUS_SNOOZES_STORE_KEY),
+      )
+      .then((stored) => {
+        if (!stored || typeof stored !== 'object') return;
+        // Snoozes made this session win over the stored ones.
+        set((state) => ({
+          focusSnoozes: { ...liveSnoozes(stored, Date.now()), ...state.focusSnoozes },
+        }));
+      })
+      .catch(() => {});
+  },
 }));

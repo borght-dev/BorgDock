@@ -26,6 +26,7 @@ import { type ActiveSection, type MainView, useUiStore } from '@/stores/ui-store
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type {
   AdoQuery,
+  FocusLayout,
   OverallStatus,
   PrDensity,
   PullRequestWithChecks,
@@ -285,6 +286,7 @@ function Harness({
   groupBy = 'repo',
   density = 'comfortable',
   layoutV3 = false,
+  focusLayout = 'list',
   view,
 }: {
   section: ActiveSection;
@@ -292,6 +294,8 @@ function Harness({
   density?: PrDensity;
   /** Workbench rail layout instead of the title-bar tabs. */
   layoutV3?: boolean;
+  /** Focus as a list or as the board (Workbench layout). */
+  focusLayout?: FocusLayout;
   /** A detail view pushed on top of the list. */
   view?: MainView;
 }) {
@@ -306,7 +310,10 @@ function Harness({
       viewStack: view ? [{ kind: 'list' }, view] : [{ kind: 'list' }],
     });
     useSettingsStore.setState((s) => ({
-      settings: { ...s.settings, ui: { ...s.settings.ui, prDensity: density, layoutV3 } },
+      settings: {
+        ...s.settings,
+        ui: { ...s.settings.ui, prDensity: density, layoutV3, focusLayout },
+      },
     }));
     return null;
   });
@@ -346,6 +353,11 @@ export const RailPrs: Story = { args: { section: 'prs', layoutV3: true } };
 
 /** Workbench rail layout on the Focus section. */
 export const RailFocus: Story = { args: { section: 'focus', layoutV3: true } };
+
+/** Workbench rail layout on Focus as the board: four computed columns, no drag. */
+export const RailFocusBoard: Story = {
+  args: { section: 'focus', layoutV3: true, focusLayout: 'board' },
+};
 
 /** Workbench rail layout on the Worktrees placeholder section. */
 export const RailWorktrees: Story = { args: { section: 'worktrees', layoutV3: true } };

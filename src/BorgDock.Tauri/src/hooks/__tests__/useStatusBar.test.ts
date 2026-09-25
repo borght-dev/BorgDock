@@ -73,6 +73,16 @@ describe('useStatusBar', () => {
       const { result } = renderHook(() => useStatusBar('focus'));
       expect(result.current.right).toBe('R Quick Review · Ctrl+R refresh');
     });
+    it('names the board keys when Focus shows the Board', () => {
+      useSettingsStore.setState((s) => ({
+        settings: { ...s.settings, ui: { ...s.settings.ui, focusLayout: 'board' } },
+      }));
+      const { result } = renderHook(() => useStatusBar('focus'));
+      expect(result.current.right).toBe('J K move · H L columns · R Quick Review · Ctrl+R refresh');
+      useSettingsStore.setState((s) => ({
+        settings: { ...s.settings, ui: { ...s.settings.ui, focusLayout: 'list' } },
+      }));
+    });
   });
 
   it('adds no new keys in the tab layout', () => {

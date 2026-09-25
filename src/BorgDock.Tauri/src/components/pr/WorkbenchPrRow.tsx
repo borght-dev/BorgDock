@@ -1,14 +1,15 @@
 import { GitMerge, MessageSquareText } from 'lucide-react';
-import { type MouseEvent, memo, useCallback, useMemo } from 'react';
+import { type MouseEvent, memo, type ReactNode, useCallback, useMemo } from 'react';
 import { Button, ProgressButton } from '@/components/shared/primitives';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { useProgressAction } from '@/hooks/useProgressAction';
+import { staleAfterDaysOf } from '@/services/focus-bucket';
 import { showPr } from '@/services/navigation';
-import { primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
+import { workbenchPrimaryAction } from '@/services/pr-action-resolver';
 import { mergePrWithToast, reviewPr } from '@/services/pr-actions';
-import { isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
 import { openPrDetail } from '@/services/windows';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity, PullRequestWithChecks } from '@/types';
 import { PrRowCore } from './PrRowCore';
@@ -23,23 +24,15 @@ const ICON = { size: 12, strokeWidth: 2.25, 'aria-hidden': true } as const;
 /**
  * The row's trailing action (plans/ui-overhaul-workbench.md, phase 4): only
  * for the two actions that make sense without opening the PR. `null` for
- * everything else (failing, own, closed, nothing to do).
+ * everything else (failing, own, closed, nothing to do). The Focus board's
+ * cards use the same rule (`workbenchPrimaryAction`).
  */
 export function rowActionFor(
   prWithChecks: PullRequestWithChecks,
   username: string,
   teams: readonly string[] = [],
 ): 'review' | 'merge' | null {
-  const pr = prWithChecks.pullRequest;
-  if (pr.state !== 'open' || pr.mergedAt) return null;
-  const primary = primaryFor(
-    shapeFromPrWithChecks(
-      prWithChecks,
-      isMyPr(prWithChecks, username),
-      isWaitingOnMe(prWithChecks, username, teams),
-    ),
-  );
-  return primary === 'review' || primary === 'merge' ? primary : null;
+  return workbenchPrimaryAction(prWithChecks, username, teams);
 }
 
 /** Merge through the progress fill: "Merging", then "Merged"; the row updates from the store. */
@@ -103,6 +96,12 @@ interface WorkbenchPrRowProps {
   now?: number;
   /** See `PrRowCore.animateKey`; false inside a virtualized list. */
   animateKey?: boolean;
+  /** See `PrRowCore.meta`: Focus shows the reason the PR is there. */
+  meta?: ReactNode;
+  /** Open the detail without switching to Pull requests (Focus): Back returns here. */
+  keepSection?: boolean;
+  /** One more button after the row's action in its slot (Focus: "Bring back" on a snoozed PR). */
+  extraAction?: ReactNode;
 }
 
 /**
@@ -124,12 +123,16 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
   density = 'comfortable',
   now,
   animateKey = true,
+  meta,
+  keepSection = false,
+  extraAction,
 }: WorkbenchPrRowProps) {
   const pr = prWithChecks.pullRequest;
   const key = prRowKey(pr);
   const selected = useUiStore((s) => s.selectedPrKey === key);
   const username = usePrStore((s) => s.username);
   const teams = usePrStore((s) => s.teams);
+  const staleAfterDays = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
   const actions = usePrCardActions(prWithChecks);
   const actionKind = rowActionFor(prWithChecks, username, teams);
 
@@ -139,8 +142,8 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
   const { repoOwner: owner, repoName: repo, number } = pr;
 
   const openInline = useCallback(() => {
-    void showPr({ owner, repo, number });
-  }, [owner, repo, number]);
+    void showPr(keepSection ? { owner, repo, number, keepSection } : { owner, repo, number });
+  }, [owner, repo, number, keepSection]);
 
   const openPopOut = useCallback(() => {
     void openPrDetail({ owner, repo, number });
@@ -174,6 +177,8 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
         density={density}
         selected={selected}
         now={now}
+        staleAfterDays={staleAfterDaysOf(staleAfterDays)}
+        meta={meta}
         animateKey={animateKey}
         onClick={handleClick}
         onAuxClick={handleAuxClick}
@@ -182,7 +187,14 @@ export const WorkbenchPrRow = memo(function WorkbenchPrRow({
           if (e.button === MIDDLE_BUTTON) e.preventDefault();
         }}
         onContextMenu={actions.handleContextMenu}
-        action={actionKind ? <RowAction kind={actionKind} prWithChecks={prWithChecks} /> : null}
+        action={
+          actionKind || extraAction ? (
+            <>
+              {actionKind && <RowAction kind={actionKind} prWithChecks={prWithChecks} />}
+              {extraAction}
+            </>
+          ) : null
+        }
       />
       <PrRowOverlays prWithChecks={prWithChecks} actions={actions} />
     </>

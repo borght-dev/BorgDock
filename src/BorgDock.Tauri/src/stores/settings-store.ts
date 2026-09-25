@@ -32,6 +32,8 @@ const defaultSettings: AppSettings = {
     restoreLastSelection: true,
     reduceMotion: false,
     layoutV3: false,
+    focusLayout: 'list',
+    staleAfterDays: 7,
   },
   notifications: {
     toastOnCheckStatusChange: true,

@@ -69,7 +69,13 @@ export interface UiSettings {
   reduceMotion?: boolean;
   /** Opt in to the Workbench layout (left rail, in-window PR detail) while it is being built. Removed at cutover. */
   layoutV3?: boolean;
+  /** Focus section layout in the Workbench layout: a ranked list or the four-column board. Default `list`. */
+  focusLayout?: FocusLayout;
+  /** An open PR with no update for this many days counts as stale (Focus, PR rows). Default 7. */
+  staleAfterDays?: number;
 }
+
+export type FocusLayout = 'list' | 'board';
 
 export type PrDensity = 'comfortable' | 'compact';
 
