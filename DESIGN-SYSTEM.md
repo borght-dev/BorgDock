@@ -4,7 +4,7 @@ A reference for BorgDock's visual language — for designers, design tools (Clau
 
 BorgDock is a dense, desktop-native developer tool. The visual language is the **Workbench** direction (`plans/ui-overhaul-workbench.md`): graphite surfaces in dark, porcelain in light, one indigo accent used for selection and the single primary action, and a three-colour status palette. Inter for the shell and lists, Instrument Sans for reading views, JetBrains Mono only in code.
 
-Current as of the phase 6 UI overhaul (2026-09-25). Mockups: `design/mockups/borgdock-redesign-iteration-2.html`. The short version of this document is `BorgDock-Styling-Guide.md`.
+Current as of 3.0.0 (2026-09-25) plus the Workbench logo. Mockups: `design/mockups/borgdock-redesign-iteration-2.html`. Brand assets: `design/brand/workbench/`. The short version of this document is `BorgDock-Styling-Guide.md`.
 
 ---
 
@@ -28,8 +28,9 @@ Current as of the phase 6 UI overhaul (2026-09-25). Mockups: `design/mockups/bor
 | Motion tokens | `src/styles/motion.css` | `--motion-*`, `--ease-*`, reduced motion, view-transition and window-entrance keyframes |
 | Tailwind bridge | `src/styles/index.css` `@theme inline` | Re-exports colours, spacing, radius, text, duration, fonts as utilities |
 | Component classes | `src/styles/index.css` `@layer components` | `.bd-*` classes backing the primitives, plus feature families (`bd-fp-*`, `bd-fv-*`, `bd-wt-*`, `bd-wp-*`, `bd-wi-*`, `bd-code-*`) |
-| Workbench stylesheets | `src/styles/{focus,work-items,worktrees}-workbench.css`, `src/styles/tool-windows.css` | Main-window sections; tool-window pieces (segmented control, toggle, wizard progress, What's new hero, work item palette, flyout panel) |
-| Legacy / unlayered | `src/styles/index.css` | `.sql-*` (SQL window), `.markdown-body`, `.tactile-icon-btn`, diff preview / find strip |
+| Shell and rows | `src/styles/index.css` `@layer components` | Main window (`.bd-mainwindow`, `.bd-rail`, `.bd-viewstack`, `.bd-section-view`), PR rows (`.bd-wb-*`), full-screen detail (`.bd-detail*`), toasts (`.bd-toast*`), title and status bars |
+| Workbench stylesheets | `src/styles/{focus,work-items,worktrees}-workbench.css`, `src/styles/tool-windows.css` | Focus list and board (`.bd-focus-*`, `.bd-fb-*`), Work items (`.bd-wi-*`), Worktrees (`.bd-wts*`, `.bd-wtr`); tool-window pieces (segmented control, toggle, wizard progress, What's new hero, work item palette, flyout panel) |
+| Legacy / unlayered | `src/styles/index.css` | `.sql-*` (SQL window), `.markdown-body`, `.tactile-icon-btn`, diff preview / find strip, the dead `.sidebar-*` block |
 | Feature stylesheet | `src/components/focus/quick-review.css` | `.qr-*` for the Quick Review overlay |
 | Primitives | `src/components/shared/primitives/` | React components selecting `.bd-*` classes via `clsx` |
 
@@ -43,11 +44,50 @@ Current as of the phase 6 UI overhaul (2026-09-25). Mockups: `design/mockups/bor
 
 ---
 
-## 3. Color Tokens
+## 3. Layout
+
+### 3.1 Main window
+
+`components/layout/MainWindow.tsx`: a two-column grid, `200px | 1fr` (`.bd-mainwindow--rail`).
+
+- **Rail** (`Rail.tsx`, `.bd-rail`) — logo and "BorgDock" at the top (36 px, drag region), then the four sections in order: Focus, Pull requests, Work items, Worktrees (keys `1`–`4`). A `SlidingHighlight` moves behind the active item. Counts sit on the right; the Pull requests count turns red when a PR is failing. The bottom block shows "Synced … ago" (or "Syncing…"), a 3 px GitHub rate meter and "N of M requests left (GraphQL|REST)".
+- **Title bar** (`TitleBar` primitive, 36 px) — the section name, or "Pull request" / "Work item" when a detail view is on top; then the status dot, the window launcher, Refresh, Settings and the window controls.
+- **Body** — `ViewStack` (below).
+- **Status bar** (`StatusBar`, 28 px) — per-view text and key hints from `hooks/useStatusBar.ts`.
+
+### 3.2 View stack and full-screen detail
+
+`ViewStack.tsx` renders the active section (`SectionView`) and, when one is pushed, a detail view on top: a PR (`PrDetailView`) or a work item (`WorkItemDetailView`).
+
+- The list stays mounted but `inert` and hidden while a detail view shows, so its scroll position and selection survive the round trip. Focus moves into the pushed view and returns on pop.
+- Push and pop go through `services/navigation.ts` inside `withViewTransition`. The view stack is its own transition group (`bd-view`), so the rail and title bar stay put. Push: the new view rises 12 px and fades in over `--motion-push`; pop: it drops 12 px and fades out. Without the View Transitions API, `ViewStack` plays the same motion itself. Under reduced motion nothing animates.
+- `Esc` (no input focused, no dialog open), `Alt+←` and the mouse back button pop. The detail has a Back button (`BackButton.tsx`).
+- Switching sections crossfades over `--motion-base` (`SectionView`).
+- Detail views use the reading font at 14 px (`.bd-detail`). The same `PRDetailPanel` also renders in the pop-out `pr-detail.html` window, where it keeps its own header (with the readiness `Ring`).
+
+### 3.3 Rows
+
+One row grammar for every list. `.bd-wb-row` in the main window, `.bd-list-row` in tool windows: 2 px transparent left border that turns accent on `data-selected="true"` with `selected-row-bg`, `surface-hover` wash on hover, tabular numerals, inset focus ring.
+
+The PR row (`PrRowCore.tsx`) is a grid of avatar (22 px), title plus one meta line, check bar (150 px), one review chip (128 px) and the number (52 px). Comfortable rows are 42 px, compact rows 32 px with no meta line (Settings → Appearance → Pull request density). The row's single trailing action (Review or Merge) sits in `.bd-wb-rowwrap` beside the row and is drawn over its right end on hover, focus and selection, so the columns never move.
+
+### 3.4 Floating UI
+
+- **Toasts** (`shared/Toast.tsx`, `stores/toast-store.ts`, `.bd-toasts`) — bottom right of the window, 16 px inset, up to 420 px wide, a 3 px tone stripe on the left, `surface-raised` fill and `--elevation-2`. Optional action (Undo) and close. Default duration 5 s. The tray flyout keeps its own toasts (`flyout/FlyoutToast.tsx`).
+- **Menus and popovers** — `surface` fill, `strong-border`, `--radius-lg`, `--elevation-2`.
+- **Modals** — `overlay-bg` backdrop, `modal-bg`, `--elevation-3`.
+
+### 3.5 Tool windows
+
+SQL, file palette, file viewer, settings, setup wizard, What's new, worktrees and the work item palette share the main window's chrome: `WindowTitleBar` (36 px, logo, title, meta, actions, window controls) and `chrome/WindowStatusBar` (28 px, hints as `Kbd` chips). Pieces specific to tool windows live in `tool-windows.css`. Each window fades and scales in on first paint (§5.4).
+
+---
+
+## 4. Color Tokens
 
 All names below omit the `--color-` prefix. Values are **light (porcelain) / dark (graphite)**, from `index.css`.
 
-### 3.1 Accent
+### 4.1 Accent
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
@@ -61,7 +101,7 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 
 **Accent foreground.** White on the dark accent `#7f7eff` is only 3.3:1, so in dark mode `accent-foreground` is a dark ink (`#12121a`, 5.6:1); light mode keeps white on `#4f46e5` (6.3:1). Every surface that puts text on the accent (primary buttons and their `Kbd` hints, checkboxes, the CodeMirror autocomplete selection, confirm buttons, badges) uses `accent-foreground`, never a literal white. `contrast.test.ts` checks it in both themes.
 
-### 3.2 Surfaces
+### 4.2 Surfaces
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
@@ -74,7 +114,7 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 | `seg-highlight` | `#ffffff` | `#28292e` | Sliding highlight fill (segmented controls, rail) |
 | `selected-row-bg` | `rgba(79,70,229,.07)` | `rgba(127,126,255,.10)` | Selected row |
 
-### 3.3 Text
+### 4.3 Text
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
@@ -85,7 +125,7 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 | `text-faint` | `#c2c4cb` | `#3f4046` | Disabled glyphs |
 | `text-ghost` | `#dcdee3` | `#2c2d32` | Placeholders for shapes |
 
-### 3.4 Borders
+### 4.4 Borders
 
 | Token | Light | Dark |
 |---|---|---|
@@ -93,7 +133,7 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 | `strong-border` | `#d4d6dc` | `rgba(255,255,255,.12)` |
 | `input-border` | `#dcdee4` | `rgba(255,255,255,.09)` |
 
-### 3.5 Status
+### 4.5 Status
 
 | Token | Light | Dark | Meaning |
 |---|---|---|---|
@@ -109,7 +149,7 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 
 **Tone triples** — `{success,warning,error,neutral,draft}-badge-{bg,fg,border}`: a 7–10% tint, a full-strength foreground (light warning and error foregrounds are darkened to clear 4.5:1) and a 16–25% border.
 
-### 3.6 Chrome, overlays and tool windows
+### 4.6 Chrome, overlays and tool windows
 
 | Token | Light | Dark |
 |---|---|---|
@@ -127,13 +167,13 @@ All names below omit the `--color-` prefix. Values are **light (porcelain) / dar
 | `status-fill-foreground` | `#12121a` | `#12121a` |
 | `danger-fill-foreground` | `#ffffff` | `#12121a` |
 
-### 3.7 Diff
+### 4.7 Diff
 
 - Added — `diff-added-{bg,bg-highlight,gutter-bg}`: tints of `status-green` (the word highlight is 14% light / 16% dark so syntax colours stay above 4.5:1)
 - Deleted — `diff-deleted-{bg,bg-highlight,gutter-bg}`: tints of `status-red`
 - `diff-context-bg` (transparent), `diff-hunk-header-bg`, `diff-hunk-header-text`, `diff-line-number`, `diff-file-header-{bg,border}`, `diff-border`
 
-### 3.8 Syntax (Tree-sitter diff view, file viewer, SQL editor)
+### 4.8 Syntax (Tree-sitter diff view, file viewer, SQL editor)
 
 Tuned for graphite and porcelain: every token clears 4.5:1 on `background`, `surface` and `code-block-bg`, and on the added / deleted diff lines including the word highlights, in its theme (`contrast.test.ts` composites the diff overlays over the background).
 
@@ -154,21 +194,21 @@ Tuned for graphite and porcelain: every token clears 4.5:1 on `background`, `sur
 | `syntax-attribute` | attributes | `#8b5200` | `#f0bd6b` |
 | `syntax-plain` | fallback | `#17181c` | `#ededef` |
 
-### 3.9 Small Groups
+### 4.9 Small Groups
 
 - **Toasts** — `toast-bg`, and per severity `toast-{success,error,warning,info,merged}-{glow,stripe,icon-bg}`
 - **What's New** — `whats-new-{new,improved,fixed}-{fg,bg,border}`, `whats-new-rail`
 - **Scrollbar** — `scrollbar-thumb`, `scrollbar-thumb-hover`
 - **Wizard** — `wizard-step-{active,complete,inactive,track}` (the sliding progress track)
-- **Brand gradients** — `splash-gradient-end`, `logo-gradient-{start,end}`
+- **Splash** — `splash-gradient-end`: left over from the gradient logo and unused since the flat Workbench mark (§9)
 
 ---
 
-## 4. Scale Tokens
+## 5. Scale Tokens
 
 Scale tokens live on `:root` and are not themed (except elevation).
 
-### 4.1 Spacing
+### 5.1 Spacing
 
 | Token | Value | Tailwind |
 |---|---|---|
@@ -184,7 +224,7 @@ Scale tokens live on `:root` and are not themed (except elevation).
 
 > Only these nine steps are overridden. Any other step falls back to Tailwind's 4px multiplier (`p-1.5` = 6px, `p-7` = 28px), so the scale isn't monotonic. Stick to the steps above.
 
-### 4.2 Radius
+### 5.2 Radius
 
 | Token | Value | Usage |
 |---|---|---|
@@ -194,7 +234,7 @@ Scale tokens live on `:root` and are not themed (except elevation).
 | `--radius-xl` | 12px | Large surfaces |
 | `--radius-pill` | 9999px | Pills, dots, avatars |
 
-### 4.3 Typography
+### 5.3 Typography
 
 Self-hosted variable fonts via `@fontsource-variable` (bundled into `dist/`, no network).
 
@@ -214,7 +254,7 @@ Self-hosted variable fonts via `@fontsource-variable` (bundled into `dist/`, no 
 
 Labels are sentence case; there are no uppercase tracked headings. Numbers in lists and status bars use tabular numerals.
 
-### 4.4 Motion
+### 5.4 Motion
 
 `src/styles/motion.css`:
 
@@ -235,7 +275,7 @@ The older `--duration-press` (80ms), `--duration-color` (120ms), `--duration-ui`
 
 **Tool-window entrance:** `revealWindow()` in `src/utils/window-reveal.ts` invokes `window_ready` and, once it settles, plays `.bd-window-enter` on `#root` (fade and scale from 0.98 over `--motion-base`). Until then `#root` holds the first frame (`.bd-window-pending`). The file viewer, built visible, calls `playWindowEnter()` on mount. Nothing is added under reduced motion.
 
-### 4.5 Elevation
+### 5.5 Elevation
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
@@ -245,14 +285,14 @@ The older `--duration-press` (80ms), `--duration-color` (120ms), `--duration-ui`
 
 Elevation isn't exported to Tailwind; use `shadow-[var(--elevation-2)]` or CSS.
 
-### 4.6 Focus
+### 5.6 Focus
 
 - Pressables: `outline: 2px solid var(--color-accent)`; `outline-offset: -2px` inside rows and segmented controls, `1px` elsewhere
 - Inputs: border colour shifts to `--color-accent`
 
 ---
 
-## 5. Tailwind Integration
+## 6. Tailwind Integration
 
 `index.css` contains an `@theme inline` block:
 
@@ -270,9 +310,9 @@ Elevation isn't exported to Tailwind; use `shadow-[var(--elevation-2)]` or CSS.
 
 ---
 
-## 6. Components
+## 7. Components
 
-### 6.1 Primitives — `src/components/shared/primitives/`
+### 7.1 Primitives — `src/components/shared/primitives/`
 
 Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `clsx`; no cva / tailwind-merge. All but HoverPopover, SectionHeader, and Select have unit tests in `primitives/__tests__/`.
 
@@ -285,14 +325,14 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | `Dot` | `tone` green / red / yellow / gray / merged; `pulse`; `size` | `.bd-dot` — 8px |
 | `Card` | `variant` default / own; `padding` sm 8 / md 10 / lg 16; `interactive` | `.bd-card` |
 | `Avatar` | `initials`, `tone` own / them / blue / rose, `size` sm 20 / md 24 / lg 28 | `.bd-avatar` (gradient fills) |
-| `Ring` | readiness ring: `value` 0–100, `size`, `stroke`, `label` | `.bd-ring`, `--ring-size` |
+| `Ring` | readiness ring: `value` 0–100, `size`, `stroke`, `label`. Only the pop-out PR detail header still uses it; rows and the in-window detail have none. | `.bd-ring`, `--ring-size` |
 | `LinearProgress` | `value`, `tone` accent / success / warning / error | `.bd-linear` — 4px |
 | `SegmentedProgress` | `passed`, `running`, `total`; striped running segment | — |
 | `Tabs` | `value`, `onChange`, `tabs: {id,label,count,indicator}[]`, `dense` | `.bd-tabs` — 2px underline, 200ms |
 | `Seg2` | segmented control: `value`, `options`, `size` sm / md, `full`, `ariaLabel`; the highlight slides (`SlidingHighlight`) | `.bd-filter.bd-seg` |
 | `SlidingHighlight` | `activeKey`, `variant` fill / underline; items carry `data-highlight-key` | `.bd-slide` |
 | `ProgressButton` | `Button` that fills while `state` is busy and flips to `doneLabel` (`useProgressAction`) | `.bd-progress-btn` |
-| `CheckBar` | check count plus proportional bar | `.bd-checkbar` |
+| `CheckBar` | check label ("N failing", "k of N, running", "N passing") plus a proportional bar; failures win over running, running over passing. `checkBarSummary()` gives the same text for tooltips. | `.bd-checkbar` |
 | `Input` | native input + `leading` / `trailing` | `.bd-input` — 28px |
 | `TextInput` | controlled; `type` text / password / number; `mono`, `suffix` | `.bd-input` |
 | `Select` | native select with Lucide chevron | — |
@@ -306,7 +346,7 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | `TitleBar` | `title`, `count`, `meta`, `left`, `middle`, `right` | `.bd-title-bar` — 36px, blur 16px |
 | `WindowControls` | min / max / close for the main window | `.bd-wc` |
 
-### 6.2 Chrome & Shared — `src/components/shared/`
+### 7.2 Chrome & Shared — `src/components/shared/`
 
 | Component | Notes |
 |---|---|
@@ -316,25 +356,29 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | `ConfirmDialog` | `variant` danger / default; focus-trapped |
 | `Markdown` / `MarkdownImage` | `.markdown-body`; images open full size |
 | `ErrorBoundary` | Per-window error boundary |
-| `icons/BorgDockLogo`, `RefreshIcon` (spinning), `SettingsIcon` | Brand and animated icons |
+| `Toast` / `ToastViewport` | Main-window toasts from `stores/toast-store.ts` (`showToast`, `toastError`): tone, optional action such as Undo, 5 s default. `ToastViewport` is mounted once in `App.tsx`. |
+| `WindowLauncher` | Title-bar menu that opens the tool windows (Worktrees, Files, Work items, SQL, with their hotkeys) and Settings / What's new. Used in the main window and the tray flyout. |
+| `icons/BorgDockLogo` | The Workbench mark as inline SVG, `fill="var(--color-accent)"`, `size` prop (default 22). Rail, `WindowTitleBar`, flyout, pop-out PR detail. |
+| `icons/RefreshIcon` (spinning), `icons/SettingsIcon` | Animated icons |
 
-### 6.3 Icons
+### 7.3 Icons
 
 - **Lucide** (`lucide-react`) everywhere, imported directly — no wrapper
 - Common sizes: 10–13px inline, 22px for larger affordances
 - Stroke width is set per call site; `strokeWidth={2.25}` is the most common choice for small icons (~59 of 160 explicit uses) — prefer it for consistency
 - Brand marks live in `shared/icons/`
 
-### 6.4 Feature Surfaces
+### 7.4 Feature Surfaces
 
 | Surface | Location | Window / entry |
 |---|---|---|
-| Main window (Focus / PRs / Work Items), status bar | `components/layout/` | `index.html` → `main.tsx` |
-| PR list, cards, toolbar, review load, T3 checkout dialog | `components/pr/` | main |
-| Focus list, Quick Review overlay, merge toast | `components/focus/` | main |
-| PR detail (tabs, action bar, checkout, composer, diff) | `components/pr-detail/` (`diff/` subdir) | `pr-detail.html` |
+| Main window shell: `MainWindow`, `Rail`, `ViewStack`, `SectionView`, `StatusBar`, `BackButton` | `components/layout/` | `index.html` → `main.tsx` |
+| PR list, rows (`PrRowCore`, `PrRow`), toolbar, filter, review load, context menu, T3 checkout dialog | `components/pr/` | main |
+| Focus list and board, Quick Review overlay, merge toast | `components/focus/` | main |
+| PR detail (header, action bar, tabs, checkout, composer, diff) | `components/pr-detail/` (`diff/` subdir) | main (`PrDetailView`), `pr-detail.html` |
 | Tray flyout, flyout toasts | `components/flyout/` | `flyout.html` |
-| Work items workspace & detail | `components/work-items/` | main, `workitem-detail.html` |
+| Work items section and detail | `components/work-items/` | main (`WorkItemDetailView`), `workitem-detail.html` |
+| Worktrees section, prune dialog | `components/worktree/` (changes panel from `components/worktree-changes/`) | main, settings |
 | Work item palette | `components/work-item-palette/` | `work-item-palette.html` |
 | Worktree palette | `components/worktree-palette/` | `worktree.html` |
 | File palette, code view | `components/file-palette/` | `file-palette.html` |
@@ -343,10 +387,9 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | Settings window, sections, dialogs | `components/settings/` | `settings.html` |
 | What's New | `components/whats-new/` | `whats-new.html` |
 | Setup wizard | `components/wizard/` | main |
-| Onboarding (FeatureBadge, InlineHint, FirstRunOverlay) | `components/onboarding/` | main |
-| Worktree prune dialog | `components/worktree/` | settings |
+| Onboarding (`FeatureBadge`, `InlineHint`) | `components/onboarding/` | main |
 
-### 6.5 Still Ad-hoc
+### 7.5 Still Ad-hoc
 
 Candidates for new primitives:
 
@@ -356,33 +399,33 @@ Candidates for new primitives:
 | Context menu | `PrContextMenu`, `FlyoutPrContextMenu`, `FilePaletteContextMenu`, `ChipPicker`, `WorkItemFilterPopover` |
 | Tooltip | Native `title`, `HoverPopover`, or `InlineHint` |
 | Skeleton | `FlyoutInitializing`, `PrList`, `WorktreePaletteApp` |
-| Toast | `FlyoutToast` and `MergeToast` |
-| Badges | `LabelBadge`, `MergeScoreBadge`, `LinkedWorkItemBadge` beside `Pill` |
+| Toast | `shared/Toast` in the main window, `FlyoutToast` in the flyout (separate styles and store) |
+| Badges | `LinkedWorkItemBadge`, `WorkItemTypePill`, the row's `.bd-wb-chip` beside `Pill` |
 | Chips | `work-item-palette/FilterChip` and `ChipInput` beside `Chip` |
 | Window controls | `primitives/WindowControls` and `chrome/WindowControls` overlap |
 
 ---
 
-## 7. Patterns
+## 8. Patterns
 
-### 7.1 Picking a color
+### 8.1 Picking a color
 1. State (success / warning / error / merged) → status tokens; brand or interaction → accent / purple.
 2. Fill → `{tone}-badge-bg`; text on it → `{tone}-badge-fg`; edge → `{tone}-badge-border`.
 3. No fitting token? Add one to `:root` **and** `.dark`, then to `@theme inline`.
 
-### 7.2 Status pill
+### 8.2 Status pill
 ```tsx
 <Pill tone="success" icon={<Check size={11} strokeWidth={2.25} />}>Approved</Pill>
 ```
 
-### 7.3 Button row
+### 8.3 Button row
 ```tsx
 <Button variant="primary" size="md" leading={<GitMerge size={12} />}>Merge</Button>
 <Button variant="ghost" size="md">Open in browser</Button>
 <Button variant="danger" size="sm">Close PR</Button>
 ```
 
-### 7.4 Custom pressable (when no primitive fits)
+### 8.4 Custom pressable (when no primitive fits)
 ```css
 .bd-my-thing {
   border-radius: var(--radius-sm);
@@ -394,7 +437,7 @@ Candidates for new primitives:
 .bd-my-thing:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 ```
 
-### 7.5 Floating panel
+### 8.5 Floating panel
 ```css
 .bd-my-float {
   background: var(--color-surface);
@@ -406,16 +449,33 @@ Candidates for new primitives:
 
 ---
 
-## 8. Storybook
+## 9. Brand
+
+Source: `design/brand/workbench/` (README, SVG sources, `build.mjs`, preview sheet).
+
+- **Mark** — a geometric B: one vertical rail and two docked panels, flat, no gradient. In the app it is `BorgDockLogo` in the accent colour (`#4f46e5` on porcelain, `#7f7eff` on graphite). Standalone marks: `mark-{light,dark,black,white}.svg`, single-colour `mark-current-color.svg`.
+- **Wordmark** — "BorgDock" in Inter (`wordmark-{light,dark}.svg`); in the app, the rail sets the name in text next to the mark.
+- **App icon** — `app-icon.svg`, rasterised into `src-tauri/icons/` (PNG sizes, `icon.ico`, `icon.icns`); `icon.svg` there is the source copy.
+- **Favicon** — `public/borgdock-favicon.svg`, linked from every HTML entry; indigo that follows the browser's light / dark preference.
+- **Splash** — `index.html` with `public/entry/splash.css` (pre-bundle, values inlined from the tokens), then `SplashScreen.tsx`: the app tile (`public/borgdock-icon.svg`, indigo mark on a graphite tile) at 56 px, the name, a thin accent progress bar. Static under reduced motion.
+- **Tray** — rendered at runtime by `src-tauri/src/platform/tray.rs` at 64 px: a rounded square in a flat status colour (failing `#f0616d`, pending `#e5b454`, passing `#5cc98f`) with the open-PR count in dark ink (`#12121a`) under a small mark. With nothing to count it shows the mark on indigo (`#4f46e5` with white ink in light, `#7f7eff` with dark ink in dark). While loading the icon brightens and dims. The mark masks come from `src-tauri/icons/tray-light.png` and `tray-mark-small.png`.
+
+The retired gradient logo and waveform tray icon are gone; old release screenshots keep them.
+
+---
+
+## 10. Storybook
 
 - Config: `src/BorgDock.Tauri/.storybook/` — Tauri APIs mocked via `.storybook/mocks/`, `index.css` loaded, light / dark / system theme toolbar applied through the same `applyTheme` as the app
 - Every window has a `ThemeLight` / `ThemeDark` pair (`globals: { theme }`): settings (Appearance panel), SQL, file palette, file viewer, work item palette, worktree window, flyout, work item detail and PR detail pop-outs, What's new; the setup wizard has one story per step in both themes (`wizard/SetupWizard.stories.tsx`)
 - Side by side in both themes (`BothThemes` from `src/test-support/story-themes.tsx`): `Shared/Primitives`, `Shared/WindowChrome` (title and status bars), `Settings/AppearanceSection`
+- Main window (Focus, Pull requests, Work items, Worktrees, detail views): `components/layout/MainWindow.stories.tsx`
+- Logo sizes and the loading splash: `Brand/BorgDock` (`shared/icons/BorgDockLogo.stories.tsx`)
 - Hero screenshots for release notes come from these stories (`scripts/screenshot-stories.mjs` + `design/whats-new/<version>.heroes.json`)
 
 ---
 
-## 9. Machine-Readable Tokens (DTCG subset)
+## 11. Machine-Readable Tokens (DTCG subset)
 
 ```json
 {
@@ -471,37 +531,41 @@ Candidates for new primitives:
 
 ---
 
-## 10. Known Gaps
+## 12. Known Gaps
 
 ### Adoption
-- **Semantic utilities are barely used.** Components reach tokens through ~790 `*-[var(--…)]` arbitrary classes and ~330 inline `style` `var()` strings; `text-text-muted` appears 11 times.
-- **Arbitrary sizes win over tokens.** `text-[11px]` (87), `text-[10px]` (63), `text-[13px]` (45), plus off-scale `text-[11.5px]` / `text-[10.5px]`; `text-micro/small/body` utilities have 0 uses. Tailwind default `text-xs`, `rounded-md`, `shadow-xl` are common.
-- **Colours in CSS** — components are literal-free (`src/styles/__tests__/component-colors.test.ts`), but a few CSS rules still carry literals: avatar gradients (`.bd-avatar--*`), the window-close red, the splash (`public/entry/splash.css`).
+- **Semantic utilities are barely used.** Components reach tokens through ~730 `*-[var(--…)]` arbitrary classes and ~360 more `var()` strings in inline styles; `text-text-muted` appears 13 times.
+- **Arbitrary sizes win over tokens.** `text-[11px]` (84), `text-[13px]` (45), `text-[10px]` (43), `text-[12px]` (42), plus off-scale `text-[11.5px]` (28) / `text-[10.5px]` (15) / `text-[12.5px]`; `text-micro/small/body` utilities have 0 uses. Tailwind default `text-xs`, `rounded-md`, `shadow-xl` are common.
+- **Colours in CSS** — components are literal-free (`src/styles/__tests__/component-colors.test.ts`, no exceptions since 3.0.0), but a few CSS rules still carry literals: avatar gradients (`.bd-avatar--*`), the window-close red, the pre-bundle splash (`public/entry/splash.css`, which inlines token values on purpose).
 - **`text-tertiary` passes AA since 3.0.0** (`#6d707a` / `#82838a`, ≥ 4.5:1 on background and surface in both themes, checked by `contrast.test.ts`). On `surface-raised` it is still below 4.5:1 in dark; readable text there uses `text-muted`.
 
 ### Token Hygiene
-- **Unused tokens (~57)**: floating-badge set (`badge-glass`, `badge-surface`, `badge-border`, `badge-glow-*`), all `review-*`, `whats-new-*` fg/bg/border, `tracked-*` / `working-on-*`, `tab-active/inactive`, `pr-badge-*`, `pr-my-badge-*`, `branch-badge-*`, `target-badge-*`, `comment-count-fg`, several `action-*` and `check-*`, `avatar-text`, `expanded-row-bg`, `diff-hunk-header` (duplicate), `syntax-tag/attribute/plain`, `radius-md/xl`, `space-10/12`, `text-title`, `duration-breath`
-- **Dead CSS**: `.sidebar-*` block (and its `sidebar-gradient-*` tokens), `.field-input`, and six unused keyframes (`toast-progress-shrink`, `notifPop`, `scale-in`, `comment-enter`, `fadeSlideIn`, `slideInRight`)
+- **Unused tokens (~47 of ~200)**: floating-badge set (`badge-glass`, `badge-surface`, `badge-border`, `badge-glow-*`), all `review-*`, `whats-new-{new,improved,fixed}-{bg,border}`, `tracked-*` / `working-on-*`, `tab-active/inactive`, `pr-badge-*`, `pr-my-badge-*`, `branch-badge-*`, `target-badge-*`, `comment-count-fg`, `action-secondary-*` / `action-success-*`, `check-{passed,failed}-*`, `avatar-text`, `expanded-row-bg`, `icon-btn-bg`, `splash-gradient-end`, `syntax-tag/attribute/plain` (not referenced by name; check the highlighter before removing), `space-12`
+- **Dead CSS**: `.sidebar-*` block (its `sidebar-gradient-*` tokens are still used by the Settings window background), `.field-input`, and six unused keyframes (`toast-progress-shrink`, `notifPop`, `scale-in`, `comment-enter`, `fadeSlideIn`, `slideInRight`)
 - **Aliases**: `bg-primary` duplicates `background`
 - **Undefined references**: `--color-app-background` (PR detail fixture)
 - **Two window-control families**: `.bd-wc` (36×28) and `.bd-window-control` (28×24)
+- **Dead panel mode**: `PRDetailPanel`'s inline-sidebar mode (Pop out button and close X) has no caller left
 
 ### Missing
 - No `forced-colors` handling
 - No line-height, font-weight or focus-ring tokens
-- Spacing scale gaps (see §4.1)
+- Spacing scale gaps (see §5.1)
 - No `dark:` variant bound to `.dark`
-- Primitives still missing for Dialog, Menu, Tooltip, Skeleton, Toast (see §6.5)
+- Primitives still missing for Dialog, Menu, Tooltip, Skeleton, Toast (see §7.5)
 
 ---
 
-## 11. Source of Truth
+## 13. Source of Truth
 
 - Tokens, `@theme`, component classes: `src/BorgDock.Tauri/src/styles/index.css`
+- Section and tool-window styles: `src/BorgDock.Tauri/src/styles/{focus,work-items,worktrees}-workbench.css`, `tool-windows.css`
+- Main window shell: `src/BorgDock.Tauri/src/components/layout/`; navigation: `src/services/navigation.ts`; keys: `src/hooks/useKeyboardNav.ts`, status bar copy: `src/hooks/useStatusBar.ts`
 - Quick Review styles: `src/BorgDock.Tauri/src/components/focus/quick-review.css`
 - Primitives: `src/BorgDock.Tauri/src/components/shared/primitives/`
 - Motion tokens and helpers: `src/BorgDock.Tauri/src/styles/motion.css`, `src/BorgDock.Tauri/src/utils/motion.ts`, `src/BorgDock.Tauri/src/utils/window-reveal.ts`
 - Theme helper: `src/BorgDock.Tauri/src/utils/theme.ts` (hook: `src/hooks/useTheme.ts`; pre-paint: `public/theme-boot.js`)
 - Contrast checks: `src/BorgDock.Tauri/src/styles/__tests__/contrast.test.ts` (reads `index.css`), `tests/e2e/tool-windows-a11y.spec.ts` (axe, both themes); token-only guard: `src/styles/__tests__/component-colors.test.ts`
-- Design specs & mockups: `docs/superpowers/specs/2026-04-24-shared-components-design.md`, `design/mockups/`, `design/quick-review/`
-- Tray icons: rendered at runtime in `src-tauri/src/platform/tray.rs`; static icon assets in `src-tauri/icons/`
+- Design plan, specs & mockups: `plans/ui-overhaul-workbench.md`, `docs/superpowers/specs/2026-04-24-shared-components-design.md`, `design/mockups/`, `design/quick-review/`
+- Brand: `design/brand/workbench/`
+- Tray icons: rendered at runtime in `src-tauri/src/platform/tray.rs`; bundle icons and tray masks in `src-tauri/icons/`

@@ -4,7 +4,15 @@ The short version of `DESIGN-SYSTEM.md`: what the app looks like and the rules f
 
 ## Look
 
-Workbench direction (`plans/ui-overhaul-workbench.md`). Graphite surfaces in dark, porcelain in light, one indigo accent that marks selection and the single primary action. Status has three colours (green, red, amber) plus merged violet and informational blue. Depth comes from surfaces and hairlines; shadows are only for floating UI.
+Workbench direction (`plans/ui-overhaul-workbench.md`), shipped in 3.0.0. Graphite surfaces in dark, porcelain in light, one indigo accent that marks selection and the single primary action. Status has three colours (green, red, amber) plus merged violet and informational blue. Depth comes from surfaces and hairlines; shadows are only for floating UI.
+
+## Layout
+
+- Main window: a 200 px rail (logo, Focus / Pull requests / Work items / Worktrees with counts, sync state and GitHub rate at the bottom), then a 36 px title bar, the view, and a 28 px status bar with the keys for the current view.
+- A PR or work item opens full screen over the list. Back, `Esc`, `Alt+←` or the mouse back button return to the same row and scroll position. Ctrl+click opens the PR in its own window instead.
+- Rows: avatar, title with one meta line, check bar, one review chip, number. 42 px comfortable, 32 px compact. One trailing action (Review or Merge) appears on hover, focus and selection.
+- Toasts sit bottom right, 5 s, with Undo when the action can be taken back.
+- Tool windows use the same title bar and status bar (`WindowTitleBar`, `chrome/WindowStatusBar`).
 
 ## Palette
 
@@ -52,7 +60,7 @@ Tokens in `src/styles/motion.css`; helpers in `src/utils/motion.ts`.
 | `--motion-expand` | 340 ms | grid-row expansion |
 | `--ease-out` / `--ease-std` / `--ease-in` | `cubic-bezier(.16,1,.3,1)` / `(.2,.8,.2,1)` / `(.4,0,1,1)` | enter / move / leave |
 
-Reduced motion (the OS setting or Settings → Appearance → Reduce motion, which puts `.reduce-motion` on `<html>`) sets every `--motion-*` to 0.01 ms and stops loops; `motionOK()` gates FLIP and View Transitions. Nothing animates on its own except running checks and the sync spinner.
+Reduced motion (the OS setting or Settings → Appearance → Reduce motion, which puts `.reduce-motion` on `<html>`) sets every `--motion-*` to 0.01 ms and stops loops; `motionOK()` gates FLIP, View Transitions and the section crossfade. Apart from loading states, nothing animates on its own except running checks and the sync spinner.
 
 ## Theme in every window
 
@@ -63,9 +71,13 @@ Reduced motion (the OS setting or Settings → Appearance → Reduce motion, whi
 - `public/theme-boot.js` is the pre-paint script every HTML entry loads in `<head>`; it reads the two keys with the same rules, so no window flashes the other theme.
 - The main window uses `hooks/useTheme.ts`, a thin hook over the same helper.
 
+## Brand
+
+The Workbench mark: a geometric B made of a vertical rail and two docked panels, flat indigo (the accent colour), no gradient. In the app it is `BorgDockLogo` (`fill: var(--color-accent)`). The tray icon is drawn at runtime in `src-tauri/src/platform/tray.rs`: a flat red, amber or green square with the open-PR count in dark ink, or the mark on indigo when there is nothing to count. Assets, sizes and rebuild steps: `design/brand/workbench/README.md`.
+
 ## Rules
 
-1. Colours come from tokens. No hex, `rgb()`/`hsl()` or Tailwind `*-black` / `*-white` utilities in `src/components/**` (`src/styles/__tests__/component-colors.test.ts` fails on any; `SplashScreen.tsx` is the one listed exception until phase 7). The palette reset makes `text-white` and `bg-black/50` render nothing anyway. Missing a token? Add it to `:root` and `.dark` in `index.css`.
+1. Colours come from tokens. No hex, `rgb()`/`hsl()` or Tailwind `*-black` / `*-white` utilities in `src/components/**` (`src/styles/__tests__/component-colors.test.ts` fails on any; there are no exceptions). The palette reset makes `text-white` and `bg-black/50` render nothing anyway. Missing a token? Add it to `:root` and `.dark` in `index.css`.
 2. Reuse the primitives in `components/shared/primitives/` and the chrome in `components/shared/` (`WindowTitleBar`, `chrome/WindowStatusBar`) before writing a new control.
 3. Lists use the row grammar: `.bd-wb-row` in the main window, `.bd-list-row` in tool windows (hover wash, accent bar on `data-selected="true"`, tabular numerals).
 4. Every transition uses a motion token and collapses under reduced motion.
