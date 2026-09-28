@@ -20,7 +20,8 @@ vi.mock('@/stores/settings-store', () => ({
 vi.mock('@/hooks/useAutoUpdate', () => ({
   useAutoUpdate: () => ({
     checkForUpdate: mockCheckForUpdate,
-    downloadAndInstall: mockDownloadAndInstall,
+    downloadUpdate: mockDownloadUpdate,
+    restartToApply: mockRestartToApply,
   }),
 }));
 
@@ -54,7 +55,8 @@ vi.mock('@/generated/changelog', () => ({
 }));
 
 const mockCheckForUpdate = vi.fn();
-const mockDownloadAndInstall = vi.fn();
+const mockDownloadUpdate = vi.fn();
+const mockRestartToApply = vi.fn();
 
 function makeUpdates(overrides?: Partial<UpdateSettings>): UpdateSettings {
   return { autoCheckEnabled: true, autoDownload: true, ...overrides };

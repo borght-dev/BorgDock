@@ -117,10 +117,19 @@ describe('useAutoUpdate', () => {
     });
   });
 
-  it('returns checkForUpdate and downloadAndInstall functions', () => {
+  it('returns checkForUpdate, downloadUpdate, and restartToApply functions', () => {
     const { result } = renderHook(() => useAutoUpdate(makeSettings()));
     expect(typeof result.current.checkForUpdate).toBe('function');
-    expect(typeof result.current.downloadAndInstall).toBe('function');
+    expect(typeof result.current.downloadUpdate).toBe('function');
+    expect(typeof result.current.restartToApply).toBe('function');
+  });
+
+  it('restarts only when explicitly requested', async () => {
+    const { result } = renderHook(() => useAutoUpdate(makeSettings()));
+    await act(async () => {
+      await result.current.restartToApply();
+    });
+    expect(mockInvoke).toHaveBeenCalledWith('restart_to_apply_update');
   });
 
   it('checks for updates after initial delay when autoCheckEnabled', async () => {
@@ -223,10 +232,24 @@ describe('useAutoUpdate', () => {
     expect(mockInvoke).not.toHaveBeenCalledWith('check_for_update');
   });
 
+  it('does not download an update again once it is ready', async () => {
+    useUpdateStore.getState().setProgress(100);
+    mockInvoke.mockResolvedValue({ version: '2.0.0', body: null });
+
+    const { result } = renderHook(() => useAutoUpdate(makeSettings({ autoDownload: true })));
+
+    await act(async () => {
+      await result.current.checkForUpdate();
+    });
+
+    expect(mockInvoke).not.toHaveBeenCalledWith('check_for_update');
+    expect(mockInvoke).not.toHaveBeenCalledWith('download_update');
+  });
+
   it('auto-downloads when autoDownload is enabled and update available', async () => {
     mockInvoke
       .mockResolvedValueOnce({ version: '2.0.0', body: null }) // check_for_update
-      .mockResolvedValueOnce(undefined); // download_and_install_update
+      .mockResolvedValueOnce(undefined); // download_update
 
     const mockUnlisten = vi.fn();
     mockListen.mockResolvedValue(mockUnlisten);
@@ -239,11 +262,11 @@ describe('useAutoUpdate', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('download_and_install_update');
+      expect(mockInvoke).toHaveBeenCalledWith('download_update');
     });
   });
 
-  it('downloadAndInstall tracks progress', async () => {
+  it('downloadUpdate tracks progress', async () => {
     let progressCallback: ((event: { payload: Record<string, unknown> }) => void) | null = null;
     const mockUnlisten = vi.fn();
 
@@ -256,7 +279,7 @@ describe('useAutoUpdate', () => {
     const { result } = renderHook(() => useAutoUpdate(makeSettings()));
 
     const downloadPromise = act(async () => {
-      await result.current.downloadAndInstall();
+      await result.current.downloadUpdate();
     });
 
     // Simulate progress events
@@ -291,7 +314,7 @@ describe('useAutoUpdate', () => {
     const { result } = renderHook(() => useAutoUpdate(makeSettings()));
 
     await act(async () => {
-      await result.current.downloadAndInstall();
+      await result.current.downloadUpdate();
     });
 
     expect(useUpdateStore.getState().downloading).toBe(false);

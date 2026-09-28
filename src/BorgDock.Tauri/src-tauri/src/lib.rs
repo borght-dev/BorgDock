@@ -108,7 +108,7 @@ pub fn run() {
     let log_plugin = tauri_plugin_log::Builder::new()
         .targets(log_targets)
         .max_file_size(5_000_000)
-        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(5))
         .level(log_level)
         // Silence noisy third-party crates that drown out our own logs.
         .level_for("hyper", log::LevelFilter::Info)
@@ -165,6 +165,7 @@ pub fn run() {
         .plugin(log_plugin)
         .plugin(tauri_plugin_os::init())
         .manage(ProcessState::default())
+        .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
         .manage(PrCache::default())
         .manage(platform::flyout_cache::FlyoutCache {
             data: Mutex::new(None),
@@ -334,7 +335,8 @@ pub fn run() {
             keychain::delete_credential,
             // Updater
             updater::check_for_update,
-            updater::download_and_install_update,
+            updater::download_update,
+            updater::restart_to_apply_update,
             // Headless and interactive agent providers
             agents::run_headless_prompt,
             agents::agent_provider_availability,
@@ -367,6 +369,9 @@ pub fn run() {
                 }
                 #[cfg(target_os = "windows")]
                 crate::platform::click_outside::uninstall_hook();
+            }
+            if matches!(event, tauri::RunEvent::ExitRequested { code: Some(0), .. }) {
+                updater::install_pending_update(app);
             }
         });
 }

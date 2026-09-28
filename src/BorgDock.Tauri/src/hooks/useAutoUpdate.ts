@@ -35,7 +35,7 @@ export function useAutoUpdate(settings: AppSettings) {
     })();
   }, []);
 
-  const downloadAndInstall = useCallback(async () => {
+  const downloadUpdate = useCallback(async () => {
     try {
       useUpdateStore.getState().setDownloading(true);
       useUpdateStore.getState().setProgress(0);
@@ -63,8 +63,11 @@ export function useAutoUpdate(settings: AppSettings) {
         },
       );
 
-      await invoke('download_and_install_update');
+      await invoke('download_update');
       unlisten();
+      useUpdateStore.getState().setProgress(100);
+      useUpdateStore.getState().setDownloading(false);
+      useUpdateStore.getState().setStatusText('Update ready — restart to apply');
 
       void sendOsNotification({
         title: 'Update ready',
@@ -78,9 +81,18 @@ export function useAutoUpdate(settings: AppSettings) {
     }
   }, []);
 
+  const restartToApply = useCallback(async () => {
+    try {
+      await invoke('restart_to_apply_update');
+    } catch (err) {
+      console.error('Update restart failed:', err);
+      useUpdateStore.getState().setStatusText('Restart failed');
+    }
+  }, []);
+
   const checkForUpdate = useCallback(async () => {
     const s = useUpdateStore.getState();
-    if (s.checking || s.downloading) return;
+    if (s.checking || s.downloading || s.progress === 100) return;
 
     useUpdateStore.getState().setChecking(true);
     useUpdateStore.getState().setStatusText('Checking for updates...');
@@ -99,7 +111,7 @@ export function useAutoUpdate(settings: AppSettings) {
         }).catch(() => {});
 
         if (settings.updates.autoDownload) {
-          await downloadAndInstall();
+          await downloadUpdate();
         }
       } else {
         useUpdateStore.getState().setStatusText("You're on the latest version");
@@ -110,7 +122,7 @@ export function useAutoUpdate(settings: AppSettings) {
     } finally {
       useUpdateStore.getState().setChecking(false);
     }
-  }, [settings.updates.autoDownload, downloadAndInstall]);
+  }, [settings.updates.autoDownload, downloadUpdate]);
 
   // Initial delayed check + periodic checks
   useEffect(() => {
@@ -139,5 +151,5 @@ export function useAutoUpdate(settings: AppSettings) {
     };
   }, [settings.updates.autoCheckEnabled, checkForUpdate]);
 
-  return { checkForUpdate, downloadAndInstall };
+  return { checkForUpdate, downloadUpdate, restartToApply };
 }

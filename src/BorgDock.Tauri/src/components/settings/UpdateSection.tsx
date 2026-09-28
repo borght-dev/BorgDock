@@ -1,19 +1,29 @@
-import { Card, Button, LinearProgress, Pill } from '@/components/shared/primitives';
-import { SectionHeader, ToggleRow } from '@/components/shared/primitives';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import {
+  Button,
+  Card,
+  LinearProgress,
+  Pill,
+  SectionHeader,
+  ToggleRow,
+} from '@/components/shared/primitives';
+import { RELEASES } from '@/generated/changelog';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { openWhatsNew } from '@/hooks/useWhatsNew';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUpdateStore } from '@/stores/update-store';
-import { RELEASES } from '@/generated/changelog';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import type { UpdateSettings } from '@/types/settings';
 
-interface Props { updates: UpdateSettings; onChange: (u: UpdateSettings) => void }
+interface Props {
+  updates: UpdateSettings;
+  onChange: (u: UpdateSettings) => void;
+}
 
 export function UpdateSection({ updates, onChange }: Props) {
   const settings = useSettingsStore((s) => s.settings);
-  const { checkForUpdate, downloadAndInstall } = useAutoUpdate(settings);
-  const { checking, downloading, progress, available, version, statusText, currentVersion } = useUpdateStore();
+  const { checkForUpdate, downloadUpdate, restartToApply } = useAutoUpdate(settings);
+  const { checking, downloading, progress, available, version, statusText, currentVersion } =
+    useUpdateStore();
 
   const update = (partial: Partial<UpdateSettings>) => onChange({ ...updates, ...partial });
 
@@ -34,7 +44,9 @@ export function UpdateSection({ updates, onChange }: Props) {
       />
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Channel</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Channel
+        </h3>
         <div id="field-auto-check">
           <ToggleRow
             label="Auto-check for updates"
@@ -45,7 +57,7 @@ export function UpdateSection({ updates, onChange }: Props) {
         <div id="field-auto-download">
           <ToggleRow
             label="Auto-download updates"
-            hint="Apply on next launch."
+            hint="Downloads in background. You choose when to restart."
             on={updates.autoDownload}
             onChange={(autoDownload) => update({ autoDownload })}
             last
@@ -54,14 +66,25 @@ export function UpdateSection({ updates, onChange }: Props) {
       </Card>
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Check now</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Check now
+        </h3>
         <div id="field-check-now" className="flex items-center gap-2 flex-wrap">
-          {available && !downloading && progress < 100 ? (
-            <Button variant="primary" size="sm" onClick={downloadAndInstall} disabled={downloading}>
-              Install v{version}
+          {progress === 100 ? (
+            <Button variant="primary" size="sm" onClick={restartToApply}>
+              Restart to apply
+            </Button>
+          ) : available && !downloading ? (
+            <Button variant="primary" size="sm" onClick={downloadUpdate} disabled={downloading}>
+              Download v{version}
             </Button>
           ) : (
-            <Button variant="secondary" size="sm" onClick={checkForUpdate} disabled={checking || downloading}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={checkForUpdate}
+              disabled={checking || downloading}
+            >
               {checking ? 'Checking…' : 'Check for updates'}
             </Button>
           )}
@@ -73,7 +96,9 @@ export function UpdateSection({ updates, onChange }: Props) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => openUrl('https://github.com/Gomocha-FSP/borgdock/releases').catch(console.error)}
+            onClick={() =>
+              openUrl('https://github.com/Gomocha-FSP/borgdock/releases').catch(console.error)
+            }
           >
             Open releases
           </Button>
@@ -86,7 +111,9 @@ export function UpdateSection({ updates, onChange }: Props) {
       </Card>
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">Recent releases</h3>
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Recent releases
+        </h3>
         <div id="field-recent-releases">
           {recent.length === 0 && (
             <p className="text-[11.5px] text-[var(--color-text-muted)]">No releases yet.</p>
@@ -100,12 +127,16 @@ export function UpdateSection({ updates, onChange }: Props) {
                   'flex items-center gap-3.5 px-2 py-3',
                   i < recent.length - 1 && 'border-b border-[var(--color-subtle-border)]',
                   isCurrent && 'rounded-md bg-[var(--color-accent-subtle)] -mx-2 px-4',
-                ].filter(Boolean).join(' ')}
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
-                <span className={[
-                  'min-w-[60px] font-mono text-[11.5px] font-semibold',
-                  isCurrent ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]',
-                ].join(' ')}>
+                <span
+                  className={[
+                    'min-w-[60px] font-mono text-[11.5px] font-semibold',
+                    isCurrent ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]',
+                  ].join(' ')}
+                >
                   v{r.version}
                 </span>
                 <div className="flex-1 text-[11.5px] leading-relaxed text-[var(--color-text-secondary)] truncate">
