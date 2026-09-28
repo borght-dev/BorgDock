@@ -44,7 +44,7 @@
     },
     "src/BorgDock.Tauri": {
       "name": "borgdock-app",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "dependencies": {
         "@codemirror/autocomplete": "^6.20.2",
         "@codemirror/commands": "^6.10.3",

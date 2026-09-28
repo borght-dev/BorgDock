@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "3.0.1",
+    "date": "2026-09-28",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Downloading an update no longer restarts BorgDock. The update waits until you choose Restart to apply or Quit.",
+      "Settings now shows Download before the update is ready and Restart to apply afterward."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "3.0.0",
     "date": "2026-09-28",
     "summary": "A new layout with a rail and full-screen pull requests, Focus as a list or a board, Quick Review for large pull requests, and more.",

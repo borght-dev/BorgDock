@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.0.1 — 2026-09-28
+
+### Bug Fixes
+
+- Downloading an update no longer restarts BorgDock. The update waits until you choose Restart to apply or Quit.
+- Settings now shows Download before the update is ready and Restart to apply afterward.
+
 ## 3.0.0 — 2026-09-28
 
 ### New Features
