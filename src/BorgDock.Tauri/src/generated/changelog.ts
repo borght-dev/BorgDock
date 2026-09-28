@@ -5,7 +5,7 @@ import type { Release } from '@/types/whats-new';
 export const RELEASES: Release[] = [
   {
     "version": "3.0.0",
-    "date": "2026-09-25",
+    "date": "2026-09-28",
     "summary": "A new layout with a rail and full-screen pull requests, Focus as a list or a board, Quick Review for large pull requests, and more.",
     "highlights": [
       {
