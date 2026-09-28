@@ -1,29 +1,29 @@
 {
   "repo": "borght-dev/BorgDock",
-  "tag": "v2.4.3",
-  "version": "2.4.3",
-  "name": "BorgDock v2.4.3",
-  "date": "2026-09-21",
-  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v2.4.3",
-  "fetchedAt": "2026-09-25T03:17:20.302Z",
+  "tag": "v3.0.0",
+  "version": "3.0.0",
+  "name": "BorgDock v3.0.0",
+  "date": "2026-09-28",
+  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v3.0.0",
+  "fetchedAt": "2026-09-28T09:48:42.864Z",
   "assets": [
     {
-      "name": "BorgDock_2.4.3_x64-setup.exe",
-      "size": 17397433,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v2.4.3/BorgDock_2.4.3_x64-setup.exe",
-      "digest": "sha256:f1f3699525232449972b1891f89c4ad21d9c589c98f843b5a8eb1743f877d4f7"
+      "name": "BorgDock_3.0.0_x64-setup.exe",
+      "size": 20098222,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v3.0.0/BorgDock_3.0.0_x64-setup.exe",
+      "digest": "sha256:8df851bd8c34ca4199bf8ef57c45513f8832516cae900475eb6e2fbf22b4efbf"
     },
     {
-      "name": "BorgDock_2.4.3_x64-setup.exe.sig",
+      "name": "BorgDock_3.0.0_x64-setup.exe.sig",
       "size": 420,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v2.4.3/BorgDock_2.4.3_x64-setup.exe.sig",
-      "digest": "sha256:e1b51fcb69a37edcc4fc4fb5cdf6a7da42ac79ad6be7a33d86a2fb9a7f5e7851"
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v3.0.0/BorgDock_3.0.0_x64-setup.exe.sig",
+      "digest": "sha256:2679cdff14399b699eaefb61ec6c600b45149aa990f9ef4bd0f88ff75a3676cd"
     },
     {
       "name": "latest.json",
-      "size": 1886,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v2.4.3/latest.json",
-      "digest": "sha256:f18a96f4b9678f7f6edbd14d3d4d3811b5a73c1e5e169c9c51effb921232c84f"
+      "size": 5682,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v3.0.0/latest.json",
+      "digest": "sha256:dde6b5baaed09233b05f211f80aa6d65f78190ef192a9728feff48ba5f850514"
     }
   ]
 }
