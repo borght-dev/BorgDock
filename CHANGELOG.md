@@ -12,6 +12,7 @@
 
 ### Improvements
 
+- **A new logo** — BorgDock has a new mark: a B built from a rail and two docked panels, the same shape as the new layout. You'll find it in the taskbar, the rail, every window's title bar and the tray. The tray tile turns flat red, amber or green with the pull request count in dark ink, so the number stays readable even at 16 px. ![The new BorgDock logo on the startup screen](whats-new/3.0.0/logo.png)
 - **Tool windows in the same style** — SQL, the file palette, the file viewer, Settings, the setup wizard, What's new and the worktrees window now share the main window's title bar, status bar, fonts and colours, so moving between them feels like one app. ![The SQL window in the new style](whats-new/3.0.0/tools-sql.png)
 - **One theme for every window** — Pick light, dark or system once and every window follows straight away, Settings included. No window flashes the other theme while it opens. ![Settings in the new style](whats-new/3.0.0/tools-settings.png)
 - **One keyboard model** — 1 to 4 switch sections, J and K move, Enter opens, Esc goes back, / or `Ctrl+K` searches and R refreshes. In Focus, R starts Quick Review for the selected pull request. The status bar always shows the keys for the view you're on. ![The status bar showing the keys for the pull request list](whats-new/3.0.0/keyboard.png)

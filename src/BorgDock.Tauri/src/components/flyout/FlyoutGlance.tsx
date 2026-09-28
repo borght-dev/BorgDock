@@ -1,6 +1,6 @@
 import { PanelRightOpen, Zap } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
+import { BorgDockLogo, RefreshIcon, SettingsIcon } from '@/components/shared/icons';
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import type { PrActionId } from '@/services/pr-action-resolver';
@@ -248,27 +248,7 @@ export function FlyoutGlance({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            {/* Brand icon — heartbeat pulse line matching sidebar header */}
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              // style: gradient background + color-mix box-shadow — no Tailwind utilities for these
-              style={{
-                background:
-                  'linear-gradient(135deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end))',
-                boxShadow: '0 2px 8px color-mix(in srgb, var(--color-accent) 25%, transparent)',
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
-                  stroke="white"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
-              </svg>
-            </div>
+            <BorgDockLogo size={28} />
             <div>
               <div className="text-[13px] font-bold tracking-tight text-[var(--color-text-primary)]">
                 BorgDock

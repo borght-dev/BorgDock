@@ -6,6 +6,7 @@ import { QuickReviewOverlay } from '@/components/focus/QuickReviewOverlay';
 import { passedOfCounted } from '@/components/pr/pr-card-data';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { WindowControls } from '@/components/shared/chrome';
+import { BorgDockLogo } from '@/components/shared/icons';
 import type { TabDef } from '@/components/shared/primitives';
 import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
 import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
@@ -30,26 +31,6 @@ import { PrDetailHeader } from './PrDetailHeader';
 import { usePrActions } from './usePrActions';
 
 const log = createLogger('PrDetailPanel');
-
-const BorgDockLogo = () => (
-  <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <defs>
-      <linearGradient id="pr-detail-tile" x1="0" y1="0" x2="16" y2="16">
-        <stop offset="0%" stopColor="var(--color-logo-gradient-start)" />
-        <stop offset="100%" stopColor="var(--color-logo-gradient-end)" />
-      </linearGradient>
-    </defs>
-    <rect width="16" height="16" rx="4.5" fill="url(#pr-detail-tile)" />
-    <path
-      d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
-      stroke="white"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
-  </svg>
-);
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -296,7 +277,7 @@ export function PrDetailPanel({
           left={
             <>
               <span className="bd-title-bar__logo">
-                <BorgDockLogo />
+                <BorgDockLogo size={16} />
               </span>
               <span className="bd-title-bar__title">
                 PR #{pr.pullRequest.number} — {pr.pullRequest.repoOwner}/{pr.pullRequest.repoName}

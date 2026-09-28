@@ -129,23 +129,14 @@ impl TrayWorstState {
     }
 }
 
-/// Gradient colors chosen to keep strong contrast with white text overlays,
-/// so the digit remains legible at small taskbar sizes (16–24 px).
-fn status_gradient(worst: TrayWorstState, dark: bool) -> ([u8; 4], [u8; 4]) {
+fn tray_colors(worst: TrayWorstState, dark: bool) -> ([u8; 4], [u8; 4]) {
+    let ink = [18, 18, 26, 255];
     match worst {
-        TrayWorstState::Failing => ([220, 38, 70, 255], [176, 24, 52, 255]),
-        TrayWorstState::Pending => ([217, 119, 6, 255], [176, 88, 0, 255]),
-        TrayWorstState::Passing => ([5, 150, 105, 255], [4, 110, 78, 255]),
-        TrayWorstState::Idle => brand_gradient(dark),
-        TrayWorstState::Initializing => brand_gradient(dark),
-    }
-}
-
-fn brand_gradient(dark: bool) -> ([u8; 4], [u8; 4]) {
-    if dark {
-        ([124, 106, 246, 255], [147, 132, 247, 255]) // #7C6AF6 -> #9384F7
-    } else {
-        ([102, 85, 212, 255], [124, 106, 246, 255]) // #6655D4 -> #7C6AF6
+        TrayWorstState::Failing => ([240, 97, 109, 255], ink),
+        TrayWorstState::Pending => ([229, 180, 84, 255], ink),
+        TrayWorstState::Passing => ([92, 201, 143, 255], ink),
+        _ if dark => ([127, 126, 255, 255], ink),
+        _ => ([79, 70, 229, 255], [255, 255, 255, 255]),
     }
 }
 
@@ -200,137 +191,48 @@ pub fn update_tray_tooltip(app: tauri::AppHandle, tooltip: String) -> Result<(),
     Ok(())
 }
 
-/// Normalized brand waveform points (x: 0..1, y: 0..1). Derived from the
-/// favicon SVG `M2,9 L4,9 L5.5,5 L7.5,12 L9,3 L11,11 L12.5,7 L14,9` in a 16x16
-/// viewBox, rescaled so the bounding box maps to [0,1] × [0,1].
-const BRAND_WAVE: &[(f32, f32)] = &[
-    (0.000, 0.667),
-    (0.167, 0.667),
-    (0.292, 0.222),
-    (0.458, 1.000),
-    (0.583, 0.000),
-    (0.750, 0.889),
-    (0.875, 0.444),
-    (1.000, 0.667),
-];
-
-/// Render a 64x64 RGBA tray icon. Windows downscales this to 16–32 px in the
-/// taskbar, so rendering large gives OS resampling plenty of detail to work
-/// with.
-///
-/// The brand waveform is drawn in every state so the icon always reads as
-/// BorgDock. When there are open PRs, the background switches to a status-colored
-/// gradient (red / amber / green) for at-a-glance urgency, the waveform shrinks
-/// to a top strip, and the count is rendered large below it.
 fn render_tray_icon(count: u8, worst: TrayWorstState, dark: bool) -> tauri::image::Image<'static> {
     const SIZE: u32 = 64;
     let mut buf = vec![0u8; (SIZE * SIZE * 4) as usize];
+    let show_count =
+        count > 0 && !matches!(worst, TrayWorstState::Idle | TrayWorstState::Initializing);
+    let (background, ink) = tray_colors(worst, dark);
 
-    let show_count = count > 0 && !matches!(worst, TrayWorstState::Idle);
-
-    // Rounded square: 60x60 centered in 64x64 (2 px margin).
-    let sq_size = 60u32;
-    let sq_off = (SIZE - sq_size) / 2;
-    let radius = 13.0f32;
-
-    let (c1, c2) = if show_count {
-        status_gradient(worst, dark)
-    } else {
-        brand_gradient(dark)
-    };
-
-    for y in 0..sq_size {
-        for x in 0..sq_size {
-            if !in_rounded_rect(x as f32, y as f32, sq_size as f32, sq_size as f32, radius) {
-                continue;
+    for y in 0..60 {
+        for x in 0..60 {
+            if in_rounded_rect(x as f32, y as f32, 60.0, 60.0, 13.0) {
+                let i = (((y + 2) * SIZE + x + 2) * 4) as usize;
+                buf[i..i + 4].copy_from_slice(&background);
             }
-            let t = ((x as f32 + y as f32) / (sq_size as f32 * 2.0 - 2.0)).min(1.0);
-            let px = sq_off + x;
-            let py = sq_off + y;
-            let i = ((py * SIZE + px) * 4) as usize;
-            buf[i] = lerp_u8(c1[0], c2[0], t);
-            buf[i + 1] = lerp_u8(c1[1], c2[1], t);
-            buf[i + 2] = lerp_u8(c1[2], c2[2], t);
-            buf[i + 3] = 255;
         }
     }
 
-    let ink: [u8; 4] = [255, 255, 255, 255];
-
     if show_count {
-        // Compact waveform at the top + large count number below. The waveform
-        // keeps brand identity while the status-colored background signals
-        // urgency at a glance.
-        draw_brand_waveform(&mut buf, SIZE, 8.0, 5.0, 56.0, 24.0, 2.6, &ink);
-
+        draw_brand_mark(&mut buf, SIZE, 20, 2, true, &ink);
         let text = if count > 99 {
             "99+".to_string()
         } else {
             count.to_string()
         };
-        // Digit area is y ≈ 28..58 (30 px tall).
-        let scale: i32 = match text.chars().count() {
-            1 => 4, // 20x28 single digit
-            2 => 3, // ~33x21 two digits
-            _ => 2, // "99+": ~34x14 (rare fallback)
-        };
-        draw_scaled_text(&mut buf, SIZE, SIZE as f32 / 2.0, 43.0, &text, scale);
+        let scale = if text.len() > 2 { 3 } else { 4 };
+        draw_scaled_text(&mut buf, SIZE, 32.0, 43.0, &text, scale, &ink);
     } else {
-        // Idle: waveform uses most of the canvas, matching the app icon.
-        draw_brand_waveform(&mut buf, SIZE, 8.0, 14.0, 56.0, 50.0, 3.6, &ink);
+        draw_brand_mark(&mut buf, SIZE, 0, 0, false, &ink);
     }
 
     tauri::image::Image::new_owned(buf, SIZE, SIZE)
 }
 
-/// Render the idle brand icon with a brightness-modulated overlay driven by
-/// `phase` (in radians). Reuses `render_tray_icon` and then blends a
-/// translucent white layer whose alpha follows |sin(phase)| so the overall
-/// brightness "breathes" during init.
 pub(crate) fn render_initializing_icon(dark: bool, phase: f32) -> tauri::image::Image<'static> {
-    const SIZE: u32 = 64;
-    let img = render_tray_icon(0, TrayWorstState::Initializing, dark);
-    // Blend a white overlay whose alpha breathes with |sin(phase)|.
-    let overlay_alpha = (phase.sin().abs() * 80.0) as u8;
-    if overlay_alpha == 0 {
-        return img;
-    }
-    // image::Image doesn't expose a mutable pixel view, so we re-render
-    // into a fresh buffer and apply the overlay there.
-    let _ = img; // drop the original; we'll rebuild
-    let base_img = render_tray_icon(0, TrayWorstState::Initializing, dark);
-    // Obtain the raw bytes by encoding then re-reading — cheapest path
-    // that avoids unsafe. Since render_tray_icon already allocates a vec
-    // we can re-render with the overlay applied directly.
-    let mut buf = vec![0u8; (SIZE * SIZE * 4) as usize];
-    // Redo the gradient fill with a brightened palette.
-    let sq_size = 60u32;
-    let sq_off = (SIZE - sq_size) / 2;
-    let radius = 13.0f32;
-    let (c1, c2) = brand_gradient(dark);
-    let ov = overlay_alpha as f32 / 255.0;
-    let brighten = |ch: u8| -> u8 { (ch as f32 + (255.0 - ch as f32) * ov) as u8 };
-    let c1b = [brighten(c1[0]), brighten(c1[1]), brighten(c1[2]), 255u8];
-    let c2b = [brighten(c2[0]), brighten(c2[1]), brighten(c2[2]), 255u8];
-    for y in 0..sq_size {
-        for x in 0..sq_size {
-            if !in_rounded_rect(x as f32, y as f32, sq_size as f32, sq_size as f32, radius) {
-                continue;
-            }
-            let t = ((x as f32 + y as f32) / (sq_size as f32 * 2.0 - 2.0)).min(1.0);
-            let px = sq_off + x;
-            let py = sq_off + y;
-            let i = ((py * SIZE + px) * 4) as usize;
-            buf[i] = lerp_u8(c1b[0], c2b[0], t);
-            buf[i + 1] = lerp_u8(c1b[1], c2b[1], t);
-            buf[i + 2] = lerp_u8(c1b[2], c2b[2], t);
-            buf[i + 3] = 255;
+    let image = render_tray_icon(0, TrayWorstState::Initializing, dark);
+    let mut rgba = image.rgba().to_vec();
+    let brightness = phase.sin().abs() * 0.24;
+    for pixel in rgba.chunks_exact_mut(4).filter(|pixel| pixel[3] > 0) {
+        for channel in &mut pixel[..3] {
+            *channel = (*channel as f32 + (255.0 - *channel as f32) * brightness).round() as u8;
         }
     }
-    let ink: [u8; 4] = [255, 255, 255, 255];
-    draw_brand_waveform(&mut buf, SIZE, 8.0, 14.0, 56.0, 50.0, 3.6, &ink);
-    let _ = base_img; // silence unused warning
-    tauri::image::Image::new_owned(buf, SIZE, SIZE)
+    tauri::image::Image::new_owned(rgba, image.width(), image.height())
 }
 
 /// Spawn a tokio task that updates the tray icon while IS_INITIALIZING is
@@ -361,70 +263,60 @@ pub fn stop_initializing_animation() {
     IS_INITIALIZING.store(false, Ordering::SeqCst);
 }
 
-/// Draw the BorgDock brand waveform fitted into the bounding box
-/// (x0, y0) → (x1, y1), plus the small probe dot at the trailing end.
-fn draw_brand_waveform(
-    buf: &mut [u8],
-    stride: u32,
-    x0: f32,
-    y0: f32,
-    x1: f32,
-    y1: f32,
-    thickness: f32,
-    color: &[u8; 4],
-) {
-    let w = x1 - x0;
-    let h = y1 - y0;
-    for pair in BRAND_WAVE.windows(2) {
-        let (nx1, ny1) = pair[0];
-        let (nx2, ny2) = pair[1];
-        draw_line(
-            buf,
-            stride,
-            x0 + nx1 * w,
-            y0 + ny1 * h,
-            x0 + nx2 * w,
-            y0 + ny2 * h,
-            color,
-            thickness,
-        );
-    }
-    // Probe dot at the end of the line
-    if let Some(&(nx, ny)) = BRAND_WAVE.last() {
-        let cx = x0 + nx * w;
-        let cy = y0 + ny * h;
-        let r = thickness * 0.9;
-        draw_filled_circle(buf, stride, cx, cy, r, color);
-    }
+fn brand_mask(compact: bool) -> &'static [u8] {
+    static FULL: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    static COMPACT: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    let (cache, bytes): (_, &[u8]) = if compact {
+        (&COMPACT, include_bytes!("../../icons/tray-mark-small.png"))
+    } else {
+        (&FULL, include_bytes!("../../icons/tray-light.png"))
+    };
+    cache.get_or_init(|| {
+        let mut reader = png::Decoder::new(bytes)
+            .read_info()
+            .expect("embedded brand PNG");
+        let mut rgba = vec![0; reader.output_buffer_size()];
+        let info = reader.next_frame(&mut rgba).expect("embedded brand pixels");
+        assert_eq!(info.color_type, png::ColorType::Rgba);
+        rgba[..info.buffer_size()]
+            .chunks_exact(4)
+            .map(|pixel| pixel[3])
+            .collect()
+    })
 }
 
-fn draw_filled_circle(buf: &mut [u8], stride: u32, cx: f32, cy: f32, r: f32, color: &[u8; 4]) {
-    let min_x = (cx - r - 1.0).floor().max(0.0) as u32;
-    let max_x = (cx + r + 1.0).ceil().min(stride as f32 - 1.0) as u32;
-    let min_y = (cy - r - 1.0).floor().max(0.0) as u32;
-    let max_y = (cy + r + 1.0).ceil().min(stride as f32 - 1.0) as u32;
-    for py in min_y..=max_y {
-        for px in min_x..=max_x {
-            let dx = px as f32 + 0.5 - cx;
-            let dy = py as f32 + 0.5 - cy;
-            let dist = (dx * dx + dy * dy).sqrt();
-            if dist <= r + 0.5 {
-                let alpha = if dist > r - 0.5 {
-                    ((r + 0.5 - dist) * color[3] as f32) as u8
-                } else {
-                    color[3]
-                };
-                let i = ((py * stride + px) * 4) as usize;
-                blend_pixel(&mut buf[i..i + 4], color, alpha);
-            }
+fn draw_brand_mark(buf: &mut [u8], stride: u32, x: u32, y: u32, compact: bool, ink: &[u8; 4]) {
+    let size = if compact { 24 } else { 64 };
+    for (i, &alpha) in brand_mask(compact).iter().enumerate() {
+        if alpha == 0 {
+            continue;
         }
+        let px = x + i as u32 % size;
+        let py = y + i as u32 / size;
+        let offset = ((py * stride + px) * 4) as usize;
+        let pixel = &mut buf[offset..offset + 4];
+        for channel in 0..3 {
+            pixel[channel] = ((ink[channel] as u32 * alpha as u32
+                + pixel[channel] as u32 * (255 - alpha as u32)
+                + 127)
+                / 255) as u8;
+        }
+        pixel[3] = pixel[3].max(alpha);
     }
 }
 
 /// Draw text using the 5x7 bitmap font scaled up by `scale`, with one blank
 /// column of inter-character spacing. Each set bit becomes a solid scale×scale
 /// block — pixelated edges downscale cleanly in the taskbar.
-fn draw_scaled_text(buf: &mut [u8], stride: u32, cx: f32, cy: f32, text: &str, scale: i32) {
+fn draw_scaled_text(
+    buf: &mut [u8],
+    stride: u32,
+    cx: f32,
+    cy: f32,
+    text: &str,
+    scale: i32,
+    ink: &[u8; 4],
+) {
     let glyphs = get_glyph_data();
     let chars: Vec<char> = text.chars().collect();
     if chars.is_empty() {
@@ -446,7 +338,8 @@ fn draw_scaled_text(buf: &mut [u8], stride: u32, cx: f32, cy: f32, text: &str, s
             let w = glyph_widths[idx];
             for (row, bits) in glyph.iter().enumerate() {
                 for col in 0..w {
-                    if bits & (1 << (4 - col)) != 0 {
+                    let shift = if *ch == '1' { 3 - col } else { 4 - col };
+                    if bits & (1 << shift) != 0 {
                         let bx = cursor_x + col * scale;
                         let by = start_y + row as i32 * scale;
                         for dy in 0..scale {
@@ -459,10 +352,7 @@ fn draw_scaled_text(buf: &mut [u8], stride: u32, cx: f32, cy: f32, text: &str, s
                                     && (py as u32) < stride
                                 {
                                     let i = ((py as u32 * stride + px as u32) * 4) as usize;
-                                    buf[i] = 255;
-                                    buf[i + 1] = 255;
-                                    buf[i + 2] = 255;
-                                    buf[i + 3] = 255;
+                                    buf[i..i + 4].copy_from_slice(ink);
                                 }
                             }
                         }
@@ -586,65 +476,103 @@ fn in_rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32) -> bool {
     true
 }
 
-fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
-    (a as f32 + (b as f32 - a as f32) * t) as u8
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-fn blend_pixel(dst: &mut [u8], src: &[u8; 4], alpha: u8) {
-    let a = alpha as f32 / 255.0;
-    let inv_a = 1.0 - a;
-    dst[0] = (src[0] as f32 * a + dst[0] as f32 * inv_a) as u8;
-    dst[1] = (src[1] as f32 * a + dst[1] as f32 * inv_a) as u8;
-    dst[2] = (src[2] as f32 * a + dst[2] as f32 * inv_a) as u8;
-    dst[3] = (alpha.max(dst[3]) as f32).min(255.0) as u8;
-}
-
-/// Bresenham-style thick line drawing
-fn draw_line(
-    buf: &mut [u8],
-    stride: u32,
-    x1: f32,
-    y1: f32,
-    x2: f32,
-    y2: f32,
-    color: &[u8; 4],
-    thickness: f32,
-) {
-    let dx = x2 - x1;
-    let dy = y2 - y1;
-    let len = (dx * dx + dy * dy).sqrt();
-    if len < 0.001 {
-        return;
+    #[test]
+    fn counts_preserve_status_color_and_transparent_corners() {
+        for dark in [false, true] {
+            for state in [
+                TrayWorstState::Failing,
+                TrayWorstState::Pending,
+                TrayWorstState::Passing,
+            ] {
+                for count in [0, 1, 10, 99, 100, 255] {
+                    let icon = render_tray_icon(count, state, dark);
+                    assert_eq!((icon.width(), icon.height()), (64, 64));
+                    assert_eq!(icon.rgba()[3], 0);
+                    assert_eq!(&icon.rgba()[128 * 4..128 * 4 + 4], &[0, 0, 0, 0]);
+                    let background = tray_colors(state, dark).0;
+                    let pixel = ((32 * 64 + 3) * 4) as usize;
+                    assert_eq!(&icon.rgba()[pixel..pixel + 4], &background);
+                }
+                assert_ne!(
+                    render_tray_icon(1, state, dark).rgba(),
+                    render_tray_icon(10, state, dark).rgba()
+                );
+                assert_eq!(
+                    render_tray_icon(100, state, dark).rgba(),
+                    render_tray_icon(255, state, dark).rgba()
+                );
+            }
+        }
     }
-    let steps = (len * 2.0) as i32;
-    let half_t = thickness / 2.0;
 
-    for s in 0..=steps {
-        let t = s as f32 / steps as f32;
-        let cx = x1 + dx * t;
-        let cy = y1 + dy * t;
+    #[test]
+    fn initializing_pulse_preserves_alpha_and_ignores_counts() {
+        for dark in [false, true] {
+            let base = render_initializing_icon(dark, 0.0);
+            let peak = render_initializing_icon(dark, std::f32::consts::FRAC_PI_2);
+            assert_ne!(base.rgba(), peak.rgba());
+            for (a, b) in base.rgba().chunks_exact(4).zip(peak.rgba().chunks_exact(4)) {
+                assert_eq!(a[3], b[3]);
+            }
+            assert_eq!(
+                base.rgba(),
+                render_tray_icon(24, TrayWorstState::Initializing, dark).rgba()
+            );
+        }
+    }
 
-        // Draw a small filled circle at each point
-        let min_x = (cx - half_t).floor().max(0.0) as u32;
-        let max_x = (cx + half_t).ceil().min(stride as f32 - 1.0) as u32;
-        let min_y = (cy - half_t).floor().max(0.0) as u32;
-        let max_y = (cy + half_t).ceil().min(stride as f32 - 1.0) as u32;
+    #[test]
+    fn narrow_one_keeps_all_three_columns_of_its_base() {
+        let mut pixels = vec![0; 16 * 16 * 4];
+        draw_scaled_text(&mut pixels, 16, 8.0, 8.0, "1", 1, &[18, 18, 26, 255]);
+        for x in 7..10 {
+            assert_eq!(pixels[(11 * 16 + x) * 4 + 3], 255);
+        }
+        assert_eq!(pixels[(11 * 16 + 6) * 4 + 3], 0);
+        assert_eq!(pixels[(11 * 16 + 10) * 4 + 3], 0);
+    }
 
-        for py in min_y..=max_y {
-            for px in min_x..=max_x {
-                let ddx = px as f32 + 0.5 - cx;
-                let ddy = py as f32 + 0.5 - cy;
-                let dist = (ddx * ddx + ddy * ddy).sqrt();
-                if dist <= half_t + 0.5 {
-                    let alpha = if dist > half_t - 0.5 {
-                        ((half_t + 0.5 - dist) * color[3] as f32) as u8
-                    } else {
-                        color[3]
-                    };
-                    let i = ((py * stride + px) * 4) as usize;
-                    blend_pixel(&mut buf[i..i + 4], color, alpha);
+    #[test]
+    #[ignore = "writes actual tray renderer output for visual inspection"]
+    fn export_brand_previews() {
+        let directory = std::path::PathBuf::from(
+            std::env::var_os("BORGDOCK_TRAY_PREVIEW_DIR").expect("preview directory"),
+        );
+        std::fs::create_dir_all(&directory).unwrap();
+        let save = |name: String, image: tauri::image::Image<'_>| {
+            let file = std::fs::File::create(directory.join(format!("{name}.png"))).unwrap();
+            let mut encoder = png::Encoder::new(file, image.width(), image.height());
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .write_header()
+                .unwrap()
+                .write_image_data(image.rgba())
+                .unwrap();
+        };
+        for dark in [false, true] {
+            let theme = if dark { "dark" } else { "light" };
+            for (name, state) in [
+                ("idle", TrayWorstState::Idle),
+                ("failing", TrayWorstState::Failing),
+                ("pending", TrayWorstState::Pending),
+                ("passing", TrayWorstState::Passing),
+            ] {
+                for count in [0, 1, 7, 24, 99, 100] {
+                    save(
+                        format!("{theme}-{name}-{count}"),
+                        render_tray_icon(count, state, dark),
+                    );
                 }
             }
+            save(
+                format!("{theme}-loading"),
+                render_initializing_icon(dark, 1.0),
+            );
         }
     }
 }

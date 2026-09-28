@@ -87,43 +87,11 @@ export function SplashScreen() {
         borderRight: '0.5px solid var(--color-strong-border)',
       }}
     >
-      {/* Accent strip */}
-      {/* style: multi-stop gradient background — no Tailwind utility covers this */}
-      <div
-        className="w-full shrink-0"
-        style={{
-          height: 3,
-          background:
-            'linear-gradient(90deg, var(--color-logo-gradient-start), var(--color-logo-gradient-end), var(--color-splash-gradient-end))',
-        }}
-      />
+      <div className="h-0.5 w-full shrink-0 bg-accent" />
 
       {/* Center content */}
       <div className="flex flex-1 flex-col items-center justify-center">
-        {/* Logo tile */}
-        {/* style: gradient background + custom animation keyframe splash-breathe — no Tailwind utilities cover these */}
-        <div
-          className="flex items-center justify-center"
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 14,
-            background:
-              'linear-gradient(135deg, var(--color-logo-gradient-start) 0%, var(--color-logo-gradient-end) 100%)',
-            animation: 'splash-breathe 2.4s ease-in-out infinite',
-          }}
-        >
-          <svg width="28" height="28" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M2 9 L4 9 L5.5 5 L7.5 12 L9 3 L11 11 L12.5 7 L14 9"
-              stroke="white"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle cx="14" cy="9" r="1.3" fill="white" opacity="0.85" />
-          </svg>
-        </div>
+        <img src="/borgdock-icon.svg" width={56} height={56} alt="" />
 
         {/* Wordmark */}
         {/* style: sub-unit letterSpacing (-0.3px) — Tailwind tracking utilities use em-based presets that don't match */}

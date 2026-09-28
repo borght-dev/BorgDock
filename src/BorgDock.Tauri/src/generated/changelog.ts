@@ -60,6 +60,16 @@ export const RELEASES: Release[] = [
       },
       {
         "kind": "improved",
+        "title": "A new logo",
+        "description": "BorgDock has a new mark: a B built from a rail and two docked panels, the same shape as the new layout. You'll find it in the taskbar, the rail, every window's title bar and the tray. The tray tile turns flat red, amber or green with the pull request count in dark ink, so the number stays readable even at 16 px.",
+        "hero": {
+          "src": "/whats-new/3.0.0/logo.png",
+          "alt": "The new BorgDock logo on the startup screen"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
         "title": "Tool windows in the same style",
         "description": "SQL, the file palette, the file viewer, Settings, the setup wizard, What's new and the worktrees window now share the main window's title bar, status bar, fonts and colours, so moving between them feels like one app.",
         "hero": {

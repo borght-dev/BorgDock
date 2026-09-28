@@ -12,8 +12,6 @@ export interface Palette {
   accent: string;
   accentForeground: string;
   strongBorder: string;
-  logoStart: string;
-  logoEnd: string;
   /** --elevation-3 */
   shadow: string;
 }
@@ -27,8 +25,6 @@ export const palettes: Record<ThemeName, Palette> = {
     accent: '#7f7eff',
     accentForeground: '#12121a',
     strongBorder: 'rgba(255, 255, 255, 0.12)',
-    logoStart: '#7f7eff',
-    logoEnd: '#a5a4ff',
     shadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
   },
   light: {
@@ -39,8 +35,6 @@ export const palettes: Record<ThemeName, Palette> = {
     accent: '#4f46e5',
     accentForeground: '#ffffff',
     strongBorder: '#d4d6dc',
-    logoStart: '#4f46e5',
-    logoEnd: '#8b8cff',
     shadow: '0 20px 60px rgba(16, 18, 27, 0.28)',
   },
 };

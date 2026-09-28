@@ -142,8 +142,6 @@
   --color-modal-border: var(--color-modal-border);
 
   /* Logo gradient */
-  --color-logo-gradient-start: var(--color-logo-gradient-start);
-  --color-logo-gradient-end: var(--color-logo-gradient-end);
 
   /* Avatar */
   --color-avatar-text: var(--color-avatar-text);
@@ -429,8 +427,6 @@
   --color-title-bar-bg: rgba(255, 255, 255, 0.88);
 
   /* Logo gradient — indigo (matches accent) */
-  --color-logo-gradient-start: #4f46e5;
-  --color-logo-gradient-end: #8b8cff;
 
   /* Avatar */
   --color-avatar-text: #ffffff;
@@ -732,8 +728,6 @@
 
   --color-title-bar-bg: rgba(27, 28, 31, 0.85);
 
-  --color-logo-gradient-start: #7f7eff;
-  --color-logo-gradient-end: #a5a4ff;
 
   --color-avatar-text: #151618;
 

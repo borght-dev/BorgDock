@@ -6,6 +6,7 @@
   {"slug":"calm-look","storyId":"pr-prlist--workbench","viewport":{"width":1100,"height":700},"delay":2500},
   {"slug":"keyboard","storyId":"main-window-mainwindow--rail-focus-board","viewport":{"width":1360,"height":860},"delay":3000},
   {"slug":"rerun","storyId":"pr-detail-prdetailview--failing","viewport":{"width":1088,"height":908},"delay":2000,"selector":"article.bd-detail"},
+  {"slug":"logo","storyId":"brand-borgdock--loading","viewport":{"width":1000,"height":620},"delay":2000},
   {"slug":"toast-undo","storyId":"shared-toast--stack","viewport":{"width":720,"height":320},"delay":1500},
   {"slug":"tools-sql","storyId":"sql-sqlapp--result-success-select","viewport":{"width":1200,"height":760},"delay":2000},
   {"slug":"tools-file-palette","storyId":"file-palette-filepaletteapp--preview-file-ok","viewport":{"width":1100,"height":700},"delay":2000},
