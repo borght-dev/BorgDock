@@ -19,6 +19,7 @@ import {
   reviewProgress,
   unreviewedLabel,
 } from '@/services/quick-review';
+import { usePrStore } from '@/stores/pr-store';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
 import type { DiffLine, PullRequestWithChecks } from '@/types';
 import { motionMs, motionOK } from '@/utils/motion';
@@ -163,7 +164,9 @@ export function QuickReviewOverlay() {
   const queue = useQuickReviewStore((s) => s.queue);
   const index = useQuickReviewStore((s) => s.currentIndex);
   const decisions = useQuickReviewStore((s) => s.decisions);
+  const needsMyReview = usePrStore((s) => s.needsMyReview());
   const [closing, setClosing] = useState(false);
+  const handledInRun = useRef(new Set<string>());
   const closeTimer = useRef<number | undefined>(undefined);
   const deck = useDeckMotion(queue, index, state === 'complete', decisions);
 
@@ -172,6 +175,7 @@ export function QuickReviewOverlay() {
   useEffect(() => {
     if (state === 'idle') {
       window.clearTimeout(closeTimer.current);
+      handledInRun.current.clear();
       setClosing(false);
     }
   }, [state]);
@@ -198,6 +202,8 @@ export function QuickReviewOverlay() {
   if (state === 'idle') return null;
   const current = queue[index];
   const complete = state === 'complete';
+  const reviewedKeys = new Set([...handledInRun.current, ...queue.map(prKey)]);
+  const nextPr = complete ? needsMyReview.find((pr) => !reviewedKeys.has(prKey(pr))) : undefined;
   const decided = complete ? queue.length : index;
   return (
     <FocusTrap
@@ -225,6 +231,7 @@ export function QuickReviewOverlay() {
           tabIndex={-1}
           data-overlay="quick-review"
           className="qr-dialog"
+          data-complete={complete ? 'true' : undefined}
         >
           <div className="qr-titlebar">
             <h2 className="qr-heading">Quick review</h2>
@@ -262,6 +269,15 @@ export function QuickReviewOverlay() {
                     <QuickReviewSummary
                       queue={queue}
                       decisions={decisions}
+                      nextPr={nextPr}
+                      onNext={() => {
+                        if (nextPr) {
+                          queue.forEach((pr) => {
+                            handledInRun.current.add(prKey(pr));
+                          });
+                          useQuickReviewStore.getState().startSinglePr(nextPr);
+                        }
+                      }}
                       onClose={requestClose}
                     />
                   </div>

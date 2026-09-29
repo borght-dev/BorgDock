@@ -45,6 +45,12 @@
 .qr-dialog:focus {
   outline: none;
 }
+.qr-dialog[data-complete="true"] {
+  inset: 0;
+  width: min(760px, calc(100vw - 40px));
+  height: min(520px, calc(100vh - 40px));
+  max-height: calc(100vh - 40px);
+}
 .qr-overlay[data-state="closing"] .qr-dialog {
   animation: qr-close var(--motion-base) var(--ease-in) both;
 }
@@ -526,6 +532,30 @@
 .qr-summary > [data-quick-review-summary] {
   width: min(680px, 100%);
   margin: auto;
+}
+.qr-summary__next {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-separator);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+.qr-summary__next-label,
+.qr-summary__next-meta {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+.qr-summary__next-title {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+.qr-summary__actions {
+  display: flex;
+  gap: 8px;
+}
+.qr-summary__actions > * {
+  flex: 1;
 }
 
 /* ── The file walk ────────────────────────────────────────────────────── */

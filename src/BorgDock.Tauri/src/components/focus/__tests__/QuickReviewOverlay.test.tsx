@@ -17,7 +17,11 @@ vi.mock('@/services/github/reviews', () => ({
 const mockClient = vi.hoisted(() => ({ account: 'reviewer' }));
 vi.mock('@/services/github/singleton', () => ({ getClientForRepo: () => mockClient }));
 vi.mock('@/stores/pr-store', () => ({
-  usePrStore: { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null) }) },
+  usePrStore: Object.assign(
+    (selector: (state: { needsMyReview: () => never[] }) => unknown) =>
+      selector({ needsMyReview: () => [] }),
+    { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null) }) },
+  ),
 }));
 vi.mock('@/hooks/useSyntaxHighlight', () => ({ useSyntaxHighlight: () => null }));
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({ writeText: vi.fn() }));

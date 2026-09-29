@@ -7,6 +7,8 @@ interface QuickReviewSummaryProps {
   queue: PullRequestWithChecks[];
   /** Keyed `owner/repo#number` (`prRowKey`). */
   decisions: Map<string, ReviewDecision>;
+  nextPr?: PullRequestWithChecks;
+  onNext: () => void;
   onClose: () => void;
 }
 
@@ -16,7 +18,13 @@ const DECISION_LABELS: Record<ReviewDecision, { label: string; tone: PillTone }>
   skipped: { label: 'Skipped', tone: 'ghost' },
 };
 
-export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSummaryProps) {
+export function QuickReviewSummary({
+  queue,
+  decisions,
+  nextPr,
+  onNext,
+  onClose,
+}: QuickReviewSummaryProps) {
   const approved = [...decisions.values()].filter((d) => d === 'approved').length;
   const commented = [...decisions.values()].filter((d) => d === 'commented').length;
   const skipped = [...decisions.values()].filter((d) => d === 'skipped').length;
@@ -70,9 +78,26 @@ export function QuickReviewSummary({ queue, decisions, onClose }: QuickReviewSum
         })}
       </div>
 
-      <Button variant="primary" size="md" onClick={onClose} className="w-full">
-        Done
-      </Button>
+      {nextPr && (
+        <section className="qr-summary__next" aria-label="Next review">
+          <span className="qr-summary__next-label">Up next · review requested</span>
+          <span className="qr-summary__next-title">{nextPr.pullRequest.title}</span>
+          <span className="qr-summary__next-meta">
+            {nextPr.pullRequest.repoOwner}/{nextPr.pullRequest.repoName} #
+            {nextPr.pullRequest.number}
+          </span>
+        </section>
+      )}
+      <div className="qr-summary__actions">
+        {nextPr && (
+          <Button variant="primary" size="md" onClick={onNext}>
+            Review next PR
+          </Button>
+        )}
+        <Button variant={nextPr ? 'secondary' : 'primary'} size="md" onClick={onClose}>
+          Done
+        </Button>
+      </div>
     </div>
   );
 }
