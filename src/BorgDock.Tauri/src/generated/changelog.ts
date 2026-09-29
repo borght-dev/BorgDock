@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "3.0.2",
+    "date": "2026-09-29",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Quick Review now uses the full review window for pull request details and file diffs. Review actions stay visible on narrow screens."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "3.0.1",
     "date": "2026-09-28",
     "summary": "",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.2 — 2026-09-29
+
+### Bug Fixes
+
+- Quick Review now uses the full review window for pull request details and file diffs. Review actions stay visible on narrow screens.
+
 ## 3.0.1 — 2026-09-28
 
 ### Bug Fixes
