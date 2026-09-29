@@ -173,8 +173,10 @@ export function QuickReviewCard({
           </div>
         </>
       )}
-      <div className="qr-act">{actions}</div>
-      {actionsNote}
+      <div className="qr-card__actions">
+        <div className="qr-act">{actions}</div>
+        {actionsNote}
+      </div>
     </article>
   );
 }
