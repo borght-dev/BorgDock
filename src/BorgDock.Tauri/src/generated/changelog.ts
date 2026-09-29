@@ -4,6 +4,29 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "3.0.3",
+    "date": "2026-09-29",
+    "summary": "Keep reviewing without starting over.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Keep reviewing without starting over",
+        "description": "After you finish a requested PR, Quick Review offers the next one. You can also use J/K to scroll a diff, N/P to change files, F to finish the file walk, A to approve, and W to write a review.",
+        "hero": {
+          "src": "/whats-new/3.0.3/review-next.png",
+          "alt": "Quick Review showing the next requested PR"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Moving between sections, lists, and pull request details is quicker, without overlapping views or bouncy transitions.",
+      "Pull request titles now show in full in the tray flyout.",
+      "You can select and copy text from pull request diffs."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "3.0.2",
     "date": "2026-09-29",
     "summary": "",

@@ -397,7 +397,10 @@ export const usePrStore = create<PrState>()((set, get) => ({
   needsMyReview: () => {
     const state = get();
     const deps = ensureDataCache(state);
-    if (!deps.username) return [];
+    if (!deps.username) {
+      state._cachedNeedsMyReview ??= [];
+      return state._cachedNeedsMyReview;
+    }
     if (state._cachedNeedsMyReview) return state._cachedNeedsMyReview;
     const { prs, username, timestamps, teams } = deps;
     const requestedAt = (pr: PullRequestWithChecks): string =>

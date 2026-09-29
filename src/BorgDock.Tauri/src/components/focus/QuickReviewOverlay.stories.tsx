@@ -1,5 +1,6 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import type { PullRequestFileChange } from '@/types';
 import { getControl } from '../../../.storybook/mocks/control';
@@ -256,5 +257,25 @@ export const LargePrWalk: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Skip generated' }));
     await userEvent.keyboard('vv');
     await canvas.findByText('4 of 23 reviewed, 19 to go');
+  },
+};
+
+export const ReviewNext: Story = {
+  beforeEach: () => {
+    const nextReview = [
+      makePr({
+        number: 479,
+        repoOwner: 'borght-dev',
+        repoName: 'BorgDock',
+        title: 'Flyout: remember the last scroll position',
+        authorLogin: 'mira',
+      }),
+    ];
+    usePrStore.setState({ needsMyReview: () => nextReview });
+    useQuickReviewStore.getState().startSinglePr(largeWithChecks);
+    useQuickReviewStore.setState({
+      state: 'complete',
+      decisions: new Map([['borght-dev/BorgDock#482', 'approved']]),
+    });
   },
 };

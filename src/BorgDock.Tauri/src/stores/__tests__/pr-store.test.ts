@@ -70,6 +70,13 @@ describe('pr-store', () => {
     });
   });
 
+  it('keeps the empty review list stable before a username is loaded', () => {
+    usePrStore.getState().setUsername('');
+    const first = usePrStore.getState().needsMyReview();
+    expect(first).toEqual([]);
+    expect(usePrStore.getState().needsMyReview()).toBe(first);
+  });
+
   describe('filtering', () => {
     const prs: PullRequestWithChecks[] = [
       makePr({ number: 1, authorLogin: 'me', overallStatus: 'green', reviewStatus: 'approved' }),

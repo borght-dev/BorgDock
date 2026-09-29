@@ -574,13 +574,38 @@
 /* Motion tokens (motion.css) */
 
 :root {
-  --motion-fast: 150ms; /* hover, press, chip colour */
-  --motion-base: 260ms; /* fades, crossfade between sections */
-  --motion-move: 320ms; /* sliding highlights, FLIP reorders */
-  --motion-push: 360ms; /* push and pop of a view */
-  --motion-expand: 340ms; /* grid-row expansion, inspector-like panels */
+  --motion-fast: 120ms; /* hover, press, chip colour */
+  --motion-exit: 110ms; /* whatever leaves fades out before the newcomer settles */
+  --motion-base: 200ms; /* fades, crossfade between sections */
+  --motion-move: 300ms; /* sliding highlights, FLIP reorders */
+  --motion-push: 260ms; /* push and pop of a view */
+  --motion-expand: 240ms; /* grid-row expansion, inspector-like panels */
 
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* enter, expand, push */
-  --ease-std: cubic-bezier(0.2, 0.8, 0.2, 1); /* move, reflow, highlight */
-  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* leave, dismiss, pop */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* enter, expand, push */
+  --ease-std: cubic-bezier(0.2, 0, 0, 1); /* move, reflow, progress */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* things thrown off screen */
+  /* A damped spring (under 2% overshoot) for anything that slides to a new spot. */
+  --ease-spring: linear(
+    0,
+    0.183,
+    0.388,
+    0.575,
+    0.726,
+    0.838,
+    0.916,
+    0.966,
+    0.995,
+    1.01,
+    1.016,
+    1.016,
+    1.014,
+    1.011,
+    1.008,
+    1.006,
+    1.003,
+    1.002,
+    1.001,
+    1,
+    1
+  );
 }

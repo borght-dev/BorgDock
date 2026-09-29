@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.0.3 — 2026-09-29
+
+### Improvements
+
+- **Keep reviewing without starting over** — After you finish a requested PR, Quick Review offers the next one. You can also use J/K to scroll a diff, N/P to change files, F to finish the file walk, A to approve, and W to write a review. ![Quick Review showing the next requested PR](whats-new/3.0.3/review-next.png)
+
+### Bug Fixes
+
+- Moving between sections, lists, and pull request details is quicker, without overlapping views or bouncy transitions.
+- Pull request titles now show in full in the tray flyout.
+- You can select and copy text from pull request diffs.
+
 ## 3.0.2 — 2026-09-29
 
 ### Bug Fixes
