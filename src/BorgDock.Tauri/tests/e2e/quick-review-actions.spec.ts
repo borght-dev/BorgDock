@@ -126,14 +126,15 @@ async function bootList(page: Page) {
 
 /** Walks every file: Skip generated, then V for each file left. */
 async function reviewAllFiles(page: Page) {
-  await page.getByRole('button', { name: 'Review files' }).click();
+  await page.getByRole('button', { name: /^(Review files|Continue reviewing)$/ }).click();
   await expect(page.getByText('0 of 5 reviewed, 3 to go')).toBeVisible();
   const skip = page.getByRole('button', { name: 'Skip generated' });
   await skip.click();
   await expect(skip).toHaveCount(0);
   for (let i = 0; i < 3; i++) await page.keyboard.press('v');
   await expect(page.getByText('5 of 5 reviewed, 0 to go')).toBeVisible();
-  await page.getByRole('button', { name: 'Finish review' }).click();
+  await page.screenshot({ path: test.info().outputPath('walk-finish-shortcut.png') });
+  await page.keyboard.press('f');
   await expect(page.getByRole('navigation', { name: 'Review path' })).toHaveCount(0);
 }
 
@@ -171,11 +172,30 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await expect(dialog.locator('.qr-act-note')).toHaveText('3 files not reviewed yet');
   await page.screenshot({ path: test.info().outputPath('card-approve-disabled.png') });
 
+  await page.keyboard.press('Enter');
+  const diff = dialog.locator('[data-quick-review-content]');
+  await dialog.locator('.qr-diff').evaluate((element) => {
+    (element as HTMLElement).style.minHeight = '1800px';
+  });
+  await page.keyboard.press('j');
+  await expect.poll(() => diff.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.keyboard.press('k');
+  await expect.poll(() => diff.evaluate((element) => element.scrollTop)).toBe(0);
+  await expect(dialog.getByText('File 1 of 5')).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(dialog.getByText('File 2 of 5')).toBeVisible();
+  await page.keyboard.press('p');
+  await expect(dialog.getByText('File 1 of 5')).toBeVisible();
+  await page.keyboard.press('f');
+
   await reviewAllFiles(page);
   await expect(dialog.getByRole('button', { name: 'Review files again' })).toBeVisible();
   await expect(approve).toBeEnabled();
   await page.screenshot({ path: test.info().outputPath('card-approve-enabled.png') });
-  await approve.click();
+  await page.keyboard.press('w');
+  await expect(dialog.getByRole('heading', { name: 'Your review' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('a');
 
   await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
   expect(reviews).toEqual([

@@ -425,6 +425,9 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     const target = files[fileIndex + delta];
     if (target) go(target.filename);
   }
+  function scrollFile(delta: number) {
+    if (!showingComments) mainRef.current?.scrollBy?.(0, delta * 72);
+  }
   /** Marks the current file and moves to the next file not reviewed yet. */
   function markAndNext() {
     if (!ready || !file || busy) return;
@@ -467,14 +470,22 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
       ? {
           v: markAndNext,
           n: () => step(1),
-          j: () => step(1),
+          j: () => scrollFile(1),
           p: () => step(-1),
-          k: () => step(-1),
+          k: () => scrollFile(-1),
+          f: toCard,
           Escape: () => (showingComments ? setShowingComments(false) : toCard()),
         }
       : mode === 'compose'
         ? { Escape: toCard }
-        : { ArrowRight: approve, ArrowLeft: later, Enter: openWalk, Escape: onClose };
+        : {
+            ArrowRight: approve,
+            ArrowLeft: later,
+            Enter: openWalk,
+            a: approve,
+            w: () => setMode('compose'),
+            Escape: onClose,
+          };
   useQuickReviewKeyboard(keymap);
 
   function changeComment(id: string, change: Partial<ReviewCommentDraft>) {
@@ -598,7 +609,13 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
         >
           {filesLabel}
         </Button>
-        <Button variant="ghost" size="lg" className="qr-write" onClick={() => setMode('compose')}>
+        <Button
+          variant="ghost"
+          size="lg"
+          className="qr-write"
+          aria-keyshortcuts="W"
+          onClick={() => setMode('compose')}
+        >
           Write review{doc.comments.length ? ` · ${doc.comments.length}` : ''}
         </Button>
         <ApproveButton
@@ -814,6 +831,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                 variant={progress.left === 0 ? 'primary' : 'secondary'}
                 size="md"
                 className="qr-finish"
+                aria-keyshortcuts="F"
                 onClick={toCard}
               >
                 Finish review
@@ -829,10 +847,10 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
         <span className="qr-spacer" />
         <span className="qr-shortcuts">
           {walking
-            ? 'V mark reviewed · N next · P previous · Esc back to the card'
+            ? 'J/K scroll · V mark reviewed · N/P change file · F finish · Esc back'
             : mode === 'compose'
               ? 'Esc back to the card'
-              : '→ approve when enabled · ← review later · Enter review files · Esc close'}
+              : 'A/→ approve when enabled · W write review · ← review later · Enter review files · Esc close'}
         </span>
       </footer>
     </fieldset>

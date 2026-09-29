@@ -205,6 +205,26 @@ describe('Quick review card', () => {
     expectApproveBlocked();
   });
 
+  it('opens Write review with W and approves with A after finishing the files', async () => {
+    await start();
+    press('w');
+    expect(screen.getByRole('heading', { name: 'Your review' })).toBeVisible();
+    press('Escape');
+    reviewEverything();
+    press('A');
+    await waitFor(() =>
+      expect(submitReview).toHaveBeenCalledWith(
+        expect.anything(),
+        'owner',
+        'repo',
+        pr.pullRequest.number,
+        'APPROVE',
+        '',
+        { commit_id: pr.pullRequest.headSha, comments: [] },
+      ),
+    );
+  });
+
   it('flings an approved card right and a card left for later', async () => {
     document.documentElement.classList.remove('reduce-motion');
     await start();
@@ -262,10 +282,24 @@ describe('Quick review file walk', () => {
     press('n');
     expect(currentFile()).toBe('App.Tests/ServiceTests.cs');
     press('p');
-    press('k');
+    expect(currentFile()).toBe('bun.lock');
+    press('p');
     expect(currentFile()).toBe('src/Service.cs');
     fireEvent.click(screen.getByRole('button', { name: 'Next file' }));
     expect(currentFile()).toBe('bun.lock');
+  });
+
+  it('scrolls the open diff with J/K without changing files', async () => {
+    await start();
+    openFiles();
+    const pane = document.querySelector<HTMLElement>('[data-quick-review-content]')!;
+    const scrollBy = vi.fn();
+    pane.scrollBy = scrollBy;
+    press('j');
+    press('K');
+    expect(scrollBy).toHaveBeenNthCalledWith(1, 0, 72);
+    expect(scrollBy).toHaveBeenNthCalledWith(2, 0, -72);
+    expect(currentFile()).toBe('src/Service.cs');
   });
 
   it('Skip generated marks only the generated files and then hides', async () => {
@@ -291,7 +325,7 @@ describe('Quick review file walk', () => {
     press('v');
     expect(screen.getByText('4 of 4 reviewed, 0 to go')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Finish review' })).toHaveClass('bd-btn--primary');
-    finishWalk();
+    press('f');
     expect(screen.queryByRole('navigation', { name: 'Review path' })).toBeNull();
     expectApproveOpen();
   });
@@ -463,7 +497,7 @@ describe('Quick review composer', () => {
     expect(screen.getByText('Please handle failure.')).toBeInTheDocument();
   });
 
-  it('requires an overall explanation for request changes and never approves with A', async () => {
+  it('requires an overall explanation for request changes and blocks A before files are reviewed', async () => {
     await start();
     press('a');
     expect(submitReview).not.toHaveBeenCalled();

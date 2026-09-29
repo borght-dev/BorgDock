@@ -253,7 +253,7 @@ export function ApproveButton({ issue, busy, onApprove, reasonId }: ApproveButto
         aria-disabled={issue ? true : undefined}
         loading={busy}
         aria-describedby={issue ? reasonId : undefined}
-        aria-keyshortcuts="ArrowRight"
+        aria-keyshortcuts="A ArrowRight"
         onClick={() => {
           if (!issue) onApprove();
         }}
