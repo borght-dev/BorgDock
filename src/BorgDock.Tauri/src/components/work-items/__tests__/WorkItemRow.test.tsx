@@ -69,11 +69,10 @@ describe('WorkItemRow', () => {
     expect(screen.getByText('Active, P2')).toBeInTheDocument();
   });
 
-  it('the selected row carries the selection bar and the title transition name', () => {
+  it('the selected row carries the selection bar', () => {
     const { container } = render(<WorkItemRow item={bug} selected />);
     expect(row(container)).toHaveAttribute('data-selected', 'true');
     expect(row(container)).toHaveAttribute('aria-current', 'true');
-    expect(row(container).style.getPropertyValue('--bd-vt-title')).toBe('wi-title-54482');
     expect(container.querySelector('.bd-wb-rowwrap')).toHaveAttribute('data-selected', 'true');
   });
 

@@ -10,8 +10,8 @@
  */
 
 .qr-overlay {
-  --qr-fling: 600ms;
-  --qr-rise: 550ms;
+  --qr-fling: 420ms;
+  --qr-rise: 380ms;
   position: fixed;
   inset: 0;
   z-index: 80;

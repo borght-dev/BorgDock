@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { Copy, ExternalLink, Star } from 'lucide-react';
-import { type CSSProperties, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BackButton } from '@/components/layout/BackButton';
 import { Button } from '@/components/shared/primitives';
 import {
@@ -29,11 +29,6 @@ const PRIORITY_OPTIONS = [
   { value: '4', label: 'P4 · Low' },
 ];
 
-/** The view-transition name a work item row gives its title (WorkItemRow). */
-export function workItemTitleTransitionName(id: number): string {
-  return `wi-title-${id}`;
-}
-
 /** "Active, P2" — the state line of a row and of the detail header. */
 export function workItemStateLine(state: string, priority?: number): string {
   return priority ? `${state}, P${priority}` : state;
@@ -58,8 +53,7 @@ export interface WorkItemDetailHeaderProps {
  * WorkItemDetailHeader — the head of the full-screen work item view
  * (plans/ui-overhaul-workbench.md, phase 5), in the PR detail header's shape:
  * Back, `AB#id`, the type pill and the state line on the top line; the title
- * (click to edit; it carries the row's view-transition name, so the row's
- * title morphs into it); the state, priority, assignee and iteration pickers;
+ * (click to edit); the state, priority, assignee and iteration pickers;
  * then the action bar: Open in ADO, Copy id, and the Track and Working
  * toggles. Replaces the panel's `TitleBlock` when the panel is embedded.
  */
@@ -92,10 +86,6 @@ export function WorkItemDetailHeader({
 
   const initials = getInitials(assignedTo || '??');
   const prio = priority != null ? WI_PRIO[priority] : null;
-  const titleStyle =
-    id !== undefined
-      ? ({ viewTransitionName: workItemTitleTransitionName(id) } as CSSProperties)
-      : undefined;
 
   const commitTitle = () => {
     setEditing(false);
@@ -134,7 +124,7 @@ export function WorkItemDetailHeader({
             }}
           />
         ) : (
-          <h1 className="bd-detail__title" style={titleStyle}>
+          <h1 className="bd-detail__title">
             <button
               type="button"
               className="bd-wi-detail__title-btn"

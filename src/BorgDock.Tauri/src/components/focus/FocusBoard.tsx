@@ -9,7 +9,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -56,7 +55,7 @@ import { openPrDetail } from '@/services/windows';
 import { showToast } from '@/stores/toast-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
-import { EASE_IN, FLIP_LEAVE_MS, flip, motionMs, motionOK } from '@/utils/motion';
+import { EASE_OUT, FLIP_LEAVE_MS, flip, motionMs, motionOK } from '@/utils/motion';
 import { BumpCount } from './BumpCount';
 
 /** Cards `flip()` follows on the board. */
@@ -346,11 +345,6 @@ export function FocusCard({ prWithChecks, bucket, ctx, ...callbacks }: FocusCard
     open(e.ctrlKey || e.metaKey);
   };
 
-  const vtStyle = {
-    '--bd-vt-title': `pr-title-${number}`,
-    '--bd-vt-avatar': `pr-avatar-${number}`,
-  } as CSSProperties;
-
   const checks = checkCountsFor(prWithChecks);
 
   return (
@@ -364,7 +358,6 @@ export function FocusCard({ prWithChecks, bucket, ctx, ...callbacks }: FocusCard
         data-pr-repo={repo}
         data-bucket={bucket}
         data-selected={selected ? 'true' : undefined}
-        style={vtStyle}
         onClick={handleClick}
         onAuxClick={(e) => {
           if (e.button !== MIDDLE_BUTTON) return;
@@ -584,7 +577,7 @@ export function FocusBoard({ prs, ctx, onHeldChange }: FocusBoardProps) {
               { opacity: 1, transform: 'none' },
               { opacity: 0, transform: 'translateY(-8px) scale(0.98)' },
             ],
-            { duration: motionMs('--motion-base', 260), easing: EASE_IN, fill: 'forwards' },
+            { duration: motionMs('--motion-base', 200), easing: EASE_OUT, fill: 'forwards' },
           );
           fade.finished.then(
             () => release(key),
@@ -620,7 +613,7 @@ export function FocusBoard({ prs, ctx, onHeldChange }: FocusBoardProps) {
       });
       const fade = card.animate([{ opacity: 1 }, { opacity: 0 }], {
         duration: FLIP_LEAVE_MS,
-        easing: EASE_IN,
+        easing: EASE_OUT,
         fill: 'forwards',
       });
       fade.finished.then(

@@ -248,7 +248,7 @@ export function WorkItemsSection() {
     const list = listRef.current;
     if (!list || !motionOK() || typeof list.animate !== 'function') return;
     list.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: motionMs('--motion-base', 260),
+      duration: motionMs('--motion-base', 200),
       easing: EASE_OUT,
     });
   }, [settledQuery]);

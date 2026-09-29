@@ -93,13 +93,6 @@ const PR: PullRequestWithChecks = {
 const TARGET = { owner: 'acme', repo: 'app', number: 7 };
 const doc = document as unknown as { startViewTransition?: unknown };
 
-/** Elements carrying an inline view-transition name, by name. */
-function inlineNames(): string[] {
-  return [...document.querySelectorAll<HTMLElement>('[style*="view-transition-name"]')].map((el) =>
-    el.style.getPropertyValue('view-transition-name'),
-  );
-}
-
 function listCovered(): boolean {
   return document
     .querySelector('.bd-viewstack__list')!
@@ -202,20 +195,14 @@ describe('PrDetailView', () => {
     await waitFor(() => expect(useUiStore.getState().viewStack).toHaveLength(1));
   });
 
-  it('hands the view-transition names from the row to the header and back', async () => {
-    // Record, for every transition, which elements carry names before the
+  it('covers the list inside the push transition and uncovers it inside the pop', async () => {
+    // Record, for every transition, whether the list is covered before the
     // update (old snapshot) and after it (new snapshot).
-    const snapshots: {
-      old: string[];
-      oldCovered: boolean;
-      next: string[];
-      nextCovered: boolean;
-    }[] = [];
+    const snapshots: { oldCovered: boolean; nextCovered: boolean }[] = [];
     doc.startViewTransition = vi.fn((cb: () => void) => {
-      const old = inlineNames();
       const oldCovered = listCovered();
       cb();
-      snapshots.push({ old, oldCovered, next: inlineNames(), nextCovered: listCovered() });
+      snapshots.push({ oldCovered, nextCovered: listCovered() });
       return { updateCallbackDone: Promise.resolve(), finished: Promise.resolve() };
     });
 
@@ -223,24 +210,11 @@ describe('PrDetailView', () => {
     await act(() => showPr(TARGET));
     await act(() => popView());
 
-    const [push, pop] = snapshots;
-    // Push: the uncovered list's selected row owns the names (via CSS), the
-    // header does not exist yet; after the update the header owns them and
-    // the covered list has dropped the row's.
-    expect(push).toEqual({
-      old: [],
-      oldCovered: false,
-      next: ['pr-avatar-7', 'pr-title-7'],
-      nextCovered: true,
-    });
-    // Pop: the reverse. The row is still selected, so uncovering the list
-    // gives it the names back for the morph home.
-    expect(pop).toEqual({
-      old: ['pr-avatar-7', 'pr-title-7'],
-      oldCovered: true,
-      next: [],
-      nextCovered: false,
-    });
+    expect(snapshots).toEqual([
+      { oldCovered: false, nextCovered: true },
+      { oldCovered: true, nextCovered: false },
+    ]);
+    // The row opened keeps its selection on the way back.
     expect(document.querySelector('.bd-wb-row')).toHaveAttribute('data-selected', 'true');
   });
 });

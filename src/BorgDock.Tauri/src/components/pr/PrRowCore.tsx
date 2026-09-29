@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from 'react';
+import type { HTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { Avatar, CheckBar, checkBarSummary } from '@/components/shared/primitives';
 import { isStaleUpdate } from '@/services/focus-bucket';
 import type { PrDensity } from '@/types';
@@ -18,7 +18,7 @@ export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'ch
   pr: PrCardData;
   /** `comfortable` (42 px, title and meta line) or `compact` (32 px, title only). */
   density?: PrDensity;
-  /** The selected row: accent bar and wash, and the view-transition names. */
+  /** The selected row: accent bar and wash. */
   selected?: boolean;
   /** Clock for the meta line's age and the stale rule. Defaults to now. */
   now?: number;
@@ -90,10 +90,6 @@ function MetaLine({
  * - `data-pr-key` (always set, also on virtualized rows) is what selection
  *   and keyboard navigation use; `data-pr-card` and `data-pr-row` /
  *   `data-pr-number` are the hooks the e2e specs look for.
- * - The selected row carries the view-transition names `pr-title-<n>` and
- *   `pr-avatar-<n>` (as CSS variables that `.bd-wb-row[data-selected]`
- *   applies), so only the row being opened morphs into the detail header and
- *   a covered list never duplicates the names.
  */
 export function PrRowCore({
   pr,
@@ -115,12 +111,6 @@ export function PrRowCore({
   const checkLabel = checkBarSummary(checks).label;
   const interactive = onClick !== undefined;
 
-  const vtStyle = {
-    '--bd-vt-title': `pr-title-${pr.number}`,
-    '--bd-vt-avatar': `pr-avatar-${pr.number}`,
-    ...style,
-  } as CSSProperties;
-
   const withSlot = action !== undefined;
   const key = prRowKey(pr);
 
@@ -137,7 +127,7 @@ export function PrRowCore({
       data-selected={selected ? 'true' : undefined}
       data-mine={pr.isMine ? 'true' : undefined}
       className={clsx('bd-wb-row', `bd-wb-row--${density}`, className)}
-      style={vtStyle}
+      style={style}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       aria-label={interactive ? `${pr.title}, #${pr.number}` : undefined}

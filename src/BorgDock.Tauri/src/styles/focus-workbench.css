@@ -128,11 +128,11 @@
     min-height: 0;
   }
   .bd-focus-pane--entering {
-    animation: bd-focus-fade-in var(--motion-base) var(--ease-out) both;
+    animation: bd-focus-fade-in var(--motion-base) var(--ease-out) calc(var(--motion-exit) / 2) both;
   }
   .bd-focus-pane--leaving {
     pointer-events: none;
-    animation: bd-focus-fade-out var(--motion-base) var(--ease-in) both;
+    animation: bd-focus-fade-out var(--motion-exit) var(--ease-out) both;
   }
   @keyframes bd-focus-fade-in {
     from {
@@ -416,25 +416,5 @@
   }
   .bd-fb-card__age {
     flex: none;
-  }
-
-  /* View-transition names on the selected card only, as on the rows. */
-  .bd-fb-card[data-selected="true"] .bd-fb-card__title {
-    view-transition-name: var(--bd-vt-title);
-  }
-  .bd-fb-card[data-selected="true"] .bd-fb-card__avatar {
-    view-transition-name: var(--bd-vt-avatar);
-  }
-  .bd-viewstack__list--covered .bd-fb-card[data-selected="true"] .bd-fb-card__title,
-  .bd-viewstack__list--covered .bd-fb-card[data-selected="true"] .bd-fb-card__avatar {
-    view-transition-name: none;
-  }
-
-  /* A pane fading out never carries the view-transition names. */
-  .bd-focus-pane--leaving .bd-wb-row[data-selected="true"] .bd-wb-row__title,
-  .bd-focus-pane--leaving .bd-wb-row[data-selected="true"] .bd-wb-row__avatar,
-  .bd-focus-pane--leaving .bd-fb-card[data-selected="true"] .bd-fb-card__title,
-  .bd-focus-pane--leaving .bd-fb-card[data-selected="true"] .bd-fb-card__avatar {
-    view-transition-name: none;
   }
 }

@@ -1,13 +1,10 @@
 import clsx from 'clsx';
 import { Star } from 'lucide-react';
-import { type CSSProperties, memo } from 'react';
+import { memo } from 'react';
 import { showWorkItem } from '@/services/navigation';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity } from '@/types';
-import {
-  workItemStateLine,
-  workItemTitleTransitionName,
-} from './WorkItemDetailPanel/WorkItemDetailHeader';
+import { workItemStateLine } from './WorkItemDetailPanel/WorkItemDetailHeader';
 import { WorkItemTypePill } from './WorkItemTypePill';
 import { toggleTrackedWorkItem, toggleWorkingOnWorkItem } from './work-item-toggles';
 
@@ -56,8 +53,7 @@ function openInView(id: number) {
  * - The ★ track and ● working toggles sit beside the row (a button may not
  *   sit inside its `role="button"`), drawn over its right end: quiet until
  *   hover, focus or selection, always shown while on.
- * - `data-key="wi-<id>"` (on the wrapper) lets `flip()` follow the row; the
- *   selected row's title carries `wi-title-<id>` and morphs into the header.
+ * - `data-key="wi-<id>"` (on the wrapper) lets `flip()` follow the row.
  */
 export const WorkItemRow = memo(function WorkItemRow({
   item,
@@ -72,7 +68,6 @@ export const WorkItemRow = memo(function WorkItemRow({
     useUiStore.getState().setWorkItemsSelectedId(id);
     onOpen(id);
   };
-  const vtStyle = { '--bd-vt-title': workItemTitleTransitionName(id) } as CSSProperties;
   const stateLine = workItemStateLine(item.state, item.priority);
 
   return (
@@ -88,7 +83,6 @@ export const WorkItemRow = memo(function WorkItemRow({
         data-selected={selected ? 'true' : undefined}
         data-tracked={item.isTracked ? 'true' : undefined}
         data-working={item.isWorking ? 'true' : undefined}
-        style={vtStyle}
         role="button"
         tabIndex={0}
         aria-label={`${item.title}, AB#${id}`}

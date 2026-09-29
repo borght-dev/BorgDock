@@ -90,7 +90,7 @@ export function ViewStack() {
 
   useEffect(() => {
     if (leaving === null) return;
-    const timer = window.setTimeout(() => setLeaving(null), motionMs('--motion-push', 360));
+    const timer = window.setTimeout(() => setLeaving(null), motionMs('--motion-push', 260));
     return () => window.clearTimeout(timer);
   }, [leaving]);
 

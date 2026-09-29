@@ -147,7 +147,7 @@ describe('flip', () => {
     // Row "a" moved down 20px, so it starts 20px up and slides to 0.
     expect(keyframes[0]).toEqual({ transform: 'translate(0px, -20px)' });
     expect(keyframes[1]).toEqual({ transform: 'translate(0, 0)' });
-    expect(options.duration).toBe(320);
+    expect(options.duration).toBe(300);
   });
 
   it('fades in rows that were not there before', () => {
@@ -207,8 +207,8 @@ describe('flip', () => {
     const fades = calls.filter(([k]) => 'opacity' in (k[0] ?? {}));
     expect(slides).toHaveLength(2);
     expect(fades).toHaveLength(1);
-    // The crossing row waits for the slides to finish before it appears.
-    expect(fades[0]?.[1]?.delay).toBe(320);
+    // The crossing row waits until the slides have mostly cleared its slot.
+    expect(fades[0]?.[1]?.delay).toBe(150);
     expect(fades[0]?.[1]?.fill).toBe('backwards');
   });
 
@@ -225,7 +225,7 @@ describe('flip', () => {
     expect(options.delay).toBe(0);
   });
 
-  it('delays newcomers until the surviving rows have slid into place', () => {
+  it('delays newcomers until the surviving rows have mostly slid into place', () => {
     const positions = new Map([
       ['a', rect(0)],
       ['b', rect(20)],
@@ -245,7 +245,7 @@ describe('flip', () => {
     const fade = calls.find(([k]) => 'opacity' in (k[0] ?? {}));
     const slide = calls.find(([k]) => 'transform' in (k[0] ?? {}));
     expect(slide).toBeDefined();
-    expect(fade?.[1]?.delay).toBe(320);
+    expect(fade?.[1]?.delay).toBe(150);
   });
 
   it('does not delay a newcomer that no slider passes over', () => {

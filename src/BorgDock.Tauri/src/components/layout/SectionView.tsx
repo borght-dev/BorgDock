@@ -23,12 +23,14 @@ function SectionBody({ section }: { section: ActiveSection }) {
 /**
  * SectionView — the list view of the main window: renders the active
  * section and crossfades when it changes (plans/ui-overhaul-workbench.md,
- * section 4). The outgoing section fades and drops 4 px while the incoming
- * one fades and rises 4 px, overlapping, over `--motion-base`. Each section
+ * section 4). The outgoing section fades out over `--motion-exit`; the
+ * incoming one fades and rises 6 px over `--motion-base`, starting halfway
+ * through that fade so the two never blur into each other. Each section
  * pane is its own scroll container, so the two can sit on top of each other
- * during the crossfade. The outgoing pane goes on `animationend` (a timer
- * backs that up where no animation runs), so a collapsed animation removes
- * it at once. Under reduced motion the swap is instant.
+ * during the crossfade. The outgoing pane goes when the incoming one's
+ * `animationend` fires (a timer backs that up where no animation runs), so a
+ * collapsed animation removes it at once. Under reduced motion the swap is
+ * instant.
  *
  * Memoised: it takes no props and reads the section from the store, so a
  * push or pop in the ViewStack (which re-renders its layers) does not
@@ -48,7 +50,10 @@ export const SectionView = memo(function SectionView() {
       return;
     }
     setLeaving(previous);
-    const timer = window.setTimeout(() => setLeaving(null), motionMs('--motion-base', 260));
+    const timer = window.setTimeout(
+      () => setLeaving(null),
+      motionMs('--motion-exit', 110) / 2 + motionMs('--motion-base', 200),
+    );
     return () => window.clearTimeout(timer);
   }, [active]);
 
@@ -63,9 +68,6 @@ export const SectionView = memo(function SectionView() {
           data-section={outgoing}
           aria-hidden="true"
           inert
-          onAnimationEnd={(e) => {
-            if (e.target === e.currentTarget) setLeaving(null);
-          }}
         >
           <SectionBody section={outgoing} />
         </div>
@@ -74,6 +76,9 @@ export const SectionView = memo(function SectionView() {
         key={active}
         className={clsx('bd-section', outgoing !== null && 'bd-section--entering')}
         data-section={active}
+        onAnimationEnd={(e) => {
+          if (e.target === e.currentTarget) setLeaving(null);
+        }}
       >
         <SectionBody section={active} />
       </div>

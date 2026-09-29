@@ -193,7 +193,7 @@ export function PrList() {
       mutate();
       if (motionOK() && typeof container.animate === 'function') {
         container.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: motionMs('--motion-base', 260),
+          duration: motionMs('--motion-base', 200),
           easing: EASE_OUT,
         });
       }
@@ -212,7 +212,7 @@ export function PrList() {
       for (const block of container.querySelectorAll<HTMLElement>('[data-crossfade]')) {
         if (typeof block.animate !== 'function') continue;
         block.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: motionMs('--motion-base', 260),
+          duration: motionMs('--motion-base', 200),
           easing: EASE_OUT,
         });
       }

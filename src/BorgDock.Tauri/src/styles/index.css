@@ -857,51 +857,34 @@
    ════════════════════════════════════════════════════════ */
 
 @keyframes toast-slide-in {
-  0% {
-    transform: translateX(120%) scale(0.92);
+  from {
+    transform: translateX(24px) scale(0.98);
     opacity: 0;
   }
-  60% {
-    transform: translateX(-4%) scale(1.01);
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(0) scale(1);
+  to {
+    transform: none;
     opacity: 1;
   }
 }
 
 @keyframes toast-slide-out {
-  0% {
-    transform: translateX(0) scale(1);
+  from {
+    transform: none;
     opacity: 1;
   }
-  100% {
-    transform: translateX(120%) scale(0.95);
+  to {
+    transform: translateX(16px);
     opacity: 0;
   }
 }
 
 @keyframes toast-icon-pop {
-  0% {
-    transform: scale(0);
+  from {
+    transform: scale(0.6);
     opacity: 0;
   }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes toast-glow-pulse {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
+  to {
+    transform: none;
     opacity: 1;
   }
 }
@@ -2994,9 +2977,9 @@ body.sql-resizing-v .sql-resize-handle {
     z-index: 0;
     pointer-events: none;
     transition:
-      transform var(--motion-move) var(--ease-std),
-      width var(--motion-move) var(--ease-std),
-      height var(--motion-move) var(--ease-std),
+      transform var(--motion-move) var(--ease-spring),
+      width var(--motion-move) var(--ease-spring),
+      height var(--motion-move) var(--ease-spring),
       opacity var(--motion-fast) var(--ease-std);
   }
   .bd-slide__hl--instant {
@@ -3397,8 +3380,8 @@ body.sql-resizing-v .sql-resize-handle {
     opacity: 0;
     visibility: hidden;
     transition:
-      opacity var(--motion-push) var(--ease-out),
-      visibility 0s linear var(--motion-push);
+      opacity var(--motion-exit) var(--ease-out),
+      visibility 0s linear var(--motion-exit);
   }
   .bd-viewstack__detail {
     z-index: 2;
@@ -3406,20 +3389,21 @@ body.sql-resizing-v .sql-resize-handle {
     background: var(--color-background);
     outline: none;
   }
-  /* Fallback when the View Transitions API is missing: the detail slides up
-     12 px and fades in; on pop it fades back down. */
+  /* Fallback when the View Transitions API is missing, on the same axis as
+     motion.css: the detail slides in from the right and fades in; on pop it
+     slides back out to the right. */
   .bd-viewstack__detail--entering {
     animation: bd-view-push-in var(--motion-push) var(--ease-out) both;
   }
   .bd-viewstack__detail--leaving {
     z-index: 1;
     pointer-events: none;
-    animation: bd-view-pop-out var(--motion-push) var(--ease-in) both;
+    animation: bd-view-pop-out var(--motion-push) var(--ease-out) both;
   }
   @keyframes bd-view-push-in {
     from {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateX(32px);
     }
     to {
       opacity: 1;
@@ -3431,9 +3415,12 @@ body.sql-resizing-v .sql-resize-handle {
       opacity: 1;
       transform: none;
     }
+    40% {
+      opacity: 0;
+    }
     to {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateX(32px);
     }
   }
 
@@ -3450,17 +3437,19 @@ body.sql-resizing-v .sql-resize-handle {
     flex-direction: column;
     overflow-y: auto;
   }
+  /* The outgoing section is gone within --motion-exit; the incoming one
+     starts halfway through that, so the two never stack up as a blur. */
   .bd-section--entering {
-    animation: bd-section-in var(--motion-base) var(--ease-out) both;
+    animation: bd-section-in var(--motion-base) var(--ease-out) calc(var(--motion-exit) / 2) both;
   }
   .bd-section--leaving {
     pointer-events: none;
-    animation: bd-section-out var(--motion-base) var(--ease-in) both;
+    animation: bd-section-out var(--motion-exit) var(--ease-out) both;
   }
   @keyframes bd-section-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(6px);
     }
     to {
       opacity: 1;
@@ -3470,11 +3459,9 @@ body.sql-resizing-v .sql-resize-handle {
   @keyframes bd-section-out {
     from {
       opacity: 1;
-      transform: none;
     }
     to {
       opacity: 0;
-      transform: translateY(4px);
     }
   }
 
@@ -5432,19 +5419,6 @@ body.sql-resizing-v .sql-resize-handle {
     height: 24px;
   }
 
-  /* View-transition names on the selected row only (phase 3 morphs them into
-     the detail header). A covered list drops them so the detail view's
-     header is the only element carrying them. */
-  .bd-wb-row[data-selected='true'] .bd-wb-row__title {
-    view-transition-name: var(--bd-vt-title);
-  }
-  .bd-wb-row[data-selected='true'] .bd-wb-row__avatar {
-    view-transition-name: var(--bd-vt-avatar);
-  }
-  .bd-viewstack__list--covered .bd-wb-row .bd-wb-row__title,
-  .bd-viewstack__list--covered .bd-wb-row .bd-wb-row__avatar {
-    view-transition-name: none;
-  }
   .bd-wb-closed .bd-wb-row__title {
     color: var(--color-text-secondary);
   }

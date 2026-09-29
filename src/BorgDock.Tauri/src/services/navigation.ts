@@ -18,10 +18,9 @@ const log = createLogger('navigation');
  *
  * Every push and pop the user triggers goes through here so it runs inside
  * `withViewTransition`: the browser snapshots the old view, the store update
- * commits synchronously (`flushSync`), and view-transition names on both
- * sides morph into each other. `data-view-transition="push|pop"` sits on
- * <html> for the duration so motion.css can run the two directions
- * differently. Without the API, or under reduced motion, the update is
+ * commits synchronously (`flushSync`), and motion.css slides the two views
+ * along one horizontal axis. `data-view-transition="push|pop"` sits on
+ * <html> for the duration so motion.css knows which way to slide. Without the API, or under reduced motion, the update is
  * applied directly and `ViewStack` plays its CSS fallback.
  *
  * Focus follows the stack: a push remembers the focused element, and the
@@ -189,9 +188,6 @@ function samePr(view: MainView, target: ShowPrTarget): boolean {
  *   left alone.
  * - In another window (the tray flyout): ask the main window, which applies
  *   the same rules and, when it pushes the view, brings itself to the front.
- *
- * The selection is set before the transition starts, so the row carries the
- * view-transition names in the old snapshot and morphs into the header.
  */
 export async function showPr(target: ShowPrTarget): Promise<void> {
   const { owner, repo, number } = target;
@@ -229,11 +225,10 @@ export async function showPr(target: ShowPrTarget): Promise<void> {
 
 /**
  * Open a work item in the main window's full-screen detail view
- * (plans/ui-overhaul-workbench.md, phase 5). Selects its row first, so the
- * row's title carries the view-transition name in the old snapshot and
- * morphs into the header. A work item already on top is replaced, not
- * stacked; the same one is left alone. The section does not change, so Back
- * returns to the list the item was opened from.
+ * (plans/ui-overhaul-workbench.md, phase 5). Selects its row first, so it
+ * keeps the selection highlight on the way back. A work item already on top
+ * is replaced, not stacked; the same one is left alone. The section does not
+ * change, so Back returns to the list the item was opened from.
  */
 export async function showWorkItem(id: number): Promise<void> {
   const ui = useUiStore.getState();

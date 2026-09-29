@@ -34,14 +34,16 @@ export function motionMs(token: string, fallback: number): number {
 }
 
 /** Easing curves matching the CSS tokens, for the Web Animations API. */
-export const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
-export const EASE_STD = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+export const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
+export const EASE_STD = 'cubic-bezier(0.2, 0, 0, 1)';
 export const EASE_IN = 'cubic-bezier(0.4, 0, 1, 1)';
+export const EASE_SPRING =
+  'linear(0, 0.183, 0.388, 0.575, 0.726, 0.838, 0.916, 0.966, 0.995, 1.01, 1.016, 1.016, 1.014, 1.011, 1.008, 1.006, 1.003, 1.002, 1.001, 1, 1)';
 
 const DEFAULT_FLIP_SELECTOR = '[data-key]';
 
 /** Rows that leave a list fade out over this long before the list changes (plan section 4). */
-export const FLIP_LEAVE_MS = 140;
+export const FLIP_LEAVE_MS = 100;
 
 export interface FlipOptions {
   /**
@@ -129,13 +131,13 @@ function play(container: HTMLElement, mutate: () => void, selector: string): Ani
   const before = measure(container, selector);
   mutate();
 
-  const duration = motionMs('--motion-move', 320);
-  const fadeDuration = motionMs('--motion-base', 260);
+  const duration = motionMs('--motion-move', 300);
+  const fadeDuration = motionMs('--motion-base', 200);
   const animations: Animation[] = [];
 
   // Choreography (plan section 4): rows that keep their relative order slide;
   // rows that would cross a neighbour, and rows that are new, fade in at
-  // their final slot once the slides have finished. Nothing overlaps.
+  // their final slot once the slides have cleared it. Nothing overlaps.
   const rows = [...container.querySelectorAll<HTMLElement>(selector)].filter(
     (el) => typeof el.animate === 'function' && keyOf(el) !== null,
   );
@@ -178,20 +180,22 @@ function play(container: HTMLElement, mutate: () => void, selector: string): Ani
     animations.push(
       el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], {
         duration,
-        easing: EASE_STD,
+        easing: EASE_SPRING,
       }),
     );
   }
   // A newcomer (or crossing row) whose slot lies on a slider's path appears
-  // after the slides, so nothing is ever drawn over it; the others appear at
-  // once. `fill: 'backwards'` keeps a delayed row invisible until its turn.
+  // once the slides have covered most of their distance (the spring is past
+  // its target at half its duration), so nothing is drawn over it; the
+  // others appear at once. `fill: 'backwards'` keeps a delayed row invisible
+  // until its turn.
   for (const el of faders) {
     const slot = el.getBoundingClientRect();
     const crossed = moves.some(({ path }) => intersects(path, slot));
     animations.push(
       el.animate([{ opacity: 0 }, { opacity: 1 }], {
         duration: fadeDuration,
-        delay: crossed ? duration : 0,
+        delay: crossed ? Math.round(duration / 2) : 0,
         easing: EASE_OUT,
         fill: 'backwards',
       }),
@@ -245,7 +249,7 @@ export function flip(
   const fades = leaving.map((el) =>
     el.animate([{ opacity: 1 }, { opacity: 0 }], {
       duration: FLIP_LEAVE_MS,
-      easing: EASE_IN,
+      easing: EASE_OUT,
       fill: 'forwards',
     }),
   );

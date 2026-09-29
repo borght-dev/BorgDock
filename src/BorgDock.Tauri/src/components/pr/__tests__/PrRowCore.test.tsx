@@ -144,12 +144,10 @@ describe('PrRowCore', () => {
     expect(compact.row.querySelector('.bd-checkbar')).not.toBeNull();
   });
 
-  it('marks the selected row and names its title and avatar for the view transition', () => {
+  it('marks the selected row', () => {
     const { row } = renderRow({}, { selected: true });
     expect(row).toHaveAttribute('data-selected', 'true');
     expect(row).toHaveAttribute('aria-current', 'true');
-    expect(row.style.getPropertyValue('--bd-vt-title')).toBe('pr-title-42');
-    expect(row.style.getPropertyValue('--bd-vt-avatar')).toBe('pr-avatar-42');
   });
 
   it('is a keyboard-operable button when clickable; Enter is a click with detail 0', () => {

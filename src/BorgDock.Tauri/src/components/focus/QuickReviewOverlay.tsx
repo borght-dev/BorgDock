@@ -35,7 +35,7 @@ import { QuickReviewSummary } from './QuickReviewSummary';
 import './quick-review.css';
 
 /** How long a decided card takes to fly off the deck (`.qr-card--gone-*`). */
-const FLING_MS = 600;
+const FLING_MS = 420;
 /** How many cards peek behind the top one. */
 const PEEKS = 2;
 
@@ -189,7 +189,7 @@ export function QuickReviewOverlay() {
         setClosing(false);
         useQuickReviewStore.getState().endSession();
       },
-      motionMs('--motion-base', 260),
+      motionMs('--motion-base', 200),
     );
   }, []);
 
@@ -332,7 +332,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   const walkRef = useRef<HTMLElement>(null);
   const lastMode = useRef<Mode>('card');
   const approveReasonId = useId();
-  const walkPhase = usePresence(mode === 'walk', motionMs('--motion-push', 360));
+  const walkPhase = usePresence(mode === 'walk', motionMs('--motion-push', 260));
 
   const files = snapshot?.files ?? [];
   const paths = files.map((f) => f.filename);

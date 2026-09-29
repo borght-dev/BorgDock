@@ -411,7 +411,10 @@ export function FocusList() {
       return;
     }
     setLeaving(before);
-    const timer = window.setTimeout(() => setLeaving(null), motionMs('--motion-base', 260));
+    const timer = window.setTimeout(
+      () => setLeaving(null),
+      motionMs('--motion-exit', 110) / 2 + motionMs('--motion-base', 200),
+    );
     return () => window.clearTimeout(timer);
   }, [layout]);
   const outgoing = leaving !== null && leaving !== layout ? leaving : null;
@@ -469,9 +472,6 @@ export function FocusList() {
             )}
             aria-hidden="true"
             inert
-            onAnimationEnd={(e) => {
-              if (e.target === e.currentTarget) setLeaving(null);
-            }}
           >
             {pane(outgoing, false)}
           </div>
@@ -483,6 +483,9 @@ export function FocusList() {
             `bd-focus-pane--${layout}`,
             outgoing !== null && 'bd-focus-pane--entering',
           )}
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget) setLeaving(null);
+          }}
         >
           {pane(layout, true)}
         </div>

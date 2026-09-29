@@ -184,8 +184,8 @@ function FlyoutToastCard({
       style={{
         animation:
           phase === 'enter' || phase === 'visible'
-            ? 'toast-slide-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
-            : 'toast-slide-out 0.28s ease-in forwards',
+            ? 'toast-slide-in var(--motion-push) var(--ease-out) both'
+            : 'toast-slide-out var(--motion-base) var(--ease-std) forwards',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -194,13 +194,11 @@ function FlyoutToastCard({
       aria-live={isMerged ? 'assertive' : 'polite'}
     >
       <div
-        className={clsx('absolute rounded-2xl blur-lg', isMerged ? '-inset-2' : '-inset-1')}
-        style={{
-          background: config.glow,
-          animation: isMerged
-            ? 'toast-glow-pulse 1.8s ease-in-out infinite'
-            : 'toast-glow-pulse 2.5s ease-in-out infinite',
-        }}
+        className={clsx(
+          'absolute rounded-2xl blur-lg opacity-70',
+          isMerged ? '-inset-2' : '-inset-1',
+        )}
+        style={{ background: config.glow }}
       />
 
       <Card
@@ -221,7 +219,7 @@ function FlyoutToastCard({
         {isMerged && (
           <div
             className="absolute inset-0 pointer-events-none bg-[var(--color-toast-merged-shimmer)]"
-            style={{ animation: 'toast-shimmer-sweep 2s ease-in-out infinite' }}
+            style={{ animation: 'toast-shimmer-sweep 1.2s var(--ease-std) 0.2s both' }}
           />
         )}
 
@@ -244,8 +242,8 @@ function FlyoutToastCard({
               backgroundColor: config.iconBg,
               color: config.iconColor,
               animation: isMerged
-                ? 'toast-icon-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both, toast-merged-ring 1s ease-out 0.6s'
-                : 'toast-icon-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both',
+                ? 'toast-icon-pop var(--motion-move) var(--ease-spring) 0.1s both, toast-merged-ring 1s var(--ease-out) 0.4s'
+                : 'toast-icon-pop var(--motion-move) var(--ease-spring) 0.1s both',
               border: `1px solid color-mix(in srgb, ${config.stripe} 20%, transparent)`,
             }}
           >

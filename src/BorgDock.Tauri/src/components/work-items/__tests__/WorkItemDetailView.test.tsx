@@ -122,9 +122,7 @@ describe('WorkItemDetailView', () => {
     expect(article.querySelector('.bd-wi-type')).toHaveAttribute('data-type-tone', 'bug');
     expect(article.querySelector('.bd-wi-type')).toHaveTextContent('Bug');
     expect(within(article).getByText('Active, P2')).toBeInTheDocument();
-    const h1 = screen.getByRole('heading', { level: 1, name: 'Quote footer broken' });
-    // The row's title morphs into this heading.
-    expect(h1.style.viewTransitionName).toBe('wi-title-54482');
+    expect(screen.getByRole('heading', { level: 1, name: 'Quote footer broken' })).toBeVisible();
     // The title block of the pop-out is replaced, not stacked.
     expect(screen.queryByText('copy ID')).not.toBeInTheDocument();
     expect(container.querySelector('.bd-detail__spinner')).not.toBeInTheDocument();

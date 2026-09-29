@@ -71,18 +71,17 @@ describe('SectionView', () => {
     expect(pane('prs body')).not.toHaveClass('bd-section--entering');
   });
 
-  it('drops the old section as soon as its leave animation ends', () => {
+  it('drops the old section as soon as the new one has finished entering', () => {
     render(<SectionView />);
     act(() => useUiStore.getState().setActiveSection('prs'));
-    const leaving = pane('focus body') as HTMLElement;
-    endAnimation(leaving);
+    endAnimation(pane('prs body') as HTMLElement);
     expect(screen.queryByText('focus body')).not.toBeInTheDocument();
   });
 
-  it('ignores animationend bubbling up from inside the old section', () => {
+  it('ignores animationend bubbling up from inside the new section', () => {
     render(<SectionView />);
     act(() => useUiStore.getState().setActiveSection('prs'));
-    endAnimation(screen.getByText('focus body'));
+    endAnimation(screen.getByText('prs body'));
     expect(screen.getByText('focus body')).toBeInTheDocument();
   });
 

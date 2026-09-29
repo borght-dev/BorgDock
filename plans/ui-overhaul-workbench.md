@@ -71,14 +71,18 @@ New file `src/styles/motion.css`, imported from `index.css`. `index.css` already
 
 | Token | Value | Use |
 |---|---|---|
-| `--motion-fast` | 150 ms | hover, press, chip colour |
-| `--motion-base` | 260 ms | fades, crossfade between sections |
-| `--motion-move` | 320 ms | sliding highlights, FLIP reorders |
-| `--motion-push` | 360 ms | push and pop of a view |
-| `--motion-expand` | 340 ms | grid-row expansion, inspector-like panels |
-| `--ease-out` | `cubic-bezier(.16, 1, .3, 1)` | enter, expand, push |
-| `--ease-std` | `cubic-bezier(.2, .8, .2, 1)` | move, reflow, highlight |
-| `--ease-in` | `cubic-bezier(.4, 0, 1, 1)` | leave, dismiss, pop |
+| `--motion-fast` | 120 ms | hover, press, chip colour |
+| `--motion-exit` | 110 ms | whatever leaves: gone before the newcomer settles |
+| `--motion-base` | 200 ms | fades, section and layout swaps |
+| `--motion-move` | 300 ms | sliding highlights, FLIP reorders |
+| `--motion-push` | 260 ms | push and pop of a view |
+| `--motion-expand` | 240 ms | grid-row expansion, inspector-like panels |
+| `--ease-out` | `cubic-bezier(.22, 1, .36, 1)` | enter, expand, push, fade-outs |
+| `--ease-std` | `cubic-bezier(.2, 0, 0, 1)` | reflow, progress fills |
+| `--ease-spring` | `linear(...)` damped spring, <2% overshoot | highlights, underlines, FLIP slides |
+| `--ease-in` | `cubic-bezier(.4, 0, 1, 1)` | things thrown off screen (Quick Review fling) |
+
+No crossfade ever shows two full layers at once: the outgoing layer fades over `--motion-exit` and the incoming one starts halfway through it.
 
 Reduced motion: `@media (prefers-reduced-motion: reduce)` and a `.reduce-motion` class on `<html>` (new setting under Appearance) set every `--motion-*` to `0.01ms`. The JS helper `motionOK()` in `src/utils/motion.ts` reads the same two signals and gates FLIP and View Transitions.
 
@@ -87,15 +91,15 @@ Transitions, one per interaction:
 | Interaction | Transition |
 |---|---|
 | Rail item or filter click | The highlight slides to the new item (`--motion-move`, `--ease-std`). Content crossfades (`--motion-base`). |
-| Section switch | Outgoing section fades and drops 4 px, incoming fades and rises 4 px, overlapping. |
+| Section switch | Outgoing section fades out over `--motion-exit`; incoming fades and rises 6 px, starting halfway through. |
 | Filter, sort or group change | Rows that survive FLIP to their new slot. Leaving rows fade in 140 ms first. New rows fade in. Only the Recently Closed list is virtualized today (above 50 items); that list gets a plain crossfade instead. |
-| Row click → detail | View Transitions API: the row's title and avatar are named `pr-title-<n>` and `pr-avatar-<n>` and morph into the detail header. The list fades under it. Fallback: detail slides up 12 px and fades in over `--motion-push`. |
-| Back | The reverse: header morphs back to the row, list fades in. The list keeps its scroll position and the row keeps a brief selection highlight. |
+| Row click → detail | View Transitions API, one horizontal axis: the detail slides in 32 px from the right while the list drifts 24 px left and fades out over `--motion-exit`. The title bar swaps without a crossfade. No shared-element morph (scaled text snapshots read as blur). Fallback: the detail slides in from the right over `--motion-push`. |
+| Back | The reverse: the detail slides out to the right, the list slides back in from the left. The list keeps its scroll position and the row keeps its selection highlight. |
 | Tab change in detail | Sliding underline plus content crossfade. |
 | Suite expand in Checks | `<details>` with a grid-row transition; failing suites open by default. |
 | Review click | Quick Review overlay scales from 0.96 and fades (existing `qr-overlay`, tuned to the tokens). Closing reverses. |
 | Merge, Rerun, Fix | Button shows progress fill for the in-flight request, flips to the result label, then the row updates via FLIP. Failures show a toast. |
-| Toast | Slides up 16 px and fades. Undo where the action is reversible (snooze, mark seen). |
+| Toast | Slides up 16 px and fades (flyout toasts: 24 px in from the right, no overshoot, no looping glow or shimmer). Undo where the action is reversible (snooze, mark seen). |
 | Sync | The rail's rate meter width animates; the refresh icon spins only while a poll is running. |
 
 ## 5. Phases

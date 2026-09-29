@@ -1,5 +1,4 @@
 import { AppWindow } from 'lucide-react';
-import type { CSSProperties } from 'react';
 import { BackButton } from '@/components/layout/BackButton';
 import { avatarInitials, prRowKey } from '@/components/pr/pr-card-data';
 import { Avatar, IconButton } from '@/components/shared/primitives';
@@ -19,29 +18,15 @@ interface PrDetailHeaderProps {
   onOpenInWindow: () => void;
 }
 
-/** The view-transition names the list row gives its title and avatar (PrRowCore). */
-export function prTransitionNames(number: number) {
-  return { title: `pr-title-${number}`, avatar: `pr-avatar-${number}` };
-}
-
 /**
  * PrDetailHeader — the head of the full-screen detail view
  * (plans/ui-overhaul-workbench.md, phase 3): Back, `owner/repo #number` and
  * "Open in window" on the top line; then the avatar and title, the branch
  * into its base, the readiness sentence and the action bar.
- *
- * The title and avatar carry `pr-title-<n>` / `pr-avatar-<n>` for as long as
- * the header is mounted. The selected list row carries the same names while
- * the list is uncovered, so on push the row's title and avatar morph into
- * these and on pop back again; the covered list drops its names, so the two
- * never carry them at the same time.
  */
 export function PrDetailHeader({ pr, actions, checks, onOpenInWindow }: PrDetailHeaderProps) {
   const p = pr.pullRequest;
   const username = usePrStore((s) => s.username);
-  const names = prTransitionNames(p.number);
-  const titleStyle = { viewTransitionName: names.title } as CSSProperties;
-  const avatarStyle = { viewTransitionName: names.avatar } as CSSProperties;
 
   return (
     <header className="bd-detail__head" data-pr-key={prRowKey(p)}>
@@ -65,12 +50,9 @@ export function PrDetailHeader({ pr, actions, checks, onOpenInWindow }: PrDetail
           initials={avatarInitials(p.authorLogin)}
           tone={isMyPr(pr, username) ? 'own' : 'them'}
           size="md"
-          style={avatarStyle}
           aria-hidden="true"
         />
-        <h1 className="bd-detail__title" style={titleStyle}>
-          {p.title}
-        </h1>
+        <h1 className="bd-detail__title">{p.title}</h1>
       </div>
       <p className="bd-detail__meta">
         <em>{p.authorLogin}</em> wants to merge <code>{p.headRef}</code> into{' '}
