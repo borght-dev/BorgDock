@@ -134,11 +134,12 @@ export const longTitlePrs: FlyoutPr[] = [
   makeFlyoutPr({
     number: 501,
     title:
-      'feat(some-very-large-package-name): add an extremely long title that goes past the visible row width to exercise truncation in the FlyoutPrRow component',
+      'feat(database-designer): name imported relationships consistently across the schema editor and preview',
+    primaryAction: 'review',
   }),
   makeFlyoutPr({
     number: 502,
-    title: 'fix: another exceptionally lengthy title that should also wrap or truncate',
+    title: 'fix(integration-credentials): preserve the account name when reconnecting a provider',
   }),
 ];
 
