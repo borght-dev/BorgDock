@@ -236,7 +236,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
 
         {/* Diff content */}
         {!collapsed && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto select-text">
             {file.isBinary ? (
               <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
                 Binary file not shown
