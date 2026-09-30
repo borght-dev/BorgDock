@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.4 — 2026-09-30
+
+### Bug Fixes
+
+- Pull requests no longer show old check failures after a successful retry. Refresh includes every check, even on PRs with large check lists.
+
 ## 3.0.3 — 2026-09-29
 
 ### Improvements

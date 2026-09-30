@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "3.0.4",
+    "date": "2026-09-30",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Pull requests no longer show old check failures after a successful retry. Refresh includes every check, even on PRs with large check lists."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "3.0.3",
     "date": "2026-09-29",
     "summary": "Keep reviewing without starting over.",
