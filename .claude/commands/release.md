@@ -2,6 +2,8 @@
 
 Create a new release: generate changelog, bump versions, tag, and push. The GitHub Actions workflow (`release-tauri.yml`) handles packaging, uploading, and publishing.
 
+Invoking `/release <version>` authorizes the generated release notes, release commit, tag, push, and publication. Complete the release without asking for note approval.
+
 ## Arguments
 
 - `$ARGUMENTS` — The version to release (e.g. `1.0.11`). Required.
@@ -22,7 +24,7 @@ Create a new release: generate changelog, bump versions, tag, and push. The GitH
      - Each bullet should describe *what changed and why it matters*, not implementation details
      - Omit internal chores (version bumps, CI fixes, refactors) unless they affect the user
    - Prepend a new `## <VERSION> — <DATE>` section to `CHANGELOG.md` (already exists at repo root). Keep all previous entries intact and match the existing style (bolded feature titles, bullets with em dashes).
-   - Show the generated changelog section to the user for review before continuing.
+   - Show the generated changelog section as a progress update, then continue with validation and publication.
 
 3. **Bump versions** in ALL of these files (they must all match):
    - `src/BorgDock.Tauri/src-tauri/tauri.conf.json` — `"version": "<VERSION>"`
