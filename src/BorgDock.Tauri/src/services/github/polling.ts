@@ -6,13 +6,50 @@ import { aggregateReviewStatus, mapReviewState } from './pulls';
 
 const log = createLogger('github:polling');
 
+const CHECK_CONTEXT_FIELDS = /* GraphQL */ `
+  pageInfo { hasNextPage endCursor }
+  nodes {
+    __typename
+    ... on CheckRun {
+      databaseId
+      name
+      status
+      conclusion
+      startedAt
+      checkSuite {
+        databaseId
+        workflowRun {
+          event
+          workflow { name }
+        }
+      }
+    }
+    ... on StatusContext {
+      context
+      state
+      createdAt
+    }
+  }
+`;
+
+export const POLL_CHECK_CONTEXTS_QUERY = /* GraphQL */ `
+  query PollCheckContexts($id: ID!, $after: String!) {
+    node(id: $id) {
+      ... on StatusCheckRollup {
+        contexts(first: 100, after: $after) { ${CHECK_CONTEXT_FIELDS} }
+      }
+    }
+    rateLimit { remaining limit resetAt cost }
+  }
+`;
+
 /**
  * Single-query replacement for the REST polling fan-out: open PRs, their
  * check rollups, latest reviews per user, and counts — one request per repo
- * per poll cycle instead of ~22.
+ * per poll cycle, plus additional pages for large check rollups.
  *
- * Page sizes are deliberately small (40 check contexts, 25 latest reviews):
- * they dominate the response size and GraphQL cost. `body` stays in the hot
+ * Check contexts are paged in batches of 100, reviews capped at 25.
+ * `body` stays in the hot
  * query because two card-level consumers need it without a detail fetch —
  * `detectWorkItemIds` (AB#123 links live in PR descriptions) and the Quick
  * Review card.
@@ -71,27 +108,9 @@ export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
             nodes {
               commit {
                 statusCheckRollup {
+                  id
                   state
-                  contexts(first: 40) {
-                    pageInfo {
-                      hasNextPage
-                    }
-                    nodes {
-                      __typename
-                      ... on CheckRun {
-                        name
-                        status
-                        conclusion
-                        checkSuite {
-                          databaseId
-                        }
-                      }
-                      ... on StatusContext {
-                        context
-                        state
-                      }
-                    }
-                  }
+                  contexts(first: 100) { ${CHECK_CONTEXT_FIELDS} }
                 }
               }
             }
@@ -146,24 +165,31 @@ interface GqlReview {
 
 interface GqlCheckRunContext {
   __typename: 'CheckRun';
+  databaseId?: number | null;
   name: string;
   status: string;
   conclusion: string | null;
-  checkSuite: { databaseId: number | null } | null;
+  startedAt?: string | null;
+  checkSuite: {
+    databaseId: number | null;
+    workflowRun?: { event: string; workflow: { name: string } | null } | null;
+  } | null;
 }
 
 interface GqlStatusContext {
   __typename: 'StatusContext';
   context: string;
   state: string;
+  createdAt?: string;
 }
 
 type GqlContext = GqlCheckRunContext | GqlStatusContext;
 
 interface GqlStatusCheckRollup {
+  id?: string;
   state: string;
   contexts: {
-    pageInfo?: { hasNextPage: boolean };
+    pageInfo?: { hasNextPage: boolean; endCursor?: string | null };
     nodes: GqlContext[];
   };
 }
@@ -235,19 +261,68 @@ export async function pollOpenPrsAggregate(
       totalCount: pullRequests.totalCount,
     });
   }
-  return (pullRequests.nodes ?? []).map((node) => mapNode(node, owner, repo));
+  const results: PullRequestWithChecks[] = [];
+  for (const node of pullRequests.nodes ?? []) {
+    const rollup = node.commits.nodes[0]?.commit.statusCheckRollup;
+    if (rollup) await loadRemainingCheckContexts(client, rollup);
+    results.push(mapNode(node, owner, repo));
+  }
+  return results;
+}
+
+async function loadRemainingCheckContexts(
+  client: GitHubClient,
+  rollup: GqlStatusCheckRollup,
+): Promise<void> {
+  let pageInfo = rollup.contexts.pageInfo;
+  const cursors = new Set<string>();
+  while (pageInfo?.hasNextPage) {
+    const after = pageInfo.endCursor;
+    if (!rollup.id || !after || cursors.has(after)) {
+      throw new Error('Incomplete GitHub check contexts pagination');
+    }
+    cursors.add(after);
+    const data = await client.graphql<{ node: Pick<GqlStatusCheckRollup, 'contexts'> | null }>(
+      POLL_CHECK_CONTEXTS_QUERY,
+      { id: rollup.id, after },
+    );
+    if (!data.node?.contexts.pageInfo) {
+      throw new Error('GitHub check contexts page is missing');
+    }
+    rollup.contexts.nodes.push(...data.node.contexts.nodes);
+    pageInfo = data.node.contexts.pageInfo;
+  }
+}
+
+function latestCheckContexts(contexts: GqlContext[]): GqlContext[] {
+  const latest = new Map<string, GqlContext>();
+  const timestamp = (ctx: GqlContext) =>
+    Date.parse(ctx.__typename === 'CheckRun' ? (ctx.startedAt ?? '') : (ctx.createdAt ?? '')) || 0;
+  for (const ctx of contexts) {
+    const workflow = ctx.__typename === 'CheckRun' ? ctx.checkSuite?.workflowRun : null;
+    const key = JSON.stringify(
+      ctx.__typename === 'CheckRun'
+        ? [ctx.__typename, ctx.name, workflow?.workflow?.name ?? '', workflow?.event ?? '']
+        : [ctx.__typename, ctx.context],
+    );
+    const prior = latest.get(key);
+    const newerRunWithoutStart =
+      ctx.__typename === 'CheckRun' &&
+      prior?.__typename === 'CheckRun' &&
+      (!ctx.startedAt || !prior.startedAt) &&
+      ctx.databaseId != null &&
+      prior.databaseId != null;
+    const newer = newerRunWithoutStart
+      ? ctx.databaseId! > prior.databaseId!
+      : timestamp(ctx) > (prior ? timestamp(prior) : 0);
+    if (!prior || newer) latest.set(key, ctx);
+  }
+  return [...latest.values()];
 }
 
 function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithChecks {
   const rollup = node.commits.nodes[0]?.commit.statusCheckRollup ?? null;
-  if (rollup?.contexts.pageInfo?.hasNextPage) {
-    log.warn('check contexts truncated to 40 — counts may be low', {
-      owner,
-      repo,
-      pr: node.number,
-    });
-  }
-  const checkRuns = (rollup?.contexts.nodes ?? []).map(contextToCheckRunLite);
+  const checkRuns = latestCheckContexts(rollup?.contexts.nodes ?? []).map(contextToCheckRunLite);
 
   // Users and teams are kept apart: a team request is matched against the
   // viewer's team memberships by the scorer, never against the login.

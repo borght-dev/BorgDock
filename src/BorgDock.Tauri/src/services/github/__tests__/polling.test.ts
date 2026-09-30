@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
 import { GitHubClient } from '../client';
-import { POLL_OPEN_PRS_QUERY, pollOpenPrsAggregate } from '../polling';
+import { POLL_CHECK_CONTEXTS_QUERY, POLL_OPEN_PRS_QUERY, pollOpenPrsAggregate } from '../polling';
 
 function makeNode(overrides: Record<string, unknown> = {}) {
   return {
@@ -147,6 +147,156 @@ describe('pollOpenPrsAggregate', () => {
 });
 
 describe('pollOpenPrsAggregate (adapter)', () => {
+  const attempt = (overrides: Record<string, unknown> = {}) => ({
+    __typename: 'CheckRun',
+    databaseId: 1,
+    name: 'Prepare',
+    status: 'COMPLETED',
+    conclusion: 'SUCCESS',
+    startedAt: '2026-09-29T21:53:09Z',
+    checkSuite: {
+      databaseId: 1,
+      workflowRun: { event: 'pull_request', workflow: { name: 'CI' } },
+    },
+    ...overrides,
+  });
+
+  it('fetches all pages before replacing an earlier failed check', async () => {
+    const commits = makeRollup([attempt({ conclusion: 'FAILURE' })], 'FAILURE');
+    const node = makeNode(commits);
+    const rollup = commits.commits.nodes[0]!.commit.statusCheckRollup;
+    Object.assign(rollup, { id: 'rollup1' });
+    rollup.contexts.pageInfo = {
+      hasNextPage: true,
+      endCursor: 'page1',
+    } as typeof rollup.contexts.pageInfo;
+    const client = makeClient([node]);
+    vi.mocked(client.graphql)
+      .mockResolvedValueOnce({
+        repository: { pullRequests: { totalCount: 1, nodes: [node] } },
+      })
+      .mockResolvedValueOnce({
+        node: {
+          contexts: {
+            pageInfo: { hasNextPage: true, endCursor: 'page2' },
+            nodes: [attempt({ name: 'Test API' })],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        node: {
+          contexts: {
+            pageInfo: { hasNextPage: false, endCursor: 'page3' },
+            nodes: [attempt({ databaseId: 2, startedAt: '2026-09-29T22:02:32Z' })],
+          },
+        },
+      });
+
+    const [pr] = await pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    expect(pr!.overallStatus).toBe('green');
+    expect(pr!.failedCheckNames).toEqual([]);
+    expect(pr!.passedCount).toBe(2);
+    expect(pr!.totalCheckCount).toBe(2);
+    expect(client.graphql).toHaveBeenNthCalledWith(2, POLL_CHECK_CONTEXTS_QUERY, {
+      id: 'rollup1',
+      after: 'page1',
+    });
+    expect(client.graphql).toHaveBeenNthCalledWith(3, POLL_CHECK_CONTEXTS_QUERY, {
+      id: 'rollup1',
+      after: 'page2',
+    });
+  });
+
+  it('rejects incomplete pagination rather than publishing partial check results', async () => {
+    const commits = makeRollup([attempt()]);
+    const node = makeNode(commits);
+    commits.commits.nodes[0]!.commit.statusCheckRollup.contexts.pageInfo.hasNextPage = true;
+    await expect(callAdapter([node])).rejects.toThrow('pagination');
+  });
+
+  it('keeps the newest failure regardless of context order', async () => {
+    const success = attempt();
+    const failure = attempt({
+      databaseId: 2,
+      conclusion: 'FAILURE',
+      startedAt: '2026-09-29T22:02:32Z',
+    });
+    for (const contexts of [
+      [success, failure],
+      [failure, success],
+    ]) {
+      const [pr] = await callAdapter([makeNode(makeRollup(contexts))]);
+      expect(pr!.overallStatus).toBe('red');
+      expect(pr!.failedCheckNames).toEqual(['Prepare']);
+      expect(pr!.totalCheckCount).toBe(1);
+    }
+  });
+
+  it('shows a newer queued attempt as pending before it has started', async () => {
+    const [pr] = await callAdapter([
+      makeNode(
+        makeRollup([
+          attempt({ conclusion: 'FAILURE' }),
+          attempt({ databaseId: 2, status: 'QUEUED', conclusion: null, startedAt: null }),
+        ]),
+      ),
+    ]);
+    expect(pr!.overallStatus).toBe('yellow');
+    expect(pr!.failedCheckNames).toEqual([]);
+    expect(pr!.pendingCheckNames).toEqual(['Prepare']);
+  });
+
+  it('keeps same-named checks from different workflows, events and legacy statuses', async () => {
+    const [pr] = await callAdapter([
+      makeNode(
+        makeRollup([
+          attempt({ conclusion: 'FAILURE' }),
+          attempt({
+            checkSuite: { databaseId: 2, workflowRun: { event: 'push', workflow: { name: 'CI' } } },
+          }),
+          attempt({
+            checkSuite: {
+              databaseId: 3,
+              workflowRun: { event: 'pull_request', workflow: { name: 'Deploy' } },
+            },
+          }),
+          { __typename: 'StatusContext', context: 'Prepare', state: 'SUCCESS' },
+        ]),
+      ),
+    ]);
+    expect(pr!.overallStatus).toBe('red');
+    expect(pr!.totalCheckCount).toBe(4);
+    expect(pr!.passedCount).toBe(3);
+  });
+
+  it('shows passing checks after a failed workflow is replaced on the same commit', async () => {
+    const context = (suite: number, conclusion: string, startedAt: string) => ({
+      __typename: 'CheckRun',
+      name: 'Prepare',
+      status: 'COMPLETED',
+      conclusion,
+      startedAt,
+      checkSuite: { databaseId: suite },
+    });
+    const [pr] = await callAdapter([
+      makeNode(
+        makeRollup(
+          [
+            context(99218169525, 'FAILURE', '2026-09-29T21:53:09Z'),
+            context(99218165814, 'CANCELLED', '2026-09-29T21:53:04Z'),
+            context(99220883002, 'SUCCESS', '2026-09-29T22:02:32Z'),
+          ],
+          'FAILURE',
+        ),
+      ),
+    ]);
+
+    expect(pr!.failedCheckNames).toEqual([]);
+    expect(pr!.overallStatus).toBe('green');
+    expect(pr!.passedCount).toBe(1);
+    expect(pr!.totalCheckCount).toBe(1);
+  });
+
   it('maps a basic PR node with no rollup → overallStatus gray', async () => {
     const [pr] = await callAdapter([makeNode()]);
 
