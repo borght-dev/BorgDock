@@ -52,6 +52,7 @@ export function useQuickReviewKeyboard(keymap?: QuickReviewKeymap) {
       const state = useQuickReviewStore.getState().state;
       if (state === 'idle' || state === 'submitting') return;
       const target = event.target;
+      if (target instanceof HTMLElement && target.closest('[data-detail-dialog]')) return;
       if (target instanceof HTMLElement && target.closest(TYPING)) return;
       const key = (event.key.length === 1 ? event.key.toLowerCase() : event.key) as QuickReviewKey;
       if (key === 'Enter' && target instanceof HTMLElement && target.closest(ACTIVATABLE)) return;

@@ -4,6 +4,7 @@ export interface ClaudeReviewComment {
   id: string;
   author: string;
   body: string;
+  sourceBody?: string;
   filePath?: string;
   lineNumber?: number;
   severity: CommentSeverity;

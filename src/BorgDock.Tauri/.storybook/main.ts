@@ -77,6 +77,10 @@ const config: StorybookConfig = {
     config.resolve.alias = [
       ...existingEntries,
       {
+        find: '@/services/github/review-readiness',
+        replacement: resolve(here, 'mocks/services-github-review-readiness.ts'),
+      },
+      {
         find: '@/services/github/reviews',
         replacement: resolve(here, 'mocks/services-github-reviews.ts'),
       },

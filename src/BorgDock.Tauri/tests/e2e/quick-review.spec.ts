@@ -48,17 +48,17 @@ async function openReview(page: Page) {
     useQuickReviewStore.getState().startSinglePr(value);
   }, pr);
   await expect(
-    page.getByRole('button', { name: /^(Review files|Continue reviewing|Review files again)$/ }),
+    page.getByRole('button', { name: /^(Review files|Continue reviewing · \d+ left|Review files again)$/ }),
   ).toBeEnabled();
 }
 /** From the card into the file walk. */
 async function openWalk(page: Page) {
   await page
-    .getByRole('button', { name: /^(Review files|Continue reviewing|Review files again)$/ })
+    .getByRole('button', { name: /^(Review files|Continue reviewing · \d+ left|Review files again)$/ })
     .click();
   await expect(page.locator('.qr-next')).toBeVisible();
 }
-async function setup(page: Page, state = detail.state) {
+async function setup(page: Page, state = detail.state, open = true) {
   await bootApp(page);
   const reviews: unknown[] = [];
   await page.route('https://api.github.com/repos/test-org/borgdock/pulls/42**', (route) => {
@@ -78,9 +78,9 @@ async function setup(page: Page, state = detail.state) {
           patch: i === 0 ? longPatch : '@@ -0,0 +1 @@\n+const value = 1;',
         })),
       });
-    return route.fulfill({ json: url.endsWith('/reviews') ? [] : { ...detail, state } });
+    return route.fulfill({ json: /\/(reviews|comments)(?:\?|$)/.test(url) ? [] : { ...detail, state } });
   });
-  await openReview(page);
+  if (open) await openReview(page);
   return reviews;
 }
 
@@ -153,7 +153,7 @@ test('persists drafts through reload and submits the whole review against the vi
   await page.getByRole('button', { name: 'Save draft' }).click();
   await page.reload();
   await openReview(page);
-  await expect(page.getByRole('button', { name: 'Continue reviewing' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue reviewing · 5 left' })).toBeVisible();
   await openWalk(page);
   await expect(page.getByText('Handle failure.', { exact: true })).toBeVisible();
   await page.locator('.qr-finish').click();
@@ -176,14 +176,14 @@ test('persists drafts through reload and submits the whole review against the vi
 test('skims screenshot comments by author and returns to the same diff position', async ({
   page,
 }) => {
-  await setup(page);
+  await setup(page, detail.state, false);
   const proof = 'https://github.com/user-attachments/assets/review-proof';
   const resolvedProof =
     'https://private-user-images.githubusercontent.com/123/review-proof?jwt=fixture';
   await page.route(resolvedProof, (route) =>
     route.fulfill({
       contentType: 'image/png',
-      body: readFileSync('public/whats-new/1.0.11/close-pr.png'),
+      body: readFileSync('../../docs/whats-new/1.0.11/close-pr.png'),
     }),
   );
   await page.route('https://api.github.com/repos/test-org/borgdock/issues/42/comments?*', (route) =>
@@ -224,6 +224,7 @@ test('skims screenshot comments by author and returns to the same diff position'
     meta.content = policy;
     document.head.append(meta);
   }, imagePolicy);
+  await openReview(page);
   await openWalk(page);
   await page.locator('[data-quick-review-content]').evaluate((el) => {
     el.scrollTop = 600;
@@ -231,7 +232,8 @@ test('skims screenshot comments by author and returns to the same diff position'
   const scroll = await page.locator('[data-quick-review-content]').evaluate((el) => el.scrollTop);
   const nextPosition = await page.locator('.qr-next').boundingBox();
   await page.getByRole('button', { name: 'Comments', exact: true }).click();
-  const screenshot = page.getByAltText('Passing screenshot');
+  const comments = page.locator('[data-quick-review-comments]');
+  const screenshot = comments.getByAltText('Passing screenshot');
   await expect(screenshot).toBeVisible();
   await expect(screenshot).toHaveAttribute('src', resolvedProof);
   await expect
@@ -242,11 +244,11 @@ test('skims screenshot comments by author and returns to the same diff position'
   expect(await page.locator('.qr-next').boundingBox()).toEqual(nextPosition);
   await page.screenshot({ path: test.info().outputPath('comments.png') });
   await page.getByRole('button', { name: 'PR author · 1' }).click();
-  await expect(page.getByText('Browser evidence')).toBeVisible();
-  await expect(page.getByText('Other commenter evidence')).toHaveCount(0);
+  await expect(comments.getByText('Browser evidence')).toBeVisible();
+  await expect(comments.getByText('Other commenter evidence')).toHaveCount(0);
   await page.getByRole('button', { name: 'Other commenters · 1' }).click();
-  await expect(page.getByText('Other commenter evidence')).toBeVisible();
-  await expect(page.getByText('Browser evidence')).toHaveCount(0);
+  await expect(comments.getByText('Other commenter evidence')).toBeVisible();
+  await expect(comments.getByText('Browser evidence')).toHaveCount(0);
   await page.getByRole('button', { name: 'Back to diff' }).click();
   expect(await page.locator('[data-quick-review-content]').evaluate((el) => el.scrollTop)).toBe(
     scroll,

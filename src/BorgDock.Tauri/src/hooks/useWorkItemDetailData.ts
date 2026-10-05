@@ -216,6 +216,7 @@ async function processFieldImages(
 // ---- The hook ----
 
 export interface UseWorkItemDetailDataOptions {
+  initialItem?: WorkItem;
   /**
    * Runs before each load and returns the Azure DevOps settings to use. The
    * pop-out window has its own stores, so it loads the settings, fills its
@@ -287,7 +288,8 @@ export function useWorkItemDetailData(
   const fieldDefinitions = useWorkItemsStore((s) => s.fieldDefinitions);
   const workItemTypeLayouts = useWorkItemsStore((s) => s.workItemTypeLayouts);
 
-  const [workItem, setWorkItem] = useState<WorkItem | null>(storeItem ?? null);
+  const seedItem = storeItem ?? (options.initialItem?.id === id ? options.initialItem : undefined);
+  const [workItem, setWorkItem] = useState<WorkItem | null>(seedItem ?? null);
   const [ado, setAdo] = useState<AzureDevOpsSettings | null>(() =>
     options.prepare ? null : useSettingsStore.getState().settings.azureDevOps,
   );
@@ -295,7 +297,7 @@ export function useWorkItemDetailData(
   const [processedRichText, setProcessedRichText] = useState<DynamicFieldItem[] | null>(null);
   const [comments, setComments] = useState<WorkItemComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
-  const [isLoading, setIsLoading] = useState(storeItem === undefined);
+  const [isLoading, setIsLoading] = useState(seedItem === undefined);
   const [statusText, setStatusText] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
 

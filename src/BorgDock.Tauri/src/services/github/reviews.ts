@@ -28,6 +28,7 @@ interface GitHubIssueCommentDto {
 }
 
 interface GitHubReviewDto {
+  sourceBody?: string;
   id: number;
   state: string;
   body: string | null;
@@ -75,7 +76,11 @@ export async function getReviews(
     options,
   );
   return options.renderedBody
-    ? reviews.map((review) => ({ ...review, body: review.body_html ?? review.body }))
+    ? reviews.map((review) => ({
+        ...review,
+        sourceBody: review.body ?? '',
+        body: review.body_html ?? review.body,
+      }))
     : reviews;
 }
 
@@ -197,6 +202,7 @@ export async function getAllComments(
         id: String(dto.id),
         author: dto.user?.login ?? '',
         body: (options.renderedBody ? dto.body_html : undefined) ?? dto.body ?? '',
+        ...(options.renderedBody ? { sourceBody: dto.body ?? '' } : {}),
         filePath: dto.path ?? undefined,
         lineNumber: dto.line ?? dto.original_line ?? undefined,
         severity: detectSeverity(dto.body ?? ''),
@@ -222,6 +228,7 @@ export async function getAllComments(
         id: String(dto.id),
         author: dto.user?.login ?? '',
         body: (options.renderedBody ? dto.body_html : undefined) ?? dto.body ?? '',
+        ...(options.renderedBody ? { sourceBody: dto.body ?? '' } : {}),
         severity: detectSeverity(dto.body ?? ''),
         createdAt: dto.created_at,
         htmlUrl: dto.html_url ?? '',

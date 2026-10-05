@@ -14,7 +14,10 @@ vi.mock('@/services/github/reviews', () => ({
   getAllComments: vi.fn().mockResolvedValue([]),
   getReviews: vi.fn().mockResolvedValue([]),
 }));
-const mockClient = vi.hoisted(() => ({ account: 'reviewer' }));
+const mockClient = vi.hoisted(() => ({
+  account: 'reviewer',
+  get: vi.fn().mockRejectedValue(new Error('Unavailable')),
+}));
 vi.mock('@/services/github/singleton', () => ({ getClientForRepo: () => mockClient }));
 vi.mock('@/stores/pr-store', () => ({
   usePrStore: Object.assign(
@@ -95,7 +98,7 @@ async function start() {
 }
 function filesButton() {
   return screen.getByRole('button', {
-    name: /^(Review files|Continue reviewing|Review files again)$/,
+    name: /^(Review files|Continue reviewing · \d+ left|Review files again)$/,
   });
 }
 function openFiles() {
@@ -147,7 +150,7 @@ describe('Quick review card', () => {
     const card = screen.getByRole('article', { name: `Pull request #${pr.pullRequest.number}` });
     expect(within(card).getByText('All details are visible.')).toBeInTheDocument();
     expect(within(card).getByText('3 of 3 to review, 1 generated')).toBeInTheDocument();
-    expect(within(card).getByText('generated').closest('li')).toHaveAttribute(
+    expect(within(card).getByText('Generated').closest('details')).toHaveAttribute(
       'data-generated',
       'true',
     );

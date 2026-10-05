@@ -68,6 +68,9 @@ jobs:
           bun-version: '1.3.10'
       - run: bun install --frozen-lockfile
       # Tokens check, astro check, astro build and the internal link check.
+      - run: bun run site:release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: bun run site:build
       # The launch video project (site/video) is rendered locally, but its
       # TypeScript is checked here so it cannot rot between releases.

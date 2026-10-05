@@ -3,6 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { ImagePreview } from './ImageViewer';
 import { MarkdownImage } from './MarkdownImage';
 
 /**
@@ -60,6 +61,7 @@ interface MarkdownProps {
   /** Allow raw HTML embedded in the markdown (rehype-raw). Defaults to true. */
   allowRawHtml?: boolean;
   previewImages?: boolean;
+  onImagePreview?: (src: string) => void;
 }
 
 /**
@@ -68,12 +70,34 @@ interface MarkdownProps {
  * of navigating the Tauri webview. Render inside a `.markdown-body` wrapper for
  * styling, exactly like the raw `<ReactMarkdown>` it replaces.
  */
-export function Markdown({ children, allowRawHtml = true, previewImages = false }: MarkdownProps) {
+export function Markdown({
+  children,
+  allowRawHtml = true,
+  previewImages = false,
+  onImagePreview,
+}: MarkdownProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={allowRawHtml ? [rehypeRaw, rehypeSanitize] : [rehypeSanitize]}
-      components={previewImages ? PREVIEW_COMPONENTS : MARKDOWN_COMPONENTS}
+      components={
+        onImagePreview
+          ? {
+              ...PREVIEW_COMPONENTS,
+              img: ({ src, alt }) =>
+                typeof src === 'string' && /^https?:\/\//i.test(src) ? (
+                  <ImagePreview
+                    image={{ src, alt: alt || 'Screenshot' }}
+                    onOpen={() => onImagePreview(src)}
+                  />
+                ) : (
+                  <span>{alt || 'Image unavailable'}</span>
+                ),
+            }
+          : previewImages
+            ? PREVIEW_COMPONENTS
+            : MARKDOWN_COMPONENTS
+      }
     >
       {children}
     </ReactMarkdown>

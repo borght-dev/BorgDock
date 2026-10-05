@@ -38,6 +38,7 @@ describe('getReviews', () => {
     });
     expect(result).toHaveLength(101);
     expect(result[100]?.body).toBe('<p>Rendered proof</p>');
+    expect(result[100]?.sourceBody).toBe('raw');
     expect(client.get).toHaveBeenCalledWith(
       'repos/owner/repo/pulls/1/reviews?per_page=100&page=2',
       { renderedBody: 'review' },
@@ -353,6 +354,7 @@ describe('getAllComments', () => {
       renderedBody: true,
     });
     expect(result.map((c) => c.body)).toEqual(['<p>Rendered proof</p>', '<p>Rendered proof</p>']);
+    expect(result.map((c) => c.sourceBody)).toEqual(['raw', 'raw']);
     expect(client.get).toHaveBeenCalledWith(
       'repos/owner/repo/issues/1/comments?per_page=100&page=1',
       { renderedBody: 'issue' },

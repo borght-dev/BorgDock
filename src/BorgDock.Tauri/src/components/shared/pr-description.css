@@ -1,0 +1,14 @@
+.bd-pr-description {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.bd-pr-description__more {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-accent);
+  cursor: pointer;
+}

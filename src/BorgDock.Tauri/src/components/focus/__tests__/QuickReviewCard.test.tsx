@@ -60,7 +60,7 @@ describe('QuickReviewCard', () => {
       commitCount: 1,
     });
     expect(screen.getByText('feature/login')).toBeInTheDocument();
-    expect(screen.getByText('into develop')).toBeInTheDocument();
+    expect(screen.getByText('Targets develop')).toBeInTheDocument();
     expect(screen.getByText('8 files')).toBeInTheDocument();
     expect(screen.getByText('1 commit')).toBeInTheDocument();
     expect(screen.getByText('+100')).toBeInTheDocument();
@@ -69,12 +69,17 @@ describe('QuickReviewCard', () => {
 
   it('counts files per folder, biggest first, with generated files pooled last', () => {
     card();
-    const folders = within(screen.getByRole('region', { name: 'Files by folder' }))
-      .getAllByRole('listitem')
-      .map((li) => li.textContent);
-    expect(folders).toEqual(['src/services2', '/1', 'src/components/pr1', 'generated2']);
-    const generated = screen.getByText('generated').closest('li');
-    expect(generated).toHaveAttribute('data-generated', 'true');
+    const region = screen.getByRole('region', { name: 'Files by folder' });
+    expect([...region.querySelectorAll('summary')].map((item) => item.textContent)).toEqual([
+      'src/services2',
+      'Repository root1',
+      'components/pr1',
+      'Generated2',
+    ]);
+    const generated = region.querySelector('[data-generated]');
+    expect(generated).not.toHaveAttribute('open');
+    fireEvent.click(region.querySelector('summary')!);
+    expect(region.querySelector('button[title="src/services/a.ts"]')).toBeInTheDocument();
   });
 
   it('says how many files are left to review, excluding generated ones', () => {
@@ -105,12 +110,16 @@ describe('QuickReviewCard', () => {
     };
     render(<QuickReviewCard pr={pr} files={[]} reviewed={[]} actions={null} />);
     expect(screen.getByText('1 failing')).toBeInTheDocument();
-    expect(screen.getByText('CI is failing, review can wait')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Checks' })).getByText(
+        'CI is failing, review can wait',
+      ),
+    ).toBeInTheDocument();
   });
 
   it.each([
     [{ failed: 0, pending: 1, passed: 3, total: 4 }, 'CI still running'],
-    [{ failed: 0, pending: 0, passed: 4, total: 4 }, 'nothing blocking on CI'],
+    [{ failed: 0, pending: 0, passed: 4, total: 4 }, 'reported checks passing'],
     [{ failed: 0, pending: 0, passed: 0, total: 0 }, 'no checks on this PR'],
   ])('CI note for %o is "%s"', (c, note) => {
     const pr = {
@@ -123,10 +132,12 @@ describe('QuickReviewCard', () => {
     expect(ciNote(pr)).toBe(note);
   });
 
-  it('clamps a long description behind Show more', () => {
-    card({ body: `## Changes\n\n${'A long line of description. '.repeat(20)}` });
+  it('expands the full description without clipped content', () => {
+    card({
+      body: `## Changes\n\n${'A long line of description. '.repeat(20)}\n\nMore details for reviewers.\n\nAdditional validation.`,
+    });
     expect(screen.getByTestId('markdown').textContent).toContain('## Changes');
-    const more = screen.getByRole('button', { name: 'Show more' });
+    const more = screen.getByRole('button', { name: 'Read full description' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(more);
     expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute(

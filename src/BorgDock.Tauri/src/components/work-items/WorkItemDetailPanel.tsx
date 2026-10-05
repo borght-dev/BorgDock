@@ -90,6 +90,7 @@ interface Props {
    * footer drops Close and Open in ADO (Back and the action bar have them).
    */
   embedded?: boolean;
+  readOnly?: boolean;
 }
 
 export function WorkItemDetailPanel(props: Props) {
@@ -107,6 +108,7 @@ export function WorkItemDetailPanel(props: Props) {
     comments,
     isLoadingComments,
     onSave,
+    readOnly = false,
     onDelete,
     onClose,
     onOpenInBrowser,
@@ -138,6 +140,7 @@ export function WorkItemDetailPanel(props: Props) {
       iteration: item.iteration ?? '',
     },
     onPatch: async (_patch: AutoSavePatch, target: AutoSaveValues) => {
+      if (readOnly) return;
       await onSave({
         title: target.title,
         state: target.state,
@@ -326,7 +329,7 @@ export function WorkItemDetailPanel(props: Props) {
       }
     >
       <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-        {savedLabel}
+        {readOnly ? 'Read-only preview' : savedLabel}
         {statusText ? ` · ${statusText}` : ''}
       </span>
       {auto.error && (
@@ -462,6 +465,7 @@ export function WorkItemDetailPanel(props: Props) {
         }}
       >
         <TitleBlock
+          readOnly={readOnly}
           id={item.id}
           title={values.title}
           workItemType={item.workItemType}
