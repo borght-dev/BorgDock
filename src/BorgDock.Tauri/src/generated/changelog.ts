@@ -4,6 +4,25 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "3.1.0",
+    "date": "2026-10-05",
+    "summary": "Proof where you review.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Proof where you review",
+        "description": "Developer PROOF comments now appear in Quick Review and the pull request overview. Hover to enlarge a screenshot or click to zoom and pan. Commit labels help you spot proof from an older revision, and the full comment is one click away.",
+        "hero": {
+          "src": "/whats-new/3.1.0/review-overview.png",
+          "alt": "Quick Review with developer proof, linked work items and review progress"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "3.0.4",
     "date": "2026-09-30",
     "summary": "",

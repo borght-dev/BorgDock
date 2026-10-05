@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.0 — 2026-10-05
+
+### New Features
+
+- **Proof where you review** — Developer PROOF comments now appear in Quick Review and the pull request overview. Hover to enlarge a screenshot or click to zoom and pan. Commit labels help you spot proof from an older revision, and the full comment is one click away. ![Quick Review with developer proof, linked work items and review progress](whats-new/3.1.0/review-overview.png)
+- Hover over a linked Azure DevOps item for a summary, then click to read its description, acceptance criteria and attachments in an in-app popup.
+
+### Improvements
+
+- Quick Review separates the description and evidence from checks and file progress. Titles wrap, descriptions expand, folders show how many files remain, and review actions stay visible on narrow screens.
+- Check summaries now distinguish required checks that passed, failed or are missing. Stacked pull requests show their target branch and parent dependency before you approve.
+
 ## 3.0.4 — 2026-09-30
 
 ### Bug Fixes

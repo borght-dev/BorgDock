@@ -1,0 +1,8 @@
+[
+  {
+    "slug": "review-overview",
+    "storyId": "focus-quick-review--overview-with-proof",
+    "viewport": { "width": 1360, "height": 900 },
+    "delay": 2000
+  }
+]
