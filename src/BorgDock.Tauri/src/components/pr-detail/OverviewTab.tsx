@@ -1,9 +1,11 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FeatureBadge, InlineHint } from '@/components/onboarding';
 import { T3SessionStrip } from '@/components/pr/T3SessionStrip';
 import { Markdown } from '@/components/shared/Markdown';
+import { PrDescription } from '@/components/shared/PrDescription';
 import { Button, Card } from '@/components/shared/primitives';
+import { usePrConversation } from '@/hooks/usePrConversation';
 import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import { loadTabData, saveTabData } from '@/services/cache';
@@ -15,66 +17,14 @@ import { parseError } from '@/utils/parse-error';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergedCard } from './MergedCard';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
+import { ProofGallery } from './ProofGallery';
 
 interface OverviewTabProps {
   pr: PullRequestWithChecks;
 }
 
-/**
- * The PR description, clamped to six lines with a fade. "Show more" opens it
- * into a box of at most 320 px that scrolls on its own (the iteration-2
- * mockup's `.md.clamp` and `.more`); the button only appears when the text
- * is longer than the clamp.
- */
 export function ClampedDescription({ body }: { body: string }) {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [overflows, setOverflows] = useState(false);
-  const id = useId();
-
-  // `body` re-measures when the text changes: the clamped box keeps its
-  // height, so the ResizeObserver alone would not notice.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
-  useLayoutEffect(() => {
-    const el = boxRef.current;
-    if (!el || open) return;
-    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1);
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [open, body]);
-
-  const toggle = () => {
-    if (open && boxRef.current) boxRef.current.scrollTop = 0;
-    setOpen(!open);
-  };
-
-  return (
-    <div className="bd-md-clamp-wrap">
-      <div
-        ref={boxRef}
-        id={id}
-        className="bd-md-clamp markdown-body"
-        data-open={open ? 'true' : undefined}
-        data-overflows={overflows ? 'true' : undefined}
-      >
-        <Markdown>{body}</Markdown>
-      </div>
-      {(overflows || open) && (
-        <button
-          type="button"
-          className="bd-md-clamp__more"
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={toggle}
-        >
-          {open ? 'Show less' : 'Show more'}
-        </button>
-      )}
-    </div>
-  );
+  return <PrDescription body={body} />;
 }
 
 const DEFAULT_SUMMARY_SETTINGS = {
@@ -95,6 +45,7 @@ const DEFAULT_AGENT_SETTINGS = {
 export function OverviewTab({ pr }: OverviewTabProps) {
   useT3Sessions();
   const p = pr.pullRequest;
+  const conversation = usePrConversation(p, true);
   const isOpen = p.state === 'open';
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const summarySettings = useSettingsStore((s) => s.settings.summaries ?? DEFAULT_SUMMARY_SETTINGS);
@@ -183,6 +134,7 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           )}
         </section>
       )}
+      <ProofGallery conversation={conversation} headSha={p.headSha} />
       <T3SessionStrip pr={p} />
 
       {/* Merge Readiness Checklist */}

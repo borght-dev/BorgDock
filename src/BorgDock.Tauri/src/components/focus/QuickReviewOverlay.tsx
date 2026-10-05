@@ -6,8 +6,11 @@ import { X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
+import { ProofGallery } from '@/components/pr-detail/ProofGallery';
+import { DetailDialog } from '@/components/shared/DetailDialog';
 import { Markdown } from '@/components/shared/Markdown';
 import { Button, IconButton } from '@/components/shared/primitives';
+import { usePrConversation } from '@/hooks/usePrConversation';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
 import { type QuickReviewKeymap, useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import {
@@ -365,6 +368,8 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     commentsByLine.set(key, list);
   }
   const detail = snapshot?.pr ?? pr.pullRequest;
+  const conversation = usePrConversation(detail, true);
+  const [commentsPopup, setCommentsPopup] = useState(false);
   const busy = state === 'submitting';
   const ready = !!snapshot && !loading && !loadError && !stale;
   const unreadyComments = doc.comments.some((c) => !c.saved || c.outdated || !c.body.trim());
@@ -575,7 +580,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   const filesLabel = !doc.walked
     ? 'Review files'
     : progress.left > 0
-      ? 'Continue reviewing'
+      ? `Continue reviewing · ${progress.left} left`
       : 'Review files again';
   const submitLabel =
     doc.event === 'APPROVE'
@@ -607,15 +612,6 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     ) : (
       <>
         <Button
-          variant="secondary"
-          size="lg"
-          className="qr-later"
-          aria-keyshortcuts="ArrowLeft"
-          onClick={later}
-        >
-          Review later
-        </Button>
-        <Button
           variant="primary"
           size="lg"
           className="qr-files-btn"
@@ -634,6 +630,15 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
         >
           Write review{doc.comments.length ? ` · ${doc.comments.length}` : ''}
         </Button>
+        <Button
+          variant="ghost"
+          size="lg"
+          className="qr-later"
+          aria-keyshortcuts="ArrowLeft"
+          onClick={later}
+        >
+          Review later
+        </Button>
         <ApproveButton
           issue={approveIssue}
           busy={busy}
@@ -648,6 +653,11 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
 
   return (
     <fieldset className="qr-workspace" disabled={busy} aria-busy={busy} data-mode={mode}>
+      {commentsPopup && (
+        <DetailDialog title="PR comments" onClose={() => setCommentsPopup(false)}>
+          <QuickReviewDiscussion pr={detail} enabled conversation={conversation} />
+        </DetailDialog>
+      )}
       <div className="qr-body">
         <div
           ref={stageRef}
@@ -663,6 +673,18 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
             <QuickReviewCard
               pr={pr}
               detail={detail}
+              proof={
+                <ProofGallery
+                  conversation={conversation}
+                  headSha={detail.headSha}
+                  onOpenComments={() => setCommentsPopup(true)}
+                />
+              }
+              onFileSelect={(path) => {
+                go(path);
+                setMode('walk');
+                update((doc) => ({ ...doc, walked: true }));
+              }}
               files={snapshot ? paths : null}
               reviewed={doc.reviewed}
               alert={alert}
@@ -765,7 +787,13 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                 </Button>
               </div>
               <div className="qr-main" hidden={!showingComments} data-quick-review-comments>
-                {commentsOpened && <QuickReviewDiscussion pr={detail} enabled={commentsOpened} />}
+                {commentsOpened && (
+                  <QuickReviewDiscussion
+                    pr={detail}
+                    enabled={commentsOpened}
+                    conversation={conversation}
+                  />
+                )}
               </div>
               <div
                 className="qr-main"

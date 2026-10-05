@@ -1,7 +1,9 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { useLinkStore } from '@/stores/link-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestFileChange } from '@/types';
 import { getControl } from '../../../.storybook/mocks/control';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
@@ -134,6 +136,98 @@ const meta: Meta<typeof QuickReviewOverlay> = {
 export default meta;
 type Story = StoryObj<typeof QuickReviewOverlay>;
 export const Default: Story = {};
+export const OverviewWithProof: Story = {
+  decorators: [
+    (Story) => {
+      const control = getControl();
+      const item = {
+        id: 59671,
+        rev: 1,
+        url: '',
+        relations: [],
+        htmlUrl: 'https://dev.azure.com/example/FSP/_workitems/edit/59671',
+        fields: {
+          'System.Title': 'Refuse a questionnaire add the replacement would not carry',
+          'System.WorkItemType': 'Bug',
+          'System.State': 'Active',
+          'System.AssignedTo': 'Vera',
+          'Microsoft.VSTS.Common.Priority': 2,
+          'System.Description':
+            '<p>Adding a questionnaire after replacing an order can leave the questionnaire on the cancelled activity.</p><p>The request must fail before committing when the live activity cannot carry the questionnaire.</p>',
+          'Microsoft.VSTS.Common.AcceptanceCriteria':
+            '<ul><li>The add rolls back when replacement cannot carry the questionnaire.</li><li>The user sees a translated warning.</li><li>Existing successful adds still work.</li></ul>',
+        },
+      };
+      useLinkStore.getState().setWorkItem(item.id, item);
+      control.workItemScenario.workItem = item;
+      control.workItemScenario.states = ['New', 'Active', 'Resolved'];
+      control.workItemScenario.comments = [];
+      useSettingsStore.getState().updateSettings({
+        azureDevOps: {
+          ...useSettingsStore.getState().settings.azureDevOps,
+          organization: 'example',
+          project: 'FSP',
+          authMethod: 'azCli',
+        },
+      });
+      control.githubResponses.getPRReviewDetails = {
+        pr: overviewPr.pullRequest,
+        baseSha: 'review-base',
+      };
+      control.githubResponses.getPRFiles = [
+        ...files,
+        { filename: 'bun.lock', status: 'modified', additions: 20, deletions: 5 },
+      ];
+      control.githubResponses.getReviewReadiness = {
+        complete: true,
+        warnings: [],
+        checks: [
+          { name: 'API tests', state: 'success' },
+          { name: 'Portal tests', state: 'success' },
+          { name: 'Backend build / test', state: 'missing' },
+        ],
+      };
+      control.githubResponses.getAllComments = [
+        {
+          id: 'vera-proof',
+          author: 'vera_gomocha',
+          severity: 'unknown',
+          createdAt: new Date(Date.now() - 600_000).toISOString(),
+          sourceBody:
+            '## PROOF\n\nVera CLI verification. Head SHA: a1b2c3d4e5f67890123456789012345678901234',
+          body: `## PROOF\n\nVera CLI verification: the add is refused before commit; the translated warning is shown. API regression tests passed.\n\n![Quick review screenshot](${window.location.origin}/whats-new/3.0.0/quick-review.png)\n\n![Browser verification](${window.location.origin}/whats-new/1.0.11/close-pr.png)`,
+          htmlUrl: `${overviewPr.pullRequest.htmlUrl}#issuecomment-1`,
+        },
+      ];
+      return <Story />;
+    },
+  ],
+  beforeEach: () => {
+    useQuickReviewStore.setState({ documents: {} });
+    useQuickReviewStore.getState().startSinglePr(overviewPr);
+  },
+};
+const overviewPr = {
+  ...pr,
+  passedCount: 48,
+  totalCheckCount: 48,
+  pullRequest: {
+    ...pr.pullRequest,
+    number: 4532,
+    title: 'fix(orders): refuse a questionnaire add the replacement would not carry (AB#59671)',
+    authorLogin: 'vera_gomocha',
+    headRef: 'fix/59671-refuse-questionnaire-add',
+    baseRef: 'fix/59667-add-questionnaire-follows-live-activity',
+    headSha: 'a1b2c3d4e5f67890123456789012345678901234',
+    changedFiles: files.length + 1,
+    additions: 2517,
+    deletions: 16,
+    commitCount: 2,
+    updatedAt: new Date(Date.now() - 60_000).toISOString(),
+    mergeable: false,
+    body: '## Summary\n\nAdding a questionnaire after replacing an order could leave it on the cancelled activity. The add is now refused before it commits, with a translated reason.\n\n**Stacked on #4525.** The backend build/test job does not run on this base branch. Retarget after the parent PR merges.\n\n## Changes\n\nThe handler checks the result before committing the transaction. Regression tests cover replacement with a missing or disabled setting.',
+  },
+};
 export const LargeDiff: Story = {
   decorators: [
     (Story) => {

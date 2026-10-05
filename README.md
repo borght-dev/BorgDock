@@ -41,7 +41,7 @@ Azure DevOps queries live in the Work items section, grouped by state. SQL, the 
 - **Pull request monitoring** — Polls GitHub for open pull requests across your repositories (one `gh` account per repo if you need to), with CI checks, reviews and merge state.
 - **Main window with a rail** — Focus, Pull requests, Work items and Worktrees, keys `1`–`4`. Pull requests and work items open full screen with Back; Ctrl+click opens a PR in its own window.
 - **Focus** — A ranked list or board of what needs you, with the reason for each item, snooze with Undo, and one action per card: Review, Fix with Claude, Rerun or Merge.
-- **Quick Review** — File-by-file review with folder grouping, a remaining count, skip-generated, inline comment drafts and approve gating.
+- **Quick Review** — A two-column overview with required-check status, expandable file groups, progress and developer proof. Hover linked ADO items for context; click to read the existing work-item panel without leaving the review. Proof comments show their source and commit association, with hover previews and an image viewer for zoom, pan and navigation. File-by-file review retains skip-generated, inline drafts and approval gating.
 - **Rerun failed checks** — Reruns the failed jobs of each GitHub Actions workflow and re-requests other apps' check suites.
 - **Coding agents** — Fix, Monitor and Resolve conflicts with Claude Code or Codex in a worktree for the PR branch; open a PR-linked thread in T3 Code.
 - **Tray and flyout** — Tray icon with the open-PR count on the worst state colour, and a flyout (`Ctrl+Win+Shift+F`) with compact rows, Review / Merge and a context menu.

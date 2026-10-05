@@ -1,96 +1,24 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CommentItem } from '@/components/pr-detail/CommentItem';
-import {
-  buildDiscussionItems,
-  type DiscussionItem,
-} from '@/components/pr-detail/discussion/buildDiscussionItems';
 import { ReviewItem } from '@/components/pr-detail/ReviewItem';
 import { Button } from '@/components/shared/primitives';
-import { getAllComments, getReviews } from '@/services/github/reviews';
-import { getClientForRepo } from '@/services/github/singleton';
+import { type PrConversation, usePrConversation } from '@/hooks/usePrConversation';
 import type { PullRequest } from '@/types';
-import { parseError } from '@/utils/parse-error';
 
-type Entry = Exclude<DiscussionItem, { kind: 'code' }> & {
-  htmlUrl?: string;
-  filePath?: string;
-  lineNumber?: number;
-};
 type AuthorFilter = 'all' | 'author' | 'others';
 
-function useConversation(pr: PullRequest, enabled: boolean) {
-  const client = getClientForRepo(pr.repoOwner, pr.repoName);
-  const [items, setItems] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [revision, setRevision] = useState(0);
-  const { repoOwner, repoName, number, htmlUrl } = pr;
-  useEffect(() => {
-    if (!enabled) return;
-    void revision;
-    let cancelled = false;
-    setLoading(true);
-    setErrors([]);
-    const warnings: string[] = [];
-    async function load() {
-      try {
-        if (!client) throw new Error('No GitHub account is connected for this repository.');
-        const [commentsResult, reviewsResult] = await Promise.allSettled([
-          getAllComments(client, repoOwner, repoName, number, {
-            paginate: true,
-            renderedBody: true,
-            onError: (source, error) => warnings.push(`${source}: ${parseError(error).message}`),
-          }),
-          getReviews(client, repoOwner, repoName, number, { paginate: true, renderedBody: true }),
-        ]);
-        if (cancelled) return;
-        if (commentsResult.status === 'rejected')
-          warnings.push(`Comments: ${parseError(commentsResult.reason).message}`);
-        if (reviewsResult.status === 'rejected')
-          warnings.push(`Reviews: ${parseError(reviewsResult.reason).message}`);
-        const comments = (commentsResult.status === 'fulfilled' ? commentsResult.value : []).map(
-          (c) => ({
-            ...c,
-            id: `${c.filePath ? 'inline' : 'issue'}-${c.id}`,
-          }),
-        );
-        const reviews = reviewsResult.status === 'fulfilled' ? reviewsResult.value : [];
-        const metadata = new Map(comments.map((c) => [`comment-${c.id}`, c]));
-        const entries = buildDiscussionItems(reviews, comments, []).flatMap((item): Entry[] => {
-          if (item.kind === 'code') return [];
-          const comment = metadata.get(item.id);
-          return [
-            {
-              ...item,
-              htmlUrl:
-                comment?.htmlUrl ||
-                (item.kind === 'review'
-                  ? `${htmlUrl}#pullrequestreview-${item.id.slice(7)}`
-                  : htmlUrl),
-              filePath: comment?.filePath,
-              lineNumber: comment?.lineNumber,
-            },
-          ];
-        });
-        setItems(entries.reverse());
-        setErrors(warnings);
-      } catch (error) {
-        if (!cancelled) setErrors([parseError(error).message]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, client, repoOwner, repoName, number, htmlUrl, revision]);
-  return { items, errors, loading, reload: () => setRevision((n) => n + 1) };
-}
-
-export function QuickReviewDiscussion({ pr, enabled }: { pr: PullRequest; enabled: boolean }) {
-  const { items, errors, loading, reload } = useConversation(pr, enabled);
+export function QuickReviewDiscussion({
+  pr,
+  enabled,
+  conversation,
+}: {
+  pr: PullRequest;
+  enabled: boolean;
+  conversation?: PrConversation;
+}) {
+  const own = usePrConversation(pr, enabled && !conversation);
+  const { items, errors, loading, reload } = conversation ?? own;
   const [filter, setFilter] = useState<AuthorFilter>('all');
   const [openError, setOpenError] = useState('');
   const author = pr.authorLogin.toLowerCase();

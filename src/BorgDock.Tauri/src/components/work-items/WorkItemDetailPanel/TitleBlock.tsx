@@ -1,13 +1,13 @@
 // src/components/work-items/WorkItemDetailPanel/TitleBlock.tsx
 import { useEffect, useState } from 'react';
 import {
+  avatarToneFor,
+  getInitials,
   MiniAvatar,
   PrioBars,
   StatePill,
   TypeGlyph,
   WI_PRIO,
-  avatarToneFor,
-  getInitials,
 } from '@/components/work-items/shared/wi-visuals';
 import { ChipPicker } from './ChipPicker';
 
@@ -21,6 +21,7 @@ export interface TitleBlockChange {
 }
 
 interface Props {
+  readOnly?: boolean;
   id?: number;
   title: string;
   workItemType: string;
@@ -61,6 +62,25 @@ export function TitleBlock(props: Props) {
   const initials = getInitials(assignedTo || '??');
   const prio = priority != null ? WI_PRIO[priority] : null;
 
+  if (props.readOnly)
+    return (
+      <div className="bd-work-item-heading">
+        <div className="flex flex-wrap items-center gap-2">
+          <TypeGlyph type={workItemType} size={13} />
+          <span>{workItemType}</span>
+          <StatePill state={state} />
+          {priority != null && <span>P{priority}</span>}
+        </div>
+        <h3>{title}</h3>
+        {assignedTo && (
+          <p>
+            {assignedTo}
+            {iteration ? ` · ${iteration}` : ''}
+          </p>
+        )}
+      </div>
+    );
+
   return (
     <div
       style={{
@@ -77,7 +97,12 @@ export function TitleBlock(props: Props) {
         {id != null && (
           <>
             <span
-              style={{ width: 3, height: 3, borderRadius: 999, background: 'var(--color-text-faint)' }}
+              style={{
+                width: 3,
+                height: 3,
+                borderRadius: 999,
+                background: 'var(--color-text-faint)',
+              }}
             />
             <span
               className="bd-mono"
@@ -90,7 +115,12 @@ export function TitleBlock(props: Props) {
               #{id}
             </span>
             <span
-              style={{ width: 3, height: 3, borderRadius: 999, background: 'var(--color-text-faint)' }}
+              style={{
+                width: 3,
+                height: 3,
+                borderRadius: 999,
+                background: 'var(--color-text-faint)',
+              }}
             />
             <button
               type="button"
@@ -151,7 +181,6 @@ export function TitleBlock(props: Props) {
           }}
         />
       ) : (
-        // biome-ignore lint/a11y/useKeyWithClickEvents: click-to-edit is mouse-driven; Enter on focus would conflict with title editing
         <h1
           onClick={() => {
             setTitleDraft(title);

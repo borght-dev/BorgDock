@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface HoverPopoverProps {
   /** Trigger element. Hovering it (or the popover) keeps the popover open. */
@@ -20,6 +21,7 @@ export interface HoverPopoverProps {
   hideDelayMs?: number;
   /** Optional extra style on the trigger wrapper. */
   triggerStyle?: CSSProperties;
+  disabled?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function HoverPopover({
   maxHeight = 360,
   hideDelayMs = 120,
   triggerStyle,
+  disabled = false,
 }: HoverPopoverProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -50,8 +53,9 @@ export function HoverPopover({
     // Default: anchor below trigger, flushed to its left edge.
     let left = r.left;
     let top = r.bottom + margin;
-    if (left + maxWidth > window.innerWidth - margin) {
-      left = Math.max(margin, window.innerWidth - maxWidth - margin);
+    const width = Math.min(maxWidth, window.innerWidth - margin * 2);
+    if (left + width > window.innerWidth - margin) {
+      left = Math.max(margin, window.innerWidth - width - margin);
     }
     if (top + maxHeight > window.innerHeight - margin) {
       // Flip above the trigger.
@@ -73,6 +77,7 @@ export function HoverPopover({
   };
 
   const handleEnter = () => {
+    if (disabled) return;
     cancelHide();
     computePosition();
     setOpen(true);
@@ -102,37 +107,45 @@ export function HoverPopover({
         onMouseEnter={handleEnter}
         onMouseLeave={scheduleHide}
         onFocus={handleEnter}
-        onBlur={scheduleHide}
+        onBlur={() => {
+          cancelHide();
+          setOpen(false);
+        }}
         style={{ display: 'inline-block', ...triggerStyle }}
       >
         {children}
       </span>
-      {open && pos && (
-        <div
-          role="tooltip"
-          onMouseEnter={cancelHide}
-          onMouseLeave={scheduleHide}
-          style={{
-            position: 'fixed',
-            left: pos.left,
-            top: pos.top,
-            width: maxWidth,
-            maxHeight,
-            overflow: 'auto',
-            zIndex: 1000,
-            background: 'var(--color-card-background)',
-            border: '1px solid var(--color-strong-border)',
-            borderRadius: 8,
-            boxShadow: 'var(--elevation-2)',
-            padding: '12px 14px',
-            color: 'var(--color-text-primary)',
-            fontSize: 13,
-            lineHeight: 1.5,
-          }}
-        >
-          {content}
-        </div>
-      )}
+      {open &&
+        !disabled &&
+        pos &&
+        createPortal(
+          <div
+            role="tooltip"
+            onClick={(event) => event.stopPropagation()}
+            onMouseEnter={cancelHide}
+            onMouseLeave={scheduleHide}
+            style={{
+              position: 'fixed',
+              left: pos.left,
+              top: pos.top,
+              width: Math.min(maxWidth, window.innerWidth - 16),
+              maxHeight: Math.min(maxHeight, window.innerHeight - 16),
+              overflow: 'auto',
+              zIndex: 1000,
+              background: 'var(--color-card-background)',
+              border: '1px solid var(--color-strong-border)',
+              borderRadius: 8,
+              boxShadow: 'var(--elevation-2)',
+              padding: '12px 14px',
+              color: 'var(--color-text-primary)',
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            {content}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

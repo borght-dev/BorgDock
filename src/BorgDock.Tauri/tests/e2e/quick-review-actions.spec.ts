@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { bootApp, seedMainWindow } from './helpers/test-utils';
+import type { PullRequestWithChecks } from '../../src/types';
 
 /**
  * Quick Review from the pull request list (plans/ui-overhaul-workbench.md,
@@ -72,6 +73,7 @@ const PRS = [
 /** Answers GitHub for PRs 3 and 4 and records the reviews posted. */
 async function routeGitHub(page: Page) {
   const reviews: { number: number; body: unknown }[] = [];
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/commits\/[^/]+\/check-runs/, (route) => route.fulfill({ json: { check_runs: [], total_count: 0 } }));
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/pulls\/(3|4)(\/|\?|$)/, (route) => {
     const url = route.request().url();
     const number = Number(/pulls\/(\d+)/.exec(url)?.[1]);
@@ -126,7 +128,7 @@ async function bootList(page: Page) {
 
 /** Walks every file: Skip generated, then V for each file left. */
 async function reviewAllFiles(page: Page) {
-  await page.getByRole('button', { name: /^(Review files|Continue reviewing)$/ }).click();
+  await page.getByRole('button', { name: /^(Review files|Continue reviewing · \d+ left)$/ }).click();
   await expect(page.getByText('0 of 5 reviewed, 3 to go')).toBeVisible();
   const skip = page.getByRole('button', { name: 'Skip generated' });
   await skip.click();
@@ -237,4 +239,90 @@ test('approving the top card of a queue flings it right and the next card rises'
   await page.keyboard.press('ArrowLeft');
   await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveCount(0);
+});
+
+test('overview exposes developer proof, required-check gaps and a read-only ADO popup', async ({ page }) => {
+  await bootList(page);
+  const head = 'a1b2c3d4e5f67890123456789012345678901234';
+  const proofPr = structuredClone(PRS[0]) as PullRequestWithChecks;
+  Object.assign(proofPr.pullRequest, { headSha: head, title: 'Questionnaire replacement (AB#59671)', baseRef: 'fix/parent', body: '## Summary\n\nRefuse the add before committing.\n\nStacked on #4525.\n\n## Changes\n\nRegression coverage.' });
+  await seedMainWindow(page, { prs: [proofPr], settings: { azureDevOps: { organization: 'test-org', project: 'test-project', authMethod: 'pat', personalAccessToken: 'test-pat' } } });
+  await page.evaluate(() => {
+    const item = { id: 59671, rev: 1, url: '', htmlUrl: 'https://dev.azure.com/test-org/_workitems/edit/59671', relations: [], fields: {
+      'System.Title': 'Refuse questionnaire replacement', 'System.State': 'Active', 'System.WorkItemType': 'Bug', 'System.AssignedTo': 'Vera',
+      'System.Description': '<p>The questionnaire must remain on the live activity.</p>',
+      'Microsoft.VSTS.Common.AcceptanceCriteria': '<p>Roll back the transaction before showing the translated warning.</p>',
+    } };
+    const mock = (window as unknown as { __mockTauri: { addHandler: (command: string, handler: (args: Record<string, unknown>) => unknown) => void } }).__mockTauri;
+    mock.addHandler('ado_fetch', (args) => {
+      const request = args.request as { url: string };
+      const body = /workitems\/59671(?:\?|$)/i.test(request.url) ? item : /workitems\?ids=/i.test(request.url) ? { value: [item] } : { value: [], comments: [] };
+      return { status: 200, status_text: 'OK', body: JSON.stringify(body), body_base64: null, headers: { 'content-type': 'application/json' } };
+    });
+  });
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/pulls\/3(?:\?|$)/, (route) => route.fulfill({ json: {
+    number: 3, title: proofPr.pullRequest.title, head: { sha: head, ref: 'fix/questionnaire' }, base: { sha: 'base', ref: 'fix/parent' },
+    user: { login: 'mira' }, state: 'open', html_url: proofPr.pullRequest.htmlUrl, body: proofPr.pullRequest.body, changed_files: PATHS.length,
+    additions: 40, deletions: 4, commits: 2, labels: [], mergeable: false,
+  } }));
+  const image = new URL('/whats-new/3.0.0/quick-review.png', page.url()).href;
+  const secondImage = new URL('/whats-new/1.0.11/close-pr.png', page.url()).href;
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/issues\/3\/comments/, (route) => route.fulfill({ json: [{
+    id: 77, user: { login: 'vera_gomocha' }, created_at: new Date(NOW - HOUR).toISOString(), html_url: `${proofPr.pullRequest.htmlUrl}#issuecomment-77`,
+    body: `<!-- vera proof: {"head_sha":"${head}"} -->`,
+    body_html: `<h2>PROOF</h2><p>Vera CLI: browser verification passed.</p><img alt="First" src="${image}"><img alt="Second" src="${secondImage}">`,
+  }] }));
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/rules\/branches\//, (route) => route.fulfill({ json: [{ type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Backend build / test' }] } }] }));
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/branches\/.*\/protection\/required_status_checks/, (route) => route.fulfill({ json: { contexts: [] } }));
+  await page.locator('.bd-wb-row[data-pr-key="test-org/borgdock#3"]').hover();
+  await page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#3"]').getByRole('button', { name: 'Review #3' }).click();
+  const review = page.getByRole('dialog', { name: 'Quick Review' });
+  await expect(review.getByText('1 required check needs attention')).toBeVisible();
+  await expect(review.getByText('Targets fix/parent')).toBeVisible();
+  await expect(review.getByText('Head a1b2c3d')).toBeVisible();
+  await expect(review.getByRole('button', { name: 'Preview image: First' })).toBeVisible();
+  await expect.poll(() => review.locator('.bd-proof__images img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('overview-proof-light.png') });
+  await review.getByRole('button', { name: 'Preview image: First' }).hover();
+  await expect(page.locator('.bd-image-hover img')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('proof-hover.png') });
+  await review.getByRole('button', { name: 'Preview image: First' }).click();
+  const viewer = page.getByRole('dialog', { name: 'Proof image 1 of 2 · First' });
+  await expect(viewer).toBeVisible();
+  await viewer.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(viewer.getByText('125%')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('proof-image-viewer.png') });
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('dialog', { name: 'Proof image 2 of 2 · Second' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-detail-dialog]')).toHaveCount(0);
+  await review.getByRole('button', { name: /Read AB#59671/ }).hover();
+  await expect(page.getByRole('tooltip')).toContainText('The questionnaire must remain on the live activity.');
+  await review.getByRole('button', { name: /Read AB#59671/ }).click();
+  const workItem = page.getByRole('dialog', { name: 'AB#59671', exact: true });
+  await expect(workItem.getByText('Read-only preview')).toBeVisible();
+  await expect(workItem.getByText('The questionnaire must remain on the live activity.')).toBeVisible();
+  await expect(workItem.getByRole('textbox')).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath('ado-popup.png') });
+  await page.keyboard.press('Escape');
+  await expect(workItem).toHaveCount(0);
+  await expect(review).toBeVisible();
+  await expect(review.getByText('0/3 reviewed', { exact: true })).toBeVisible();
+  await review.getByRole('button', { name: 'Read full comment' }).click();
+  const comment = page.getByRole('dialog', { name: 'Proof by vera_gomocha' });
+  await expect(comment).toContainText('Vera CLI: browser verification passed.');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath('full-proof-comment.png') });
+  await page.keyboard.press('Escape');
+  await page.mouse.move(1400, 20);
+  await seedMainWindow(page, { settings: { ui: { theme: 'dark' } } });
+  await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+  await page.screenshot({ path: test.info().outputPath('overview-proof-dark.png') });
+  await page.setViewportSize({ width: 560, height: 900 });
+  await expect(review.getByRole('button', { name: 'Review files' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('overview-proof-narrow.png') });
+  await review.getByRole('heading', { name: 'Checks', exact: true }).scrollIntoViewIfNeeded();
+  await expect(review.getByText('Backend build / test')).toBeInViewport();
+  await page.screenshot({ path: test.info().outputPath('overview-proof-narrow-checks.png') });
 });

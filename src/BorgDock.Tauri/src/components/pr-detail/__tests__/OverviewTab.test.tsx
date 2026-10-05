@@ -18,6 +18,7 @@ vi.mock('@/services/github/mutations', () => ({
 
 vi.mock('@/services/github/singleton', () => ({
   getClient: vi.fn(() => ({})),
+  getClientForRepo: vi.fn(() => null),
 }));
 
 vi.mock('@/hooks/useWorkItemLinks', () => ({
