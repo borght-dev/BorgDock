@@ -13,20 +13,37 @@ interface LinkedWorkItemBadgeProps {
   compact?: boolean;
 }
 
-export function LinkedWorkItemBadge({ workItemId, workItem, compact }: LinkedWorkItemBadgeProps) {
-  const [open, setOpen] = useState(false);
-
-  const title = String(workItem?.fields['System.Title'] ?? 'Work item details');
+function workItemBadgeText(workItemId: number, workItem?: WorkItem) {
+  const title = String(workItem?.fields['System.Title'] ?? 'Untitled');
 
   const state = String(workItem?.fields['System.State'] ?? '');
+  const type = String(workItem?.fields['System.WorkItemType'] ?? '');
+  const priority = Number(workItem?.fields['Microsoft.VSTS.Common.Priority']) || undefined;
+  const metadata = [state, type, priority ? `P${priority}` : ''].filter(Boolean).join(' · ');
   const description = String(
     workItem?.fields['System.Description'] ??
       workItem?.fields['Microsoft.VSTS.TCM.ReproSteps'] ??
       '',
   );
+  return {
+    title,
+    state,
+    type,
+    metadata,
+    description,
+    compactTitle: workItem ? `${title} (${state || 'Unknown'})` : `Work Item #${workItemId}`,
+  };
+}
+
+export function LinkedWorkItemBadge({ workItemId, workItem, compact }: LinkedWorkItemBadgeProps) {
+  const [open, setOpen] = useState(false);
+  const { title, state, type, metadata, description, compactTitle } = workItemBadgeText(
+    workItemId,
+    workItem,
+  );
 
   const content = compact ? (
-    <Pill tone="neutral" data-linked-work-item={workItemId}>
+    <Pill tone="neutral" data-linked-work-item={workItemId} title={compactTitle}>
       AB#{workItemId}
     </Pill>
   ) : (
@@ -35,8 +52,12 @@ export function LinkedWorkItemBadge({ workItemId, workItem, compact }: LinkedWor
         <Pill tone="ghost" className="font-mono text-[var(--color-accent)]">
           AB#{workItemId}
         </Pill>
-        <span className="flex-1 min-w-0 truncate text-[13px]">{title}</span>
-        <span className="text-xs text-[var(--color-text-secondary)]">{state}</span>
+        <span className="flex-1 min-w-0 truncate text-[13px]">
+          {workItem ? title : 'Loading...'}
+        </span>
+        {metadata && (
+          <span className="shrink-0 text-xs text-[var(--color-text-secondary)]">{metadata}</span>
+        )}
       </div>
     </Card>
   );
@@ -54,7 +75,7 @@ export function LinkedWorkItemBadge({ workItemId, workItem, compact }: LinkedWor
               AB#{workItemId} · {state || 'Details'}
             </b>
             <p>{title}</p>
-            <p>{String(workItem?.fields['System.WorkItemType'] ?? '')}</p>
+            <p>{type}</p>
             {description && (
               <div className="markdown-body">
                 <Markdown>{description}</Markdown>

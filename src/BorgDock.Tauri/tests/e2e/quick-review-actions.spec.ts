@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { bootApp, seedMainWindow } from './helpers/test-utils';
 import type { PullRequestWithChecks } from '../../src/types';
 
@@ -267,6 +268,8 @@ test('overview exposes developer proof, required-check gaps and a read-only ADO 
   } }));
   const image = new URL('/whats-new/3.0.0/quick-review.png', page.url()).href;
   const secondImage = new URL('/whats-new/1.0.11/close-pr.png', page.url()).href;
+  await page.route(image, (route) => route.fulfill({ contentType: 'image/png', body: readFileSync('../../docs/whats-new/3.0.0/quick-review.png') }));
+  await page.route(secondImage, (route) => route.fulfill({ contentType: 'image/png', body: readFileSync('../../docs/whats-new/1.0.11/close-pr.png') }));
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/issues\/3\/comments/, (route) => route.fulfill({ json: [{
     id: 77, user: { login: 'vera_gomocha' }, created_at: new Date(NOW - HOUR).toISOString(), html_url: `${proofPr.pullRequest.htmlUrl}#issuecomment-77`,
     body: `<!-- vera proof: {"head_sha":"${head}"} -->`,
@@ -281,6 +284,7 @@ test('overview exposes developer proof, required-check gaps and a read-only ADO 
   await expect(review.getByText('Targets fix/parent')).toBeVisible();
   await expect(review.getByText('Head a1b2c3d')).toBeVisible();
   await expect(review.getByRole('button', { name: 'Preview image: First' })).toBeVisible();
+  await expect(review.locator('.bd-proof__images img')).toHaveCount(2);
   await expect.poll(() => review.locator('.bd-proof__images img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await page.screenshot({ path: test.info().outputPath('overview-proof-light.png') });
   await review.getByRole('button', { name: 'Preview image: First' }).hover();

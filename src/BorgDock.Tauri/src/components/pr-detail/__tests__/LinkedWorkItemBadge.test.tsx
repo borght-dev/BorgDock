@@ -107,29 +107,37 @@ describe('LinkedWorkItemBadge', () => {
 
     it('has title with work item ID when no work item data', () => {
       const { container } = render(<LinkedWorkItemBadge workItemId={42} compact />);
-      const span = container.querySelector('span');
-      expect(span?.getAttribute('title')).toBe('Work Item #42');
+      expect(container.querySelector('[data-linked-work-item="42"]')).toHaveAttribute(
+        'title',
+        'Work Item #42',
+      );
     });
 
     it('has title with work item title and state when provided', () => {
       const wi = makeWorkItem();
       const { container } = render(<LinkedWorkItemBadge workItemId={42} workItem={wi} compact />);
-      const span = container.querySelector('span');
-      expect(span?.getAttribute('title')).toBe('Fix login bug (Active)');
+      expect(container.querySelector('[data-linked-work-item="42"]')).toHaveAttribute(
+        'title',
+        'Fix login bug (Active)',
+      );
     });
 
     it('shows "Untitled" in compact title when title is missing', () => {
       const wi = makeWorkItem({ fields: { 'System.State': 'Closed' } });
       const { container } = render(<LinkedWorkItemBadge workItemId={42} workItem={wi} compact />);
-      const span = container.querySelector('span');
-      expect(span?.getAttribute('title')).toBe('Untitled (Closed)');
+      expect(container.querySelector('[data-linked-work-item="42"]')).toHaveAttribute(
+        'title',
+        'Untitled (Closed)',
+      );
     });
 
     it('shows "Unknown" state in compact title when state is missing', () => {
       const wi = makeWorkItem({ fields: { 'System.Title': 'My task' } });
       const { container } = render(<LinkedWorkItemBadge workItemId={42} workItem={wi} compact />);
-      const span = container.querySelector('span');
-      expect(span?.getAttribute('title')).toBe('My task (Unknown)');
+      expect(container.querySelector('[data-linked-work-item="42"]')).toHaveAttribute(
+        'title',
+        'My task (Unknown)',
+      );
     });
 
     it('does not render full layout elements in compact mode', () => {
