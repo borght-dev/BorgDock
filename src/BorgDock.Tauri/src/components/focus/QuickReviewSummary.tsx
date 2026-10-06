@@ -90,7 +90,7 @@ export function QuickReviewSummary({
       )}
       <div className="qr-summary__actions">
         {nextPr && (
-          <Button variant="primary" size="md" onClick={onNext}>
+          <Button variant="primary" size="md" aria-keyshortcuts="Enter" onClick={onNext}>
             Review next PR
           </Button>
         )}
