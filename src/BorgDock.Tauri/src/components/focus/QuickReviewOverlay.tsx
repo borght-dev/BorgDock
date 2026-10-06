@@ -200,13 +200,24 @@ export function QuickReviewOverlay() {
     );
   }, []);
 
-  useQuickReviewKeyboard(state === 'complete' && !closing ? { Escape: requestClose } : undefined);
-
-  if (state === 'idle') return null;
   const current = queue[index];
   const complete = state === 'complete';
   const reviewedKeys = new Set([...handledInRun.current, ...queue.map(prKey)]);
   const nextPr = complete ? needsMyReview.find((pr) => !reviewedKeys.has(prKey(pr))) : undefined;
+  const reviewNext = () => {
+    if (!nextPr) return;
+    queue.forEach((pr) => {
+      handledInRun.current.add(prKey(pr));
+    });
+    useQuickReviewStore.getState().startSinglePr(nextPr);
+  };
+  useQuickReviewKeyboard(
+    complete && !closing
+      ? { Escape: requestClose, ...(nextPr ? { Enter: reviewNext } : {}) }
+      : undefined,
+  );
+
+  if (state === 'idle') return null;
   const decided = complete ? queue.length : index;
   return (
     <FocusTrap
@@ -265,31 +276,36 @@ export function QuickReviewOverlay() {
             />
           </div>
           {complete ? (
-            <div className="qr-body">
-              <div className="qr-stage">
-                <div className="qr-deck">
-                  <div className="qr-card qr-summary" data-i="0">
-                    <QuickReviewSummary
-                      queue={queue}
-                      decisions={decisions}
-                      nextPr={nextPr}
-                      onNext={() => {
-                        if (nextPr) {
-                          queue.forEach((pr) => {
-                            handledInRun.current.add(prKey(pr));
-                          });
-                          useQuickReviewStore.getState().startSinglePr(nextPr);
-                        }
-                      }}
-                      onClose={requestClose}
-                    />
+            <>
+              <div className="qr-body">
+                <div className="qr-stage">
+                  <div className="qr-deck">
+                    <div className="qr-card qr-summary" data-i="0">
+                      <QuickReviewSummary
+                        queue={queue}
+                        decisions={decisions}
+                        nextPr={nextPr}
+                        onNext={reviewNext}
+                        onClose={requestClose}
+                      />
+                    </div>
+                    {deck.leaving && (
+                      <GhostCard
+                        key={deck.leaving.id}
+                        pr={deck.leaving.pr}
+                        gone={deck.leaving.dir}
+                      />
+                    )}
                   </div>
-                  {deck.leaving && (
-                    <GhostCard key={deck.leaving.id} pr={deck.leaving.pr} gone={deck.leaving.dir} />
-                  )}
                 </div>
               </div>
-            </div>
+              <footer className="qr-footer">
+                <span className="qr-spacer" />
+                <span className="qr-shortcuts">
+                  {nextPr ? 'Enter review next PR · Esc close' : 'Esc close'}
+                </span>
+              </footer>
+            </>
           ) : (
             current && (
               <QuickReviewWorkspace
