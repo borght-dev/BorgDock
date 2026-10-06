@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.1 — 2026-10-06
+
+### Bug Fixes
+
+- Press Enter after finishing a Quick Review to open the next requested PR. A small footer hint shows the available keyboard shortcuts.
+
 ## 3.1.0 — 2026-10-05
 
 ### New Features

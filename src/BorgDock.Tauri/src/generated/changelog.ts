@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "3.1.1",
+    "date": "2026-10-06",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Press Enter after finishing a Quick Review to open the next requested PR. A small footer hint shows the available keyboard shortcuts."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "3.1.0",
     "date": "2026-10-05",
     "summary": "Proof where you review.",
