@@ -15,14 +15,13 @@ const toasts = vi.hoisted(() => ({ showToast: vi.fn(), toastError: vi.fn() }));
 const toggles = vi.hoisted(() => ({ toggleTrackedWorkItem: vi.fn() }));
 
 vi.mock('@/services/t3/api', () => ({ LOCAL_T3_HOST_ID: 'local', ...t3 }));
-vi.mock('../sync', () => ({
-  ...sync,
+vi.mock('../sync', () => sync);
+vi.mock('../hosts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hosts')>()),
   configuredHosts: () => [
     { id: 'local', label: 'This machine' },
     { id: 'mac', label: 'Mac', baseUrl: 'http://mac:3773' },
   ],
-  rawId: (hostId: string, id: string) =>
-    hostId !== 'local' && id.startsWith(`${hostId}:`) ? id.slice(hostId.length + 1) : id,
 }));
 vi.mock('../items', () => items);
 vi.mock('@/stores/toast-store', () => toasts);

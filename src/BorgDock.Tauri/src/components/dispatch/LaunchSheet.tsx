@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Seg2, Select } from '@/components/shared/primitives';
+import { configuredHosts } from '@/services/dispatch/hosts';
 import {
   branchName,
   configuredPrompts,
@@ -14,7 +15,6 @@ import {
   startThread,
   stateOnStart,
 } from '@/services/dispatch/launch';
-import { configuredHosts } from '@/services/dispatch/sync';
 import type { ItemOverview, Overview, Slot } from '@/services/dispatch/types';
 import { type T3Catalogue, t3Catalogue } from '@/services/t3/api';
 import { type LaunchIntent, useDispatchStore } from '@/stores/dispatch-store';

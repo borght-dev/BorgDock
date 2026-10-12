@@ -15,6 +15,7 @@ import type {
   PostFixAction,
   SummarySettings,
 } from '@/types/settings';
+import { T3HostsCard } from './T3HostsCard';
 
 interface Props {
   agents: AgentSettings;
@@ -259,6 +260,13 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
           )}
         </Field>
       </Card>
+
+      <T3HostsCard
+        hosts={agents.t3Hosts ?? []}
+        onChange={(t3Hosts) =>
+          onAgentsChange({ ...agents, t3Hosts: t3Hosts.length > 0 ? t3Hosts : undefined })
+        }
+      />
 
       <Card variant="default" padding="md">
         <h3 className="mb-1 text-[13px] font-semibold text-[var(--color-text-primary)]">

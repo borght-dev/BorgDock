@@ -19,13 +19,17 @@ vi.mock('@/components/work-items/work-item-toggles', () => ({
   toggleTrackedWorkItem: vi.fn(),
 }));
 
+const memory = vi.hoisted(() => ({ rememberHost: vi.fn(), forgetHostsExcept: vi.fn() }));
+vi.mock('../host-memory', () => memory);
+
 import { useDispatchStore } from '@/stores/dispatch-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import type { T3HostSettings } from '@/types/settings';
+import { LOCAL_HOST } from '../hosts';
 import {
   compileSlotPattern,
-  LOCAL_HOST,
-  rawId,
+  followHostList,
   resetHostSync,
-  scopedId,
   syncHost,
   toAgentThread,
   toKnownPullRequest,
@@ -78,14 +82,11 @@ const DETAIL: T3ThreadDetail = {
 
 const MAC = { id: 'mac', label: 'Mac', baseUrl: 'http://mac:3773' };
 
-describe('ids', () => {
-  it('leaves local ids alone and prefixes remote ones', () => {
-    expect(scopedId('local', 't1')).toBe('t1');
-    expect(scopedId('mac', 't1')).toBe('mac:t1');
-    expect(rawId('mac', 'mac:t1')).toBe('t1');
-    expect(rawId('local', 'mac:t1')).toBe('mac:t1');
-  });
-});
+function followInSettings(t3Hosts: T3HostSettings[]) {
+  const { settings } = useSettingsStore.getState();
+  const agents = { ...settings.agents, t3Hosts } as typeof settings.agents;
+  useSettingsStore.setState({ settings: { ...settings, agents } });
+}
 
 describe('toAgentThread', () => {
   it('keeps the questions of a thread that still asks', () => {
@@ -171,6 +172,9 @@ describe('syncHost', () => {
     api.t3Snapshot.mockReset();
     api.t3ThreadDetail.mockReset();
     api.t3FirstUserMessages.mockReset();
+    memory.rememberHost.mockReset();
+    memory.forgetHostsExcept.mockReset();
+    followInSettings([]);
     useDispatchStore.setState({ threads: [], projects: [], hosts: [], items: [], overview: null });
   });
 
@@ -240,6 +244,35 @@ describe('syncHost', () => {
     });
   });
 
+  it('asks a host for the first messages of its open threads before the settled ones', async () => {
+    api.t3Snapshot.mockResolvedValue(
+      snapshot([
+        t3Thread({ id: 'old', status: 'settled', lastActivityAt: '2026-10-11T09:00:00Z' }),
+        t3Thread({ id: 'idle', status: 'running', lastActivityAt: '2026-10-09T09:00:00Z' }),
+        t3Thread({ id: 'busy', status: 'running', lastActivityAt: '2026-10-10T09:00:00Z' }),
+      ]),
+    );
+    api.t3FirstUserMessages.mockResolvedValue({});
+
+    await syncHost(MAC);
+
+    expect(api.t3FirstUserMessages).toHaveBeenCalledWith(
+      { id: 'mac', baseUrl: 'http://mac:3773' },
+      ['busy', 'idle', 'old'],
+    );
+  });
+
+  it('remembers what a remote host holds, and not what this machine holds', async () => {
+    api.t3Snapshot.mockResolvedValue(snapshot([t3Thread({ status: 'running' })]));
+    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+
+    await syncHost(LOCAL_HOST);
+    expect(memory.rememberHost).not.toHaveBeenCalled();
+
+    await syncHost(MAC);
+    expect(memory.rememberHost).toHaveBeenCalledWith('mac');
+  });
+
   it('keeps the last known threads of a host that stopped answering, marked unavailable', async () => {
     api.t3Snapshot.mockResolvedValueOnce(snapshot([t3Thread({ status: 'running' })]));
     api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
@@ -264,5 +297,68 @@ describe('syncHost', () => {
 
     expect(api.t3Snapshot).toHaveBeenLastCalledWith({ id: 'local', baseUrl: undefined }, null);
     expect(api.t3ThreadDetail).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('followHostList', () => {
+  beforeEach(() => {
+    resetHostSync();
+    api.t3Snapshot.mockReset();
+    api.t3ThreadDetail.mockReset();
+    api.t3FirstUserMessages.mockReset();
+    memory.forgetHostsExcept.mockReset();
+    api.t3Snapshot.mockResolvedValue(snapshot([t3Thread({ status: 'running' })]));
+    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    useDispatchStore.setState({ threads: [], projects: [], hosts: [], items: [], overview: null });
+  });
+
+  it('drops a host that was removed, with its threads and what was remembered of it', async () => {
+    followInSettings([MAC]);
+    await syncHost(MAC);
+    expect(useDispatchStore.getState().threads.map((thread) => thread.id)).toEqual(['mac:t1']);
+
+    followInSettings([]);
+    followHostList();
+
+    const { threads, projects, hosts } = useDispatchStore.getState();
+    expect(threads).toEqual([]);
+    expect(projects).toEqual([]);
+    expect(hosts).toEqual([]);
+    expect(memory.forgetHostsExcept).toHaveBeenCalledWith(['local']);
+  });
+
+  it('ignores the answer of a host that was removed while it was being read', async () => {
+    let answer: (value: T3Snapshot) => void = () => {};
+    api.t3Snapshot.mockReturnValueOnce(new Promise<T3Snapshot>((resolve) => (answer = resolve)));
+    followInSettings([MAC]);
+    const reading = syncHost(MAC);
+
+    followInSettings([]);
+    followHostList();
+    answer(snapshot([t3Thread()]));
+    await reading;
+
+    expect(useDispatchStore.getState().threads.some((thread) => thread.hostId === 'mac')).toBe(
+      false,
+    );
+  });
+
+  it('reads a host from the start once it moved to another address', async () => {
+    followInSettings([MAC]);
+    await syncHost(MAC);
+    expect(api.t3Snapshot).toHaveBeenLastCalledWith(
+      { id: 'mac', baseUrl: 'http://mac:3773' },
+      null,
+    );
+
+    followInSettings([{ ...MAC, baseUrl: 'http://mac.tailnet:3773' }]);
+    followHostList();
+
+    await vi.waitFor(() =>
+      expect(api.t3Snapshot).toHaveBeenCalledWith(
+        { id: 'mac', baseUrl: 'http://mac.tailnet:3773' },
+        null,
+      ),
+    );
   });
 });
