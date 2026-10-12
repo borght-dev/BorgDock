@@ -1,0 +1,9 @@
+[
+  {"slug":"dispatch","storyId":"main-window-mainwindow--rail-dispatch","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-plan","storyId":"main-window-mainwindow--rail-dispatch-plan","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-launch","storyId":"main-window-mainwindow--rail-dispatch-launch","viewport":{"width":1360,"height":860},"delay":3500},
+  {"slug":"dispatch-board","storyId":"main-window-mainwindow--rail-dispatch-board","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-out-of-sync","storyId":"main-window-mainwindow--rail-dispatch-out-of-sync","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"focus-agents","storyId":"main-window-mainwindow--rail-focus-agents","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"t3-hosts","storyId":"settings-t3hostscard--three-hosts","viewport":{"width":900,"height":560},"delay":2000}
+]

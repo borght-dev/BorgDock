@@ -4,6 +4,88 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.0.0",
+    "date": "2026-10-12",
+    "summary": "Dispatch: your work and the agents on it, Answer your agents without leaving BorgDock, Start an agent on a work item, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Dispatch: your work and the agents on it",
+        "description": "A new section, second in the rail, shows every Azure DevOps item assigned to you with the T3 Code threads and the pull request that belong to it. Items are sorted by what they need: waiting on you, out of sync, agents working, up next, not started. Each row tells you why it is there, and the strip above shows which T3 projects are free.",
+        "hero": {
+          "src": "/whats-new/4.0.0/dispatch.png",
+          "alt": "Dispatch with your work grouped by what it needs"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Answer your agents without leaving BorgDock",
+        "description": "When an agent asks a question you see its options next to the item, and you can pick one or type your own. A plan gets Approve plan, a finished thread gets Settle thread, and Open in T3 is one key away when you want the whole conversation.",
+        "hero": {
+          "src": "/whats-new/4.0.0/dispatch-plan.png",
+          "alt": "A plan from an agent, ready to approve"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Start an agent on a work item",
+        "description": "Press S, drop an item on a free slot, or use Start in T3 on any work item. Pick the slot, the model and how the agent should begin: a plan for you to approve, straight to work, an update for QA, or closing as done. You can edit the first message before it goes out, and the prompts behind it live in Settings → Agents.",
+        "hero": {
+          "src": "/whats-new/4.0.0/dispatch-launch.png",
+          "alt": "The launch sheet with a slot, a model and the first message"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "A board for your work",
+        "description": "Switch Dispatch to Board and see Needs you, Agents working, Up next and Not started side by side. Drag a card onto a free slot to start it, or click one to open its detail in a drawer.",
+        "hero": {
+          "src": "/whats-new/4.0.0/dispatch-board.png",
+          "alt": "Dispatch as a board"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Items that fell out of sync",
+        "description": "When a pull request merges and its work item stays behind in an earlier state, Dispatch lists the item under Out of sync and offers the state move that fits your own workflow. One click moves it, and Keep leaves it where it is.",
+        "hero": {
+          "src": "/whats-new/4.0.0/dispatch-out-of-sync.png",
+          "alt": "An item out of sync with a suggested state move"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Agents that need you find you",
+        "description": "A question, a plan or a failed agent now sends a notification with the obvious action on it. The same items show at the top of Focus and above your pull requests in the tray flyout.",
+        "hero": {
+          "src": "/whats-new/4.0.0/focus-agents.png",
+          "alt": "Focus with the agents that need you at the top"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "T3 Code on other machines",
+        "description": "Add a Mac mini or a build machine under Settings → Agents and its slots and agents show beside the ones on this machine. A machine that goes offline keeps its last known work on screen, so you don't start a second agent on an item that already has one.",
+        "hero": {
+          "src": "/whats-new/4.0.0/t3-hosts.png",
+          "alt": "Three T3 hosts in Settings"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "T3 threads on pull requests are live again. BorgDock now speaks the protocol of current T3 Code builds, so the strip no longer shows week-old threads and Open a new thread in T3 works.",
+      "An expired T3 pairing no longer shows as paired."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "3.1.1",
     "date": "2026-10-06",
     "summary": "",
