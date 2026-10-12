@@ -138,6 +138,13 @@ export function useKeyboardNav(): void {
 
     switch (e.key) {
       case 'Escape': {
+        // Dispatch: Esc lets go of the selected item (on the board, its drawer).
+        const dispatch = useDispatchStore.getState();
+        if (useUiStore.getState().activeSection === 'dispatch' && dispatch.selectedItemId) {
+          e.preventDefault();
+          dispatch.selectItem(null);
+          break;
+        }
         const ui = useUiStore.getState();
         if (ui.selectedPrKey !== null || ui.selectedPrNumber !== null) {
           e.preventDefault();

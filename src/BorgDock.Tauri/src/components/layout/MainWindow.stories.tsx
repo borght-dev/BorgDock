@@ -317,11 +317,12 @@ function seedWorkItems() {
   useUiStore.setState({ workItemsSelectedId: bugWithReproSteps.id });
 }
 
-function seedDispatch(selectedItemId: number, launching: boolean) {
+function seedDispatch(selectedItemId: number | null, launching: boolean, board: boolean) {
   const scene = makeDispatchScene();
   getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
   useDispatchStore.setState({
-    launch: launching ? { itemId: selectedItemId } : null,
+    launch: launching && selectedItemId !== null ? { itemId: selectedItemId } : null,
+    viewMode: board ? 'board' : 'list',
     items: scene.items,
     threads: scene.threads,
     projects: scene.projects,
@@ -349,6 +350,7 @@ function Harness({
   view,
   dispatchItem = 60214,
   launching = false,
+  dispatchBoard = false,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -357,17 +359,19 @@ function Harness({
   focusLayout?: FocusLayout;
   /** A detail view pushed on top of the list. */
   view?: MainView;
-  /** The item selected in Dispatch. */
-  dispatchItem?: number;
+  /** The item selected in Dispatch; `null` selects none. */
+  dispatchItem?: number | null;
   /** Open the launch sheet for the selected Dispatch item. */
   launching?: boolean;
+  /** Dispatch as the board instead of the list. */
+  dispatchBoard?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
-    if (section === 'dispatch') seedDispatch(dispatchItem, launching);
+    if (section === 'dispatch') seedDispatch(dispatchItem, launching, dispatchBoard);
     useUiStore.setState({
       activeSection: section,
       prGroupBy: groupBy,
@@ -427,6 +431,16 @@ export const RailDispatchOutOfSync: Story = {
 /** The launch sheet: a slot, a model, how the agent begins and its first message. */
 export const RailDispatchLaunch: Story = {
   args: { section: 'dispatch', dispatchItem: 60201, launching: true },
+};
+
+/** Dispatch as a board: needs you, agents working, up next and not started. */
+export const RailDispatchBoard: Story = {
+  args: { section: 'dispatch', dispatchBoard: true, dispatchItem: null },
+};
+
+/** The board with a card's detail open in the drawer. */
+export const RailDispatchBoardDrawer: Story = {
+  args: { section: 'dispatch', dispatchBoard: true, dispatchItem: 59877 },
 };
 
 export const RailWorktrees: Story = { args: { section: 'worktrees' } };

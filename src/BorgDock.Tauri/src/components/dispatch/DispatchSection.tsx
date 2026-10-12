@@ -2,22 +2,33 @@ import { invoke } from '@tauri-apps/api/core';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { WorkbenchGroup } from '@/components/pr/RepoGroup';
-import { Button, Dot, Kbd } from '@/components/shared/primitives';
+import { Button, Dot, Kbd, Seg2 } from '@/components/shared/primitives';
 import { AdoNotConfigured } from '@/components/work-items/AdoNotConfigured';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { syncAll } from '@/services/dispatch/sync';
 import { BAY_LABEL, BAYS, type Bay, type ItemOverview } from '@/services/dispatch/types';
 import { showWorkItem } from '@/services/navigation';
 import { LOCAL_T3_HOST_ID } from '@/services/t3/api';
-import { type HostStatus, type SourceStatus, useDispatchStore } from '@/stores/dispatch-store';
+import {
+  type DispatchViewMode,
+  type HostStatus,
+  type SourceStatus,
+  useDispatchStore,
+} from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import { shortcutLabel } from '@/utils/shortcut-label';
+import { DispatchBoard } from './DispatchBoard';
 import { DispatchDetail } from './DispatchDetail';
 import { canStart, DispatchRow } from './DispatchRow';
 import { LaunchSheet } from './LaunchSheet';
 import { SlotStrip } from './SlotStrip';
 import { shortAge } from './unit-copy';
+
+const VIEW_MODES: readonly { value: DispatchViewMode; label: string }[] = [
+  { value: 'list', label: 'List' },
+  { value: 'board', label: 'Board' },
+];
 
 /** How often the relative times ("4 min ago") are refreshed. */
 const CLOCK_TICK_MS = 30_000;
@@ -122,12 +133,14 @@ function PairingNotice({ error }: { error: string }) {
 /**
  * DispatchSection — the work assigned to you, sorted by what it needs.
  *
- * - Head row: title, the health of the sources (ADO and every T3 host) and
- *   search.
+ * - Head row: title, List or Board, the health of the sources (ADO and every
+ *   T3 host) and search.
  * - The slot strip: every T3 project an agent can run in, per host.
- * - The list, grouped by bay (waiting on you first), beside the selected
- *   item's detail: the agent's question or last message, the next action and
- *   the item's place in its workflow.
+ * - List: the items grouped by bay (waiting on you first), beside the
+ *   selected item's detail: the agent's question or last message, the next
+ *   action and the item's place in its workflow.
+ * - Board: the same items in four columns (`DispatchBoard`); a card opens its
+ *   detail in a drawer.
  * - J / K move, Enter opens the work item full screen, A takes the selected
  *   item's first action, S starts an agent on it, M moves its state, O opens
  *   its thread in T3 (useKeyboardNav).
@@ -146,6 +159,8 @@ export function DispatchSection() {
   const hosts = useDispatchStore((s) => s.hosts);
   const busy = useDispatchStore((s) => s.busy);
   const launch = useDispatchStore((s) => s.launch);
+  const viewMode = useDispatchStore((s) => s.viewMode);
+  const setViewMode = useDispatchStore((s) => s.setViewMode);
   const openLaunch = useDispatchStore((s) => s.openLaunch);
   const now = useClock();
 
@@ -166,6 +181,13 @@ export function DispatchSection() {
     <div className="bd-wb-prs bd-dp">
       <header className="bd-wb-head bd-dp-head">
         <h1 className="bd-wb-head__title">Dispatch</h1>
+        <Seg2
+          ariaLabel="Dispatch layout"
+          size="sm"
+          value={viewMode}
+          options={VIEW_MODES}
+          onChange={setViewMode}
+        />
         <Health ado={adoStatus} hosts={hosts} now={now} />
         <label className="bd-wb-head__search">
           <Search
@@ -201,7 +223,18 @@ export function DispatchSection() {
         onDropItem={(slot, itemId) => openLaunch({ itemId, slotId: slot.id })}
       />
 
-      <div className="bd-dp-split">
+      {viewMode === 'board' && overview !== null && (
+        <DispatchBoard
+          items={items}
+          slots={overview.slots}
+          openId={selectedId}
+          now={now}
+          busy={busy}
+          actions={dispatchActions}
+          onSelect={selectItem}
+        />
+      )}
+      <div className="bd-dp-split" hidden={viewMode === 'board' && overview !== null}>
         <div className="bd-wb-list" data-density={density}>
           {overview === null && <div className="bd-wb-empty">Loading your work…</div>}
           {overview !== null && items.length === 0 && (

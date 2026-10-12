@@ -36,6 +36,8 @@ export interface UnitAction {
     | 'unqueue'
     | 'open-ado';
   label: string;
+  /** The label where room is tight (a board card), when the full one is long. */
+  shortLabel?: string;
   /** The one action the item most likely needs; drawn as the primary button. */
   primary: boolean;
   run: (actions: DispatchActions) => void;
@@ -83,6 +85,7 @@ export function unitActions(overview: ItemOverview): UnitAction[] {
     found.push({
       id: 'keep',
       label: `Keep ${item.state}`,
+      shortLabel: 'Keep',
       run: (a) => a.hideSuggestion(overview),
     });
   }
@@ -99,7 +102,12 @@ export function unitActions(overview: ItemOverview): UnitAction[] {
       found.push({ id: 'start', label: 'Start in T3', run: (a) => a.start(item) });
     }
     if (overview.queued) {
-      found.push({ id: 'unqueue', label: 'Remove from Up next', run: (a) => a.unqueue(item) });
+      found.push({
+        id: 'unqueue',
+        label: 'Remove from Up next',
+        shortLabel: 'Remove',
+        run: (a) => a.unqueue(item),
+      });
     } else if (overview.bay === 'idle' || overview.bay === 'paused') {
       found.push({ id: 'queue', label: 'Up next', run: (a) => a.queue(item) });
     }

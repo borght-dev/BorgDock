@@ -643,4 +643,131 @@
   .bd-dp-sheet__spacer {
     flex: 1;
   }
+
+  /* ── Board ─────────────────────────────────────────────── */
+  /* Columns and cards are the Focus board's (`.bd-fb-*`); only what differs
+     is set here. */
+  .bd-dp-split[hidden] {
+    display: none;
+  }
+  .bd-dp-board {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .bd-dp-board .bd-fb-cols {
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
+    padding-bottom: 10px;
+  }
+  .bd-dp-card[draggable="true"] {
+    -webkit-user-drag: element;
+  }
+  .bd-dp-card .bd-fb-card__main {
+    cursor: pointer;
+  }
+  .bd-dp-card__id {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .bd-dp-card__why {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  /* A long label ("Move to Development In Progress") takes a row of its own. */
+  .bd-dp-card .bd-fb-card__acts {
+    flex-wrap: wrap;
+  }
+  .bd-dp-card .bd-fb-card__acts .bd-btn {
+    flex: 1 1 auto;
+    height: 26px;
+  }
+  .bd-dp-lane {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    padding: 0 16px 12px;
+  }
+  .bd-dp-lane__group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .bd-dp-lane__label {
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+  .bd-dp-lane__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 260px;
+    height: 24px;
+    padding: 0 8px 0 4px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font: inherit;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+  .bd-dp-lane__chip:hover {
+    border-color: var(--color-strong-border);
+  }
+  .bd-dp-lane__chip:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-dp-lane__chip--on {
+    border-color: var(--color-accent);
+    background: var(--color-selected-row-bg);
+  }
+  .bd-dp-lane__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-dp-lane__chip .bd-wi-type {
+    flex: none;
+    padding: 0 5px;
+    font-size: 10px;
+  }
+
+  /* A card's detail, over the right side of the board. */
+  .bd-dp-drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    width: min(460px, 62%);
+    border-left: 1px solid var(--color-strong-border);
+    background: var(--color-surface);
+    box-shadow: var(--elevation-2);
+  }
+  .bd-dp-drawer__head {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    height: 36px;
+    padding: 0 8px 0 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-dp-drawer .bd-dp-detail {
+    flex: 1;
+    min-height: 0;
+  }
 }
