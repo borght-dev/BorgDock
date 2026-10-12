@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { DispatchSection } from '@/components/dispatch/DispatchSection';
 import { FocusList } from '@/components/focus';
 import { PrList } from '@/components/pr/PrList';
 import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
@@ -11,6 +12,8 @@ function SectionBody({ section }: { section: ActiveSection }) {
   switch (section) {
     case 'focus':
       return <FocusList />;
+    case 'dispatch':
+      return <DispatchSection />;
     case 'prs':
       return <PrList />;
     case 'workitems':

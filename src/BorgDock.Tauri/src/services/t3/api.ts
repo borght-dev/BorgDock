@@ -66,6 +66,30 @@ export function t3FirstUserMessages(
   return invoke<Record<string, string>>('t3_first_user_messages', { host, threadIds });
 }
 
+/** Answer an agent's questions: question id to the picked option's value or the typed text. */
+export function t3Respond(
+  host: T3HostRef,
+  threadId: string,
+  requestId: string,
+  answers: Record<string, string | string[]>,
+): Promise<void> {
+  return invoke('t3_respond', { host, threadId, requestId, answers });
+}
+
+/** Send the agent a message and start its next turn. */
+export function t3SendMessage(
+  host: T3HostRef,
+  threadId: string,
+  text: string,
+  leavePlanMode: boolean,
+): Promise<void> {
+  return invoke('t3_send_message', { host, threadId, text, leavePlanMode });
+}
+
+export function t3Settle(host: T3HostRef, threadId: string): Promise<void> {
+  return invoke('t3_settle', { host, threadId });
+}
+
 /** Bring T3 Code to the front on one thread. */
 export function t3ShowThread(
   host: T3HostRef,

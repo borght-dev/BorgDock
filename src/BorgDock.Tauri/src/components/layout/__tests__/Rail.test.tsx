@@ -66,14 +66,14 @@ describe('Rail', () => {
     vi.useRealTimers();
   });
 
-  it('renders the workspace name and the four sections in order', () => {
+  it('renders the workspace name and the five sections in order', () => {
     render(<Rail />);
     expect(screen.getByText('BorgDock')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Sections' });
     const labels = within(nav)
       .getAllByRole('button')
       .map((b) => b.querySelector('.bd-rail__label')?.textContent);
-    expect(labels).toEqual(['Focus', 'Pull requests', 'Work items', 'Worktrees']);
+    expect(labels).toEqual(['Focus', 'Dispatch', 'Pull requests', 'Work items', 'Worktrees']);
   });
 
   it('marks the active section and puts the sliding highlight behind it', () => {
@@ -126,10 +126,11 @@ describe('Rail', () => {
     expect(useUiStore.getState().viewStack).toEqual([{ kind: 'list' }]);
   });
 
-  it('advertises keys 1 to 4', () => {
+  it('advertises keys 1 to 5', () => {
     render(<Rail />);
     expect(navButton(/Focus/)).toHaveAttribute('aria-keyshortcuts', '1');
-    expect(navButton(/Worktrees/)).toHaveAttribute('aria-keyshortcuts', '4');
+    expect(navButton(/Dispatch/)).toHaveAttribute('aria-keyshortcuts', '2');
+    expect(navButton(/Worktrees/)).toHaveAttribute('aria-keyshortcuts', '5');
   });
 
   it('shows the sync line and refreshes it every 10 seconds', () => {

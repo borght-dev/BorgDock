@@ -45,6 +45,8 @@ interface DispatchState {
   selectedItemId: number | null;
   viewMode: DispatchViewMode;
   searchQuery: string;
+  /** An action is on its way to T3 or ADO; the buttons wait for it. */
+  busy: boolean;
 
   setItems: (items: DispatchItem[], status: SourceStatus) => void;
   setAdoStatus: (status: SourceStatus) => void;
@@ -59,6 +61,7 @@ interface DispatchState {
   selectItem: (id: number | null) => void;
   setViewMode: (mode: DispatchViewMode) => void;
   setSearchQuery: (query: string) => void;
+  setBusy: (busy: boolean) => void;
   hideSuggestion: (suggestionId: string) => void;
   linkThread: (threadId: string, itemId: number | null) => void;
   restorePersisted: () => Promise<void>;
@@ -76,6 +79,7 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   selectedItemId: null,
   viewMode: 'list',
   searchQuery: '',
+  busy: false,
 
   setItems: (items, status) => set({ items, ado: status }),
 
@@ -126,6 +130,8 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   },
 
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+
+  setBusy: (busy) => set({ busy }),
 
   hideSuggestion: (suggestionId) => {
     const hiddenSuggestions = new Set(get().hiddenSuggestions).add(suggestionId);

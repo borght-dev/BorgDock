@@ -4,6 +4,7 @@ import { BorgDockLogo } from '@/components/shared/icons';
 import { SlidingHighlight } from '@/components/shared/primitives';
 import { useWorktreeCount } from '@/hooks/useWorktreeMap';
 import { showSection } from '@/services/navigation';
+import { selectWaitingCount, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, SECTION_ORDER, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -11,6 +12,7 @@ import { useWorkItemsStore } from '@/stores/work-items-store';
 /** Sentence-case section names, shared by the rail and the title bar. */
 export const SECTION_LABELS: Record<ActiveSection, string> = {
   focus: 'Focus',
+  dispatch: 'Dispatch',
   prs: 'Pull requests',
   workitems: 'Work items',
   worktrees: 'Worktrees',
@@ -44,6 +46,7 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   const openCount = usePrStore((s) => s.pullRequests.length);
   const failing = usePrStore((s) => s.counts().failing);
   const focusCount = usePrStore((s) => s.focusCount());
+  const waitingCount = useDispatchStore(selectWaitingCount);
   const workItemCount = useWorkItemsStore((s) => s.workItems.length);
   const worktreeCount = useWorktreeCount();
 
@@ -51,6 +54,7 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
     prs: { value: openCount, hot: failing > 0 },
   };
   if (focusCount > 0) counts.focus = { value: focusCount };
+  if (waitingCount > 0) counts.dispatch = { value: waitingCount };
   if (workItemCount > 0) counts.workitems = { value: workItemCount };
   if (worktreeCount > 0) counts.worktrees = { value: worktreeCount };
   return counts;
@@ -109,10 +113,10 @@ function SyncBlock() {
 
 /**
  * Rail — the main window's left navigation (plans/ui-overhaul-workbench.md,
- * phase 1): workspace name, the four sections with their counts and a
+ * phase 1): workspace name, the five sections with their counts and a
  * sliding highlight behind the active one, and the sync state with the
- * GitHub rate meter at the bottom. Keys `1`–`4` pick the same sections
- * (wired in useKeyboardNav).
+ * GitHub rate meter at the bottom. Keys `1`–`5` pick the same sections
+ * (wired in useKeyboardNav). Dispatch counts the items waiting on you.
  */
 export function Rail() {
   const activeSection = useUiStore((s) => s.activeSection);

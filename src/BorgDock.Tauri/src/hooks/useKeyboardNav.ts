@@ -1,7 +1,10 @@
 import { useCallback, useEffect } from 'react';
+import { unitActions } from '@/components/dispatch/unit-actions';
+import { dispatchActions } from '@/services/dispatch/actions';
 import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
 import { isReady } from '@/services/pr-grouping';
 import { openPrDetail } from '@/services/windows';
+import { selectItemOverview, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { SECTION_ORDER, useUiStore } from '@/stores/ui-store';
@@ -15,7 +18,7 @@ type QueueMergeFn = (owner: string, repo: string, prNumber: number) => void;
  * view; the rest only on the list, not on key repeat, and not while a menu,
  * dialog or Quick Review owns the keyboard:
  *
- * - `1` to `4` pick the rail's sections, `/` focuses the section's search,
+ * - `1` to `5` pick the rail's sections, `/` focuses the section's search,
  *   plain R refreshes (in Focus it starts Quick Review for the selected row).
  * - J/K (down/up) move the selection over the rows as drawn, Enter opens the
  *   selected one, Ctrl/Cmd+Enter opens it in its own window. The Focus board
@@ -23,6 +26,8 @@ type QueueMergeFn = (owner: string, repo: string, prNumber: number) => void;
  * - M queues the merge of the selected ready PR in Focus, O opens the
  *   selected PR on GitHub, Shift+R starts Quick Review for every PR waiting
  *   on my review, E collapses every group, Esc clears the selection.
+ * - In Dispatch, A takes the selected item's first action, M moves its state
+ *   and O opens its thread in T3.
  */
 export function useKeyboardNav(): void {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -79,6 +84,9 @@ export function useKeyboardNav(): void {
         dispatchRefresh();
         return;
       }
+      if (useUiStore.getState().activeSection === 'dispatch' && handleDispatchActionKey(e)) {
+        return;
+      }
       // R, M and O act on the selected row or card, found by its key: a
       // filtered list and the Board's columns have their own order.
       if (isSelectionKey(e)) {
@@ -107,6 +115,10 @@ export function useKeyboardNav(): void {
       // item's full-screen detail view.
       const wiRows = live<HTMLElement>(WORK_ITEM_ROW_SELECTOR);
       if (wiRows.length > 0 && handleWorkItemRowKey(e, wiRows)) return;
+
+      // Dispatch rows: the same, over the items of the Dispatch list.
+      const dispatchRows = live<HTMLElement>(DISPATCH_ROW_SELECTOR);
+      if (dispatchRows.length > 0 && handleDispatchRowKey(e, dispatchRows)) return;
     }
 
     // Ctrl/Cmd+Enter opens the selected PR row (or Focus card) in its own window.
@@ -244,6 +256,73 @@ function handleWorkItemRowKey(e: KeyboardEvent, rows: HTMLElement[]): boolean {
     default:
       return false;
   }
+}
+
+/** Rows of the Dispatch list (`DispatchRow`). */
+const DISPATCH_ROW_SELECTOR = '[data-dp-id]';
+
+/**
+ * J/K/arrows over the Dispatch rows in DOM order and Enter to open the
+ * selected item full screen. The selection is `dispatch-store.selectedItemId`.
+ * Returns true when the key was handled.
+ */
+function handleDispatchRowKey(e: KeyboardEvent, rows: HTMLElement[]): boolean {
+  const current = rows.findIndex((row) => row.dataset.selected === 'true');
+  const select = (index: number) => {
+    const row = rows[index];
+    const id = Number(row?.dataset.dpId);
+    if (!row || !id) return;
+    useDispatchStore.getState().selectItem(id);
+    row.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  };
+  switch (e.key) {
+    case 'ArrowDown':
+    case 'j':
+      e.preventDefault();
+      select(current < 0 ? 0 : Math.min(current + 1, rows.length - 1));
+      return true;
+    case 'ArrowUp':
+    case 'k':
+      e.preventDefault();
+      select(current < 0 ? 0 : Math.max(current - 1, 0));
+      return true;
+    case 'Enter': {
+      const id = Number(rows[current]?.dataset.dpId);
+      if (!id) return false;
+      e.preventDefault();
+      void showWorkItem(id);
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
+/**
+ * A, M and O on the selected Dispatch item: A takes its first action (answer
+ * with the recommended option, approve the plan, move the state…), M moves
+ * its state when ADO lags behind, O opens its thread in T3. Returns true
+ * when the key was handled.
+ */
+function handleDispatchActionKey(e: KeyboardEvent): boolean {
+  if (e.key !== 'a' && e.key !== 'm' && e.key !== 'o') return false;
+  const selected = live<HTMLElement>(DISPATCH_ROW_SELECTOR).find(
+    (row) => row.dataset.selected === 'true',
+  );
+  const overview = selectItemOverview(
+    useDispatchStore.getState(),
+    Number(selected?.dataset.dpId) || null,
+  );
+  if (!overview) return false;
+  const actions = unitActions(overview);
+  const action =
+    e.key === 'a'
+      ? actions.find((a) => a.primary)
+      : actions.find((a) => a.id === (e.key === 'm' ? 'move' : 'open-t3'));
+  if (!action) return false;
+  e.preventDefault();
+  action.run(dispatchActions);
+  return true;
 }
 
 /** R (Focus), M (Focus) and O: the keys that act on the selected PR. */
@@ -398,7 +477,7 @@ function isPlainKey(e: KeyboardEvent): boolean {
   return !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-/** `1`–`4` pick the rail's sections. */
+/** `1`–`5` pick the rail's sections. */
 function railSectionForKey(e: KeyboardEvent) {
   if (e.shiftKey || !/^[1-9]$/.test(e.key)) return null;
   return SECTION_ORDER[Number(e.key) - 1] ?? null;

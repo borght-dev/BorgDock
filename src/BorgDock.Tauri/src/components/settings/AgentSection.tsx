@@ -175,6 +175,21 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
           />
         </Field>
         <Field
+          label="Dispatch slots"
+          anchorId="t3-slot-pattern"
+          hint="A regular expression. Only T3 projects whose name matches count as slots in Dispatch. Empty takes every project."
+        >
+          <TextInput
+            ariaLabel="Dispatch slot pattern"
+            value={agents.t3SlotPattern ?? ''}
+            onChange={(t3SlotPattern) =>
+              onAgentsChange({ ...agents, t3SlotPattern: t3SlotPattern || undefined })
+            }
+            placeholder="^W\d+$"
+            mono
+          />
+        </Field>
+        <Field
           label="T3 pairing"
           anchorId="t3-pairing"
           hint={
