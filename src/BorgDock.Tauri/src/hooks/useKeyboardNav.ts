@@ -26,8 +26,8 @@ type QueueMergeFn = (owner: string, repo: string, prNumber: number) => void;
  * - M queues the merge of the selected ready PR in Focus, O opens the
  *   selected PR on GitHub, Shift+R starts Quick Review for every PR waiting
  *   on my review, E collapses every group, Esc clears the selection.
- * - In Dispatch, A takes the selected item's first action, M moves its state
- *   and O opens its thread in T3.
+ * - In Dispatch, A takes the selected item's first action, S starts an agent
+ *   on it, M moves its state and O opens its thread in T3.
  */
 export function useKeyboardNav(): void {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -298,14 +298,22 @@ function handleDispatchRowKey(e: KeyboardEvent, rows: HTMLElement[]): boolean {
   }
 }
 
+/** The Dispatch action each key takes; A takes whichever comes first. */
+const DISPATCH_ACTION_KEYS: Record<string, string | null> = {
+  a: null,
+  s: 'start',
+  m: 'move',
+  o: 'open-t3',
+};
+
 /**
- * A, M and O on the selected Dispatch item: A takes its first action (answer
- * with the recommended option, approve the plan, move the state…), M moves
- * its state when ADO lags behind, O opens its thread in T3. Returns true
- * when the key was handled.
+ * A, S, M and O on the selected Dispatch item: A takes its first action
+ * (answer with the recommended option, approve the plan, move the state…),
+ * S starts an agent on it, M moves its state when ADO lags behind, O opens
+ * its thread in T3. Returns true when the key was handled.
  */
 function handleDispatchActionKey(e: KeyboardEvent): boolean {
-  if (e.key !== 'a' && e.key !== 'm' && e.key !== 'o') return false;
+  if (!(e.key in DISPATCH_ACTION_KEYS)) return false;
   const selected = live<HTMLElement>(DISPATCH_ROW_SELECTOR).find(
     (row) => row.dataset.selected === 'true',
   );
@@ -315,10 +323,8 @@ function handleDispatchActionKey(e: KeyboardEvent): boolean {
   );
   if (!overview) return false;
   const actions = unitActions(overview);
-  const action =
-    e.key === 'a'
-      ? actions.find((a) => a.primary)
-      : actions.find((a) => a.id === (e.key === 'm' ? 'move' : 'open-t3'));
+  const wanted = DISPATCH_ACTION_KEYS[e.key];
+  const action = actions.find((a) => (wanted === null ? a.primary : a.id === wanted));
   if (!action) return false;
   e.preventDefault();
   action.run(dispatchActions);

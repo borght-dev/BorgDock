@@ -9,7 +9,10 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { makeDispatchScene } from '@/components/dispatch/__fixtures__/dispatch-data';
+import {
+  LAUNCH_CATALOGUE,
+  makeDispatchScene,
+} from '@/components/dispatch/__fixtures__/dispatch-data';
 import {
   bugWithReproSteps,
   epicWithCustomFields,
@@ -314,9 +317,11 @@ function seedWorkItems() {
   useUiStore.setState({ workItemsSelectedId: bugWithReproSteps.id });
 }
 
-function seedDispatch(selectedItemId: number) {
+function seedDispatch(selectedItemId: number, launching: boolean) {
   const scene = makeDispatchScene();
+  getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
   useDispatchStore.setState({
+    launch: launching ? { itemId: selectedItemId } : null,
     items: scene.items,
     threads: scene.threads,
     projects: scene.projects,
@@ -343,6 +348,7 @@ function Harness({
   focusLayout = 'list',
   view,
   dispatchItem = 60214,
+  launching = false,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -353,13 +359,15 @@ function Harness({
   view?: MainView;
   /** The item selected in Dispatch. */
   dispatchItem?: number;
+  /** Open the launch sheet for the selected Dispatch item. */
+  launching?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
-    if (section === 'dispatch') seedDispatch(dispatchItem);
+    if (section === 'dispatch') seedDispatch(dispatchItem, launching);
     useUiStore.setState({
       activeSection: section,
       prGroupBy: groupBy,
@@ -414,6 +422,11 @@ export const RailDispatchPlan: Story = { args: { section: 'dispatch', dispatchIt
 /** Dispatch with an item whose pull request merged while ADO still says Code Review. */
 export const RailDispatchOutOfSync: Story = {
   args: { section: 'dispatch', dispatchItem: 59403 },
+};
+
+/** The launch sheet: a slot, a model, how the agent begins and its first message. */
+export const RailDispatchLaunch: Story = {
+  args: { section: 'dispatch', dispatchItem: 60201, launching: true },
 };
 
 export const RailWorktrees: Story = { args: { section: 'worktrees' } };

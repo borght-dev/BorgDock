@@ -23,10 +23,28 @@ export interface HostStatus extends SourceStatus {
 
 export type DispatchViewMode = 'list' | 'board';
 
+/** What the launch sheet opens on. */
+export interface LaunchIntent {
+  itemId: number;
+  /** The slot to preselect, e.g. the one an item was dropped on. */
+  slotId?: string;
+}
+
+/** What the launch sheet preselects: the choices made last time. */
+export interface LaunchPreferences {
+  model: string | null;
+  /** Reasoning effort per model id. */
+  efforts: Record<string, string>;
+  mode: 'plan' | 'work';
+}
+
+const DEFAULT_LAUNCH_PREFERENCES: LaunchPreferences = { model: null, efforts: {}, mode: 'plan' };
+
 const STORE_FILE = 'dispatch-state.json';
 const HIDDEN_SUGGESTIONS_KEY = 'hiddenSuggestions';
 const MANUAL_LINKS_KEY = 'manualLinks';
 const VIEW_MODE_KEY = 'viewMode';
+const LAUNCH_PREFERENCES_KEY = 'launchPreferences';
 
 const NOT_SYNCED: SourceStatus = { ok: false, at: null, error: null };
 
@@ -47,6 +65,9 @@ interface DispatchState {
   searchQuery: string;
   /** An action is on its way to T3 or ADO; the buttons wait for it. */
   busy: boolean;
+  /** The item the launch sheet is open for, or null while it is closed. */
+  launch: LaunchIntent | null;
+  launchPreferences: LaunchPreferences;
 
   setItems: (items: DispatchItem[], status: SourceStatus) => void;
   setAdoStatus: (status: SourceStatus) => void;
@@ -62,6 +83,10 @@ interface DispatchState {
   setViewMode: (mode: DispatchViewMode) => void;
   setSearchQuery: (query: string) => void;
   setBusy: (busy: boolean) => void;
+  openLaunch: (intent: LaunchIntent) => void;
+  closeLaunch: () => void;
+  /** Remember the model, effort and way of beginning for the next launch. */
+  rememberLaunch: (model: string, effort: string | null, mode: string) => void;
   hideSuggestion: (suggestionId: string) => void;
   linkThread: (threadId: string, itemId: number | null) => void;
   restorePersisted: () => Promise<void>;
@@ -80,6 +105,8 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   viewMode: 'list',
   searchQuery: '',
   busy: false,
+  launch: null,
+  launchPreferences: DEFAULT_LAUNCH_PREFERENCES,
 
   setItems: (items, status) => set({ items, ado: status }),
 
@@ -133,6 +160,22 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
 
   setBusy: (busy) => set({ busy }),
 
+  openLaunch: (launch) => set({ launch }),
+
+  closeLaunch: () => set({ launch: null }),
+
+  rememberLaunch: (model, effort, mode) => {
+    const previous = get().launchPreferences;
+    const launchPreferences: LaunchPreferences = {
+      model,
+      efforts: effort ? { ...previous.efforts, [model]: effort } : previous.efforts,
+      // QA and Done are one-off handoffs, not how the next item should begin.
+      mode: mode === 'plan' || mode === 'work' ? mode : previous.mode,
+    };
+    set({ launchPreferences });
+    persistToTauriStore(STORE_FILE, LAUNCH_PREFERENCES_KEY, launchPreferences).catch(() => {});
+  },
+
   hideSuggestion: (suggestionId) => {
     const hiddenSuggestions = new Set(get().hiddenSuggestions).add(suggestionId);
     set({ hiddenSuggestions });
@@ -146,19 +189,26 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   },
 
   restorePersisted: async () => {
-    const [hidden, links, viewMode] = await Promise.all([
+    const [hidden, links, viewMode, preferences] = await Promise.all([
       readFromTauriStore<string[]>(STORE_FILE, HIDDEN_SUGGESTIONS_KEY),
       readFromTauriStore<[string, number | null][]>(STORE_FILE, MANUAL_LINKS_KEY),
       readFromTauriStore<DispatchViewMode>(STORE_FILE, VIEW_MODE_KEY),
-    ]).catch(() => [undefined, undefined, undefined] as const);
+      readFromTauriStore<Partial<LaunchPreferences>>(STORE_FILE, LAUNCH_PREFERENCES_KEY),
+    ]).catch(() => [undefined, undefined, undefined, undefined] as const);
     // What changed this session wins over what was stored.
     set((state) => ({
       hiddenSuggestions: new Set([...(hidden ?? []), ...state.hiddenSuggestions]),
       manualLinks: new Map([...(links ?? []), ...state.manualLinks]),
       viewMode: viewMode === 'board' || viewMode === 'list' ? viewMode : state.viewMode,
+      launchPreferences: { ...DEFAULT_LAUNCH_PREFERENCES, ...preferences, ...launchPicks(state) },
     }));
   },
 }));
+
+/** The launch choices made this session, which win over the stored ones. */
+function launchPicks(state: Pick<DispatchState, 'launchPreferences'>): Partial<LaunchPreferences> {
+  return state.launchPreferences === DEFAULT_LAUNCH_PREFERENCES ? {} : state.launchPreferences;
+}
 
 /** The items waiting on you: the rail's count. */
 export function selectWaitingCount(state: Pick<DispatchState, 'overview'>): number {

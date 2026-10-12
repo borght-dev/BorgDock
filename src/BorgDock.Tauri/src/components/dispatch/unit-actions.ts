@@ -14,6 +14,8 @@ export interface DispatchActions {
   openInT3: (thread: AgentThread) => void;
   move: (item: DispatchItem, to: string) => void;
   hideSuggestion: (overview: ItemOverview) => void;
+  /** Open the launch sheet for the item, on `slotId` when given. */
+  start: (item: DispatchItem, slotId?: string) => void;
   queue: (item: DispatchItem) => void;
   unqueue: (item: DispatchItem) => void;
   openInAdo: (item: DispatchItem) => void;
@@ -29,6 +31,7 @@ export interface UnitAction {
     | 'hide'
     | 'settle'
     | 'open-t3'
+    | 'start'
     | 'queue'
     | 'unqueue'
     | 'open-ado';
@@ -92,6 +95,9 @@ export function unitActions(overview: ItemOverview): UnitAction[] {
   }
 
   if (!thread) {
+    if (overview.bay !== 'handed') {
+      found.push({ id: 'start', label: 'Start in T3', run: (a) => a.start(item) });
+    }
     if (overview.queued) {
       found.push({ id: 'unqueue', label: 'Remove from Up next', run: (a) => a.unqueue(item) });
     } else if (overview.bay === 'idle' || overview.bay === 'paused') {

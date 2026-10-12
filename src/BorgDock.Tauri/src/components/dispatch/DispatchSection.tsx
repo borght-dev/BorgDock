@@ -11,10 +11,11 @@ import { showWorkItem } from '@/services/navigation';
 import { LOCAL_T3_HOST_ID } from '@/services/t3/api';
 import { type HostStatus, type SourceStatus, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { toastError } from '@/stores/toast-store';
+import { showToast, toastError } from '@/stores/toast-store';
 import { shortcutLabel } from '@/utils/shortcut-label';
 import { DispatchDetail } from './DispatchDetail';
-import { DispatchRow } from './DispatchRow';
+import { canStart, DispatchRow } from './DispatchRow';
+import { LaunchSheet } from './LaunchSheet';
 import { SlotStrip } from './SlotStrip';
 import { shortAge } from './unit-copy';
 
@@ -74,6 +75,20 @@ function Health({ ado, hosts, now }: { ado: SourceStatus; hosts: HostStatus[]; n
   );
 }
 
+/**
+ * A free slot was picked: open the launch sheet there for the item that is
+ * next in line, the first one queued, else the first nobody started.
+ */
+function startNextIn(items: readonly ItemOverview[], slotId: string): void {
+  const next =
+    items.find((o) => o.bay === 'next') ?? items.find((o) => o.bay === 'idle' && canStart(o));
+  if (!next) {
+    showToast({ message: 'Nothing is waiting to be started.' });
+    return;
+  }
+  useDispatchStore.getState().openLaunch({ itemId: next.item.id, slotId });
+}
+
 /** A local T3 that answers but rejects BorgDock, or has never been paired. */
 function needsPairing(host: HostStatus | undefined): boolean {
   return !!host && !host.ok && host.id === LOCAL_T3_HOST_ID && /pair/i.test(host.error ?? '');
@@ -114,8 +129,10 @@ function PairingNotice({ error }: { error: string }) {
  *   item's detail: the agent's question or last message, the next action and
  *   the item's place in its workflow.
  * - J / K move, Enter opens the work item full screen, A takes the selected
- *   item's first action, M moves its state, O opens its thread in T3
- *   (useKeyboardNav).
+ *   item's first action, S starts an agent on it, M moves its state, O opens
+ *   its thread in T3 (useKeyboardNav).
+ * - Start opens the launch sheet. So does dropping a row on a free slot, or
+ *   picking a free slot, which takes the item that is next in line.
  */
 export function DispatchSection() {
   const ado = useSettingsStore((s) => s.settings.azureDevOps);
@@ -128,6 +145,8 @@ export function DispatchSection() {
   const adoStatus = useDispatchStore((s) => s.ado);
   const hosts = useDispatchStore((s) => s.hosts);
   const busy = useDispatchStore((s) => s.busy);
+  const launch = useDispatchStore((s) => s.launch);
+  const openLaunch = useDispatchStore((s) => s.openLaunch);
   const now = useClock();
 
   const items = useMemo(
@@ -175,7 +194,12 @@ export function DispatchSection() {
 
       {needsPairing(localHost) && <PairingNotice error={localHost?.error ?? ''} />}
 
-      <SlotStrip slots={overview?.slots ?? []} onShowItem={selectItem} />
+      <SlotStrip
+        slots={overview?.slots ?? []}
+        onShowItem={selectItem}
+        onStartIn={(slot) => startNextIn(overview?.items ?? [], slot.id)}
+        onDropItem={(slot, itemId) => openLaunch({ itemId, slotId: slot.id })}
+      />
 
       <div className="bd-dp-split">
         <div className="bd-wb-list" data-density={density}>
@@ -222,6 +246,7 @@ export function DispatchSection() {
           <div className="bd-dp-empty-detail">Pick an item to see its agent and its next step.</div>
         )}
       </div>
+      {launch && overview && <LaunchSheet intent={launch} overview={overview} />}
     </div>
   );
 }

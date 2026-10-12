@@ -50,6 +50,7 @@ function spyActions(): DispatchActions {
     openInT3: vi.fn(),
     move: vi.fn(),
     hideSuggestion: vi.fn(),
+    start: vi.fn(),
     queue: vi.fn(),
     unqueue: vi.fn(),
     openInAdo: vi.fn(),
@@ -58,13 +59,13 @@ function spyActions(): DispatchActions {
 }
 
 describe('unitActions', () => {
-  it('offers Up next for an item nobody started', () => {
-    expect(ids(makeOverview())).toEqual(['queue']);
-    expect(primary(makeOverview())).toBe('queue');
+  it('offers Start and Up next for an item nobody started', () => {
+    expect(ids(makeOverview())).toEqual(['start', 'queue']);
+    expect(primary(makeOverview())).toBe('start');
   });
 
   it('swaps Up next for its removal once the item is queued', () => {
-    expect(ids(makeOverview({ bay: 'next', queued: true }))).toEqual(['unqueue']);
+    expect(ids(makeOverview({ bay: 'next', queued: true }))).toEqual(['start', 'unqueue']);
   });
 
   it('answers a question with the recommended option', () => {
@@ -117,12 +118,12 @@ describe('unitActions', () => {
     expect(ids(overview)).toEqual(['open-t3', 'settle']);
   });
 
-  it('offers to hide a stale item', () => {
+  it('offers to start again or hide a stale item', () => {
     const overview = makeOverview({
       bay: 'drift',
       suggestion: { id: 's', to: null, reason: 'No agent activity.' },
     });
-    expect(ids(overview)).toEqual(['hide']);
+    expect(ids(overview)).toEqual(['start', 'hide']);
   });
 
   it('leaves only ADO for an item that was handed off', () => {
