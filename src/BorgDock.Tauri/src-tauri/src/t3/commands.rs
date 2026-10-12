@@ -1,0 +1,565 @@
+//! The T3 commands the frontend calls. All async: each one does network,
+//! keychain or file I/O.
+
+use super::client::Client;
+use super::hosts::{self, HostRef};
+use super::{desktop, shell};
+use rusqlite::{Connection, OpenFlags};
+use serde::Serialize;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::path::Path;
+use uuid::Uuid;
+
+const TOKEN_EXCHANGE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:token-exchange";
+const BOOTSTRAP_TOKEN_TYPE: &str = "urn:t3:params:oauth:token-type:environment-bootstrap";
+const ACCESS_TOKEN_TYPE: &str = "urn:ietf:params:oauth:token-type:access_token";
+const SCOPES: &str = "orchestration:read orchestration:operate";
+
+const SHELL_PATH: &str = "/api/orchestration/shell";
+const DEFAULT_RUNTIME_MODE: &str = "full-access";
+
+/// A full thread snapshot per remote thread is heavy; fetch a few per call
+/// and let the caller ask again for the rest.
+const REMOTE_FIRST_MESSAGES_PER_CALL: usize = 6;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct T3Probe {
+    pub running: bool,
+    pub paired: bool,
+    pub origin: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct T3LaunchResult {
+    /// 1: T3 was only brought forward (not paired). 2: the thread was created.
+    pub tier: u8,
+    pub thread_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct T3Session {
+    pub thread_id: String,
+    pub title: String,
+    pub branch: Option<String>,
+    /// `waitingApproval`, `waitingInput`, `settled`, `running` or `active`.
+    pub status: String,
+    pub updated_at: String,
+    pub pull_request_urls: Vec<String>,
+}
+
+fn pairing_token(pairing_credential: &str) -> &str {
+    let trimmed = pairing_credential.trim();
+    trimmed
+        .split_once("#token=")
+        .map_or(trimmed, |(_, token)| token.trim())
+}
+
+fn token_exchange_form(pairing_credential: &str) -> Vec<(&'static str, &str)> {
+    vec![
+        ("grant_type", TOKEN_EXCHANGE_GRANT_TYPE),
+        ("subject_token_type", BOOTSTRAP_TOKEN_TYPE),
+        ("subject_token", pairing_token(pairing_credential)),
+        ("requested_token_type", ACCESS_TOKEN_TYPE),
+        ("scope", SCOPES),
+        ("client_label", "BorgDock"),
+    ]
+}
+
+/// Whether T3 answers, and whether it still accepts BorgDock's token.
+#[tauri::command]
+pub async fn t3_probe(host: Option<HostRef>) -> T3Probe {
+    let host = host.unwrap_or_else(HostRef::local);
+    let Ok(resolved) = hosts::resolve(&host).await else {
+        return T3Probe {
+            running: false,
+            paired: false,
+            origin: None,
+        };
+    };
+    let stored = hosts::token(&resolved.id).await.ok().flatten();
+    let mut request = reqwest::Client::new()
+        .get(format!("{}/api/auth/session", resolved.origin))
+        .timeout(std::time::Duration::from_secs(3));
+    if let Some(ref access_token) = stored {
+        request = request.bearer_auth(access_token);
+    }
+    let Ok(response) = request.send().await else {
+        return T3Probe {
+            running: false,
+            paired: false,
+            origin: None,
+        };
+    };
+    // The session endpoint answers 200 for anyone; only `authenticated` tells.
+    let session: Value = response.json().await.unwrap_or(Value::Null);
+    T3Probe {
+        running: true,
+        paired: stored.is_some() && session["authenticated"] == true,
+        origin: Some(resolved.origin),
+    }
+}
+
+#[tauri::command]
+pub async fn t3_pair(pairing_credential: String, host: Option<HostRef>) -> Result<(), String> {
+    let host = host.unwrap_or_else(HostRef::local);
+    let resolved = hosts::resolve(&host).await?;
+    let response = reqwest::Client::new()
+        .post(format!("{}/oauth/token", resolved.origin))
+        .form(&token_exchange_form(&pairing_credential))
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Pairing exchange failed: {e}"))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read pairing response: {e}"))?;
+    if !status.is_success() {
+        let detail = body.trim();
+        return Err(if detail.is_empty() {
+            format!("Pairing exchange returned {status}")
+        } else {
+            format!("Pairing exchange returned {status}: {detail}")
+        });
+    }
+    let value: Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Pairing exchange returned an invalid response: {e}"))?;
+    let access_token = value["access_token"]
+        .as_str()
+        .ok_or_else(|| "Pairing response did not include an access token".to_string())?
+        .to_string();
+    hosts::store_token(&resolved.id, access_token).await
+}
+
+/// The token in what `t3 auth session issue --json` prints (log lines may precede the JSON).
+fn issued_token(cli_output: &str) -> Result<String, String> {
+    let start = cli_output
+        .find('{')
+        .ok_or_else(|| "T3 Code's CLI printed no session".to_string())?;
+    let session: Value = serde_json::from_str(cli_output[start..].trim())
+        .map_err(|e| format!("T3 Code's CLI printed an unreadable session: {e}"))?;
+    session["token"]
+        .as_str()
+        .filter(|token| !token.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| "T3 Code's CLI issued no token".to_string())
+}
+
+/// Pair with the T3 on this machine without a credential to paste: T3's own
+/// CLI issues a session that can read and operate threads, nothing else.
+#[tauri::command]
+pub async fn t3_pair_local(executable: Option<String>) -> Result<(), String> {
+    let output = tokio::task::spawn_blocking(move || {
+        desktop::run_cli(
+            executable.as_deref(),
+            &[
+                "auth",
+                "session",
+                "issue",
+                "--scope",
+                "orchestration:read",
+                "--scope",
+                "orchestration:operate",
+                "--ttl",
+                "30d",
+                "--label",
+                "BorgDock",
+                "--json",
+            ],
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    hosts::store_token(hosts::LOCAL_HOST_ID, issued_token(&output)?).await
+}
+
+#[tauri::command]
+pub async fn t3_unpair(host: HostRef) -> Result<(), String> {
+    hosts::forget_token(&host.id).await
+}
+
+/// The host's projects and threads, or `changed: false` when its sequence is
+/// still `known_sequence`.
+#[tauri::command]
+pub async fn t3_snapshot(
+    host: HostRef,
+    known_sequence: Option<u64>,
+) -> Result<shell::Snapshot, String> {
+    let client = Client::connect(&host).await?;
+    let raw = client.get(SHELL_PATH).await?;
+    let sequence = shell::sequence_of(&raw);
+    if known_sequence == Some(sequence) {
+        return Ok(shell::unchanged(sequence));
+    }
+    Ok(shell::read_snapshot(&raw))
+}
+
+#[tauri::command]
+pub async fn t3_thread_detail(
+    host: HostRef,
+    thread_id: String,
+) -> Result<shell::ThreadDetail, String> {
+    let client = Client::connect(&host).await?;
+    let snapshot = client.get(&bounded_thread_path(&thread_id)).await?;
+    Ok(shell::read_detail(&snapshot))
+}
+
+fn thread_path(thread_id: &str) -> String {
+    format!(
+        "/api/orchestration/threads/{}",
+        urlencoding::encode(thread_id)
+    )
+}
+
+fn bounded_thread_path(thread_id: &str) -> String {
+    format!("{}/bounded", thread_path(thread_id))
+}
+
+/// First user messages straight from T3's own database on this machine: one
+/// indexed lookup per thread, far cheaper than a full snapshot each.
+fn first_messages_from_database(thread_ids: &[String]) -> Result<HashMap<String, String>, String> {
+    let connection = Connection::open_with_flags(
+        hosts::userdata_dir()?.join("statev2.sqlite"),
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("Failed to open the T3 database read-only: {e}"))?;
+    let mut statement = connection
+        .prepare(
+            "SELECT json_extract(payload_json, '$.text') FROM orchestration_v2_projection_messages \
+             WHERE thread_id = ?1 AND role = 'user' ORDER BY created_at LIMIT 1",
+        )
+        .map_err(|e| e.to_string())?;
+    let mut found = HashMap::new();
+    for thread_id in thread_ids {
+        let text: Option<String> = statement
+            .query_row([thread_id], |row| row.get(0))
+            .ok()
+            .flatten();
+        if let Some(text) = text.filter(|text| !text.trim().is_empty()) {
+            found.insert(thread_id.clone(), shell::clip_first_message(&text));
+        }
+    }
+    Ok(found)
+}
+
+async fn first_messages_from_snapshots(
+    client: &Client,
+    thread_ids: &[String],
+) -> HashMap<String, String> {
+    let mut found = HashMap::new();
+    for thread_id in thread_ids.iter().take(REMOTE_FIRST_MESSAGES_PER_CALL) {
+        if let Ok(snapshot) = client.get(&thread_path(thread_id)).await {
+            // An empty answer still counts: the thread has no user message to wait for.
+            let text = shell::first_user_message(&snapshot).unwrap_or_default();
+            found.insert(thread_id.clone(), text);
+        }
+    }
+    found
+}
+
+/// The first thing the user wrote in each thread: where "pick up 59541" lives.
+/// Threads missing from the answer can be asked for again.
+#[tauri::command]
+pub async fn t3_first_user_messages(
+    host: HostRef,
+    thread_ids: Vec<String>,
+) -> Result<HashMap<String, String>, String> {
+    if thread_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    if host.is_local() {
+        let ids = thread_ids.clone();
+        let from_database = tokio::task::spawn_blocking(move || first_messages_from_database(&ids))
+            .await
+            .map_err(|e| e.to_string())?;
+        match from_database {
+            Ok(mut found) => {
+                // No row means no user message yet; say so, so the caller stops asking.
+                for thread_id in thread_ids {
+                    found.entry(thread_id).or_default();
+                }
+                return Ok(found);
+            }
+            Err(error) => log::warn!("t3_first_user_messages: {error}; reading snapshots instead"),
+        }
+    }
+    let client = Client::connect(&host).await?;
+    Ok(first_messages_from_snapshots(&client, &thread_ids).await)
+}
+
+async fn environment_id(client: &Client) -> Result<String, String> {
+    let descriptor = client.get("/.well-known/t3/environment").await?;
+    descriptor["environmentId"]
+        .as_str()
+        .map(str::to_string)
+        .ok_or_else(|| "T3 did not report its environment id".to_string())
+}
+
+/// Bring T3 Code to the front on `thread_id`.
+#[tauri::command]
+pub async fn t3_show_thread(
+    host: HostRef,
+    thread_id: String,
+    executable: Option<String>,
+) -> Result<(), String> {
+    let client = Client::connect(&host).await?;
+    let environment = environment_id(&client).await?;
+    tokio::task::spawn_blocking(move || {
+        desktop::open_thread(executable.as_deref(), &environment, &thread_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+async fn activate(executable: Option<String>) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || desktop::activate(executable.as_deref()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+async fn ensure_project(
+    client: &Client,
+    shell: &Value,
+    workspace_root: &str,
+) -> Result<String, String> {
+    if let Some(project_id) = shell::project_for_workspace(shell, workspace_root) {
+        return Ok(project_id);
+    }
+    let project_id = Uuid::new_v4().to_string();
+    let title = Path::new(workspace_root)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("BorgDock project");
+    client
+        .post(
+            "/api/projects/mutate",
+            &json!({
+                "type": "project.create",
+                "commandId": Uuid::new_v4().to_string(),
+                "projectId": project_id,
+                "title": title,
+                "workspaceRoot": workspace_root,
+            }),
+        )
+        .await?;
+    Ok(project_id)
+}
+
+/// Open a fresh, empty T3 thread on `workspace_root` for a pull request and
+/// bring T3 to the front on it. Not paired: T3 is only brought forward
+/// (tier 1) so the user can start the thread by hand.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn t3_open_thread(
+    workspace_root: String,
+    branch: String,
+    title: String,
+    repository: String,
+    pr_number: u32,
+    pr_url: String,
+    model: String,
+    model_instance: String,
+    executable: Option<String>,
+) -> Result<T3LaunchResult, String> {
+    let host = hosts::resolve(&HostRef::local()).await?;
+    let Some(access_token) = hosts::token(&host.id).await? else {
+        activate(executable).await?;
+        return Ok(T3LaunchResult {
+            tier: 1,
+            thread_id: None,
+        });
+    };
+    let client = Client::new(host, access_token);
+    let shell = client.get(SHELL_PATH).await?;
+    let project_id = ensure_project(&client, &shell, &workspace_root).await?;
+    let (selection, runtime_mode) = shell::thread_defaults(&shell, &project_id);
+    let thread_id = Uuid::new_v4().to_string();
+    client
+        .rpc(
+            "orchestration.launchThread",
+            json!({
+                "threadId": thread_id,
+                "projectId": project_id,
+                "title": title,
+                "modelSelection": selection.unwrap_or_else(
+                    || json!({ "instanceId": model_instance, "model": model, "options": [] }),
+                ),
+                "runtimeMode": runtime_mode.unwrap_or_else(|| DEFAULT_RUNTIME_MODE.to_string()),
+                "interactionMode": "default",
+                "workspaceStrategy": { "type": "root", "branch": branch },
+            }),
+        )
+        .await?;
+    // Linking is best-effort: the thread exists and is usable without it.
+    if let Err(error) = client
+        .rpc(
+            "orchestration.dispatchCommand",
+            json!({
+                "type": "thread.metadata.update",
+                "threadId": thread_id,
+                "linkedPullRequest": {
+                    "projectId": project_id,
+                    "repository": repository,
+                    "number": pr_number,
+                    "url": pr_url,
+                },
+            }),
+        )
+        .await
+    {
+        log::warn!("t3_open_thread: linking the pull request failed: {error}");
+    }
+    let shown = match environment_id(&client).await {
+        Ok(environment) => {
+            let thread = thread_id.clone();
+            let configured = executable.clone();
+            tokio::task::spawn_blocking(move || {
+                desktop::open_thread(configured.as_deref(), &environment, &thread)
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
+        Err(error) => Err(error),
+    };
+    if let Err(error) = shown {
+        log::warn!("t3_open_thread: could not open the thread directly: {error}");
+        activate(executable).await?;
+    }
+    Ok(T3LaunchResult {
+        tier: 2,
+        thread_id: Some(thread_id),
+    })
+}
+
+fn session_status(status: &str) -> &'static str {
+    match status {
+        "approval" => "waitingApproval",
+        "question" => "waitingInput",
+        "settled" => "settled",
+        "running" => "running",
+        _ => "active",
+    }
+}
+
+/// The threads on this machine, for the T3 strip on pull requests.
+#[tauri::command]
+pub async fn t3_list_sessions() -> Result<Vec<T3Session>, String> {
+    let client = Client::connect(&HostRef::local()).await?;
+    let snapshot = shell::read_snapshot(&client.get(SHELL_PATH).await?);
+    let mut sessions: Vec<T3Session> = snapshot
+        .threads
+        .into_iter()
+        .map(|thread| T3Session {
+            status: session_status(&thread.status).to_string(),
+            updated_at: thread.last_activity_at,
+            pull_request_urls: thread.pull_requests.into_iter().map(|pr| pr.url).collect(),
+            thread_id: thread.id,
+            title: thread.title,
+            branch: thread.branch,
+        })
+        .collect();
+    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    Ok(sessions)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_exchange_requests_an_access_token_with_both_scopes() {
+        let form = token_exchange_form("PAIRING-CREDENTIAL");
+        assert!(form.contains(&("requested_token_type", ACCESS_TOKEN_TYPE)));
+        assert!(form.contains(&("scope", "orchestration:read orchestration:operate")));
+    }
+
+    #[test]
+    fn pairing_token_accepts_raw_credentials_and_pairing_links() {
+        assert_eq!(pairing_token("PAIRING-CREDENTIAL"), "PAIRING-CREDENTIAL");
+        assert_eq!(
+            pairing_token("http://127.0.0.1:3773/pair#token=PAIRING-CREDENTIAL"),
+            "PAIRING-CREDENTIAL"
+        );
+    }
+
+    #[test]
+    fn the_issued_token_is_read_past_any_log_lines() {
+        let output = "info: starting
+{\"sessionId\":\"s\",\"token\":\"abc\",\"expiresAt\":\"2026-11-11T00:00:00Z\"}
+";
+        assert_eq!(issued_token(output).unwrap(), "abc");
+        assert!(issued_token("no session here").is_err());
+    }
+
+    #[test]
+    fn thread_paths_encode_the_id() {
+        assert_eq!(
+            bounded_thread_path("env:thread 1"),
+            "/api/orchestration/threads/env%3Athread%201/bounded"
+        );
+    }
+
+    /// Read-only check against the T3 on this machine:
+    /// `cargo test --lib t3::commands::tests::live -- --ignored --nocapture`
+    #[tokio::test]
+    #[ignore = "talks to the local T3; needs BorgDock to be paired"]
+    async fn live_shell_detail_and_config() {
+        // BORGDOCK_T3_TEST_TOKEN lets the check run with a short-lived token
+        // instead of BorgDock's stored pairing.
+        let client = match std::env::var("BORGDOCK_T3_TEST_TOKEN") {
+            Ok(token) => Client::new(hosts::resolve(&HostRef::local()).await.unwrap(), token),
+            Err(_) => Client::connect(&HostRef::local()).await.unwrap(),
+        };
+        let raw = client.get(SHELL_PATH).await.unwrap();
+        let snapshot = shell::read_snapshot(&raw);
+        let mut by_status: HashMap<&str, usize> = HashMap::new();
+        for thread in &snapshot.threads {
+            *by_status.entry(thread.status.as_str()).or_default() += 1;
+        }
+        println!(
+            "sequence={} projects={} threads={} of {} statuses={by_status:?}",
+            snapshot.sequence,
+            snapshot.projects.len(),
+            snapshot.threads.len(),
+            raw["threads"].as_array().map_or(0, Vec::len),
+        );
+        assert!(!snapshot.projects.is_empty());
+
+        if let Some(thread) = snapshot.threads.iter().find(|t| t.status != "settled") {
+            let detail =
+                shell::read_detail(&client.get(&bounded_thread_path(&thread.id)).await.unwrap());
+            println!(
+                "detail status={} agent_message_chars={} questions={}",
+                thread.status,
+                detail.last_agent_message.map_or(0, |m| m.chars().count()),
+                detail.questions.len()
+            );
+            let first = t3_first_user_messages(HostRef::local(), vec![thread.id.clone()])
+                .await
+                .unwrap();
+            println!("first message chars={}", first[&thread.id].chars().count());
+        }
+
+        let config = client.rpc("server.getConfig", json!({})).await.unwrap();
+        println!(
+            "environment={} version={} providers={}",
+            config["environment"]["environmentId"].as_str().is_some(),
+            config["environment"]["serverVersion"],
+            config["providers"].as_array().map_or(0, Vec::len)
+        );
+        assert!(config["environment"]["environmentId"].as_str().is_some());
+    }
+
+    #[test]
+    fn session_statuses_keep_the_names_the_strip_shows() {
+        assert_eq!(session_status("question"), "waitingInput");
+        assert_eq!(session_status("approval"), "waitingApproval");
+        assert_eq!(session_status("plan"), "active");
+        assert_eq!(session_status("running"), "running");
+    }
+}

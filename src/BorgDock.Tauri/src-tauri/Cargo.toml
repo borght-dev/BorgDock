@@ -41,6 +41,9 @@ tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 urlencoding = "2"
+# WebSocket transport for T3 Code's orchestration RPC (src/t3/client.rs).
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
+futures-util = "0.3"
 log = "0.4"
 png = "0.17"
 tiberius = { version = "0.12", default-features = false, features = ["tds73", "chrono", "winauth", "rust_decimal"] }
