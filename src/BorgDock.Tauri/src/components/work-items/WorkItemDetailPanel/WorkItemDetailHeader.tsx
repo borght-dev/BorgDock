@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Copy, ExternalLink, Star } from 'lucide-react';
+import { Copy, ExternalLink, Play, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BackButton } from '@/components/layout/BackButton';
 import { Button } from '@/components/shared/primitives';
@@ -16,6 +16,8 @@ import {
   toggleTrackedWorkItem,
   toggleWorkingOnWorkItem,
 } from '@/components/work-items/work-item-toggles';
+import { startWorkItem } from '@/services/dispatch/actions';
+import { isMainWindow } from '@/services/navigation';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { ChipPicker } from './ChipPicker';
 import type { TitleBlockChange } from './TitleBlock';
@@ -208,6 +210,17 @@ export function WorkItemDetailHeader({
             data-action-bar-action="copy-id"
           >
             {copied ? 'Copied' : 'Copy id'}
+          </Button>
+        )}
+        {id !== undefined && isMainWindow() && (
+          <Button
+            variant="secondary"
+            size="md"
+            leading={<Play {...ICON} />}
+            onClick={() => startWorkItem(id)}
+            data-action-bar-action="start"
+          >
+            Start in T3
           </Button>
         )}
         {id !== undefined && (

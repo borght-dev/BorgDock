@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
+import type { FlyoutAgent } from '@/components/flyout/FlyoutGlance';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import type { Overview } from '@/services/dispatch/types';
 import { computeMergeScore } from '@/services/merge-score';
 import { OPEN_PR_DETAIL_EVENT, type ShowPrTarget, showPr } from '@/services/navigation';
 import { sendOsNotification } from '@/services/notification';
@@ -12,6 +14,7 @@ import {
   reviewPr,
 } from '@/services/pr-actions';
 import { requestT3Thread } from '@/services/t3-thread';
+import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useT3SessionStore } from '@/stores/t3-session-store';
@@ -59,7 +62,7 @@ export async function openPrFromEvent(payload: OpenPrDetailPayload): Promise<voi
  * Show, restore and focus this (the main) window. Not `show_or_focus_main`:
  * that command toggles, and hides a window that is already focused.
  */
-async function bringMainWindowForward(): Promise<void> {
+export async function bringMainWindowForward(): Promise<void> {
   try {
     const { getCurrentWindow } = await import('@tauri-apps/api/window');
     const win = getCurrentWindow();
@@ -170,6 +173,7 @@ export function buildFlyoutPayload(
   focusCount: number,
   reduceMotion: boolean,
   teams: readonly string[] = [],
+  agents: FlyoutAgent[] = [],
 ) {
   const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
@@ -219,7 +223,15 @@ export function buildFlyoutPayload(
     reduceMotion,
     lastSyncAgo,
     hotkey,
+    agents,
   };
+}
+
+/** The work items whose agent waits on you, as the flyout lists them. */
+export function waitingAgents(overview: Overview | null): FlyoutAgent[] {
+  return (overview?.items ?? [])
+    .filter((o) => o.bay === 'waiting')
+    .map((o) => ({ itemId: o.item.id, title: o.item.title, reason: o.waitingFor ?? '' }));
 }
 
 export function useFlyoutSync() {
@@ -235,6 +247,13 @@ export function useFlyoutSync() {
       s.sessions.filter(
         (session) => session.status === 'waitingApproval' || session.status === 'waitingInput',
       ).length,
+  );
+
+  // The agents the flyout lists, as a string: a change in it is a reason to sync.
+  const agentsKey = useDispatchStore((s) =>
+    waitingAgents(s.overview)
+      .map((agent) => `${agent.itemId}:${agent.reason}`)
+      .join('|'),
   );
 
   // Debounced sync — skip when nothing has changed
@@ -262,6 +281,7 @@ export function useFlyoutSync() {
       usePrStore.getState().focusCount(),
       st.ui.reduceMotion ?? false,
       usePrStore.getState().teams,
+      waitingAgents(useDispatchStore.getState().overview),
     );
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -288,7 +308,7 @@ export function useFlyoutSync() {
       const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
 
       // Cheap hash to skip redundant IPC
-      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${reduceMotion}:${lastPollTime}:${agentAwaitingCount}`;
+      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${reduceMotion}:${lastPollTime}:${agentAwaitingCount}:${agentsKey}`;
       if (hash === prevHashRef.current) return;
       prevHashRef.current = hash;
 
@@ -318,7 +338,16 @@ export function useFlyoutSync() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [pullRequests, username, theme, reduceMotion, hotkey, lastPollTime, agentAwaitingCount]);
+  }, [
+    pullRequests,
+    username,
+    theme,
+    reduceMotion,
+    hotkey,
+    lastPollTime,
+    agentAwaitingCount,
+    agentsKey,
+  ]);
 
   // Respond to flyout-request-data: re-send the current payload through the
   // same syncFlyout helper so the cache and the broadcast stay in sync.

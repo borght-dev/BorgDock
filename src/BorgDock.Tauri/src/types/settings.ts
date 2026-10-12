@@ -117,6 +117,8 @@ export interface AgentSettings {
    * Placeholders: `{id}`, `{title}`, `{branch}`. An empty one uses the default.
    */
   dispatchPrompts?: { pickup?: string; qa?: string; done?: string };
+  /** Notify when an agent asks, proposes a plan, finishes or fails. Default on. */
+  dispatchNotifications?: boolean;
 }
 
 export interface SummarySettings {

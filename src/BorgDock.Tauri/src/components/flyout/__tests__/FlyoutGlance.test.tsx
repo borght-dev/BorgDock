@@ -91,6 +91,35 @@ describe('FlyoutGlance', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('lists the agents that need you above the pull requests', () => {
+    const agents = [
+      { itemId: 60214, title: 'Order list loses its scroll position', reason: 'Agent asks in W3' },
+      { itemId: 59877, title: 'Bulk assign from the planning board', reason: 'Plan ready in W1' },
+    ];
+    render(<FlyoutGlance data={{ ...data, agents }} onClose={vi.fn()} />);
+    expect(screen.getByText('2 agents need you')).toBeInTheDocument();
+    expect(screen.getByText('Agent asks in W3')).toBeInTheDocument();
+    expect(screen.getByText('Bulk assign from the planning board')).toBeInTheDocument();
+  });
+
+  it('has no agents block when no agent waits', () => {
+    render(<FlyoutGlance data={data} onClose={vi.fn()} />);
+    expect(screen.queryByTestId('flyout-glance-agents')).not.toBeInTheDocument();
+  });
+
+  it('picking an agent shows its item in Dispatch and closes the flyout', async () => {
+    const onClose = vi.fn();
+    const agents = [
+      { itemId: 60214, title: 'Order list loses its scroll position', reason: 'Agent asks in W3' },
+    ];
+    render(<FlyoutGlance data={{ ...data, agents }} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /Order list loses its scroll position/ }));
+    await waitFor(() =>
+      expect(emitTo).toHaveBeenCalledWith('main', 'dispatch-show-item', { itemId: 60214 }),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
   it('shows the count of open PRs in the header subtitle', () => {
     render(<FlyoutGlance data={data} onClose={vi.fn()} />);
     expect(screen.getByText(/2 open pull requests/)).toBeInTheDocument();

@@ -1,6 +1,6 @@
-import type { DispatchActions } from '@/components/dispatch/unit-actions';
+import { type DispatchActions, unitActions } from '@/components/dispatch/unit-actions';
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
-import { showPr } from '@/services/navigation';
+import { showPr, showSection } from '@/services/navigation';
 import {
   type T3HostRef,
   t3Respond,
@@ -8,7 +8,7 @@ import {
   t3Settle,
   t3ShowThread,
 } from '@/services/t3/api';
-import { useDispatchStore } from '@/stores/dispatch-store';
+import { selectItemOverview, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
@@ -84,6 +84,37 @@ function setQueued(item: DispatchItem, queued: boolean): void {
   showToast({
     message: queued ? `${item.id} added to Up next` : `${item.id} removed from Up next`,
   });
+}
+
+/** Show an item in Dispatch, from any section. */
+export function showDispatchItem(itemId: number): void {
+  useDispatchStore.getState().selectItem(itemId);
+  void showSection('dispatch');
+}
+
+/**
+ * Start an agent on any work item, mine or not: Dispatch opens with the
+ * launch sheet for it. The item is starred first, so Dispatch has it even
+ * when it is assigned to someone else.
+ */
+export function startWorkItem(itemId: number): void {
+  if (!useWorkItemsStore.getState().trackedWorkItemIds.has(itemId)) {
+    toggleTrackedWorkItem(itemId);
+  }
+  showDispatchItem(itemId);
+  useDispatchStore.getState().openLaunch({ itemId });
+}
+
+/**
+ * Take `actionId` on an item, as asked from a notification. The item is
+ * shown either way; the action only runs while the item still offers it,
+ * so a stale notification cannot do something else than it said.
+ */
+export function runItemAction(itemId: number, actionId: string): void {
+  showDispatchItem(itemId);
+  const overview = selectItemOverview(useDispatchStore.getState(), itemId);
+  const action = overview && unitActions(overview).find((a) => a.id === actionId);
+  action?.run(dispatchActions);
 }
 
 export const dispatchActions: DispatchActions = {

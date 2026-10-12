@@ -1,6 +1,7 @@
 import clsx from 'clsx';
-import { Star } from 'lucide-react';
+import { Play, Star } from 'lucide-react';
 import { memo } from 'react';
+import { startWorkItem } from '@/services/dispatch/actions';
 import { showWorkItem } from '@/services/navigation';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity } from '@/types';
@@ -35,6 +36,8 @@ export interface WorkItemRowProps {
   /** Default: flip the id in the store and save it with the settings. */
   onToggleTracked?: (id: number) => void;
   onToggleWorking?: (id: number) => void;
+  /** Default: open the Dispatch launch sheet for the item. */
+  onStart?: (id: number) => void;
 }
 
 function openInView(id: number) {
@@ -50,7 +53,8 @@ function openInView(id: number) {
  * - Click, Enter or Space selects the row and pushes the detail view. There
  *   is no pop-out from the main window, so Ctrl+click opens in place too and
  *   middle-click does nothing.
- * - The ★ track and ● working toggles sit beside the row (a button may not
+ * - Start in T3 (opens the Dispatch launch sheet for the item) and the ★
+ *   track and ● working toggles sit beside the row (a button may not
  *   sit inside its `role="button"`), drawn over its right end: quiet until
  *   hover, focus or selection, always shown while on.
  * - `data-key="wi-<id>"` (on the wrapper) lets `flip()` follow the row.
@@ -62,6 +66,7 @@ export const WorkItemRow = memo(function WorkItemRow({
   onOpen = openInView,
   onToggleTracked = toggleTrackedWorkItem,
   onToggleWorking = toggleWorkingOnWorkItem,
+  onStart = startWorkItem,
 }: WorkItemRowProps) {
   const { id } = item;
   const open = () => {
@@ -110,6 +115,19 @@ export const WorkItemRow = memo(function WorkItemRow({
         </span>
       </div>
       <span className="bd-wi-wb-toggles">
+        <button
+          type="button"
+          className="bd-wi-wb-toggle"
+          data-wi-toggle="start"
+          aria-label={`Start AB#${id} in T3`}
+          title="Start in T3"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStart(id);
+          }}
+        >
+          <Play size={12} strokeWidth={2.25} aria-hidden="true" />
+        </button>
         <button
           type="button"
           className="bd-wi-wb-toggle"
