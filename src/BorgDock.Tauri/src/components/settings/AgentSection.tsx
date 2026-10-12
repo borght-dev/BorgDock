@@ -34,6 +34,7 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
   const [t3, setT3] = useState<{ running: boolean; paired: boolean } | null>(null);
   const [pairingCredential, setPairingCredential] = useState('');
   const [pairError, setPairError] = useState('');
+  const [pairing, setPairing] = useState(false);
 
   useEffect(() => {
     invoke<{ claude: boolean; codex: boolean }>('agent_provider_availability', {
@@ -55,6 +56,23 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
   useEffect(() => {
     void probeT3();
   }, [probeT3]);
+
+  const pair = useCallback(
+    async (command: 't3_pair_local' | 't3_pair', args: Record<string, unknown>) => {
+      setPairError('');
+      setPairing(true);
+      try {
+        await invoke(command, args);
+        setPairingCredential('');
+        await probeT3();
+      } catch (error) {
+        setPairError(String(error));
+      } finally {
+        setPairing(false);
+      }
+    },
+    [probeT3],
+  );
 
   return (
     <>
@@ -129,14 +147,14 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
       <Card variant="default" padding="md">
         <h3 className="mb-1 text-[13px] font-semibold text-[var(--color-text-primary)]">T3 Code</h3>
         <p className="mb-3 text-[11.5px] text-[var(--color-text-muted)]">
-          "Open a new thread in T3" on a pull request creates a thread on the PR's worktree and
-          brings T3 to the front.
+          BorgDock starts and follows T3 threads through T3's local server. Pairing gives it a token
+          that can read and operate threads, nothing else. The token lasts 30 days.
         </p>
         <Field label="T3 path" hint="Leave empty to use the default install location.">
           <TextInput
             value={agents.t3Path ?? ''}
             onChange={(t3Path) => onAgentsChange({ ...agents, t3Path: t3Path || undefined })}
-            placeholder="T3 Code (Alpha).exe"
+            placeholder="T3 Code.exe"
             mono
           />
         </Field>
@@ -158,39 +176,41 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
         </Field>
         <Field
           label="T3 pairing"
+          anchorId="t3-pairing"
           hint={
             t3?.paired
-              ? 'Paired. New threads are created and linked to the PR automatically.'
+              ? 'Paired. BorgDock can start, answer and settle threads.'
               : t3?.running
-                ? 'Paste a one-time credential from t3 pair. Without it BorgDock can only bring T3 to the front.'
-                : 'T3 is closed. Start it to pair or to open threads.'
+                ? 'Not paired, or the pairing expired. Pair with one click, or paste a credential from t3 pair.'
+                : 'T3 is closed. Start it to pair.'
           }
         >
           <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={pairing || !t3?.running}
+              className="rounded-md border border-[var(--color-input-border)] px-3 py-1 text-xs disabled:opacity-40"
+              onClick={() => void pair('t3_pair_local', { executable: agents.t3Path })}
+            >
+              {t3?.paired ? 'Pair again' : 'Pair with T3 on this machine'}
+            </button>
+          </div>
+          <div className="mt-2 flex gap-2">
             <div className="flex-1">
               <TextInput
                 ariaLabel="T3 pairing credential"
                 value={pairingCredential}
                 onChange={setPairingCredential}
                 type="password"
-                placeholder={t3?.paired ? 'Paired' : 'Paste pairing credential'}
+                placeholder="Or paste a pairing credential"
                 mono
               />
             </div>
             <button
               type="button"
-              disabled={!pairingCredential.trim()}
+              disabled={pairing || !pairingCredential.trim()}
               className="rounded-md border border-[var(--color-input-border)] px-3 text-xs disabled:opacity-40"
-              onClick={async () => {
-                setPairError('');
-                try {
-                  await invoke('t3_pair', { pairingCredential });
-                  setPairingCredential('');
-                  await probeT3();
-                } catch (error) {
-                  setPairError(String(error));
-                }
-              }}
+              onClick={() => void pair('t3_pair', { pairingCredential })}
             >
               Pair
             </button>

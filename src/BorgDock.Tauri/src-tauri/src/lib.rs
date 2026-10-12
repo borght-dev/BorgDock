@@ -340,11 +340,16 @@ pub fn run() {
             // Headless and interactive agent providers
             agents::run_headless_prompt,
             agents::agent_provider_availability,
-            t3::t3_probe,
-            t3::t3_pair,
-            t3::t3_open_thread,
-            t3::t3_list_sessions,
-            t3::t3_focus_session,
+            t3::commands::t3_probe,
+            t3::commands::t3_pair,
+            t3::commands::t3_pair_local,
+            t3::commands::t3_unpair,
+            t3::commands::t3_snapshot,
+            t3::commands::t3_thread_detail,
+            t3::commands::t3_first_user_messages,
+            t3::commands::t3_show_thread,
+            t3::commands::t3_open_thread,
+            t3::commands::t3_list_sessions,
             // Azure DevOps HTTP proxy (CORS bypass)
             ado::ado_fetch,
             // File palette

@@ -6,22 +6,14 @@ import type { PullRequest } from '@/types';
 
 const EMPTY_SESSIONS: T3Session[] = [];
 
-function belongsToPr(
-  session: { branch?: string; linkedPullRequestJson?: string },
+/** A thread belongs to a pull request it is linked to, or whose branch it works on. */
+export function belongsToPr(
+  session: Pick<T3Session, 'branch' | 'pullRequestUrls'>,
   pr: PullRequest,
 ): boolean {
   if (session.branch?.toLowerCase() === pr.headRef.toLowerCase()) return true;
-  if (!session.linkedPullRequestJson) return false;
-  try {
-    const linked = JSON.parse(session.linkedPullRequestJson) as Record<string, unknown>;
-    return (
-      Number(linked.number ?? linked.pullRequestNumber) === pr.number &&
-      String(linked.owner ?? linked.repoOwner ?? '').toLowerCase() === pr.repoOwner.toLowerCase() &&
-      String(linked.repo ?? linked.repoName ?? '').toLowerCase() === pr.repoName.toLowerCase()
-    );
-  } catch {
-    return false;
-  }
+  const url = pr.htmlUrl.toLowerCase();
+  return url !== '' && session.pullRequestUrls.some((linked) => linked.toLowerCase() === url);
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -60,10 +52,11 @@ export function T3SessionStrip({ pr, inline }: { pr: PullRequest; inline?: boole
           className="rounded-full border border-[var(--color-subtle-border)] bg-[var(--color-surface-raised)] px-2 py-0.5 text-[9.5px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]"
           onClick={(event) => {
             event.stopPropagation();
-            void invoke('t3_focus_session', {
-              workspaceRoot: session.worktreePath || session.workspaceRoot,
+            void invoke('t3_show_thread', {
+              host: { id: 'local' },
+              threadId: session.threadId,
               executable: t3Path,
-            });
+            }).catch((err) => console.error('t3_show_thread failed', err));
           }}
         >
           {STATUS_LABEL[session.status] ?? session.status}
