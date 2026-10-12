@@ -139,6 +139,10 @@ export const dispatchActions: DispatchActions = {
     showToast({ message: 'Suggestion hidden' });
   },
 
+  start: (item, slotId) => {
+    useDispatchStore.getState().openLaunch({ itemId: item.id, slotId });
+  },
+
   queue: (item) => setQueued(item, true),
 
   unqueue: (item) => setQueued(item, false),

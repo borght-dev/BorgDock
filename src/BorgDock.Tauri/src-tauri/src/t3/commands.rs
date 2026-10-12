@@ -436,6 +436,68 @@ pub async fn t3_open_thread(
     })
 }
 
+/// The providers and models the host can start a thread on.
+#[tauri::command]
+pub async fn t3_catalogue(host: HostRef) -> Result<shell::Catalogue, String> {
+    let client = Client::connect(&host).await?;
+    let config = client.rpc("server.getConfig", json!({})).await?;
+    Ok(shell::read_catalogue(&config))
+}
+
+/// What the frontend asks for when it starts an agent on a project.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchRequest {
+    pub project_id: String,
+    pub title: String,
+    /// `{ instanceId, model, options }`, as T3 takes it.
+    pub model_selection: Value,
+    /// The first message; the agent starts on it at once.
+    pub prompt: String,
+}
+
+fn launch_command(request: &LaunchRequest, thread_id: &str, runtime_mode: &str) -> Value {
+    json!({
+        "threadId": thread_id,
+        "projectId": request.project_id,
+        "title": request.title,
+        "modelSelection": request.model_selection,
+        "runtimeMode": runtime_mode,
+        "interactionMode": "default",
+        "workspaceStrategy": { "type": "root" },
+        "initialMessage": {
+            "messageId": Uuid::new_v4().to_string(),
+            "text": request.prompt,
+            "attachments": [],
+        },
+    })
+}
+
+/// Start a thread with a first message on a project. The thread runs in the
+/// runtime mode of the thread touched last on that host, as a new thread in
+/// T3 itself would. Returns the new thread's id.
+#[tauri::command]
+pub async fn t3_launch_thread(host: HostRef, request: LaunchRequest) -> Result<String, String> {
+    if request.prompt.trim().is_empty() {
+        return Err("The first message is empty".to_string());
+    }
+    let client = Client::connect(&host).await?;
+    let shell = client.get(SHELL_PATH).await?;
+    let (_, runtime_mode) = shell::thread_defaults(&shell, &request.project_id);
+    let thread_id = Uuid::new_v4().to_string();
+    client
+        .rpc(
+            "orchestration.launchThread",
+            launch_command(
+                &request,
+                &thread_id,
+                runtime_mode.as_deref().unwrap_or(DEFAULT_RUNTIME_MODE),
+            ),
+        )
+        .await?;
+    Ok(thread_id)
+}
+
 async fn dispatch(client: &Client, command: Value) -> Result<(), String> {
     client
         .rpc("orchestration.dispatchCommand", command)
@@ -576,6 +638,22 @@ mod tests {
 ";
         assert_eq!(issued_token(output).unwrap(), "abc");
         assert!(issued_token("no session here").is_err());
+    }
+
+    #[test]
+    fn a_launch_runs_in_the_project_root_and_starts_on_the_first_message() {
+        let request = LaunchRequest {
+            project_id: "p1".to_string(),
+            title: "AB#60201 Search ignores accents".to_string(),
+            model_selection: json!({ "instanceId": "codex", "model": "default", "options": [] }),
+            prompt: "Pick up AB#60201".to_string(),
+        };
+        let command = launch_command(&request, "thread-1", "full-access");
+        assert_eq!(command["threadId"], "thread-1");
+        assert_eq!(command["workspaceStrategy"]["type"], "root");
+        assert_eq!(command["interactionMode"], "default");
+        assert_eq!(command["initialMessage"]["text"], "Pick up AB#60201");
+        assert_eq!(command["initialMessage"]["attachments"], json!([]));
     }
 
     #[test]

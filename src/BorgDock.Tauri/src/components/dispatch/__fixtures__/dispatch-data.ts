@@ -13,6 +13,7 @@ import type {
   ThreadStatus,
   WorkflowState,
 } from '@/services/dispatch/types';
+import type { T3Catalogue } from '@/services/t3/api';
 import type { HostStatus, SourceStatus } from '@/stores/dispatch-store';
 
 const WORKFLOW: WorkflowState[] = [
@@ -391,6 +392,46 @@ const PULL_REQUESTS: KnownPullRequest[] = [
 ];
 
 const QUEUED = new Set([60188, 60090]);
+
+/** What `t3_catalogue` answers in stories and tests: two providers, one with reasoning levels. */
+export const LAUNCH_CATALOGUE: T3Catalogue = {
+  environmentId: 'env-local',
+  providers: [
+    {
+      instanceId: 'codex',
+      driver: 'codex',
+      displayName: 'Codex',
+      models: [
+        {
+          slug: 'default',
+          name: 'Default',
+          isDefault: true,
+          options: [
+            {
+              id: 'reasoningEffort',
+              label: 'Reasoning',
+              kind: 'select',
+              choices: [
+                { id: 'low', label: 'Low', isDefault: false },
+                { id: 'medium', label: 'Medium', isDefault: true },
+                { id: 'high', label: 'High', isDefault: false },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      instanceId: 'claudeAgent',
+      driver: 'claudeAgent',
+      displayName: 'Claude',
+      models: [
+        { slug: 'opus', name: 'Opus', isDefault: true, options: [] },
+        { slug: 'sonnet', name: 'Sonnet', isDefault: false, options: [] },
+      ],
+    },
+  ],
+};
 
 export interface DispatchScene {
   items: DispatchItem[];

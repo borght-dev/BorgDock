@@ -90,6 +90,65 @@ export function t3Settle(host: T3HostRef, threadId: string): Promise<void> {
   return invoke('t3_settle', { host, threadId });
 }
 
+export interface T3ModelChoice {
+  id: string;
+  label: string;
+  isDefault: boolean;
+}
+
+/** One setting a model takes, e.g. its reasoning effort. */
+export interface T3ModelOption {
+  id: string;
+  label: string;
+  /** `select` or `boolean`. */
+  kind: string;
+  choices: T3ModelChoice[];
+}
+
+export interface T3Model {
+  slug: string;
+  name: string;
+  isDefault: boolean;
+  options: T3ModelOption[];
+}
+
+export interface T3Provider {
+  instanceId: string;
+  driver: string;
+  displayName: string;
+  models: T3Model[];
+}
+
+/** What a host can start: the providers that are ready, with their models. */
+export interface T3Catalogue {
+  environmentId: string;
+  providers: T3Provider[];
+}
+
+/** A model with its settings, as T3 takes it when a thread starts. */
+export interface T3ModelSelection {
+  instanceId: string;
+  model: string;
+  options: { id: string; value: string | boolean }[];
+}
+
+export interface T3LaunchRequest {
+  projectId: string;
+  title: string;
+  modelSelection: T3ModelSelection;
+  /** The first message; the agent starts on it at once. */
+  prompt: string;
+}
+
+export function t3Catalogue(host: T3HostRef): Promise<T3Catalogue> {
+  return invoke<T3Catalogue>('t3_catalogue', { host });
+}
+
+/** Start a thread on a project. Resolves with the new thread's id. */
+export function t3LaunchThread(host: T3HostRef, request: T3LaunchRequest): Promise<string> {
+  return invoke<string>('t3_launch_thread', { host, request });
+}
+
 /** Bring T3 Code to the front on one thread. */
 export function t3ShowThread(
   host: T3HostRef,

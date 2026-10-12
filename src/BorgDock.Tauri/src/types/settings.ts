@@ -112,6 +112,11 @@ export interface AgentSettings {
    * Dispatch, e.g. `^W\d+$`. Empty: every T3 project is a slot.
    */
   t3SlotPattern?: string;
+  /**
+   * First messages Dispatch starts an agent with, per way of beginning.
+   * Placeholders: `{id}`, `{title}`, `{branch}`. An empty one uses the default.
+   */
+  dispatchPrompts?: { pickup?: string; qa?: string; done?: string };
 }
 
 export interface SummarySettings {

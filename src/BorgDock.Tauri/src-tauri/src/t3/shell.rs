@@ -175,6 +175,128 @@ pub struct ThreadDetail {
     pub questions: Vec<QuestionDto>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelChoiceDto {
+    pub id: String,
+    pub label: String,
+    pub is_default: bool,
+}
+
+/// One setting a model takes, e.g. its reasoning effort.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelOptionDto {
+    pub id: String,
+    pub label: String,
+    /// `select` or `boolean`.
+    pub kind: String,
+    pub choices: Vec<ModelChoiceDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelDto {
+    pub slug: String,
+    pub name: String,
+    pub is_default: bool,
+    pub options: Vec<ModelOptionDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderDto {
+    pub instance_id: String,
+    pub driver: String,
+    pub display_name: String,
+    pub models: Vec<ModelDto>,
+}
+
+/// What a host can start: the providers that are ready, with their models.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Catalogue {
+    pub environment_id: String,
+    pub providers: Vec<ProviderDto>,
+}
+
+fn parse_model_option(descriptor: &Value) -> Option<ModelOptionDto> {
+    let id = descriptor["id"].as_str()?.to_string();
+    Some(ModelOptionDto {
+        label: descriptor["label"].as_str().unwrap_or(&id).to_string(),
+        kind: descriptor["type"].as_str().unwrap_or("select").to_string(),
+        choices: descriptor["options"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|choice| {
+                let choice_id = choice["id"].as_str()?.to_string();
+                Some(ModelChoiceDto {
+                    label: choice["label"].as_str().unwrap_or(&choice_id).to_string(),
+                    is_default: choice["isDefault"].as_bool().unwrap_or(false),
+                    id: choice_id,
+                })
+            })
+            .collect(),
+        id,
+    })
+}
+
+fn parse_model(model: &Value) -> Option<ModelDto> {
+    let slug = model["slug"].as_str()?.to_string();
+    Some(ModelDto {
+        name: model["name"].as_str().unwrap_or(&slug).to_string(),
+        is_default: model["isDefault"].as_bool().unwrap_or(false),
+        options: model["capabilities"]["optionDescriptors"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(parse_model_option)
+            .collect(),
+        slug,
+    })
+}
+
+fn is_ready(provider: &Value) -> bool {
+    provider["enabled"] == true
+        && provider["installed"] == true
+        && provider["status"] == "ready"
+        && provider["availability"] != "unavailable"
+}
+
+/// The providers a thread can start on, from `server.getConfig`.
+pub fn read_catalogue(config: &Value) -> Catalogue {
+    Catalogue {
+        environment_id: config["environment"]["environmentId"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
+        providers: config["providers"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|provider| is_ready(provider))
+            .filter_map(|provider| {
+                let instance_id = provider["instanceId"].as_str()?.to_string();
+                Some(ProviderDto {
+                    driver: provider["driver"].as_str().unwrap_or("").to_string(),
+                    display_name: provider["displayName"]
+                        .as_str()
+                        .unwrap_or(&instance_id)
+                        .to_string(),
+                    models: provider["models"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(parse_model)
+                        .collect(),
+                    instance_id,
+                })
+            })
+            .collect(),
+    }
+}
+
 /// The agent needs you only when it waits for input or approval, or has
 /// stopped (done, a plan to approve, an error). Anything T3 shows as working
 /// counts as working, including background work after a finished turn.
@@ -709,6 +831,38 @@ mod tests {
             Some("p2")
         );
         assert_eq!(project_for_workspace(&shell, "D:\\Elsewhere"), None);
+    }
+
+    #[test]
+    fn the_catalogue_lists_ready_providers_with_their_models_and_options() {
+        let config = json!({
+            "environment": { "environmentId": "env-1" },
+            "providers": [
+                { "instanceId": "codex", "driver": "codex", "displayName": "Codex", "enabled": true,
+                  "installed": true, "status": "ready", "models": [
+                    { "slug": "default", "name": "Default", "isDefault": true, "capabilities": { "optionDescriptors": [
+                        { "id": "reasoningEffort", "label": "Reasoning", "type": "select", "options": [
+                            { "id": "medium", "label": "Medium" }, { "id": "high", "label": "High", "isDefault": true } ] },
+                        { "id": "fastMode", "label": "Fast mode", "type": "boolean" }
+                    ] } },
+                    { "name": "No slug" }
+                ] },
+                { "instanceId": "claudeAgent", "driver": "claudeAgent", "enabled": true, "installed": false,
+                  "status": "error", "models": [] },
+                { "instanceId": "off", "driver": "codex", "enabled": false, "installed": true, "status": "ready", "models": [] }
+            ]
+        });
+        let catalogue = read_catalogue(&config);
+        assert_eq!(catalogue.environment_id, "env-1");
+        assert_eq!(catalogue.providers.len(), 1);
+        let provider = &catalogue.providers[0];
+        assert_eq!(provider.display_name, "Codex");
+        assert_eq!(provider.models.len(), 1);
+        let effort = &provider.models[0].options[0];
+        assert_eq!(effort.id, "reasoningEffort");
+        assert_eq!(effort.choices[1].id, "high");
+        assert!(effort.choices[1].is_default);
+        assert_eq!(provider.models[0].options[1].kind, "boolean");
     }
 
     fn detail_snapshot() -> Value {

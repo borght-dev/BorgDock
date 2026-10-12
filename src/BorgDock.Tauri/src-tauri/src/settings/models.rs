@@ -341,6 +341,20 @@ pub struct AgentSettings {
     /// Dispatch slot. Absent or empty: every project is one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub t3_slot_pattern: Option<String>,
+    /// First messages Dispatch starts an agent with; an absent one uses the default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dispatch_prompts: Option<DispatchPrompts>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DispatchPrompts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pickup: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub qa: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub done: Option<String>,
 }
 
 fn default_agent_provider() -> String {
@@ -369,6 +383,7 @@ impl Default for AgentSettings {
             t3_model: default_t3_model(),
             t3_model_instance: default_t3_model_instance(),
             t3_slot_pattern: None,
+            dispatch_prompts: None,
         }
     }
 }

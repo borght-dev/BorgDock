@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useCallback, useEffect, useState } from 'react';
 import { Card, Field, SectionHeader, Select, TextInput } from '@/components/shared/primitives';
+import { DEFAULT_LAUNCH_PROMPTS, type LaunchPrompts } from '@/services/dispatch/launch';
 import type {
   AgentProvider,
   AgentSettings,
@@ -25,6 +26,16 @@ const POST_FIX_OPTIONS = [
   { value: 'commitOnly', label: 'Commit Only' },
   { value: 'notifyOnly', label: 'Notify Only' },
   { value: 'none', label: 'None' },
+];
+
+const PROMPT_FIELDS: { key: keyof LaunchPrompts; label: string; hint: string }[] = [
+  {
+    key: 'pickup',
+    label: 'Pick up',
+    hint: 'Used by "A plan for me to approve" and "Straight to work".',
+  },
+  { key: 'qa', label: 'Update for QA', hint: 'Hands the item to QA on its own branch.' },
+  { key: 'done', label: 'Close as done', hint: 'Closes the item without QA.' },
 ];
 
 export function AgentSection({ agents, summaries, onAgentsChange, onSummariesChange }: Props) {
@@ -234,6 +245,41 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             <p className="mt-1 text-[10.5px] text-[var(--color-status-red)]">{pairError}</p>
           )}
         </Field>
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-1 text-[13px] font-semibold text-[var(--color-text-primary)]">
+          Dispatch prompts
+        </h3>
+        <p className="mb-3 text-[11.5px] text-[var(--color-text-muted)]">
+          The first message an agent gets when you start it from Dispatch. Write {'{id}'},{' '}
+          {'{title}'} and {'{branch}'} where the work item goes. An empty prompt uses the one shown.
+        </p>
+        {PROMPT_FIELDS.map((field) => (
+          <Field
+            key={field.key}
+            label={field.label}
+            hint={field.hint}
+            anchorId={`dispatch-prompt-${field.key}`}
+          >
+            <textarea
+              aria-label={`${field.label} prompt`}
+              rows={4}
+              className="w-full resize-y rounded-[5px] border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-[10px] py-[6px] font-mono text-[11.5px] leading-[1.5] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+              value={agents.dispatchPrompts?.[field.key] ?? ''}
+              placeholder={DEFAULT_LAUNCH_PROMPTS[field.key]}
+              onChange={(e) =>
+                onAgentsChange({
+                  ...agents,
+                  dispatchPrompts: {
+                    ...agents.dispatchPrompts,
+                    [field.key]: e.target.value || undefined,
+                  },
+                })
+              }
+            />
+          </Field>
+        ))}
       </Card>
 
       <Card variant="default" padding="md">
