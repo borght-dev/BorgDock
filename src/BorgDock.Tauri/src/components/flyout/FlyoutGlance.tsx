@@ -24,6 +24,15 @@ export interface FlyoutData {
   reduceMotion?: boolean;
   lastSyncAgo: string;
   hotkey: string;
+  /** Work items whose agent waits on you (Dispatch). Absent in older payloads. */
+  agents?: FlyoutAgent[];
+}
+
+export interface FlyoutAgent {
+  itemId: number;
+  title: string;
+  /** Why it waits: "Agent asks in W3". */
+  reason: string;
 }
 
 export interface FlyoutPr {
@@ -79,6 +88,7 @@ export function FlyoutGlance({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { failingCount, pendingCount, passingCount, pullRequests, totalCount, focusCount } = data;
+  const agents = data.agents ?? [];
 
   // Active-row tracking for j/k keyboard nav. Initial active row = 0 so e2e
   // assertion `pressing j advances from 0 → 1` holds.
@@ -135,6 +145,21 @@ export function FlyoutGlance({
     }
     onClose();
   }, [onClose]);
+
+  const handleOpenAgent = useCallback(
+    async (itemId: number) => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const { emitTo } = await import('@tauri-apps/api/event');
+        await emitTo('main', 'dispatch-show-item', { itemId });
+        await invoke('show_or_focus_main');
+      } catch {
+        // ignore
+      }
+      onClose();
+    },
+    [onClose],
+  );
 
   const handleOpenFocus = useCallback(async () => {
     try {
@@ -340,6 +365,33 @@ export function FlyoutGlance({
         >
           {banner.title}
         </div>
+      )}
+
+      {agents.length > 0 && (
+        <section
+          className="shrink-0 border-b border-[var(--color-subtle-border)] px-2 py-1.5"
+          aria-label="Agents that need you"
+          data-testid="flyout-glance-agents"
+        >
+          <div className="px-2 py-1 text-[11px] font-semibold text-[var(--color-warning-badge-fg)]">
+            {agents.length === 1 ? '1 agent needs you' : `${agents.length} agents need you`}
+          </div>
+          {agents.slice(0, 3).map((agent) => (
+            <button
+              key={agent.itemId}
+              type="button"
+              onClick={() => void handleOpenAgent(agent.itemId)}
+              className="block w-full rounded-md px-2 py-1 text-left hover:bg-[var(--color-surface-hover)]"
+            >
+              <span className="block truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                {agent.title}
+              </span>
+              <span className="block truncate text-[11px] text-[var(--color-text-muted)]">
+                {agent.reason}
+              </span>
+            </button>
+          ))}
+        </section>
       )}
 
       {/* PR list */}

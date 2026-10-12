@@ -262,6 +262,18 @@ export function FlyoutApp() {
               number: toast.prNumber,
             });
             break;
+          case 'dispatch-show':
+            if (url) {
+              await emitTo('main', 'dispatch-show-item', { itemId: Number(url) });
+            }
+            break;
+          case 'dispatch-act': {
+            const [itemId, actionId] = (url ?? '').split(':');
+            if (itemId && actionId) {
+              await emitTo('main', 'dispatch-item-action', { itemId: Number(itemId), actionId });
+            }
+            break;
+          }
           case 'merge-pr':
           case 'start-review':
           case 'open-url':

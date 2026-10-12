@@ -344,6 +344,9 @@ pub struct AgentSettings {
     /// First messages Dispatch starts an agent with; an absent one uses the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dispatch_prompts: Option<DispatchPrompts>,
+    /// Notify when an agent asks, proposes a plan, finishes or fails. Absent: on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dispatch_notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -384,6 +387,7 @@ impl Default for AgentSettings {
             t3_model_instance: default_t3_model_instance(),
             t3_slot_pattern: None,
             dispatch_prompts: None,
+            dispatch_notifications: None,
         }
     }
 }

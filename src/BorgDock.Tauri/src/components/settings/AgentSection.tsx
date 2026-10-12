@@ -1,6 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useCallback, useEffect, useState } from 'react';
-import { Card, Field, SectionHeader, Select, TextInput } from '@/components/shared/primitives';
+import {
+  Card,
+  Field,
+  SectionHeader,
+  Select,
+  TextInput,
+  ToggleRow,
+} from '@/components/shared/primitives';
 import { DEFAULT_LAUNCH_PROMPTS, type LaunchPrompts } from '@/services/dispatch/launch';
 import type {
   AgentProvider,
@@ -200,6 +207,12 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             mono
           />
         </Field>
+        <ToggleRow
+          label="Notify me when an agent needs me"
+          hint="A question, a plan to approve, a finished turn or an error."
+          on={agents.dispatchNotifications ?? true}
+          onChange={(dispatchNotifications) => onAgentsChange({ ...agents, dispatchNotifications })}
+        />
         <Field
           label="T3 pairing"
           anchorId="t3-pairing"

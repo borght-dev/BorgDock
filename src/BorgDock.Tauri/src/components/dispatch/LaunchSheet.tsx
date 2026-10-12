@@ -133,9 +133,6 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
   );
 
   useEffect(() => {
-    if (!unit) close();
-  }, [unit, close]);
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
@@ -146,7 +143,30 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
     return () => document.removeEventListener('keydown', onKey, true);
   }, [close]);
 
-  if (!unit) return null;
+  // An item started from another section may still be on its way from ADO.
+  if (!unit) {
+    return (
+      <div className="bd-modal-backdrop" role="presentation" onClick={close}>
+        <div
+          className="bd-modal bd-dp-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Start AB#${intent.itemId} in T3`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="bd-dp-sheet__head">
+            <h2>Start AB#{intent.itemId} in T3</h2>
+            <p>Loading the work item…</p>
+          </header>
+          <footer className="bd-dp-sheet__foot">
+            <Button variant="ghost" size="md" onClick={close}>
+              Cancel
+            </Button>
+          </footer>
+        </div>
+      </div>
+    );
+  }
   const { item } = unit;
 
   const modelId = models.some((m) => m.id === pickedModel)

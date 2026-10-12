@@ -111,6 +111,19 @@ describe('WorkItemRow', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it('Start in T3 hands the item to Dispatch without opening it', () => {
+    const onOpen = vi.fn();
+    const onStart = vi.fn();
+    const { container } = render(
+      <WorkItemRow item={bug} selected={false} onOpen={onOpen} onStart={onStart} />,
+    );
+    const start = screen.getByRole('button', { name: 'Start AB#54482 in T3' });
+    expect(row(container).contains(start)).toBe(false);
+    fireEvent.click(start);
+    expect(onStart).toHaveBeenCalledWith(54482);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it('click selects the row and pushes the work item detail view', async () => {
     const { container } = render(<WorkItemRow item={bug} selected={false} />);
     fireEvent.click(row(container));

@@ -16,6 +16,7 @@ import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { AppSettings, PullRequestWithChecks } from '@/types';
 import { buildOverview } from './engine';
 import { loadDispatchItems } from './items';
+import { notifyNew } from './notifier';
 import {
   type AgentProject,
   type AgentThread,
@@ -154,11 +155,27 @@ export function recomputeOverview(): void {
     manualLinks: dispatch.manualLinks,
     slotPattern: compileSlotPattern(useSettingsStore.getState().settings.agents?.t3SlotPattern),
   });
-  if (!sameOverview(dispatch.overview, overview)) dispatch.setOverview(overview);
+  if (!sameOverview(dispatch.overview, overview)) {
+    dispatch.setOverview(overview);
+    notifyNew(overview, !everySourceRead());
+  }
   // An agent picked these up; the queue has done its job.
   for (const id of dequeue) {
     if (tracked.has(id)) toggleTrackedWorkItem(id);
   }
+}
+
+/** Sources that have been read to the end at least once this session. */
+const sourcesRead = new Set<string>();
+const ADO_SOURCE = 'ado';
+
+/**
+ * True once Azure DevOps and every host have been read, detail included.
+ * Until then the overview is still filling up, and nothing in it is news.
+ */
+function everySourceRead(): boolean {
+  const hosts = configuredHosts(useSettingsStore.getState().settings);
+  return sourcesRead.has(ADO_SOURCE) && hosts.every((host) => sourcesRead.has(host.id));
 }
 
 function errorText(error: unknown): string {
@@ -195,6 +212,7 @@ function stateOf(hostId: string): HostState {
 /** Forget what was read from every host (tests, and hosts that were removed). */
 export function resetHostSync(): void {
   hostStates.clear();
+  sourcesRead.clear();
 }
 
 const DETAIL_BATCH = 4;
@@ -327,6 +345,7 @@ export async function syncHost(host: DispatchHost, force = false): Promise<void>
   }
   const poll = pollHost(host, state, force).finally(() => {
     if (state.inFlight === poll) state.inFlight = null;
+    sourcesRead.add(host.id);
   });
   state.inFlight = poll;
   return poll;
@@ -388,6 +407,7 @@ async function loadItems(): Promise<void> {
 export function syncItems(): Promise<void> {
   itemsInFlight ??= loadItems().finally(() => {
     itemsInFlight = null;
+    sourcesRead.add(ADO_SOURCE);
   });
   return itemsInFlight;
 }

@@ -770,4 +770,56 @@
     flex: 1;
     min-height: 0;
   }
+
+  /* ── Agents that need you, at the top of Focus ─────────── */
+  .bd-dp-focus-strip {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    font-size: 12px;
+  }
+  .bd-dp-focus-strip__count {
+    margin-right: 4px;
+    font-weight: 600;
+    color: var(--color-warning-badge-fg);
+    white-space: nowrap;
+  }
+  .bd-dp-focus-strip__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 280px;
+    height: 26px;
+    padding: 0 9px 0 3px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font: inherit;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: border-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-dp-focus-strip__item:hover {
+    border-color: var(--color-strong-border);
+  }
+  .bd-dp-focus-strip__item:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-dp-focus-strip__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-dp-focus-strip__more {
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+  .bd-dp-focus-strip .bd-btn {
+    margin-left: auto;
+  }
 }

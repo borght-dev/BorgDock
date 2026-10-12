@@ -66,7 +66,7 @@
   /* Type pill, AB#id, title over the state line, and room at the right end
      for the ★ / ● toggles, which sit beside the row (see the component). */
   .bd-wb-row.bd-wi-wb-row {
-    grid-template-columns: 52px 64px minmax(0, 1fr) 60px;
+    grid-template-columns: 52px 64px minmax(0, 1fr) 86px;
   }
   .bd-wi-wb-row__id {
     font-size: 12px;

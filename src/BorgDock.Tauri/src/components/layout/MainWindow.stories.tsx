@@ -351,6 +351,7 @@ function Harness({
   dispatchItem = 60214,
   launching = false,
   dispatchBoard = false,
+  agentsWaiting = false,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -365,13 +366,17 @@ function Harness({
   launching?: boolean;
   /** Dispatch as the board instead of the list. */
   dispatchBoard?: boolean;
+  /** Seed Dispatch in another section too, so Focus shows the agents that wait. */
+  agentsWaiting?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
-    if (section === 'dispatch') seedDispatch(dispatchItem, launching, dispatchBoard);
+    if (section === 'dispatch' || agentsWaiting) {
+      seedDispatch(dispatchItem, launching, dispatchBoard);
+    }
     useUiStore.setState({
       activeSection: section,
       prGroupBy: groupBy,
@@ -442,6 +447,9 @@ export const RailDispatchBoard: Story = {
 export const RailDispatchBoardDrawer: Story = {
   args: { section: 'dispatch', dispatchBoard: true, dispatchItem: 59877 },
 };
+
+/** Focus with agents waiting: they show above the pull requests. */
+export const RailFocusAgents: Story = { args: { section: 'focus', agentsWaiting: true } };
 
 export const RailWorktrees: Story = { args: { section: 'worktrees' } };
 
