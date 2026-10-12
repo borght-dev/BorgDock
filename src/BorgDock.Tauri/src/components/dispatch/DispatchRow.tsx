@@ -16,7 +16,8 @@ export function canStart(overview: ItemOverview): boolean {
   return !overview.threads.some((thread) => thread.open);
 }
 
-function RowAside({ overview }: { overview: ItemOverview }) {
+/** What a row or card ends with: the slot its agent runs in, else the state of its pull request. */
+export function UnitAside({ overview }: { overview: ItemOverview }) {
   const thread = overview.threads.find((t) => t.open);
   if (thread) {
     const needsYou = NEEDS_YOU.includes(thread.status);
@@ -110,7 +111,7 @@ export const DispatchRow = memo(function DispatchRow({
             <em>{item.id}</em> · {whyLine(overview, now)}
           </span>
         </span>
-        <RowAside overview={overview} />
+        <UnitAside overview={overview} />
       </div>
     </div>
   );
