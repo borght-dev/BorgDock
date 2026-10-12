@@ -29,7 +29,7 @@ Current as of 3.0.0 (2026-09-25) plus the Workbench logo. Mockups: `design/mocku
 | Tailwind bridge | `src/styles/index.css` `@theme inline` | Re-exports colours, spacing, radius, text, duration, fonts as utilities |
 | Component classes | `src/styles/index.css` `@layer components` | `.bd-*` classes backing the primitives, plus feature families (`bd-fp-*`, `bd-fv-*`, `bd-wt-*`, `bd-wp-*`, `bd-wi-*`, `bd-code-*`) |
 | Shell and rows | `src/styles/index.css` `@layer components` | Main window (`.bd-mainwindow`, `.bd-rail`, `.bd-viewstack`, `.bd-section-view`), PR rows (`.bd-wb-*`), full-screen detail (`.bd-detail*`), toasts (`.bd-toast*`), title and status bars |
-| Workbench stylesheets | `src/styles/{focus,work-items,worktrees}-workbench.css`, `src/styles/tool-windows.css` | Focus list and board (`.bd-focus-*`, `.bd-fb-*`), Work items (`.bd-wi-*`), Worktrees (`.bd-wts*`, `.bd-wtr`); tool-window pieces (segmented control, toggle, wizard progress, What's new hero, work item palette, flyout panel) |
+| Workbench stylesheets | `src/styles/{focus,dispatch,work-items,worktrees}-workbench.css`, `src/styles/tool-windows.css` | Focus list and board (`.bd-focus-*`, `.bd-fb-*`), Dispatch (`.bd-dp-*`; its rows are `.bd-wb-*` and its board is `.bd-fb-*`), Work items (`.bd-wi-*`), Worktrees (`.bd-wts*`, `.bd-wtr`); tool-window pieces (segmented control, toggle, wizard progress, What's new hero, work item palette, flyout panel) |
 | Legacy / unlayered | `src/styles/index.css` | `.sql-*` (SQL window), `.markdown-body`, `.tactile-icon-btn`, diff preview / find strip, the dead `.sidebar-*` block |
 | Feature stylesheet | `src/components/focus/quick-review.css` | `.qr-*` for the Quick Review overlay |
 | Primitives | `src/components/shared/primitives/` | React components selecting `.bd-*` classes via `clsx` |
@@ -50,7 +50,7 @@ Current as of 3.0.0 (2026-09-25) plus the Workbench logo. Mockups: `design/mocku
 
 `components/layout/MainWindow.tsx`: a two-column grid, `200px | 1fr` (`.bd-mainwindow--rail`).
 
-- **Rail** (`Rail.tsx`, `.bd-rail`) — logo and "BorgDock" at the top (36 px, drag region), then the four sections in order: Focus, Pull requests, Work items, Worktrees (keys `1`–`4`). A `SlidingHighlight` moves behind the active item. Counts sit on the right; the Pull requests count turns red when a PR is failing. The bottom block shows "Synced … ago" (or "Syncing…"), a 3 px GitHub rate meter and "N of M requests left (GraphQL|REST)".
+- **Rail** (`Rail.tsx`, `.bd-rail`) — logo and "BorgDock" at the top (36 px, drag region), then the five sections in order: Focus, Dispatch, Pull requests, Work items, Worktrees (keys `1`–`5`). A `SlidingHighlight` moves behind the active item. Counts sit on the right; the Pull requests count turns red when a PR is failing, and the Dispatch count is the number of items waiting on you. The bottom block shows "Synced … ago" (or "Syncing…"), a 3 px GitHub rate meter and "N of M requests left (GraphQL|REST)".
 - **Title bar** (`TitleBar` primitive, 36 px) — the section name, or "Pull request" / "Work item" when a detail view is on top; then the status dot, the window launcher, Refresh, Settings and the window controls.
 - **Body** — `ViewStack` (below).
 - **Status bar** (`StatusBar`, 28 px) — per-view text and key hints from `hooks/useStatusBar.ts`.
@@ -375,6 +375,7 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | Main window shell: `MainWindow`, `Rail`, `ViewStack`, `SectionView`, `StatusBar`, `BackButton` | `components/layout/` | `index.html` → `main.tsx` |
 | PR list, rows (`PrRowCore`, `PrRow`), toolbar, filter, review load, context menu, T3 checkout dialog | `components/pr/` | main |
 | Focus list and board, Quick Review overlay, merge toast | `components/focus/` | main |
+| Dispatch list, detail, board, slot strip, launch sheet, Focus strip | `components/dispatch/` (engine in `services/dispatch/`) | main |
 | PR detail (header, action bar, tabs, checkout, composer, diff) | `components/pr-detail/` (`diff/` subdir) | main (`PrDetailView`), `pr-detail.html` |
 | Tray flyout, flyout toasts | `components/flyout/` | `flyout.html` |
 | Work items section and detail | `components/work-items/` | main (`WorkItemDetailView`), `workitem-detail.html` |
@@ -469,7 +470,7 @@ The retired gradient logo and waveform tray icon are gone; old release screensho
 - Config: `src/BorgDock.Tauri/.storybook/` — Tauri APIs mocked via `.storybook/mocks/`, `index.css` loaded, light / dark / system theme toolbar applied through the same `applyTheme` as the app
 - Every window has a `ThemeLight` / `ThemeDark` pair (`globals: { theme }`): settings (Appearance panel), SQL, file palette, file viewer, work item palette, worktree window, flyout, work item detail and PR detail pop-outs, What's new; the setup wizard has one story per step in both themes (`wizard/SetupWizard.stories.tsx`)
 - Side by side in both themes (`BothThemes` from `src/test-support/story-themes.tsx`): `Shared/Primitives`, `Shared/WindowChrome` (title and status bars), `Settings/AppearanceSection`
-- Main window (Focus, Pull requests, Work items, Worktrees, detail views): `components/layout/MainWindow.stories.tsx`
+- Main window (Focus, Dispatch, Pull requests, Work items, Worktrees, detail views): `components/layout/MainWindow.stories.tsx`
 - Logo sizes and the loading splash: `Brand/BorgDock` (`shared/icons/BorgDockLogo.stories.tsx`)
 - Hero screenshots for release notes come from these stories (`scripts/screenshot-stories.mjs` + `design/whats-new/<version>.heroes.json`)
 
@@ -559,7 +560,7 @@ The retired gradient logo and waveform tray icon are gone; old release screensho
 ## 13. Source of Truth
 
 - Tokens, `@theme`, component classes: `src/BorgDock.Tauri/src/styles/index.css`
-- Section and tool-window styles: `src/BorgDock.Tauri/src/styles/{focus,work-items,worktrees}-workbench.css`, `tool-windows.css`
+- Section and tool-window styles: `src/BorgDock.Tauri/src/styles/{focus,dispatch,work-items,worktrees}-workbench.css`, `tool-windows.css`
 - Main window shell: `src/BorgDock.Tauri/src/components/layout/`; navigation: `src/services/navigation.ts`; keys: `src/hooks/useKeyboardNav.ts`, status bar copy: `src/hooks/useStatusBar.ts`
 - Quick Review styles: `src/BorgDock.Tauri/src/components/focus/quick-review.css`
 - Primitives: `src/BorgDock.Tauri/src/components/shared/primitives/`
