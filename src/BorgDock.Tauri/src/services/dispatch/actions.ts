@@ -13,8 +13,9 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
+import { configuredHosts, rawId } from './hosts';
 import { moveItemState } from './items';
-import { configuredHosts, dispatchAdoClient, rawId, syncAll } from './sync';
+import { dispatchAdoClient, syncAll } from './sync';
 import type { AgentThread, DispatchItem, UnitPullRequest } from './types';
 
 /** What "Approve plan" tells the agent. */

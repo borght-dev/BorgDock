@@ -347,6 +347,17 @@ pub struct AgentSettings {
     /// Notify when an agent asks, proposes a plan, finishes or fails. Absent: on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dispatch_notifications: Option<bool>,
+    /// T3 servers on other machines that Dispatch follows.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub t3_hosts: Vec<T3HostSettings>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct T3HostSettings {
+    pub id: String,
+    pub label: String,
+    pub base_url: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -388,6 +399,7 @@ impl Default for AgentSettings {
             t3_slot_pattern: None,
             dispatch_prompts: None,
             dispatch_notifications: None,
+            t3_hosts: Vec::new(),
         }
     }
 }

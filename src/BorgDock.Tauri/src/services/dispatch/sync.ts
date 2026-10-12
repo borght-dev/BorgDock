@@ -1,13 +1,6 @@
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
 import { AdoClient } from '@/services/ado/client';
-import {
-  LOCAL_T3_HOST_ID,
-  type T3HostRef,
-  type T3Thread,
-  t3FirstUserMessages,
-  t3Snapshot,
-  t3ThreadDetail,
-} from '@/services/t3/api';
+import { type T3Thread, t3FirstUserMessages, t3Snapshot, t3ThreadDetail } from '@/services/t3/api';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -15,6 +8,8 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { AppSettings, PullRequestWithChecks } from '@/types';
 import { buildOverview } from './engine';
+import { forgetHostsExcept, rememberHost } from './host-memory';
+import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
 import { loadDispatchItems } from './items';
 import { notifyNew } from './notifier';
 import {
@@ -24,36 +19,6 @@ import {
   NEEDS_YOU,
   type Overview,
 } from './types';
-
-/** A T3 server Dispatch follows. */
-export interface DispatchHost {
-  id: string;
-  label: string;
-  /** Absent for the T3 on this machine. */
-  baseUrl?: string;
-}
-
-export const LOCAL_HOST: DispatchHost = { id: LOCAL_T3_HOST_ID, label: 'This machine' };
-
-/** The hosts to follow. */
-export function configuredHosts(_settings: AppSettings): DispatchHost[] {
-  return [LOCAL_HOST];
-}
-
-function hostRef(host: DispatchHost): T3HostRef {
-  return { id: host.id, baseUrl: host.baseUrl };
-}
-
-/** Ids from a remote host carry the host id, so two hosts never collide. */
-export function scopedId(hostId: string, id: string): string {
-  return hostId === LOCAL_T3_HOST_ID ? id : `${hostId}:${id}`;
-}
-
-/** The id T3 itself knows a thread or project by. */
-export function rawId(hostId: string, id: string): string {
-  const prefix = `${hostId}:`;
-  return hostId !== LOCAL_T3_HOST_ID && id.startsWith(prefix) ? id.slice(prefix.length) : id;
-}
 
 /**
  * A T3 thread as Dispatch holds it. Detail that only a thread snapshot
@@ -185,6 +150,8 @@ function errorText(error: unknown): string {
 // ── T3 hosts ────────────────────────────────────────────────
 
 interface HostState {
+  /** The address this state was read from; a host that moved starts over. */
+  address: string;
   sequence: number | null;
   /** `lastActivityAt|status` each thread's detail was last read at. */
   detailVersions: Map<string, string>;
@@ -195,18 +162,28 @@ interface HostState {
 
 const hostStates = new Map<string, HostState>();
 
-function stateOf(hostId: string): HostState {
-  let state = hostStates.get(hostId);
+function addressOf(host: DispatchHost): string {
+  return host.baseUrl ?? '';
+}
+
+function stateOf(host: DispatchHost): HostState {
+  let state = hostStates.get(host.id);
   if (!state) {
     state = {
+      address: addressOf(host),
       sequence: null,
       detailVersions: new Map(),
       firstMessagesRead: new Set(),
       inFlight: null,
     };
-    hostStates.set(hostId, state);
+    hostStates.set(host.id, state);
   }
   return state;
+}
+
+/** False for a poll whose host was removed, or moved, while it was under way. */
+function stillFollowed(host: DispatchHost, state: HostState): boolean {
+  return hostStates.get(host.id) === state;
 }
 
 /** Forget what was read from every host (tests, and hosts that were removed). */
@@ -221,8 +198,15 @@ function threadsOf(hostId: string): AgentThread[] {
   return useDispatchStore.getState().threads.filter((thread) => thread.hostId === hostId);
 }
 
+/** Open threads first, then the most recently active: a remote host answers a few per poll. */
+function openThenRecent(a: AgentThread, b: AgentThread): number {
+  return Number(b.open) - Number(a.open) || b.lastActivityAt.localeCompare(a.lastActivityAt);
+}
+
 async function readFirstMessages(host: DispatchHost, state: HostState): Promise<void> {
-  const missing = threadsOf(host.id).filter((thread) => !state.firstMessagesRead.has(thread.id));
+  const missing = threadsOf(host.id)
+    .filter((thread) => !state.firstMessagesRead.has(thread.id))
+    .sort(openThenRecent);
   if (missing.length === 0) return;
   let found: Record<string, string>;
   try {
@@ -284,6 +268,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
   try {
     snapshot = await t3Snapshot(hostRef(host), force ? null : state.sequence);
   } catch (error) {
+    if (!stillFollowed(host, state)) return;
     store().setHostStatus({
       id: host.id,
       label: host.label,
@@ -294,6 +279,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
     recomputeOverview();
     return;
   }
+  if (!stillFollowed(host, state)) return;
 
   if (snapshot.changed) {
     state.sequence = snapshot.sequence;
@@ -319,6 +305,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
       }),
     );
     store().setHostSnapshot(host.id, threads, projects);
+    if (isRemote(host)) void rememberHost(host.id);
   }
   store().setHostStatus({
     id: host.id,
@@ -338,7 +325,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
  * (Refresh) waits for it and then reads everything again.
  */
 export async function syncHost(host: DispatchHost, force = false): Promise<void> {
-  const state = stateOf(host.id);
+  const state = stateOf(host);
   if (state.inFlight) {
     if (!force) return state.inFlight;
     await state.inFlight.catch(() => {});
@@ -349,6 +336,25 @@ export async function syncHost(host: DispatchHost, force = false): Promise<void>
   });
   state.inFlight = poll;
   return poll;
+}
+
+/**
+ * Follow the host list in settings after it changed: forget the hosts that
+ * left or moved to another address, then read every host.
+ */
+export function followHostList(): void {
+  const hosts = configuredHosts(useSettingsStore.getState().settings);
+  const addresses = new Map(hosts.map((host) => [host.id, addressOf(host)]));
+  for (const [id, state] of hostStates) {
+    if (addresses.get(id) === state.address) continue;
+    hostStates.delete(id);
+    sourcesRead.delete(id);
+  }
+  const followed = hosts.map((host) => host.id);
+  useDispatchStore.getState().retainHosts(followed);
+  void forgetHostsExcept(followed);
+  recomputeOverview();
+  for (const host of hosts) void syncHost(host);
 }
 
 // ── Azure DevOps ────────────────────────────────────────────

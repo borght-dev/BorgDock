@@ -9,9 +9,7 @@ vi.mock('@/services/dispatch/launch', async (importOriginal) => ({
   startThread: launch.startThread,
 }));
 vi.mock('@/services/t3/api', () => ({ LOCAL_T3_HOST_ID: 'local', ...t3 }));
-vi.mock('@/services/dispatch/sync', () => ({
-  configuredHosts: () => [{ id: 'local', label: 'This machine' }],
-}));
+vi.mock('@/services/dispatch/sync', () => ({ syncAll: vi.fn(), dispatchAdoClient: vi.fn() }));
 
 import { PLAN_FIRST } from '@/services/dispatch/launch';
 import { useDispatchStore } from '@/stores/dispatch-store';

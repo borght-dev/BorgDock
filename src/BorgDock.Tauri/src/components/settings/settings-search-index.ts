@@ -125,6 +125,30 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
     label: 'Default agent provider',
     keywords: ['t3', 'claude', 'codex'],
   },
+  {
+    sectionId: 'agents',
+    anchorId: 't3-pairing',
+    label: 'T3 pairing',
+    keywords: ['t3', 'pair', 'token', 'dispatch'],
+  },
+  {
+    sectionId: 'agents',
+    anchorId: 't3-slot-pattern',
+    label: 'Dispatch slots',
+    keywords: ['t3', 'project', 'regex', 'pattern'],
+  },
+  {
+    sectionId: 'agents',
+    anchorId: 't3-hosts',
+    label: 'T3 on other machines',
+    keywords: ['dispatch', 'remote', 'host', 'pair'],
+  },
+  {
+    sectionId: 'agents',
+    anchorId: 'dispatch-prompt-pickup',
+    label: 'Dispatch prompts',
+    keywords: ['t3', 'launch', 'pick up', 'qa'],
+  },
 
   // Updates
   { sectionId: 'updates', anchorId: 'auto-check', label: 'Auto-check for updates' },

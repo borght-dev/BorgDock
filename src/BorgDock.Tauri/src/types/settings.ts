@@ -96,6 +96,15 @@ export interface NotificationSettings {
  * "Open a new thread in T3" is its own action (see services/t3-thread.ts). */
 export type AgentProvider = 'claude' | 'codex';
 
+/** A T3 Code server on another machine that Dispatch follows. */
+export interface T3HostSettings {
+  /** Never changes once set: it prefixes the ids of the host's threads and projects. */
+  id: string;
+  label: string;
+  /** Where the server answers, e.g. `http://mac-mini:3773`. */
+  baseUrl: string;
+}
+
 export interface AgentSettings {
   defaultProvider: AgentProvider;
   defaultPostFixAction: PostFixAction;
@@ -119,6 +128,8 @@ export interface AgentSettings {
   dispatchPrompts?: { pickup?: string; qa?: string; done?: string };
   /** Notify when an agent asks, proposes a plan, finishes or fails. Default on. */
   dispatchNotifications?: boolean;
+  /** T3 servers on other machines. The one on this machine is always followed. */
+  t3Hosts?: T3HostSettings[];
 }
 
 export interface SummarySettings {

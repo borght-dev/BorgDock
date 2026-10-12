@@ -169,6 +169,25 @@ Code lives in `src-tauri/src/t3/`: `hosts` (which server, which token), `client`
 
 T3 is **not** an agent provider for Fix / Resolve / Monitor (those spawn a terminal with a prompt file). The pull request action is "Open a new thread in T3" (`src/services/t3-thread.ts`): find the worktree that has the PR branch, otherwise show the `CheckoutPanel` picker via `T3CheckoutDialog`, then create an empty PR-linked thread on that worktree and open it in T3. Unpaired, T3 is only brought to the front; pairing lives in Settings → Agents.
 
+## Dispatch: work items joined with T3 threads
+
+The Dispatch section shows my Azure DevOps items with the T3 threads and pull requests that belong to them. Where things live:
+
+- `src/services/dispatch/engine.ts`: `buildOverview` is pure. Items, threads, projects, pull requests, the queue and the slot pattern go in; the overview (bays, slots, suggestions) comes out. Change behaviour there and test it with `__tests__/fixtures.ts`.
+- `sync.ts` polls and writes to `stores/dispatch-store.ts`; `recomputeOverview()` runs after every change to an input and leaves the store alone when nothing changed.
+- `hosts.ts` names the T3 servers (`configuredHosts`). Ids from a remote host are prefixed with its id (`scopedId` / `rawId`); always pass T3 the raw id.
+- `host-memory.ts` keeps each remote host's open threads and projects in `dispatch-hosts.json`, so an offline host still shows its work after a restart. Recalled entries have `available: false`.
+- `actions.ts` and `launch.ts` are the only code that writes to T3 or ADO. UI lives in `components/dispatch/`.
+
+Things that bite:
+
+- **Slots are T3 projects.** `agents.t3SlotPattern` filters them by title. Empty means every project, which is right for a new user and wrong for anyone with a project per repository.
+- **Plan first is an instruction, not T3's plan mode.** Plan mode sticks to the thread and keeps the agent read-only after approval, so `launch.ts` starts in default mode and appends `PLAN_FIRST` to the first message. "Approve plan" sends `GO_AHEAD_MESSAGE` as a normal message, and first switches a thread that is in plan mode back to default.
+- **The shell has no messages.** `latestVisibleMessage` is always null. The last agent message and the questions come from the bounded thread snapshot, read only for threads that wait on me (`readDetails`).
+- **Notifications wait for a full read.** `notifyNew` records but does not send until ADO and every host have been read once (`everySourceRead`). A new source that is never marked read silences every notification.
+- **Up next is the work items track star.** There is no second queue; `dequeue` from the engine untracks an item once an agent picks it up.
+- **Formatting CSS.** `bunx biome check --write` on `work-items-workbench.css` rewraps a rule nobody touched. The pre-commit hook does not check CSS, so revert that hunk instead of committing it.
+
 ## Diagnosing a hung / frozen BorgDock (AppHang)
 
 Symptom pattern seen on 2026-09-08 (2.2.0): `%APPDATA%\BorgDock\logs\borgdock.log` shows webview lines (poll cycles every ~65 s) stop dead while Rust-side `worktree cache refreshed` lines keep coming every 5 min, then Windows reports `AppHangTransient` for `borgdock.exe` in the Application event log (Event 1001). That split means the main GUI thread / IPC is blocked while the tokio runtime is alive. Things to know before chasing it:

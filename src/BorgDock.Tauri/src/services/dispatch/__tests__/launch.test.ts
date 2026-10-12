@@ -5,15 +5,13 @@ const sync = vi.hoisted(() => ({ syncAll: vi.fn(), dispatchAdoClient: vi.fn() })
 const items = vi.hoisted(() => ({ moveItemState: vi.fn(), assignItemToMe: vi.fn() }));
 
 vi.mock('@/services/t3/api', () => ({ LOCAL_T3_HOST_ID: 'local', ...t3 }));
-vi.mock('../sync', () => ({
-  ...sync,
+vi.mock('../sync', () => sync);
+vi.mock('../hosts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hosts')>()),
   configuredHosts: () => [
     { id: 'local', label: 'This machine' },
     { id: 'mac', label: 'Mac', baseUrl: 'http://mac:3773' },
   ],
-  rawId: (hostId: string, id: string) =>
-    hostId !== 'local' && id.startsWith(`${hostId}:`) ? id.slice(hostId.length + 1) : id,
-  scopedId: (hostId: string, id: string) => (hostId === 'local' ? id : `${hostId}:${id}`),
 }));
 vi.mock('../items', () => items);
 

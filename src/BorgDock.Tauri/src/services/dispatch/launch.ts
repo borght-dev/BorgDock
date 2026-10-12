@@ -7,8 +7,9 @@ import {
 } from '@/services/t3/api';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { configuredHosts, rawId, scopedId } from './hosts';
 import { assignItemToMe, moveItemState } from './items';
-import { configuredHosts, dispatchAdoClient, rawId, scopedId, syncAll } from './sync';
+import { dispatchAdoClient, syncAll } from './sync';
 import type { AgentThread, DispatchItem, Slot } from './types';
 
 /**
