@@ -53,6 +53,11 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
           ? 'J K move · H L columns · R Quick Review · Ctrl+R refresh'
           : 'R Quick Review · Ctrl+R refresh',
       };
+    case 'dispatch':
+      return {
+        left: 'your work in Azure DevOps and its T3 threads',
+        right: keys('J K move · Enter open · A act · M move state · O open in T3'),
+      };
     case 'prs': {
       // REST and GraphQL are separate 5000/h pools — say which one this is.
       const poolPart = rate?.pool ? ` (${rate.pool})` : '';

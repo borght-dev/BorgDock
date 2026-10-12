@@ -1,3 +1,4 @@
+import { LOCAL_T3_HOST_ID } from '@/services/t3/api';
 import { guessItem, linkThreads } from './link';
 import {
   type AgentProject,
@@ -205,6 +206,12 @@ function bayOf(
 
 const naturalOrder = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
 
+/** This machine's slots come first, then the other hosts by name. */
+function slotOrder(a: AgentProject, b: AgentProject): number {
+  const localFirst = Number(b.hostId === LOCAL_T3_HOST_ID) - Number(a.hostId === LOCAL_T3_HOST_ID);
+  return localFirst || naturalOrder(a.hostLabel, b.hostLabel) || naturalOrder(a.title, b.title);
+}
+
 /**
  * The overview: every item with its threads, pull request, suggestion and bay,
  * plus the slots and the open threads that belong to no item. `dequeue` lists
@@ -245,24 +252,22 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
   });
 
   const myItemIds = new Set(input.items.map((item) => item.id));
-  const slots = [...slotProjects]
-    .sort((a, b) => naturalOrder(a.hostLabel, b.hostLabel) || naturalOrder(a.title, b.title))
-    .map((project): Slot => {
-      const open = threads.filter((t) => t.open && t.projectId === project.id);
-      const mine = open.find((t) => myItemIds.has(links.itemOfThread.get(t.id) ?? -1));
-      return {
-        id: project.id,
-        hostId: project.hostId,
-        hostLabel: project.hostLabel,
-        available: project.available,
-        name: project.title,
-        workspaceRoot: project.workspaceRoot,
-        state: open.length === 0 ? 'free' : mine ? 'mine' : 'busy',
-        itemId: mine ? (links.itemOfThread.get(mine.id) ?? null) : null,
-        running: open.some((t) => t.status === 'running'),
-        needsYou: mine !== undefined && needsYou(mine),
-      };
-    });
+  const slots = [...slotProjects].sort(slotOrder).map((project): Slot => {
+    const open = threads.filter((t) => t.open && t.projectId === project.id);
+    const mine = open.find((t) => myItemIds.has(links.itemOfThread.get(t.id) ?? -1));
+    return {
+      id: project.id,
+      hostId: project.hostId,
+      hostLabel: project.hostLabel,
+      available: project.available,
+      name: project.title,
+      workspaceRoot: project.workspaceRoot,
+      state: open.length === 0 ? 'free' : mine ? 'mine' : 'busy',
+      itemId: mine ? (links.itemOfThread.get(mine.id) ?? null) : null,
+      running: open.some((t) => t.status === 'running'),
+      needsYou: mine !== undefined && needsYou(mine),
+    };
+  });
 
   const unlinkedThreads = [...links.unlinked]
     .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))

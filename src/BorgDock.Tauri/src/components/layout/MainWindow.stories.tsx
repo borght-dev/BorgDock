@@ -9,6 +9,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { makeDispatchScene } from '@/components/dispatch/__fixtures__/dispatch-data';
 import {
   bugWithReproSteps,
   epicWithCustomFields,
@@ -19,6 +20,7 @@ import {
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
 import { reviewRequestKey } from '@/services/priority-scoring';
+import { useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -312,6 +314,26 @@ function seedWorkItems() {
   useUiStore.setState({ workItemsSelectedId: bugWithReproSteps.id });
 }
 
+function seedDispatch(selectedItemId: number) {
+  const scene = makeDispatchScene();
+  useDispatchStore.setState({
+    items: scene.items,
+    threads: scene.threads,
+    projects: scene.projects,
+    overview: scene.overview,
+    ado: scene.ado,
+    hosts: scene.hosts,
+    selectedItemId,
+  });
+  useSettingsStore.getState().updateSettings({
+    azureDevOps: {
+      organization: 'acme',
+      project: 'Shop',
+      personalAccessToken: 'storybook-token',
+    },
+  } as never);
+}
+
 // ── harness ──────────────────────────────────────────────────────────────────
 
 function Harness({
@@ -320,6 +342,7 @@ function Harness({
   density = 'comfortable',
   focusLayout = 'list',
   view,
+  dispatchItem = 60214,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -328,12 +351,15 @@ function Harness({
   focusLayout?: FocusLayout;
   /** A detail view pushed on top of the list. */
   view?: MainView;
+  /** The item selected in Dispatch. */
+  dispatchItem?: number;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
+    if (section === 'dispatch') seedDispatch(dispatchItem);
     useUiStore.setState({
       activeSection: section,
       prGroupBy: groupBy,
@@ -379,6 +405,17 @@ export const RailFocus: Story = { args: { section: 'focus' } };
 export const RailFocusBoard: Story = { args: { section: 'focus', focusLayout: 'board' } };
 
 /** The Worktrees section. */
+/** Dispatch: your work by what it needs, an agent's question open beside the list. */
+export const RailDispatch: Story = { args: { section: 'dispatch' } };
+
+/** Dispatch with a plan to approve selected. */
+export const RailDispatchPlan: Story = { args: { section: 'dispatch', dispatchItem: 59877 } };
+
+/** Dispatch with an item whose pull request merged while ADO still says Code Review. */
+export const RailDispatchOutOfSync: Story = {
+  args: { section: 'dispatch', dispatchItem: 59403 },
+};
+
 export const RailWorktrees: Story = { args: { section: 'worktrees' } };
 
 /** Work items: rows grouped by state, query picker in the head row. */

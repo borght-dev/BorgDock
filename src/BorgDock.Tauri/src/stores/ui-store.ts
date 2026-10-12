@@ -4,10 +4,16 @@ import type { FocusFilter } from '@/services/focus-bucket';
 import type { PrGroupBy } from '@/services/pr-grouping';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
-export type ActiveSection = 'prs' | 'focus' | 'workitems' | 'worktrees';
+export type ActiveSection = 'prs' | 'focus' | 'dispatch' | 'workitems' | 'worktrees';
 
-/** Sections in rail order; keys `1`–`4` pick them by position. */
-export const SECTION_ORDER: readonly ActiveSection[] = ['focus', 'prs', 'workitems', 'worktrees'];
+/** Sections in rail order; keys `1`–`5` pick them by position. */
+export const SECTION_ORDER: readonly ActiveSection[] = [
+  'focus',
+  'dispatch',
+  'prs',
+  'workitems',
+  'worktrees',
+];
 
 function isActiveSection(value: unknown): value is ActiveSection {
   return typeof value === 'string' && (SECTION_ORDER as readonly string[]).includes(value);

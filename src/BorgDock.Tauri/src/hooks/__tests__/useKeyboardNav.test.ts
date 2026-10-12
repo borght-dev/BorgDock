@@ -26,7 +26,7 @@ let mockViewStack: { kind: string }[] = [{ kind: 'list' }];
 let mockPullRequests: PullRequestWithChecks[] = [];
 
 vi.mock('@/stores/ui-store', () => ({
-  SECTION_ORDER: ['focus', 'prs', 'workitems', 'worktrees'],
+  SECTION_ORDER: ['focus', 'dispatch', 'prs', 'workitems', 'worktrees'],
   useUiStore: Object.assign(
     (selector: (s: Record<string, unknown>) => unknown) =>
       selector({
@@ -364,9 +364,10 @@ describe('useKeyboardNav', () => {
   describe('rail section keys', () => {
     it.each([
       ['1', 'focus'],
-      ['2', 'prs'],
-      ['3', 'workitems'],
-      ['4', 'worktrees'],
+      ['2', 'dispatch'],
+      ['3', 'prs'],
+      ['4', 'workitems'],
+      ['5', 'worktrees'],
     ])('%s switches to %s', (key, section) => {
       renderHook(() => useKeyboardNav());
       fireKey(key);
@@ -375,13 +376,13 @@ describe('useKeyboardNav', () => {
 
     it('works with an empty PR list', () => {
       renderHook(() => useKeyboardNav());
-      fireKey('2');
+      fireKey('3');
       expect(mockShowSection).toHaveBeenCalledWith('prs');
     });
 
     it('ignores keys past the last section and modified digits', () => {
       renderHook(() => useKeyboardNav());
-      fireKey('5');
+      fireKey('6');
       fireKey('1', { ctrlKey: true });
       fireKey('1', { altKey: true });
       expect(mockShowSection).not.toHaveBeenCalled();

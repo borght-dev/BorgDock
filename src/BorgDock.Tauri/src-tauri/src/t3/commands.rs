@@ -436,6 +436,88 @@ pub async fn t3_open_thread(
     })
 }
 
+async fn dispatch(client: &Client, command: Value) -> Result<(), String> {
+    client
+        .rpc("orchestration.dispatchCommand", command)
+        .await
+        .map(|_| ())
+}
+
+fn respond_command(thread_id: &str, request_id: &str, answers: Value) -> Value {
+    json!({
+        "type": "runtime-request.respond",
+        "threadId": thread_id,
+        "requestId": request_id,
+        "answers": answers,
+    })
+}
+
+fn message_command(thread_id: &str, text: &str) -> Value {
+    json!({
+        "type": "message.dispatch",
+        "threadId": thread_id,
+        "messageId": Uuid::new_v4().to_string(),
+        "text": text,
+        "attachments": [],
+        "createdBy": "user",
+        "creationSource": "web",
+        "dispatchMode": { "type": "start_immediately" },
+        "deliveryIntent": "auto",
+    })
+}
+
+/// Answer the questions an agent is waiting on. `answers` maps each question
+/// id to the picked option's value, or to the text the user typed.
+#[tauri::command]
+pub async fn t3_respond(
+    host: HostRef,
+    thread_id: String,
+    request_id: String,
+    answers: HashMap<String, Value>,
+) -> Result<(), String> {
+    let client = Client::connect(&host).await?;
+    dispatch(
+        &client,
+        respond_command(&thread_id, &request_id, json!(answers)),
+    )
+    .await
+}
+
+/// Send the agent a message and start its next turn. A thread in plan mode
+/// stays read-only, so `leave_plan_mode` switches it back first.
+#[tauri::command]
+pub async fn t3_send_message(
+    host: HostRef,
+    thread_id: String,
+    text: String,
+    leave_plan_mode: bool,
+) -> Result<(), String> {
+    let client = Client::connect(&host).await?;
+    if leave_plan_mode {
+        dispatch(
+            &client,
+            json!({
+                "type": "thread.interaction-mode.set",
+                "threadId": thread_id,
+                "interactionMode": "default",
+            }),
+        )
+        .await?;
+    }
+    dispatch(&client, message_command(&thread_id, &text)).await
+}
+
+/// Settle a thread: it is done, and its project is free for other work.
+#[tauri::command]
+pub async fn t3_settle(host: HostRef, thread_id: String) -> Result<(), String> {
+    let client = Client::connect(&host).await?;
+    dispatch(
+        &client,
+        json!({ "type": "thread.settle", "threadId": thread_id }),
+    )
+    .await
+}
+
 fn session_status(status: &str) -> &'static str {
     match status {
         "approval" => "waitingApproval",
@@ -494,6 +576,25 @@ mod tests {
 ";
         assert_eq!(issued_token(output).unwrap(), "abc");
         assert!(issued_token("no session here").is_err());
+    }
+
+    #[test]
+    fn a_response_names_the_request_and_carries_the_answers() {
+        let command = respond_command("t", "req", json!({ "q": "Row id (Recommended)" }));
+        assert_eq!(command["type"], "runtime-request.respond");
+        assert_eq!(command["requestId"], "req");
+        assert_eq!(command["answers"]["q"], "Row id (Recommended)");
+    }
+
+    #[test]
+    fn a_message_starts_a_turn_and_has_every_field_t3_requires() {
+        let command = message_command("t", "Go ahead with the plan.");
+        assert_eq!(command["type"], "message.dispatch");
+        assert_eq!(command["attachments"], json!([]));
+        assert_eq!(command["createdBy"], "user");
+        assert_eq!(command["creationSource"], "web");
+        assert_eq!(command["dispatchMode"]["type"], "start_immediately");
+        assert!(command["messageId"].as_str().is_some());
     }
 
     #[test]

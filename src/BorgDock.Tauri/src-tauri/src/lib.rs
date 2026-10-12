@@ -348,6 +348,9 @@ pub fn run() {
             t3::commands::t3_thread_detail,
             t3::commands::t3_first_user_messages,
             t3::commands::t3_show_thread,
+            t3::commands::t3_respond,
+            t3::commands::t3_send_message,
+            t3::commands::t3_settle,
             t3::commands::t3_open_thread,
             t3::commands::t3_list_sessions,
             // Azure DevOps HTTP proxy (CORS bypass)

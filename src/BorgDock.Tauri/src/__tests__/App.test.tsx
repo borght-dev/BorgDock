@@ -58,6 +58,10 @@ vi.mock('@/hooks/useAdoPolling', () => ({
   useAdoPolling: vi.fn(),
 }));
 
+vi.mock('@/hooks/useDispatchSync', () => ({
+  useDispatchSync: vi.fn(),
+}));
+
 vi.mock('@/hooks/useAutoHide', () => ({
   useAutoHide: vi.fn(),
 }));
