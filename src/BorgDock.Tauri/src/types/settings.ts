@@ -107,6 +107,11 @@ export interface AgentSettings {
   /** Model used for new T3 threads when T3 has no default of its own yet. */
   t3Model: string;
   t3ModelInstance: string;
+  /**
+   * Regular expression a T3 project's title must match to count as a slot in
+   * Dispatch, e.g. `^W\d+$`. Empty: every T3 project is a slot.
+   */
+  t3SlotPattern?: string;
 }
 
 export interface SummarySettings {

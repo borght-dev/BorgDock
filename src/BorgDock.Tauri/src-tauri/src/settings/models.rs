@@ -337,6 +337,10 @@ pub struct AgentSettings {
     pub t3_model: String,
     #[serde(default = "default_t3_model_instance")]
     pub t3_model_instance: String,
+    /// Regular expression a T3 project's title must match to count as a
+    /// Dispatch slot. Absent or empty: every project is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub t3_slot_pattern: Option<String>,
 }
 
 fn default_agent_provider() -> String {
@@ -364,6 +368,7 @@ impl Default for AgentSettings {
             t3_path: None,
             t3_model: default_t3_model(),
             t3_model_instance: default_t3_model_instance(),
+            t3_slot_pattern: None,
         }
     }
 }
