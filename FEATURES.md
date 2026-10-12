@@ -12,8 +12,8 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
 - Regular resizable window (default 1400×900, minimum 1200×720) with a custom title bar
 - **Rail** on the left:
   - BorgDock logo and name
-  - Sections **Focus**, **Pull requests**, **Work items**, **Worktrees** (keys `1`–`4`), with a sliding highlight on the active one
-  - Counts: Pull requests always (red when any PR is failing); Focus, Work items and Worktrees when above zero
+  - Sections **Focus**, **Dispatch**, **Pull requests**, **Work items**, **Worktrees** (keys `1`–`5`), with a sliding highlight on the active one
+  - Counts: Pull requests always (red when any PR is failing); Focus, Dispatch (the items waiting on you), Work items and Worktrees when above zero
   - Sync block: "Syncing…" / "Synced 12 s ago" (updates every 10 s), a GitHub rate meter (marked low under 10%) and "N of M requests left (GraphQL|REST)" for the tightest pool across accounts
   - Last section remembered (default Focus)
 - Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; status dot (red when any PR is failing), **Open window** launcher, Refresh, Settings, min/max/close
@@ -22,6 +22,7 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
   | View | Left | Right |
   |---|---|---|
   | Focus | focus computed · weights from settings | List: `R` Quick Review · `Ctrl+R` refresh. Board: `J K` move · `H L` columns · `R` Quick Review · `Ctrl+R` refresh |
+  | Dispatch | your work in Azure DevOps and its T3 threads | `J K` move · `Enter` open · `A` act · `S` start · `M` move state · `O` open in T3 |
   | Pull requests | synced time · rate for the tightest account and pool | `/` search · `R` refresh · `Ctrl+F7` worktrees · `Ctrl+F8` files · `Ctrl+F9` ADO |
   | Work items | `ado: org/project` | `/` search · `R` refresh · `J K` move · `Enter` open |
   | Worktrees | worktrees from every watched repository | `/` search · `R` refresh · `J K` move · `Enter` changes · `T` T3 · `O` terminal · `F` favourite · `Ctrl+F7` window |
@@ -58,6 +59,7 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
 - Borderless always-on-top panel anchored near the tray, toggled by its own global hotkey (default Ctrl+Win+Shift+F) or the tray menu; closes on click-outside or focus loss
 - Header: logo, open count, Refresh, **Open window** launcher, open main window, Settings
 - Summary strip with failing / running / passing counts and a **Focus N** shortcut
+- **Agents that need you**: up to three Dispatch items above the pull requests, each with why it waits; clicking one opens it in Dispatch
 - Compact PR rows (avatar, title, check bar, review chip, number) with **Review** or **Merge** and **More actions**; `j`/`k` navigation
 - Clicking a PR brings the main window to the front and opens the PR there
 - Row context menu: Review, Open in GitHub, Open pull request, copy branch / URL / errors for Claude, checkout, open T3 thread, rerun failed checks, merge, fix / monitor with Claude
@@ -114,6 +116,7 @@ Also on Focus rows and board cards.
 - Header: "Focus", a **Merged today** tally, **List / Board** toggle (also Settings → Appearance → Focus layout), **Start Quick Review** (everything waiting on your review, or all of Focus if nothing is)
 - Summary: "Showing all N open pull requests." or "Showing N of M open pull requests; the rest stay in Pull requests."
 - **Why not the others?** breakdown of excluded PRs with reasons and counts
+- **Agents that need you**: a strip above the list while an agent in Dispatch waits on you. It names up to three items, counts the rest, and has **Open Dispatch**; picking an item opens it in Dispatch
 - Contents: every PR with a priority score above zero (others' drafts get none), plus any Needs you PR that scored zero
 - Buckets, assigned in order: **Stale** (no update in the "Stale after" setting's days), **Needs you** (snoozed PRs go to waiting), **Ready to merge**, **Waiting on others**
 - **List**: a count strip to filter by bucket or Everything; rows are comfortable PR rows whose meta line reads "repo · reason"
@@ -231,9 +234,27 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 - **Open a new thread in T3** from the detail view, PR list, Worktrees section, or flyout
 - Uses the worktree that already has the branch, or opens the checkout picker first
 - Creates an empty PR-linked thread through T3's orchestration API (creating the T3 project if needed), using the project's default model, then the last thread's, then your T3 model setting; brings T3 to the front
-- Pairing in Settings → Agents (paste pairing link or raw token); token kept in the OS keychain
-- Linked T3 sessions polled every 15s (and on window focus) and shown as status chips in the detail Overview; click to focus T3
+- Pairing in Settings → Agents: **Pair with T3 on this machine** takes one click (T3's own CLI issues a token that can read and operate threads, valid for 30 days), or paste a pairing link or raw token; the token is kept in the OS keychain
+- Linked T3 sessions polled every 15s (and on window focus) and shown as status chips in the detail Overview; click one to open that thread in T3
 - Unpaired T3 is only activated, with a toast pointing to pairing
+
+### Dispatch
+- Rail section, second after Focus: your open Azure DevOps work, each item joined with the T3 threads and the pull request that belong to it
+- Items: everything assigned to you that is not closed, plus the items you starred
+- A thread belongs to an item when its title, first message, branch or pull request names the item (`AB#id`, or a bare id that is one of yours); link or unlink a thread by hand in the detail
+- Groups: **Waiting on you**, **Out of sync**, **Agents working**, **Up next**, **Not started**, **Paused**, **Handed off**
+- Thread status: Agent asks, Plan to review, Needs approval, Your turn, Agent failed, Running, Settled
+- **Slots**: the T3 projects, each free, yours or busy. Settings → Agents → Dispatch slots takes a regular expression; only projects whose name matches count (empty takes every project). Click a free slot to start the next queued item there, or drop an item on it
+- **Detail** beside the list: the item's own workflow as a track, what the agent last said, its questions with their options, the pull request with its checks, and the actions
+- Actions, the one the item needs first: answer with the recommended option, **Approve plan** (sends a go-ahead message), **Open in T3**, **Move to <state>** / **Keep <state>**, **Settle thread**, **Start in T3**, **Up next** / **Remove from Up next**, **Hide this**, **Open in ADO**
+- **Out of sync**: when the pull request and the item's state disagree, Dispatch suggests the state move, following the item's own workflow
+- **Launch sheet** (Start in T3, `S`, or a drop on a slot): slot, model and reasoning effort from the host's own catalogue, how to begin (**A plan for me to approve**, **Straight to work**, **Update for QA**, **Close as done**), and the first message, which you can edit. Optional: assign the item to you, move its state, open the thread in T3. Model, effort and way of beginning are remembered
+- An ADO step that fails after the thread started is reported; the thread keeps running
+- **Board**: columns **Needs you**, **Agents working**, **Up next**, **Not started**, a lane for Paused and Handed off, drag a card onto a slot, and a drawer with the detail (`Esc` closes it)
+- **Up next** is the ★ track star from Work items; an item leaves the queue when an agent picks it up
+- Header: **List / Board**, a health readout for Azure DevOps and each T3 host, search
+- T3 is polled every 10 s and on window focus, Azure DevOps every 60 s; Refresh reads everything again
+- **T3 on other machines** (Settings → Agents): add a host by name and address, pair it with the link `t3 pair` prints on that machine. Its slots and threads show beside the local ones, polled every 30 s. A host that stops answering keeps its last known work, marked offline, also after a restart; you cannot start an agent there until it is back. **Open in T3** opens a remote thread in the T3 app on this machine, which needs T3 itself connected to that host
 
 ---
 
@@ -277,7 +298,7 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 - Query picker adapts: a segmented control for 1–4 favourites, a single select for up to 12 queries, otherwise a queries rail (Favorites, My Queries) beside the list; **Browse all queries** opens the full query browser
 - Filter popover: State, Assignee (Anyone, @Me, names), Tracking (All, Tracked, Working on)
 - Items grouped by state, in the order states appear in the results ("No state" for the rest); row = type pill, `AB#id`, title, "State, P2"; density follows the Pull request density setting
-- Per row: ★ Track / Untrack and ● Start / Stop working on
+- Per row: ▶ Start in T3 (opens the Dispatch launch sheet for the item), ★ Track / Untrack (also Dispatch's Up next queue) and ● Start / Stop working on
 - Click, `Enter` or `Space` opens the item full screen; Back returns to the list
 - Selection kept across section switches; query re-run on a configurable poll interval (30–900s)
 
@@ -322,6 +343,11 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 - PR ready to merge — Merge, Open in GitHub
 - PR merged — View on GitHub, optional tada sound
 - Update available / update ready
+- Dispatch, each sent once (switch in Settings → Agents; nothing is sent until Azure DevOps and every T3 host have been read once):
+  - Agent asks: the recommended answer, Open
+  - Agent has a plan: Approve plan, Open
+  - Agent finished its turn, agent failed: Open
+  - Item out of sync: the state move, Open
 - Deduplicated within 60s
 
 ### Review Nudges
@@ -433,6 +459,7 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 - **Agents**
   - Default provider, Claude / Codex paths, Codex model
   - T3 path, model, and pairing
+  - Dispatch: slot pattern, **Notify me when an agent needs me**, T3 on other machines (name, address, pairing per host), and the first messages for Pick up, Update for QA and Close as done (`{id}`, `{title}`, `{branch}`)
   - PR summary provider and model
 - **Updates**
   - Auto-check and auto-download
@@ -492,10 +519,11 @@ Tool-window hotkeys hide a focused window, raise a buried one without losing inp
 ### Main Window
 - **Anywhere**: `Ctrl+K` / `Ctrl+F` focus the section's search (from a detail view, back to the list first; from Focus, the Pull requests search); `Ctrl+R` refreshes
 - **Lists**:
-  - `1`–`4` switch sections, `/` search
+  - `1`–`5` switch sections, `/` search
   - `J`/`K` or `↓`/`↑` move, `Enter` open full screen, `Ctrl+Enter` open in window, `Esc` clear the selection
   - `O` open on GitHub, `E` collapse groups, `R` refresh, `Shift+R` Quick Review over everything waiting on you
   - Focus: `R` Quick Review for the selected PR, `M` merge with Undo, `H`/`L` or `←`/`→` board columns
+  - Dispatch: `A` the selected item's first action, `S` start an agent on it, `M` move its state, `O` open its thread in T3, `Esc` close the board's drawer
   - Worktrees: `Enter` changes, `T` T3, `O` terminal, `F` favourite, `Esc` step back
 - **Detail views**: `Esc`, `Alt+←` or mouse back to go back, `J`/`K` switch tabs; PR detail `R` rerun failed and `F` fix when checks fail
 - **Quick Review**: card `→` approve, `←` review later, `Enter` review files, `Esc` close; file walk `v` mark reviewed, `n`/`j` next, `p`/`k` previous, `Esc` back to the card
