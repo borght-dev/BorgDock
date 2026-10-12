@@ -79,11 +79,14 @@ test('number keys switch sections', async ({ page }) => {
   await bootRail(page);
   await page.locator('body').click();
 
-  await page.keyboard.press('4');
+  await page.keyboard.press('5');
   await expect(railButton(page, /^Worktrees/)).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('button', { name: 'Open worktrees window' })).toBeVisible();
 
   await page.keyboard.press('2');
+  await expect(railButton(page, /^Dispatch/)).toHaveAttribute('aria-current', 'page');
+
+  await page.keyboard.press('3');
   await expect(railButton(page, /^Pull requests/)).toHaveAttribute('aria-current', 'page');
 });
 
