@@ -78,7 +78,7 @@ describe('getOpenPRs', () => {
     expect(pr.repoOwner).toBe('owner');
     expect(pr.repoName).toBe('repo');
 
-    expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls?state=open');
+    expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls?state=open&per_page=100&page=1');
     expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls/42');
     expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls/42/reviews');
   });
@@ -115,7 +115,32 @@ describe('getOpenPRs', () => {
     expect(result[0]!.number).toBe(42);
     // Only the list endpoint should have been called — no detail, no reviews
     expect(getSpy).toHaveBeenCalledTimes(1);
-    expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls?state=open');
+    expect(getSpy).toHaveBeenCalledWith('repos/owner/repo/pulls?state=open&per_page=100&page=1');
+  });
+
+  it('reads every open PR page before returning the lightweight list', async () => {
+    vi.mocked(client.get)
+      .mockResolvedValueOnce(
+        Array.from({ length: 100 }, (_, index) => ({ ...fakePrDto, number: index + 1 })),
+      )
+      .mockResolvedValueOnce([{ ...fakePrDto, number: 101 }]);
+    const result = await getOpenPRs(client, 'owner', 'repo', { hydrateDetails: false });
+    expect(result).toHaveLength(101);
+    expect(result[100]?.number).toBe(101);
+    expect(client.get).toHaveBeenLastCalledWith(
+      'repos/owner/repo/pulls?state=open&per_page=100&page=2',
+    );
+  });
+
+  it('rejects an incomplete open list instead of discarding PRs from the missing page', async () => {
+    vi.mocked(client.get)
+      .mockResolvedValueOnce(
+        Array.from({ length: 100 }, (_, index) => ({ ...fakePrDto, number: index + 1 })),
+      )
+      .mockRejectedValueOnce(new Error('Second page failed'));
+    await expect(getOpenPRs(client, 'owner', 'repo', { hydrateDetails: false })).rejects.toThrow(
+      'Second page failed',
+    );
   });
 });
 
