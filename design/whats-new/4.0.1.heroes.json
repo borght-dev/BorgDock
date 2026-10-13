@@ -1,0 +1,4 @@
+[
+  {"slug":"dispatch-width","storyId":"main-window-mainwindow--rail-dispatch-wide-list","viewport":{"width":1480,"height":925},"delay":2500},
+  {"slug":"settings","storyId":"settings-settingsapp--agents","viewport":{"width":1480,"height":925},"delay":2500}
+]

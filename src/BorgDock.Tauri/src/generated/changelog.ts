@@ -4,6 +4,39 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.0.1",
+    "date": "2026-10-13",
+    "summary": "Give your work titles more room and Settings take effect right away.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Give your work titles more room",
+        "description": "Drag the divider in Dispatch to widen the work-item list. BorgDock remembers your width, and you can use the arrow keys or double-click to reset it.",
+        "hero": {
+          "src": "/whats-new/4.0.1/dispatch-width.png",
+          "alt": "Dispatch with a wider work-item list"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Settings take effect right away",
+        "description": "Changing your Dispatch slot pattern and other settings updates open windows without restarting BorgDock. Extra spacing between settings sections makes them easier to scan.",
+        "hero": {
+          "src": "/whats-new/4.0.1/settings.png",
+          "alt": "Agent settings with space between sections"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Dispatch now finds work-item references throughout user and assistant messages, including references added later in a conversation. Broad triage conversations stay separate from individual work threads.",
+      "Merged pull requests no longer remain under Needs you when GitHub's bulk refresh fails. BorgDock checks the current open list through a second API and clears outdated cached entries.",
+      "The file palette and code previews now share one syntax engine startup, preventing an intermittent error when both open together."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.0.0",
     "date": "2026-10-12",
     "summary": "Dispatch: your work and the agents on it, Answer your agents without leaving BorgDock, Start an agent on a work item, and more.",

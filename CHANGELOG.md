@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.0.1 — 2026-10-13
+
+### Improvements
+
+- **Give your work titles more room** — Drag the divider in Dispatch to widen the work-item list. BorgDock remembers your width, and you can use the arrow keys or double-click to reset it. ![Dispatch with a wider work-item list](whats-new/4.0.1/dispatch-width.png)
+- **Settings take effect right away** — Changing your Dispatch slot pattern and other settings updates open windows without restarting BorgDock. Extra spacing between settings sections makes them easier to scan. ![Agent settings with space between sections](whats-new/4.0.1/settings.png)
+
+### Bug Fixes
+
+- Dispatch now finds work-item references throughout user and assistant messages, including references added later in a conversation. Broad triage conversations stay separate from individual work threads.
+- Merged pull requests no longer remain under Needs you when GitHub's bulk refresh fails. BorgDock checks the current open list through a second API and clears outdated cached entries.
+- The file palette and code previews now share one syntax engine startup, preventing an intermittent error when both open together.
+
 ## 4.0.0 — 2026-10-12
 
 ### New Features

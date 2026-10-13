@@ -51,6 +51,22 @@ export const FirstLaunch: Story = {
   ],
 };
 
+export const Agents: Story = {
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector('#field-t3-slot-pattern')?.scrollIntoView({ block: 'start' });
+    const panel = canvasElement.querySelector('main');
+    if (panel) panel.scrollTop -= 24;
+  },
+  decorators: [
+    ...(Default.decorators as Decorator[]),
+    (Story) => {
+      localStorage.setItem('settings.lastSection', 'agents');
+      history.replaceState(null, '', '#section=agents');
+      return <Story />;
+    },
+  ],
+};
+
 export const LoadingSplash: Story = {
   decorators: [
     withSettings(configuredSettings, {

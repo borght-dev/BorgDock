@@ -425,6 +425,16 @@ export const RailFocusBoard: Story = { args: { section: 'focus', focusLayout: 'b
 /** Dispatch: your work by what it needs, an agent's question open beside the list. */
 export const RailDispatch: Story = { args: { section: 'dispatch' } };
 
+export const RailDispatchWideList: Story = {
+  args: { section: 'dispatch' },
+  decorators: [
+    (Story) => {
+      localStorage.setItem('borgdock-dispatch-list-width', '560');
+      return <Story />;
+    },
+  ],
+};
+
 /** Dispatch with a plan to approve selected. */
 export const RailDispatchPlan: Story = { args: { section: 'dispatch', dispatchItem: 59877 } };
 
