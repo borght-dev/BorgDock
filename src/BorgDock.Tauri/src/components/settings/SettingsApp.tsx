@@ -246,7 +246,10 @@ export function SettingsApp() {
           </aside>
           <main className="overflow-auto bg-[var(--color-background)]">
             {/* Keyed by section so a switch fades the new section in (--motion-base). */}
-            <div key={active} className="bd-fade-in mx-auto max-w-[720px] px-9 pb-16 pt-7">
+            <div
+              key={active}
+              className="bd-settings-content bd-fade-in mx-auto max-w-[720px] px-9 pb-16 pt-7"
+            >
               {sectionContent}
             </div>
           </main>
