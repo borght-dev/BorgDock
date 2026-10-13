@@ -3,7 +3,7 @@ import { saveCachedEtags, saveCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
 import { pollOpenPrsAggregate } from '@/services/github/polling';
-import { getClosedPRs } from '@/services/github/pulls';
+import { getClosedPRs, getOpenPRs } from '@/services/github/pulls';
 import {
   bindRepoClient,
   getClient,
@@ -115,11 +115,48 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
             });
             return prs;
           } catch (err) {
-            log.error('poll: repo failed — keeping last-known PRs', err, { repo: repoLabel });
-            return [...priorByKey.values()].filter((prior) => {
-              const p = prior.pullRequest;
-              return p.repoOwner === repo.owner && p.repoName === repo.name;
+            log.warn('GraphQL poll failed; trying REST open list', {
+              repo: repoLabel,
+              error: String(err),
             });
+            try {
+              const open = await getOpenPRs(repoClient, repo.owner, repo.name, {
+                hydrateDetails: false,
+              });
+              const reconciled = open.map((pr) => {
+                const previous = priorByKey.get(`${pr.repoOwner}/${pr.repoName}#${pr.number}`);
+                if (!previous || previous.pullRequest.headSha !== pr.headSha) {
+                  return aggregatePrWithChecks(pr, []);
+                }
+                const prior = previous.pullRequest;
+                return {
+                  ...previous,
+                  pullRequest: {
+                    ...pr,
+                    reviewStatus: prior.reviewStatus,
+                    latestReviews: prior.latestReviews,
+                    mergeable: pr.mergeable ?? prior.mergeable,
+                    additions: pr.additions ?? prior.additions,
+                    deletions: pr.deletions ?? prior.deletions,
+                    changedFiles: pr.changedFiles ?? prior.changedFiles,
+                    commitCount: pr.commitCount ?? prior.commitCount,
+                  },
+                };
+              });
+              log.info('poll: repo reconciled via REST', {
+                repo: repoLabel,
+                prs: reconciled.length,
+              });
+              return reconciled;
+            } catch (restError) {
+              log.error('poll: both APIs failed — keeping last-known PRs', restError, {
+                repo: repoLabel,
+              });
+              return [...priorByKey.values()].filter((prior) => {
+                const p = prior.pullRequest;
+                return p.repoOwner === repo.owner && p.repoName === repo.name;
+              });
+            }
           }
         }),
       );
@@ -181,9 +218,7 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
         const repoPrs = results.filter(
           (r) => r.pullRequest.repoOwner === repo.owner && r.pullRequest.repoName === repo.name,
         );
-        if (repoPrs.length > 0) {
-          saveCachedPRs(repo.owner, repo.name, repoPrs);
-        }
+        saveCachedPRs(repo.owner, repo.name, repoPrs);
       }
       const accountClients = new Set(
         enabledRepos.map((repo) => getClientForRepo(repo.owner, repo.name)).filter(Boolean),

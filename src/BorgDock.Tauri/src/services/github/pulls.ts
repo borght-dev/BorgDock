@@ -110,7 +110,14 @@ export async function getOpenPRs(
   options: { hydrateDetails?: boolean } = {},
 ): Promise<PullRequest[]> {
   const { hydrateDetails = true } = options;
-  const dtos = await client.get<GitHubPullRequestDto[]>(`repos/${owner}/${repo}/pulls?state=open`);
+  const dtos: GitHubPullRequestDto[] = [];
+  for (let page = 1; ; page++) {
+    const batch = await client.get<GitHubPullRequestDto[]>(
+      `repos/${owner}/${repo}/pulls?state=open&per_page=100&page=${page}`,
+    );
+    dtos.push(...batch);
+    if (batch.length < 100) break;
+  }
 
   const pullRequests = dtos.map((dto) => mapToPullRequest(dto, owner, repo));
 

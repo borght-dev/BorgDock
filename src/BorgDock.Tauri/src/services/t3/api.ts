@@ -24,6 +24,7 @@ export interface T3Thread {
   worktreePath: string | null;
   createdAt: string;
   lastActivityAt: string;
+  updatedAt?: string;
   status: ThreadStatus;
   interactionMode: string;
   runtimeMode: string;
@@ -64,6 +65,18 @@ export function t3FirstUserMessages(
   threadIds: string[],
 ): Promise<Record<string, string>> {
   return invoke<Record<string, string>>('t3_first_user_messages', { host, threadIds });
+}
+
+export interface T3ConversationReferences {
+  explicitIds: number[];
+  mentionedIds: number[];
+}
+
+export function t3ConversationReferences(
+  host: T3HostRef,
+  threadIds: string[],
+): Promise<Record<string, T3ConversationReferences>> {
+  return invoke('t3_conversation_references', { host, threadIds });
 }
 
 /** Answer an agent's questions: question id to the picked option's value or the typed text. */

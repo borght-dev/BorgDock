@@ -59,6 +59,12 @@
   }
 
   /* ── Settings: the section list's sliding wash ── */
+  .bd-settings-content > .bd-card + .bd-card {
+    margin-top: 16px;
+  }
+  .bd-settings-content #field-t3-pairing {
+    padding-top: 12px;
+  }
   .bd-settings-rail__hl.bd-slide__hl--fill {
     border-radius: var(--radius-md);
     background: var(--color-accent-subtle);

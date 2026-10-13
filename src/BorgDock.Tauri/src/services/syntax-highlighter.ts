@@ -1,4 +1,5 @@
 import type { HighlightCategory, HighlightSpan } from '@/types';
+import { loadTreeSitter } from './tree-sitter-runtime';
 
 type TSParser = import('web-tree-sitter').Parser;
 type TSLanguage = import('web-tree-sitter').Language;
@@ -157,7 +158,7 @@ async function initTreeSitter(): Promise<boolean> {
       // member of `Parser` (as it was in ≤0.20). Older code that did
       // `Parser.Language.load(...)` silently returned `undefined` and the whole
       // highlighter became a no-op.
-      const mod = (await import('web-tree-sitter')) as unknown as {
+      const mod = (await loadTreeSitter()) as unknown as {
         Parser: typeof import('web-tree-sitter')['Parser'];
         Language: typeof import('web-tree-sitter')['Language'];
       };
@@ -170,9 +171,6 @@ async function initTreeSitter(): Promise<boolean> {
         throw new Error('web-tree-sitter: Language.load not found on module export');
       }
 
-      await (Parser as unknown as { init: (opts?: object) => Promise<void> }).init({
-        locateFile: () => '/web-tree-sitter.wasm',
-      });
       ParserClass = Parser;
       LanguageClass = Language;
       return true;

@@ -31,6 +31,15 @@ describe('referencedItemIds', () => {
     expect(ids({ id: 'a', title: 'AB#59463 renew certs' })).toEqual([59463]);
   });
 
+  it('reads references from later user and assistant messages', () => {
+    expect(
+      ids({
+        id: 'later',
+        conversationReferences: { explicitIds: [59463], mentionedIds: [59541, 12345] },
+      }),
+    ).toEqual([59463, 59541]);
+  });
+
   it('reads an id from a branch, with or without the AB prefix', () => {
     expect(ids({ id: 'b', branch: 'fix/AB58930-debundle' })).toEqual([58930]);
     expect(ids({ id: 'c', branch: 'feat/59458-route-hosts' })).toEqual([59458]);
@@ -53,6 +62,18 @@ describe('referencedItemIds', () => {
 });
 
 describe('linkThreads', () => {
+  it('keeps whole-conversation triage threads out of individual work', () => {
+    const items = [50001, 50002, 50003, 50004].map((id) => makeItem({ id }));
+    const thread = makeThread({
+      id: 'triage',
+      conversationReferences: { explicitIds: [], mentionedIds: items.map((i) => i.id) },
+    });
+    expect(
+      [...linkThreads(items, [thread], new Map()).threadsByItem.values()].every(
+        (list) => list.length === 0,
+      ),
+    ).toBe(true);
+  });
   it('links a thread that names many items to none of them', () => {
     const items = [1, 2, 3, 4].map((n) => makeItem({ id: 50000 + n }));
     const triage = makeThread({

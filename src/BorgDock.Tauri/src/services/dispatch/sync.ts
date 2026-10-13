@@ -1,6 +1,12 @@
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
 import { AdoClient } from '@/services/ado/client';
-import { type T3Thread, t3FirstUserMessages, t3Snapshot, t3ThreadDetail } from '@/services/t3/api';
+import {
+  type T3ConversationReferences,
+  type T3Thread,
+  t3ConversationReferences,
+  t3Snapshot,
+  t3ThreadDetail,
+} from '@/services/t3/api';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -44,6 +50,7 @@ export function toAgentThread(
     branch: thread.branch,
     createdAt: thread.createdAt,
     lastActivityAt: thread.lastActivityAt,
+    updatedAt: thread.updatedAt,
     open: thread.status !== 'settled',
     status: thread.status,
     interactionMode: thread.interactionMode,
@@ -52,6 +59,7 @@ export function toAgentThread(
     effort: thread.effort,
     pullRequests: thread.pullRequests,
     firstUserMessage: previous?.firstUserMessage ?? '',
+    conversationReferences: previous?.conversationReferences,
     questionRequestId: asking ? (previous?.questionRequestId ?? null) : null,
     questions: asking ? (previous?.questions ?? []) : [],
     lastAgentMessage: stopped ? (previous?.lastAgentMessage ?? null) : null,
@@ -155,8 +163,7 @@ interface HostState {
   sequence: number | null;
   /** `lastActivityAt|status` each thread's detail was last read at. */
   detailVersions: Map<string, string>;
-  /** Threads whose first user message is in (or known to be absent). */
-  firstMessagesRead: Set<string>;
+  referenceVersions: Map<string, string>;
   inFlight: Promise<void> | null;
 }
 
@@ -173,7 +180,7 @@ function stateOf(host: DispatchHost): HostState {
       address: addressOf(host),
       sequence: null,
       detailVersions: new Map(),
-      firstMessagesRead: new Set(),
+      referenceVersions: new Map(),
       inFlight: null,
     };
     hostStates.set(host.id, state);
@@ -203,25 +210,30 @@ function openThenRecent(a: AgentThread, b: AgentThread): number {
   return Number(b.open) - Number(a.open) || b.lastActivityAt.localeCompare(a.lastActivityAt);
 }
 
-async function readFirstMessages(host: DispatchHost, state: HostState): Promise<void> {
+async function readConversationReferences(host: DispatchHost, state: HostState): Promise<void> {
+  const version = (thread: AgentThread) => thread.updatedAt ?? thread.lastActivityAt;
   const missing = threadsOf(host.id)
-    .filter((thread) => !state.firstMessagesRead.has(thread.id))
+    .filter((thread) => state.referenceVersions.get(thread.id) !== version(thread))
     .sort(openThenRecent);
   if (missing.length === 0) return;
-  let found: Record<string, string>;
+  let found: Record<string, T3ConversationReferences>;
   try {
-    found = await t3FirstUserMessages(
+    found = await t3ConversationReferences(
       hostRef(host),
       missing.map((thread) => rawId(host.id, thread.id)),
     );
   } catch {
     return;
   }
+  if (!stillFollowed(host, state)) return;
   const patches = new Map<string, Partial<AgentThread>>();
-  for (const [id, text] of Object.entries(found)) {
+  const requested = new Map(missing.map((thread) => [thread.id, thread]));
+  for (const [id, references] of Object.entries(found)) {
     const threadId = scopedId(host.id, id);
-    state.firstMessagesRead.add(threadId);
-    if (text) patches.set(threadId, { firstUserMessage: text });
+    const thread = requested.get(threadId);
+    if (!thread) continue;
+    state.referenceVersions.set(threadId, version(thread));
+    patches.set(threadId, { conversationReferences: references });
   }
   if (patches.size === 0) return;
   useDispatchStore.getState().patchThreads(patches);
@@ -283,7 +295,10 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
 
   if (snapshot.changed) {
     state.sequence = snapshot.sequence;
-    if (force) state.detailVersions.clear();
+    if (force) {
+      state.detailVersions.clear();
+      state.referenceVersions.clear();
+    }
     const previous = new Map(threadsOf(host.id).map((thread) => [thread.id, thread]));
     const titles = new Map(snapshot.projects.map((project) => [project.id, project.title]));
     const threads = snapshot.threads.map((thread) =>
@@ -316,7 +331,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
   });
   recomputeOverview();
 
-  await readFirstMessages(host, state);
+  await readConversationReferences(host, state);
   await readDetails(host, state);
 }
 

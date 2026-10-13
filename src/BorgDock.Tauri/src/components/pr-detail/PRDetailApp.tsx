@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { IconButton } from '@/components/shared/primitives';
 import { usePrDetailData } from '@/hooks/usePrDetailData';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { getGitHubToken } from '@/services/github/auth';
 import { initClient } from '@/services/github/singleton';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -52,12 +53,14 @@ async function preparePopOut() {
     // The cache is best-effort.
   }
 
-  const pat = settings.gitHub.personalAccessToken;
-  return initClient(() => getGitHubToken(pat));
+  return initClient(() =>
+    getGitHubToken(useSettingsStore.getState().settings.gitHub.personalAccessToken),
+  );
 }
 
 /** PrDetailApp — the pop-out PR detail window (`pr-detail.html`). */
 export function PrDetailApp() {
+  useSettingsSync();
   // Reveal the (invisible-built) window once React has painted.
   const revealedRef = useRef(false);
   useEffect(() => {

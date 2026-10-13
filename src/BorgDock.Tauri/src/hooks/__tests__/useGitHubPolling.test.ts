@@ -7,6 +7,7 @@ import type { AppSettings, PullRequest, PullRequestWithChecks } from '@/types';
 const mockGetGitHubToken = vi.fn();
 const mockPollOpenPrsAggregate = vi.fn();
 const mockGetClosedPRs = vi.fn();
+const mockGetOpenPRs = vi.fn();
 const mockAggregatePrWithChecks = vi.fn();
 const mockInitClient = vi.fn();
 const mockGetClient = vi.fn();
@@ -21,6 +22,7 @@ vi.mock('@/services/github/polling', () => ({
 
 vi.mock('@/services/github/pulls', () => ({
   getClosedPRs: (...args: unknown[]) => mockGetClosedPRs(...args),
+  getOpenPRs: (...args: unknown[]) => mockGetOpenPRs(...args),
 }));
 
 vi.mock('@/services/github/aggregate', () => ({
@@ -180,6 +182,7 @@ describe('useGitHubPolling', () => {
     mockGetClient.mockReturnValue(mockClientInstance);
     mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockGetClosedPRs.mockResolvedValue([]);
+    mockGetOpenPRs.mockRejectedValue(new Error('REST unavailable'));
     mockAggregatePrWithChecks.mockImplementation((pr: PullRequest, checks: unknown[]) => ({
       pullRequest: pr,
       overallStatus: 'green',
@@ -472,6 +475,47 @@ describe('useGitHubPolling', () => {
       expect(prs).toHaveLength(1);
       expect(prs[0]).toBe(prior);
     });
+  });
+
+  it('removes a merged PR on Refresh when GraphQL fails but the REST open list succeeds', async () => {
+    const merged = makePrw({ number: 4892, requestedReviewers: ['testuser'] });
+    const stillOpen = makePrw({ number: 4893, headSha: 'same-head' });
+    usePrStore.setState({ pullRequests: [merged, stillOpen], username: 'testuser' });
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('GitHub request timed out after 10000ms'));
+    mockGetOpenPRs.mockResolvedValue([stillOpen.pullRequest]);
+    const { result } = renderHook(() => useGitHubPolling(makeSettings()));
+    await act(async () => {
+      await result.current.pollNow();
+    });
+    expect(usePrStore.getState().pullRequests.map((p) => p.pullRequest.number)).toEqual([4893]);
+    expect(usePrStore.getState().counts().needsYou).toBe(0);
+    expect(usePrStore.getState().pullRequests[0]?.passedCount).toBe(stillOpen.passedCount);
+  });
+
+  it('drops cached checks when the REST fallback discovers a new commit', async () => {
+    const prior = makePrw({ number: 4893, headSha: 'old-head' });
+    usePrStore.setState({ pullRequests: [prior] });
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('GraphQL unavailable'));
+    mockGetOpenPRs.mockResolvedValue([{ ...prior.pullRequest, headSha: 'new-head' }]);
+    const { result } = renderHook(() => useGitHubPolling(makeSettings()));
+    await act(async () => {
+      await result.current.pollNow();
+    });
+    expect(usePrStore.getState().pullRequests[0]?.pullRequest.headSha).toBe('new-head');
+    expect(usePrStore.getState().pullRequests[0]?.passedCount).toBe(0);
+  });
+
+  it('clears the disk cache when the last open PR closes', async () => {
+    const { saveCachedPRs } = await import('@/services/cache');
+    usePrStore.setState({ pullRequests: [makePrw({ number: 4892 })] });
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('GraphQL unavailable'));
+    mockGetOpenPRs.mockResolvedValue([]);
+    const { result } = renderHook(() => useGitHubPolling(makeSettings()));
+    await act(async () => {
+      await result.current.pollNow();
+    });
+    expect(usePrStore.getState().pullRequests).toEqual([]);
+    expect(saveCachedPRs).toHaveBeenCalledWith('test', 'repo', []);
   });
 
   it("does not resurrect another repo's PRs when one repo fails", async () => {

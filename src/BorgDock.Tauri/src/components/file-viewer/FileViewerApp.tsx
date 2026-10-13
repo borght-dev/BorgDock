@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
 import type { AppSettings } from '@/types/settings';
@@ -51,6 +52,12 @@ export function FileViewerApp() {
   // roundtrip resolves (success OR failure — either way the app is mounted
   // with the right view mode).
   const [appReady, setAppReady] = useState(false);
+
+  useSettingsSync(async () => {
+    const settings = await invoke<AppSettings>('load_settings');
+    const mode = settings.ui?.fileViewerDefaultViewMode;
+    if (mode === 'split' || mode === 'unified') setViewModeState(mode);
+  });
 
   // The viewer window is built visible (no window_ready), so its entrance
   // plays on mount.

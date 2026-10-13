@@ -1,28 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useRef, useState } from 'react';
+import { loadTreeSitter } from '@/services/tree-sitter-runtime';
 import { joinRootAndRel } from './join-path';
-import { languageForExtension, type SymbolEntry } from './use-symbol-index';
 import type { FileEntry } from './use-file-index';
-
-// Dynamically loaded once per session.
-let treeSitterPromise: Promise<{
-  Parser: typeof import('web-tree-sitter').Parser;
-  Language: typeof import('web-tree-sitter').Language;
-  Query: typeof import('web-tree-sitter').Query;
-}> | null = null;
-
-async function loadTreeSitter() {
-  if (!treeSitterPromise) {
-    treeSitterPromise = (async () => {
-      const mod = await import('web-tree-sitter');
-      await mod.Parser.init({
-        locateFile: (name: string) => `/${name}`,
-      });
-      return { Parser: mod.Parser, Language: mod.Language, Query: mod.Query };
-    })();
-  }
-  return treeSitterPromise;
-}
+import { languageForExtension, type SymbolEntry } from './use-symbol-index';
 
 const langCache = new Map<string, Promise<import('web-tree-sitter').Language>>();
 
@@ -63,10 +44,7 @@ interface IndexerResult {
   indexing: boolean;
 }
 
-export function useBackgroundIndexer(
-  root: string | null,
-  files: FileEntry[],
-): IndexerResult {
+export function useBackgroundIndexer(root: string | null, files: FileEntry[]): IndexerResult {
   const [entries, setEntries] = useState<SymbolEntry[]>([]);
   const [processed, setProcessed] = useState(0);
   const [indexing, setIndexing] = useState(false);

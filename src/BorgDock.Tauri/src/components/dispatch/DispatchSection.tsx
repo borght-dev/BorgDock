@@ -20,6 +20,7 @@ import { showToast, toastError } from '@/stores/toast-store';
 import { shortcutLabel } from '@/utils/shortcut-label';
 import { DispatchBoard } from './DispatchBoard';
 import { DispatchDetail } from './DispatchDetail';
+import { DispatchListSplit } from './DispatchListSplit';
 import { canStart, DispatchRow } from './DispatchRow';
 import { LaunchSheet } from './LaunchSheet';
 import { SlotStrip } from './SlotStrip';
@@ -234,51 +235,58 @@ export function DispatchSection() {
           onSelect={selectItem}
         />
       )}
-      <div className="bd-dp-split" hidden={viewMode === 'board' && overview !== null}>
-        <div className="bd-wb-list" data-density={density}>
-          {overview === null && <div className="bd-wb-empty">Loading your work…</div>}
-          {overview !== null && items.length === 0 && (
-            <div className="bd-wb-empty">
-              <p>
-                {total > 0
-                  ? 'No work matches this search'
-                  : (adoStatus.error ?? 'Nothing is assigned to you')}
-              </p>
+      <DispatchListSplit
+        hidden={viewMode === 'board' && overview !== null}
+        list={
+          <div className="bd-wb-list" data-density={density}>
+            {overview === null && <div className="bd-wb-empty">Loading your work…</div>}
+            {overview !== null && items.length === 0 && (
+              <div className="bd-wb-empty">
+                <p>
+                  {total > 0
+                    ? 'No work matches this search'
+                    : (adoStatus.error ?? 'Nothing is assigned to you')}
+                </p>
+              </div>
+            )}
+            {groups.map((group) => (
+              <WorkbenchGroup
+                key={group.bay}
+                groupKey={bayGroupKey(group.bay)}
+                label={BAY_LABEL[group.bay]}
+                count={group.rows.length}
+              >
+                {group.rows.map((row) => (
+                  <DispatchRow
+                    key={row.item.id}
+                    overview={row}
+                    selected={selected?.item.id === row.item.id}
+                    now={now}
+                    density={density}
+                    onSelect={selectItem}
+                    onOpen={(id) => void showWorkItem(id)}
+                  />
+                ))}
+              </WorkbenchGroup>
+            ))}
+          </div>
+        }
+        detail={
+          selected ? (
+            <DispatchDetail
+              overview={selected}
+              slots={overview?.slots ?? []}
+              actions={dispatchActions}
+              now={now}
+              busy={busy}
+            />
+          ) : (
+            <div className="bd-dp-empty-detail">
+              Pick an item to see its agent and its next step.
             </div>
-          )}
-          {groups.map((group) => (
-            <WorkbenchGroup
-              key={group.bay}
-              groupKey={bayGroupKey(group.bay)}
-              label={BAY_LABEL[group.bay]}
-              count={group.rows.length}
-            >
-              {group.rows.map((row) => (
-                <DispatchRow
-                  key={row.item.id}
-                  overview={row}
-                  selected={selected?.item.id === row.item.id}
-                  now={now}
-                  density={density}
-                  onSelect={selectItem}
-                  onOpen={(id) => void showWorkItem(id)}
-                />
-              ))}
-            </WorkbenchGroup>
-          ))}
-        </div>
-        {selected ? (
-          <DispatchDetail
-            overview={selected}
-            slots={overview?.slots ?? []}
-            actions={dispatchActions}
-            now={now}
-            busy={busy}
-          />
-        ) : (
-          <div className="bd-dp-empty-detail">Pick an item to see its agent and its next step.</div>
-        )}
-      </div>
+          )
+        }
+      />
       {launch && overview && <LaunchSheet intent={launch} overview={overview} />}
     </div>
   );

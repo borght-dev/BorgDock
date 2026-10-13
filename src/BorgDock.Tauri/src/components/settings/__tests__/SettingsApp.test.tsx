@@ -17,8 +17,10 @@ const updateSettings = vi.fn();
 const loadSettings = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/stores/settings-store', () => ({
+  flushSettings: vi.fn(),
   useSettingsStore: Object.assign(
-    (sel: any) => sel({ settings: defaultMockSettings(), saveSettings, hasLoaded: true }),
+    (sel: any) =>
+      sel({ settings: defaultMockSettings(), saveSettings, updateSettings, hasLoaded: true }),
     {
       getState: () => ({
         updateSettings,
