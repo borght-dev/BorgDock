@@ -14,7 +14,7 @@ const UNAMBIGUOUS_DIGITS = 5;
 export const MAX_ITEMS_PER_THREAD = 3;
 
 /**
- * The work items a thread refers to: `AB#123` in its title, first message and
+ * The work items a thread refers to: `AB#123` across its conversation, title and
  * pull request titles, an id in its branch names, and the items its pull
  * requests are linked to. A short or bare number only counts when it is one
  * of my items ("pick up 59541", "release/2026-10").
@@ -25,6 +25,10 @@ export function referencedItemIds(
   itemsByPullRequest: ReadonlyMap<number, number[]>,
 ): Set<number> {
   const ids = new Set<number>();
+  for (const id of thread.conversationReferences?.explicitIds ?? []) ids.add(id);
+  for (const id of thread.conversationReferences?.mentionedIds ?? []) {
+    if (myItemIds.has(id)) ids.add(id);
+  }
   const addLoose = (digits: string) => {
     const id = Number(digits);
     if (digits.length >= UNAMBIGUOUS_DIGITS || myItemIds.has(id)) ids.add(id);

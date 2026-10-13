@@ -3,7 +3,7 @@
 
 use super::client::Client;
 use super::hosts::{self, HostRef};
-use super::{desktop, shell};
+use super::{desktop, references, shell};
 use rusqlite::{Connection, OpenFlags};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -290,6 +290,43 @@ pub async fn t3_first_user_messages(
     }
     let client = Client::connect(&host).await?;
     Ok(first_messages_from_snapshots(&client, &thread_ids).await)
+}
+
+#[tauri::command]
+pub async fn t3_conversation_references(
+    host: HostRef,
+    thread_ids: Vec<String>,
+) -> Result<HashMap<String, references::ConversationReferences>, String> {
+    if thread_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    if host.is_local() {
+        let ids = thread_ids.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            let connection = Connection::open_with_flags(
+                hosts::userdata_dir()?.join("statev2.sqlite"),
+                OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            )
+            .map_err(|error| error.to_string())?;
+            references::from_database(&connection, &ids)
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+        match result {
+            Ok(found) => return Ok(found),
+            Err(error) => {
+                log::warn!("t3_conversation_references: {error}; reading snapshots instead")
+            }
+        }
+    }
+    let client = Client::connect(&host).await?;
+    let mut found = HashMap::new();
+    for id in thread_ids.iter().take(REMOTE_FIRST_MESSAGES_PER_CALL) {
+        if let Ok(snapshot) = client.get(&thread_path(id)).await {
+            found.insert(id.clone(), references::from_snapshot(&snapshot));
+        }
+    }
+    Ok(found)
 }
 
 async fn environment_id(client: &Client) -> Result<String, String> {

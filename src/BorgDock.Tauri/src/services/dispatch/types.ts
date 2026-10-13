@@ -108,6 +108,8 @@ export interface AgentThread {
   effort: string | null;
   pullRequests: ThreadPullRequest[];
   firstUserMessage: string;
+  conversationReferences?: { explicitIds: number[]; mentionedIds: number[] };
+  updatedAt?: string;
   /** Present while the agent waits for answers. */
   questionRequestId: string | null;
   questions: AgentQuestion[];

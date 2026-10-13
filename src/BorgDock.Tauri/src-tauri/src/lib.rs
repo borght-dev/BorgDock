@@ -347,6 +347,7 @@ pub fn run() {
             t3::commands::t3_snapshot,
             t3::commands::t3_thread_detail,
             t3::commands::t3_first_user_messages,
+            t3::commands::t3_conversation_references,
             t3::commands::t3_show_thread,
             t3::commands::t3_catalogue,
             t3::commands::t3_launch_thread,

@@ -125,6 +125,7 @@ pub struct ThreadDto {
     pub worktree_path: Option<String>,
     pub created_at: String,
     pub last_activity_at: String,
+    pub updated_at: String,
     /// `question`, `plan`, `approval`, `your-turn`, `failed`, `running` or `settled`.
     pub status: String,
     pub interaction_mode: String,
@@ -426,6 +427,7 @@ fn to_thread(thread: ShellThread) -> ThreadDto {
         worktree_path: thread.worktree_path,
         created_at: thread.created_at,
         last_activity_at,
+        updated_at: thread.updated_at,
         status,
         interaction_mode: thread
             .interaction_mode

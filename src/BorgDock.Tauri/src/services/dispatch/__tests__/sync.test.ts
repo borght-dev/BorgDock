@@ -5,14 +5,14 @@ import type { PullRequestWithChecks } from '@/types';
 const api = vi.hoisted(() => ({
   t3Snapshot: vi.fn(),
   t3ThreadDetail: vi.fn(),
-  t3FirstUserMessages: vi.fn(),
+  t3ConversationReferences: vi.fn(),
 }));
 
 vi.mock('@/services/t3/api', () => ({
   LOCAL_T3_HOST_ID: 'local',
   t3Snapshot: api.t3Snapshot,
   t3ThreadDetail: api.t3ThreadDetail,
-  t3FirstUserMessages: api.t3FirstUserMessages,
+  t3ConversationReferences: api.t3ConversationReferences,
 }));
 
 vi.mock('@/components/work-items/work-item-toggles', () => ({
@@ -167,20 +167,63 @@ describe('compileSlotPattern', () => {
 });
 
 describe('syncHost', () => {
+  it('links an item mentioned later in the conversation and rescans after an edit', async () => {
+    resetHostSync();
+    followInSettings([]);
+    useDispatchStore.setState({ threads: [], projects: [], hosts: [], items: [], overview: null });
+    api.t3Snapshot.mockResolvedValue(
+      snapshot([t3Thread({ status: 'running', updatedAt: '2026-10-10T10:00:00Z' })]),
+    );
+    api.t3ConversationReferences.mockResolvedValueOnce({
+      t1: { explicitIds: [], mentionedIds: [58138] },
+    });
+    await syncHost(LOCAL_HOST);
+    expect(useDispatchStore.getState().threads[0]?.conversationReferences?.mentionedIds).toEqual([
+      58138,
+    ]);
+
+    api.t3Snapshot.mockResolvedValue(
+      snapshot([t3Thread({ status: 'running', updatedAt: '2026-10-10T11:00:00Z' })], 2),
+    );
+    api.t3ConversationReferences.mockResolvedValueOnce({
+      t1: { explicitIds: [59458], mentionedIds: [] },
+    });
+    await syncHost(LOCAL_HOST);
+    expect(api.t3ConversationReferences).toHaveBeenCalledTimes(2);
+    expect(useDispatchStore.getState().threads[0]?.conversationReferences).toEqual({
+      explicitIds: [59458],
+      mentionedIds: [],
+    });
+  });
+
+  it('retries references missing from a partial remote response', async () => {
+    api.t3Snapshot.mockResolvedValue(snapshot([t3Thread({ status: 'running' })]));
+    api.t3ConversationReferences
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ t1: { explicitIds: [59458], mentionedIds: [] } });
+    await syncHost(MAC);
+    await syncHost(MAC);
+    expect(api.t3ConversationReferences).toHaveBeenCalledTimes(2);
+    expect(useDispatchStore.getState().threads[0]?.conversationReferences?.explicitIds).toEqual([
+      59458,
+    ]);
+  });
   beforeEach(() => {
     resetHostSync();
     api.t3Snapshot.mockReset();
     api.t3ThreadDetail.mockReset();
-    api.t3FirstUserMessages.mockReset();
+    api.t3ConversationReferences.mockReset();
     memory.rememberHost.mockReset();
     memory.forgetHostsExcept.mockReset();
     followInSettings([]);
     useDispatchStore.setState({ threads: [], projects: [], hosts: [], items: [], overview: null });
   });
 
-  it('stores the threads with their first message and the question they ask', async () => {
+  it('stores the threads with their conversation references and the question they ask', async () => {
     api.t3Snapshot.mockResolvedValue(snapshot([t3Thread()]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: 'Pick up AB#60214' });
+    api.t3ConversationReferences.mockResolvedValue({
+      t1: { explicitIds: [60214], mentionedIds: [] },
+    });
     api.t3ThreadDetail.mockResolvedValue(DETAIL);
 
     await syncHost(LOCAL_HOST);
@@ -191,7 +234,7 @@ describe('syncHost', () => {
       {
         id: 't1',
         slot: 'W1',
-        firstUserMessage: 'Pick up AB#60214',
+        conversationReferences: { explicitIds: [60214], mentionedIds: [] },
         questionRequestId: 'req',
         lastAgentMessage: 'Row id or pixel offset?',
       },
@@ -199,24 +242,24 @@ describe('syncHost', () => {
     expect(hosts).toMatchObject([{ id: 'local', ok: true, error: null }]);
   });
 
-  it('asks for a first message and a detail only once while nothing changes', async () => {
+  it('asks for a conversation references and a detail only once while nothing changes', async () => {
     api.t3Snapshot
       .mockResolvedValueOnce(snapshot([t3Thread()]))
       .mockResolvedValue({ changed: false, sequence: 1, projects: [], threads: [] });
-    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    api.t3ConversationReferences.mockResolvedValue({ t1: { explicitIds: [], mentionedIds: [] } });
     api.t3ThreadDetail.mockResolvedValue(DETAIL);
 
     await syncHost(LOCAL_HOST);
     await syncHost(LOCAL_HOST);
 
     expect(api.t3Snapshot).toHaveBeenLastCalledWith({ id: 'local', baseUrl: undefined }, 1);
-    expect(api.t3FirstUserMessages).toHaveBeenCalledTimes(1);
+    expect(api.t3ConversationReferences).toHaveBeenCalledTimes(1);
     expect(api.t3ThreadDetail).toHaveBeenCalledTimes(1);
   });
 
   it('does not read the detail of a thread that is working', async () => {
     api.t3Snapshot.mockResolvedValue(snapshot([t3Thread({ status: 'running' })]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    api.t3ConversationReferences.mockResolvedValue({ t1: { explicitIds: [], mentionedIds: [] } });
 
     await syncHost(LOCAL_HOST);
 
@@ -225,12 +268,14 @@ describe('syncHost', () => {
 
   it('talks to a remote host with raw ids and stores prefixed ones', async () => {
     api.t3Snapshot.mockResolvedValue(snapshot([t3Thread()]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: 'hello' });
+    api.t3ConversationReferences.mockResolvedValue({
+      t1: { explicitIds: [60214], mentionedIds: [] },
+    });
     api.t3ThreadDetail.mockResolvedValue(DETAIL);
 
     await syncHost(MAC);
 
-    expect(api.t3FirstUserMessages).toHaveBeenCalledWith(
+    expect(api.t3ConversationReferences).toHaveBeenCalledWith(
       { id: 'mac', baseUrl: 'http://mac:3773' },
       ['t1'],
     );
@@ -240,11 +285,11 @@ describe('syncHost', () => {
     );
     expect(useDispatchStore.getState().threads[0]).toMatchObject({
       id: 'mac:t1',
-      firstUserMessage: 'hello',
+      conversationReferences: { explicitIds: [60214], mentionedIds: [] },
     });
   });
 
-  it('asks a host for the first messages of its open threads before the settled ones', async () => {
+  it('asks a host for the conversation referencess of its open threads before the settled ones', async () => {
     api.t3Snapshot.mockResolvedValue(
       snapshot([
         t3Thread({ id: 'old', status: 'settled', lastActivityAt: '2026-10-11T09:00:00Z' }),
@@ -252,11 +297,11 @@ describe('syncHost', () => {
         t3Thread({ id: 'busy', status: 'running', lastActivityAt: '2026-10-10T09:00:00Z' }),
       ]),
     );
-    api.t3FirstUserMessages.mockResolvedValue({});
+    api.t3ConversationReferences.mockResolvedValue({});
 
     await syncHost(MAC);
 
-    expect(api.t3FirstUserMessages).toHaveBeenCalledWith(
+    expect(api.t3ConversationReferences).toHaveBeenCalledWith(
       { id: 'mac', baseUrl: 'http://mac:3773' },
       ['busy', 'idle', 'old'],
     );
@@ -264,7 +309,7 @@ describe('syncHost', () => {
 
   it('remembers what a remote host holds, and not what this machine holds', async () => {
     api.t3Snapshot.mockResolvedValue(snapshot([t3Thread({ status: 'running' })]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    api.t3ConversationReferences.mockResolvedValue({ t1: { explicitIds: [], mentionedIds: [] } });
 
     await syncHost(LOCAL_HOST);
     expect(memory.rememberHost).not.toHaveBeenCalled();
@@ -275,7 +320,7 @@ describe('syncHost', () => {
 
   it('keeps the last known threads of a host that stopped answering, marked unavailable', async () => {
     api.t3Snapshot.mockResolvedValueOnce(snapshot([t3Thread({ status: 'running' })]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    api.t3ConversationReferences.mockResolvedValue({ t1: { explicitIds: [], mentionedIds: [] } });
     await syncHost(LOCAL_HOST);
 
     api.t3Snapshot.mockRejectedValueOnce(new Error('T3 is not reachable'));
@@ -289,7 +334,7 @@ describe('syncHost', () => {
 
   it('reads everything again when forced', async () => {
     api.t3Snapshot.mockResolvedValue(snapshot([t3Thread()]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    api.t3ConversationReferences.mockResolvedValue({ t1: { explicitIds: [], mentionedIds: [] } });
     api.t3ThreadDetail.mockResolvedValue(DETAIL);
 
     await syncHost(LOCAL_HOST);
@@ -297,6 +342,7 @@ describe('syncHost', () => {
 
     expect(api.t3Snapshot).toHaveBeenLastCalledWith({ id: 'local', baseUrl: undefined }, null);
     expect(api.t3ThreadDetail).toHaveBeenCalledTimes(2);
+    expect(api.t3ConversationReferences).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -305,10 +351,10 @@ describe('followHostList', () => {
     resetHostSync();
     api.t3Snapshot.mockReset();
     api.t3ThreadDetail.mockReset();
-    api.t3FirstUserMessages.mockReset();
+    api.t3ConversationReferences.mockReset();
     memory.forgetHostsExcept.mockReset();
     api.t3Snapshot.mockResolvedValue(snapshot([t3Thread({ status: 'running' })]));
-    api.t3FirstUserMessages.mockResolvedValue({ t1: '' });
+    api.t3ConversationReferences.mockResolvedValue({ t1: { explicitIds: [], mentionedIds: [] } });
     useDispatchStore.setState({ threads: [], projects: [], hosts: [], items: [], overview: null });
   });
 

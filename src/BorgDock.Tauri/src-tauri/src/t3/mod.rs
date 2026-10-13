@@ -10,4 +10,5 @@ pub mod client;
 pub mod commands;
 pub mod desktop;
 pub mod hosts;
+mod references;
 pub mod shell;
