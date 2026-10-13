@@ -5,3 +5,6 @@
 
 /** Emitted with the saved `ui` slice whenever any window saves settings. */
 export const SETTINGS_UI_CHANGED_EVENT = 'settings:ui-changed';
+
+export const SETTINGS_CHANGED_EVENT = 'settings:changed';
+export const SETTINGS_SOURCE_ID = crypto.randomUUID();

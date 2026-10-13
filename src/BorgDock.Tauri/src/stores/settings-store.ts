@@ -1,6 +1,11 @@
+import { invoke } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import type { AppSettings } from '@/types';
-import { SETTINGS_UI_CHANGED_EVENT } from './settings-events';
+import {
+  SETTINGS_CHANGED_EVENT,
+  SETTINGS_SOURCE_ID,
+  SETTINGS_UI_CHANGED_EVENT,
+} from './settings-events';
 
 interface SettingsState {
   settings: AppSettings;
@@ -105,16 +110,41 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
         tgtVal as Record<string, unknown>,
         srcVal as Partial<Record<string, unknown>>,
       );
-    } else if (srcVal !== undefined) {
+    } else {
       result[key] = srcVal;
     }
   }
   return result as T;
 }
 
+function reuseUnchangedValues<T>(previous: T, next: T): T {
+  if (Object.is(previous, next)) return previous;
+  if (!previous || !next || typeof previous !== 'object' || typeof next !== 'object') return next;
+  if (Array.isArray(previous) !== Array.isArray(next)) return next;
+  const before = previous as Record<string, unknown>;
+  const after = next as Record<string, unknown>;
+  const result = (Array.isArray(next) ? [] : {}) as Record<string, unknown>;
+  const keys = Object.keys(after);
+  let changed = keys.length !== Object.keys(before).length;
+  for (const key of keys) {
+    result[key] = reuseUnchangedValues(before[key], after[key]);
+    if (!Object.is(result[key], before[key])) changed = true;
+  }
+  return changed ? (result as T) : previous;
+}
+
 let _saveTimer: ReturnType<typeof setTimeout> | undefined;
+let loadRevision = 0;
 
 export { SETTINGS_UI_CHANGED_EVENT };
+
+export async function flushSettings(): Promise<void> {
+  if (_saveTimer === undefined) return;
+  clearTimeout(_saveTimer);
+  _saveTimer = undefined;
+  const state = useSettingsStore.getState();
+  await state.saveSettings(state.settings);
+}
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: defaultSettings,
@@ -122,9 +152,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   hasLoaded: false,
 
   loadSettings: async () => {
+    const revision = ++loadRevision;
     set({ isLoading: true });
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const settings = await invoke<AppSettings>('load_settings');
 
       // Hydrate credentials from OS keychain
@@ -154,8 +184,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         }
       }
 
-      set({ settings, isLoading: false, hasLoaded: true });
+      if (revision !== loadRevision) return;
+      set((state) => ({
+        settings: reuseUnchangedValues(state.settings, settings),
+        isLoading: false,
+        hasLoaded: true,
+      }));
     } catch (error) {
+      if (revision !== loadRevision) return;
       console.error('Failed to load settings:', error);
       // Still mark as loaded — downstream hooks need the gate to open even
       // on error so they can act on defaults rather than waiting forever.
@@ -164,10 +200,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   saveSettings: async (settings: AppSettings) => {
+    clearTimeout(_saveTimer);
+    _saveTimer = undefined;
     set({ settings });
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-
       // Store credentials in OS keychain before saving
       if (settings.gitHub.personalAccessToken) {
         await invoke('set_credential', {
@@ -204,10 +240,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
       await invoke('save_settings', { settings: stripped });
 
-      // Each window has its own store. Broadcast the UI slice so the main
-      // window picks up Settings-window changes (theme, PR density) live.
       try {
         const { emit } = await import('@tauri-apps/api/event');
+        await emit(SETTINGS_CHANGED_EVENT, { source: SETTINGS_SOURCE_ID });
         await emit(SETTINGS_UI_CHANGED_EVENT, stripped.ui);
       } catch {
         // No Tauri event bridge (tests, Storybook) — nothing to sync.
@@ -229,6 +264,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     }));
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(() => {
+      _saveTimer = undefined;
       const current = get().settings;
       get().saveSettings(current);
     }, 500);

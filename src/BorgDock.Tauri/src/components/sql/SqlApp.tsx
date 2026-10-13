@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { Button, Kbd, Pill, ProgressButton } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { shortcutLabel } from '@/utils/shortcut-label';
@@ -159,6 +160,8 @@ export function SqlApp() {
       return settings.sql.connections[0]?.name ?? '';
     });
   }, []);
+
+  useSettingsSync(loadSqlSettings);
 
   /* ── Initial settings + window position ───────────────── */
   useEffect(() => {

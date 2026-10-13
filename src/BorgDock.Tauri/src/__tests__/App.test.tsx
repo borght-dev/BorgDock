@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
@@ -6,6 +6,8 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import App from '../App';
+
+const loadSavedSettings = useSettingsStore.getState().loadSettings;
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(() => Promise.resolve()),
@@ -204,6 +206,40 @@ describe('App', () => {
     usePrStore.setState({ pullRequests: [], closedPullRequests: [] });
     // Default: init complete so main UI renders
     useInitStore.setState({ isComplete: true });
+  });
+
+  it('applies a slot-pattern change saved by another window without restarting', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { listen } = await import('@tauri-apps/api/event');
+    const initial = {
+      ...fullSettings,
+      agents: {
+        defaultProvider: 'claude' as const,
+        defaultPostFixAction: 'none' as const,
+        t3Model: 'default',
+        t3ModelInstance: 'claudeAgent',
+        t3SlotPattern: '^W',
+      },
+    };
+    let saved = initial;
+    vi.mocked(invoke).mockImplementation(async (command) =>
+      command === 'load_settings' ? structuredClone(saved) : null,
+    );
+    useSettingsStore.setState({ settings: initial, loadSettings: loadSavedSettings });
+    render(<App />);
+    await waitFor(() => expect(useSettingsStore.getState().isLoading).toBe(false));
+    await waitFor(() =>
+      expect(vi.mocked(listen).mock.calls.some(([name]) => name === 'settings:changed')).toBe(true),
+    );
+
+    saved = { ...initial, agents: { ...initial.agents, t3SlotPattern: '^M' } };
+    const handler = vi.mocked(listen).mock.calls.find(([name]) => name === 'settings:changed')![1];
+    await act(async () => {
+      handler({ event: 'settings:changed', id: 1, payload: null });
+    });
+    await waitFor(() =>
+      expect(useSettingsStore.getState().settings.agents?.t3SlotPattern).toBe('^M'),
+    );
   });
 
   it('shows splash screen when isLoading is true', () => {

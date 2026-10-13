@@ -6,6 +6,7 @@ import { flushSync } from 'react-dom';
 import { WindowStatusBar } from '@/components/shared/chrome/WindowStatusBar';
 import { Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import type { AppSettings } from '@/types/settings';
 import { copyToClipboard } from '@/utils/clipboard';
 import { flipIfSmall } from '@/utils/motion';
@@ -102,40 +103,42 @@ export function FilePaletteApp() {
     });
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const s = await invoke<AppSettings>('load_settings');
-        setSettings(s);
-        const repos = s.repos.filter((r) => r.enabled && r.worktreeBasePath);
-        const collected: Record<string, string[]> = {};
-        await Promise.allSettled(
-          repos.map(async (r) => {
-            try {
-              const wts = await invoke<WorktreeEntry[]>('list_worktrees_bare', {
-                basePath: r.worktreeBasePath,
-              });
-              collected[`${r.owner}/${r.name}`] = wts.map((w) => w.path);
-            } catch {
-              collected[`${r.owner}/${r.name}`] = [];
-            }
-          }),
-        );
-        setWorktreePathsByRepo(collected);
-        setActiveRoot(s.ui?.filePaletteActiveRootPath ?? null);
-        setFavoritesOnly(s.ui?.filePaletteFavoritesOnly ?? false);
-        setRootsCollapsed(s.ui?.filePaletteRootsCollapsed ?? false);
-        setChangesCollapsed(s.ui?.filePaletteChangesCollapsed ?? false);
-        setChangesMode(s.ui?.filePaletteChangesMode ?? 'both');
-        setScope(s.ui?.filePaletteScope ?? 'all');
-        const favs = new Set<string>();
-        for (const r of s.repos) for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
-        setFavoritePaths(favs);
-      } catch (e) {
-        setLoadError(parseError(e).message);
-      }
-    })();
+  const loadPaletteSettings = useCallback(async () => {
+    try {
+      const s = await invoke<AppSettings>('load_settings');
+      setSettings(s);
+      const repos = s.repos.filter((r) => r.enabled && r.worktreeBasePath);
+      const collected: Record<string, string[]> = {};
+      await Promise.allSettled(
+        repos.map(async (r) => {
+          try {
+            const wts = await invoke<WorktreeEntry[]>('list_worktrees_bare', {
+              basePath: r.worktreeBasePath,
+            });
+            collected[`${r.owner}/${r.name}`] = wts.map((w) => w.path);
+          } catch {
+            collected[`${r.owner}/${r.name}`] = [];
+          }
+        }),
+      );
+      setWorktreePathsByRepo(collected);
+      setActiveRoot(s.ui?.filePaletteActiveRootPath ?? null);
+      setFavoritesOnly(s.ui?.filePaletteFavoritesOnly ?? false);
+      setRootsCollapsed(s.ui?.filePaletteRootsCollapsed ?? false);
+      setChangesCollapsed(s.ui?.filePaletteChangesCollapsed ?? false);
+      setChangesMode(s.ui?.filePaletteChangesMode ?? 'both');
+      setScope(s.ui?.filePaletteScope ?? 'all');
+      const favs = new Set<string>();
+      for (const r of s.repos) for (const p of r.favoriteWorktreePaths ?? []) favs.add(p);
+      setFavoritePaths(favs);
+    } catch (e) {
+      setLoadError(parseError(e).message);
+    }
   }, []);
+  useSettingsSync(loadPaletteSettings);
+  useEffect(() => {
+    void loadPaletteSettings();
+  }, [loadPaletteSettings]);
 
   const roots: RootEntry[] = useMemo(() => {
     if (!settings) return [];

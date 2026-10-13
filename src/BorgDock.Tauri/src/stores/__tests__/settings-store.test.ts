@@ -6,6 +6,8 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 
+vi.mock('@tauri-apps/api/event', () => ({ emit: vi.fn() }));
+
 function makeSettings(overrides: Partial<AppSettings> = {}): AppSettings {
   return {
     setupComplete: false,
@@ -94,6 +96,29 @@ describe('settings-store', () => {
   });
 
   describe('updateSettings', () => {
+    it('clears an optional setting when it is explicitly unset', () => {
+      useSettingsStore.setState({
+        settings: makeSettings({
+          agents: {
+            defaultProvider: 'claude',
+            defaultPostFixAction: 'none',
+            t3Model: 'default',
+            t3ModelInstance: 'claudeAgent',
+            t3SlotPattern: '^W',
+          },
+        }),
+      });
+      useSettingsStore.getState().updateSettings({
+        agents: {
+          defaultProvider: 'claude',
+          defaultPostFixAction: 'none',
+          t3Model: 'default',
+          t3ModelInstance: 'claudeAgent',
+          t3SlotPattern: undefined,
+        },
+      });
+      expect(useSettingsStore.getState().settings.agents?.t3SlotPattern).toBeUndefined();
+    });
     it('merges partial settings into current settings', () => {
       useSettingsStore.getState().updateSettings({ setupComplete: true });
       expect(useSettingsStore.getState().settings.setupComplete).toBe(true);
@@ -121,6 +146,57 @@ describe('settings-store', () => {
   });
 
   describe('loadSettings', () => {
+    it('keeps unchanged settings references when another window changes an agent preference', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const initial = makeSettings({
+        agents: {
+          defaultProvider: 'claude',
+          defaultPostFixAction: 'none',
+          t3Model: 'default',
+          t3ModelInstance: 'claudeAgent',
+          t3SlotPattern: '^W',
+          t3Hosts: [{ id: 'mac', label: 'Mac', baseUrl: 'http://mac:3773' }],
+        },
+      });
+      useSettingsStore.setState({ settings: initial });
+      const saved = { ...initial, agents: { ...initial.agents!, t3SlotPattern: '^M' } };
+      vi.mocked(invoke).mockImplementation(async (command) =>
+        command === 'load_settings' ? structuredClone(saved) : null,
+      );
+      await useSettingsStore.getState().loadSettings();
+      const applied = useSettingsStore.getState().settings;
+      expect(applied.agents?.t3SlotPattern).toBe('^M');
+      expect(applied.agents?.t3Hosts).toBe(initial.agents?.t3Hosts);
+      expect(applied.azureDevOps).toBe(initial.azureDevOps);
+      expect(applied.ui).toBe(initial.ui);
+      await useSettingsStore.getState().loadSettings();
+      expect(useSettingsStore.getState().settings).toBe(applied);
+    });
+
+    it('does not let an older settings read overwrite a newer reload', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      let finishOldRead: ((settings: AppSettings) => void) | undefined;
+      const latest = makeSettings({
+        gitHub: { authMethod: 'ghCli', username: 'latest', pollIntervalSeconds: 30 },
+      });
+      vi.mocked(invoke).mockImplementation(async () => null);
+      vi.mocked(invoke).mockImplementationOnce(
+        () =>
+          new Promise<AppSettings>((resolve) => {
+            finishOldRead = resolve;
+          }),
+      );
+      const oldRead = useSettingsStore.getState().loadSettings();
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.mocked(invoke).mockImplementation(async (command) =>
+        command === 'load_settings' ? structuredClone(latest) : null,
+      );
+      await useSettingsStore.getState().loadSettings();
+      finishOldRead!(makeSettings());
+      await oldRead;
+      expect(useSettingsStore.getState().settings.gitHub.username).toBe('latest');
+    });
     it('sets isLoading to true while loading', async () => {
       const { invoke } = await import('@tauri-apps/api/core');
       const loaded = makeSettings({ setupComplete: true });
@@ -170,6 +246,23 @@ describe('settings-store', () => {
   });
 
   describe('saveSettings', () => {
+    it('notifies other windows after saving any settings, without credentials in the event', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { emit } = await import('@tauri-apps/api/event');
+      vi.mocked(invoke).mockResolvedValue(undefined);
+      await useSettingsStore.getState().saveSettings(
+        makeSettings({
+          agents: {
+            defaultProvider: 'claude',
+            defaultPostFixAction: 'none',
+            t3Model: 'default',
+            t3ModelInstance: 'claudeAgent',
+            t3SlotPattern: '^M',
+          },
+        }),
+      );
+      expect(emit).toHaveBeenCalledWith('settings:changed', { source: expect.any(String) });
+    });
     it('saves settings via Tauri invoke', async () => {
       const { invoke } = await import('@tauri-apps/api/core');
       (invoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);

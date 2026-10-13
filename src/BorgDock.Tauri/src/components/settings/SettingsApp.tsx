@@ -1,8 +1,8 @@
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
-import { useSettingsStore } from '@/stores/settings-store';
-import type { AppSettings } from '@/types/settings';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
+import { flushSettings, useSettingsStore } from '@/stores/settings-store';
 import { applyTheme } from '@/utils/theme';
 import { revealWindow } from '@/utils/window-reveal';
 import { AdoSection } from './AdoSection';
@@ -36,8 +36,9 @@ function readInitialSection(): SettingsSectionId {
 }
 
 export function SettingsApp() {
+  useSettingsSync();
   const settings = useSettingsStore((s) => s.settings);
-  const saveSettings = useSettingsStore((s) => s.saveSettings);
+  const update = useSettingsStore((s) => s.updateSettings);
   const hasLoaded = useSettingsStore((s) => s.hasLoaded);
   const [active, setActive] = useState<SettingsSectionId>(readInitialSection);
   const [search, setSearch] = useState('');
@@ -85,13 +86,6 @@ export function SettingsApp() {
     });
   }, [hasLoaded]);
 
-  // Ref-mirror of settings so the debounced save can read latest without
-  // re-creating the `update` callback on every keystroke.
-  const settingsRef = useRef<AppSettings>(settings);
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
   // Persist active section + update hash
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, active);
@@ -111,32 +105,13 @@ export function SettingsApp() {
     };
   }, []);
 
-  // Debounced save + flush on window close
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     function flush() {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        saveSettings(settingsRef.current);
-        timerRef.current = undefined;
-      }
+      void flushSettings();
     }
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
-  }, [saveSettings]);
-
-  const update = (partial: Partial<AppSettings>) => {
-    const next = { ...settingsRef.current, ...partial };
-    useSettingsStore.getState().updateSettings(partial);
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => saveSettings(next), 300);
-  };
-
-  // `update` is intentionally excluded from deps below — it's recreated
-  // every render but reads from `settingsRef.current`, so depending on it
-  // would re-fire the memo on every keystroke. Memo only needs to refresh
-  // when the active section or its slice of `settings` changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
+  }, []);
   const sectionContent = useMemo(() => {
     switch (active) {
       case 'github':
@@ -191,7 +166,7 @@ export function SettingsApp() {
       case 'maintenance':
         return <MaintenanceSection />;
     }
-  }, [active, settings]);
+  }, [active, settings, update]);
 
   const breadcrumb = SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? '';
 

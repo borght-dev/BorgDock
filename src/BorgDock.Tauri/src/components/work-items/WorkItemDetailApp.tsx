@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useWorkItemDetailData } from '@/hooks/useWorkItemDetailData';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { WorkItem, WorkItemAttachment } from '@/types';
@@ -41,6 +42,7 @@ const POP_OUT_OPTIONS = { prepare: preparePopOut, onLoaded: titleWindow, resolve
  * palette's list, and the window's own close and save-to-disk behaviour.
  */
 export function WorkItemDetailApp() {
+  useSettingsSync();
   // Reveal the (invisible-built) window once React has painted.
   const revealedRef = useRef(false);
   useEffect(() => {

@@ -10,6 +10,7 @@ import {
 } from '@/services/ado/workitems';
 import type { WorkItem } from '@/types';
 import type { AppSettings, AzureDevOpsSettings } from '@/types/settings';
+import { useSettingsSync } from './useSettingsSync';
 
 export interface ResultItem {
   id: number;
@@ -107,6 +108,13 @@ export function useWorkItemPaletteSearch() {
   const searchCtsRef = useRef<AbortController | null>(null);
 
   const isSearchMode = searchText.trim().length > 0;
+
+  useSettingsSync(async () => {
+    const settings = await invoke<AppSettings>('load_settings');
+    setAdoSettings(settings.azureDevOps);
+    setRecentIds(settings.azureDevOps.recentWorkItemIds ?? []);
+    setWorkingOnIds(new Set(settings.azureDevOps.workingOnWorkItemIds ?? []));
+  });
 
   // Load settings and restore saved position on mount
   useEffect(() => {

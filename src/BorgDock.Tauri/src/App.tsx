@@ -18,6 +18,7 @@ import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
 import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useTheme } from '@/hooks/useTheme';
@@ -27,10 +28,9 @@ import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
-import { SETTINGS_UI_CHANGED_EVENT, useSettingsStore } from '@/stores/settings-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { installTestSeed } from '@/test-support/test-seed';
-import type { UiSettings } from '@/types';
 
 installTestSeed({ isDev: import.meta.env.DEV });
 
@@ -48,6 +48,7 @@ const forceWizardFromUrl = (() => {
 const log = createLogger('app');
 
 export default function App() {
+  useSettingsSync();
   // Individual selectors: subscribing to the whole store re-rendered the
   // entire tree (MainWindow → PrList → every card) on any settings write.
   const settings = useSettingsStore((s) => s.settings);
@@ -260,31 +261,6 @@ export default function App() {
           void invoke('open_settings_window', {}).catch((err) =>
             console.error('open_settings_window failed', err),
           );
-        });
-        if (cancelled) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
-
-  // Apply UI settings saved from the Settings window (theme, PR density).
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { listen } = await import('@tauri-apps/api/event');
-        const fn = await listen<UiSettings>(SETTINGS_UI_CHANGED_EVENT, (e) => {
-          useSettingsStore.setState((s) => ({ settings: { ...s.settings, ui: e.payload } }));
         });
         if (cancelled) {
           fn();
