@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.1.0 — 2026-10-14
+
+### New Features
+
+- **See what changed in your images** — Quick Review now shows Before and After previews for image files, including added, removed, and renamed images. Click a preview to zoom and pan, or turn off Rich diff to read an SVG's code. Private repository images use your connected account. ![Before and After image previews in Quick Review](whats-new/4.1.0/quick-review-image-diffs.png)
+
+### Improvements
+
+- **Give Quick Review the whole window** — Expand Quick Review to use all the space in your app window. Restore the dialog with the same button. BorgDock remembers your choice and keeps your current file, drafts, and review progress. ![Quick Review filling the app window](whats-new/4.1.0/quick-review-fullscreen.png)
+- **Read long lines your way** — Turn on Wrap lines, or use H and L to scroll left and right. W toggles wrapping and J/K scrolls vertically. The bottom bar keeps the shortcuts visible, including in narrower windows. ![Wrapped code lines and keyboard tips](whats-new/4.1.0/quick-review-wrap-lines.png)
+
 ## 4.0.2 — 2026-10-14
 
 ### Bug Fixes

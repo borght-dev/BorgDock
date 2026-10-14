@@ -4,6 +4,45 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.1.0",
+    "date": "2026-10-14",
+    "summary": "See what changed in your images, Give Quick Review the whole window, and Read long lines your way.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "See what changed in your images",
+        "description": "Quick Review now shows Before and After previews for image files, including added, removed, and renamed images. Click a preview to zoom and pan, or turn off Rich diff to read an SVG's code. Private repository images use your connected account.",
+        "hero": {
+          "src": "/whats-new/4.1.0/quick-review-image-diffs.png",
+          "alt": "Before and After image previews in Quick Review"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Give Quick Review the whole window",
+        "description": "Expand Quick Review to use all the space in your app window. Restore the dialog with the same button. BorgDock remembers your choice and keeps your current file, drafts, and review progress.",
+        "hero": {
+          "src": "/whats-new/4.1.0/quick-review-fullscreen.png",
+          "alt": "Quick Review filling the app window"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Read long lines your way",
+        "description": "Turn on Wrap lines, or use H and L to scroll left and right. W toggles wrapping and J/K scrolls vertically. The bottom bar keeps the shortcuts visible, including in narrower windows.",
+        "hero": {
+          "src": "/whats-new/4.1.0/quick-review-wrap-lines.png",
+          "alt": "Wrapped code lines and keyboard tips"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.0.2",
     "date": "2026-10-14",
     "summary": "",

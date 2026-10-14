@@ -1,29 +1,29 @@
 {
   "repo": "borght-dev/BorgDock",
-  "tag": "v3.0.0",
-  "version": "3.0.0",
-  "name": "BorgDock v3.0.0",
-  "date": "2026-09-28",
-  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v3.0.0",
-  "fetchedAt": "2026-09-28T09:48:42.864Z",
+  "tag": "v4.0.2",
+  "version": "4.0.2",
+  "name": "BorgDock v4.0.2",
+  "date": "2026-10-14",
+  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.0.2",
+  "fetchedAt": "2026-10-14T10:05:14.772Z",
   "assets": [
     {
-      "name": "BorgDock_3.0.0_x64-setup.exe",
-      "size": 20098222,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v3.0.0/BorgDock_3.0.0_x64-setup.exe",
-      "digest": "sha256:8df851bd8c34ca4199bf8ef57c45513f8832516cae900475eb6e2fbf22b4efbf"
+      "name": "BorgDock_4.0.2_x64-setup.exe",
+      "size": 24080977,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.0.2/BorgDock_4.0.2_x64-setup.exe",
+      "digest": "sha256:262afa52802e440684a2c98a148c89c37e6c8f20b9108b79ef9b429ed99e152d"
     },
     {
-      "name": "BorgDock_3.0.0_x64-setup.exe.sig",
+      "name": "BorgDock_4.0.2_x64-setup.exe.sig",
       "size": 420,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v3.0.0/BorgDock_3.0.0_x64-setup.exe.sig",
-      "digest": "sha256:2679cdff14399b699eaefb61ec6c600b45149aa990f9ef4bd0f88ff75a3676cd"
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.0.2/BorgDock_4.0.2_x64-setup.exe.sig",
+      "digest": "sha256:398e31536e2275ecf32933d12609d3eebc46a3826111df3b552dfca0eddb6504"
     },
     {
       "name": "latest.json",
-      "size": 5682,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v3.0.0/latest.json",
-      "digest": "sha256:dde6b5baaed09233b05f211f80aa6d65f78190ef192a9728feff48ba5f850514"
+      "size": 1775,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.0.2/latest.json",
+      "digest": "sha256:d13d33d218b5df17fe57e20a144547b2c2c4755131b5dc2d179b58e49b9ecb66"
     }
   ]
 }

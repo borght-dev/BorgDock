@@ -1,0 +1,5 @@
+[
+  {"slug":"quick-review-fullscreen","storyId":"focus-quick-review--large-pr-walk-fullscreen","viewport":{"width":1920,"height":1200},"delay":2500},
+  {"slug":"quick-review-wrap-lines","storyId":"focus-quick-review--long-lines-wrapped","viewport":{"width":1480,"height":925},"delay":2500},
+  {"slug":"quick-review-image-diffs","storyId":"focus-quick-review--image-comparison","viewport":{"width":1480,"height":925},"delay":2500}
+]
