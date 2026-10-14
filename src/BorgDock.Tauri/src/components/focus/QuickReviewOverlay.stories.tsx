@@ -5,10 +5,18 @@ import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestFileChange } from '@/types';
+import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inline';
+import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
 import { makePr } from './__tests__/helpers';
 import { QuickReviewOverlay } from './QuickReviewOverlay';
+
+function resetReviewDisplayPreferences() {
+  for (const preference of ['fullscreen', 'wrap-lines', 'rich-diff']) {
+    localStorage.removeItem(`borgdock-quick-review-${preference}`);
+  }
+}
 
 const files: PullRequestFileChange[] = [
   {
@@ -125,8 +133,7 @@ const meta: Meta<typeof QuickReviewOverlay> = {
     },
   ],
   beforeEach: () => {
-    localStorage.removeItem('borgdock-quick-review-fullscreen');
-    localStorage.removeItem('borgdock-quick-review-wrap-lines');
+    resetReviewDisplayPreferences();
     const control = getControl();
     control.githubResponses.getPRReviewDetails = { pr: pr.pullRequest, baseSha: 'review-base' };
     control.githubResponses.getPRFiles = files;
@@ -283,6 +290,51 @@ export const LongLinesWrapped: Story = {
   },
 };
 
+export const ImageComparison: Story = {
+  decorators: [
+    (Story) => {
+      const control = getControl();
+      control.githubResponses.getPRReviewDetails = {
+        pr: { ...pr.pullRequest, title: 'Make room for every Dispatch lane' },
+        baseSha: 'review-base',
+      };
+      control.githubResponses.getPRFiles = files.map((file, index) =>
+        index === 0
+          ? {
+              filename: 'screenshots/dispatch.png',
+              status: 'modified',
+              sha: 'image-head',
+              additions: 0,
+              deletions: 0,
+            }
+          : file,
+      );
+      control.githubResponses.getRepositoryObject = (path) => {
+        if (path.includes('/compare/')) return { merge_base_commit: { sha: 'image-base' } };
+        const after = path.endsWith('/git/blobs/image-head');
+        return {
+          type: 'file',
+          sha: after ? 'image-head' : 'image-base',
+          encoding: 'base64',
+          content: (after ? afterDispatch : beforeDispatch).split(',')[1],
+          size: after ? 490482 : 451698,
+        };
+      };
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = await openFiles(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /dispatch\.png/ }));
+    await canvas.findByAltText('Before: screenshots/dispatch.png');
+    await canvas.findByAltText('After: screenshots/dispatch.png');
+    await expect(canvas.getByRole('button', { name: 'Rich diff' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  },
+};
+
 /** Opens the file walk from the card once the files have loaded. */
 async function openFiles(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
@@ -357,8 +409,7 @@ const largeDecorator: Decorator = (Story) => {
 export const LargePrCard: Story = {
   decorators: [largeDecorator],
   beforeEach: () => {
-    localStorage.removeItem('borgdock-quick-review-fullscreen');
-    localStorage.removeItem('borgdock-quick-review-wrap-lines');
+    resetReviewDisplayPreferences();
     useQuickReviewStore.setState({ documents: {} });
     useQuickReviewStore.getState().startSession(queued);
   },
@@ -399,8 +450,7 @@ export const LargePrWalkFullscreen: Story = {
 
 export const ReviewNext: Story = {
   beforeEach: () => {
-    localStorage.removeItem('borgdock-quick-review-fullscreen');
-    localStorage.removeItem('borgdock-quick-review-wrap-lines');
+    resetReviewDisplayPreferences();
     const nextReview = [
       makePr({
         number: 479,

@@ -732,7 +732,8 @@
   border-bottom: 1px solid var(--color-separator);
   font-size: 12.5px;
 }
-.qr-wrap-lines[aria-pressed="true"] {
+.qr-wrap-lines[aria-pressed="true"],
+.qr-rich-diff[aria-pressed="true"] {
   background: var(--color-accent-subtle);
   color: var(--color-accent);
 }

@@ -3,6 +3,7 @@ import type { ConversationEntry } from '@/hooks/usePrConversation';
 export interface ProofImage {
   src: string;
   alt: string;
+  browserUrl?: string;
 }
 export interface ReviewProof {
   entry: ConversationEntry;

@@ -118,6 +118,23 @@ describe('GitHubClient', () => {
   });
 
   describe('get', () => {
+    it('retains the repository object media type when retrying an uncached 304', async () => {
+      const client = createClient();
+      const content = { type: 'file', sha: 'blob', encoding: 'none', size: 2 * 1024 * 1024 };
+      fetchSpy
+        .mockResolvedValueOnce(mockResponse(304, null))
+        .mockResolvedValueOnce(mockResponse(200, content));
+      expect(
+        await client.get('repos/owner/repo/contents/image.png', {
+          accept: 'application/vnd.github.object+json',
+        }),
+      ).toEqual(content);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      for (const call of fetchSpy.mock.calls) {
+        expect(call[1].headers.Accept).toBe('application/vnd.github.object+json');
+      }
+    });
+
     it('fetches fresh rendered comment bodies without reusing or persisting signed attachment URLs', async () => {
       const client = createClient();
       const path = 'repos/owner/repo/issues/42/comments';

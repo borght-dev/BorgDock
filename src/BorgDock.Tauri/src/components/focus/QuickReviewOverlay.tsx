@@ -6,6 +6,7 @@ import { Maximize2, Minimize2, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
+import { ImageDiff } from '@/components/pr-detail/diff/ImageDiff';
 import { ProofGallery } from '@/components/pr-detail/ProofGallery';
 import { DetailDialog } from '@/components/shared/DetailDialog';
 import { Markdown } from '@/components/shared/Markdown';
@@ -13,6 +14,7 @@ import { Button, IconButton } from '@/components/shared/primitives';
 import { usePrConversation } from '@/hooks/usePrConversation';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
 import { type QuickReviewKeymap, useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
+import { isImagePath } from '@/services/github/images';
 import {
   isGeneratedPath,
   markGeneratedReviewed,
@@ -44,12 +46,14 @@ const FLING_MS = 420;
 const PEEKS = 2;
 const FULLSCREEN_KEY = 'borgdock-quick-review-fullscreen';
 const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
+const RICH_DIFF_KEY = 'borgdock-quick-review-rich-diff';
 
-function readReviewPreference(key: string): boolean {
+function readReviewPreference(key: string, fallback = false): boolean {
   try {
-    return localStorage.getItem(key) === 'true';
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === 'true';
   } catch {
-    return false;
+    return fallback;
   }
 }
 
@@ -400,6 +404,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   const error = useQuickReviewStore((s) => s.error);
   const [mode, setMode] = useState<Mode>('card');
   const [wrapLines, setWrapLines] = useState(() => readReviewPreference(WRAP_LINES_KEY));
+  const [richDiff, setRichDiff] = useState(() => readReviewPreference(RICH_DIFF_KEY, true));
   const [showingComments, setShowingComments] = useState(false);
   const [commentsOpened, setCommentsOpened] = useState(false);
   const [reattachId, setReattachId] = useState<string | null>(null);
@@ -417,6 +422,8 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   const reviewed = new Set(doc.reviewed);
   const fileIndex = files.findIndex((f) => f.filename === doc.step);
   const file = files[fileIndex];
+  const imageFile = !!file && isImagePath(file.filename);
+  const richDiffVisible = imageFile && richDiff;
   const commentsByLine = new Map<string, ReviewCommentDraft[]>();
   for (const comment of doc.comments) {
     if (comment.outdated || comment.path !== file?.filename) continue;
@@ -512,7 +519,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     mainRef.current?.querySelector<HTMLElement>('[data-diff-scroll]')?.scrollBy?.(delta * 72, 0);
   }
   function toggleWrapLines() {
-    if (showingComments) return;
+    if (showingComments || richDiffVisible) return;
     const next = !wrapLines;
     setWrapLines(next);
     writeReviewPreference(WRAP_LINES_KEY, next);
@@ -851,11 +858,26 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                   aria-pressed={wrapLines}
                   aria-keyshortcuts="W"
                   className="qr-wrap-lines"
-                  disabled={showingComments}
+                  disabled={showingComments || richDiffVisible}
                   onClick={toggleWrapLines}
                 >
                   Wrap lines
                 </Button>
+                {imageFile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-pressed={richDiff}
+                    className="qr-rich-diff"
+                    disabled={showingComments}
+                    onClick={() => {
+                      setRichDiff(!richDiff);
+                      writeReviewPreference(RICH_DIFF_KEY, !richDiff);
+                    }}
+                  >
+                    Rich diff
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -896,6 +918,18 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                       key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}
                       file={file}
                       viewMode="unified"
+                      richContent={
+                        richDiffVisible ? (
+                          <ImageDiff
+                            key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}
+                            file={file}
+                            owner={detail.repoOwner}
+                            repo={detail.repoName}
+                            baseSha={doc.baseSha}
+                            headSha={doc.headSha}
+                          />
+                        ) : undefined
+                      }
                       onCopyPath={(path) =>
                         void writeText(path).catch(() => setNotice('Could not copy file path.'))
                       }
@@ -909,7 +943,9 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                       }}
                     />
                     <p className="qr-notice qr-muted">
-                      End of file. Use + beside a line to add a draft comment.
+                      {richDiffVisible
+                        ? 'Check both image revisions, then mark the file reviewed.'
+                        : 'End of file. Use + beside a line to add a draft comment.'}
                     </p>
                   </div>
                 )}
@@ -974,7 +1010,9 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
         <span className="qr-spacer" />
         <span className="qr-shortcuts">
           {walking
-            ? 'H/L scroll horizontally · J/K scroll vertically · W wrap lines · V mark reviewed · N/P change file · F finish · Esc back'
+            ? richDiffVisible
+              ? 'J/K scroll vertically · V mark reviewed · N/P change file · F finish · Esc back'
+              : 'H/L scroll horizontally · J/K scroll vertically · W wrap lines · V mark reviewed · N/P change file · F finish · Esc back'
             : mode === 'compose'
               ? 'Esc back to the card'
               : 'A/→ approve when enabled · W write review · ← review later · Enter review files · Esc close'}

@@ -90,25 +90,27 @@ export class GitHubClient {
     return entries;
   }
 
-  async get<T>(path: string, options?: { renderedBody?: 'issue' | 'review' }): Promise<T> {
+  async get<T>(
+    path: string,
+    options?: { renderedBody?: 'issue' | 'review'; accept?: 'application/vnd.github.object+json' },
+  ): Promise<T> {
     const url = `https://api.github.com/${path}`;
     const start = performance.now();
     log.info('GET start', { path });
     // Rendered comments can contain expiring attachment URLs. Fetch them fresh
     // and keep them out of the persisted ETag cache.
     const useCache = !options?.renderedBody;
-    const response = await this.fetchWithRetry(
-      url,
-      options?.renderedBody
-        ? {
-            accept:
-              options.renderedBody === 'review'
-                ? 'application/vnd.github-commitcomment.full+json'
-                : 'application/vnd.github.full+json',
-          }
-        : undefined,
-      useCache,
-    );
+    const requestOptions = options?.renderedBody
+      ? {
+          accept:
+            options.renderedBody === 'review'
+              ? 'application/vnd.github-commitcomment.full+json'
+              : 'application/vnd.github.full+json',
+        }
+      : options?.accept
+        ? { accept: options.accept }
+        : undefined;
+    const response = await this.fetchWithRetry(url, requestOptions, useCache);
     const durationMs = Math.round(performance.now() - start);
 
     if (response.status === 304 && useCache) {
@@ -119,7 +121,7 @@ export class GitHubClient {
       }
       log.warn('GET 304 with no cached entry', { path, durationMs });
       this.etagCache.delete(url);
-      const retryResponse = await this.fetchWithRetry(url);
+      const retryResponse = await this.fetchWithRetry(url, requestOptions);
       this.parseRestRateLimitHeaders(retryResponse);
       if (!retryResponse.ok) {
         throw new GitHubApiError(

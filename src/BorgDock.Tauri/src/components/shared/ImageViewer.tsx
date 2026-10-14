@@ -9,10 +9,12 @@ export function ImageViewer({
   images,
   initialIndex = 0,
   onClose,
+  title = 'Proof image',
 }: {
   images: readonly ProofImage[];
   initialIndex?: number;
   onClose: () => void;
+  title?: string;
 }) {
   const [index, setIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -36,7 +38,7 @@ export function ImageViewer({
   }
   return (
     <DetailDialog
-      title={`Proof image ${index + 1} of ${images.length} · ${image.alt}`}
+      title={`${title} ${index + 1} of ${images.length} · ${image.alt}`}
       className="bd-image-viewer"
       onClose={onClose}
       onKeyDown={(event) => {
@@ -119,7 +121,9 @@ export function ImageViewer({
           variant="ghost"
           size="sm"
           onClick={() =>
-            void openUrl(image.src).catch(() => setError('Could not open image in browser.'))
+            void openUrl(image.browserUrl ?? image.src).catch(() =>
+              setError('Could not open image in browser.'),
+            )
           }
         >
           Open in browser

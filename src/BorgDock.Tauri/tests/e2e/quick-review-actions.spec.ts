@@ -321,6 +321,76 @@ test('long diff lines scroll with H/L and wrap without changing review or draft 
   await dialog.getByRole('button', { name: 'Back to diff', exact: true }).click();
 });
 
+test('rich image diffs show exact revisions, file lifecycle changes, and SVG text fallback', async ({ page }) => {
+  await bootList(page);
+  const before = readFileSync('../../docs/whats-new/4.0.0/dispatch.png');
+  const after = readFileSync('../../docs/whats-new/4.0.1/dispatch-width.png');
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="30" fill="purple"/></svg>');
+  const changes = [
+    { filename: 'images/change.png', status: 'modified', sha: 'new-png' },
+    { filename: 'images/new.png', status: 'added', sha: 'new-png' },
+    { filename: 'images/removed.png', status: 'removed', sha: 'old-png' },
+    { filename: 'images/renamed.png', status: 'renamed', previous_filename: 'images/previous name.png', sha: 'new-png' },
+    { filename: 'images/vector.svg', status: 'modified', sha: 'new-svg', patch: '@@ -1 +1 @@\n-<svg/>\n+<svg><circle/></svg>' },
+  ].map((file) => ({ additions: 0, deletions: 0, ...file }));
+  const originalRequests: string[] = [];
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/pulls\/3\/files/, (route) => route.fulfill({ json: changes }));
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/compare\//, (route) => {
+    expect(route.request().url()).toContain('/compare/base...sha3');
+    return route.fulfill({ json: { merge_base_commit: { sha: 'merge-base' } } });
+  });
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/contents\//, (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('ref')).toBe('merge-base');
+    expect(route.request().headers().accept).toBe('application/vnd.github.object+json');
+    expect(route.request().headers().authorization).toMatch(/^Bearer /);
+    originalRequests.push(decodeURIComponent(url.pathname));
+    const bytes = url.pathname.endsWith('.svg') ? svg : before;
+    return route.fulfill({ json: { type: 'file', sha: 'old-png', encoding: 'base64', content: bytes.toString('base64'), size: bytes.length } });
+  });
+  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/git\/blobs\//, (route) => {
+    const bytes = route.request().url().endsWith('/new-svg') ? svg : after;
+    return route.fulfill({ json: { sha: 'new-png', encoding: 'base64', content: bytes.toString('base64'), size: bytes.length } });
+  });
+  const row = page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#3"]');
+  await row.hover();
+  await row.getByRole('button', { name: 'Review #3' }).click();
+  const review = page.getByRole('dialog', { name: 'Quick Review' });
+  await review.getByRole('button', { name: 'Review files', exact: true }).click();
+  const comparison = review.getByRole('region', { name: 'Image comparison' });
+  await expect(comparison.getByAltText('Before: images/change.png')).toBeVisible();
+  await expect(comparison.getByAltText('After: images/change.png')).toBeVisible();
+  await expect.poll(() => comparison.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await expect(review.getByRole('button', { name: 'Wrap lines' })).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath('quick-review-rich-image-diff.png') });
+  await comparison.getByRole('button', { name: 'View before image' }).click();
+  const viewer = page.getByRole('dialog', { name: 'Image diff 1 of 2 · Before: images/change.png', exact: true });
+  await expect(viewer).toBeVisible();
+  await viewer.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(viewer.getByText('125%')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await review.focus();
+  await page.keyboard.press('v');
+  await expect(review.getByText('1 of 5 reviewed, 4 to go')).toBeVisible();
+  await expect(comparison.getByText('New image', { exact: true })).toBeVisible();
+  await expect(comparison.getByAltText('After: images/new.png')).toBeVisible();
+  await review.locator('.qr-file[title="images/removed.png"]').click();
+  await expect(comparison.getByText('Image removed', { exact: true })).toBeVisible();
+  await expect(comparison.getByAltText('Before: images/removed.png')).toBeVisible();
+  await review.locator('.qr-file[title="images/renamed.png"]').click();
+  await expect(comparison.getByAltText('Before: images/previous name.png')).toBeVisible();
+  await expect(comparison.getByAltText('After: images/renamed.png')).toBeVisible();
+  expect(originalRequests).toContain('/repos/test-org/borgdock/contents/images/previous name.png');
+  await review.locator('.qr-file[title="images/vector.svg"]').click();
+  await expect(comparison.getByAltText('After: images/vector.svg')).toBeVisible();
+  await review.getByRole('button', { name: 'Rich diff', exact: true }).click();
+  await expect(comparison).toHaveCount(0);
+  await expect(review.locator('[data-diff-code]').filter({ hasText: '<svg><circle/></svg>' })).toBeVisible();
+  await expect(review.getByRole('button', { name: 'Comment on new line 1' })).toBeVisible();
+  await review.getByRole('button', { name: 'Rich diff', exact: true }).click();
+  await expect(comparison.getByAltText('After: images/vector.svg')).toBeVisible();
+});
+
 test('approving the top card of a queue flings it right and the next card rises', async ({
   page,
 }) => {

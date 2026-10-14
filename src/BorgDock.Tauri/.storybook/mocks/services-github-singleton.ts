@@ -8,9 +8,10 @@
 
 import { getControl } from './control';
 
-/** Sentinel object — methods are never called since all service mocks ignore _client. */
 const DUMMY_CLIENT = {
-  get: async <T>(): Promise<T> => {
+  get: async <T>(path: string): Promise<T> => {
+    const response = getControl().githubResponses.getRepositoryObject;
+    if (response) return (await response(path)) as T;
     throw new Error('services-github-singleton mock: direct client.get() not supported');
   },
   graphql: async <T>(): Promise<T> => {
