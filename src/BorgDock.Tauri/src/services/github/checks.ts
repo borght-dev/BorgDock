@@ -30,6 +30,7 @@ interface GitHubWorkflowRunDto {
   id: number;
   name: string | null;
   check_suite_id: number;
+  event?: string;
 }
 
 interface GitHubWorkflowRunsResponse {
@@ -96,6 +97,7 @@ export async function getCheckRunsForRef(
   owner: string,
   repo: string,
   ref: string,
+  options: { requireWorkflowNames?: boolean } = {},
 ): Promise<CheckRun[]> {
   const encodedRef = encodeURIComponent(ref);
   const allRuns: CheckRun[] = [];
@@ -126,9 +128,65 @@ export async function getCheckRunsForRef(
   }
 
   if (headSha && allRuns.some(isActionsJob)) {
-    await addWorkflowNames(client, owner, repo, headSha, allRuns);
+    await addWorkflowNames(client, owner, repo, headSha, allRuns, options.requireWorkflowNames);
   }
   return allRuns;
+}
+
+interface GitHubStatusDto {
+  id: number;
+  context: string;
+  state: string;
+  target_url: string | null;
+  updated_at: string;
+}
+
+export async function getCheckSummaryForRef(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  ref: string,
+): Promise<CheckRun[]> {
+  const statuses = async (): Promise<CheckRun[]> => {
+    const runs: CheckRun[] = [];
+    for (let page = 1; ; page++) {
+      const response = await client.get<{ total_count: number; statuses: GitHubStatusDto[] }>(
+        `repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}/status?per_page=100&page=${page}`,
+      );
+      runs.push(
+        ...response.statuses.map((status) => ({
+          id: -status.id,
+          name: status.context,
+          status: status.state === 'pending' ? 'queued' : 'completed',
+          conclusion:
+            status.state === 'pending'
+              ? undefined
+              : status.state === 'success'
+                ? 'success'
+                : 'failure',
+          startedAt: status.updated_at,
+          htmlUrl: status.target_url ?? '',
+          checkSuiteId: 0,
+        })),
+      );
+      if (runs.length >= response.total_count || response.statuses.length < 100) return runs;
+    }
+  };
+  const [checks, contexts] = await Promise.all([
+    getCheckRunsForRef(client, owner, repo, ref, { requireWorkflowNames: true }),
+    statuses(),
+  ]);
+  const latest = new Map<string, CheckRun>();
+  for (const check of checks) {
+    const key = JSON.stringify([check.name, check.workflowName ?? '', check.workflowEvent ?? '']);
+    const previous = latest.get(key);
+    const newer =
+      previous && check.startedAt && previous.startedAt
+        ? Date.parse(check.startedAt) > Date.parse(previous.startedAt)
+        : check.id > (previous?.id ?? 0);
+    if (!previous || newer) latest.set(key, check);
+  }
+  return [...latest.values(), ...contexts];
 }
 
 /**
@@ -142,20 +200,32 @@ async function addWorkflowNames(
   repo: string,
   headSha: string,
   runs: CheckRun[],
+  required = false,
 ): Promise<void> {
   try {
-    const response = await client.get<GitHubWorkflowRunsResponse>(
-      `repos/${owner}/${repo}/actions/runs?head_sha=${encodeURIComponent(headSha)}&per_page=100`,
-    );
-    const names = new Map<number, string>();
-    for (const wr of response.workflow_runs ?? []) {
-      if (wr.name && wr.check_suite_id) names.set(wr.check_suite_id, wr.name);
+    const workflows = new Map<number, GitHubWorkflowRunDto>();
+    let count = 0;
+    for (let page = 1; ; page++) {
+      const response = await client.get<GitHubWorkflowRunsResponse>(
+        `repos/${owner}/${repo}/actions/runs?head_sha=${encodeURIComponent(headSha)}&per_page=100${page > 1 ? `&page=${page}` : ''}`,
+      );
+      for (const wr of response.workflow_runs ?? []) {
+        if (wr.name && wr.check_suite_id) workflows.set(wr.check_suite_id, wr);
+      }
+      count += response.workflow_runs.length;
+      if (count >= response.total_count || response.workflow_runs.length < 100) break;
     }
     for (const run of runs) {
-      const name = names.get(run.checkSuiteId);
-      if (name) run.workflowName = name;
+      const workflow = workflows.get(run.checkSuiteId);
+      if (workflow?.name) {
+        run.workflowName = workflow.name;
+        if (workflow.event) run.workflowEvent = workflow.event;
+      } else if (required && isActionsJob(run)) {
+        throw new Error('GitHub workflow metadata is incomplete');
+      }
     }
   } catch (err) {
+    if (required) throw err;
     log.debug('workflow names lookup failed', { error: String(err), owner, repo });
   }
 }

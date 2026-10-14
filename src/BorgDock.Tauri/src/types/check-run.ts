@@ -13,6 +13,7 @@ export interface CheckRun {
    * names a run by its job alone.
    */
   workflowName?: string;
+  workflowEvent?: string;
 }
 
 export interface CheckSuite {

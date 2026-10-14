@@ -413,6 +413,7 @@ export function FocusCard({ prWithChecks, bucket, ctx, ...callbacks }: FocusCard
                   fail={checks.fail}
                   run={checks.run}
                   total={checks.total}
+                  unavailable={checks.unavailable}
                   title={checkBarSummary(checks).label}
                 />
               </div>

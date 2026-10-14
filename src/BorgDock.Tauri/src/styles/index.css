@@ -5303,7 +5303,7 @@ body.sql-resizing-v .sql-resize-handle {
   /* The row: avatar, title and meta, checks, chip, number. */
   .bd-wb-row {
     display: grid;
-    grid-template-columns: 22px minmax(0, 1fr) 150px 128px 52px;
+    grid-template-columns: 22px minmax(0, 1fr) 180px 128px 52px;
     align-items: center;
     column-gap: 14px;
     height: 42px;

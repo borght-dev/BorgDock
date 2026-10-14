@@ -101,6 +101,7 @@ export function checkCountsFor(prw: PullRequestWithChecks): CheckBarCounts {
     fail: prw.failedCheckNames.length,
     run: prw.pendingCheckNames.length,
     total: prw.totalCheckCount,
+    ...(prw.checksUnavailable ? { unavailable: true } : {}),
   };
 }
 

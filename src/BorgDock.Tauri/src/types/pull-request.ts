@@ -46,6 +46,7 @@ export interface PrReview {
 
 export interface PullRequestWithChecks {
   pullRequest: PullRequest;
+  checksUnavailable?: boolean;
   overallStatus: OverallStatus;
   failedCheckNames: string[];
   /** Check-suite ids parallel to failedCheckNames (suite-less entries dropped) — used for rerun actions. */

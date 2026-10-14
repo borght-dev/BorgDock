@@ -2,8 +2,9 @@ import type { CheckRun, OverallStatus, PullRequest, PullRequestWithChecks } from
 
 export function aggregatePrWithChecks(
   pr: PullRequest,
-  checkRuns: CheckRun[],
+  checks: CheckRun[] | undefined,
 ): PullRequestWithChecks {
+  const checkRuns = checks ?? [];
   const overallStatus = computeOverallStatus(checkRuns);
 
   const failedRuns = checkRuns.filter(
@@ -26,6 +27,7 @@ export function aggregatePrWithChecks(
 
   return {
     pullRequest: pr,
+    ...(checks === undefined ? { checksUnavailable: true } : {}),
     overallStatus,
     failedCheckNames,
     failedCheckSuiteIds,

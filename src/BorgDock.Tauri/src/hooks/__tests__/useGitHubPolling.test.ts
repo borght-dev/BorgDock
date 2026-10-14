@@ -8,6 +8,7 @@ const mockGetGitHubToken = vi.fn();
 const mockPollOpenPrsAggregate = vi.fn();
 const mockGetClosedPRs = vi.fn();
 const mockGetOpenPRs = vi.fn();
+const mockGetCheckSummaryForRef = vi.fn();
 const mockAggregatePrWithChecks = vi.fn();
 const mockInitClient = vi.fn();
 const mockGetClient = vi.fn();
@@ -18,6 +19,10 @@ vi.mock('@/services/github/auth', () => ({
 
 vi.mock('@/services/github/polling', () => ({
   pollOpenPrsAggregate: (...args: unknown[]) => mockPollOpenPrsAggregate(...args),
+}));
+
+vi.mock('@/services/github/checks', () => ({
+  getCheckSummaryForRef: (...args: unknown[]) => mockGetCheckSummaryForRef(...args),
 }));
 
 vi.mock('@/services/github/pulls', () => ({
@@ -183,16 +188,20 @@ describe('useGitHubPolling', () => {
     mockPollOpenPrsAggregate.mockResolvedValue([]);
     mockGetClosedPRs.mockResolvedValue([]);
     mockGetOpenPRs.mockRejectedValue(new Error('REST unavailable'));
-    mockAggregatePrWithChecks.mockImplementation((pr: PullRequest, checks: unknown[]) => ({
-      pullRequest: pr,
-      overallStatus: 'green',
-      failedCheckNames: [],
-      failedCheckSuiteIds: [],
-      pendingCheckNames: [],
-      passedCount: 0,
-      skippedCount: 0,
-      totalCheckCount: checks.length,
-    }));
+    mockGetCheckSummaryForRef.mockRejectedValue(new Error('Checks unavailable'));
+    mockAggregatePrWithChecks.mockImplementation(
+      (pr: PullRequest, checks: unknown[] | undefined) => ({
+        pullRequest: pr,
+        ...(checks === undefined ? { checksUnavailable: true } : {}),
+        overallStatus: 'green',
+        failedCheckNames: [],
+        failedCheckSuiteIds: [],
+        pendingCheckNames: [],
+        passedCount: 0,
+        skippedCount: 0,
+        totalCheckCount: checks?.length ?? 0,
+      }),
+    );
     mockClientInstance.hadFreshData = true;
     mockClientInstance.isRateLimitLow = false;
     mockClientInstance.getRateLimit.mockReturnValue({
@@ -503,6 +512,48 @@ describe('useGitHubPolling', () => {
     });
     expect(usePrStore.getState().pullRequests[0]?.pullRequest.headSha).toBe('new-head');
     expect(usePrStore.getState().pullRequests[0]?.passedCount).toBe(0);
+  });
+
+  it('loads actual checks for a new head when GraphQL fails', async () => {
+    const prior = makePrw({ number: 4743, headSha: 'old-head' });
+    usePrStore.setState({ pullRequests: [prior] });
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('GraphQL timed out'));
+    mockGetOpenPRs.mockResolvedValue([{ ...prior.pullRequest, headSha: 'new-head' }]);
+    mockGetCheckSummaryForRef.mockResolvedValue([{ name: 'test', conclusion: 'failure' }]);
+    const { result } = renderHook(() => useGitHubPolling(makeSettings()));
+    await act(async () => {
+      await result.current.pollNow();
+    });
+    expect(mockGetCheckSummaryForRef).toHaveBeenCalledWith(
+      mockClientInstance,
+      'test',
+      'repo',
+      'new-head',
+    );
+    expect(usePrStore.getState().pullRequests[0]?.totalCheckCount).toBe(1);
+  });
+
+  it('marks a failed check fetch unavailable instead of reporting zero checks', async () => {
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('GraphQL timed out'));
+    mockGetOpenPRs.mockResolvedValue([makePr({ headSha: 'new-head' })]);
+    const { result } = renderHook(() => useGitHubPolling(makeSettings()));
+    await act(async () => {
+      await result.current.pollNow();
+    });
+    expect(usePrStore.getState().pullRequests[0]).toMatchObject({ checksUnavailable: true });
+  });
+
+  it('repairs a cached zero count even when the head commit has not changed', async () => {
+    const prior = { ...makePrw({ headSha: 'same-head' }), totalCheckCount: 0, passedCount: 0 };
+    usePrStore.setState({ pullRequests: [prior] });
+    mockPollOpenPrsAggregate.mockRejectedValue(new Error('GraphQL timed out'));
+    mockGetOpenPRs.mockResolvedValue([prior.pullRequest]);
+    mockGetCheckSummaryForRef.mockResolvedValue([{ name: 'test', conclusion: 'success' }]);
+    const { result } = renderHook(() => useGitHubPolling(makeSettings()));
+    await act(async () => {
+      await result.current.pollNow();
+    });
+    expect(usePrStore.getState().pullRequests[0]?.totalCheckCount).toBe(1);
   });
 
   it('clears the disk cache when the last open PR closes', async () => {
