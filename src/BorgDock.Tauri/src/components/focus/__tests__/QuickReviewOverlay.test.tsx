@@ -5,6 +5,7 @@ import { submitReview } from '@/services/github/mutations';
 import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useToastStore } from '@/stores/toast-store';
+import type { PullRequestWithChecks } from '@/types';
 import { QuickReviewOverlay } from '../QuickReviewOverlay';
 import { makePr, resetSeq } from './helpers';
 
@@ -19,10 +20,11 @@ const mockClient = vi.hoisted(() => ({
   get: vi.fn().mockRejectedValue(new Error('Unavailable')),
 }));
 vi.mock('@/services/github/singleton', () => ({ getClientForRepo: () => mockClient }));
+const reviewCandidates = vi.hoisted(() => ({ prs: [] as PullRequestWithChecks[] }));
 vi.mock('@/stores/pr-store', () => ({
   usePrStore: Object.assign(
-    (selector: (state: { needsMyReview: () => never[] }) => unknown) =>
-      selector({ needsMyReview: () => [] }),
+    (selector: (state: { needsMyReview: () => PullRequestWithChecks[] }) => unknown) =>
+      selector({ needsMyReview: () => reviewCandidates.prs }),
     { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null) }) },
   ),
 }));
@@ -70,6 +72,7 @@ const WALK = ['src/Service.cs', 'bun.lock', 'App.Tests/ServiceTests.cs', 'src/se
 let pr = makePr();
 beforeEach(() => {
   vi.clearAllMocks();
+  reviewCandidates.prs = [];
   resetSeq();
   // Transitions finish at once: the walk unmounts and the overlay closes
   // without waiting for their animations.
@@ -555,5 +558,25 @@ describe('Quick review composer', () => {
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
     await waitFor(() => expect(submitReview).toHaveBeenCalledOnce());
+  });
+});
+
+describe('Quick review next PR', () => {
+  it.each([
+    'red',
+    'yellow',
+    'gray',
+  ] as const)('prefers a passing PR over an earlier %s PR and excludes reviewed PRs', async (overallStatus) => {
+    const notPassing = { ...makePr({ number: 41 }), overallStatus };
+    const passing = makePr({ number: 42, title: 'Passing checks first' });
+    reviewCandidates.prs = [pr, notPassing, passing, makePr({ number: 43 })];
+    useQuickReviewStore.getState().startSinglePr(pr);
+    useQuickReviewStore.getState().advance('skipped');
+    render(<QuickReviewOverlay />);
+
+    expect(screen.getByText('Passing checks first')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Review next PR' }));
+    expect(useQuickReviewStore.getState().currentPr()).toBe(passing);
+    await waitFor(() => expect(filesButton()).toBeEnabled());
   });
 });

@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { prRowKey } from '@/components/pr/pr-card-data';
-import { normalizeReviewDocument, type ReviewDocument } from '@/services/quick-review';
+import {
+  normalizeReviewDocument,
+  orderQuickReviewPrs,
+  type ReviewDocument,
+} from '@/services/quick-review';
 import type { PullRequestWithChecks } from '@/types';
 import { reviewDraftStorage } from '@/utils/review-draft-storage';
 
@@ -66,7 +70,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
         if (prs.length === 0) return;
         set({
           state: 'reviewing',
-          queue: prs,
+          queue: orderQuickReviewPrs(prs),
           currentIndex: 0,
           decisions: new Map(),
           error: null,
