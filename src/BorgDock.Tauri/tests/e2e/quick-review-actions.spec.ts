@@ -217,6 +217,49 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   ]);
 });
 
+test('full screen preserves the file walk and remembers the size across reloads', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await bootList(page);
+  const openReview = async () => {
+    const row = page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#3"]');
+    await row.hover();
+    await row.getByRole('button', { name: 'Review #3' }).click();
+  };
+  await openReview();
+  const dialog = page.getByRole('dialog', { name: 'Quick Review' });
+  const normalBounds = await dialog.boundingBox();
+  expect(normalBounds?.width).toBe(1440);
+  const expand = dialog.getByRole('button', { name: 'Full screen', exact: true });
+  await expand.focus();
+  await page.keyboard.press('Enter');
+  await expect(dialog.getByRole('article', { name: 'Pull request #3' })).toBeVisible();
+  const fullBounds = { x: 0, y: 0, width: 1920, height: 1080 };
+  await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
+  await expect(dialog.getByRole('button', { name: 'Exit full screen' })).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Review files', exact: true }).click();
+  await dialog.focus();
+  await page.keyboard.press('v');
+  await expect(dialog.getByText('File 2 of 5')).toBeVisible();
+  const currentPath = await dialog.locator('.qr-file[aria-current]').getAttribute('title');
+  await dialog.getByRole('button', { name: 'Exit full screen' }).click();
+  await expect.poll(() => dialog.boundingBox()).toEqual(normalBounds);
+  await expect(dialog.locator('.qr-file[aria-current]')).toHaveAttribute('title', currentPath!);
+  await expect(dialog.getByText('1 of 5 reviewed, 2 to go')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Full screen', exact: true }).click();
+  await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
+  await page.screenshot({ path: test.info().outputPath('quick-review-fullscreen.png') });
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await bootList(page);
+  await openReview();
+  await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
+  await dialog.getByRole('button', { name: 'Review later' }).click();
+  await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
+  await dialog.getByRole('button', { name: 'Exit full screen' }).click();
+  await expect.poll(async () => (await dialog.boundingBox())?.width).toBe(760);
+});
+
 test('approving the top card of a queue flings it right and the next card rises', async ({
   page,
 }) => {

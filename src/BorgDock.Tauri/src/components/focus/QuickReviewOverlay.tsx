@@ -2,7 +2,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { FocusTrap } from 'focus-trap-react';
-import { X } from 'lucide-react';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
@@ -42,6 +42,29 @@ import './quick-review.css';
 const FLING_MS = 420;
 /** How many cards peek behind the top one. */
 const PEEKS = 2;
+const FULLSCREEN_KEY = 'borgdock-quick-review-fullscreen';
+
+function readFullscreenPreference(): boolean {
+  try {
+    return localStorage.getItem(FULLSCREEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function FullscreenButton({ fullscreen, onToggle }: { fullscreen: boolean; onToggle: () => void }) {
+  const Icon = fullscreen ? Minimize2 : Maximize2;
+  const label = fullscreen ? 'Exit full screen' : 'Full screen';
+  return (
+    <IconButton
+      icon={<Icon size={14} aria-hidden="true" />}
+      tooltip={label}
+      aria-label={label}
+      aria-pressed={fullscreen}
+      onClick={onToggle}
+    />
+  );
+}
 
 type FlingDirection = 'left' | 'right';
 
@@ -169,9 +192,20 @@ export function QuickReviewOverlay() {
   const decisions = useQuickReviewStore((s) => s.decisions);
   const needsMyReview = usePrStore((s) => s.needsMyReview());
   const [closing, setClosing] = useState(false);
+  const [fullscreen, setFullscreen] = useState(readFullscreenPreference);
   const handledInRun = useRef(new Set<string>());
   const closeTimer = useRef<number | undefined>(undefined);
   const deck = useDeckMotion(queue, index, state === 'complete', decisions);
+
+  function toggleFullscreen() {
+    const next = !fullscreen;
+    setFullscreen(next);
+    try {
+      localStorage.setItem(FULLSCREEN_KEY, String(next));
+    } catch {
+      return;
+    }
+  }
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   // Ended from elsewhere (or reopened) while the close animation ran.
@@ -246,6 +280,7 @@ export function QuickReviewOverlay() {
           data-overlay="quick-review"
           className="qr-dialog"
           data-complete={complete ? 'true' : undefined}
+          data-fullscreen={fullscreen}
         >
           <div className="qr-titlebar">
             <h2 className="qr-heading">Quick review</h2>
@@ -267,6 +302,7 @@ export function QuickReviewOverlay() {
                 Previous PR
               </Button>
             )}
+            <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
             <IconButton
               icon={<X size={12} strokeWidth={2.25} aria-hidden="true" />}
               tooltip="Close"

@@ -125,6 +125,7 @@ const meta: Meta<typeof QuickReviewOverlay> = {
     },
   ],
   beforeEach: () => {
+    localStorage.removeItem('borgdock-quick-review-fullscreen');
     const control = getControl();
     control.githubResponses.getPRReviewDetails = { pr: pr.pullRequest, baseSha: 'review-base' };
     control.githubResponses.getPRFiles = files;
@@ -329,6 +330,7 @@ const largeDecorator: Decorator = (Story) => {
 export const LargePrCard: Story = {
   decorators: [largeDecorator],
   beforeEach: () => {
+    localStorage.removeItem('borgdock-quick-review-fullscreen');
     useQuickReviewStore.setState({ documents: {} });
     useQuickReviewStore.getState().startSession(queued);
   },
@@ -354,8 +356,22 @@ export const LargePrWalk: Story = {
   },
 };
 
+export const LargePrWalkFullscreen: Story = {
+  ...LargePrWalk,
+  play: async (context) => {
+    await LargePrWalk.play?.(context);
+    const canvas = within(context.canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /^Full screen$/ }));
+    await expect(canvas.getByRole('dialog', { name: 'Quick Review' })).toHaveAttribute(
+      'data-fullscreen',
+      'true',
+    );
+  },
+};
+
 export const ReviewNext: Story = {
   beforeEach: () => {
+    localStorage.removeItem('borgdock-quick-review-fullscreen');
     const nextReview = [
       makePr({
         number: 479,
