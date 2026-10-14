@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.1.3",
+    "date": "2026-10-14",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Pull request refreshes complete faster, especially with many CI checks. All check results stay current, including large check lists.",
+      "Repositories with more than 100 open pull requests now show the complete list."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.1.2",
     "date": "2026-10-14",
     "summary": "",

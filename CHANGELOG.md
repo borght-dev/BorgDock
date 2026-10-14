@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.3 — 2026-10-14
+
+### Bug Fixes
+
+- Pull request refreshes complete faster, especially with many CI checks. All check results stay current, including large check lists.
+- Repositories with more than 100 open pull requests now show the complete list.
+
 ## 4.1.2 — 2026-10-14
 
 ### Bug Fixes
