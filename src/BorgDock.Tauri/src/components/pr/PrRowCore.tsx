@@ -12,7 +12,7 @@ import {
   rowChipFor,
 } from './pr-card-data';
 
-const NO_CHECKS = { ok: 0, fail: 0, run: 0, total: 0 };
+const NO_CHECKS: NonNullable<PrCardData['checks']> = { ok: 0, fail: 0, run: 0, total: 0 };
 
 export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   pr: PrCardData;
@@ -169,6 +169,7 @@ export function PrRowCore({
         fail={checks.fail}
         run={checks.run}
         total={checks.total}
+        unavailable={checks.unavailable}
         title={checkLabel}
       />
       <span className={clsx('bd-wb-chip', `bd-wb-chip--${chip}`)} data-chip={chip}>

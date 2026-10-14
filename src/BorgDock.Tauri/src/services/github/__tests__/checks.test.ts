@@ -3,6 +3,7 @@ import {
   getCheckRuns,
   getCheckRunsForRef,
   getCheckSuites,
+  getCheckSummaryForRef,
   getJobLog,
   rerunFailedChecks,
   rerunWorkflow,
@@ -18,6 +19,97 @@ function createMockClient() {
     isRateLimitLow: false,
   } as unknown as GitHubClient;
 }
+
+describe('getCheckSummaryForRef', () => {
+  it('uses the latest job per workflow and event after repeated runs on the same SHA', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockImplementation(async (path) => {
+      if (path.includes('/status?')) return { total_count: 0, statuses: [] };
+      if (path.includes('/actions/runs?'))
+        return {
+          total_count: 3,
+          workflow_runs: [
+            { id: 1, name: 'CI', event: 'pull_request', check_suite_id: 11 },
+            { id: 2, name: 'CI', event: 'pull_request', check_suite_id: 12 },
+            { id: 3, name: 'CI', event: 'workflow_dispatch', check_suite_id: 13 },
+          ],
+        };
+      return {
+        total_count: 3,
+        check_runs: [11, 12, 13].map((id) => ({
+          id,
+          name: 'Prepare',
+          status: 'completed',
+          conclusion: id === 11 ? 'failure' : 'success',
+          started_at: `2026-10-14T07:00:${id}Z`,
+          html_url: `https://github.com/o/r/actions/runs/${id}/job/${id}`,
+          check_suite: { id },
+          head_sha: 'sha',
+        })),
+      };
+    });
+    const checks = await getCheckSummaryForRef(client, 'o', 'r', 'sha');
+    expect(checks.map((check) => check.id)).toEqual([12, 13]);
+    expect(checks.every((check) => check.conclusion === 'success')).toBe(true);
+  });
+
+  it('combines paginated check runs with legacy commit statuses', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockImplementation(async (path) => {
+      if (path.includes('/status?'))
+        return {
+          total_count: 2,
+          statuses: [
+            {
+              id: 201,
+              context: 'external-ci',
+              state: 'pending',
+              target_url: null,
+              updated_at: '2026-10-14T07:00:00Z',
+            },
+            {
+              id: 202,
+              context: 'review',
+              state: 'error',
+              target_url: 'https://ci.example/review',
+              updated_at: '2026-10-14T07:00:00Z',
+            },
+          ],
+        };
+      const pageTwo = path.endsWith('page=2');
+      return {
+        total_count: 101,
+        check_runs: Array.from({ length: pageTwo ? 1 : 100 }, (_, i) => ({
+          id: pageTwo ? 101 : i + 1,
+          name: `job-${pageTwo ? 101 : i + 1}`,
+          status: 'completed',
+          conclusion: 'success',
+          html_url: 'https://ci.example/test',
+          check_suite: { id: 1 },
+          head_sha: 'sha',
+        })),
+      };
+    });
+    const checks = await getCheckSummaryForRef(client, 'o', 'r', 'sha');
+    expect(checks).toHaveLength(103);
+    expect(checks.slice(-2)).toMatchObject([
+      { name: 'external-ci', status: 'queued' },
+      { name: 'review', conclusion: 'failure' },
+    ]);
+    expect(client.get).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects partial results when legacy statuses cannot be fetched', async () => {
+    const client = createMockClient();
+    vi.mocked(client.get).mockImplementation(async (path) => {
+      if (path.includes('/status?')) throw new Error('Status unavailable');
+      return { total_count: 0, check_runs: [] };
+    });
+    await expect(getCheckSummaryForRef(client, 'o', 'r', 'sha')).rejects.toThrow(
+      'Status unavailable',
+    );
+  });
+});
 
 describe('getCheckSuites', () => {
   it('fetches and maps check suites', async () => {

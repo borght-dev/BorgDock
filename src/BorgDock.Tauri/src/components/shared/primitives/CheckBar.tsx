@@ -4,6 +4,7 @@ import type { CSSProperties, HTMLAttributes } from 'react';
 export type CheckBarState = 'fail' | 'run' | 'ok' | 'none';
 
 export interface CheckBarCounts {
+  unavailable?: boolean;
   /** Checks that passed. */
   ok: number;
   /** Checks that failed. */
@@ -23,10 +24,11 @@ export interface CheckBarProps
  * running checks, running checks win over passing ones. "k of N, running"
  * counts every finished check (skipped included); "N passing" counts only `ok`.
  */
-export function checkBarSummary({ ok, fail, run, total }: CheckBarCounts): {
+export function checkBarSummary({ ok, fail, run, total, unavailable }: CheckBarCounts): {
   state: CheckBarState;
   label: string;
 } {
+  if (unavailable) return { state: 'none', label: 'Checks unavailable' };
   if (total <= 0) return { state: 'none', label: 'No checks' };
   if (fail > 0) return { state: 'fail', label: `${fail} failing` };
   if (run > 0) return { state: 'run', label: `${total - run} of ${total}, running` };
@@ -57,8 +59,9 @@ function alertShare(part: number, total: number): CSSProperties {
  * running segments in proportion to `total`. Skipped checks leave the track
  * showing. Failing and running segments are at least `MIN_SEGMENT_PX` wide. The label is red when anything failed and amber while checks run.
  */
-export function CheckBar({ ok, fail, run, total, className, ...rest }: CheckBarProps) {
-  const { state, label } = checkBarSummary({ ok, fail, run, total });
+export function CheckBar({ ok, fail, run, total, unavailable, className, ...rest }: CheckBarProps) {
+  const { state, label } = checkBarSummary({ ok, fail, run, total, unavailable });
+  if (unavailable) total = 0;
   return (
     <span className={clsx('bd-checkbar', `bd-checkbar--${state}`, className)} {...rest}>
       <span className="bd-checkbar__bar" aria-hidden="true">

@@ -82,6 +82,13 @@ describe('MergeReadinessChecklist', () => {
     expect(screen.getByText('100')).toBeTruthy();
   });
 
+  it('gives unavailable CI no readiness credit and shows its status', () => {
+    render(<MergeReadinessChecklist pr={makePr({ checksUnavailable: true })} />);
+    expect(screen.getByText('75')).toBeTruthy();
+    expect(screen.getByText('CI status unavailable')).toBeTruthy();
+    expect(screen.queryByText('No CI checks configured')).toBeNull();
+  });
+
   it('shows "No CI checks configured" when no checks', () => {
     render(<MergeReadinessChecklist pr={makePr()} />);
     expect(screen.getByText('No CI checks configured')).toBeTruthy();

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { saveCachedEtags, saveCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
+import { getCheckSummaryForRef } from '@/services/github/checks';
 import { pollOpenPrsAggregate } from '@/services/github/polling';
 import { getClosedPRs, getOpenPRs } from '@/services/github/pulls';
 import {
@@ -123,26 +124,52 @@ export function useGitHubPolling(settings: AppSettings, enabled: boolean = true)
               const open = await getOpenPRs(repoClient, repo.owner, repo.name, {
                 hydrateDetails: false,
               });
-              const reconciled = open.map((pr) => {
-                const previous = priorByKey.get(`${pr.repoOwner}/${pr.repoName}#${pr.number}`);
-                if (!previous || previous.pullRequest.headSha !== pr.headSha) {
-                  return aggregatePrWithChecks(pr, []);
-                }
-                const prior = previous.pullRequest;
-                return {
-                  ...previous,
-                  pullRequest: {
-                    ...pr,
-                    reviewStatus: prior.reviewStatus,
-                    latestReviews: prior.latestReviews,
-                    mergeable: pr.mergeable ?? prior.mergeable,
-                    additions: pr.additions ?? prior.additions,
-                    deletions: pr.deletions ?? prior.deletions,
-                    changedFiles: pr.changedFiles ?? prior.changedFiles,
-                    commitCount: pr.commitCount ?? prior.commitCount,
-                  },
-                };
-              });
+              const reconciled: PullRequestWithChecks[] = [];
+              for (let offset = 0; offset < open.length; offset += 4) {
+                const batch = await Promise.all(
+                  open.slice(offset, offset + 4).map(async (pr) => {
+                    const previous = priorByKey.get(`${pr.repoOwner}/${pr.repoName}#${pr.number}`);
+                    const sameHead = !!pr.headSha && previous?.pullRequest.headSha === pr.headSha;
+                    const prior = sameHead ? previous.pullRequest : undefined;
+                    const refreshed = prior
+                      ? {
+                          ...pr,
+                          reviewStatus: prior.reviewStatus,
+                          latestReviews: prior.latestReviews,
+                          mergeable: pr.mergeable ?? prior.mergeable,
+                          additions: pr.additions ?? prior.additions,
+                          deletions: pr.deletions ?? prior.deletions,
+                          changedFiles: pr.changedFiles ?? prior.changedFiles,
+                          commitCount: pr.commitCount ?? prior.commitCount,
+                        }
+                      : pr;
+                    try {
+                      const checks = await getCheckSummaryForRef(
+                        repoClient,
+                        repo.owner,
+                        repo.name,
+                        pr.headSha ?? pr.headRef,
+                      );
+                      return aggregatePrWithChecks(refreshed, checks);
+                    } catch (checkError) {
+                      log.warn('REST check fetch failed', {
+                        repo: repoLabel,
+                        number: pr.number,
+                        error: String(checkError),
+                      });
+                      return sameHead
+                        ? {
+                            ...previous,
+                            pullRequest: refreshed,
+                            overallStatus: 'gray' as const,
+                            checksUnavailable: true,
+                          }
+                        : aggregatePrWithChecks(refreshed, undefined);
+                    }
+                  }),
+                );
+                reconciled.push(...batch);
+              }
               log.info('poll: repo reconciled via REST', {
                 repo: repoLabel,
                 prs: reconciled.length,

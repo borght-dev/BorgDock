@@ -5,10 +5,8 @@ export function computeMergeScore(pr: PullRequestWithChecks): number {
   const relevant = pr.totalCheckCount - pr.skippedCount;
 
   // CI checks (25%)
-  if (relevant > 0) {
-    score += (pr.passedCount / relevant) * 25;
-  } else {
-    score += 25; // No checks = full marks
+  if (!pr.checksUnavailable) {
+    score += relevant > 0 ? (pr.passedCount / relevant) * 25 : 25;
   }
 
   // Approvals (25%)

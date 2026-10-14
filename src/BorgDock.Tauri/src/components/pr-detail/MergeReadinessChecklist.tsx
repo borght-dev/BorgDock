@@ -32,7 +32,9 @@ function scoreTone(score: number): 'success' | 'warning' | 'error' {
 function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
   // 1. Checks passed
   let checksStatus: CheckStatus;
-  if (pr.totalCheckCount === 0) {
+  if (pr.checksUnavailable) {
+    checksStatus = 'pending';
+  } else if (pr.totalCheckCount === 0) {
     checksStatus = 'none';
   } else if (pr.failedCheckNames.length > 0) {
     checksStatus = 'fail';
@@ -42,8 +44,9 @@ function getCheckItems(pr: PullRequestWithChecks): ChecklistItem[] {
     checksStatus = 'pass';
   }
 
-  const checksDesc =
-    pr.totalCheckCount === 0
+  const checksDesc = pr.checksUnavailable
+    ? 'CI status unavailable'
+    : pr.totalCheckCount === 0
       ? 'No CI checks configured'
       : pr.skippedCount > 0
         ? `${pr.passedCount}/${pr.totalCheckCount - pr.skippedCount} passed (${pr.skippedCount} skipped)`

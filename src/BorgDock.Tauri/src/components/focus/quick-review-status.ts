@@ -4,6 +4,7 @@ import type { PullRequestWithChecks } from '@/types';
 
 /** The one-line CI note under the check bar. */
 export function ciNote(pr: PullRequestWithChecks): string {
+  if (pr.checksUnavailable) return 'CI status unavailable';
   switch (checkBarSummary(checkCountsFor(pr)).state) {
     case 'fail':
       return 'CI is failing, review can wait';

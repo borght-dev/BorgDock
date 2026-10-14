@@ -187,9 +187,9 @@ export async function getPRWithChecks(
   pr.requestedTeams = detail.requested_teams?.map((t) => t.slug) ?? pr.requestedTeams;
   pr.latestReviews = latestReviewsFromRest(reviews);
 
-  let checks: CheckRun[] = [];
+  let checks: CheckRun[] | undefined;
   try {
-    checks = await getCheckRunsForRef(client, owner, repo, pr.headRef);
+    checks = await getCheckRunsForRef(client, owner, repo, pr.headSha ?? pr.headRef);
   } catch (err) {
     log.warn('check runs fetch failed during single-PR refresh', {
       error: String(err),
@@ -197,7 +197,7 @@ export async function getPRWithChecks(
     });
   }
 
-  return { pr: aggregatePrWithChecks(pr, checks), checks };
+  return { pr: aggregatePrWithChecks(pr, checks), checks: checks ?? [] };
 }
 
 export async function getClosedPRs(

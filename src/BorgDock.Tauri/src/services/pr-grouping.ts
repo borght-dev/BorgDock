@@ -64,6 +64,7 @@ export function isFailing(pr: PullRequestWithChecks): boolean {
 
 export function isReady(pr: PullRequestWithChecks): boolean {
   return (
+    !pr.checksUnavailable &&
     pr.overallStatus === 'green' &&
     !pr.pullRequest.isDraft &&
     pr.pullRequest.mergeable !== false &&

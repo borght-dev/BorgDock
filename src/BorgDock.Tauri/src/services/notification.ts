@@ -15,6 +15,7 @@ export interface StateTransition {
 
 export function isReadyToMerge(pr: PullRequestWithChecks): boolean {
   return (
+    !pr.checksUnavailable &&
     pr.overallStatus === 'green' &&
     !pr.pullRequest.isDraft &&
     pr.pullRequest.mergeable !== false &&
@@ -267,9 +268,7 @@ export interface OsNotificationOptions {
  *  OS-notification payload. Action URLs default to the `open-url` routing in
  *  FlyoutApp's handleToastAction; PR context comes from repoFullName/prNumber.
  */
-export function inAppToOsOptions(
-  n: import('@/types').InAppNotification,
-): OsNotificationOptions {
+export function inAppToOsOptions(n: import('@/types').InAppNotification): OsNotificationOptions {
   const [prOwner, prRepo] = n.repoFullName?.split('/') ?? [undefined, undefined];
   return {
     title: n.title,

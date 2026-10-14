@@ -17,7 +17,7 @@ export function QuickReviewChecks({
     <section className="qr-overview-section" aria-label="Checks">
       <h3>Checks</h3>
       <div className="qr-checks">
-        <CheckBar ok={counts.ok} fail={counts.fail} run={counts.run} total={counts.total} />
+        <CheckBar {...counts} />
         <span>{ciNote(pr)}</span>
       </div>
       {pr.skippedCount > 0 && <p>{pr.skippedCount} skipped checks</p>}

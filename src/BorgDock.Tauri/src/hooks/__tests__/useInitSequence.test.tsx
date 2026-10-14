@@ -9,6 +9,12 @@ const mockGetGitHubToken = vi.fn();
 const mockGetOpenPRs = vi.fn();
 const mockInitClient = vi.fn();
 const mockAggregatePrWithChecks = vi.fn();
+const mockLoadCachedPRs = vi.fn();
+
+vi.mock('@/services/cache', () => ({
+  loadCachedPRs: (...args: unknown[]) => mockLoadCachedPRs(...args),
+  loadCachedEtags: vi.fn().mockResolvedValue([]),
+}));
 
 vi.mock('@/services/github/auth', () => ({
   getGitHubToken: (...args: unknown[]) => mockGetGitHubToken(...args),
@@ -137,6 +143,7 @@ describe('useInitSequence', () => {
     mockGetGitHubToken.mockResolvedValue('ghp_test123');
     mockInitClient.mockReturnValue(client);
     mockGetOpenPRs.mockResolvedValue([makePr()]);
+    mockLoadCachedPRs.mockResolvedValue([]);
     mockAggregatePrWithChecks.mockImplementation((pr: PullRequest) => ({
       pullRequest: pr,
       overallStatus: 'gray',
@@ -168,10 +175,36 @@ describe('useInitSequence', () => {
     expect(mockGetOpenPRs).toHaveBeenCalledWith(client, 'test', 'repo', { hydrateDetails: false });
     expect(mockAggregatePrWithChecks).toHaveBeenCalledWith(
       expect.objectContaining({ number: 1 }),
-      [],
+      undefined,
     );
     expect(usePrStore.getState().pullRequests).toHaveLength(1);
     expect(useInitStore.getState().completedSteps['fetch-checks']).toBe(true);
+  });
+
+  it('keeps cached checks when the background REST list still has the same commit', async () => {
+    const pr = makePr({ headSha: 'same-head', reviewStatus: 'approved' });
+    mockLoadCachedPRs.mockResolvedValue([
+      {
+        pullRequest: pr,
+        overallStatus: 'green',
+        failedCheckNames: [],
+        failedCheckSuiteIds: [],
+        pendingCheckNames: [],
+        passedCount: 6,
+        skippedCount: 0,
+        totalCheckCount: 6,
+      },
+    ]);
+    mockGetOpenPRs.mockResolvedValue([{ ...pr, reviewStatus: 'none' }]);
+    renderHook(() => useInitSequence(makeSettings(), false));
+    await waitFor(() => expect(mockGetOpenPRs).toHaveBeenCalled());
+    await waitFor(() => expect(useInitStore.getState().isComplete).toBe(true));
+    expect(usePrStore.getState().pullRequests[0]).toMatchObject({
+      passedCount: 6,
+      totalCheckCount: 6,
+      pullRequest: { reviewStatus: 'approved' },
+    });
+    expect(mockAggregatePrWithChecks).not.toHaveBeenCalled();
   });
 
   it('surfaces an error on the fetch-prs step when the fetch hangs', async () => {

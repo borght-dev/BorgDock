@@ -53,6 +53,12 @@ describe('checkBarSummary', () => {
 });
 
 describe('CheckBar', () => {
+  it('reports unavailable checks separately from a successful empty fetch', () => {
+    const { container } = render(<CheckBar ok={5} fail={0} run={0} total={5} unavailable />);
+    expect(screen.getByText('Checks unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('No checks')).not.toBeInTheDocument();
+    expect(segments(container)).toEqual({ ok: '0%', fail: '0%', run: '0%' });
+  });
   it('renders the failing label with the fail tone', () => {
     render(<CheckBar ok={4} fail={2} run={0} total={6} data-testid="cb" />);
     const el = screen.getByTestId('cb');

@@ -256,7 +256,29 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
         apiFetch()
           .then(() => {
             if (cancelled()) return;
-            const freshPrs = rawPrs.map(({ pr }) => aggregatePrWithChecks(pr, []));
+            const previous = usePrStore.getState().pullRequests;
+            const freshPrs = rawPrs.map(({ pr }) => {
+              const cached = previous.find(
+                (entry) =>
+                  entry.pullRequest.repoOwner === pr.repoOwner &&
+                  entry.pullRequest.repoName === pr.repoName &&
+                  entry.pullRequest.number === pr.number &&
+                  !!pr.headSha &&
+                  entry.pullRequest.headSha === pr.headSha,
+              );
+              return cached
+                ? {
+                    ...cached,
+                    pullRequest: {
+                      ...cached.pullRequest,
+                      ...pr,
+                      reviewStatus: cached.pullRequest.reviewStatus,
+                      latestReviews: cached.pullRequest.latestReviews,
+                      mergeable: pr.mergeable ?? cached.pullRequest.mergeable,
+                    },
+                  }
+                : aggregatePrWithChecks(pr, undefined);
+            });
             usePrStore.getState().setPullRequests(freshPrs);
             usePrStore.getState().setPollingState(false, new Date());
             log.info('background API refresh done', { count: freshPrs.length });
@@ -290,7 +312,7 @@ export function useInitSequence(settings: AppSettings, needsSetup: boolean) {
           return;
         }
 
-        const initialPullRequests = rawPrs.map(({ pr }) => aggregatePrWithChecks(pr, []));
+        const initialPullRequests = rawPrs.map(({ pr }) => aggregatePrWithChecks(pr, undefined));
         if (cancelled()) return;
         usePrStore.getState().setPullRequests(initialPullRequests);
         usePrStore.getState().setPollingState(false, new Date());
