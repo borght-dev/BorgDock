@@ -153,7 +153,7 @@ describe('WorkbenchActionBar', () => {
     const order = [...document.querySelectorAll('[data-action-bar-action]')].map(
       (el) => (el as HTMLElement).dataset.actionBarAction,
     );
-    expect(order).toEqual(['merge', 'checkout', 't3', 'browser', 'more']);
+    expect(order).toEqual(['merge', 'review', 'checkout', 't3', 'browser', 'more']);
     expect(button('merge')).toHaveClass('bd-btn--primary');
   });
 
@@ -256,6 +256,42 @@ describe('WorkbenchActionBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Review' }));
     expect(start).toHaveBeenCalledWith(pr);
     start.mockRestore();
+  });
+
+  it('offers Review as primary without a review request and opens this PR', () => {
+    const start = vi.spyOn(useQuickReviewStore.getState(), 'startSinglePr');
+    const pr = makePr({ reviewStatus: 'none', mergeable: undefined });
+    render(<WorkbenchActionBar pr={pr} actions={actions()} />);
+    const review = screen.getByRole('button', { name: 'Review' });
+    expect(review).toHaveClass('bd-btn--primary');
+    fireEvent.click(review);
+    expect(start).toHaveBeenCalledWith(pr);
+    start.mockRestore();
+  });
+
+  it.each([
+    ['merge', makePr()],
+    ['rerun', FAILING],
+  ] as const)('keeps Review available alongside the primary %s action', (primary, pr) => {
+    const start = vi.spyOn(useQuickReviewStore.getState(), 'startSinglePr');
+    render(<WorkbenchActionBar pr={pr} actions={actions()} />);
+    expect(button(primary)).toHaveClass('bd-btn--primary');
+    const review = screen.getByRole('button', { name: 'Review' });
+    expect(review).not.toHaveClass('bd-btn--primary');
+    fireEvent.click(review);
+    expect(start).toHaveBeenCalledWith(pr);
+    expect(mergePr).not.toHaveBeenCalled();
+    expect(rerunChecks).not.toHaveBeenCalled();
+    start.mockRestore();
+  });
+
+  it.each([
+    ['own', { authorLogin: 'koen', reviewStatus: 'none' as const }],
+    ['closed', { state: 'closed' as const }],
+    ['merged', { mergedAt: '2026-09-24T11:00:00Z' }],
+  ])('hides Review for an %s PR', (_label, fields) => {
+    render(<WorkbenchActionBar pr={makePr(fields)} actions={actions()} />);
+    expect(screen.queryByRole('button', { name: 'Review' })).not.toBeInTheDocument();
   });
 
   it('keeps R and F quiet when nothing is failing', () => {

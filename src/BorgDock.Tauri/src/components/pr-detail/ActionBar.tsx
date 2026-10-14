@@ -190,9 +190,11 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
   const username = usePrStore((s) => s.username);
   const teams = usePrStore((s) => s.teams);
   const mine = isMyPr(pr, username);
-  const primary: PrActionId | null = isOpen
+  const canReview = isOpen && !mine;
+  const suggested: PrActionId | null = isOpen
     ? primaryFor(shapeFromPrWithChecks(pr, mine, isWaitingOnMe(pr, username, teams)))
     : null;
+  const primary = suggested === 'open' && canReview ? 'review' : suggested;
   const failing = isOpen && pr.failedCheckNames.length > 0;
 
   const barRef = useRef<HTMLDivElement>(null);
@@ -330,6 +332,17 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
       data-primary={primary ?? undefined}
     >
       {primaryButton}
+      {canReview && primary !== 'review' && (
+        <Button
+          variant="secondary"
+          size="md"
+          leading={<MessageSquareText {...ICON} />}
+          onClick={review}
+          data-action-bar-action="review"
+        >
+          Review
+        </Button>
+      )}
       {failing && (
         <ProgressButton
           variant="secondary"

@@ -240,6 +240,25 @@ export const WaitingForReview: Story = {
   args: target(waitingPr),
 };
 
+const unrequestedPr: PullRequestWithChecks = {
+  ...waitingPr,
+  pullRequest: {
+    ...waitingPr.pullRequest,
+    authorLogin: 'mira',
+    reviewStatus: 'none',
+    requestedReviewers: [],
+    requestedTeams: [],
+  },
+};
+
+export const ReviewWithoutRequest: Story = {
+  decorators: [
+    inList(unrequestedPr),
+    withPrDetail(unrequestedPr, { githubResponses: { getCheckRunsForRef: READY_CHECKS } }),
+  ],
+  args: target(unrequestedPr),
+};
+
 export const DraftWithConflicts: Story = {
   decorators: [
     inList(draftConflictsPr),
