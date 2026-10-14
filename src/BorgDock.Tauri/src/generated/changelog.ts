@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.1.2",
+    "date": "2026-10-14",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Quick Review now puts PRs with passing checks first, both when starting a session and when suggesting your next review."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.1.1",
     "date": "2026-10-14",
     "summary": "",

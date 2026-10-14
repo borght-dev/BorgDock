@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.2 — 2026-10-14
+
+### Bug Fixes
+
+- Quick Review now puts PRs with passing checks first, both when starting a session and when suggesting your next review.
+
 ## 4.1.1 — 2026-10-14
 
 ### Bug Fixes
