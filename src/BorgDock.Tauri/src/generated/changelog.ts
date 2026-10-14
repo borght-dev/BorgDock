@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.0.2",
+    "date": "2026-10-14",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Pull requests now show current check results when GitHub's bulk refresh fails, instead of incorrectly showing \"No checks\". Unavailable results get a clear label, and repeated runs use the newest result.",
+      "Cached check results stay visible while BorgDock refreshes after startup."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.0.1",
     "date": "2026-10-13",
     "summary": "Give your work titles more room and Settings take effect right away.",

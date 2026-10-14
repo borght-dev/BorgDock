@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0.2 — 2026-10-14
+
+### Bug Fixes
+
+- Pull requests now show current check results when GitHub's bulk refresh fails, instead of incorrectly showing "No checks". Unavailable results get a clear label, and repeated runs use the newest result.
+- Cached check results stay visible while BorgDock refreshes after startup.
+
 ## 4.0.1 — 2026-10-13
 
 ### Improvements
