@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PullRequestWithChecks } from '@/types';
 import { GitHubClient } from '../client';
-import { POLL_CHECK_CONTEXTS_QUERY, POLL_OPEN_PRS_QUERY, pollOpenPrsAggregate } from '../polling';
+import {
+  POLL_CHECK_CONTEXTS_QUERY,
+  POLL_OPEN_PRS_QUERY,
+  POLL_PR_SUMMARIES_QUERY,
+  pollOpenPrsAggregate,
+} from '../polling';
 
 function makeNode(overrides: Record<string, unknown> = {}) {
   return {
+    id: `PR_${overrides.number ?? 1}`,
     number: 1,
     title: 'Test PR',
     body: '',
@@ -53,8 +59,14 @@ function makeRollup(contexts: Array<Record<string, unknown>>, state = 'SUCCESS')
 
 function makeClient(nodes: unknown[], totalCount = nodes.length): GitHubClient {
   const client = new GitHubClient(vi.fn().mockResolvedValue('t'));
-  vi.spyOn(client, 'graphql').mockResolvedValue({
-    repository: { pullRequests: { totalCount, nodes } },
+  vi.spyOn(client, 'graphql').mockImplementation(async (query, variables) => {
+    if (query === POLL_OPEN_PRS_QUERY) {
+      return {
+        repository: { pullRequests: { totalCount, pageInfo: { hasNextPage: false }, nodes } },
+      };
+    }
+    const ids = variables?.ids as string[];
+    return { nodes: nodes.filter((node) => ids.includes((node as { id: string }).id)) };
   });
   return client;
 }
@@ -83,12 +95,225 @@ describe('POLL_OPEN_PRS_QUERY', () => {
   });
 
   it('requests the status check rollup with pagination info', () => {
-    expect(POLL_OPEN_PRS_QUERY).toContain('statusCheckRollup');
+    expect(POLL_PR_SUMMARIES_QUERY).toContain('statusCheckRollup');
     expect(POLL_OPEN_PRS_QUERY).toContain('hasNextPage');
   });
 });
 
 describe('pollOpenPrsAggregate', () => {
+  it('shares the four-request limit between summaries and check pages', async () => {
+    const nodes = Array.from({ length: 21 }, (_, i) => {
+      const commits = makeRollup([]);
+      const rollup = commits.commits.nodes[0]!.commit.statusCheckRollup;
+      Object.assign(rollup, { id: `rollup${i}` });
+      Object.assign(rollup.contexts.pageInfo, { hasNextPage: i < 20, endCursor: 'next' });
+      return makeNode({ number: i + 1, ...commits });
+    });
+    const client = makeClient(nodes);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let active = 0;
+    let maximum = 0;
+    let checkPages = 0;
+    vi.mocked(client.graphql).mockImplementation(async (query, variables) => {
+      if (query === POLL_OPEN_PRS_QUERY)
+        return {
+          repository: {
+            pullRequests: {
+              pageInfo: { hasNextPage: false },
+              nodes,
+            },
+          },
+        };
+      const ids = variables?.ids as string[] | undefined;
+      if (query === POLL_PR_SUMMARIES_QUERY && !ids?.includes('PR_21')) {
+        return { nodes: nodes.filter((node) => ids?.includes(node.id)) };
+      }
+      active++;
+      maximum = Math.max(maximum, active);
+      if (query === POLL_CHECK_CONTEXTS_QUERY) checkPages++;
+      await gate;
+      active--;
+      return query === POLL_PR_SUMMARIES_QUERY
+        ? { nodes: nodes.filter((node) => ids?.includes(node.id)) }
+        : { node: { contexts: { pageInfo: { hasNextPage: false }, nodes: [] } } };
+    });
+    const poll = pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    try {
+      await vi.waitFor(() => expect(active).toBe(4), { timeout: 500, interval: 10 });
+      expect(checkPages).toBe(3);
+    } finally {
+      release();
+      expect(await poll).toHaveLength(21);
+    }
+    expect(maximum).toBe(4);
+    expect(checkPages).toBe(20);
+  });
+
+  it('starts check pagination before slower summary batches finish', async () => {
+    const commits = makeRollup([]);
+    const rollup = commits.commits.nodes[0]!.commit.statusCheckRollup;
+    Object.assign(rollup, { id: 'rollup1' });
+    Object.assign(rollup.contexts.pageInfo, { hasNextPage: true, endCursor: 'next' });
+    const nodes = Array.from({ length: 11 }, (_, i) =>
+      makeNode({ number: i + 1, ...(i === 0 ? commits : {}) }),
+    );
+    const client = makeClient(nodes);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let checkStarted = false;
+    vi.mocked(client.graphql).mockImplementation(async (query, variables) => {
+      if (query === POLL_OPEN_PRS_QUERY)
+        return {
+          repository: {
+            pullRequests: {
+              pageInfo: { hasNextPage: false },
+              nodes,
+            },
+          },
+        };
+      if (query === POLL_PR_SUMMARIES_QUERY) {
+        const ids = variables?.ids as string[];
+        if (ids.includes('PR_11')) await gate;
+        return { nodes: nodes.filter((node) => ids.includes(node.id)) };
+      }
+      checkStarted = true;
+      return { node: { contexts: { pageInfo: { hasNextPage: false }, nodes: [] } } };
+    });
+    const poll = pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    try {
+      await vi.waitFor(() => expect(checkStarted).toBe(true), { timeout: 500, interval: 10 });
+    } finally {
+      release();
+      await poll;
+    }
+  });
+
+  it('keeps repository queries small and follows every PR page', async () => {
+    const client = makeClient([]);
+    vi.mocked(client.graphql).mockImplementation(async (query, variables) => {
+      if (query === POLL_PR_SUMMARIES_QUERY) {
+        const ids = variables?.ids as string[];
+        expect(ids.length).toBeLessThanOrEqual(10);
+        return { nodes: ids.map((id) => makeNode({ number: Number(id) })) };
+      }
+      const offset = Number(variables?.after ?? 0);
+      return {
+        repository: {
+          pullRequests: {
+            pageInfo: { hasNextPage: offset === 0, endCursor: '100' },
+            nodes: Array.from({ length: offset === 0 ? 100 : 10 }, (_, i) => ({
+              id: String(offset + i + 1),
+            })),
+          },
+        },
+      };
+    });
+
+    const prs = await pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    expect(prs.map((pr) => pr.pullRequest.number)).toEqual(
+      Array.from({ length: 110 }, (_, i) => i + 1),
+    );
+    expect(client.graphql).toHaveBeenCalledWith(POLL_OPEN_PRS_QUERY, {
+      owner: 'octocat',
+      repo: 'hello-world',
+      after: '100',
+    });
+  });
+
+  it('loads independent check pages concurrently with at most four in flight', async () => {
+    const nodes = Array.from({ length: 5 }, (_, i) => {
+      const commits = makeRollup([]);
+      const rollup = commits.commits.nodes[0]!.commit.statusCheckRollup;
+      Object.assign(rollup, { id: `rollup${i}` });
+      Object.assign(rollup.contexts.pageInfo, { hasNextPage: true, endCursor: 'next' });
+      return makeNode({ number: i + 1, ...commits });
+    });
+    const client = makeClient(nodes);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let active = 0;
+    let maximum = 0;
+    vi.mocked(client.graphql).mockImplementation(async (query) => {
+      if (query === POLL_OPEN_PRS_QUERY) {
+        return {
+          repository: { pullRequests: { totalCount: 5, pageInfo: { hasNextPage: false }, nodes } },
+        };
+      }
+      if (query === POLL_PR_SUMMARIES_QUERY) return { nodes };
+      active++;
+      maximum = Math.max(maximum, active);
+      await gate;
+      active--;
+      return { node: { contexts: { pageInfo: { hasNextPage: false }, nodes: [] } } };
+    });
+    const poll = pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    try {
+      await vi.waitFor(() => expect(active).toBe(4), { timeout: 500, interval: 10 });
+    } finally {
+      release();
+      await poll;
+    }
+    expect(maximum).toBe(4);
+    expect(client.graphql).toHaveBeenCalledTimes(7);
+  });
+
+  it('loads summary batches concurrently with at most four in flight', async () => {
+    const nodes = Array.from({ length: 41 }, (_, i) => makeNode({ number: i + 1 }));
+    const client = makeClient(nodes);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let active = 0;
+    let maximum = 0;
+    vi.mocked(client.graphql).mockImplementation(async (query, variables) => {
+      if (query === POLL_PR_SUMMARIES_QUERY) {
+        active++;
+        maximum = Math.max(maximum, active);
+        await gate;
+        active--;
+        const ids = variables?.ids as string[];
+        return { nodes: nodes.filter((node) => ids.includes(node.id)) };
+      }
+      return { repository: { pullRequests: { pageInfo: { hasNextPage: false }, nodes } } };
+    });
+    const poll = pollOpenPrsAggregate(client, 'octocat', 'hello-world');
+    try {
+      await vi.waitFor(() => expect(active).toBe(4), { timeout: 500, interval: 10 });
+    } finally {
+      release();
+      expect(await poll).toHaveLength(41);
+    }
+    expect(maximum).toBe(4);
+  });
+
+  it.each([
+    { nodes: [] },
+    { nodes: [null] },
+  ])('rejects incomplete summary batches', async (summaries) => {
+    const client = makeClient([makeNode()]);
+    vi.mocked(client.graphql)
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            pageInfo: { hasNextPage: false },
+            nodes: [{ id: 'PR_1' }],
+          },
+        },
+      })
+      .mockResolvedValueOnce(summaries);
+    await expect(pollOpenPrsAggregate(client, 'octocat', 'hello-world')).rejects.toThrow(
+      'incomplete',
+    );
+  });
+
   it('passes owner and repo as GraphQL variables', async () => {
     const client = makeClient([]);
     await pollOpenPrsAggregate(client, 'octocat', 'hello-world');
@@ -96,6 +321,7 @@ describe('pollOpenPrsAggregate', () => {
     expect(client.graphql).toHaveBeenCalledWith(POLL_OPEN_PRS_QUERY, {
       owner: 'octocat',
       repo: 'hello-world',
+      after: null,
     });
   });
 
@@ -137,12 +363,18 @@ describe('pollOpenPrsAggregate', () => {
     expect(result).toEqual([]);
   });
 
-  it('caps the result at 100 PRs and does not throw when more exist', async () => {
-    const nodes = Array.from({ length: 100 }, (_, i) => makeNode({ number: i + 1 }));
-    const client = makeClient(nodes, 250);
-
-    const result = await pollOpenPrsAggregate(client, 'big', 'repo');
-    expect(result.length).toBe(100);
+  it.each([null, 'repeated'])('rejects incomplete PR pagination with cursor %s', async (cursor) => {
+    const client = makeClient([]);
+    vi.mocked(client.graphql).mockResolvedValue({
+      repository: {
+        pullRequests: {
+          totalCount: 20,
+          nodes: [],
+          pageInfo: { hasNextPage: true, endCursor: cursor },
+        },
+      },
+    });
+    await expect(pollOpenPrsAggregate(client, 'big', 'repo')).rejects.toThrow('pagination');
   });
 });
 
@@ -173,8 +405,9 @@ describe('pollOpenPrsAggregate (adapter)', () => {
     const client = makeClient([node]);
     vi.mocked(client.graphql)
       .mockResolvedValueOnce({
-        repository: { pullRequests: { totalCount: 1, nodes: [node] } },
+        repository: { pullRequests: { pageInfo: { hasNextPage: false }, nodes: [node] } },
       })
+      .mockResolvedValueOnce({ nodes: [node] })
       .mockResolvedValueOnce({
         node: {
           contexts: {
@@ -197,11 +430,11 @@ describe('pollOpenPrsAggregate (adapter)', () => {
     expect(pr!.failedCheckNames).toEqual([]);
     expect(pr!.passedCount).toBe(2);
     expect(pr!.totalCheckCount).toBe(2);
-    expect(client.graphql).toHaveBeenNthCalledWith(2, POLL_CHECK_CONTEXTS_QUERY, {
+    expect(client.graphql).toHaveBeenNthCalledWith(3, POLL_CHECK_CONTEXTS_QUERY, {
       id: 'rollup1',
       after: 'page1',
     });
-    expect(client.graphql).toHaveBeenNthCalledWith(3, POLL_CHECK_CONTEXTS_QUERY, {
+    expect(client.graphql).toHaveBeenNthCalledWith(4, POLL_CHECK_CONTEXTS_QUERY, {
       id: 'rollup1',
       after: 'page2',
     });
@@ -579,16 +812,14 @@ describe('pollOpenPrsAggregate (adapter)', () => {
     expect(pr!.totalCheckCount).toBe(2);
   });
 
-  it('maps merged/closed timestamps through', async () => {
-    const [pr] = await callAdapter([
+  it('excludes PRs closed between discovery and summary fetches', async () => {
+    const prs = await callAdapter([
       makeNode({
         state: 'MERGED',
         mergedAt: '2026-05-02T00:00:00Z',
         closedAt: '2026-05-02T00:00:00Z',
       }),
     ]);
-    expect(pr!.pullRequest.state).toBe('merged');
-    expect(pr!.pullRequest.mergedAt).toBe('2026-05-02T00:00:00Z');
-    expect(pr!.pullRequest.closedAt).toBe('2026-05-02T00:00:00Z');
+    expect(prs).toEqual([]);
   });
 });

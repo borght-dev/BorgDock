@@ -44,9 +44,8 @@ export const POLL_CHECK_CONTEXTS_QUERY = /* GraphQL */ `
 `;
 
 /**
- * Single-query replacement for the REST polling fan-out: open PRs, their
- * check rollups, latest reviews per user, and counts — one request per repo
- * per poll cycle, plus additional pages for large check rollups.
+ * Fetch open PRs and check summaries in small pages to stay within GitHub's
+ * query timeout. Large check rollups are paged separately.
  *
  * Check contexts are paged in batches of 100, reviews capped at 25.
  * `body` stays in the hot
@@ -57,12 +56,7 @@ export const POLL_CHECK_CONTEXTS_QUERY = /* GraphQL */ `
  * `rateLimit` sits at the query root (it is a Query field, not a Repository
  * field) so `GitHubClient.graphql` can read the GraphQL pool from the body.
  */
-export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
-  query PollOpenPrs($owner: String!, $repo: String!) {
-    repository(owner: $owner, name: $repo) {
-      pullRequests(states: OPEN, first: 100, orderBy: { field: UPDATED_AT, direction: DESC }) {
-        totalCount
-        nodes {
+const PR_FIELDS = /* GraphQL */ `
           number
           title
           body
@@ -130,15 +124,24 @@ export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
           reviewThreads {
             totalCount
           }
-        }
+`;
+
+export const POLL_OPEN_PRS_QUERY = /* GraphQL */ `
+  query PollOpenPrs($owner: String!, $repo: String!, $after: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequests(states: OPEN, first: 100, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id }
       }
     }
-    rateLimit {
-      remaining
-      limit
-      resetAt
-      cost
-    }
+    rateLimit { remaining limit resetAt cost }
+  }
+`;
+
+export const POLL_PR_SUMMARIES_QUERY = /* GraphQL */ `
+  query PollPrSummaries($ids: [ID!]!) {
+    nodes(ids: $ids) { ... on PullRequest { ${PR_FIELDS} } }
+    rateLimit { remaining limit resetAt cost }
   }
 `;
 
@@ -227,15 +230,15 @@ interface GqlPrNode {
 interface PollResponse {
   repository: {
     pullRequests: {
-      totalCount: number;
-      nodes: GqlPrNode[];
+      pageInfo: { hasNextPage: boolean; endCursor?: string | null };
+      nodes: Array<{ id: string }>;
     };
   } | null;
 }
 
 /**
- * Fetch all open PRs for a repo with their check summaries in one GraphQL
- * call, returning the same `PullRequestWithChecks` shape the REST fan-out
+ * Fetch all open PRs for a repo with their check summaries in paged GraphQL
+ * calls, returning the same `PullRequestWithChecks` shape the REST fan-out
  * produced. The summary fields are derived by mapping rollup contexts to
  * `CheckRun`-shaped objects and reusing {@link aggregatePrWithChecks}, so
  * status semantics (including cancelled-as-non-blocking) stay identical.
@@ -245,33 +248,95 @@ export async function pollOpenPrsAggregate(
   owner: string,
   repo: string,
 ): Promise<PullRequestWithChecks[]> {
-  const data = await client.graphql<PollResponse>(POLL_OPEN_PRS_QUERY, { owner, repo });
-  // `repository` is null when the repo is inaccessible; the optional chain also
-  // tolerates malformed 200 bodies (e.g. stubbed network in tests) so a poll
-  // cycle degrades to "no data" instead of TypeError-ing.
-  const pullRequests = data?.repository?.pullRequests;
-  if (!pullRequests) {
-    log.warn('poll response missing repository.pullRequests', { owner, repo });
-    return [];
-  }
-  if (pullRequests.totalCount > 100) {
-    log.warn('PR list truncated to 100', {
+  const ids = new Set<string>();
+  const cursors = new Set<string>();
+  let after: string | null = null;
+  do {
+    const data: PollResponse = await client.graphql<PollResponse>(POLL_OPEN_PRS_QUERY, {
       owner,
       repo,
-      totalCount: pullRequests.totalCount,
+      after,
     });
+    const pullRequests = data?.repository?.pullRequests;
+    if (!pullRequests) {
+      if (after) throw new Error('GitHub pull requests page is missing');
+      log.warn('poll response missing repository.pullRequests', { owner, repo });
+      return [];
+    }
+    if (!pullRequests.pageInfo) throw new Error('GitHub pull requests pagination is missing');
+    for (const node of pullRequests.nodes) ids.add(node.id);
+    if (!pullRequests.pageInfo.hasNextPage) break;
+    const cursor = pullRequests.pageInfo.endCursor;
+    if (!cursor || cursors.has(cursor)) {
+      throw new Error('Incomplete GitHub pull requests pagination');
+    }
+    cursors.add(cursor);
+    after = cursor;
+  } while (after);
+
+  const allIds = [...ids];
+  const batches: string[][] = [];
+  for (let offset = 0; offset < allIds.length; offset += 10) {
+    batches.push(allIds.slice(offset, offset + 10));
   }
-  const results: PullRequestWithChecks[] = [];
-  for (const node of pullRequests.nodes ?? []) {
-    const rollup = node.commits.nodes[0]?.commit.statusCheckRollup;
-    if (rollup) await loadRemainingCheckContexts(client, rollup);
-    results.push(mapNode(node, owner, repo));
-  }
+  const requests = limitClientRequests(client);
+  const results = await mapConcurrent(batches, async (ids) => {
+    const data = await requests.graphql<{ nodes: Array<GqlPrNode | null> }>(
+      POLL_PR_SUMMARIES_QUERY,
+      {
+        ids,
+      },
+    );
+    if (!data?.nodes || data.nodes.length !== ids.length || data.nodes.some((node) => !node)) {
+      throw new Error('GitHub pull request summaries are incomplete');
+    }
+    return Promise.all(
+      (data.nodes as GqlPrNode[])
+        .filter((node) => node.state === 'OPEN')
+        .map(async (node) => {
+          const rollup = node.commits.nodes[0]?.commit.statusCheckRollup;
+          if (rollup) await loadRemainingCheckContexts(requests, rollup);
+          return mapNode(node, owner, repo);
+        }),
+    );
+  });
+  return results.flat();
+}
+
+function limitClientRequests(client: GitHubClient): Pick<GitHubClient, 'graphql'> {
+  let active = 0;
+  const waiting: Array<() => void> = [];
+  return {
+    async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+      if (active === 4) await new Promise<void>((resolve) => waiting.push(resolve));
+      else active++;
+      try {
+        return await client.graphql<T>(query, variables);
+      } finally {
+        const next = waiting.shift();
+        if (next) next();
+        else active--;
+      }
+    },
+  };
+}
+
+async function mapConcurrent<T, R>(items: T[], map: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(4, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        results[index] = await map(items[index]!);
+      }
+    }),
+  );
   return results;
 }
 
 async function loadRemainingCheckContexts(
-  client: GitHubClient,
+  client: Pick<GitHubClient, 'graphql'>,
   rollup: GqlStatusCheckRollup,
 ): Promise<void> {
   let pageInfo = rollup.contexts.pageInfo;
